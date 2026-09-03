@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { MapPin, Users, Star, ArrowRight } from "lucide-react"
-import { colleges, collegeDepartments } from "@/lib/data"
+import { collegeList, collegeDepartments } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
@@ -18,7 +18,7 @@ export function CollegeList() {
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {colleges.map((college) => {
+          {collegeList.map((college) => {
             const deptNames = college.departments
               .map((dId) => collegeDepartments.find((d) => d.id === dId)?.name)
               .filter(Boolean)
