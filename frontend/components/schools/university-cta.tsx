@@ -1,0 +1,55 @@
+import Link from "next/link"
+import { ArrowRight, Play } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+
+export function UniversityCta() {
+  return (
+    <section className="py-12 lg:py-16">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="flex flex-col justify-between overflow-hidden rounded-2xl bg-primary p-8 text-primary-foreground">
+            <div>
+              <h2 className="text-2xl font-bold">Explore a Program</h2>
+              <p className="mt-3 text-primary-foreground/80">
+                Browse sample lectures and course materials from our partner
+                universities — no account needed. See how we teach medicine,
+                engineering, law and more.
+              </p>
+            </div>
+            <Link
+              href="/schools/universities/udsm"
+              className={cn(
+                buttonVariants(),
+                "mt-8 h-11 w-full gap-2 bg-background text-foreground hover:bg-background/90 sm:w-auto sm:self-start",
+              )}
+            >
+              <Play className="size-4" />
+              Start Learning
+            </Link>
+          </div>
+
+          <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-8">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Apply for Admission</h2>
+              <p className="mt-3 text-muted-foreground">
+                Submit your application for diploma, bachelor's, master's or PhD
+                programs at our partner universities across Tanzania.
+              </p>
+            </div>
+            <Link
+              href="/register"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "mt-8 h-11 w-full gap-2 border-primary/30 text-primary hover:bg-accent sm:w-auto sm:self-start",
+              )}
+            >
+              Apply Now
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
