@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react"
 import { Search, BookOpenCheck } from "lucide-react"
 import { studyMaterials } from "@/lib/data"
-import type { EducationLevel } from "@/lib/data"
 import { MaterialCard } from "@/components/notes/material-card"
 import { cn } from "@/lib/utils"
 
