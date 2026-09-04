@@ -5,28 +5,28 @@ const columns = [
   {
     title: "Learn",
     links: [
-      { label: "Courses", href: "/courses" },
+      { label: "Education", href: "/courses" },
       { label: "Live Classes", href: "/live-classes" },
-      { label: "Recorded Classes", href: "/live-classes" },
-      { label: "Digital Library", href: "/notes-library" },
+      { label: "Notes & Materials", href: "/notes-library" },
     ],
   },
   {
-    title: "Discover",
+    title: "Schools",
     links: [
+      { label: "Nursery Schools", href: "/schools/nursery" },
       { label: "Primary Schools", href: "/schools/primary" },
       { label: "Secondary Schools", href: "/schools/secondary" },
       { label: "Colleges", href: "/schools/colleges" },
       { label: "Universities", href: "/schools/universities" },
+      { label: "Vocational (VETA)", href: "/schools/vocational" },
     ],
   },
   {
     title: "Platform",
     links: [
-      { label: "About", href: "/about" },
+      { label: "About ELMKUSOMA", href: "/about" },
       { label: "Verify Certificate", href: "/certificates/verify" },
-      { label: "Become an Instructor", href: "/register" },
-      { label: "For Institutions", href: "/register" },
+      { label: "Register", href: "/register" },
     ],
   },
 ]
@@ -65,13 +65,10 @@ export function SiteFooter() {
           <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} ELMKUSOMA. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
-              Privacy
+              About
             </Link>
             <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
-              Terms
-            </Link>
-            <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
-              Support
+              Contact
             </Link>
           </div>
         </div>

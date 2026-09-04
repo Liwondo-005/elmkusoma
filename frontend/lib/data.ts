@@ -118,12 +118,12 @@ export const featuredCourses: Course[] = [
 ]
 
 export const levels = [
-  { name: "Nursery", desc: "Games & interactive learning", href: "/schools/nursery" },
-  { name: "Primary", desc: "Classes, subjects & quizzes", href: "/schools/primary" },
-  { name: "Secondary", desc: "O-Level & A-Level programs", href: "/schools/secondary" },
-  { name: "College", desc: "Departments & programs", href: "/schools/colleges" },
-  { name: "Vocational", desc: "VETA training & modules", href: "/schools/vocational" },
-  { name: "University", desc: "Faculties & degree programs", href: "/schools/universities" },
+  { name: "Nursery", desc: "Baby, Middle & Top levels", href: "/courses/nursery" },
+  { name: "Primary", desc: "Standard 1 — 6 curriculum", href: "/courses/primary" },
+  { name: "Lower Secondary", desc: "Form I — IV, O-Level", href: "/courses/lower-secondary" },
+  { name: "Advanced Secondary", desc: "Form V — VI, A-Level", href: "/courses/advanced-secondary" },
+  { name: "Vocational (VETA)", desc: "Trade skills & modules", href: "/courses/veta" },
+  { name: "Colleges & Universities", desc: "Degree & diploma programs", href: "/courses/colleges-universities" },
 ]
 
 export const stats = [

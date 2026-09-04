@@ -2,21 +2,14 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { LayoutDashboard, Radio } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 
 const nav = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "My Courses", href: "/dashboard/courses" },
-  { label: "Live Classes", href: "/live-classes" },
-  { label: "Assignments", href: "/dashboard/assignments", badge: 3 },
-  { label: "Progress", href: "/dashboard/progress" },
-  { label: "Messages", href: "/dashboard/messages", badge: 2 },
-  { label: "Certificates", href: "/dashboard/certificates" },
-  { label: "Bookmarks", href: "/dashboard/bookmarks" },
-  { label: "Profile", href: "/dashboard/profile" },
-  { label: "Settings", href: "/dashboard/settings" },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Live Classes", href: "/live-classes", icon: Radio },
 ]
 
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -50,17 +43,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
+              {item.icon && <item.icon className="size-4 shrink-0" />}
               <span className="flex-1">{item.label}</span>
-              {item.badge ? (
-                <span
-                  className={cn(
-                    "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
-                    active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
-                  )}
-                >
-                  {item.badge}
-                </span>
-              ) : null}
             </Link>
           )
         })}
