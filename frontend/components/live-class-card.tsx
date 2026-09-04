@@ -1,6 +1,5 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Eye, Clock, Users } from "lucide-react"
 import type { LiveClass } from "@/lib/data"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -54,16 +53,14 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
         <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
           {isLive ? (
             <>
-              <Eye className="size-3.5 text-teal" />
               <span>{item.watching} watching</span>
             </>
           ) : (
             <>
-              <Clock className="size-3.5" />
               <span>{item.time}</span>
               {item.going ? (
                 <span className="ml-auto inline-flex items-center gap-1">
-                  <Users className="size-3.5" /> {item.going} going
+                  {item.going} going
                 </span>
               ) : null}
             </>

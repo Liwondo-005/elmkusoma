@@ -1,5 +1,4 @@
 import Image from "next/image"
-import { ExternalLink, Globe } from "lucide-react"
 
 const team = [
   {
@@ -78,11 +77,11 @@ export function AboutTeam() {
                   <p className="mt-0.5 text-sm font-medium text-primary">{member.role}</p>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{member.bio}</p>
                   <div className="mt-3 flex gap-3">
-                    <a href={member.social.linkedin} aria-label={`${member.name} on LinkedIn`}>
-                      <ExternalLink className="size-4 text-muted-foreground transition-colors hover:text-primary" />
+                    <a href={member.social.linkedin} aria-label={`${member.name} on LinkedIn`} className="text-xs text-muted-foreground hover:text-primary">
+                      LinkedIn
                     </a>
-                    <a href={member.social.twitter} aria-label={`${member.name} on Twitter`}>
-                      <Globe className="size-4 text-muted-foreground transition-colors hover:text-primary" />
+                    <a href={member.social.twitter} aria-label={`${member.name} on Twitter`} className="text-xs text-muted-foreground hover:text-primary">
+                      Twitter
                     </a>
                   </div>
                 </div>

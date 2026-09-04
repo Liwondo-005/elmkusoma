@@ -1,25 +1,20 @@
-import { FileText, Download, Eye, BookOpen, FlaskConical, Calculator, Presentation } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { StudyMaterial } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
-const typeConfig: Record<string, { label: string; icon: typeof FileText; tint: string }> = {
-  notes: { label: "Notes", icon: BookOpen, tint: "text-primary bg-accent" },
-  slides: { label: "Slides", icon: Presentation, tint: "text-purple-600 bg-purple-50" },
-  "formula-sheet": { label: "Formula Sheet", icon: Calculator, tint: "text-teal bg-teal/10" },
-  practice: { label: "Practice", icon: FlaskConical, tint: "text-orange bg-orange/10" },
+const typeConfig: Record<string, { label: string; tint: string }> = {
+  notes: { label: "Notes", tint: "text-primary bg-accent" },
+  slides: { label: "Slides", tint: "text-purple-600 bg-purple-50" },
+  "formula-sheet": { label: "Formula Sheet", tint: "text-teal bg-teal/10" },
+  practice: { label: "Practice", tint: "text-orange bg-orange/10" },
 }
 
 export function MaterialCard({ material }: { material: StudyMaterial }) {
   const config = typeConfig[material.type] ?? typeConfig.notes
-  const Icon = config.icon
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-shadow hover:shadow-md">
       <div className="flex items-start gap-3 p-5 pb-0">
-        <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", config.tint)}>
-          <Icon className="size-5" />
-        </div>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-muted-foreground">{material.subject}</p>
           <h3 className="mt-0.5 text-sm font-semibold leading-snug text-foreground line-clamp-2">
@@ -46,12 +41,10 @@ export function MaterialCard({ material }: { material: StudyMaterial }) {
         <div className="mt-4">
           {material.access === "download" ? (
             <Button variant="outline" size="sm" className="w-full gap-1.5">
-              <Download className="size-3.5" />
               Download
             </Button>
           ) : (
             <Button variant="ghost" size="sm" className="w-full gap-1.5">
-              <Eye className="size-3.5" />
               View Only
             </Button>
           )}

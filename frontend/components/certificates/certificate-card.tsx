@@ -1,4 +1,3 @@
-import { Award, BadgeCheck, Calendar, GraduationCap, User } from "lucide-react"
 import type { Certificate } from "@/lib/data"
 
 export function CertificateCard({ certificate }: { certificate: Certificate }) {
@@ -6,9 +5,6 @@ export function CertificateCard({ certificate }: { certificate: Certificate }) {
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
       <div className="border-b border-border bg-accent/50 px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-xl text-orange bg-orange/10">
-            <Award className="size-5" />
-          </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground">Certificate of Completion</p>
             <p className="text-sm font-semibold text-foreground">ELMKUSOMA</p>
@@ -28,17 +24,14 @@ export function CertificateCard({ certificate }: { certificate: Certificate }) {
 
         <div className="mt-6 space-y-3 rounded-xl border border-border bg-muted/40 p-4">
           <div className="flex items-center gap-3 text-sm">
-            <User className="size-4 shrink-0 text-muted-foreground" />
             <span className="text-muted-foreground">Instructor:</span>
             <span className="font-medium text-foreground">{certificate.instructor}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <Calendar className="size-4 shrink-0 text-muted-foreground" />
             <span className="text-muted-foreground">Completed:</span>
             <span className="font-medium text-foreground">{certificate.completionDate}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <GraduationCap className="size-4 shrink-0 text-muted-foreground" />
             <span className="text-muted-foreground">Grade:</span>
             <span className="font-medium text-foreground">{certificate.grade}</span>
           </div>
@@ -61,7 +54,6 @@ export function CertificateCard({ certificate }: { certificate: Certificate }) {
         )}
 
         <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-teal/20 bg-teal/5 px-4 py-3">
-          <BadgeCheck className="size-5 text-teal" />
           <span className="text-sm font-semibold text-teal">Verified Certificate</span>
         </div>
 

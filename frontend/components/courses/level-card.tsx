@@ -1,29 +1,9 @@
 import Link from "next/link"
-import { Baby, School, BookOpen, GraduationCap, Wrench, University, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import type { CourseLevel } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  baby: Baby,
-  school: School,
-  "book-open": BookOpen,
-  "graduation-cap": GraduationCap,
-  wrench: Wrench,
-  university: University,
-}
-
-const colorMap: Record<string, string> = {
-  nursery: "bg-pink-50 text-pink-600 group-hover:bg-pink-100",
-  primary: "bg-blue-50 text-blue-600 group-hover:bg-blue-100",
-  "lower-secondary": "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100",
-  "advanced-secondary": "bg-purple-50 text-purple-600 group-hover:bg-purple-100",
-  veta: "bg-amber-50 text-amber-600 group-hover:bg-amber-100",
-  "colleges-universities": "bg-sky-50 text-sky-600 group-hover:bg-sky-100",
-}
-
 export function LevelCard({ level }: { level: CourseLevel }) {
-  const Icon = iconMap[level.icon] ?? BookOpen
-
   return (
     <Link
       href={level.comingSoon ? "/courses" : `/courses/${level.slug}`}
@@ -32,15 +12,7 @@ export function LevelCard({ level }: { level: CourseLevel }) {
         level.comingSoon && "pointer-events-none opacity-60"
       )}
     >
-      <div className="flex items-start justify-between">
-        <span
-          className={cn(
-            "flex size-11 items-center justify-center rounded-xl transition-colors",
-            colorMap[level.slug] ?? "bg-muted text-muted-foreground"
-          )}
-        >
-          <Icon className="size-5" />
-        </span>
+      <div className="flex items-start justify-end">
         {!level.comingSoon && (
           <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all group-hover:bg-primary group-hover:text-primary-foreground">
             <ChevronRight className="size-4" />
@@ -48,7 +20,7 @@ export function LevelCard({ level }: { level: CourseLevel }) {
         )}
       </div>
 
-      <h3 className="mt-4 text-base font-semibold text-foreground">{level.name}</h3>
+      <h3 className="text-base font-semibold text-foreground">{level.name}</h3>
       <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted-foreground">{level.description}</p>
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-4">

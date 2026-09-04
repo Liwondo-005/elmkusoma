@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen } from "lucide-react"
 import { primaryClasses } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
@@ -36,14 +35,6 @@ export function PrimaryClasses() {
                     : "border-border bg-card text-foreground hover:border-primary/40 hover:shadow-xs",
                 )}
               >
-                <div
-                  className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                    activeId === cls.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  <BookOpen className="size-4" />
-                </div>
                 <div>
                   <p className="font-semibold">{cls.name}</p>
                   <p className="text-xs text-muted-foreground">{cls.label} · {cls.ages}</p>
@@ -54,14 +45,9 @@ export function PrimaryClasses() {
 
           {/* Subjects panel */}
           <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <BookOpen className="size-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-foreground">{activeClass.name}</h3>
-                <p className="text-sm text-muted-foreground">{activeClass.label} · {activeClass.ages}</p>
-              </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground">{activeClass.name}</h3>
+              <p className="text-sm text-muted-foreground">{activeClass.label} · {activeClass.ages}</p>
             </div>
 
             <div className="mt-6">

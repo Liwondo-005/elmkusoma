@@ -1,10 +1,8 @@
-import { UserPlus, CalendarCheck, Video, Award } from "lucide-react"
-
 const steps = [
-  { icon: UserPlus, title: "Create your account", desc: "Sign up and pick your education level to get a personalized experience." },
-  { icon: CalendarCheck, title: "Find your classes", desc: "Browse live classes, courses and your institution's learning content." },
-  { icon: Video, title: "Learn live", desc: "Join interactive live sessions, chat with teachers and track your progress." },
-  { icon: Award, title: "Earn certificates", desc: "Complete courses and receive verifiable certificates of achievement." },
+  { title: "Create your account", desc: "Sign up and pick your education level to get a personalized experience." },
+  { title: "Find your classes", desc: "Browse live classes, courses and your institution's learning content." },
+  { title: "Learn live", desc: "Join interactive live sessions, chat with teachers and track your progress." },
+  { title: "Earn certificates", desc: "Complete courses and receive verifiable certificates of achievement." },
 ]
 
 export function HowItWorks() {
@@ -21,11 +19,8 @@ export function HowItWorks() {
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step, i) => (
             <div key={step.title} className="relative rounded-2xl border border-border bg-card p-6">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-accent text-primary">
-                <step.icon className="size-6" />
-              </div>
               <span className="absolute right-5 top-5 text-2xl font-extrabold text-muted/70">{i + 1}</span>
-              <h3 className="mt-4 text-base font-semibold text-foreground">{step.title}</h3>
+              <h3 className="text-base font-semibold text-foreground">{step.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.desc}</p>
             </div>
           ))}

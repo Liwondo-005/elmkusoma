@@ -1,10 +1,4 @@
 import Image from "next/image"
-import { BookOpen, Users } from "lucide-react"
-
-const highlights = [
-  { icon: BookOpen, label: "8,500+ Learners" },
-  { icon: Users, label: "500+ Instructors" },
-]
 
 export function AboutHero() {
   return (
@@ -27,15 +21,12 @@ export function AboutHero() {
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              {highlights.map((h) => (
-                <span
-                  key={h.label}
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-xs"
-                >
-                  <h.icon className="size-4 text-primary" />
-                  {h.label}
-                </span>
-              ))}
+              <span className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-xs">
+                8,500+ Learners
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-xs">
+                500+ Instructors
+              </span>
             </div>
           </div>
 

@@ -1,18 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Wrench, Briefcase, Monitor, Heart, GraduationCap, Leaf } from "lucide-react"
 import { collegeDepartments } from "@/lib/data"
 import { cn } from "@/lib/utils"
-
-const iconMap: Record<string, typeof Wrench> = {
-  Wrench,
-  Briefcase,
-  Monitor,
-  Heart,
-  GraduationCap,
-  Leaf,
-}
 
 export function CollegeDepartments() {
   const [activeId, setActiveId] = useState(collegeDepartments[0].id)
@@ -34,7 +24,6 @@ export function CollegeDepartments() {
           {/* Department tabs */}
           <div className="flex flex-col gap-2 lg:sticky lg:top-24 lg:self-start">
             {collegeDepartments.map((dept) => {
-              const Icon = iconMap[dept.icon] || Wrench
               return (
                 <button
                   key={dept.id}
@@ -47,14 +36,6 @@ export function CollegeDepartments() {
                       : "border-border bg-card text-foreground hover:border-primary/40 hover:shadow-xs",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                      activeId === dept.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="size-4" />
-                  </div>
                   <div>
                     <p className="font-semibold">{dept.name}</p>
                     <p className="text-xs text-muted-foreground">{dept.programs.length} programs</p>
@@ -66,19 +47,9 @@ export function CollegeDepartments() {
 
           {/* Programs panel */}
           <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="flex items-center gap-3">
-              {(() => {
-                const Icon = iconMap[activeDept.icon] || Wrench
-                return (
-                  <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <Icon className="size-5" />
-                  </div>
-                )
-              })()}
-              <div>
-                <h3 className="text-lg font-bold text-foreground">{activeDept.name}</h3>
-                <p className="text-sm text-muted-foreground">{activeDept.programs.length} programs available</p>
-              </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground">{activeDept.name}</h3>
+              <p className="text-sm text-muted-foreground">{activeDept.programs.length} programs available</p>
             </div>
 
             <div className="mt-6">

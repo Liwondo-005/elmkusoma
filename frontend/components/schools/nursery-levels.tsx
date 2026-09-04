@@ -1,12 +1,4 @@
-import { Baby, BookOpen, Backpack } from "lucide-react"
 import { nurseryLevels } from "@/lib/data"
-
-const levelIcons = [Baby, BookOpen, Backpack]
-const levelColors = [
-  "text-pink-600 bg-pink-500/10",
-  "text-blue-600 bg-blue-500/10",
-  "text-green-600 bg-green-500/10",
-]
 
 export function NurseryLevels() {
   return (
@@ -22,17 +14,12 @@ export function NurseryLevels() {
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {nurseryLevels.map((level, i) => {
-            const Icon = levelIcons[i]
-            const color = levelColors[i]
+          {nurseryLevels.map((level) => {
             return (
               <div
                 key={level.id}
                 className="group rounded-2xl border border-border bg-card p-6 shadow-xs transition-all hover:border-primary/40 hover:shadow-md"
               >
-                <div className={`flex size-12 items-center justify-center rounded-xl ${color}`}>
-                  <Icon className="size-6" />
-                </div>
                 <div className="mt-4">
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-bold text-foreground">{level.name}</h3>

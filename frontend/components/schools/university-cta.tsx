@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { ArrowRight, Play } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -24,7 +23,6 @@ export function UniversityCta() {
                 "mt-8 h-11 w-full gap-2 bg-background text-foreground hover:bg-background/90 sm:w-auto sm:self-start",
               )}
             >
-              <Play className="size-4" />
               Start Learning
             </Link>
           </div>
@@ -33,7 +31,7 @@ export function UniversityCta() {
             <div>
               <h2 className="text-2xl font-bold text-foreground">Apply for Admission</h2>
               <p className="mt-3 text-muted-foreground">
-                Submit your application for diploma, bachelor's, master's or PhD
+                Submit your application for diploma, bachelor&apos;s, master&apos;s or PhD
                 programs at our partner universities across Tanzania.
               </p>
             </div>
@@ -45,7 +43,6 @@ export function UniversityCta() {
               )}
             >
               Apply Now
-              <ArrowRight className="size-4" />
             </Link>
           </div>
         </div>

@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { ArrowRight, Play } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -23,7 +22,6 @@ export function NurseryCta() {
                 "mt-8 h-11 w-full gap-2 bg-background text-foreground hover:bg-background/90 sm:w-auto sm:self-start",
               )}
             >
-              <Play className="size-4" />
               Start Playing
             </Link>
           </div>
@@ -44,7 +42,6 @@ export function NurseryCta() {
               )}
             >
               Enroll Now
-              <ArrowRight className="size-4" />
             </Link>
           </div>
         </div>
