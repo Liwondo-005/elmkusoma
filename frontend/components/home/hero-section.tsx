@@ -4,9 +4,9 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const highlights = [
-  { title: "Live & Interactive", desc: "Join real-time classes with expert instructors across Africa." },
-  { title: "Full Curriculum", desc: "Nursery through university — every form, every subject." },
-  { title: "Earn Certificates", desc: "Complete courses and earn verifiable digital certificates." },
+  { title: "Live & Interactive", desc: "Real-time classes with expert teachers" },
+  { title: "Learn Anywhere", desc: "Access learning anytime, anywhere" },
+  { title: "Trusted by Learners", desc: "Thousands of students across Africa" },
 ]
 
 export function HeroSection() {
@@ -24,19 +24,19 @@ export function HeroSection() {
               Succeed — <span className="text-teal">Live.</span>
             </h1>
             <p className="mt-5 max-w-md text-pretty text-base leading-relaxed text-muted-foreground">
-              Choose your education level and start learning — from nursery to university,
-              with live classes, courses and a digital library.
+              Join live classes, learn from expert teachers and connect with students across Africa — all in one unified
+              digital education platform.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/courses" className={cn(buttonVariants(), "h-12 px-6 text-base")}>
+              <Link href="/register" className={cn(buttonVariants(), "h-12 px-6 text-base")}>
                 Start Learning
               </Link>
               <Link
                 href="/live-classes"
                 className={cn(buttonVariants({ variant: "outline" }), "h-12 gap-2 px-6 text-base")}
               >
-                Browse Live Classes
+                Join Live Class
               </Link>
             </div>
 
@@ -60,6 +60,21 @@ export function HeroSection() {
                 priority
                 className="h-full w-full object-cover"
               />
+            </div>
+
+            <div className="absolute bottom-5 right-5 flex items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
+              <div className="flex -space-x-2">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary/10 text-primary"
+                  />
+                ))}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">8,500+</p>
+                <p className="text-xs text-muted-foreground">Active learners across Africa</p>
+              </div>
             </div>
           </div>
         </div>
