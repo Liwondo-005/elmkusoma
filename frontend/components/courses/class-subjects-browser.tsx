@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Search, X } from "lucide-react"
+
 import type { CurriculumSubject, SubjectCategory } from "@/lib/data"
 import { SubjectCard } from "@/components/courses/subject-card"
 import { cn } from "@/lib/utils"
@@ -48,13 +48,12 @@ export function ClassSubjectsBrowser({
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <label className="relative flex items-center sm:flex-1 sm:max-w-md">
-          <Search className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
           <input
             type="search"
             placeholder="Search subjects..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-10 w-full rounded-lg border border-border bg-muted/60 pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+            className="h-10 w-full rounded-lg border border-border bg-muted/60 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
           />
         </label>
         {hasFilters && (
@@ -62,7 +61,6 @@ export function ClassSubjectsBrowser({
             onClick={clearFilters}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <X className="size-3.5" />
             Clear filters
           </button>
         )}
@@ -114,7 +112,6 @@ export function ClassSubjectsBrowser({
       ) : (
         <div className="mt-12 flex flex-col items-center justify-center text-center">
           <div className="flex size-14 items-center justify-center rounded-full bg-muted">
-            <Search className="size-6 text-muted-foreground" />
           </div>
           <h3 className="mt-4 text-sm font-semibold text-foreground">No subjects found</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">

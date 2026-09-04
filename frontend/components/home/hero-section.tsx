@@ -1,13 +1,12 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Play, Radio, Globe, ShieldCheck, Users } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const highlights = [
-  { icon: Radio, title: "Live & Interactive", desc: "Real-time classes with expert teachers" },
-  { icon: Globe, title: "Learn Anywhere", desc: "Access learning anytime, anywhere" },
-  { icon: ShieldCheck, title: "Trusted by Learners", desc: "Thousands of students across Africa" },
+  { title: "Live & Interactive", desc: "Real-time classes with expert teachers" },
+  { title: "Learn Anywhere", desc: "Access learning anytime, anywhere" },
+  { title: "Trusted by Learners", desc: "Thousands of students across Africa" },
 ]
 
 export function HeroSection() {
@@ -37,7 +36,6 @@ export function HeroSection() {
                 href="/live-classes"
                 className={cn(buttonVariants({ variant: "outline" }), "h-12 gap-2 px-6 text-base")}
               >
-                <Play className="size-4 fill-current" />
                 Join Live Class
               </Link>
             </div>
@@ -45,10 +43,7 @@ export function HeroSection() {
             <dl className="mt-10 grid max-w-lg grid-cols-1 gap-6 sm:grid-cols-3">
               {highlights.map((h) => (
                 <div key={h.title}>
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-accent text-primary">
-                    <h.icon className="size-5" />
-                  </div>
-                  <dt className="mt-3 text-sm font-semibold text-foreground">{h.title}</dt>
+                  <dt className="mt-1 text-sm font-semibold text-foreground">{h.title}</dt>
                   <dd className="mt-1 text-xs leading-relaxed text-muted-foreground">{h.desc}</dd>
                 </div>
               ))}
@@ -73,9 +68,7 @@ export function HeroSection() {
                   <span
                     key={i}
                     className="flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary/10 text-primary"
-                  >
-                    <Users className="size-3.5" />
-                  </span>
+                  />
                 ))}
               </div>
               <div>

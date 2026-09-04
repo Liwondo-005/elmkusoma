@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
 import { liveClasses } from "@/lib/data"
 import { LiveClassCard } from "@/components/live-class-card"
 import { buttonVariants } from "@/components/ui/button"
@@ -28,7 +27,6 @@ export function LivePreviewSection() {
             className={cn(buttonVariants({ variant: "outline" }), "h-10 gap-2 px-4")}
           >
             View All Live Classes
-            <ArrowRight className="size-4" />
           </Link>
         </div>
 

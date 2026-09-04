@@ -1,8 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-
 import { cn } from "@/lib/utils"
 
 interface CarouselProps {
@@ -84,7 +82,7 @@ export function Carousel({ images, alt, className }: CarouselProps) {
               "max-sm:left-1 max-sm:size-7"
             )}
           >
-            <ChevronLeft className="size-5" />
+            <span aria-hidden="true">&#8249;</span>
           </button>
           <button
             onClick={next}
@@ -96,7 +94,7 @@ export function Carousel({ images, alt, className }: CarouselProps) {
               "max-sm:right-1 max-sm:size-7"
             )}
           >
-            <ChevronRight className="size-5" />
+            <span aria-hidden="true">&#8250;</span>
           </button>
         </>
       )}

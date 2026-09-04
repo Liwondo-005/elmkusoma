@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { BookOpen, FileText } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { vetaTrades, getVetaTradeBySlug, getVetaLevelBySlug } from "@/lib/data"
@@ -86,10 +86,8 @@ export default async function LevelPage({
               >
                 <div className="flex items-start justify-between">
                   <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <BookOpen className="size-4" />
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <FileText className="size-3" />
                     {mod.lessons.length} {mod.lessons.length === 1 ? "lesson" : "lessons"}
                   </span>
                 </div>

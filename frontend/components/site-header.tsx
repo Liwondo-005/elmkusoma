@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { Search, Menu, X } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -44,11 +43,10 @@ export function SiteHeader() {
 
         <div className="ml-auto hidden items-center gap-3 lg:flex">
           <label className="relative flex items-center">
-            <Search className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
             <input
               type="search"
               placeholder="Search for courses, topics..."
-              className="h-10 w-64 rounded-lg border border-border bg-muted/60 pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+              className="h-10 w-64 rounded-lg border border-border bg-muted/60 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
             />
           </label>
         </div>
@@ -67,7 +65,7 @@ export function SiteHeader() {
             aria-label="Toggle menu"
             onClick={() => setOpen((v) => !v)}
           >
-            {open ? <X className="size-5" /> : <Menu className="size-5" />}
+            {open ? "Close" : "Menu"}
           </Button>
         </div>
       </div>

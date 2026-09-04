@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { GraduationCap, Clock } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import {
@@ -92,7 +92,6 @@ export default async function FacultyPage({
               >
                 <div className="flex items-start justify-between">
                   <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <GraduationCap className="size-4" />
                   </span>
                   <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                     {programme.degreeType}
@@ -104,7 +103,6 @@ export default async function FacultyPage({
                 <p className="mt-1 flex-1 text-sm text-muted-foreground">{programme.description}</p>
                 <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground border-t border-border pt-3">
                   <span className="inline-flex items-center gap-1">
-                    <Clock className="size-3" />
                     {programme.duration}
                   </span>
                   <span>{programme.courses.length} courses</span>

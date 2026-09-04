@@ -3,7 +3,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { CollegeCard } from "@/components/courses/college-card"
 import { colleges } from "@/lib/data"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+
 
 export const metadata = {
   title: "Colleges & Universities — ELMKUSOMA",
@@ -21,7 +21,6 @@ export default function CollegesPage() {
               href="/courses"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              <ArrowLeft className="size-4" />
               All Levels
             </Link>
             <span className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">

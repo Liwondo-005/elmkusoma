@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, BookOpen, Users, GraduationCap, Layers } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import {
@@ -121,7 +121,6 @@ export default async function SubjectDetailPage({
                 <div className="mt-6 grid grid-cols-3 gap-4 rounded-xl border border-border p-4">
                   <div className="flex items-center gap-3">
                     <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <GraduationCap className="size-4" />
                     </span>
                     <div>
                       <p className="text-xs text-muted-foreground">Level</p>
@@ -130,7 +129,6 @@ export default async function SubjectDetailPage({
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Layers className="size-4" />
                     </span>
                     <div>
                       <p className="text-xs text-muted-foreground">Class</p>
@@ -139,7 +137,6 @@ export default async function SubjectDetailPage({
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Users className="size-4" />
                     </span>
                     <div>
                       <p className="text-xs text-muted-foreground">Enrolled</p>
@@ -167,7 +164,6 @@ export default async function SubjectDetailPage({
               <div className="sticky top-20 rounded-2xl border border-border bg-card p-5 shadow-xs">
                 <div className="flex items-center gap-3">
                   <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <BookOpen className="size-5" />
                   </span>
                   <div>
                     <p className="text-sm font-semibold text-foreground">{subject.name}</p>

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search, BookOpenCheck } from "lucide-react"
 import { studyMaterials } from "@/lib/data"
 import { MaterialCard } from "@/components/notes/material-card"
 import { cn } from "@/lib/utils"
@@ -56,13 +55,12 @@ export function MaterialsBrowser() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 sm:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
               placeholder="Search notes, subjects, instructors..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-10 w-full rounded-xl border border-border bg-background pl-10 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+              className="h-10 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
           </div>
 
@@ -101,7 +99,6 @@ export function MaterialsBrowser() {
           </div>
         ) : (
           <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/40 py-20 text-center">
-            <BookOpenCheck className="mx-auto size-10 text-muted-foreground/40" />
             <p className="mt-4 text-sm font-medium text-foreground">No materials found</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Try adjusting your search or filters.

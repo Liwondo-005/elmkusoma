@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { MapPin, Users, Star, ArrowRight, CheckCircle } from "lucide-react"
 import { getInstitutionsByLevel } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -39,7 +38,6 @@ export function CollegeList() {
                 <div className="absolute top-3 left-3 flex gap-1.5">
                   {institution.verified && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-500/90 px-2 py-0.5 text-xs font-semibold text-white">
-                      <CheckCircle className="size-3" />
                       Verified
                     </span>
                   )}
@@ -48,7 +46,6 @@ export function CollegeList() {
                   </span>
                 </div>
                 <div className="absolute top-3 right-3 flex items-center gap-1 rounded-md bg-background/90 px-2 py-0.5">
-                  <Star className="size-3 fill-orange text-orange" />
                   <span className="text-xs font-semibold text-foreground">{institution.rating}</span>
                 </div>
               </div>
@@ -57,11 +54,9 @@ export function CollegeList() {
                 <h3 className="text-base font-bold text-foreground">{institution.name}</h3>
                 <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <MapPin className="size-3" />
                     {institution.location}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Users className="size-3" />
                     {institution.students.toLocaleString()} students
                   </span>
                 </div>
@@ -77,7 +72,6 @@ export function CollegeList() {
                     )}
                   >
                     View Details
-                    <ArrowRight className="size-3.5" />
                   </Link>
                 </div>
               </div>

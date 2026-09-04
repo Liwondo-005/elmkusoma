@@ -1,21 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import {
-  CheckCircle,
-  MapPin,
-  Phone,
-  Mail,
-  Globe,
-  Users,
-  GraduationCap,
-  Star,
-  ArrowLeft,
-  Building2,
-  Shield,
-  BookOpen,
-  ExternalLink,
-} from "lucide-react"
 import { Institution } from "@/lib/data"
 import { Carousel } from "@/components/ui/carousel"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -63,7 +48,6 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
         href={backHref}
         className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ArrowLeft className="size-4" />
         Browse more {institution.educationLevel.toLowerCase()} schools
       </Link>
 
@@ -80,7 +64,6 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
               </h1>
               {institution.verified && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">
-                  <CheckCircle className="size-3.5" />
                   Verified
                 </span>
               )}
@@ -95,7 +78,6 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
                     : "bg-violet-500/10 text-violet-600"
                 )}
               >
-                <Shield className="size-3.5" />
                 {institution.ownership}
               </span>
               <span
@@ -104,7 +86,6 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
                   educationLevelColors[institution.educationLevel]
                 )}
               >
-                <GraduationCap className="size-3.5" />
                 {institution.educationLevel}
               </span>
               {institution.secondaryLevel && (
@@ -129,7 +110,6 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
 
             <div className="mt-5 grid grid-cols-3 gap-4">
               <div className="rounded-xl bg-muted/60 p-3 text-center">
-                <Users className="mx-auto size-5 text-primary" />
                 <p className="mt-1 text-lg font-bold text-foreground">
                   {institution.students.toLocaleString()}
                 </p>
@@ -137,7 +117,6 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
               </div>
               {institution.teachers !== undefined && (
                 <div className="rounded-xl bg-muted/60 p-3 text-center">
-                  <BookOpen className="mx-auto size-5 text-primary" />
                   <p className="mt-1 text-lg font-bold text-foreground">
                     {institution.teachers.toLocaleString()}
                   </p>
@@ -145,14 +124,12 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
                 </div>
               )}
               <div className="rounded-xl bg-muted/60 p-3 text-center">
-                <Star className="mx-auto size-5 fill-orange text-orange" />
                 <p className="mt-1 text-lg font-bold text-foreground">{institution.rating}</p>
                 <p className="text-xs text-muted-foreground">Rating</p>
               </div>
             </div>
 
             <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="size-4 shrink-0 text-primary" />
               {institution.location}
             </div>
           </div>
@@ -191,7 +168,6 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
                     key={facility}
                     className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-3"
                   >
-                    <Building2 className="size-4 shrink-0 text-primary" />
                     <span className="text-xs font-medium text-foreground">{facility}</span>
                   </div>
                 ))}
@@ -205,25 +181,16 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
               <ul className="mt-4 space-y-3">
                 {institution.phone && (
                   <li className="flex items-center gap-3 text-sm">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Phone className="size-4 text-primary" />
-                    </span>
                     <span className="text-muted-foreground">{institution.phone}</span>
                   </li>
                 )}
                 {institution.email && (
                   <li className="flex items-center gap-3 text-sm">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Mail className="size-4 text-primary" />
-                    </span>
                     <span className="text-muted-foreground">{institution.email}</span>
                   </li>
                 )}
                 {institution.website && (
                   <li className="flex items-center gap-3 text-sm">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Globe className="size-4 text-primary" />
-                    </span>
                     <a
                       href={institution.website}
                       target="_blank"
@@ -252,7 +219,6 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
                   )}
                 >
                   Apply Now
-                  <ExternalLink className="size-4" />
                 </a>
               ) : (
                 <Button disabled className="h-11 w-full gap-2 text-sm">

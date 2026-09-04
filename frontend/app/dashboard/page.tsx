@@ -1,24 +1,16 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
-import {
-  BookOpen,
-  Video,
-  Clock,
-  Award,
-  ArrowRight,
-  CheckCircle2,
-  PlayCircle,
-  FileUp,
-  BadgeCheck,
-} from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth"
 
 const statCards = [
-  { label: "Enrolled Courses", value: "6", note: "Active", icon: BookOpen, tint: "text-primary bg-accent" },
-  { label: "Live Classes", value: "4", note: "This Week", icon: Video, tint: "text-teal bg-teal/10" },
-  { label: "Hours Learned", value: "24h 30m", note: "This Month", icon: Clock, tint: "text-primary bg-accent" },
-  { label: "Certificates", value: "2", note: "Earned", icon: Award, tint: "text-orange bg-orange/10" },
+  { label: "Enrolled Courses", value: "6", note: "Active" },
+  { label: "Live Classes", value: "4", note: "This Week" },
+  { label: "Hours Learned", value: "24h 30m", note: "This Month" },
+  { label: "Certificates", value: "2", note: "Earned" },
 ]
 
 const continueLearning = [
@@ -34,18 +26,21 @@ const upcoming = [
 ]
 
 const activity = [
-  { icon: CheckCircle2, tint: "text-teal bg-teal/10", label: "Completed lesson", detail: "CSS Flexbox & Grid", time: "2h ago" },
-  { icon: PlayCircle, tint: "text-primary bg-accent", label: "Watched live class", detail: "Data Science Q&A", time: "Yesterday" },
-  { icon: FileUp, tint: "text-orange bg-orange/10", label: "Submitted assignment", detail: "Data Analysis Project", time: "2 days ago" },
-  { icon: BadgeCheck, tint: "text-teal bg-teal/10", label: "Earned certificate", detail: "HTML & CSS Basics", time: "3 days ago" },
+  { label: "Completed lesson", detail: "CSS Flexbox & Grid", time: "2h ago" },
+  { label: "Watched live class", detail: "Data Science Q&A", time: "Yesterday" },
+  { label: "Submitted assignment", detail: "Data Analysis Project", time: "2 days ago" },
+  { label: "Earned certificate", detail: "HTML & CSS Basics", time: "3 days ago" },
 ]
 
 export default function DashboardPage() {
+  const { user } = useAuth()
+  const firstName = user?.name?.split(" ")[0] || "Student"
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Welcome */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back, Asha!</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back, {firstName}!</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Keep up the great work and continue your learning journey.
         </p>
@@ -55,10 +50,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((s) => (
           <div key={s.label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <div className={cn("flex size-11 items-center justify-center rounded-xl", s.tint)}>
-              <s.icon className="size-5" />
-            </div>
-            <p className="mt-4 text-2xl font-extrabold text-foreground">{s.value}</p>
+            <p className="text-2xl font-extrabold text-foreground">{s.value}</p>
             <p className="text-sm font-medium text-foreground">{s.label}</p>
             <p className="text-xs text-muted-foreground">{s.note}</p>
           </div>
@@ -105,9 +97,6 @@ export default function DashboardPage() {
           <div className="mt-4 space-y-4">
             {upcoming.map((u) => (
               <div key={u.title} className="flex items-start gap-3">
-                <span className="mt-0.5 flex size-9 items-center justify-center rounded-lg bg-accent text-primary">
-                  <Video className="size-4" />
-                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">
                     {u.title} <span className="text-muted-foreground">{u.sub}</span>
@@ -136,9 +125,6 @@ export default function DashboardPage() {
           <div className="mt-4 space-y-4">
             {activity.map((a) => (
               <div key={a.detail} className="flex items-center gap-3">
-                <span className={cn("flex size-9 items-center justify-center rounded-lg", a.tint)}>
-                  <a.icon className="size-4" />
-                </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">{a.label}</p>
                   <p className="truncate text-sm font-medium text-foreground">{a.detail}</p>
@@ -165,7 +151,6 @@ export default function DashboardPage() {
             )}
           >
             Upgrade Plan
-            <ArrowRight className="size-4" />
           </Link>
         </section>
       </div>

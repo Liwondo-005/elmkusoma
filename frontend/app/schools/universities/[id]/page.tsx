@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { InstitutionDetail } from "@/components/schools/institution-detail"
@@ -61,7 +60,6 @@ export default async function InstitutionPage({ params }: { params: Promise<{ id
               href={levelRoutes[institution.educationLevel]}
               className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
-              <ArrowLeft className="size-4" />
               Browse More {institution.educationLevel} Schools
             </Link>
           </div>

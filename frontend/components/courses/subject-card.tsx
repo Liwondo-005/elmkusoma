@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Users, BookOpen } from "lucide-react"
+
 import type { CurriculumSubject } from "@/lib/data"
 import { educationLevelToSlug, classNameToSlug } from "@/lib/data"
 import { cn } from "@/lib/utils"
@@ -37,7 +37,6 @@ export function SubjectCard({
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start gap-2">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <BookOpen className="size-4" />
           </span>
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold leading-snug text-foreground group-hover:text-primary">
@@ -61,7 +60,6 @@ export function SubjectCard({
             {subject.category}
           </span>
           <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Users className="size-3" />
             {subject.enrolled.toLocaleString()} enrolled
           </span>
         </div>

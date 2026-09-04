@@ -1,5 +1,3 @@
-import { Star, Quote } from "lucide-react"
-
 const testimonials = [
   {
     name: "Aisha Hassan",
@@ -46,11 +44,10 @@ export function AboutTestimonials() {
               key={t.name}
               className="rounded-2xl border border-border bg-card p-6 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg"
             >
-              <Quote className="size-8 text-primary/20" />
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t.quote}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{t.quote}</p>
               <div className="mt-4 flex items-center gap-0.5">
                 {Array.from({ length: t.rating }).map((_, i) => (
-                  <Star key={i} className="size-4 fill-orange text-orange" />
+                  <span key={i} className="text-sm text-orange">&#9733;</span>
                 ))}
               </div>
               <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">

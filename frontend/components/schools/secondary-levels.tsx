@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { BookOpen, Layers } from "lucide-react"
 import { secondaryForms, aLevelCombinations } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
@@ -36,7 +35,6 @@ export function SecondaryLevels() {
               activeTab === "o-level" ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <BookOpen className="size-4" />
             O-Level (Form I–IV)
             {activeTab === "o-level" && (
               <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />
@@ -50,7 +48,6 @@ export function SecondaryLevels() {
               activeTab === "a-level" ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Layers className="size-4" />
             A-Level (Form V–VI)
             {activeTab === "a-level" && (
               <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />
@@ -74,14 +71,6 @@ export function SecondaryLevels() {
                       : "border-border bg-card text-foreground hover:border-primary/40 hover:shadow-xs",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                      activeFormId === form.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    <BookOpen className="size-4" />
-                  </div>
                   <div>
                     <p className="font-semibold">{form.name}</p>
                     <p className="text-xs text-muted-foreground">{form.label} · {form.ages}</p>
@@ -93,9 +82,6 @@ export function SecondaryLevels() {
             {/* Subjects panel */}
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
               <div className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <BookOpen className="size-5" />
-                </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">{activeForm.name}</h3>
                   <p className="text-sm text-muted-foreground">{activeForm.label} · {activeForm.ages} · O-Level</p>

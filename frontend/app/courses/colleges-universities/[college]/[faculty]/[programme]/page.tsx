@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { BookOpen, Clock, Award } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import {
@@ -91,7 +91,6 @@ export default async function ProgrammePage({
                 {programmeData.degreeType}
               </span>
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="size-3.5" />
                 {programmeData.duration}
               </span>
             </div>
@@ -130,7 +129,6 @@ export default async function ProgrammePage({
                 </div>
                 <div className="shrink-0 text-right">
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Award className="size-3" />
                     {course.credits} credits
                   </span>
                 </div>

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { BookOpen, GraduationCap } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { colleges, getCollegeBySlug } from "@/lib/data"
@@ -49,10 +49,10 @@ export default async function CollegePage({ params }: { params: Promise<{ colleg
             <p className="mt-2 max-w-2xl text-muted-foreground">{collegeData.description}</p>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <BookOpen className="size-4" /> {collegeData.faculties.length} faculties
+                {collegeData.faculties.length} faculties
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <GraduationCap className="size-4" /> {totalProgrammes} programmes
+                {totalProgrammes} programmes
               </span>
             </div>
           </div>
@@ -69,7 +69,6 @@ export default async function CollegePage({ params }: { params: Promise<{ colleg
               >
                 <div className="flex items-start justify-between">
                   <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <BookOpen className="size-4" />
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {faculty.programmes.length} {faculty.programmes.length === 1 ? "programme" : "programmes"}

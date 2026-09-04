@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import {
@@ -52,7 +52,6 @@ export default async function LevelPage({ params }: { params: Promise<{ level: s
               href="/courses"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              <ArrowLeft className="size-4" />
               All Levels
             </Link>
             <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">

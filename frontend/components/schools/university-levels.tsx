@@ -1,16 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Award, GraduationCap, BookOpen, Flame } from "lucide-react"
 import { degreeLevels } from "@/lib/data"
 import { cn } from "@/lib/utils"
-
-const iconMap: Record<string, typeof Award> = {
-  Award,
-  GraduationCap,
-  BookOpen,
-  Flame,
-}
 
 const levelColors: Record<string, string> = {
   diploma: "bg-orange/10 text-orange",
@@ -37,7 +29,6 @@ export function UniversityLevels() {
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {degreeLevels.map((level) => {
-            const Icon = iconMap[level.icon] || Award
             const color = levelColors[level.id] || "bg-muted text-muted-foreground"
             return (
               <button
@@ -51,10 +42,7 @@ export function UniversityLevels() {
                     : "border-border bg-card hover:border-primary/40 hover:shadow-xs",
                 )}
               >
-                <div className={cn("flex size-11 items-center justify-center rounded-xl", color)}>
-                  <Icon className="size-5" />
-                </div>
-                <h3 className="mt-3 text-base font-bold text-foreground">{level.name}</h3>
+                <h3 className="text-base font-bold text-foreground">{level.name}</h3>
                 <p className="mt-0.5 text-xs text-muted-foreground">{level.duration}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{level.description}</p>
               </button>
@@ -64,15 +52,6 @@ export function UniversityLevels() {
 
         <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center gap-3">
-            {(() => {
-              const Icon = iconMap[activeLevel.icon] || Award
-              const color = levelColors[activeLevel.id] || "bg-muted text-muted-foreground"
-              return (
-                <div className={cn("flex size-11 items-center justify-center rounded-xl", color)}>
-                  <Icon className="size-5" />
-                </div>
-              )
-            })()}
             <div>
               <h3 className="text-lg font-bold text-foreground">{activeLevel.name}</h3>
               <p className="text-sm text-muted-foreground">{activeLevel.duration} · {activeLevel.description}</p>

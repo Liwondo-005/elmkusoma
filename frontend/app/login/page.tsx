@@ -2,12 +2,46 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Eye, EyeOff, ArrowRight } from "lucide-react"
+import { useSearchParams, useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth"
+
+const loginSchema = z.object({
+  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
+})
+
+type LoginValues = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
+  const [serverError, setServerError] = useState("")
+  const { login } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get("redirect") || "/dashboard"
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+  })
+
+  async function onSubmit(values: LoginValues) {
+    setServerError("")
+    const result = await login(values.email, values.password)
+    if (result.error) {
+      setServerError(result.error)
+      return
+    }
+    router.push(redirect)
+  }
 
   return (
     <div className="flex min-h-dvh flex-col bg-muted/40">
@@ -29,7 +63,13 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form className="mt-8 space-y-5" onSubmit={(e) => e.preventDefault()}>
+            {serverError && (
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400">
+                {serverError}
+              </div>
+            )}
+
+            <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)}>
               <div className="space-y-4">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-foreground">
@@ -38,10 +78,13 @@ export default function LoginPage() {
                   <input
                     id="email"
                     type="email"
-                    required
                     placeholder="you@example.com"
+                    {...register("email")}
                     className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                   />
+                  {errors.email && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.email.message}</p>
+                  )}
                 </div>
 
                 <div>
@@ -60,33 +103,27 @@ export default function LoginPage() {
                     <input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      required
                       placeholder="Enter your password"
+                      {...register("password")}
                       className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 pr-11 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
                     >
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {showPassword ? "Hide" : "Show"}
                     </button>
                   </div>
+                  {errors.password && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.password.message}</p>
+                  )}
                 </div>
               </div>
 
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="size-4 rounded border-border accent-primary"
-                />
-                <span className="text-sm text-muted-foreground">Remember me</span>
-              </label>
-
-              <Button type="submit" className="h-11 w-full gap-2 text-sm">
-                Sign In
-                <ArrowRight className="size-4" />
+              <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
+                {isSubmitting ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Clock, ChevronRight, CheckCircle } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import {
@@ -110,10 +110,8 @@ export default async function ModulePage({
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex">
-                    <Clock className="size-3.5" />
                     {lesson.duration}
                   </span>
-                  <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                 </div>
               </Link>
             ))}

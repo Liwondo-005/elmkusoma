@@ -1,9 +1,8 @@
 import Image from "next/image"
-import { BookOpen, Users } from "lucide-react"
 
 const highlights = [
-  { icon: BookOpen, label: "8,500+ Learners" },
-  { icon: Users, label: "500+ Instructors" },
+  { label: "8,500+ Learners" },
+  { label: "500+ Instructors" },
 ]
 
 export function AboutHero() {
@@ -32,7 +31,6 @@ export function AboutHero() {
                   key={h.label}
                   className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-xs"
                 >
-                  <h.icon className="size-4 text-primary" />
                   {h.label}
                 </span>
               ))}

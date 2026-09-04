@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { Clock, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import {
@@ -107,7 +107,6 @@ export default async function LessonPage({
                 Lesson {currentIndex + 1} of {moduleData.lessons.length}
               </span>
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="size-3.5" />
                 {lessonData.duration}
               </span>
             </div>
@@ -129,7 +128,6 @@ export default async function LessonPage({
             <div className="mt-8 rounded-xl border border-border bg-muted/50 p-6">
               <div className="flex items-center gap-3">
                 <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <CheckCircle className="size-5" />
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-foreground">Learning Material</p>
@@ -152,7 +150,6 @@ export default async function LessonPage({
                 href={`/courses/veta/${trade}/${level}/${module}/${prevLesson.id}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
               >
-                <ChevronLeft className="size-4" />
                 <div className="text-left">
                   <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Previous</span>
                   <span className="block text-xs">{prevLesson.title}</span>
@@ -170,7 +167,6 @@ export default async function LessonPage({
                   <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Next</span>
                   <span className="block text-xs">{nextLesson.title}</span>
                 </div>
-                <ChevronRight className="size-4" />
               </Link>
             ) : (
               <Link
@@ -178,7 +174,6 @@ export default async function LessonPage({
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90"
               >
                 Back to Module
-                <ChevronRight className="size-4" />
               </Link>
             )}
           </div>

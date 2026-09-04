@@ -2,9 +2,13 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Eye, EyeOff, ArrowRight, CheckCircle2, RotateCcw } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth"
 
 const educationLevels = [
   "Nursery School",
@@ -16,45 +20,58 @@ const educationLevels = [
   "University",
 ]
 
+const registerSchema = z
+  .object({
+    name: z.string().min(1, "Full name is required").min(2, "Name must be at least 2 characters"),
+    email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+    educationLevel: z.string().min(1, "Please select your education level"),
+    password: z
+      .string()
+      .min(1, "Password is required")
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  })
+
+type RegisterValues = z.infer<typeof registerSchema>
+
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [submitted, setSubmitted] = useState<Record<string, string> | null>(null)
+  const [serverError, setServerError] = useState("")
+  const [registered, setRegistered] = useState(false)
+  const { register: registerUser } = useAuth()
+  const router = useRouter()
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    level: "",
-    password: "",
-    confirm: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
   })
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    console.log("Registration data:", {
-      fullName: form.name,
-      email: form.email,
-      educationLevel: form.level,
-      password: form.password,
+  async function onSubmit(values: RegisterValues) {
+    setServerError("")
+    const result = await registerUser({
+      name: values.name,
+      email: values.email,
+      password: values.password,
+      educationLevel: values.educationLevel,
     })
-    setSubmitted({
-      fullName: form.name,
-      email: form.email,
-      educationLevel: form.level,
-      password: form.password,
-    })
+    if (result.error) {
+      setServerError(result.error)
+      return
+    }
+    setRegistered(true)
   }
 
-  function handleReset() {
-    setForm({ name: "", email: "", level: "", password: "", confirm: "" })
-    setSubmitted(null)
-  }
-
-  if (submitted) {
+  if (registered) {
     return (
       <div className="flex min-h-dvh flex-col bg-muted/40">
         <header className="border-b border-border bg-background/90 backdrop-blur">
@@ -66,37 +83,16 @@ export default function RegisterPage() {
           <div className="w-full max-w-md">
             <div className="rounded-2xl border border-border bg-card p-8 shadow-xs text-center">
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
-                <CheckCircle2 className="size-7 text-teal" />
+                <span className="text-2xl text-teal font-bold">OK</span>
               </div>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
                 Account Created!
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Your registration data has been captured successfully.
+                Your account has been created successfully. Redirecting to dashboard...
               </p>
-
-              <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4 text-left space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Full Name</p>
-                  <p className="text-sm font-medium text-foreground">{submitted.fullName}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="text-sm font-medium text-foreground">{submitted.email}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Education Level</p>
-                  <p className="text-sm font-medium text-foreground">{submitted.educationLevel}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Password</p>
-                  <p className="text-sm font-medium text-foreground">{"•".repeat(submitted.password.length)}</p>
-                </div>
-              </div>
-
-              <Button onClick={handleReset} variant="outline" className="mt-6 w-full gap-2">
-                <RotateCcw className="size-4" />
-                Register Another Account
+              <Button onClick={() => router.push("/dashboard")} className="mt-6 w-full">
+                Go to Dashboard
               </Button>
             </div>
           </div>
@@ -125,7 +121,13 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+            {serverError && (
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400">
+                {serverError}
+              </div>
+            )}
+
+            <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)}>
               <div className="space-y-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-foreground">
@@ -133,14 +135,14 @@ export default function RegisterPage() {
                   </label>
                   <input
                     id="name"
-                    name="name"
                     type="text"
-                    required
-                    value={form.name}
-                    onChange={handleChange}
                     placeholder="Enter your full name"
+                    {...register("name")}
                     className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                   />
+                  {errors.name && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.name.message}</p>
+                  )}
                 </div>
 
                 <div>
@@ -149,37 +151,35 @@ export default function RegisterPage() {
                   </label>
                   <input
                     id="email"
-                    name="email"
                     type="email"
-                    required
-                    value={form.email}
-                    onChange={handleChange}
                     placeholder="you@example.com"
+                    {...register("email")}
                     className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                   />
+                  {errors.email && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.email.message}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label htmlFor="level" className="block text-sm font-medium text-foreground">
+                  <label htmlFor="educationLevel" className="block text-sm font-medium text-foreground">
                     Education Level
                   </label>
                   <select
-                    id="level"
-                    name="level"
-                    required
-                    value={form.level}
-                    onChange={handleChange}
+                    id="educationLevel"
+                    {...register("educationLevel")}
                     className="mt-1.5 h-11 w-full appearance-none rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors focus:border-ring focus:bg-background"
                   >
-                    <option value="" disabled>
-                      Select your education level
-                    </option>
+                    <option value="">Select your education level</option>
                     {educationLevels.map((level) => (
                       <option key={level} value={level}>
                         {level}
                       </option>
                     ))}
                   </select>
+                  {errors.educationLevel && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.educationLevel.message}</p>
+                  )}
                 </div>
 
                 <div>
@@ -189,55 +189,54 @@ export default function RegisterPage() {
                   <div className="relative mt-1.5">
                     <input
                       id="password"
-                      name="password"
                       type={showPassword ? "text" : "password"}
-                      required
-                      value={form.password}
-                      onChange={handleChange}
                       placeholder="Create a password"
+                      {...register("password")}
                       className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 pr-11 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
                     >
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {showPassword ? "Hide" : "Show"}
                     </button>
                   </div>
+                  {errors.password && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.password.message}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label htmlFor="confirm" className="block text-sm font-medium text-foreground">
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground">
                     Confirm Password
                   </label>
                   <div className="relative mt-1.5">
                     <input
-                      id="confirm"
-                      name="confirm"
+                      id="confirmPassword"
                       type={showConfirm ? "text" : "password"}
-                      required
-                      value={form.confirm}
-                      onChange={handleChange}
                       placeholder="Confirm your password"
+                      {...register("confirmPassword")}
                       className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 pr-11 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirm((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
                     >
-                      {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {showConfirm ? "Hide" : "Show"}
                     </button>
                   </div>
+                  {errors.confirmPassword && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.confirmPassword.message}</p>
+                  )}
                 </div>
               </div>
 
-              <Button type="submit" className="h-11 w-full gap-2 text-sm">
-                Create Account
-                <ArrowRight className="size-4" />
+              <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
+                {isSubmitting ? "Creating account..." : "Create Account"}
               </Button>
             </form>
 

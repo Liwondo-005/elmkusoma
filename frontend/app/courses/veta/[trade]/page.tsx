@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Layers, BookOpen, GraduationCap } from "lucide-react"
+
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { vetaTrades, getVetaTradeBySlug } from "@/lib/data"
@@ -50,13 +50,13 @@ export default async function TradePage({ params }: { params: Promise<{ trade: s
             <p className="mt-2 max-w-2xl text-muted-foreground">{tradeData.description}</p>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                <Layers className="size-4" /> {tradeData.levels.length} levels
+                {tradeData.levels.length} levels
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <BookOpen className="size-4" /> {totalModules} modules
+                {totalModules} modules
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <GraduationCap className="size-4" /> {totalLessons} lessons
+                {totalLessons} lessons
               </span>
             </div>
           </div>
@@ -73,7 +73,6 @@ export default async function TradePage({ params }: { params: Promise<{ trade: s
               >
                 <div className="flex items-start justify-between">
                   <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Layers className="size-4" />
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {level.modules.length} {level.modules.length === 1 ? "module" : "modules"}

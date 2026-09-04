@@ -1,16 +1,7 @@
 import Link from "next/link"
-import { Baby, School, BookOpen, GraduationCap, Wrench, University, ChevronRight } from "lucide-react"
+
 import type { CourseLevel } from "@/lib/data"
 import { cn } from "@/lib/utils"
-
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  baby: Baby,
-  school: School,
-  "book-open": BookOpen,
-  "graduation-cap": GraduationCap,
-  wrench: Wrench,
-  university: University,
-}
 
 const colorMap: Record<string, string> = {
   nursery: "bg-pink-50 text-pink-600 group-hover:bg-pink-100",
@@ -22,8 +13,6 @@ const colorMap: Record<string, string> = {
 }
 
 export function LevelCard({ level }: { level: CourseLevel }) {
-  const Icon = iconMap[level.icon] ?? BookOpen
-
   return (
     <Link
       href={level.comingSoon ? "/courses" : `/courses/${level.slug}`}
@@ -39,13 +28,7 @@ export function LevelCard({ level }: { level: CourseLevel }) {
             colorMap[level.slug] ?? "bg-muted text-muted-foreground"
           )}
         >
-          <Icon className="size-5" />
         </span>
-        {!level.comingSoon && (
-          <span className="flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all group-hover:bg-primary group-hover:text-primary-foreground">
-            <ChevronRight className="size-4" />
-          </span>
-        )}
       </div>
 
       <h3 className="mt-4 text-base font-semibold text-foreground">{level.name}</h3>

@@ -1,12 +1,25 @@
 "use client"
 
 import { useState } from "react"
-import { Bell, Menu, X, ChevronDown, Search, User } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
+import { useAuth } from "@/lib/auth"
 
 export function DashboardTopbar() {
   const [open, setOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const { user, logout } = useAuth()
+  const router = useRouter()
+
+  function handleLogout() {
+    logout()
+    router.push("/login")
+  }
+
+  const initials = user?.name
+    ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "U"
 
   return (
     <>
@@ -18,15 +31,14 @@ export function DashboardTopbar() {
           aria-label="Open menu"
           onClick={() => setOpen(true)}
         >
-          <Menu className="size-5" />
+          Menu
         </Button>
 
         <label className="relative hidden items-center sm:flex">
-          <Search className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
           <input
             type="search"
             placeholder="Search courses, lessons..."
-            className="h-10 w-64 rounded-lg border border-border bg-muted/60 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+            className="h-10 w-64 rounded-lg border border-border bg-muted/60 pl-3 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background"
           />
         </label>
 
@@ -36,18 +48,37 @@ export function DashboardTopbar() {
             className="relative flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Notifications"
           >
-            <Bell className="size-5" />
+            <span className="size-5" />
             <span className="absolute right-2 top-2 size-2 rounded-full bg-orange" />
           </button>
-          <div className="flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-full bg-accent text-primary">
-              <User className="size-4" />
-            </span>
-            <div className="hidden text-left sm:block">
-              <p className="text-sm font-semibold leading-tight text-foreground">Asha M.</p>
-              <p className="text-xs text-muted-foreground">Student</p>
-            </div>
-            <ChevronDown className="hidden size-4 text-muted-foreground sm:block" />
+          <div className="relative">
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-lg p-1 hover:bg-muted"
+              onClick={() => setProfileOpen((v) => !v)}
+            >
+              <span className="flex size-9 items-center justify-center rounded-full bg-accent text-primary text-sm font-semibold">
+                {initials}
+              </span>
+              <div className="hidden text-left sm:block">
+                <p className="text-sm font-semibold leading-tight text-foreground">
+                  {user?.name || "Student"}
+                </p>
+                <p className="text-xs text-muted-foreground capitalize">{user?.role || "Student"}</p>
+              </div>
+            </button>
+
+            {profileOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-border bg-card py-1 shadow-lg z-50">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -63,7 +94,7 @@ export function DashboardTopbar() {
               aria-label="Close menu"
               onClick={() => setOpen(false)}
             >
-              <X className="size-5" />
+              Close
             </Button>
             <DashboardSidebar onNavigate={() => setOpen(false)} />
           </div>
