@@ -106,12 +106,10 @@ export function SiteFooter() {
               About
             </Link>
             <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
-            <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
               Terms
             </Link>
             <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
               Support
-            </Link>
             </Link>
           </div>
         </div>
