@@ -35,7 +35,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-muted/50">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr_1.2fr]">
           <div className="max-w-xs">
             <Logo />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -60,15 +60,49 @@ export function SiteFooter() {
               </ul>
             </div>
           ))}
+          <div>
+            <h4 className="text-sm font-semibold text-foreground">Contact Us</h4>
+            <ul className="mt-4 space-y-3">
+              <li>
+                <a
+                  href="mailto:info@elmkusoma.co.tz"
+                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                >
+                  info@elmkusoma.co.tz
+                </a>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                >
+                  Send us a message
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/about"
+                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                >
+                  About ELMKUSOMA
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
-          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} ELMKUSOMA. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} ELMKUSOMA. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
               About
             </Link>
             <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
-              Contact
+            <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
+              Terms
+            </Link>
+            <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
+              Support
+            </Link>
             </Link>
           </div>
         </div>
