@@ -23,7 +23,7 @@ const team = [
     social: { linkedin: "#", twitter: "#" },
   },
   {
-    name: "Samuel Mwangi",
+    name: "Manyusi Asimwe",
     role: "CTO",
     image: "/images/team-4.png",
     bio: "Full-stack engineer focused on building reliable, fast and accessible educational technology.",

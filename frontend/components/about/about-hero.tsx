@@ -20,7 +20,10 @@ export function AboutHero() {
               <br className="hidden sm:block" />
               Next Generation of <span className="text-teal">Learners</span>
             </h1>
-            <p className="mt-5 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground">
+            <p className="mt-3 text-sm font-medium text-muted-foreground">
+              Founded by <span className="font-semibold text-foreground">Eng. Arthur Assenga</span>
+            </p>
+            <p className="mt-4 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground">
               ELMKUSOMA is a modern African EdTech platform built to deliver live classes, courses, recorded lessons
               and a digital library — connecting students with expert teachers across the continent.
             </p>
