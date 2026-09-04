@@ -68,6 +68,14 @@ export function SiteFooter() {
               </li>
               <li>
                 <a
+                  href="tel:+255700000000"
+                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                >
+                  +255 700 000 000
+                </a>
+              </li>
+              <li>
+                <a
                   href="mailto:info@elmkusoma.co.tz"
                   className="text-sm text-muted-foreground transition-colors hover:text-primary"
                 >
@@ -83,15 +91,18 @@ export function SiteFooter() {
                 </Link>
               </li>
             </ul>
-            <div className="mt-5 flex gap-4">
+            <div className="mt-5 flex flex-wrap gap-4">
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Facebook">
                 Facebook
               </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Twitter">
-                Twitter
-              </a>
               <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Instagram">
                 Instagram
+              </a>
+              <a href="https://wa.me/255700000000" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="WhatsApp">
+                WhatsApp
+              </a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Twitter">
+                Twitter
               </a>
               <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="LinkedIn">
                 LinkedIn

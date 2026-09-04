@@ -136,12 +136,34 @@ export function ContactSection() {
             </div>
           )}
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Or email us directly at{" "}
-            <a href="mailto:info@elmkusoma.co.tz" className="font-medium text-primary hover:underline">
-              info@elmkusoma.co.tz
-            </a>
-          </p>
+          <div className="mt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Or reach us directly at{" "}
+              <a href="mailto:info@elmkusoma.co.tz" className="font-medium text-primary hover:underline">
+                info@elmkusoma.co.tz
+              </a>
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Call us at{" "}
+              <a href="tel:+255700000000" className="font-medium text-primary hover:underline">
+                +255 700 000 000
+              </a>
+            </p>
+            <div className="mt-4 flex justify-center gap-5">
+              <a href="https://wa.me/255700000000" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                WhatsApp
+              </a>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                Instagram
+              </a>
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                Facebook
+              </a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                Twitter
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </section>

@@ -22,7 +22,9 @@ const educationLevels = [
 
 const registerSchema = z
   .object({
-    name: z.string().min(1, "Full name is required").min(2, "Name must be at least 2 characters"),
+    firstName: z.string().min(1, "First name is required").min(2, "First name must be at least 2 characters"),
+    middleName: z.string().optional(),
+    lastName: z.string().min(1, "Last name / surname is required").min(2, "Last name must be at least 2 characters"),
     email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
     educationLevel: z.string().min(1, "Please select your education level"),
     password: z
@@ -58,8 +60,9 @@ export default function RegisterPage() {
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
+    const fullName = [values.firstName, values.middleName, values.lastName].filter(Boolean).join(" ")
     const result = await registerUser({
-      name: values.name,
+      name: fullName,
       email: values.email,
       password: values.password,
       educationLevel: values.educationLevel,
@@ -129,19 +132,50 @@ export default function RegisterPage() {
 
             <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)}>
               <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="firstName" className="block text-sm font-medium text-foreground">
+                      First Name
+                    </label>
+                    <input
+                      id="firstName"
+                      type="text"
+                      placeholder="First name"
+                      {...register("firstName")}
+                      className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+                    />
+                    {errors.firstName && (
+                      <p className="mt-1.5 text-xs text-red-600">{errors.firstName.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="middleName" className="block text-sm font-medium text-foreground">
+                      Middle Name <span className="text-muted-foreground">(optional)</span>
+                    </label>
+                    <input
+                      id="middleName"
+                      type="text"
+                      placeholder="Middle name"
+                      {...register("middleName")}
+                      className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-foreground">
-                    Full Name
+                  <label htmlFor="lastName" className="block text-sm font-medium text-foreground">
+                    Last Name / Surname
                   </label>
                   <input
-                    id="name"
+                    id="lastName"
                     type="text"
-                    placeholder="Enter your full name"
-                    {...register("name")}
+                    placeholder="Last name or surname"
+                    {...register("lastName")}
                     className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                   />
-                  {errors.name && (
-                    <p className="mt-1.5 text-xs text-red-600">{errors.name.message}</p>
+                  {errors.lastName && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.lastName.message}</p>
                   )}
                 </div>
 
