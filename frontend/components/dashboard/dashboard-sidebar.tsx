@@ -2,21 +2,22 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 
 const nav = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "My Courses", href: "/dashboard/courses" },
-  { label: "Live Classes", href: "/live-classes" },
-  { label: "Assignments", href: "/dashboard/assignments", badge: 3 },
-  { label: "Progress", href: "/dashboard/progress" },
-  { label: "Messages", href: "/dashboard/messages", badge: 2 },
-  { label: "Certificates", href: "/dashboard/certificates" },
-  { label: "Bookmarks", href: "/dashboard/bookmarks" },
-  { label: "Profile", href: "/dashboard/profile" },
-  { label: "Settings", href: "/dashboard/settings" },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Live Classes", href: "/live-classes", icon: Video },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText, badge: 3 },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, badge: 2 },
+  { label: "Certificates", href: "/dashboard/certificates", icon: Award },
+  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -50,6 +51,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
+              <item.icon className="size-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge ? (
                 <span
@@ -72,6 +74,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
+          <LogOut className="size-4 shrink-0" />
           Logout
         </button>
       </div>

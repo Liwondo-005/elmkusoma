@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
+import { Mail, CheckCircle } from "lucide-react"
 
 const forgotSchema = z.object({
   email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
@@ -43,7 +44,7 @@ export default function ForgotPasswordPage() {
           <div className="w-full max-w-md">
             <div className="rounded-2xl border border-border bg-card p-8 shadow-xs text-center">
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
-                <span className="text-2xl text-teal font-bold">OK</span>
+                <CheckCircle className="size-7 text-teal" />
               </div>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
                 Check your email
@@ -78,7 +79,7 @@ export default function ForgotPasswordPage() {
           <div className="rounded-2xl border border-border bg-card p-8 shadow-xs">
             <div className="text-center">
               <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-accent text-primary">
-                <span className="text-lg font-bold">@</span>
+                <Mail className="size-5" />
               </div>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
                 Reset your password

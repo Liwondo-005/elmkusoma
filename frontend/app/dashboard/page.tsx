@@ -2,15 +2,16 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { BookOpen, Video, Clock, Award, CheckCircle, ArrowRight } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 
 const statCards = [
-  { label: "Enrolled Courses", value: "6", note: "Active" },
-  { label: "Live Classes", value: "4", note: "This Week" },
-  { label: "Hours Learned", value: "24h 30m", note: "This Month" },
-  { label: "Certificates", value: "2", note: "Earned" },
+  { label: "Enrolled Courses", value: "6", note: "Active", icon: BookOpen },
+  { label: "Live Classes", value: "4", note: "This Week", icon: Video },
+  { label: "Hours Learned", value: "24h 30m", note: "This Month", icon: Clock },
+  { label: "Certificates", value: "2", note: "Earned", icon: Award },
 ]
 
 const continueLearning = [
@@ -50,6 +51,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((s) => (
           <div key={s.label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <s.icon className="mb-2 size-5 text-muted-foreground" />
             <p className="text-2xl font-extrabold text-foreground">{s.value}</p>
             <p className="text-sm font-medium text-foreground">{s.label}</p>
             <p className="text-xs text-muted-foreground">{s.note}</p>
@@ -62,8 +64,8 @@ export default function DashboardPage() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-foreground">Continue Learning</h2>
-            <Link href="/dashboard/courses" className="text-xs font-medium text-primary hover:underline">
-              View All
+            <Link href="/dashboard/courses" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              View All <ArrowRight className="size-3" />
             </Link>
           </div>
           <div className="mt-4 space-y-4">
@@ -90,8 +92,8 @@ export default function DashboardPage() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-foreground">Upcoming Live</h2>
-            <Link href="/live-classes" className="text-xs font-medium text-primary hover:underline">
-              View All
+            <Link href="/live-classes" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              View All <ArrowRight className="size-3" />
             </Link>
           </div>
           <div className="mt-4 space-y-4">

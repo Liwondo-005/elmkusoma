@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
+import { CheckCircle, Send } from "lucide-react"
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required").min(2, "Name must be at least 2 characters"),
@@ -50,7 +50,7 @@ export function ContactSection() {
           {submitted ? (
             <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
-                <span className="text-2xl text-teal font-bold">OK</span>
+                <CheckCircle className="size-7 text-teal" />
               </div>
               <h3 className="mt-4 text-xl font-bold text-foreground">Message Sent!</h3>
               <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">
@@ -130,7 +130,7 @@ export function ContactSection() {
                 </div>
 
                 <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
-                  {isSubmitting ? "Sending..." : "Send Message"}
+                  {isSubmitting ? "Sending..." : <><Send className="mr-2 size-4" /> Send Message</>}
                 </Button>
               </form>
             </div>

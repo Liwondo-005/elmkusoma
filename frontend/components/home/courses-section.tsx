@@ -1,5 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
+import { Play } from "lucide-react"
 import { featuredCourses } from "@/lib/data"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -37,7 +38,9 @@ export function CoursesSection() {
                 <span className="absolute left-3 top-3 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">
                   {course.tag}
                 </span>
-                <span className="absolute bottom-3 right-3 flex size-10 items-center justify-center rounded-full bg-background/90 text-primary shadow-md backdrop-blur transition-transform group-hover:scale-110" />
+                <span className="absolute bottom-3 right-3 flex size-10 items-center justify-center rounded-full bg-background/90 text-primary shadow-md backdrop-blur transition-transform group-hover:scale-110">
+                  <Play className="size-4 fill-current" />
+                </span>
               </div>
               <div className="p-5">
                 <h3 className="text-base font-semibold text-foreground">{course.title}</h3>

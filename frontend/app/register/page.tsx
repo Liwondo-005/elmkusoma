@@ -9,6 +9,7 @@ import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
+import { Eye, EyeOff } from "lucide-react"
 
 const educationLevels = [
   "Nursery School",
@@ -234,7 +235,7 @@ export default function RegisterPage() {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
                     >
-                      {showPassword ? "Hide" : "Show"}
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
                   </div>
                   {errors.password && (
@@ -260,7 +261,7 @@ export default function RegisterPage() {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
                     >
-                      {showConfirm ? "Hide" : "Show"}
+                      {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
                   </div>
                   {errors.confirmPassword && (
