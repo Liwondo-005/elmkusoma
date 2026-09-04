@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -17,7 +17,7 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
+function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState("")
   const { login } = useAuth()
@@ -137,5 +137,13 @@ export default function LoginPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

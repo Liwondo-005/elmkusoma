@@ -8,10 +8,10 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const nav = [
-  { label: "Home", href: "/" },
-  { label: "Courses", href: "/courses" },
+  { label: "Education", href: "/courses" },
+  { label: "Schools", href: "/schools/primary" },
   { label: "Live Classes", href: "/live-classes" },
-  { label: "About", href: "/about" },
+  { label: "Notes", href: "/notes-library" },
 ]
 
 export function SiteHeader() {
