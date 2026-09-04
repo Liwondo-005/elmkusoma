@@ -3,6 +3,22 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import {
+  ChevronLeft,
+  Eye,
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  MonitorUp,
+  MoreHorizontal,
+  Send,
+  Users,
+  BarChart3,
+  Clock,
+  CalendarClock,
+  FileText,
+} from "lucide-react"
 import type { LiveClass } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -42,6 +58,7 @@ export function LiveClassroom({ item }: { item: LiveClass }) {
             href="/live-classes"
             className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
+            <ChevronLeft className="size-4" />
             Back to Live Classes
           </Link>
         </div>
@@ -63,10 +80,10 @@ export function LiveClassroom({ item }: { item: LiveClass }) {
         </div>
         <div className="ml-auto flex items-center gap-4 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1 font-mono">
-            01:24:35
+            <Clock className="size-4" /> 01:24:35
           </span>
           <span className="inline-flex items-center gap-1">
-            {item.watching ?? 128}
+            <Eye className="size-4 text-teal" /> {item.watching ?? 128}
           </span>
         </div>
       </div>
@@ -96,20 +113,20 @@ export function LiveClassroom({ item }: { item: LiveClass }) {
                   onClick={() => setCamOn((v) => !v)}
                   label={camOn ? "Turn off camera" : "Turn on camera"}
                 >
-                  {camOn ? "Cam On" : "Cam Off"}
+                  {camOn ? <Video className="size-5" /> : <VideoOff className="size-5" />}
                 </ControlButton>
                 <ControlButton
                   active={micOn}
                   onClick={() => setMicOn((v) => !v)}
                   label={micOn ? "Mute microphone" : "Unmute microphone"}
                 >
-                  {micOn ? "Mic On" : "Mic Off"}
+                  {micOn ? <Mic className="size-5" /> : <MicOff className="size-5" />}
                 </ControlButton>
                 <ControlButton label="Share screen">
-                  Share
+                  <MonitorUp className="size-5" />
                 </ControlButton>
                 <ControlButton label="More options">
-                  More
+                  <MoreHorizontal className="size-5" />
                 </ControlButton>
               </div>
             </div>
@@ -142,10 +159,10 @@ export function LiveClassroom({ item }: { item: LiveClass }) {
                     real-world problems, including worked examples and a short practice set.
                   </p>
                   <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    <MetaItem label="Level" value={item.level} />
-                    <MetaItem label="Duration" value="90 mins" />
-                    <MetaItem label="Next Class" value="Tomorrow, 10 AM" />
-                    <MetaItem label="Materials" value="5 Files" />
+                    <MetaItem icon={BarChart3} label="Level" value={item.level} />
+                    <MetaItem icon={Clock} label="Duration" value="90 mins" />
+                    <MetaItem icon={CalendarClock} label="Next Class" value="Tomorrow, 10 AM" />
+                    <MetaItem icon={FileText} label="Materials" value="5 Files" />
                   </dl>
                 </>
               )}
@@ -162,6 +179,7 @@ export function LiveClassroom({ item }: { item: LiveClass }) {
                       key={r}
                       className="flex items-center gap-3 rounded-lg border border-border p-3 text-sm text-foreground"
                     >
+                      <FileText className="size-4 text-primary" />
                       {r}
                     </li>
                   ))}
@@ -191,7 +209,7 @@ export function LiveClassroom({ item }: { item: LiveClass }) {
                   key={i}
                   className="flex size-8 items-center justify-center rounded-full border border-border bg-accent text-primary"
                 >
-                  {i + 1}
+                  <Users className="size-3.5" />
                 </span>
               ))}
               <span className="flex h-8 items-center justify-center rounded-full bg-muted px-2.5 text-xs font-semibold text-muted-foreground">
@@ -203,7 +221,7 @@ export function LiveClassroom({ item }: { item: LiveClass }) {
           <div className="flex min-h-96 flex-col rounded-2xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
               <h2 className="text-sm font-semibold text-foreground">Live Chat</h2>
-              <span className="text-xs text-muted-foreground">···</span>
+              <MoreHorizontal className="size-4 text-muted-foreground" />
             </div>
             <div className="flex-1 space-y-4 overflow-y-auto p-5">
               {chat.map((c, i) => (
@@ -229,7 +247,7 @@ export function LiveClassroom({ item }: { item: LiveClass }) {
                 className="h-10 flex-1 rounded-lg border border-border bg-muted/60 px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background"
               />
               <Button type="submit" size="icon" className="size-10 shrink-0" aria-label="Send message">
-                Send
+                <Send className="size-4" />
               </Button>
             </form>
           </div>
@@ -269,14 +287,17 @@ function ControlButton({
 }
 
 function MetaItem({
+  icon: Icon,
   label,
   value,
 }: {
+  icon: React.ElementType
   label: string
   value: string
 }) {
   return (
     <div className="flex items-start gap-2">
+      <Icon className="mt-0.5 size-4 shrink-0 text-teal" />
       <div>
         <dt className="text-xs text-muted-foreground">{label}</dt>
         <dd className="text-sm font-medium text-foreground">{value}</dd>

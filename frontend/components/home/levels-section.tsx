@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ArrowRight } from "lucide-react"
 import { levels } from "@/lib/data"
 
 export function LevelsSection() {
@@ -16,20 +17,19 @@ export function LevelsSection() {
         </div>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {levels.map((level, i) => {
-            return (
-              <Link
-                key={level.name}
-                href={level.href}
-                className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-md"
-              >
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-base font-semibold text-foreground">{level.name}</h3>
-                  <p className="truncate text-sm text-muted-foreground">{level.desc}</p>
-                </div>
-              </Link>
-            )
-          })}
+          {levels.map((level) => (
+            <Link
+              key={level.name}
+              href={level.href}
+              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-md"
+            >
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-semibold text-foreground">{level.name}</h3>
+                <p className="truncate text-sm text-muted-foreground">{level.desc}</p>
+              </div>
+              <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </Link>
+          ))}
         </div>
       </div>
     </section>
