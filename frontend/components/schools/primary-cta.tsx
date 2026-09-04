@@ -12,8 +12,8 @@ export function PrimaryCta() {
             <div>
               <h2 className="text-2xl font-bold">Try a Free Lesson</h2>
               <p className="mt-3 text-primary-foreground/80">
-                Explore sample lessons from Darasa I to Darasa VI — no account needed. See
-                how we teach Kiswahili, Hisabati and Sayansi.
+                Explore sample lessons from Standard 1 to Standard 6 — no account needed. See
+                how we teach Kiswahili, English and Mathematics.
               </p>
             </div>
             <Link
@@ -33,7 +33,7 @@ export function PrimaryCta() {
               <h2 className="text-2xl font-bold text-foreground">Enroll in a Primary School</h2>
               <p className="mt-3 text-muted-foreground">
                 Register your child for a full primary program with structured lessons,
-                progress tracking and certificates from Darasa I through Darasa VI.
+                progress tracking and certificates from Standard 1 through Standard 6.
               </p>
             </div>
             <Link

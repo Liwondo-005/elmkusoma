@@ -14,7 +14,7 @@ export function NurseryHero() {
           </h1>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
             Fun, interactive classes for the youngest learners. Explore nursery schools with
-            Baby 1, Baby 2 and Baby 3 levels — taught through games, stories and creative activities.
+            Baby, Middle and Top levels — taught through games, stories and creative activities.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-6">
@@ -23,14 +23,14 @@ export function NurseryHero() {
                 <Baby className="size-4" />
               </div>
               <span className="font-medium text-foreground">3 Levels</span>
-              <span>Baby 1–3</span>
+              <span>Baby, Middle & Top</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className="flex size-8 items-center justify-center rounded-lg bg-teal/10 text-teal">
                 <BookOpen className="size-4" />
               </div>
               <span className="font-medium text-foreground">4 Subjects</span>
-              <span>Kusoma, Kuandika & more</span>
+              <span>Reading, Writing & more</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className="flex size-8 items-center justify-center rounded-lg bg-orange/10 text-orange">

@@ -10,12 +10,12 @@ export function PrimaryHero() {
             Primary Level
           </span>
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            Darasa I — VI
+            Standard 1 — 6
           </h1>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
             Complete primary education from Standard 1 to Standard 6. Structured
-            classes with the full Tanzanian curriculum — Kiswahili, English, Hisabati,
-            Sayansi and more.
+            classes with the full Tanzanian curriculum — Kiswahili, English, Mathematics,
+            Science and more.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-6">
@@ -24,7 +24,7 @@ export function PrimaryHero() {
                 <School className="size-4" />
               </div>
               <span className="font-medium text-foreground">6 Classes</span>
-              <span>Darasa I – VI</span>
+              <span>Standard 1 – 6</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className="flex size-8 items-center justify-center rounded-lg bg-teal/10 text-teal">

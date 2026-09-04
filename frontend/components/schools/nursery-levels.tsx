@@ -43,7 +43,7 @@ export function NurseryLevels() {
                   <p className="mt-1.5 text-sm text-muted-foreground">{level.desc}</p>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {["Kusoma", "Kuandika", "Kuhesabu", "Kuchora"].map((s) => (
+                  {["Reading", "Writing", "Counting", "Drawing"].map((s) => (
                     <span
                       key={s}
                       className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"

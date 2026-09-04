@@ -66,7 +66,7 @@ export function PrimaryClasses() {
 
             <div className="mt-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Masomo / Subjects ({activeClass.subjects.length})
+                Subjects ({activeClass.subjects.length})
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {activeClass.subjects.map((subject, i) => (

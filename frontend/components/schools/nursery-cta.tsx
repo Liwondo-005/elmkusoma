@@ -13,7 +13,7 @@ export function NurseryCta() {
               <h2 className="text-2xl font-bold">Start Playing for Free</h2>
               <p className="mt-3 text-primary-foreground/80">
                 Jump straight into interactive nursery games — no account needed. Try
-                Kusoma, Kuhesabu, Kuchora and more.
+                Reading, Counting, Drawing and more.
               </p>
             </div>
             <Link
@@ -33,7 +33,7 @@ export function NurseryCta() {
               <h2 className="text-2xl font-bold text-foreground">Enroll in a Nursery School</h2>
               <p className="mt-3 text-muted-foreground">
                 Register your child for a full nursery program with structured lessons,
-                progress tracking and certificates across Baby 1, Baby 2 and Baby 3.
+                progress tracking and certificates across Baby, Middle and Top levels.
               </p>
             </div>
             <Link

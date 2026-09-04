@@ -17,7 +17,7 @@ export function NurserySubjects() {
             Subjects
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Four core subjects taught through interactive activities in Kiswahili.
+            Four core subjects taught through interactive activities.
           </p>
         </div>
 
