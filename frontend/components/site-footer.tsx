@@ -35,7 +35,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-muted/50">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr_1.2fr]">
+        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr_1.3fr]">
           <div className="max-w-xs">
             <Logo />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -63,6 +63,9 @@ export function SiteFooter() {
           <div>
             <h4 className="text-sm font-semibold text-foreground">Contact Us</h4>
             <ul className="mt-4 space-y-3">
+              <li className="text-sm text-muted-foreground">
+                Dar es Salaam, Tanzania
+              </li>
               <li>
                 <a
                   href="mailto:info@elmkusoma.co.tz"
@@ -79,15 +82,21 @@ export function SiteFooter() {
                   Send us a message
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/about"
-                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                >
-                  About ELMKUSOMA
-                </Link>
-              </li>
             </ul>
+            <div className="mt-5 flex gap-4">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Facebook">
+                Facebook
+              </a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Twitter">
+                Twitter
+              </a>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Instagram">
+                Instagram
+              </a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="LinkedIn">
+                LinkedIn
+              </a>
+            </div>
           </div>
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
