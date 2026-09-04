@@ -34,7 +34,7 @@ export function AboutHow() {
           {steps.map((step, i) => (
             <div key={step.title} className="relative rounded-2xl border border-border bg-card p-6">
               <span className="absolute right-5 top-5 text-2xl font-extrabold text-muted/70">{i + 1}</span>
-              <h3 className="mt-4 text-base font-semibold text-foreground">{step.title}</h3>
+              <h3 className="text-base font-semibold text-foreground">{step.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.desc}</p>
             </div>
           ))}

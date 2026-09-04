@@ -31,7 +31,7 @@ export function UniversityCta() {
             <div>
               <h2 className="text-2xl font-bold text-foreground">Apply for Admission</h2>
               <p className="mt-3 text-muted-foreground">
-                Submit your application for diploma, bachelor's, master's or PhD
+                Submit your application for diploma, bachelor&apos;s, master&apos;s or PhD
                 programs at our partner universities across Tanzania.
               </p>
             </div>
