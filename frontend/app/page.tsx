@@ -18,8 +18,8 @@ export default function HomePage() {
         <LivePreviewSection />
         <CoursesSection />
         <HowItWorks />
-        <ContactSection />
         <CtaSection />
+        <ContactSection />
       </main>
       <SiteFooter />
     </div>
