@@ -11,14 +11,13 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 import { Eye, EyeOff } from "lucide-react"
 
-const educationLevels = [
-  "Nursery School",
-  "Primary School",
-  "Lower Secondary School",
-  "Advanced Secondary School",
-  "College",
-  "Vocational",
-  "University",
+const roles = [
+  "Student",
+  "Teacher",
+  "Lecturer",
+  "Facilitator",
+  "Parent",
+  "Other",
 ]
 
 const registerSchema = z
@@ -27,7 +26,7 @@ const registerSchema = z
     middleName: z.string().optional(),
     lastName: z.string().min(1, "Last name / surname is required").min(2, "Last name must be at least 2 characters"),
     email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
-    educationLevel: z.string().min(1, "Please select your education level"),
+    role: z.string().min(1, "Please select your role"),
     password: z
       .string()
       .min(1, "Password is required")
@@ -66,7 +65,7 @@ export default function RegisterPage() {
       name: fullName,
       email: values.email,
       password: values.password,
-      educationLevel: values.educationLevel,
+      role: values.role,
     })
     if (result.error) {
       setServerError(result.error)
@@ -77,15 +76,20 @@ export default function RegisterPage() {
 
   if (registered) {
     return (
-      <div className="flex min-h-dvh flex-col bg-muted/40">
-        <header className="border-b border-border bg-background/90 backdrop-blur">
+      <div className="flex min-h-dvh flex-col">
+        <header className="relative z-10 border-b border-border bg-background/90 backdrop-blur">
           <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
             <Logo />
           </div>
         </header>
-        <main className="flex flex-1 items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md">
-            <div className="rounded-2xl border border-border bg-card p-8 shadow-xs text-center">
+        <main className="relative flex-1 flex items-center justify-center px-4 py-12">
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: "url('/images/register-bg.jpg')" }}
+          />
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative z-10 w-full max-w-md">
+            <div className="rounded-2xl border border-white/10 bg-card/95 backdrop-blur-sm p-8 shadow-lg text-center">
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
                 <span className="text-2xl text-teal font-bold">OK</span>
               </div>
@@ -106,16 +110,20 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-muted/40">
-      <header className="border-b border-border bg-background/90 backdrop-blur">
+    <div className="flex min-h-dvh flex-col">
+      <header className="relative z-10 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
           <Logo />
         </div>
       </header>
-
-      <main className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-border bg-card p-8 shadow-xs">
+      <main className="relative flex-1 flex items-center justify-center px-4 py-12">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/images/register-bg.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="relative z-10 w-full max-w-md">
+          <div className="rounded-2xl border border-white/10 bg-card/95 backdrop-blur-sm p-8 shadow-lg">
             <div className="text-center">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 Create your account
@@ -197,23 +205,23 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="educationLevel" className="block text-sm font-medium text-foreground">
-                    Education Level
+                  <label htmlFor="role" className="block text-sm font-medium text-foreground">
+                    Register as
                   </label>
                   <select
-                    id="educationLevel"
-                    {...register("educationLevel")}
+                    id="role"
+                    {...register("role")}
                     className="mt-1.5 h-11 w-full appearance-none rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors focus:border-ring focus:bg-background"
                   >
-                    <option value="">Select your education level</option>
-                    {educationLevels.map((level) => (
-                      <option key={level} value={level}>
-                        {level}
+                    <option value="">Select your role</option>
+                    {roles.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
                       </option>
                     ))}
                   </select>
-                  {errors.educationLevel && (
-                    <p className="mt-1.5 text-xs text-red-600">{errors.educationLevel.message}</p>
+                  {errors.role && (
+                    <p className="mt-1.5 text-xs text-red-600">{errors.role.message}</p>
                   )}
                 </div>
 
@@ -283,13 +291,13 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
+          <p className="mt-6 text-center text-xs text-white/60">
             By creating an account, you agree to our{" "}
-            <Link href="/about" className="underline hover:text-foreground">
+            <Link href="/about" className="underline hover:text-white/80">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/about" className="underline hover:text-foreground">
+            <Link href="/about" className="underline hover:text-white/80">
               Privacy Policy
             </Link>
             .
