@@ -47,7 +47,7 @@ export function Recaptcha({ siteKey, onVerify, onExpire }: RecaptchaProps) {
         window.grecaptcha.ready(() => {
           if (containerRef.current) {
             widgetIdRef.current = window.grecaptcha.render(containerRef.current, {
-              sitekey,
+              sitekey: siteKey,
               callback: onVerify,
               "expired-callback": onExpire,
             })
