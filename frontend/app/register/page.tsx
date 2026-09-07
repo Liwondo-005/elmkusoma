@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -9,7 +9,10 @@ import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
-import { Eye, EyeOff, CheckCircle, ShieldCheck, RotateCw } from "lucide-react"
+import { Eye, EyeOff, CheckCircle } from "lucide-react"
+import { Recaptcha } from "@/components/recaptcha"
+
+const RECAPTCHA_SITE_KEY = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
 
 const roles = [
   "Student",
@@ -50,36 +53,9 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
   const [registered, setRegistered] = useState(false)
-  const [captchaAnswer, setCaptchaAnswer] = useState("")
-  const [captchaVerified, setCaptchaVerified] = useState(false)
-  const [captchaError, setCaptchaError] = useState("")
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
   const { register: registerUser } = useAuth()
   const router = useRouter()
-
-  const captcha = useMemo(() => {
-    const a = Math.floor(Math.random() * 10) + 1
-    const b = Math.floor(Math.random() * 10) + 1
-    const ops = ["+", "×"]
-    const op = ops[Math.floor(Math.random() * ops.length)]
-    const answer = op === "+" ? a + b : a * b
-    return { a, b, op, answer }
-  }, [captchaVerified])
-
-  function verifyCaptcha() {
-    if (Number(captchaAnswer) === captcha.answer) {
-      setCaptchaVerified(true)
-      setCaptchaError("")
-    } else {
-      setCaptchaError("Incorrect answer. Please try again.")
-      setCaptchaVerified(false)
-    }
-  }
-
-  function refreshCaptcha() {
-    setCaptchaAnswer("")
-    setCaptchaVerified(false)
-    setCaptchaError("")
-  }
 
   const {
     register,
@@ -91,7 +67,7 @@ export default function RegisterPage() {
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
-    if (!captchaVerified) {
+    if (!recaptchaToken) {
       setServerError("Please complete the human verification.")
       return
     }
@@ -315,39 +291,11 @@ export default function RegisterPage() {
 
               {/* Human Verification */}
               <div className="rounded-xl border border-border bg-muted/40 p-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="size-5 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Human Verification</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">Solve this simple math question to prove you&apos;re not a robot.</p>
-                <div className="mt-3 flex items-center gap-3">
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
-                    <span className="text-sm font-bold text-foreground">{captcha.a} {captcha.op} {captcha.b} =</span>
-                    <input
-                      type="number"
-                      value={captchaAnswer}
-                      onChange={(e) => setCaptchaAnswer(e.target.value)}
-                      disabled={captchaVerified}
-                      placeholder="?"
-                      className="w-16 bg-transparent text-center text-sm font-bold text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
-                    />
-                  </div>
-                  {captchaVerified ? (
-                    <div className="flex items-center gap-1.5 text-sm font-medium text-teal">
-                      <CheckCircle className="size-4" /> Verified
-                    </div>
-                  ) : (
-                    <>
-                      <Button type="button" variant="outline" size="sm" onClick={verifyCaptcha} className="h-9">
-                        Verify
-                      </Button>
-                      <button type="button" onClick={refreshCaptcha} className="text-muted-foreground hover:text-foreground" title="New question">
-                        <RotateCw className="size-4" />
-                      </button>
-                    </>
-                  )}
-                </div>
-                {captchaError && <p className="mt-2 text-xs text-destructive">{captchaError}</p>}
+                <Recaptcha
+                  siteKey={RECAPTCHA_SITE_KEY}
+                  onVerify={(token) => setRecaptchaToken(token)}
+                  onExpire={() => setRecaptchaToken(null)}
+                />
               </div>
 
               <div className="space-y-4">
