@@ -22,7 +22,7 @@ public abstract class BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "institution_id", nullable = false)
+    @Column(name = "institution_id")
     private UUID institutionId;
 
     @CreatedDate

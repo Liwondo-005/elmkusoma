@@ -1,0 +1,73 @@
+package tz.elmkusoma.institution.controller;
+
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.common.PageResponse;
+import tz.elmkusoma.institution.dto.request.CreateInstitutionRequest;
+import tz.elmkusoma.institution.dto.request.UpdateInstitutionRequest;
+import tz.elmkusoma.institution.dto.response.InstitutionResponse;
+import tz.elmkusoma.institution.service.InstitutionService;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/v1/institutions")
+public class InstitutionController {
+
+    private final InstitutionService institutionService;
+
+    public InstitutionController(InstitutionService institutionService) {
+        this.institutionService = institutionService;
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<InstitutionResponse>> createInstitution(
+            @Valid @RequestBody CreateInstitutionRequest request) {
+        InstitutionResponse response = institutionService.createInstitution(request, UUID.randomUUID());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Institution created successfully", response));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<InstitutionResponse>> getInstitution(@PathVariable UUID id) {
+        InstitutionResponse response = institutionService.getInstitution(id);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<PageResponse<InstitutionResponse>>> listInstitutions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        PageResponse<InstitutionResponse> response = institutionService.listInstitutions(page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<InstitutionResponse>> updateInstitution(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateInstitutionRequest request) {
+        InstitutionResponse response = institutionService.updateInstitution(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Institution updated successfully", response));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteInstitution(@PathVariable UUID id) {
+        institutionService.deleteInstitution(id);
+        return ResponseEntity.ok(ApiResponse.success("Institution deleted successfully", null));
+    }
+
+    @PutMapping("/{id}/activate")
+    public ResponseEntity<ApiResponse<InstitutionResponse>> activateInstitution(@PathVariable UUID id) {
+        InstitutionResponse response = institutionService.activateInstitution(id);
+        return ResponseEntity.ok(ApiResponse.success("Institution activated", response));
+    }
+
+    @PutMapping("/{id}/deactivate")
+    public ResponseEntity<ApiResponse<InstitutionResponse>> deactivateInstitution(@PathVariable UUID id) {
+        InstitutionResponse response = institutionService.deactivateInstitution(id);
+        return ResponseEntity.ok(ApiResponse.success("Institution deactivated", response));
+    }
+}
