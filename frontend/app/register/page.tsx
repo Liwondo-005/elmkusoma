@@ -17,10 +17,7 @@ const RECAPTCHA_SITE_KEY = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
 const roles = [
   "Student",
   "Teacher",
-  "Lecturer",
-  "Facilitator",
   "Parent",
-  "Other",
 ]
 
 const registerSchema = z
@@ -71,9 +68,10 @@ export default function RegisterPage() {
       setServerError("Please complete the human verification.")
       return
     }
-    const fullName = [values.firstName, values.middleName, values.lastName].filter(Boolean).join(" ")
     const result = await registerUser({
-      name: fullName,
+      firstName: values.firstName,
+      middleName: values.middleName || undefined,
+      lastName: values.lastName,
       email: values.email,
       password: values.password,
       role: values.role,

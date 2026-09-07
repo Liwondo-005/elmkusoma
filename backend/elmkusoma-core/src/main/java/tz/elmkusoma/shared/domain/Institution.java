@@ -23,6 +23,9 @@ public class Institution extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private InstitutionType type;
 
+    @Column(name = "description")
+    private String description;
+
     @Column(name = "address")
     private String address;
 
