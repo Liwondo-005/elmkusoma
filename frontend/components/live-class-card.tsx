@@ -1,8 +1,13 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { Eye, Clock, Users, Play } from "lucide-react"
 import type { LiveClass } from "@/lib/data"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth"
 
 function StatusBadge({ status, badge }: { status: LiveClass["status"]; badge: string }) {
   if (status === "live") {
@@ -22,6 +27,16 @@ function StatusBadge({ status, badge }: { status: LiveClass["status"]; badge: st
 
 export function LiveClassCard({ item }: { item: LiveClass }) {
   const isLive = item.status === "live"
+  const { user } = useAuth()
+  const router = useRouter()
+
+  function handleJoin(e: React.MouseEvent) {
+    if (!user) {
+      e.preventDefault()
+      router.push(`/login?redirect=${encodeURIComponent(`/live-classes/${item.id}`)}`)
+    }
+  }
+
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg">
       <div className="relative aspect-video overflow-hidden">
@@ -71,6 +86,7 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
           {isLive ? (
             <Link
               href={`/live-classes/${item.id}`}
+              onClick={handleJoin}
               className={cn(buttonVariants(), "h-9 w-full bg-teal text-teal-foreground hover:bg-teal/90")}
             >
               Join Live Class
