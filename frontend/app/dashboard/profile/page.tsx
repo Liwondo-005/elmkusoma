@@ -26,7 +26,7 @@ export default function DashboardProfilePage() {
         <div className="flex items-center gap-5">
           <div className="relative">
             <div className="flex size-20 items-center justify-center rounded-full bg-primary/10 text-2xl font-bold text-primary">
-              {user?.name?.[0] || "S"}
+              {user?.firstName?.[0] || user?.name?.[0] || "S"}
             </div>
             <button className="absolute bottom-0 right-0 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs">
               <Camera className="size-3.5" />
@@ -46,11 +46,11 @@ export default function DashboardProfilePage() {
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-foreground">Full Name</label>
-              <input id="name" type="text" defaultValue={user?.name || ""} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none focus:border-ring focus:bg-background" />
+              <input id="name" type="text" defaultValue={user?.name || ""} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none focus:border-ring focus:bg-background" readOnly />
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-foreground">Email</label>
-              <input id="email" type="email" defaultValue={user?.email || ""} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none focus:border-ring focus:bg-background" />
+              <input id="email" type="email" defaultValue={user?.email || ""} className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none focus:border-ring focus:bg-background" readOnly />
             </div>
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-foreground">Phone</label>

@@ -8,6 +8,7 @@ import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Mail, CheckCircle } from "lucide-react"
+import { authApi } from "@/lib/api"
 
 const forgotSchema = z.object({
   email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
@@ -27,8 +28,12 @@ export default function ForgotPasswordPage() {
     resolver: zodResolver(forgotSchema),
   })
 
-  async function onSubmit(_values: ForgotValues) {
-    await new Promise((r) => setTimeout(r, 1000))
+  async function onSubmit(values: ForgotValues) {
+    try {
+      await authApi.forgotPassword({ email: values.email })
+    } catch {
+      // Always show success to prevent email enumeration
+    }
     setSent(true)
   }
 

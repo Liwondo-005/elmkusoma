@@ -3,6 +3,8 @@ package tz.elmkusoma.institution.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
@@ -10,6 +12,8 @@ import tz.elmkusoma.institution.dto.request.CreateInstitutionRequest;
 import tz.elmkusoma.institution.dto.request.UpdateInstitutionRequest;
 import tz.elmkusoma.institution.dto.response.InstitutionResponse;
 import tz.elmkusoma.institution.service.InstitutionService;
+import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.util.UUID;
 
@@ -18,15 +22,18 @@ import java.util.UUID;
 public class InstitutionController {
 
     private final InstitutionService institutionService;
+    private final UserRepository userRepository;
 
-    public InstitutionController(InstitutionService institutionService) {
+    public InstitutionController(InstitutionService institutionService, UserRepository userRepository) {
         this.institutionService = institutionService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<InstitutionResponse>> createInstitution(
             @Valid @RequestBody CreateInstitutionRequest request) {
-        InstitutionResponse response = institutionService.createInstitution(request, UUID.randomUUID());
+        UUID ownerUserId = getCurrentUserId();
+        InstitutionResponse response = institutionService.createInstitution(request, ownerUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Institution created successfully", response));
     }
@@ -69,5 +76,13 @@ public class InstitutionController {
     public ResponseEntity<ApiResponse<InstitutionResponse>> deactivateInstitution(@PathVariable UUID id) {
         InstitutionResponse response = institutionService.deactivateInstitution(id);
         return ResponseEntity.ok(ApiResponse.success("Institution deactivated", response));
+    }
+
+    private UUID getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = auth.getName();
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        return user.getId();
     }
 }
