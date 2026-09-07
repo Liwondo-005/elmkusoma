@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -9,7 +9,7 @@ import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
-import { Eye, EyeOff, CheckCircle, ShieldCheck } from "lucide-react"
+import { Eye, EyeOff, CheckCircle } from "lucide-react"
 
 const roles = [
   "Student",
@@ -34,8 +34,6 @@ const registerSchema = z
       .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
       .regex(/[0-9]/, "Password must contain at least one number"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
-    acceptTerms: z.literal(true, { errorMap: () => ({ message: "You must accept the Terms of Service and Privacy Policy" }) }),
-    captchaVerified: z.literal(true, { errorMap: () => ({ message: "Please verify you are not a robot" }) }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -49,34 +47,16 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
   const [registered, setRegistered] = useState(false)
-  const [captchaLoading, setCaptchaLoading] = useState(false)
   const { register: registerUser } = useAuth()
   const router = useRouter()
 
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      acceptTerms: false as unknown as true,
-      captchaVerified: false as unknown as true,
-    },
   })
-
-  const acceptTerms = watch("acceptTerms")
-  const captchaVerified = watch("captchaVerified")
-
-  const handleCaptcha = useCallback(() => {
-    setCaptchaLoading(true)
-    setTimeout(() => {
-      setValue("captchaVerified", true as unknown as true, { shouldValidate: true })
-      setCaptchaLoading(false)
-    }, 1500)
-  }, [setValue])
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
@@ -298,64 +278,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* reCAPTCHA */}
-              <div>
-                {captchaVerified ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-teal/30 bg-teal/5 px-4 py-3">
-                    <ShieldCheck className="size-5 text-teal" />
-                    <span className="text-sm font-medium text-teal">Verified — you are not a robot</span>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleCaptcha}
-                    disabled={captchaLoading}
-                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-muted/60 px-4 py-3 transition-colors hover:bg-muted disabled:opacity-60"
-                  >
-                    <div className="flex size-7 items-center justify-center rounded border-2 border-muted-foreground/30">
-                      {captchaLoading ? (
-                        <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      ) : null}
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-foreground">I'm not a robot</p>
-                      <p className="text-[10px] text-muted-foreground">reCAPTCHA verification</p>
-                    </div>
-                    <div className="ml-auto">
-                      <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" alt="reCAPTCHA" className="h-8 w-8 opacity-60" />
-                    </div>
-                  </button>
-                )}
-                {errors.captchaVerified && (
-                  <p className="mt-1.5 text-xs text-destructive">{errors.captchaVerified.message}</p>
-                )}
-              </div>
-
-              {/* Terms Checkbox */}
-              <div>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    {...register("acceptTerms")}
-                    className="mt-0.5 size-4 rounded border-border accent-primary"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    I agree to the{" "}
-                    <Link href="/terms" className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
-                      Terms of Service
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="/privacy" className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
-                      Privacy Policy
-                    </Link>
-                  </span>
-                </label>
-                {errors.acceptTerms && (
-                  <p className="mt-1.5 text-xs text-destructive">{errors.acceptTerms.message}</p>
-                )}
-              </div>
-
-              <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting || !acceptTerms || !captchaVerified}>
+              <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
                 {isSubmitting ? "Creating account..." : "Create Account"}
               </Button>
             </form>
@@ -367,6 +290,18 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
+
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            By creating an account, you agree to our{" "}
+            <Link href="/terms" className="underline hover:text-foreground">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline hover:text-foreground">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
       </main>
     </div>
