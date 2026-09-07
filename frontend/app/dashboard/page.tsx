@@ -2,14 +2,16 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { BookOpen, Video, Clock, Award, CheckCircle, ArrowRight } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 
 const statCards = [
-  { label: "Enrolled Courses", value: "6", note: "Active" },
-  { label: "Live Classes", value: "4", note: "This Week" },
-  { label: "Hours Learned", value: "24h 30m", note: "This Month" },
-  { label: "Certificates", value: "2", note: "Earned" },
+  { label: "Enrolled Courses", value: "6", note: "Active", icon: BookOpen },
+  { label: "Live Classes", value: "4", note: "This Week", icon: Video },
+  { label: "Hours Learned", value: "24h 30m", note: "This Month", icon: Clock },
+  { label: "Certificates", value: "2", note: "Earned", icon: Award },
 ]
 
 const continueLearning = [
@@ -22,6 +24,13 @@ const upcoming = [
   { title: "Advanced Mathematics", sub: "Calculus II", teacher: "Dr. John Mwangi", live: true, meta: "128 watching" },
   { title: "Physics Mechanics", sub: "Problem Solving", teacher: "Prof. A. Hamdan", live: false, meta: "Tomorrow, 10:00 AM" },
   { title: "Digital Marketing", sub: "Strategy", teacher: "Sarah K.", live: false, meta: "Fri, 12:00 PM" },
+]
+
+const activity = [
+  { label: "Completed lesson", detail: "CSS Flexbox & Grid", time: "2h ago" },
+  { label: "Watched live class", detail: "Data Science Q&A", time: "Yesterday" },
+  { label: "Submitted assignment", detail: "Data Analysis Project", time: "2 days ago" },
+  { label: "Earned certificate", detail: "HTML & CSS Basics", time: "3 days ago" },
 ]
 
 export default function DashboardPage() {
@@ -42,6 +51,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((s) => (
           <div key={s.label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <s.icon className="mb-2 size-5 text-muted-foreground" />
             <p className="text-2xl font-extrabold text-foreground">{s.value}</p>
             <p className="text-sm font-medium text-foreground">{s.label}</p>
             <p className="text-xs text-muted-foreground">{s.note}</p>
@@ -54,8 +64,8 @@ export default function DashboardPage() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-foreground">Continue Learning</h2>
-            <Link href="/courses" className="text-xs font-medium text-primary hover:underline">
-              Browse Courses
+            <Link href="/dashboard/courses" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              View All <ArrowRight className="size-3" />
             </Link>
           </div>
           <div className="mt-4 space-y-4">
@@ -82,8 +92,8 @@ export default function DashboardPage() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-foreground">Upcoming Live</h2>
-            <Link href="/live-classes" className="text-xs font-medium text-primary hover:underline">
-              View All
+            <Link href="/live-classes" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              View All <ArrowRight className="size-3" />
             </Link>
           </div>
           <div className="mt-4 space-y-4">
@@ -110,24 +120,42 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      {/* Quick actions */}
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <h2 className="text-base font-semibold text-foreground">Quick Actions</h2>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link href="/courses" className="rounded-lg border border-border bg-muted/50 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-            Browse Courses
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Recent activity */}
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs lg:col-span-2">
+          <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
+          <div className="mt-4 space-y-4">
+            {activity.map((a) => (
+              <div key={a.detail} className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">{a.label}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{a.detail}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">{a.time}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="flex flex-col justify-between overflow-hidden rounded-2xl bg-primary p-6 text-primary-foreground">
+          <div>
+            <h2 className="text-lg font-bold">Reach your goals faster</h2>
+            <p className="mt-2 text-sm text-primary-foreground/80">
+              Unlock premium live classes, recordings and the full digital library.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/subscription"
+            className={cn(
+              buttonVariants(),
+              "mt-6 h-11 w-full gap-2 bg-background text-foreground hover:bg-background/90",
+            )}
+          >
+            Upgrade Plan
           </Link>
-          <Link href="/live-classes" className="rounded-lg border border-border bg-muted/50 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-            Live Classes
-          </Link>
-          <Link href="/notes-library" className="rounded-lg border border-border bg-muted/50 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-            Notes & Materials
-          </Link>
-          <Link href="/certificates/verify" className="rounded-lg border border-border bg-muted/50 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-            Verify Certificate
-          </Link>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   )
 }

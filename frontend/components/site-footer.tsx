@@ -5,28 +5,28 @@ const columns = [
   {
     title: "Learn",
     links: [
-      { label: "Education", href: "/courses" },
+      { label: "Courses", href: "/courses" },
       { label: "Live Classes", href: "/live-classes" },
-      { label: "Notes & Materials", href: "/notes-library" },
+      { label: "Recorded Classes", href: "/live-classes" },
+      { label: "Digital Library", href: "/notes-library" },
     ],
   },
   {
-    title: "Schools",
+    title: "Discover",
     links: [
-      { label: "Nursery Schools", href: "/schools/nursery" },
       { label: "Primary Schools", href: "/schools/primary" },
       { label: "Secondary Schools", href: "/schools/secondary" },
       { label: "Colleges", href: "/schools/colleges" },
       { label: "Universities", href: "/schools/universities" },
-      { label: "Vocational (VETA)", href: "/schools/vocational" },
     ],
   },
   {
     title: "Platform",
     links: [
-      { label: "About ELMKUSOMA", href: "/about" },
+      { label: "About", href: "/about" },
       { label: "Verify Certificate", href: "/certificates/verify" },
-      { label: "Register", href: "/register" },
+      { label: "Become an Instructor", href: "/register" },
+      { label: "For Institutions", href: "/register" },
     ],
   },
 ]
@@ -35,7 +35,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-muted/50">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr_1.2fr]">
+        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr_1.3fr]">
           <div className="max-w-xs">
             <Logo />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -63,6 +63,17 @@ export function SiteFooter() {
           <div>
             <h4 className="text-sm font-semibold text-foreground">Contact Us</h4>
             <ul className="mt-4 space-y-3">
+              <li className="text-sm text-muted-foreground">
+                Dar es Salaam, Tanzania
+              </li>
+              <li>
+                <a
+                  href="tel:+255700000000"
+                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                >
+                  +255 700 000 000
+                </a>
+              </li>
               <li>
                 <a
                   href="mailto:info@elmkusoma.co.tz"
@@ -79,30 +90,37 @@ export function SiteFooter() {
                   Send us a message
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/about"
-                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                >
-                  About ELMKUSOMA
-                </Link>
-              </li>
             </ul>
+            <div className="mt-5 flex flex-wrap gap-4">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Facebook">
+                Facebook
+              </a>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Instagram">
+                Instagram
+              </a>
+              <a href="https://wa.me/255700000000" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="WhatsApp">
+                WhatsApp
+              </a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Twitter">
+                Twitter
+              </a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="LinkedIn">
+                LinkedIn
+              </a>
+            </div>
           </div>
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
           <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} ELMKUSOMA. All rights reserved.</p>
           <div className="flex gap-6">
-            <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
-              About
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary">
+              Privacy
             </Link>
-            <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
-            <Link href="/about" className="text-sm text-muted-foreground hover:text-primary">
+            <Link href="/terms" className="text-sm text-muted-foreground hover:text-primary">
               Terms
             </Link>
-            <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">
+            <Link href="/support" className="text-sm text-muted-foreground hover:text-primary">
               Support
-            </Link>
             </Link>
           </div>
         </div>

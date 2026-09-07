@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Layers, BookOpen } from "lucide-react"
 
 import type { VetaTrade } from "@/lib/data"
 import { cn } from "@/lib/utils"
@@ -27,10 +28,10 @@ export function VetaTradeCard({ trade }: { trade: VetaTrade }) {
 
       <div className="mt-auto flex items-center gap-4 pt-4 border-t border-border">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          {trade.levels.length} {trade.levels.length === 1 ? "level" : "levels"}
+          <Layers className="size-3.5" /> {trade.levels.length} {trade.levels.length === 1 ? "level" : "levels"}
         </span>
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          {totalModules} {totalModules === 1 ? "module" : "modules"}
+          <BookOpen className="size-3.5" /> {totalModules} {totalModules === 1 ? "module" : "modules"}
         </span>
       </div>
     </Link>

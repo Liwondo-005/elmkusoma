@@ -3,8 +3,10 @@ import { SiteFooter } from "@/components/site-footer"
 import { HeroSection } from "@/components/home/hero-section"
 import { LevelsSection } from "@/components/home/levels-section"
 import { LivePreviewSection } from "@/components/home/live-preview-section"
+import { CoursesSection } from "@/components/home/courses-section"
 import { HowItWorks } from "@/components/home/how-it-works"
 import { CtaSection } from "@/components/home/cta-section"
+import { ContactSection } from "@/components/home/contact-section"
 
 export default function HomePage() {
   return (
@@ -14,8 +16,10 @@ export default function HomePage() {
         <HeroSection />
         <LevelsSection />
         <LivePreviewSection />
+        <CoursesSection />
         <HowItWorks />
         <CtaSection />
+        <ContactSection />
       </main>
       <SiteFooter />
     </div>

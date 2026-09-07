@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
+import { Mail, CheckCircle } from "lucide-react"
 
 const forgotSchema = z.object({
   email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
@@ -33,17 +34,22 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="flex min-h-dvh flex-col bg-muted/40">
-        <header className="border-b border-border bg-background/90 backdrop-blur">
+      <div className="flex min-h-dvh flex-col">
+        <header className="relative z-10 border-b border-border bg-background/90 backdrop-blur">
           <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
             <Logo />
           </div>
         </header>
-        <main className="flex flex-1 items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md">
-            <div className="rounded-2xl border border-border bg-card p-8 shadow-xs text-center">
+        <main className="relative flex-1 flex items-center justify-center px-4 py-12">
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: "url('/images/forgot-bg.jpg')" }}
+          />
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative z-10 w-full max-w-md">
+            <div className="rounded-2xl border border-white/10 bg-card/95 backdrop-blur-sm p-8 shadow-lg text-center">
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
-                <span className="text-2xl text-teal font-bold">OK</span>
+                <CheckCircle className="size-7 text-teal" />
               </div>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
                 Check your email
@@ -66,19 +72,24 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-muted/40">
-      <header className="border-b border-border bg-background/90 backdrop-blur">
+    <div className="flex min-h-dvh flex-col">
+      <header className="relative z-10 border-b border-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
           <Logo />
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-border bg-card p-8 shadow-xs">
+      <main className="relative flex-1 flex items-center justify-center px-4 py-12">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/images/forgot-bg.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="relative z-10 w-full max-w-md">
+          <div className="rounded-2xl border border-white/10 bg-card/95 backdrop-blur-sm p-8 shadow-lg">
             <div className="text-center">
               <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-accent text-primary">
-                <span className="text-lg font-bold">@</span>
+                <Mail className="size-5" />
               </div>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
                 Reset your password

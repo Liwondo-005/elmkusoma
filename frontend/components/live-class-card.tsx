@@ -68,14 +68,14 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
         <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
           {isLive ? (
             <>
-              <span>{item.watching} watching</span>
+              <span><Eye className="inline size-3.5" /> {item.watching} watching</span>
             </>
           ) : (
             <>
-              <span>{item.time}</span>
+              <span><Clock className="inline size-3.5" /> {item.time}</span>
               {item.going ? (
                 <span className="ml-auto inline-flex items-center gap-1">
-                  {item.going} going
+                  <Users className="size-3.5" /> {item.going} going
                 </span>
               ) : null}
             </>
@@ -89,6 +89,7 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
               onClick={handleJoin}
               className={cn(buttonVariants(), "h-9 w-full bg-teal text-teal-foreground hover:bg-teal/90")}
             >
+              <Play className="mr-1.5 size-3.5 fill-current" />
               Join Live Class
             </Link>
           ) : (
