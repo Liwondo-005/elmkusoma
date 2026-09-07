@@ -355,7 +355,7 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
+              <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting || !acceptTerms || !captchaVerified}>
                 {isSubmitting ? "Creating account..." : "Create Account"}
               </Button>
             </form>
