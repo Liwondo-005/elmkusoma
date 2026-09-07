@@ -2,6 +2,11 @@ package tz.elmkusoma.shared.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "institution_memberships")
@@ -18,10 +23,10 @@ public class InstitutionMembership {
     private Long id;
 
     @Column(name = "user_id", nullable = false)
-    private java.util.UUID userId;
+    private UUID userId;
 
     @Column(name = "institution_id", nullable = false)
-    private java.util.UUID institutionId;
+    private UUID institutionId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
@@ -29,6 +34,14 @@ public class InstitutionMembership {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     public enum Role {
         OWNER,

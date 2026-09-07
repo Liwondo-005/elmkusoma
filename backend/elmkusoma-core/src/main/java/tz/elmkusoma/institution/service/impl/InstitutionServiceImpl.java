@@ -133,8 +133,9 @@ public class InstitutionServiceImpl implements InstitutionService {
     public void deleteInstitution(UUID id) {
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", id));
-        institutionRepository.delete(institution);
-        log.info("Institution deleted: {} (ID: {})", institution.getName(), institution.getId());
+        institution.setIsDeleted(true);
+        institutionRepository.save(institution);
+        log.info("Institution soft-deleted: {} (ID: {})", institution.getName(), institution.getId());
     }
 
     @Override

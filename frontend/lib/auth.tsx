@@ -52,6 +52,14 @@ function setCurrentUser(user: AuthUser | null) {
   }
 }
 
+function setAuthCookie(name: string, value: string, maxAge: number) {
+  document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`
+}
+
+function clearAuthCookie(name: string) {
+  document.cookie = `${name}=; path=/; max-age=0`
+}
+
 function mapUserInfo(info: UserInfo): AuthUser {
   return {
     id: info.id,
@@ -106,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)
       setTokens(response.accessToken, response.refreshToken)
+      setAuthCookie("elmkusoma_access_token", response.accessToken, response.expiresIn)
       setCurrentUser(authUser)
       setUser(authUser)
       return {}
@@ -138,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)
       setTokens(response.accessToken, response.refreshToken)
+      setAuthCookie("elmkusoma_access_token", response.accessToken, response.expiresIn)
       setCurrentUser(authUser)
       setUser(authUser)
       return {}
@@ -157,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     clearTokens()
+    clearAuthCookie("elmkusoma_access_token")
     setCurrentUser(null)
     setUser(null)
   }, [])
