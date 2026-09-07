@@ -10,6 +10,9 @@ import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 import { Eye, EyeOff, CheckCircle } from "lucide-react"
+import { Recaptcha } from "@/components/recaptcha"
+
+const RECAPTCHA_SITE_KEY = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
 
 const roles = [
   "Student",
@@ -50,6 +53,7 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
   const [registered, setRegistered] = useState(false)
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
   const { register: registerUser } = useAuth()
   const router = useRouter()
 
@@ -63,6 +67,10 @@ export default function RegisterPage() {
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
+    if (!recaptchaToken) {
+      setServerError("Please complete the human verification.")
+      return
+    }
     const fullName = [values.firstName, values.middleName, values.lastName].filter(Boolean).join(" ")
     const result = await registerUser({
       name: fullName,
@@ -279,6 +287,15 @@ export default function RegisterPage() {
                     <p className="mt-1.5 text-xs text-destructive">{errors.confirmPassword.message}</p>
                   )}
                 </div>
+              </div>
+
+              {/* Human Verification */}
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <Recaptcha
+                  siteKey={RECAPTCHA_SITE_KEY}
+                  onVerify={(token) => setRecaptchaToken(token)}
+                  onExpire={() => setRecaptchaToken(null)}
+                />
               </div>
 
               <div className="space-y-4">
