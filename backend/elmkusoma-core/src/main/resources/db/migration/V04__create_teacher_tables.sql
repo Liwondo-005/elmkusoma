@@ -1,7 +1,5 @@
--- ELMKUSOMA Core - Teacher Module
--- V5: Create teacher, qualification, and assignment tables
+-- V4: Create teacher, qualification, and assignment tables
 
--- Teacher profile (extends user)
 CREATE TABLE teachers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL,
@@ -16,7 +14,6 @@ CREATE TABLE teachers (
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
     is_deleted BOOLEAN NOT NULL DEFAULT false,
-
     CONSTRAINT fk_teachers_user FOREIGN KEY (user_id) REFERENCES users(id),
     CONSTRAINT fk_teachers_institution FOREIGN KEY (institution_id) REFERENCES institutions(id),
     CONSTRAINT uq_teachers_user UNIQUE (user_id, institution_id)
@@ -26,7 +23,6 @@ CREATE INDEX idx_teachers_institution ON teachers(institution_id) WHERE is_delet
 CREATE INDEX idx_teachers_user ON teachers(user_id) WHERE is_deleted = false;
 CREATE INDEX idx_teachers_status ON teachers(status) WHERE is_deleted = false;
 
--- Teacher qualifications
 CREATE TABLE teacher_qualifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL,
@@ -41,14 +37,12 @@ CREATE TABLE teacher_qualifications (
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
     is_deleted BOOLEAN NOT NULL DEFAULT false,
-
     CONSTRAINT fk_qualifications_teacher FOREIGN KEY (teacher_id) REFERENCES teachers(id),
     CONSTRAINT fk_qualifications_institution FOREIGN KEY (institution_id) REFERENCES institutions(id)
 );
 
 CREATE INDEX idx_qualifications_teacher ON teacher_qualifications(teacher_id) WHERE is_deleted = false;
 
--- Teacher-class-subject assignments
 CREATE TABLE teacher_assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL,
@@ -61,7 +55,6 @@ CREATE TABLE teacher_assignments (
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
     is_deleted BOOLEAN NOT NULL DEFAULT false,
-
     CONSTRAINT fk_assignments_teacher FOREIGN KEY (teacher_id) REFERENCES teachers(id),
     CONSTRAINT fk_assignments_institution FOREIGN KEY (institution_id) REFERENCES institutions(id),
     CONSTRAINT uq_teacher_assignment UNIQUE (teacher_id, class_group_id, subject_id, academic_year)

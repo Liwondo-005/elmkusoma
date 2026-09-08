@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/admin")
+@RequestMapping("/v1/admin")
 @RequiredArgsConstructor
 @Tag(name = "Administration", description = "System settings, roles, dashboard, and user management")
 public class AdministrationController {

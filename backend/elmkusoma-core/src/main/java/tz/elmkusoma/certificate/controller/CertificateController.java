@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/certificates")
+@RequestMapping("/v1/certificates")
 @RequiredArgsConstructor
 @Tag(name = "Certificate Management", description = "Certificate templates, generation, and verification")
 public class CertificateController {

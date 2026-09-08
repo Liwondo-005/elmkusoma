@@ -1,9 +1,9 @@
--- V6: Create courses and content tables
+-- V8: Create courses and content tables
 
 CREATE TABLE courses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL REFERENCES institutions(id),
-    subject_id UUID REFERENCES subjects(id),
+    subject_id UUID,
     title VARCHAR(300) NOT NULL,
     description TEXT,
     thumbnail_url VARCHAR(500),
@@ -49,7 +49,7 @@ CREATE TABLE course_lessons (
 CREATE TABLE live_classes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL REFERENCES institutions(id),
-    subject_id UUID REFERENCES subjects(id),
+    subject_id UUID,
     teacher_id UUID NOT NULL REFERENCES teachers(id),
     title VARCHAR(300) NOT NULL,
     description TEXT,

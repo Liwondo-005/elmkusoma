@@ -129,3 +129,182 @@ export interface ParentNotificationPreferenceRequest {
   emailEnabled?: boolean
   pushEnabled?: boolean
 }
+
+// ── Academic Module Types ────────────────────────────────────────
+
+export type EducationLevel = "NURSERY" | "PRIMARY" | "SECONDARY" | "COLLEGE" | "VETA" | "UNIVERSITY"
+
+export interface AcademicYear {
+  id: string
+  institutionId: string
+  educationLevel: EducationLevel
+  yearLabel: string
+  startDate: string
+  endDate: string
+  isCurrent: boolean
+  isActive: boolean
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface AcademicYearRequest {
+  institutionId: string
+  educationLevel: EducationLevel
+  yearLabel: string
+  startDate: string
+  endDate: string
+  isCurrent?: boolean
+}
+
+export interface Term {
+  id: string
+  institutionId: string
+  academicYearId: string
+  name: string
+  termNumber: number
+  startDate: string
+  endDate: string
+  isActive: boolean
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface TermRequest {
+  institutionId: string
+  name: string
+  termNumber: number
+  startDate: string
+  endDate: string
+}
+
+export interface Grade {
+  id: string
+  institutionId: string
+  educationLevel: EducationLevel
+  name: string
+  code?: string
+  sortOrder: number
+  isActive: boolean
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface GradeRequest {
+  institutionId: string
+  educationLevel: EducationLevel
+  name: string
+  code?: string
+  sortOrder?: number
+}
+
+export interface Subject {
+  id: string
+  institutionId: string
+  educationLevel: EducationLevel
+  name: string
+  code?: string
+  description?: string
+  category?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface SubjectRequest {
+  institutionId: string
+  educationLevel: EducationLevel
+  name: string
+  code?: string
+  description?: string
+}
+
+export interface ClassGroup {
+  id: string
+  institutionId: string
+  gradeId: string
+  academicYearId: string
+  termId: string
+  name: string
+  section?: string
+  capacity?: number
+  classTeacherId?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface ClassGroupRequest {
+  institutionId: string
+  gradeId: string
+  academicYearId: string
+  termId: string
+  name: string
+  section?: string
+  capacity?: number
+  classTeacherId?: string
+}
+
+// ── Student Module Types ─────────────────────────────────────────
+
+export type StudentStatus = "ACTIVE" | "GRADUATED" | "TRANSFERRED" | "EXPELLED"
+
+export interface Student {
+  id: string
+  userId: string
+  institutionId: string
+  admissionNumber: string
+  status: StudentStatus
+  firstName: string
+  middleName?: string
+  lastName: string
+  email: string
+  phone?: string
+  dateOfBirth?: string
+  gender?: string
+  address?: string
+  city?: string
+  region?: string
+  guardianName?: string
+  guardianPhone?: string
+  guardianRelationship?: string
+  enrollmentDate: string
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface StudentRequest {
+  institutionId: string
+  userId: string
+  firstName: string
+  middleName?: string
+  lastName: string
+  email: string
+  phone?: string
+  dateOfBirth?: string
+  gender?: string
+  address?: string
+  city?: string
+  region?: string
+  guardianName?: string
+  guardianPhone?: string
+  guardianRelationship?: string
+  status?: StudentStatus
+}
+
+export interface StudentClassAssignment {
+  id: string
+  institutionId: string
+  studentId: string
+  classGroupId: string
+  academicYearId: string
+  termId: string
+  assignedDate: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface AssignClassRequest {
+  classGroupId: string
+  academicYearId: string
+  termId: string
+}

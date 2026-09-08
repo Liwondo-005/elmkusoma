@@ -22,8 +22,19 @@ function buildUrl(path: string, params?: Record<string, string | number | boolea
 function getHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "X-Institution-Id": INSTITUTION_ID,
   }
+
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("elmkusoma_access_token")
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
+    const institutionId = localStorage.getItem("elmkusoma_institution_id")
+    if (institutionId) {
+      headers["X-Institution-Id"] = institutionId
+    }
+  }
+
   return headers
 }
 

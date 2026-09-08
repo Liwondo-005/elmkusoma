@@ -330,3 +330,246 @@ export interface PageResponse<T> {
   first: boolean
   last: boolean
 }
+
+// ── Academic API ─────────────────────────────────────────────────
+
+export interface AcademicYear {
+  id: string
+  institutionId: string
+  educationLevel: string
+  yearLabel: string
+  startDate: string
+  endDate: string
+  isCurrent: boolean
+  isActive: boolean
+  createdAt: string
+}
+
+export interface Term {
+  id: string
+  institutionId: string
+  academicYearId: string
+  name: string
+  termNumber: number
+  startDate: string
+  endDate: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface Grade {
+  id: string
+  institutionId: string
+  educationLevel: string
+  name: string
+  code?: string
+  sortOrder: number
+  isActive: boolean
+  createdAt: string
+}
+
+export interface Subject {
+  id: string
+  institutionId: string
+  educationLevel: string
+  name: string
+  code?: string
+  description?: string
+  category?: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface ClassGroup {
+  id: string
+  institutionId: string
+  gradeId: string
+  academicYearId: string
+  termId: string
+  name: string
+  section?: string
+  capacity?: number
+  classTeacherId?: string
+  isActive: boolean
+  createdAt: string
+}
+
+export const academicApi = {
+  // Academic Years
+  getAcademicYears: (institutionId: string, educationLevel?: string) => {
+    const params = new URLSearchParams({ institutionId })
+    if (educationLevel) params.set("educationLevel", educationLevel)
+    return request<AcademicYear[]>(`/v1/academic/years?${params}`)
+  },
+  getAcademicYear: (id: string) =>
+    request<AcademicYear>(`/v1/academic/years/${id}`),
+  createAcademicYear: (data: {
+    institutionId: string
+    educationLevel: string
+    yearLabel: string
+    startDate: string
+    endDate: string
+    isCurrent?: boolean
+  }) =>
+    request<AcademicYear>("/v1/academic/years", { method: "POST", body: JSON.stringify(data) }),
+
+  // Terms
+  getTerms: (academicYearId: string) =>
+    request<Term[]>(`/v1/academic/years/${academicYearId}/terms`),
+  createTerm: (academicYearId: string, data: {
+    institutionId: string
+    name: string
+    termNumber: number
+    startDate: string
+    endDate: string
+  }) =>
+    request<Term>(`/v1/academic/years/${academicYearId}/terms`, { method: "POST", body: JSON.stringify(data) }),
+
+  // Grades
+  getGrades: (institutionId: string, educationLevel?: string) => {
+    const params = new URLSearchParams({ institutionId })
+    if (educationLevel) params.set("educationLevel", educationLevel)
+    return request<Grade[]>(`/v1/academic/grades?${params}`)
+  },
+  getGrade: (id: string) =>
+    request<Grade>(`/v1/academic/grades/${id}`),
+  createGrade: (data: {
+    institutionId: string
+    educationLevel: string
+    name: string
+    code?: string
+    sortOrder?: number
+  }) =>
+    request<Grade>("/v1/academic/grades", { method: "POST", body: JSON.stringify(data) }),
+
+  // Subjects
+  getSubjects: (institutionId: string, educationLevel?: string) => {
+    const params = new URLSearchParams({ institutionId })
+    if (educationLevel) params.set("educationLevel", educationLevel)
+    return request<Subject[]>(`/v1/academic/subjects?${params}`)
+  },
+  getSubject: (id: string) =>
+    request<Subject>(`/v1/academic/subjects/${id}`),
+  createSubject: (data: {
+    institutionId: string
+    educationLevel: string
+    name: string
+    code?: string
+    description?: string
+  }) =>
+    request<Subject>("/v1/academic/subjects", { method: "POST", body: JSON.stringify(data) }),
+
+  // Class Groups
+  getClassGroups: (institutionId: string, gradeId?: string, termId?: string) => {
+    const params = new URLSearchParams({ institutionId })
+    if (gradeId) params.set("gradeId", gradeId)
+    if (termId) params.set("termId", termId)
+    return request<ClassGroup[]>(`/v1/academic/classes?${params}`)
+  },
+  getClassGroup: (id: string) =>
+    request<ClassGroup>(`/v1/academic/classes/${id}`),
+  createClassGroup: (data: {
+    institutionId: string
+    gradeId: string
+    academicYearId: string
+    termId: string
+    name: string
+    section?: string
+    capacity?: number
+  }) =>
+    request<ClassGroup>("/v1/academic/classes", { method: "POST", body: JSON.stringify(data) }),
+}
+
+// ── Student API ──────────────────────────────────────────────────
+
+export interface Student {
+  id: string
+  userId: string
+  institutionId: string
+  admissionNumber: string
+  status: string
+  firstName: string
+  middleName?: string
+  lastName: string
+  email: string
+  phone?: string
+  dateOfBirth?: string
+  gender?: string
+  address?: string
+  city?: string
+  region?: string
+  guardianName?: string
+  guardianPhone?: string
+  guardianRelationship?: string
+  enrollmentDate: string
+  createdAt: string
+}
+
+export interface StudentClassAssignment {
+  id: string
+  institutionId: string
+  studentId: string
+  classGroupId: string
+  academicYearId: string
+  termId: string
+  assignedDate: string
+  isActive: boolean
+  createdAt: string
+}
+
+export const studentApi = {
+  getStudents: (institutionId: string, classId?: string, query?: string) => {
+    const params = new URLSearchParams({ institutionId })
+    if (classId) params.set("classId", classId)
+    if (query) params.set("query", query)
+    return request<Student[]>(`/v1/students?${params}`)
+  },
+  getStudent: (id: string) =>
+    request<Student>(`/v1/students/${id}`),
+  getStudentByAdmission: (admissionNumber: string) =>
+    request<Student>(`/v1/students/admission/${admissionNumber}`),
+  createStudent: (data: {
+    institutionId: string
+    userId: string
+    firstName: string
+    middleName?: string
+    lastName: string
+    email: string
+    phone?: string
+    dateOfBirth?: string
+    gender?: string
+    address?: string
+    city?: string
+    region?: string
+    guardianName?: string
+    guardianPhone?: string
+    guardianRelationship?: string
+  }) =>
+    request<Student>("/v1/students", { method: "POST", body: JSON.stringify(data) }),
+  updateStudent: (id: string, data: Partial<{
+    firstName: string
+    middleName: string
+    lastName: string
+    phone: string
+    dateOfBirth: string
+    gender: string
+    address: string
+    city: string
+    region: string
+    guardianName: string
+    guardianPhone: string
+    guardianRelationship: string
+    status: string
+  }>) =>
+    request<Student>(`/v1/students/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  assignClass: (id: string, data: {
+    classGroupId: string
+    academicYearId: string
+    termId: string
+  }) =>
+    request<StudentClassAssignment>(`/v1/students/${id}/assign-class`, { method: "POST", body: JSON.stringify(data) }),
+  countStudents: (institutionId: string) =>
+    request<number>(`/v1/students/stats/count?institutionId=${institutionId}`),
+  countActiveStudents: (institutionId: string) =>
+    request<number>(`/v1/students/stats/active?institutionId=${institutionId}`),
+}

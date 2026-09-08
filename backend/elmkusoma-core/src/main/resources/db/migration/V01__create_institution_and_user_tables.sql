@@ -5,6 +5,7 @@ CREATE TABLE institutions (
     name VARCHAR(255) NOT NULL,
     code VARCHAR(50) UNIQUE NOT NULL,
     type VARCHAR(50) NOT NULL,
+    description VARCHAR(1000),
     address VARCHAR(500),
     city VARCHAR(100),
     region VARCHAR(100),

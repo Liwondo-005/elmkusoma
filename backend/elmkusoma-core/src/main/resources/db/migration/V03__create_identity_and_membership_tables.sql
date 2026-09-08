@@ -1,9 +1,7 @@
--- V2: Identity & Institution module tables
+-- V3: Identity & Institution module tables
 
--- Make institution_id nullable on users (for self-registered users not yet linked to an institution)
 ALTER TABLE users ALTER COLUMN institution_id DROP NOT NULL;
 
--- Password reset tokens
 CREATE TABLE password_reset_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     token VARCHAR(255) UNIQUE NOT NULL,
@@ -16,7 +14,6 @@ CREATE TABLE password_reset_tokens (
 CREATE INDEX idx_password_reset_tokens_token ON password_reset_tokens(token) WHERE used = false;
 CREATE INDEX idx_password_reset_tokens_user ON password_reset_tokens(user_id);
 
--- Email verification tokens
 CREATE TABLE email_verification_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     token VARCHAR(255) UNIQUE NOT NULL,
@@ -29,7 +26,6 @@ CREATE TABLE email_verification_tokens (
 CREATE INDEX idx_email_verification_tokens_token ON email_verification_tokens(token) WHERE used = false;
 CREATE INDEX idx_email_verification_tokens_user ON email_verification_tokens(user_id);
 
--- Institution memberships
 CREATE TABLE institution_memberships (
     id BIGSERIAL PRIMARY KEY,
     user_id UUID NOT NULL,

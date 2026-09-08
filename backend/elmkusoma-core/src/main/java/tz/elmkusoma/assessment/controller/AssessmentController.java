@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/assessments")
+@RequestMapping("/v1/assessments")
 @RequiredArgsConstructor
 @Tag(name = "Assessment", description = "Assessment, quiz, and exam management")
 public class AssessmentController {

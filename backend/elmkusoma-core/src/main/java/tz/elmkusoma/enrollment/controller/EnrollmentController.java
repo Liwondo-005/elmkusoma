@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/enrollments")
+@RequestMapping("/v1/enrollments")
 @RequiredArgsConstructor
 @Tag(name = "Enrollment", description = "Student enrollment management")
 public class EnrollmentController {

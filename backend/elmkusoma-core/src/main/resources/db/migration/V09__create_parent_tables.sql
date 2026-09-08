@@ -1,7 +1,5 @@
--- ELMKUSOMA Core - Parent Module
--- V6: Create parent, student link, and notification preference tables
+-- V9: Create parent, student link, and notification preference tables
 
--- Parent profile (extends user)
 CREATE TABLE parents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL,
@@ -14,7 +12,6 @@ CREATE TABLE parents (
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
     is_deleted BOOLEAN NOT NULL DEFAULT false,
-
     CONSTRAINT fk_parents_user FOREIGN KEY (user_id) REFERENCES users(id),
     CONSTRAINT fk_parents_institution FOREIGN KEY (institution_id) REFERENCES institutions(id),
     CONSTRAINT uq_parents_user UNIQUE (user_id, institution_id)
@@ -23,7 +20,6 @@ CREATE TABLE parents (
 CREATE INDEX idx_parents_institution ON parents(institution_id) WHERE is_deleted = false;
 CREATE INDEX idx_parents_user ON parents(user_id) WHERE is_deleted = false;
 
--- Parent-student linkage
 CREATE TABLE parent_student_links (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL,
@@ -36,7 +32,6 @@ CREATE TABLE parent_student_links (
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
     is_deleted BOOLEAN NOT NULL DEFAULT false,
-
     CONSTRAINT fk_links_parent FOREIGN KEY (parent_id) REFERENCES parents(id),
     CONSTRAINT fk_links_institution FOREIGN KEY (institution_id) REFERENCES institutions(id),
     CONSTRAINT uq_parent_student UNIQUE (parent_id, student_id)
@@ -45,7 +40,6 @@ CREATE TABLE parent_student_links (
 CREATE INDEX idx_parent_student_links_parent ON parent_student_links(parent_id) WHERE is_deleted = false;
 CREATE INDEX idx_parent_student_links_student ON parent_student_links(student_id) WHERE is_deleted = false;
 
--- Parent notification preferences
 CREATE TABLE parent_notification_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL,
@@ -62,7 +56,6 @@ CREATE TABLE parent_notification_preferences (
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
     is_deleted BOOLEAN NOT NULL DEFAULT false,
-
     CONSTRAINT fk_notif_prefs_parent FOREIGN KEY (parent_id) REFERENCES parents(id),
     CONSTRAINT fk_notif_prefs_institution FOREIGN KEY (institution_id) REFERENCES institutions(id),
     CONSTRAINT uq_parent_notif_prefs UNIQUE (parent_id)

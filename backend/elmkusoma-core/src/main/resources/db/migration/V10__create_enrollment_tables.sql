@@ -1,5 +1,4 @@
--- ELMKUSOMA Core - Enrollment Tables
--- V7: Create enrollment and transfer tables
+-- V10: Create enrollment tables
 
 CREATE TABLE enrollments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -7,26 +6,22 @@ CREATE TABLE enrollments (
     student_id UUID NOT NULL,
     class_group_id UUID NOT NULL,
     academic_year_id UUID NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'ENROLLED',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     enrolled_at TIMESTAMP NOT NULL DEFAULT NOW(),
     withdrawn_at TIMESTAMP,
-    withdraw_reason VARCHAR(500),
     completed_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP,
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
-    is_deleted BOOLEAN NOT NULL DEFAULT false
+    is_deleted BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT fk_enrollments_student FOREIGN KEY (student_id) REFERENCES students(id),
+    CONSTRAINT fk_enrollments_class_group FOREIGN KEY (class_group_id) REFERENCES classes(id),
+    CONSTRAINT fk_enrollments_institution FOREIGN KEY (institution_id) REFERENCES institutions(id)
 );
 
-CREATE INDEX idx_enrollments_institution ON enrollments(institution_id) WHERE is_deleted = false;
 CREATE INDEX idx_enrollments_student ON enrollments(student_id) WHERE is_deleted = false;
 CREATE INDEX idx_enrollments_class_group ON enrollments(class_group_id) WHERE is_deleted = false;
-CREATE INDEX idx_enrollments_academic_year ON enrollments(academic_year_id) WHERE is_deleted = false;
-CREATE INDEX idx_enrollments_status ON enrollments(status) WHERE is_deleted = false;
-CREATE UNIQUE INDEX idx_enrollments_unique_active
-    ON enrollments(student_id, class_group_id, academic_year_id)
-    WHERE is_deleted = false AND status = 'ENROLLED';
 
 CREATE TABLE transfer_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -36,13 +31,11 @@ CREATE TABLE transfer_records (
     to_class_group_id UUID NOT NULL,
     reason VARCHAR(500),
     transferred_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    transferred_by UUID NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP,
     created_by VARCHAR(255),
     updated_by VARCHAR(255),
-    is_deleted BOOLEAN NOT NULL DEFAULT false
+    is_deleted BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT fk_transfers_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments(id),
+    CONSTRAINT fk_transfers_institution FOREIGN KEY (institution_id) REFERENCES institutions(id)
 );
-
-CREATE INDEX idx_transfer_records_enrollment ON transfer_records(enrollment_id) WHERE is_deleted = false;
-CREATE INDEX idx_transfer_records_institution ON transfer_records(institution_id) WHERE is_deleted = false;

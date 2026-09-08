@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/nursery")
+@RequestMapping("/v1/nursery")
 @RequiredArgsConstructor
 @Tag(name = "Nursery", description = "Nursery activities and milestone tracking")
 public class NurseryController {

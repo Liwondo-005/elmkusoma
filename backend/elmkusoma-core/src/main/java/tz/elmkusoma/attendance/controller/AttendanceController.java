@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/attendance")
+@RequestMapping("/v1/attendance")
 @RequiredArgsConstructor
 @Tag(name = "Attendance", description = "Student attendance management")
 public class AttendanceController {

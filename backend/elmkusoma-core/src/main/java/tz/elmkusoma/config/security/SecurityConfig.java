@@ -31,12 +31,12 @@ public class SecurityConfig {
     private final JwtRequestAttributeFilter jwtRequestAttributeFilter;
 
     private static final String[] PUBLIC_URLS = {
-            "/api/v1/auth/**",
-            "/api/v1/public/**",
-            "/api/v1/teachers/**",
-            "/api/v1/parents/**",
-            "/api/v1/certificates/verify/**",
-            "/api/v1/institutions/**",
+            "/v1/auth/**",
+            "/v1/public/**",
+            "/v1/teachers/**",
+            "/v1/parents/**",
+            "/v1/certificates/verify/**",
+            "/v1/institutions/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",

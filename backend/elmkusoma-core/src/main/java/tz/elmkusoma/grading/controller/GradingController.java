@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/grading")
+@RequestMapping("/v1/grading")
 @RequiredArgsConstructor
 @Tag(name = "Grading", description = "Grading scales, boundaries, and report cards")
 public class GradingController {

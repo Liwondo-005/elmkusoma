@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/learning")
+@RequestMapping("/v1/learning")
 @RequiredArgsConstructor
 @Tag(name = "Learning", description = "Lessons, assignments, and progress management")
 public class LearningController {

@@ -18,7 +18,7 @@ import tz.elmkusoma.shared.repository.UserRepository;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/institutions")
+@RequestMapping("/v1/institutions")
 public class InstitutionController {
 
     private final InstitutionService institutionService;
