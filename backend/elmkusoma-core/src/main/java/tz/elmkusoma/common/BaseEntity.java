@@ -19,7 +19,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @SuperBuilder
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners({AuditingEntityListener.class, AuditListener.class})
 public abstract class BaseEntity {
 
     @Id
