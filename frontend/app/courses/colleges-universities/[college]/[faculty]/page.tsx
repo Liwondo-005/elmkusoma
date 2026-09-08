@@ -91,8 +91,6 @@ export default async function FacultyPage({
                 className="group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg"
               >
                 <div className="flex items-start justify-between">
-                  <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  </span>
                   <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                     {programme.degreeType}
                   </span>

@@ -119,29 +119,17 @@ export default async function SubjectDetailPage({
                 </div>
 
                 <div className="mt-6 grid grid-cols-3 gap-4 rounded-xl border border-border p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    </span>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Level</p>
-                      <p className="text-sm font-semibold text-foreground">{subject.level}</p>
-                    </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Level</p>
+                    <p className="text-sm font-semibold text-foreground">{subject.level}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    </span>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Class</p>
-                      <p className="text-sm font-semibold text-foreground">{subject.className}</p>
-                    </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Class</p>
+                    <p className="text-sm font-semibold text-foreground">{subject.className}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    </span>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Enrolled</p>
-                      <p className="text-sm font-semibold text-foreground">{subject.enrolled.toLocaleString()}</p>
-                    </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Enrolled</p>
+                    <p className="text-sm font-semibold text-foreground">{subject.enrolled.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -162,13 +150,9 @@ export default async function SubjectDetailPage({
 
             <aside className="space-y-4">
               <div className="sticky top-20 rounded-2xl border border-border bg-card p-5 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{subject.name}</p>
-                    <p className="text-xs text-muted-foreground">{subject.className}</p>
-                  </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{subject.name}</p>
+                  <p className="text-xs text-muted-foreground">{subject.className}</p>
                 </div>
 
                 <div className="mt-4 space-y-3">
