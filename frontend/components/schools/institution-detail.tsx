@@ -92,14 +92,14 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
                 <span
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                    institution.secondaryLevel === "CO-School"
+institution.secondaryLevel === "Comprehensive"
                       ? "bg-primary/10 text-primary"
                       : institution.secondaryLevel === "A-Level"
                         ? "bg-teal/10 text-teal"
                         : "bg-orange/10 text-orange"
                   )}
                 >
-                  {institution.secondaryLevel === "CO-School"
+                  {institution.secondaryLevel === "Comprehensive"
                     ? "Form I–VI"
                     : institution.secondaryLevel === "A-Level"
                       ? "Form V–VI"

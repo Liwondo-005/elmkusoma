@@ -1752,7 +1752,7 @@ export const primarySchools: PrimarySchool[] = [
   { id: "mbezi-louis", name: "Mbezi Louis Primary School", location: "Mbezi, DSM", students: 310, rating: 4.5, description: "Growing community school focused on Kiswahili-medium instruction." },
 ]
 
-export type SecondaryLevel = "O-Level" | "A-Level" | "CO-School"
+export type SecondaryLevel = "O-Level" | "A-Level" | "Comprehensive"
 
 export type SecondaryForm = {
   id: string
@@ -1800,8 +1800,8 @@ export type SecondarySchool = {
 }
 
 export const secondarySchools: SecondarySchool[] = [
-  { id: "kemebos", name: "Kemebos Secondary School", location: "Moshi, Kilimanjaro", students: 850, rating: 4.8, levels: ["CO-School"], description: "A top-performing school with both O-Level and A-Level programs and excellent NECTA results." },
-  { id: "josiah-girls", name: "Josiah's Girls Secondary School", location: "Dar es Salaam", students: 620, rating: 4.7, levels: ["CO-School"], description: "Empowering girls through quality education from Form I to Form VI." },
+  { id: "kemebos", name: "Kemebos Secondary School", location: "Moshi, Kilimanjaro", students: 850, rating: 4.8, levels: ["Comprehensive"], description: "A top-performing school with both O-Level and A-Level programs and excellent NECTA results." },
+  { id: "josiah-girls", name: "Josiah's Girls Secondary School", location: "Dar es Salaam", students: 620, rating: 4.7, levels: ["Comprehensive"], description: "Empowering girls through quality education from Form I to Form VI." },
   { id: "ihungo", name: "Ihungo Secondary School", location: "Mwanza", students: 340, rating: 4.5, levels: ["A-Level"], description: "Specialized A-Level school offering PCM, PCB and HGL combinations." },
   { id: "kahororo", name: "Kahororo Secondary School", location: "Bukoba, Kagera", students: 280, rating: 4.4, levels: ["O-Level"], description: "An O-Level center with strong results in core subjects." },
   { id: "nyakato", name: "Nyakato High School", location: "Mwanza", students: 310, rating: 4.6, levels: ["A-Level"], description: "Known for excellent A-Level performance in PCM and PCB combinations." },
@@ -1955,7 +1955,7 @@ export type Institution = {
   facilities: string[]
   programs?: string[]
   admissionUrl?: string
-  secondaryLevel?: "O-Level" | "A-Level" | "CO-School"
+  secondaryLevel?: "O-Level" | "A-Level" | "Comprehensive"
 }
 
 export const institutions: Institution[] = [
@@ -2139,7 +2139,7 @@ export const institutions: Institution[] = [
     phone: "+255 27 275 2000",
     email: "info@kemebos.tz",
     facilities: ["Science Labs", "Computer Lab", "Library", "Sports Complex", "Dormitories"],
-    secondaryLevel: "CO-School",
+    secondaryLevel: "Comprehensive",
   },
   {
     id: "josiah-girls",
@@ -2156,7 +2156,7 @@ export const institutions: Institution[] = [
     phone: "+255 22 216 5678",
     email: "info@josiahgirls.tz",
     facilities: ["Modern Classrooms", "ICT Center", "Library", "Boarding Facilities", "Health Clinic"],
-    secondaryLevel: "CO-School",
+    secondaryLevel: "Comprehensive",
   },
   {
     id: "ihungo",
