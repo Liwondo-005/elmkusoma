@@ -11,14 +11,20 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
+import org.springframework.core.Ordered;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-@Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ordered {
+
+    private static final int FILTER_ORDER = Ordered.HIGHEST_PRECEDENCE + 1;
+
+    @Override
+    public int getOrder() {
+        return FILTER_ORDER;
+    }
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private static final String AUTHORIZATION_HEADER = "Authorization";
@@ -38,8 +44,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
             String token = extractToken(request);
+            log.debug("JWT Filter: token extracted = {}", token != null ? "yes (length=" + token.length() + ")" : "null");
             if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
                 String email = jwtTokenProvider.getEmailFromToken(token);
+                log.debug("JWT Filter: email from token = {}", email);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
                 UsernamePasswordAuthenticationToken authentication =
@@ -47,6 +55,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("JWT Filter: authentication set for {}", email);
             }
         } catch (Exception ex) {
             log.error("Could not set user authentication in security context: {}", ex.getMessage());

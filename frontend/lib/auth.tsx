@@ -172,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     clearTokens()
     setAuthCookie(null)
+    localStorage.removeItem("elmkusoma_institution_id")
     setCurrentUser(null)
     setUser(null)
   }, [])

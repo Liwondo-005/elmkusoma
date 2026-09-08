@@ -2,8 +2,8 @@
 
 CREATE TABLE students (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    institution_id UUID NOT NULL,
-    user_id UUID NOT NULL,
+    institution_id UUID NOT NULL REFERENCES institutions(id),
+    user_id UUID NOT NULL REFERENCES users(id),
     admission_number VARCHAR(50) UNIQUE NOT NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
     date_of_birth DATE,

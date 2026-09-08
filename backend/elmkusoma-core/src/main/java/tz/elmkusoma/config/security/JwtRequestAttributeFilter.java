@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
+import org.springframework.core.Ordered;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
@@ -20,8 +20,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
-@Component
-public class JwtRequestAttributeFilter extends OncePerRequestFilter {
+public class JwtRequestAttributeFilter extends OncePerRequestFilter implements Ordered {
+
+    private static final int FILTER_ORDER = Ordered.HIGHEST_PRECEDENCE + 2;
+
+    @Override
+    public int getOrder() {
+        return FILTER_ORDER;
+    }
 
     private static final Logger log = LoggerFactory.getLogger(JwtRequestAttributeFilter.class);
     private static final String AUTHORIZATION_HEADER = "Authorization";

@@ -2,6 +2,7 @@ package tz.elmkusoma.grading.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.math.BigDecimal;
@@ -14,7 +15,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class ReportCard extends BaseEntity {
 
     @Column(name = "student_id", nullable = false)

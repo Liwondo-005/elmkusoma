@@ -192,7 +192,7 @@ public class AuditService {
         List<Object[]> eventTypeCounts = securityEventRepository.countByEventTypeForInstitution(institutionId);
         List<ComplianceReportResponse.EventTypeCount> topEventTypes = eventTypeCounts.stream()
                 .map(row -> ComplianceReportResponse.EventTypeCount.builder()
-                        .eventType((String) row[0])
+                        .eventType(((Enum<?>) row[0]).name())
                         .count((Long) row[1])
                         .build())
                 .collect(Collectors.toList());

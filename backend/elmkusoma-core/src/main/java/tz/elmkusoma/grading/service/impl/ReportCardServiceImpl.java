@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.common.exception.ResourceNotFoundException;
 import tz.elmkusoma.grading.domain.ReportCard;
+import tz.elmkusoma.grading.domain.ReportCard.ReportCardStatus;
 import tz.elmkusoma.grading.dto.request.GenerateReportCardRequest;
 import tz.elmkusoma.grading.dto.response.ReportCardResponse;
 import tz.elmkusoma.grading.repository.ReportCardRepository;
@@ -25,11 +26,12 @@ public class ReportCardServiceImpl implements ReportCardService {
     @Override
     public ReportCardResponse generate(UUID institutionId, GenerateReportCardRequest request) {
         ReportCard reportCard = ReportCard.builder()
+                .institutionId(institutionId)
                 .studentId(request.getStudentId())
                 .termId(request.getTermId())
                 .gradingScaleId(request.getGradingScaleId())
                 .remarks(request.getRemarks())
-                .status(ReportCard.ReportCardStatus.DRAFT)
+                .status(ReportCardStatus.DRAFT)
                 .build();
 
         ReportCard saved = reportCardRepository.save(reportCard);
@@ -72,12 +74,13 @@ public class ReportCardServiceImpl implements ReportCardService {
     }
 
     @Override
+    @Transactional
     public ReportCardResponse updateStatus(UUID id, String status) {
         ReportCard reportCard = reportCardRepository.findById(id)
                 .filter(rc -> !rc.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Report card not found"));
-        reportCard.setStatus(ReportCard.ReportCardStatus.valueOf(status));
-        if (ReportCard.ReportCardStatus.PUBLISHED.name().equals(status)) {
+        reportCard.setStatus(ReportCardStatus.valueOf(status));
+        if (ReportCardStatus.PUBLISHED.name().equals(status)) {
             reportCard.setPublishedAt(LocalDateTime.now());
         }
         ReportCard saved = reportCardRepository.save(reportCard);
@@ -85,10 +88,14 @@ public class ReportCardServiceImpl implements ReportCardService {
     }
 
     @Override
+    @Transactional
     public void calculateClassRanks(UUID termId) {
         List<ReportCard> ranked = reportCardRepository.findRankedByTermId(termId);
+        int total = ranked.size();
         for (int i = 0; i < ranked.size(); i++) {
-            ranked.get(i).setClassRank(i + 1);
+            ReportCard rc = ranked.get(i);
+            rc.setClassRank(i + 1);
+            rc.setTotalStudentsInClass(total);
         }
         reportCardRepository.saveAll(ranked);
     }

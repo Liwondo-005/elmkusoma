@@ -12,6 +12,9 @@ public class AuditListener {
         String currentUser = getCurrentUser();
         entity.setCreatedBy(currentUser);
         entity.setUpdatedBy(currentUser);
+        if (entity.getIsDeleted() == null) {
+            entity.setIsDeleted(false);
+        }
     }
 
     @PreUpdate

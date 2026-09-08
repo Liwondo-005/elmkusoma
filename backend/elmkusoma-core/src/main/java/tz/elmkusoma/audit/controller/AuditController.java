@@ -30,7 +30,7 @@ public class AuditController {
     @GetMapping("/logs")
     @Operation(summary = "Get audit logs by institution or date range")
     public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getAuditLogs(
-            @RequestParam UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @RequestParam(defaultValue = "0") int page,
@@ -58,7 +58,7 @@ public class AuditController {
     @GetMapping("/logs/entity/{entityType}/{entityId}")
     @Operation(summary = "Get audit logs for a specific entity")
     public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getAuditLogsByEntity(
-            @RequestParam UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable String entityType,
             @PathVariable UUID entityId) {
         List<AuditLogResponse> response = auditService.getAuditLogsByEntity(institutionId, entityType, entityId);
@@ -70,7 +70,7 @@ public class AuditController {
     @GetMapping("/activity")
     @Operation(summary = "Get activity feed for institution")
     public ResponseEntity<ApiResponse<List<ActivityFeedResponse>>> getActivityFeed(
-            @RequestParam UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<ActivityFeedResponse> response = auditService.getActivityFeed(institutionId, page, size);
@@ -92,7 +92,7 @@ public class AuditController {
     @GetMapping("/security")
     @Operation(summary = "Get security events for institution")
     public ResponseEntity<ApiResponse<List<SecurityEventResponse>>> getSecurityEvents(
-            @RequestParam UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<SecurityEventResponse> response = auditService.getSecurityEvents(institutionId, page, size);
@@ -102,7 +102,7 @@ public class AuditController {
     @GetMapping("/security/unresolved")
     @Operation(summary = "Get unresolved security events")
     public ResponseEntity<ApiResponse<List<SecurityEventResponse>>> getUnresolvedSecurityEvents(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         List<SecurityEventResponse> response = auditService.getUnresolvedSecurityEvents(institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -121,7 +121,7 @@ public class AuditController {
     @GetMapping("/compliance")
     @Operation(summary = "Get compliance report for institution")
     public ResponseEntity<ApiResponse<ComplianceReportResponse>> getComplianceReport(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         ComplianceReportResponse response = auditService.getComplianceReport(institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

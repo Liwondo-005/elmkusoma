@@ -59,9 +59,6 @@ CREATE TABLE grades (
 CREATE INDEX idx_grades_institution ON grades(institution_id) WHERE is_deleted = false;
 CREATE INDEX idx_grades_level ON grades(education_level) WHERE is_deleted = false;
 
--- Add education_level column to existing subjects table (V7 created the base table)
-ALTER TABLE subjects ADD COLUMN IF NOT EXISTS education_level VARCHAR(50);
-
 -- Class groups (specific class instances per term)
 CREATE TABLE class_groups (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

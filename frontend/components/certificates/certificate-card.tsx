@@ -1,5 +1,14 @@
-import type { Certificate } from "@/lib/data"
 import { Award, BadgeCheck } from "lucide-react"
+
+interface Certificate {
+  id: string
+  studentName: string
+  courseTitle: string
+  instructor: string
+  completionDate: string
+  grade: string
+  skills: string[]
+}
 
 export function CertificateCard({ certificate }: { certificate: Certificate }) {
   return (
