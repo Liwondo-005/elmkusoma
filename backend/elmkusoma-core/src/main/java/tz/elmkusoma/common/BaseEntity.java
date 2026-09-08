@@ -1,5 +1,6 @@
 package tz.elmkusoma.common;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @SuperBuilder
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
+@JsonIgnoreProperties(ignoreUnknown = true, value = {"isDeleted", "createdBy", "updatedBy"})
 public abstract class BaseEntity {
 
     @Id

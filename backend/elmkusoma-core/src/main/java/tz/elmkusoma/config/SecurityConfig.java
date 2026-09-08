@@ -17,6 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import tz.elmkusoma.shared.repository.UserRepository;
 
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -26,6 +27,7 @@ public class SecurityConfig {
             "/api/v1/auth/**",
             "/api/v1/public/**",
             "/api/v1/certificates/verify/**",
+            "/api/v1/institutions/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
@@ -34,9 +36,12 @@ public class SecurityConfig {
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtRequestAttributeFilter jwtRequestAttributeFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          JwtRequestAttributeFilter jwtRequestAttributeFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.jwtRequestAttributeFilter = jwtRequestAttributeFilter;
     }
 
     @Bean
@@ -48,7 +53,8 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtRequestAttributeFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -65,7 +71,14 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService(UserRepository userRepository) {
-        return email -> userRepository.findByEmailAndIsDeletedFalse(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+        return email -> {
+            tz.elmkusoma.shared.domain.User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+            return org.springframework.security.core.userdetails.User.builder()
+                    .username(user.getEmail())
+                    .password(user.getPasswordHash())
+                    .authorities("ROLE_" + user.getRole().name())
+                    .build();
+        };
     }
 }

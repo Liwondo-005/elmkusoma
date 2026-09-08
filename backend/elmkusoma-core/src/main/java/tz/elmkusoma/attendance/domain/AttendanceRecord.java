@@ -2,6 +2,7 @@ package tz.elmkusoma.attendance.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.time.LocalDate;
@@ -14,7 +15,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class AttendanceRecord extends BaseEntity {
 
     @Column(name = "student_id", nullable = false)

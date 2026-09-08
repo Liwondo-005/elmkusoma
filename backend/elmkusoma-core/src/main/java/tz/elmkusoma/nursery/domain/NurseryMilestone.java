@@ -2,6 +2,7 @@ package tz.elmkusoma.nursery.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.time.LocalDate;
@@ -13,7 +14,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class NurseryMilestone extends BaseEntity {
 
     @Column(name = "student_id", nullable = false)
