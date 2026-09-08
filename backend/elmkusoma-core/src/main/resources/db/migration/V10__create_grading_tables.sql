@@ -8,8 +8,8 @@ CREATE TABLE grading_scales (
     name VARCHAR(100) NOT NULL,
     description VARCHAR(500),
     scale_type VARCHAR(50) NOT NULL, -- LETTER, NUMERIC, PERCENTAGE
-    min_value DECIMAL(5,2),
-    max_value DECIMAL(5,2),
+    min_value DOUBLE PRECISION,
+    max_value DOUBLE PRECISION,
     is_default BOOLEAN NOT NULL DEFAULT false,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),

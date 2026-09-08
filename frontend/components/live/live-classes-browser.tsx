@@ -6,9 +6,9 @@ import { LiveClassCard } from "@/components/live-class-card"
 import { cn } from "@/lib/utils"
 
 const tabs = [
-  { id: "upcoming", label: "Upcoming Classes" },
+  { id: "upcoming", label: "Upcoming Classes", count: 0 },
   { id: "live", label: "Live Now", count: 1 },
-  { id: "past", label: "Past Classes" },
+  { id: "past", label: "Past Classes", count: 0 },
 ] as const
 
 type TabId = (typeof tabs)[number]["id"]

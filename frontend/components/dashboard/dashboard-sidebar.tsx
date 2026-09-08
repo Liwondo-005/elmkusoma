@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, Shield, ShieldCheck } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -20,9 +20,15 @@ const nav = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
+const adminNav = [
+  { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
+  { label: "Roles", href: "/dashboard/admin/roles", icon: Shield },
+  { label: "Audit", href: "/dashboard/audit", icon: Shield },
+]
+
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const router = useRouter()
 
   function handleLogout() {
@@ -66,6 +72,34 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
           )
         })}
+
+        {(user?.role === "Admin" || user?.role === "Institution Admin") && (
+          <>
+            <div className="my-2 border-t border-border" />
+            <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Administration
+            </p>
+            {adminNav.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <item.icon className="size-4 shrink-0" />
+                  <span className="flex-1">{item.label}</span>
+                </Link>
+              )
+            })}
+          </>
+        )}
       </nav>
 
       <div className="border-t border-border p-3">

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { authApi, setTokens, clearTokens, getRefreshToken, type UserInfo } from "@/lib/api"
+import { authApi, setTokens, clearTokens, getRefreshToken, setInstitutionId, type UserInfo } from "@/lib/api"
 
 export interface AuthUser {
   id: string
@@ -117,6 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authUser.role = mapRoleToFrontend(response.user.role)
       setTokens(response.accessToken, response.refreshToken)
       setAuthCookie("elmkusoma_access_token", response.accessToken, response.expiresIn)
+      try {
+        const payload = JSON.parse(atob(response.accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+        if (payload.institutionId) setInstitutionId(payload.institutionId)
+      } catch { /* ignore decode errors */ }
       setCurrentUser(authUser)
       setUser(authUser)
       return {}
@@ -150,6 +154,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authUser.role = mapRoleToFrontend(response.user.role)
       setTokens(response.accessToken, response.refreshToken)
       setAuthCookie("elmkusoma_access_token", response.accessToken, response.expiresIn)
+      try {
+        const payload = JSON.parse(atob(response.accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+        if (payload.institutionId) setInstitutionId(payload.institutionId)
+      } catch { /* ignore decode errors */ }
       setCurrentUser(authUser)
       setUser(authUser)
       return {}
@@ -170,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clearTokens()
     clearAuthCookie("elmkusoma_access_token")
+    localStorage.removeItem("elmkusoma_institution_id")
     setCurrentUser(null)
     setUser(null)
   }, [])

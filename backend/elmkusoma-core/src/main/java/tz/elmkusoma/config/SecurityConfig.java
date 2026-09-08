@@ -15,6 +15,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
+import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
 
@@ -35,26 +37,26 @@ public class SecurityConfig {
             "/actuator/info"
     };
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final JwtRequestAttributeFilter jwtRequestAttributeFilter;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          JwtRequestAttributeFilter jwtRequestAttributeFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.jwtRequestAttributeFilter = jwtRequestAttributeFilter;
-    }
-
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                    JwtTokenProvider jwtTokenProvider,
+                                                    UserDetailsService userDetailsService,
+                                                    UserRepository userRepository,
+                                                    InstitutionMembershipRepository membershipRepository,
+                                                    CorsConfigurationSource corsConfigurationSource) throws Exception {
+        JwtAuthenticationFilter jwtAuthFilter = new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService);
+        JwtRequestAttributeFilter jwtReqFilter = new JwtRequestAttributeFilter(jwtTokenProvider, userRepository, membershipRepository);
+
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(jwtRequestAttributeFilter, JwtAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtReqFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

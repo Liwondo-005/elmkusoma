@@ -27,7 +27,7 @@ public class AdministrationController {
     @GetMapping("/dashboard")
     @Operation(summary = "Get institution dashboard aggregations")
     public ResponseEntity<ApiResponse<DashboardResponse>> getDashboard(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         DashboardResponse response = administrationService.getDashboard(institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -37,7 +37,7 @@ public class AdministrationController {
     @GetMapping("/settings")
     @Operation(summary = "List all system settings for institution")
     public ResponseEntity<ApiResponse<List<SettingResponse>>> getSettings(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         List<SettingResponse> response = administrationService.getSettings(institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -45,7 +45,7 @@ public class AdministrationController {
     @GetMapping("/settings/{key}")
     @Operation(summary = "Get a specific setting by key")
     public ResponseEntity<ApiResponse<SettingResponse>> getSettingByKey(
-            @RequestParam UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable String key) {
         SettingResponse response = administrationService.getSettingByKey(institutionId, key);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -55,7 +55,7 @@ public class AdministrationController {
     @Operation(summary = "Create or update a system setting")
     public ResponseEntity<ApiResponse<SettingResponse>> upsertSetting(
             @Valid @RequestBody SettingRequest request,
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         SettingResponse response = administrationService.createOrUpdateSetting(request, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Setting updated successfully", response));
     }
@@ -66,7 +66,7 @@ public class AdministrationController {
     @Operation(summary = "Create a custom role")
     public ResponseEntity<ApiResponse<RoleResponse>> createRole(
             @Valid @RequestBody CreateRoleRequest request,
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         RoleResponse response = administrationService.createRole(request, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Role created successfully", response));
@@ -75,7 +75,7 @@ public class AdministrationController {
     @GetMapping("/roles")
     @Operation(summary = "List all custom roles for institution")
     public ResponseEntity<ApiResponse<List<RoleResponse>>> getRoles(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         List<RoleResponse> response = administrationService.getRoles(institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -84,7 +84,7 @@ public class AdministrationController {
     @Operation(summary = "Get a specific role by ID")
     public ResponseEntity<ApiResponse<RoleResponse>> getRoleById(
             @PathVariable UUID roleId,
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         RoleResponse response = administrationService.getRoleById(roleId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -93,7 +93,7 @@ public class AdministrationController {
     @Operation(summary = "Delete a custom role")
     public ResponseEntity<ApiResponse<Void>> deleteRole(
             @PathVariable UUID roleId,
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         administrationService.deleteRole(roleId, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Role deleted successfully", null));
     }
@@ -105,7 +105,7 @@ public class AdministrationController {
     public ResponseEntity<ApiResponse<ImportJobResponse>> createImportJob(
             @RequestParam String importType,
             @RequestParam String fileName,
-            @RequestParam UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
         ImportJobResponse response = administrationService.createImportJob(importType, fileName, institutionId, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -115,7 +115,7 @@ public class AdministrationController {
     @GetMapping("/users/import")
     @Operation(summary = "List all import jobs for institution")
     public ResponseEntity<ApiResponse<List<ImportJobResponse>>> getImportJobs(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         List<ImportJobResponse> response = administrationService.getImportJobs(institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -124,7 +124,7 @@ public class AdministrationController {
     @Operation(summary = "Get import job by ID")
     public ResponseEntity<ApiResponse<ImportJobResponse>> getImportJobById(
             @PathVariable UUID jobId,
-            @RequestParam UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         ImportJobResponse response = administrationService.getImportJobById(jobId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
