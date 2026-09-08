@@ -20,7 +20,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @SuperBuilder
 @MappedSuperclass
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners({AuditingEntityListener.class, AuditListener.class})
 @JsonIgnoreProperties(ignoreUnknown = true, value = {"isDeleted", "createdBy", "updatedBy"})
 public abstract class BaseEntity {
 

@@ -76,7 +76,7 @@ export function ContactSection() {
                       className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
                     {errors.name && (
-                      <p className="mt-1.5 text-xs text-red-600">{errors.name.message}</p>
+                      <p className="mt-1.5 text-xs text-destructive">{errors.name.message}</p>
                     )}
                   </div>
 
@@ -92,7 +92,7 @@ export function ContactSection() {
                       className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
                     {errors.email && (
-                      <p className="mt-1.5 text-xs text-red-600">{errors.email.message}</p>
+                      <p className="mt-1.5 text-xs text-destructive">{errors.email.message}</p>
                     )}
                   </div>
                 </div>
@@ -109,7 +109,7 @@ export function ContactSection() {
                     className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                   />
                   {errors.subject && (
-                    <p className="mt-1.5 text-xs text-red-600">{errors.subject.message}</p>
+                    <p className="mt-1.5 text-xs text-destructive">{errors.subject.message}</p>
                   )}
                 </div>
 
@@ -125,7 +125,7 @@ export function ContactSection() {
                     className="mt-1.5 w-full rounded-lg border border-border bg-muted/60 px-3.5 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background resize-none"
                   />
                   {errors.message && (
-                    <p className="mt-1.5 text-xs text-red-600">{errors.message.message}</p>
+                    <p className="mt-1.5 text-xs text-destructive">{errors.message.message}</p>
                   )}
                 </div>
 

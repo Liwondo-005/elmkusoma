@@ -64,11 +64,13 @@ export function HeroSection() {
 
             <div className="absolute bottom-5 right-5 flex items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
               <div className="flex -space-x-2">
-                {[0, 1, 2].map((i) => (
+                {["A", "M", "J"].map((initial) => (
                   <span
-                    key={i}
-                    className="flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary/10 text-primary"
-                  />
+                    key={initial}
+                    className="flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-bold text-primary-foreground"
+                  >
+                    {initial}
+                  </span>
                 ))}
               </div>
               <div>
