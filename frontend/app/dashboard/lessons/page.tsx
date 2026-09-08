@@ -22,7 +22,7 @@ export default function LessonsPage() {
     try {
       setLoading(true)
       const [lessonsData, progressData] = await Promise.all([
-        learningApi.getLessonsByClass(user!.id),
+        learningApi.getLessonsByClass(user!.classGroupId || ""),
         learningApi.getStudentProgress(user!.id).catch(() => []),
       ])
       setLessons(lessonsData)

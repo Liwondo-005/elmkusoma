@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { SiteHeader } from "@/components/site-header"
 import { liveClasses } from "@/lib/data"
 import { LiveClassroom } from "@/components/live/live-classroom"
-import { AuthGuard } from "@/components/auth-guard"
+import { AuthGuard } from "@/components/auth/auth-guard"
 
 export function generateStaticParams() {
   return liveClasses.map((c) => ({ id: c.id }))

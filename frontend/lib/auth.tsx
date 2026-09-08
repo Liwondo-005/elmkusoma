@@ -12,6 +12,7 @@ export interface AuthUser {
   firstName?: string
   lastName?: string
   institutionId?: string
+  classGroupId?: string
 }
 
 interface AuthContextValue {
@@ -78,6 +79,7 @@ function mapUserInfo(info: UserInfo): AuthUser {
     firstName: info.firstName,
     lastName: info.lastName,
     institutionId: info.institutionId,
+    classGroupId: info.classGroupId || undefined,
   }
 }
 
