@@ -1,4 +1,4 @@
-export type LiveStatus = "live" | "soon" | "tomorrow" | "scheduled"
+export type LiveStatus = "live" | "soon" | "tomorrow" | "scheduled" | "past"
 
 export type LiveClass = {
   id: string

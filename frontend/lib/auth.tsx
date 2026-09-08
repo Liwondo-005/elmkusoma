@@ -49,8 +49,10 @@ function getCurrentUser(): AuthUser | null {
 function setCurrentUser(user: AuthUser | null) {
   if (user) {
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
+    document.cookie = `${CURRENT_USER_KEY}=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Lax`
   } else {
     localStorage.removeItem(CURRENT_USER_KEY)
+    document.cookie = `${CURRENT_USER_KEY}=; path=/; max-age=0`
   }
 }
 
