@@ -2,58 +2,58 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
-
-export interface AuthUser {
-  id: string
-  name: string
-  email: string
-  role: string
-}
+import { authApi, type AuthUser } from "@/lib/api"
 
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<{ error?: string }>
-  register: (data: { name: string; email: string; password: string; role?: string; educationLevel?: string }) => Promise<{ error?: string }>
+  register: (data: {
+    firstName: string
+    middleName?: string
+    lastName: string
+    email: string
+    password: string
+    phone?: string
+    role?: string
+  }) => Promise<{ error?: string }>
   logout: () => void
+  token: string | null
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const MOCK_USERS_KEY = "elmkusoma_users"
-const CURRENT_USER_KEY = "elmkusoma_current_user"
+const TOKEN_KEY = "elmkusoma_access_token"
+const USER_KEY = "elmkusoma_current_user"
+const INSTITUTION_KEY = "elmkusoma_institution_id"
 
-function getStoredUsers(): Array<AuthUser & { password: string }> {
-  if (typeof window === "undefined") return []
-  try {
-    return JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || "[]")
-  } catch {
-    return []
-  }
+function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(TOKEN_KEY)
 }
 
-function setStoredUsers(users: Array<AuthUser & { password: string }>) {
-  localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users))
-}
-
-function getCurrentUser(): AuthUser | null {
+function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null
   try {
-    const raw = localStorage.getItem(CURRENT_USER_KEY)
+    const raw = localStorage.getItem(USER_KEY)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
 }
 
-function setCurrentUser(user: AuthUser | null) {
-  if (user) {
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
-    document.cookie = `${CURRENT_USER_KEY}=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Lax`
-  } else {
-    localStorage.removeItem(CURRENT_USER_KEY)
-    document.cookie = `${CURRENT_USER_KEY}=; path=/; max-age=0`
-  }
+function setStoredAuth(token: string, user: AuthUser) {
+  localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(USER_KEY, JSON.stringify(user))
+  localStorage.setItem(INSTITUTION_KEY, user.institutionId)
+  document.cookie = `elmkusoma_current_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Lax`
+}
+
+function clearStoredAuth() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+  localStorage.removeItem(INSTITUTION_KEY)
+  document.cookie = "elmkusoma_current_user=; path=/; max-age=0"
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -61,50 +61,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const stored = getCurrentUser()
-    setUser(stored)
+    const token = getStoredToken()
+    const stored = getStoredUser()
+    if (token && stored) {
+      setUser(stored)
+    }
     setLoading(false)
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const users = getStoredUsers()
-    const found = users.find((u) => u.email === email && u.password === password)
-    if (!found) {
-      return { error: "Invalid email or password" }
+    try {
+      const res = await authApi.login({ email, password })
+      setStoredAuth(res.accessToken, res.user)
+      setUser(res.user)
+      return {}
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Login failed"
+      return { error: message }
     }
-    const { password: _, ...authUser } = found
-    setCurrentUser(authUser)
-    setUser(authUser)
-    return {}
   }, [])
 
-  const register = useCallback(async (data: { name: string; email: string; password: string; role?: string; educationLevel?: string }) => {
-    const users = getStoredUsers()
-    if (users.some((u) => u.email === data.email)) {
-      return { error: "An account with this email already exists" }
+  const register = useCallback(async (data: {
+    firstName: string
+    middleName?: string
+    lastName: string
+    email: string
+    password: string
+    phone?: string
+    role?: string
+  }) => {
+    try {
+      const res = await authApi.register({
+        ...data,
+        role: data.role || "STUDENT",
+      })
+      setStoredAuth(res.accessToken, res.user)
+      setUser(res.user)
+      return {}
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Registration failed"
+      return { error: message }
     }
-    const newUser: AuthUser & { password: string } = {
-      id: crypto.randomUUID(),
-      name: data.name,
-      email: data.email,
-      role: data.role || "Student",
-      password: data.password,
-    }
-    users.push(newUser)
-    setStoredUsers(users)
-    const { password: _, ...authUser } = newUser
-    setCurrentUser(authUser)
-    setUser(authUser)
-    return {}
   }, [])
 
   const logout = useCallback(() => {
-    setCurrentUser(null)
+    clearStoredAuth()
     setUser(null)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, token: getStoredToken() }}>
       {children}
     </AuthContext.Provider>
   )

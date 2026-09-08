@@ -68,6 +68,11 @@ management:
     health:
       show-details: when-authorized
 
+jwt:
+  secret: elmkusoma-super-secret-key-that-is-at-least-32-chars-long-for-hs256!!
+  expiration: 86400000
+  refresh-expiration: 604800000
+
 logging:
   level:
     tz.elmkusoma: DEBUG
