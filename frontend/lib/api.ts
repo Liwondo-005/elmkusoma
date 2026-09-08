@@ -92,9 +92,10 @@ export interface UserInfo {
   email: string
   firstName: string
   lastName: string
-  fullName: string
+  fullName?: string
   role: string
   institutionId: string
+  classGroupId: string | null
 }
 
 export interface AuthResponse {

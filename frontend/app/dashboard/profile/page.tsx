@@ -58,7 +58,7 @@ export default function DashboardProfilePage() {
             </div>
             <div>
               <label htmlFor="level" className="block text-sm font-medium text-foreground">Education Level</label>
-              <select id="level" defaultValue={user?.educationLevel || ""} className="mt-1.5 h-11 w-full appearance-none rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none focus:border-ring focus:bg-background">
+              <select id="level" defaultValue="" className="mt-1.5 h-11 w-full appearance-none rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none focus:border-ring focus:bg-background">
                 <option value="">Select level</option>
                 <option>Nursery School</option>
                 <option>Primary School</option>

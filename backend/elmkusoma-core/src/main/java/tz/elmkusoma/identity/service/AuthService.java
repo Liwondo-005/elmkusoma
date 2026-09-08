@@ -12,6 +12,8 @@ public interface AuthService {
 
     AuthResponse refreshToken(RefreshTokenRequest request);
 
+    AuthResponse.UserInfo getCurrentUser(String email);
+
     void forgotPassword(ForgotPasswordRequest request);
 
     void resetPassword(ResetPasswordRequest request);

@@ -22,6 +22,9 @@ import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
 import tz.elmkusoma.identity.service.AuthService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.student.domain.StudentClassAssignment;
+import tz.elmkusoma.student.repository.StudentClassAssignmentRepository;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -38,6 +41,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final StudentRepository studentRepository;
+    private final StudentClassAssignmentRepository studentClassAssignmentRepository;
 
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
@@ -47,13 +52,17 @@ public class AuthServiceImpl implements AuthService {
                            PasswordEncoder passwordEncoder,
                            JwtTokenProvider jwtTokenProvider,
                            PasswordResetTokenRepository passwordResetTokenRepository,
-                           EmailVerificationTokenRepository emailVerificationTokenRepository) {
+                           EmailVerificationTokenRepository emailVerificationTokenRepository,
+                           StudentRepository studentRepository,
+                           StudentClassAssignmentRepository studentClassAssignmentRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
+        this.studentRepository = studentRepository;
+        this.studentClassAssignmentRepository = studentClassAssignmentRepository;
     }
 
     @Override
@@ -123,6 +132,13 @@ public class AuthServiceImpl implements AuthService {
                 .expiresIn(accessTokenExpirationMs / 1000)
                 .user(buildUserInfo(user))
                 .build();
+    }
+
+    @Override
+    public AuthResponse.UserInfo getCurrentUser(String email) {
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        return buildUserInfo(user);
     }
 
     @Override
@@ -212,6 +228,18 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthResponse.UserInfo buildUserInfo(User user) {
+        String classGroupId = null;
+        var studentOpt = studentRepository.findByUserIdAndIsDeletedFalse(user.getId());
+        if (studentOpt.isPresent()) {
+            var assignments = studentClassAssignmentRepository
+                    .findByStudentIdAndIsDeletedFalse(studentOpt.get().getId());
+            classGroupId = assignments.stream()
+                    .filter(StudentClassAssignment::getIsActive)
+                    .findFirst()
+                    .map(a -> a.getClassGroupId().toString())
+                    .orElse(null);
+        }
+
         return AuthResponse.UserInfo.builder()
                 .id(user.getId().toString())
                 .email(user.getEmail())
@@ -219,6 +247,8 @@ public class AuthServiceImpl implements AuthService {
                 .lastName(user.getLastName())
                 .role(user.getRole().name())
                 .emailVerified(user.getIsEmailVerified())
+                .institutionId(user.getInstitutionId() != null ? user.getInstitutionId().toString() : null)
+                .classGroupId(classGroupId)
                 .build();
     }
 }

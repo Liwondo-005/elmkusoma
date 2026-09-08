@@ -34,7 +34,7 @@ export default function AssessmentDetailPage() {
   async function loadAssessment() {
     try {
       setState("loading")
-      const assessments = await assessmentApi.getByClass(user!.id)
+      const assessments = await assessmentApi.getByClass(user!.classGroupId || "")
       const found = assessments.find((a) => a.id === params.id)
       if (!found) {
         setState("ready")
