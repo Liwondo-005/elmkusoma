@@ -2,7 +2,17 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { authApi, type AuthUser } from "@/lib/api"
+import { authApi, setTokens, clearTokens, type UserInfo } from "@/lib/api"
+
+export interface AuthUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  firstName?: string
+  lastName?: string
+  institutionId?: string
+}
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -15,45 +25,76 @@ interface AuthContextValue {
     email: string
     password: string
     phone?: string
-    role?: string
+    role: string
   }) => Promise<{ error?: string }>
-  logout: () => void
+  logout: () => Promise<void>
   token: string | null
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+const CURRENT_USER_KEY = "elmkusoma_current_user"
 const TOKEN_KEY = "elmkusoma_access_token"
-const USER_KEY = "elmkusoma_current_user"
-const INSTITUTION_KEY = "elmkusoma_institution_id"
-
-function getStoredToken(): string | null {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem(TOKEN_KEY)
-}
 
 function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null
   try {
-    const raw = localStorage.getItem(USER_KEY)
+    const raw = localStorage.getItem(CURRENT_USER_KEY)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
 }
 
-function setStoredAuth(token: string, user: AuthUser) {
-  localStorage.setItem(TOKEN_KEY, token)
-  localStorage.setItem(USER_KEY, JSON.stringify(user))
-  localStorage.setItem(INSTITUTION_KEY, user.institutionId)
-  document.cookie = `elmkusoma_current_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Lax`
+function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(TOKEN_KEY)
 }
 
-function clearStoredAuth() {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
-  localStorage.removeItem(INSTITUTION_KEY)
-  document.cookie = "elmkusoma_current_user=; path=/; max-age=0"
+function setCurrentUser(user: AuthUser | null) {
+  if (user) {
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
+    document.cookie = `elmkusoma_current_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Lax`
+  } else {
+    localStorage.removeItem(CURRENT_USER_KEY)
+    document.cookie = "elmkusoma_current_user=; path=/; max-age=0"
+  }
+}
+
+function mapUserInfo(info: UserInfo): AuthUser {
+  return {
+    id: info.id,
+    name: info.fullName || [info.firstName, info.lastName].filter(Boolean).join(" "),
+    email: info.email,
+    role: info.role,
+    firstName: info.firstName,
+    lastName: info.lastName,
+    institutionId: info.institutionId,
+  }
+}
+
+function mapRoleToFrontend(backendRole: string): string {
+  const roleMap: Record<string, string> = {
+    STUDENT: "Student",
+    TEACHER: "Teacher",
+    PARENT: "Parent",
+    ADMIN: "Admin",
+    INSTITUTION_ADMIN: "Institution Admin",
+  }
+  return roleMap[backendRole] || backendRole
+}
+
+function mapRoleToBackend(frontendRole: string): string {
+  const roleMap: Record<string, string> = {
+    Student: "STUDENT",
+    Teacher: "TEACHER",
+    Lecturer: "TEACHER",
+    Facilitator: "TEACHER",
+    Parent: "PARENT",
+    Admin: "ADMIN",
+    "Institution Admin": "INSTITUTION_ADMIN",
+  }
+  return roleMap[frontendRole] || "STUDENT"
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -71,9 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const res = await authApi.login({ email, password })
-      setStoredAuth(res.accessToken, res.user)
-      setUser(res.user)
+      const response = await authApi.login({ email, password })
+      const authUser = mapUserInfo(response.user)
+      authUser.role = mapRoleToFrontend(response.user.role)
+      setTokens(response.accessToken, response.refreshToken)
+      setCurrentUser(authUser)
+      setUser(authUser)
       return {}
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Login failed"
@@ -88,15 +132,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string
     password: string
     phone?: string
-    role?: string
+    role: string
   }) => {
     try {
-      const res = await authApi.register({
-        ...data,
-        role: data.role || "STUDENT",
+      const backendRole = mapRoleToBackend(data.role)
+      const response = await authApi.register({
+        firstName: data.firstName,
+        middleName: data.middleName,
+        lastName: data.lastName,
+        email: data.email,
+        password: data.password,
+        phone: data.phone,
+        role: backendRole,
       })
-      setStoredAuth(res.accessToken, res.user)
-      setUser(res.user)
+      const authUser = mapUserInfo(response.user)
+      authUser.role = mapRoleToFrontend(response.user.role)
+      setTokens(response.accessToken, response.refreshToken)
+      setCurrentUser(authUser)
+      setUser(authUser)
       return {}
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Registration failed"
@@ -104,8 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const logout = useCallback(() => {
-    clearStoredAuth()
+  const logout = useCallback(async () => {
+    clearTokens()
+    setCurrentUser(null)
     setUser(null)
   }, [])
 

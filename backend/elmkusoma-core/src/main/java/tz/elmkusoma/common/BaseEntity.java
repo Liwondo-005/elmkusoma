@@ -2,7 +2,9 @@ package tz.elmkusoma.common;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -14,6 +16,8 @@ import java.util.UUID;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@SuperBuilder
 @MappedSuperclass
 @EntityListeners({AuditingEntityListener.class, AuditListener.class})
 public abstract class BaseEntity {
@@ -22,7 +26,7 @@ public abstract class BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "institution_id", nullable = false)
+    @Column(name = "institution_id")
     private UUID institutionId;
 
     @CreatedDate
