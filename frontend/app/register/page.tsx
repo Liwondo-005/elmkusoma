@@ -10,14 +10,14 @@ import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
 import { Eye, EyeOff, CheckCircle } from "lucide-react"
+import { Recaptcha } from "@/components/recaptcha"
+
+const RECAPTCHA_SITE_KEY = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
 
 const roles = [
   "Student",
   "Teacher",
-  "Lecturer",
-  "Facilitator",
   "Parent",
-  "Other",
 ]
 
 const registerSchema = z
@@ -34,6 +34,9 @@ const registerSchema = z
       .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
       .regex(/[0-9]/, "Password must contain at least one number"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
+    agreeToTerms: z.boolean().refine((val) => val === true, {
+      message: "You must agree to the Terms of Service and Privacy Policy",
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -47,6 +50,7 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
   const [registered, setRegistered] = useState(false)
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
   const { register: registerUser } = useAuth()
   const router = useRouter()
 
@@ -60,9 +64,14 @@ export default function RegisterPage() {
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
-    const fullName = [values.firstName, values.middleName, values.lastName].filter(Boolean).join(" ")
+    if (!recaptchaToken) {
+      setServerError("Please complete the human verification.")
+      return
+    }
     const result = await registerUser({
-      name: fullName,
+      firstName: values.firstName,
+      middleName: values.middleName || undefined,
+      lastName: values.lastName,
       email: values.email,
       password: values.password,
       role: values.role,
@@ -278,6 +287,38 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {/* Human Verification */}
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <Recaptcha
+                  siteKey={RECAPTCHA_SITE_KEY}
+                  onVerify={(token) => setRecaptchaToken(token)}
+                  onExpire={() => setRecaptchaToken(null)}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    {...register("agreeToTerms")}
+                    className="mt-0.5 size-4 rounded border-border accent-primary"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    I agree to the{" "}
+                    <Link href="/terms" className="font-medium text-primary hover:underline">
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="font-medium text-primary hover:underline">
+                      Privacy Policy
+                    </Link>
+                  </span>
+                </label>
+                {errors.agreeToTerms && (
+                  <p className="text-xs text-destructive">{errors.agreeToTerms.message}</p>
+                )}
+              </div>
+
               <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
                 {isSubmitting ? "Creating account..." : "Create Account"}
               </Button>
@@ -290,18 +331,6 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
-
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            By creating an account, you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-foreground">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="underline hover:text-foreground">
-              Privacy Policy
-            </Link>
-            .
-          </p>
         </div>
       </main>
     </div>
