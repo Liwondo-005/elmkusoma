@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
 
 export interface ApiError {
   success: false
@@ -22,6 +22,11 @@ function getToken(): string | null {
   return localStorage.getItem("elmkusoma_access_token")
 }
 
+function getInstitutionId(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem("elmkusoma_institution_id")
+}
+
 export function setTokens(accessToken: string, refreshToken: string) {
   localStorage.setItem("elmkusoma_access_token", accessToken)
   localStorage.setItem("elmkusoma_refresh_token", refreshToken)
@@ -30,6 +35,8 @@ export function setTokens(accessToken: string, refreshToken: string) {
 export function clearTokens() {
   localStorage.removeItem("elmkusoma_access_token")
   localStorage.removeItem("elmkusoma_refresh_token")
+  localStorage.removeItem("elmkusoma_current_user")
+  localStorage.removeItem("elmkusoma_institution_id")
 }
 
 export function getRefreshToken(): string | null {
@@ -39,6 +46,7 @@ export function getRefreshToken(): string | null {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
+  const institutionId = getInstitutionId()
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((options.headers as Record<string, string>) || {}),
@@ -46,6 +54,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`
+  }
+
+  if (institutionId) {
+    headers["X-Institution-Id"] = institutionId
   }
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -75,21 +87,22 @@ export class ApiRequestError extends Error {
   }
 }
 
+export interface UserInfo {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  fullName: string
+  role: string
+  institutionId: string
+}
+
 export interface AuthResponse {
   accessToken: string
   refreshToken: string
   tokenType: string
   expiresIn: number
   user: UserInfo
-}
-
-export interface UserInfo {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  role: string
-  emailVerified: boolean
 }
 
 export interface RegisterPayload {
@@ -107,19 +120,6 @@ export interface LoginPayload {
   password: string
 }
 
-export interface ForgotPasswordPayload {
-  email: string
-}
-
-export interface ResetPasswordPayload {
-  token: string
-  newPassword: string
-}
-
-export interface VerifyEmailPayload {
-  token: string
-}
-
 export const authApi = {
   register: (data: RegisterPayload) =>
     request<AuthResponse>("/v1/auth/register", {
@@ -133,51 +133,192 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
-  refresh: (refreshToken: string) =>
-    request<AuthResponse>("/v1/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({ refreshToken }),
-    }),
-
-  forgotPassword: (data: ForgotPasswordPayload) =>
-    request<void>("/v1/auth/forgot-password", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  resetPassword: (data: ResetPasswordPayload) =>
-    request<void>("/v1/auth/reset-password", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  verifyEmail: (data: VerifyEmailPayload) =>
-    request<void>("/v1/auth/verify-email", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  logout: (refreshToken: string) =>
-    request<void>("/v1/auth/logout", {
-      method: "POST",
-      body: JSON.stringify({ refreshToken }),
-    }),
+  me: () => request<UserInfo>("/v1/auth/me"),
 }
 
-export interface InstitutionResponse {
+// Enrollment API
+export interface Enrollment {
   id: string
-  name: string
-  description: string | null
-  type: string
-  status: string
-  logoUrl: string | null
-  website: string | null
-  email: string | null
-  phone: string | null
-  address: string | null
-  city: string | null
-  country: string | null
+  studentId: string
+  classGroupId: string
+  academicYearId: string
+  status: "PENDING" | "ENROLLED" | "WITHDRAWN" | "COMPLETED"
+  enrolledAt: string
+  withdrawnAt?: string
+  completedAt?: string
   createdAt: string
+}
+
+export const enrollmentApi = {
+  list: (page = 0, size = 20) =>
+    request<PageResponse<Enrollment>>(`/v1/enrollments?page=${page}&size=${size}`),
+  byStudent: (studentId: string) =>
+    request<Enrollment[]>(`/v1/enrollments/student/${studentId}`),
+  byClass: (classGroupId: string) =>
+    request<Enrollment[]>(`/v1/enrollments/class/${classGroupId}`),
+  enroll: (data: { studentId: string; classGroupId: string; academicYearId: string }) =>
+    request<Enrollment>("/v1/enrollments", { method: "POST", body: JSON.stringify(data) }),
+  updateStatus: (id: string, status: string) =>
+    request<Enrollment>(`/v1/enrollments/${id}/status?status=${status}`, { method: "PUT" }),
+  transfer: (id: string, data: { toClassGroupId: string; reason?: string }) =>
+    request<{ id: string }>(`/v1/enrollments/${id}/transfer`, { method: "POST", body: JSON.stringify(data) }),
+}
+
+// Learning API
+export interface Lesson {
+  id: string
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  contentText?: string
+  videoUrl?: string
+  fileAttachments?: string
+  sortOrder: number
+  isPublished: boolean
+  createdAt: string
+}
+
+export interface LessonProgress {
+  id: string
+  lessonId: string
+  studentId: string
+  completionPercentage: number
+  startedAt?: string
+  completedAt?: string
+  createdAt: string
+}
+
+export interface Assignment {
+  id: string
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  dueDate?: string
+  totalMarks: number
+  attachments?: string
+  createdAt: string
+}
+
+export interface AssignmentSubmission {
+  id: string
+  assignmentId: string
+  studentId: string
+  fileUrl?: string
+  submittedAt: string
+  grade?: number
+  feedback?: string
+  gradedAt?: string
+  createdAt: string
+}
+
+export const learningApi = {
+  getLessons: (subjectId: string, classGroupId: string) =>
+    request<Lesson[]>(`/v1/learning/lessons/subject/${subjectId}/class/${classGroupId}`),
+  getLessonsByClass: (classGroupId: string) =>
+    request<Lesson[]>(`/v1/learning/lessons/class/${classGroupId}`),
+  createLesson: (data: Partial<Lesson>) =>
+    request<Lesson>("/v1/learning/lessons", { method: "POST", body: JSON.stringify(data) }),
+  updateProgress: (lessonId: string, completionPercentage: number) =>
+    request<LessonProgress>("/v1/learning/progress", { method: "POST", body: JSON.stringify({ lessonId, completionPercentage }) }),
+  getStudentProgress: (studentId: string) =>
+    request<LessonProgress[]>(`/v1/learning/progress/student/${studentId}`),
+  getAssignments: (classGroupId: string) =>
+    request<Assignment[]>(`/v1/learning/assignments/class/${classGroupId}`),
+  createAssignment: (data: Partial<Assignment>) =>
+    request<Assignment>("/v1/learning/assignments", { method: "POST", body: JSON.stringify(data) }),
+  submitAssignment: (assignmentId: string) =>
+    request<AssignmentSubmission>(`/v1/learning/assignments/${assignmentId}/submit`, { method: "POST" }),
+  getSubmissions: (assignmentId: string) =>
+    request<AssignmentSubmission[]>(`/v1/learning/assignments/${assignmentId}/submissions`),
+}
+
+// Assessment API
+export interface Assessment {
+  id: string
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  timeLimitMinutes?: number
+  totalMarks: number
+  passMarks: number
+  isPublished: boolean
+  startsAt?: string
+  endsAt?: string
+  createdAt: string
+}
+
+export interface Question {
+  id: string
+  assessmentId: string
+  questionType: "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY"
+  questionText: string
+  marks: number
+  sortOrder: number
+  options: Option[]
+}
+
+export interface Option {
+  id: string
+  questionId: string
+  optionText: string
+  isCorrect: boolean
+  sortOrder: number
+}
+
+export interface Attempt {
+  id: string
+  assessmentId: string
+  studentId: string
+  startedAt: string
+  submittedAt?: string
+  isCompleted: boolean
+  answers?: Answer[]
+  result?: AssessmentResult
+}
+
+export interface Answer {
+  id: string
+  attemptId: string
+  questionId: string
+  selectedOptionId?: string
+  textAnswer?: string
+  isCorrect?: boolean
+  marksObtained?: number
+}
+
+export interface AssessmentResult {
+  id: string
+  assessmentId: string
+  studentId: string
+  attemptId: string
+  totalScore: number
+  isPassed: boolean
+  gradedAt?: string
+  feedback?: string
+}
+
+export const assessmentApi = {
+  getByClass: (classGroupId: string) =>
+    request<Assessment[]>(`/v1/assessments/class/${classGroupId}`),
+  getBySubject: (subjectId: string) =>
+    request<Assessment[]>(`/v1/assessments/subject/${subjectId}`),
+  create: (data: Partial<Assessment>) =>
+    request<Assessment>("/v1/assessments", { method: "POST", body: JSON.stringify(data) }),
+  getQuestions: (assessmentId: string) =>
+    request<Question[]>(`/v1/assessments/${assessmentId}/questions`),
+  addQuestion: (assessmentId: string, data: Partial<Question>) =>
+    request<Question>(`/v1/assessments/${assessmentId}/questions`, { method: "POST", body: JSON.stringify(data) }),
+  startAttempt: (assessmentId: string) =>
+    request<Attempt>(`/v1/assessments/${assessmentId}/start`, { method: "POST" }),
+  submitAttempt: (attemptId: string, answers: Array<{ questionId: string; selectedOptionId?: string; textAnswer?: string }>) =>
+    request<Attempt>(`/v1/assessments/attempts/${attemptId}/submit`, { method: "POST", body: JSON.stringify({ answers }) }),
+  getResults: (assessmentId: string) =>
+    request<AssessmentResult[]>(`/v1/assessments/${assessmentId}/results`),
+  getResult: (assessmentId: string, studentId: string) =>
+    request<AssessmentResult>(`/v1/assessments/${assessmentId}/results/student/${studentId}`),
 }
 
 export interface PageResponse<T> {
@@ -188,18 +329,4 @@ export interface PageResponse<T> {
   totalPages: number
   first: boolean
   last: boolean
-}
-
-export const institutionApi = {
-  list: (page = 0, size = 20) =>
-    request<PageResponse<InstitutionResponse>>(`/v1/institutions?page=${page}&size=${size}`),
-
-  get: (id: string) =>
-    request<InstitutionResponse>(`/v1/institutions/${id}`),
-
-  create: (data: { name: string; type: string; description?: string; logoUrl?: string; website?: string; email?: string; phone?: string; address?: string; city?: string; country?: string }) =>
-    request<InstitutionResponse>("/v1/institutions", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
 }

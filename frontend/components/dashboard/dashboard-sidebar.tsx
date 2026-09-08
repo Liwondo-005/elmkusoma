@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -10,8 +10,11 @@ import { useAuth } from "@/lib/auth"
 const nav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Enrollments", href: "/dashboard/enrollment", icon: ClipboardList },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
   { label: "Live Classes", href: "/live-classes", icon: Video },
-  { label: "Assignments", href: "/dashboard/assignments", icon: FileText, badge: 3 },
   { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
   { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, badge: 2 },
   { label: "Certificates", href: "/dashboard/certificates", icon: Award },

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { authApi, setTokens, clearTokens, getRefreshToken, type UserInfo } from "@/lib/api"
+import { authApi, setTokens, clearTokens, type UserInfo } from "@/lib/api"
 
 export interface AuthUser {
   id: string
@@ -11,7 +11,7 @@ export interface AuthUser {
   role: string
   firstName?: string
   lastName?: string
-  emailVerified?: boolean
+  institutionId?: string
 }
 
 interface AuthContextValue {
@@ -28,13 +28,15 @@ interface AuthContextValue {
     role: string
   }) => Promise<{ error?: string }>
   logout: () => Promise<void>
+  token: string | null
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 const CURRENT_USER_KEY = "elmkusoma_current_user"
+const TOKEN_KEY = "elmkusoma_access_token"
 
-function getCurrentUser(): AuthUser | null {
+function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null
   try {
     const raw = localStorage.getItem(CURRENT_USER_KEY)
@@ -44,33 +46,30 @@ function getCurrentUser(): AuthUser | null {
   }
 }
 
+function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(TOKEN_KEY)
+}
+
 function setCurrentUser(user: AuthUser | null) {
   if (user) {
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
-    document.cookie = `${CURRENT_USER_KEY}=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Lax`
+    document.cookie = `elmkusoma_current_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800; SameSite=Lax`
   } else {
     localStorage.removeItem(CURRENT_USER_KEY)
-    document.cookie = `${CURRENT_USER_KEY}=; path=/; max-age=0`
+    document.cookie = "elmkusoma_current_user=; path=/; max-age=0"
   }
-}
-
-function setAuthCookie(name: string, value: string, maxAge: number) {
-  document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`
-}
-
-function clearAuthCookie(name: string) {
-  document.cookie = `${name}=; path=/; max-age=0`
 }
 
 function mapUserInfo(info: UserInfo): AuthUser {
   return {
     id: info.id,
-    name: [info.firstName, info.lastName].filter(Boolean).join(" "),
+    name: info.fullName || [info.firstName, info.lastName].filter(Boolean).join(" "),
     email: info.email,
     role: info.role,
     firstName: info.firstName,
     lastName: info.lastName,
-    emailVerified: info.emailVerified,
+    institutionId: info.institutionId,
   }
 }
 
@@ -103,8 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const stored = getCurrentUser()
-    if (stored) {
+    const token = getStoredToken()
+    const stored = getStoredUser()
+    if (token && stored) {
       setUser(stored)
     }
     setLoading(false)
@@ -116,7 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)
       setTokens(response.accessToken, response.refreshToken)
-      setAuthCookie("elmkusoma_access_token", response.accessToken, response.expiresIn)
       setCurrentUser(authUser)
       setUser(authUser)
       return {}
@@ -149,7 +148,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)
       setTokens(response.accessToken, response.refreshToken)
-      setAuthCookie("elmkusoma_access_token", response.accessToken, response.expiresIn)
       setCurrentUser(authUser)
       setUser(authUser)
       return {}
@@ -160,22 +158,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    const refreshToken = getRefreshToken()
-    if (refreshToken) {
-      try {
-        await authApi.logout(refreshToken)
-      } catch {
-        // ignore logout errors
-      }
-    }
     clearTokens()
-    clearAuthCookie("elmkusoma_access_token")
     setCurrentUser(null)
     setUser(null)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, token: getStoredToken() }}>
       {children}
     </AuthContext.Provider>
   )
