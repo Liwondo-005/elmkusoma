@@ -5,6 +5,9 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
+import java.math.BigDecimal;
+import java.util.UUID;
+
 @Entity
 @Table(name = "grading_scales")
 @Getter
@@ -13,6 +16,9 @@ import tz.elmkusoma.common.BaseEntity;
 @AllArgsConstructor
 @SuperBuilder
 public class GradingScale extends BaseEntity {
+
+    @Column(name = "institution_id", nullable = false)
+    private UUID institutionId;
 
     @Column(name = "name", nullable = false)
     private String name;
@@ -25,10 +31,10 @@ public class GradingScale extends BaseEntity {
     private ScaleType scaleType;
 
     @Column(name = "min_value")
-    private Double minValue;
+    private BigDecimal minValue;
 
     @Column(name = "max_value")
-    private Double maxValue;
+    private BigDecimal maxValue;
 
     @Column(name = "is_default", nullable = false)
     private Boolean isDefault = false;

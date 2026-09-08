@@ -18,6 +18,9 @@ import java.util.UUID;
 @SuperBuilder
 public class AttendanceRecord extends BaseEntity {
 
+    @Column(name = "institution_id", nullable = false)
+    private UUID institutionId;
+
     @Column(name = "student_id", nullable = false)
     private UUID studentId;
 

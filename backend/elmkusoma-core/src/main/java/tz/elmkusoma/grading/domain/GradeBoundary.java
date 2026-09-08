@@ -6,6 +6,7 @@ import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Entity
 @Table(name = "grade_boundaries")
@@ -17,7 +18,10 @@ import java.math.BigDecimal;
 public class GradeBoundary extends BaseEntity {
 
     @Column(name = "grading_scale_id", nullable = false)
-    private java.util.UUID gradingScaleId;
+    private UUID gradingScaleId;
+
+    @Column(name = "institution_id", nullable = false)
+    private UUID institutionId;
 
     @Column(name = "grade_label", nullable = false)
     private String gradeLabel;

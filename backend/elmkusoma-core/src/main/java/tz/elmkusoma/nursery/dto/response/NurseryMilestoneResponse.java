@@ -22,6 +22,7 @@ public class NurseryMilestoneResponse {
     private Integer expectedAgeMonths;
     private LocalDate achievedDate;
     private String status;
+    private UUID observedBy;
     private String observedByName;
     private String evidenceNotes;
 }

@@ -20,6 +20,9 @@ public class NurseryActivity extends BaseEntity {
     @Column(name = "class_group_id", nullable = false)
     private UUID classGroupId;
 
+    @Column(name = "institution_id", nullable = false)
+    private UUID institutionId;
+
     @Column(name = "activity_name", nullable = false)
     private String activityName;
 
