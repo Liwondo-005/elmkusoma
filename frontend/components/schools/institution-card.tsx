@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { MapPin, Users, Star, ArrowRight, CheckCircle, Building2 } from "lucide-react"
+import { MapPin, Users, Star, CheckCircle, Building2 } from "lucide-react"
 import { Institution } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -75,12 +75,11 @@ export function InstitutionCard({ institution, detailHref }: Props) {
           <Link
             href={detailHref}
             className={cn(
-              buttonVariants({ variant: "outline" }),
-              "h-10 w-full gap-2 border-primary/20 text-primary transition-all duration-200 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+              buttonVariants(),
+              "h-10 w-full gap-2 transition-all duration-200 hover:bg-primary/90"
             )}
           >
             View Details
-            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
       </div>

@@ -67,8 +67,8 @@ export function NurserySchools() {
                   <Link
                     href={`/schools/nursery/${institution.id}`}
                     className={cn(
-                      buttonVariants({ variant: "outline" }),
-                      "h-9 w-full gap-2 border-primary/30 text-primary hover:bg-accent",
+                      buttonVariants(),
+                      "h-9 w-full gap-2 hover:bg-primary/90",
                     )}
                   >
                     View Details

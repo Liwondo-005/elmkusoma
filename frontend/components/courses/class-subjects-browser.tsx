@@ -1,7 +1,6 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { SearchX } from "lucide-react"
 
 import type { CurriculumSubject, SubjectCategory } from "@/lib/data"
 import { SubjectCard } from "@/components/courses/subject-card"
@@ -112,9 +111,6 @@ export function ClassSubjectsBrowser({
         </div>
       ) : (
         <div className="mt-12 flex flex-col items-center justify-center text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
-            <SearchX className="size-6 text-muted-foreground" />
-          </div>
           <h3 className="mt-4 text-sm font-semibold text-foreground">No subjects found</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             Try adjusting your search or category filter.

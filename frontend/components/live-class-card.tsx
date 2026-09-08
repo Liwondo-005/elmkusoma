@@ -2,12 +2,10 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
-import { Eye, Clock, Users, Play } from "lucide-react"
+import { Eye, Clock, Users } from "lucide-react"
 import type { LiveClass } from "@/lib/data"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth"
 
 function StatusBadge({ status, badge }: { status: LiveClass["status"]; badge: string }) {
   if (status === "live") {
@@ -27,15 +25,6 @@ function StatusBadge({ status, badge }: { status: LiveClass["status"]; badge: st
 
 export function LiveClassCard({ item }: { item: LiveClass }) {
   const isLive = item.status === "live"
-  const { user } = useAuth()
-  const router = useRouter()
-
-  function handleJoin(e: React.MouseEvent) {
-    if (!user) {
-      e.preventDefault()
-      router.push(`/login?redirect=${encodeURIComponent(`/live-classes/${item.id}`)}`)
-    }
-  }
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg">
@@ -52,8 +41,8 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
           <StatusBadge status={item.status} badge={item.badge} />
         </div>
         {isLive && (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-foreground/60 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-background backdrop-blur">
-            <span className="size-1.5 rounded-full bg-red-500" />
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-teal/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur">
+            <span className="size-1.5 rounded-full bg-white" />
             Live
           </span>
         )}
@@ -85,15 +74,13 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
         <div className="mt-4 pt-1">
           {isLive ? (
             <Link
-              href={`/live-classes/${item.id}`}
-              onClick={handleJoin}
-              className={cn(buttonVariants(), "h-9 w-full bg-teal text-teal-foreground hover:bg-teal/90")}
+              href="/login"
+              className={cn(buttonVariants(), "h-9 w-full bg-teal text-teal-foreground hover:bg-primary")}
             >
-              <Play className="mr-1.5 size-3.5 fill-current" />
               Join Live Class
             </Link>
           ) : (
-            <Button variant="outline" className="h-9 w-full border-primary/30 text-primary hover:bg-accent">
+            <Button className="h-9 w-full hover:bg-primary/90">
               Set Reminder
             </Button>
           )}

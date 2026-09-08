@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Building2, GraduationCap } from "lucide-react"
 
 import type { College } from "@/lib/data"
 
@@ -28,10 +27,10 @@ export function CollegeCard({ college }: { college: College }) {
 
       <div className="mt-auto flex items-center gap-4 pt-4 border-t border-border">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Building2 className="size-3.5" /> {college.faculties.length} {college.faculties.length === 1 ? "faculty" : "faculties"}
+          {college.faculties.length} {college.faculties.length === 1 ? "faculty" : "faculties"}
         </span>
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <GraduationCap className="size-3.5" /> {totalProgrammes} {totalProgrammes === 1 ? "programme" : "programmes"}
+          {totalProgrammes} {totalProgrammes === 1 ? "programme" : "programmes"}
         </span>
       </div>
     </Link>

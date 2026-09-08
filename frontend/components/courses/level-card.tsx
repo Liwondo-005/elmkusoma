@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { BookOpen, GraduationCap, Wrench, Building2, Baby, Beaker } from "lucide-react"
 
 import type { CourseLevel } from "@/lib/data"
 import { cn } from "@/lib/utils"
@@ -11,15 +10,6 @@ const colorMap: Record<string, string> = {
   "advanced-secondary": "bg-purple-50 text-purple-600 group-hover:bg-purple-100",
   veta: "bg-amber-50 text-amber-600 group-hover:bg-amber-100",
   "colleges-universities": "bg-sky-50 text-sky-600 group-hover:bg-sky-100",
-}
-
-const iconMap: Record<string, React.ReactNode> = {
-  nursery: <Baby className="size-5" />,
-  primary: <BookOpen className="size-5" />,
-  "lower-secondary": <Beaker className="size-5" />,
-  "advanced-secondary": <GraduationCap className="size-5" />,
-  veta: <Wrench className="size-5" />,
-  "colleges-universities": <Building2 className="size-5" />,
 }
 
 export function LevelCard({ level }: { level: CourseLevel }) {
@@ -34,11 +24,16 @@ export function LevelCard({ level }: { level: CourseLevel }) {
       <div className="flex items-start justify-between">
         <span
           className={cn(
-            "flex size-11 items-center justify-center rounded-xl transition-colors",
+            "flex size-11 items-center justify-center rounded-xl text-sm font-bold transition-colors",
             colorMap[level.slug] ?? "bg-muted text-muted-foreground"
           )}
         >
-          {iconMap[level.slug] ?? <BookOpen className="size-5" />}
+          {level.slug === "nursery" && "N"}
+          {level.slug === "primary" && "PS"}
+          {level.slug === "lower-secondary" && "LS"}
+          {level.slug === "advanced-secondary" && "AS"}
+          {level.slug === "veta" && "VT"}
+          {level.slug === "colleges-universities" && "CU"}
         </span>
       </div>
 
