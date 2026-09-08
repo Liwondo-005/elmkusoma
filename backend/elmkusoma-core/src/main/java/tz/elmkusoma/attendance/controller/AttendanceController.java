@@ -34,7 +34,7 @@ public class AttendanceController {
             @Valid @RequestBody MarkAttendanceRequest request) {
         AttendanceRecordResponse response = attendanceService.markAttendance(institutionId, markedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Attendance marked successfully"));
+                .body(ApiResponse.success("Attendance marked successfully", response));
     }
 
     @PostMapping("/bulk")
@@ -45,7 +45,7 @@ public class AttendanceController {
             @Valid @RequestBody BulkMarkAttendanceRequest request) {
         attendanceService.markBulkAttendance(institutionId, markedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(null, "Bulk attendance marked successfully"));
+                .body(ApiResponse.success("Bulk attendance marked successfully", null));
     }
 
     @GetMapping

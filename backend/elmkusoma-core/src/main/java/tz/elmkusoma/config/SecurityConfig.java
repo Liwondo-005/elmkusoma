@@ -9,8 +9,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -23,11 +25,11 @@ import tz.elmkusoma.shared.repository.UserRepository;
 public class SecurityConfig {
 
     private static final String[] PUBLIC_URLS = {
-            "/api/v1/auth/**",
-            "/api/v1/public/**",
-            "/api/v1/teachers/**",
-            "/api/v1/parents/**",
-            "/api/v1/certificates/verify/**",
+            "/v1/auth/**",
+            "/v1/public/**",
+            "/v1/teachers/**",
+            "/v1/parents/**",
+            "/v1/certificates/verify/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
@@ -36,7 +38,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(@Lazy JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
@@ -66,7 +68,12 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService(UserRepository userRepository) {
-        return email -> userRepository.findByEmailAndIsDeletedFalse(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+        return email -> {
+            var user = userRepository.findByEmailAndIsDeletedFalse(email)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+            var authorities = java.util.List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+            return new org.springframework.security.core.userdetails.User(
+                    user.getEmail(), user.getPasswordHash(), authorities);
+        };
     }
 }

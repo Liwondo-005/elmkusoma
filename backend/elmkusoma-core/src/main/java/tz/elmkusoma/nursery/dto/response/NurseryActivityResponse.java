@@ -28,6 +28,7 @@ public class NurseryActivityResponse {
     private String ageGroup;
     private LocalDate activityDate;
     private String status;
+    private UUID conductedBy;
     private String conductedByName;
     private Integer participantCount;
     private LocalDateTime createdAt;
