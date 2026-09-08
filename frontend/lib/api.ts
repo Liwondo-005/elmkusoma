@@ -22,11 +22,6 @@ function getToken(): string | null {
   return localStorage.getItem("elmkusoma_access_token")
 }
 
-function getInstitutionId(): string | null {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem("elmkusoma_institution_id")
-}
-
 export function setTokens(accessToken: string, refreshToken: string) {
   localStorage.setItem("elmkusoma_access_token", accessToken)
   localStorage.setItem("elmkusoma_refresh_token", refreshToken)
@@ -154,6 +149,12 @@ export const authApi = {
     }),
 
   me: () => request<UserInfo>("/v1/auth/me"),
+
+  forgotPassword: (data: { email: string }) =>
+    request<void>("/v1/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 }
 
 // Enrollment API
