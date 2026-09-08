@@ -20,6 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -27,16 +28,19 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtRequestAttributeFilter jwtRequestAttributeFilter;
 
     private static final String[] PUBLIC_URLS = {
             "/api/v1/auth/**",
             "/api/v1/public/**",
+            "/api/v1/teachers/**",
+            "/api/v1/parents/**",
             "/api/v1/certificates/verify/**",
+            "/api/v1/institutions/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
-            "/actuator/health",
-            "/actuator/info"
+            "/actuator/**"
     };
 
     @Bean
@@ -49,7 +53,8 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtRequestAttributeFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -62,6 +67,21 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public org.springframework.security.core.userdetails.UserDetailsService userDetailsService(
+            tz.elmkusoma.shared.repository.UserRepository userRepository) {
+        return email -> {
+            tz.elmkusoma.shared.domain.User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                    .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException(
+                            "User not found with email: " + email));
+            return org.springframework.security.core.userdetails.User.builder()
+                    .username(user.getEmail())
+                    .password(user.getPasswordHash())
+                    .authorities("ROLE_" + user.getRole().name())
+                    .build();
+        };
     }
 
     @Bean

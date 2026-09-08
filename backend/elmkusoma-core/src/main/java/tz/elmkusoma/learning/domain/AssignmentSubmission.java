@@ -2,6 +2,7 @@ package tz.elmkusoma.learning.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.time.LocalDateTime;
@@ -13,7 +14,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class AssignmentSubmission extends BaseEntity {
 
     @Column(name = "assignment_id", nullable = false)

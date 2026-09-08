@@ -3,7 +3,7 @@ package tz.elmkusoma.nursery.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tz.elmkusoma.common.exception.ResourceNotFoundException;
+import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.nursery.domain.NurseryActivity;
 import tz.elmkusoma.nursery.dto.request.CreateNurseryActivityRequest;
 import tz.elmkusoma.nursery.dto.response.NurseryActivityResponse;
@@ -124,7 +124,6 @@ public class NurseryActivityServiceImpl implements NurseryActivityService {
                 .ageGroup(activity.getAgeGroup())
                 .activityDate(activity.getActivityDate())
                 .status(activity.getStatus().name())
-                .conductedBy(activity.getConductedBy())
                 .createdAt(activity.getCreatedAt())
                 .build();
     }

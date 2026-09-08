@@ -2,6 +2,7 @@ package tz.elmkusoma.assessment.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.util.UUID;
@@ -12,7 +13,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Answer extends BaseEntity {
 
     @Column(name = "attempt_id", nullable = false)

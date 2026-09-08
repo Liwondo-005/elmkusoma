@@ -38,7 +38,7 @@ public class GradingController {
             @Valid @RequestBody CreateGradingScaleRequest request) {
         GradingScaleResponse response = gradingScaleService.create(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Grading scale created successfully"));
+                .body(ApiResponse.success("Grading scale created successfully", response));
     }
 
     @GetMapping("/scales")
@@ -62,14 +62,14 @@ public class GradingController {
             @PathVariable UUID id,
             @Valid @RequestBody CreateGradingScaleRequest request) {
         GradingScaleResponse response = gradingScaleService.update(id, request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Grading scale updated successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Grading scale updated successfully", response));
     }
 
     @DeleteMapping("/scales/{id}")
     @Operation(summary = "Delete grading scale")
     public ResponseEntity<ApiResponse<Void>> deleteGradingScale(@PathVariable UUID id) {
         gradingScaleService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Grading scale deleted successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Grading scale deleted successfully", null));
     }
 
     @PostMapping("/boundaries")
@@ -79,7 +79,7 @@ public class GradingController {
             @Valid @RequestBody CreateGradeBoundaryRequest request) {
         GradeBoundaryResponse response = gradeBoundaryService.create(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Grade boundary created successfully"));
+                .body(ApiResponse.success("Grade boundary created successfully", response));
     }
 
     @GetMapping("/boundaries/scale/{scaleId}")
@@ -102,14 +102,14 @@ public class GradingController {
             @PathVariable UUID id,
             @Valid @RequestBody CreateGradeBoundaryRequest request) {
         GradeBoundaryResponse response = gradeBoundaryService.update(id, request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Grade boundary updated successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Grade boundary updated successfully", response));
     }
 
     @DeleteMapping("/boundaries/{id}")
     @Operation(summary = "Delete grade boundary")
     public ResponseEntity<ApiResponse<Void>> deleteGradeBoundary(@PathVariable UUID id) {
         gradeBoundaryService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Grade boundary deleted successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Grade boundary deleted successfully", null));
     }
 
     @PostMapping("/report-cards/generate")
@@ -119,7 +119,7 @@ public class GradingController {
             @Valid @RequestBody GenerateReportCardRequest request) {
         ReportCardResponse response = reportCardService.generate(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Report card generated successfully"));
+                .body(ApiResponse.success("Report card generated successfully", response));
     }
 
     @GetMapping("/report-cards/{id}")
@@ -149,6 +149,6 @@ public class GradingController {
             @PathVariable UUID id,
             @RequestParam String status) {
         ReportCardResponse response = reportCardService.updateStatus(id, status);
-        return ResponseEntity.ok(ApiResponse.success(response, "Report card status updated"));
+        return ResponseEntity.ok(ApiResponse.success("Report card status updated", response));
     }
 }

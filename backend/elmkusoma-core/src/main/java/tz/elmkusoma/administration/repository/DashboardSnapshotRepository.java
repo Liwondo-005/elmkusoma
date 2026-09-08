@@ -15,6 +15,5 @@ public interface DashboardSnapshotRepository extends JpaRepository<DashboardSnap
     Optional<DashboardSnapshot> findByInstitutionIdAndSnapshotTypeAndExpiresAtAfter(
             UUID institutionId, String snapshotType, java.time.LocalDateTime expiresAt);
 
-    @Query("SELECT d FROM DashboardSnapshot d WHERE d.institutionId = :institutionId ORDER BY d.generatedAt DESC LIMIT 1")
-    Optional<DashboardSnapshot> findLatestByInstitutionId(@Param("institutionId") UUID institutionId);
+    Optional<DashboardSnapshot> findFirstByInstitutionIdOrderByGeneratedAtDesc(@Param("institutionId") UUID institutionId);
 }

@@ -36,7 +36,7 @@ public class NurseryController {
             @Valid @RequestBody CreateNurseryActivityRequest request) {
         NurseryActivityResponse response = nurseryActivityService.create(institutionId, conductedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Nursery activity created successfully"));
+                .body(ApiResponse.success("Nursery activity created successfully", response));
     }
 
     @GetMapping("/activities")
@@ -69,14 +69,14 @@ public class NurseryController {
             @PathVariable UUID id,
             @Valid @RequestBody CreateNurseryActivityRequest request) {
         NurseryActivityResponse response = nurseryActivityService.update(id, request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Nursery activity updated successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Nursery activity updated successfully", response));
     }
 
     @DeleteMapping("/activities/{id}")
     @Operation(summary = "Delete nursery activity")
     public ResponseEntity<ApiResponse<Void>> deleteActivity(@PathVariable UUID id) {
         nurseryActivityService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Nursery activity deleted successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Nursery activity deleted successfully", null));
     }
 
     @GetMapping("/activities/type/{type}")
@@ -94,7 +94,7 @@ public class NurseryController {
             @Valid @RequestBody CreateNurseryMilestoneRequest request) {
         NurseryMilestoneResponse response = nurseryMilestoneService.create(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Nursery milestone created successfully"));
+                .body(ApiResponse.success("Nursery milestone created successfully", response));
     }
 
     @GetMapping("/milestones/student/{studentId}")
@@ -127,13 +127,13 @@ public class NurseryController {
             @PathVariable UUID id,
             @Valid @RequestBody CreateNurseryMilestoneRequest request) {
         NurseryMilestoneResponse response = nurseryMilestoneService.update(id, request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Milestone updated successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Milestone updated successfully", response));
     }
 
     @DeleteMapping("/milestones/{id}")
     @Operation(summary = "Delete milestone")
     public ResponseEntity<ApiResponse<Void>> deleteMilestone(@PathVariable UUID id) {
         nurseryMilestoneService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Milestone deleted successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Milestone deleted successfully", null));
     }
 }

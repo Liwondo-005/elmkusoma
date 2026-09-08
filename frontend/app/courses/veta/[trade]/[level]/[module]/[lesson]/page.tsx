@@ -126,12 +126,9 @@ export default async function LessonPage({
             </div>
 
             <div className="mt-8 rounded-xl border border-border bg-muted/50 p-6">
-              <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Learning Material</p>
-                  <p className="text-xs text-muted-foreground">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Learning Material</p>
+                <p className="text-xs text-muted-foreground">
                     Complete this lesson to track your progress.
                   </p>
                 </div>

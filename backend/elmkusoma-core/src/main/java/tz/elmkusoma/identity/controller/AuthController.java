@@ -12,7 +12,7 @@ import tz.elmkusoma.identity.dto.response.AuthResponse;
 import tz.elmkusoma.identity.service.AuthService;
 
 @RestController
-@RequestMapping("/v1/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthService authService;

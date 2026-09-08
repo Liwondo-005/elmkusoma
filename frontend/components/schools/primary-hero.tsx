@@ -22,7 +22,7 @@ export function PrimaryHero() {
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">8 Subjects</span>
-              <span>Full TZ curriculum</span>
+              <span>Full Tanzanian curriculum</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">5 Schools</span>

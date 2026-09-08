@@ -85,8 +85,6 @@ export default async function LevelPage({
                 className="group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg"
               >
                 <div className="flex items-start justify-between">
-                  <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  </span>
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     {mod.lessons.length} {mod.lessons.length === 1 ? "lesson" : "lessons"}
                   </span>

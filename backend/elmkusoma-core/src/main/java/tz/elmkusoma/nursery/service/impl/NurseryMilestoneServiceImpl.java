@@ -3,7 +3,7 @@ package tz.elmkusoma.nursery.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tz.elmkusoma.common.exception.ResourceNotFoundException;
+import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.nursery.domain.NurseryMilestone;
 import tz.elmkusoma.nursery.dto.request.CreateNurseryMilestoneRequest;
 import tz.elmkusoma.nursery.dto.response.NurseryMilestoneResponse;
@@ -103,7 +103,6 @@ public class NurseryMilestoneServiceImpl implements NurseryMilestoneService {
                 .expectedAgeMonths(milestone.getExpectedAgeMonths())
                 .achievedDate(milestone.getAchievedDate())
                 .status(milestone.getStatus().name())
-                .observedBy(milestone.getObservedBy())
                 .evidenceNotes(milestone.getEvidenceNotes())
                 .build();
     }

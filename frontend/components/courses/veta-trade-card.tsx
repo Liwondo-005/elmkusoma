@@ -1,15 +1,9 @@
 import Link from "next/link"
-import { Layers, BookOpen } from "lucide-react"
 
 import type { VetaTrade } from "@/lib/data"
-import { cn } from "@/lib/utils"
 
 export function VetaTradeCard({ trade }: { trade: VetaTrade }) {
   const totalModules = trade.levels.reduce((acc, l) => acc + l.modules.length, 0)
-  const totalLessons = trade.levels.reduce(
-    (acc, l) => acc + l.modules.reduce((a, m) => a + m.lessons.length, 0),
-    0
-  )
 
   return (
     <Link
@@ -28,10 +22,10 @@ export function VetaTradeCard({ trade }: { trade: VetaTrade }) {
 
       <div className="mt-auto flex items-center gap-4 pt-4 border-t border-border">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Layers className="size-3.5" /> {trade.levels.length} {trade.levels.length === 1 ? "level" : "levels"}
+          {trade.levels.length} {trade.levels.length === 1 ? "level" : "levels"}
         </span>
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <BookOpen className="size-3.5" /> {totalModules} {totalModules === 1 ? "module" : "modules"}
+          {totalModules} {totalModules === 1 ? "module" : "modules"}
         </span>
       </div>
     </Link>

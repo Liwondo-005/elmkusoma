@@ -2,6 +2,7 @@ package tz.elmkusoma.assessment.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.time.LocalDateTime;
@@ -13,7 +14,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Assessment extends BaseEntity {
 
     @Column(name = "subject_id", nullable = false)
