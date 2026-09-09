@@ -149,6 +149,12 @@ export const authApi = {
     }),
 
   me: () => request<UserInfo>("/v1/auth/me"),
+
+  forgotPassword: (data: { email: string }) =>
+    request<void>("/v1/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 }
 
 // Enrollment API

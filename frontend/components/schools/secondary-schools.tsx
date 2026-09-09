@@ -47,7 +47,6 @@ export function SecondarySchools() {
                   {institution.secondaryLevel && (
                     <span className={cn(
                       "rounded-full px-2 py-0.5 text-xs font-semibold",
-                      institution.secondaryLevel === "CO-School" ? "bg-primary/90 text-primary-foreground" :
                       institution.secondaryLevel === "A-Level" ? "bg-teal/90 text-teal-foreground" :
                       "bg-orange/90 text-orange-foreground",
                     )}>
