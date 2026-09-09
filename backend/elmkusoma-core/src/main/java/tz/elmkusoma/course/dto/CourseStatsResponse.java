@@ -1,4 +1,4 @@
-package tz.elmkusoma.administration.dto;
+package tz.elmkusoma.course.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -6,26 +6,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Map;
-import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DashboardResponse {
+public class CourseStatsResponse {
 
-    private UUID institutionId;
-    private Long totalStudents;
-    private Long totalTeachers;
-    private Long totalParents;
-    private Long activeStudents;
-    private Long certificatesIssued;
-    private Long pendingImportJobs;
     private Long totalCourses;
     private Long publishedCourses;
     private Long draftCourses;
+    private Long featuredCourses;
     private Long totalModules;
     private Long totalLessons;
     private Long liveClassesScheduled;
-    private Map<String, Object> additionalStats;
+    private Long liveClassesCompleted;
+    private Map<String, Long> coursesByLevel;
 }

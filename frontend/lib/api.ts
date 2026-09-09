@@ -798,7 +798,66 @@ export interface DashboardResponse {
   activeStudents: number
   certificatesIssued: number
   pendingImportJobs: number
+  totalCourses: number
+  publishedCourses: number
+  draftCourses: number
+  totalModules: number
+  totalLessons: number
+  liveClassesScheduled: number
   additionalStats: Record<string, unknown>
+}
+
+export interface Course {
+  id: string
+  institutionId: string
+  subjectId: string | null
+  subjectName: string | null
+  title: string
+  description: string | null
+  thumbnailUrl: string | null
+  level: string
+  category: string | null
+  isPublished: boolean
+  isFeatured: boolean
+  createdByName: string | null
+  moduleCount: number
+  lessonCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CourseModule {
+  id: string
+  courseId: string
+  title: string
+  description: string | null
+  sortOrder: number
+  lessonCount: number
+  createdAt: string
+}
+
+export interface CourseLesson {
+  id: string
+  moduleId: string
+  title: string
+  contentType: string
+  contentUrl: string | null
+  durationMinutes: number | null
+  sortOrder: number
+  isFree: boolean
+  createdAt: string
+}
+
+export interface CourseStats {
+  totalCourses: number
+  publishedCourses: number
+  draftCourses: number
+  featuredCourses: number
+  totalModules: number
+  totalLessons: number
+  liveClassesScheduled: number
+  liveClassesCompleted: number
+  coursesByLevel: Record<string, number>
 }
 
 export interface SettingResponse {
@@ -900,6 +959,71 @@ export const adminApi = {
 
   getImportJob: (institutionId: string, jobId: string) =>
     request<ImportJobResponse>(`/v1/admin/users/import/${jobId}?institutionId=${institutionId}`),
+}
+
+// ---------------------------------------------------------------------------
+// Course API
+// ---------------------------------------------------------------------------
+
+export const courseApi = {
+  listCourses: (institutionId: string) =>
+    request<Course[]>(`/v1/courses`),
+
+  getCourse: (courseId: string) =>
+    request<Course>(`/v1/courses/${courseId}`),
+
+  createCourse: (data: { title: string; description?: string; subjectId?: string; level?: string; category?: string; thumbnailUrl?: string; isPublished?: boolean; isFeatured?: boolean }) =>
+    request<Course>(`/v1/courses`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateCourse: (courseId: string, data: { title?: string; description?: string; subjectId?: string; level?: string; category?: string; thumbnailUrl?: string; isPublished?: boolean; isFeatured?: boolean }) =>
+    request<Course>(`/v1/courses/${courseId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteCourse: (courseId: string) =>
+    request<void>(`/v1/courses/${courseId}`, {
+      method: "DELETE",
+    }),
+
+  togglePublish: (courseId: string) =>
+    request<Course>(`/v1/courses/${courseId}/toggle-publish`, {
+      method: "POST",
+    }),
+
+  getStats: () =>
+    request<CourseStats>(`/v1/courses/stats`),
+
+  listModules: (courseId: string) =>
+    request<CourseModule[]>(`/v1/courses/${courseId}/modules`),
+
+  createModule: (courseId: string, data: { title: string; description?: string; sortOrder?: number }) =>
+    request<CourseModule>(`/v1/courses/${courseId}/modules`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteModule: (moduleId: string) =>
+    request<void>(`/v1/courses/modules/${moduleId}`, {
+      method: "DELETE",
+    }),
+
+  listLessons: (moduleId: string) =>
+    request<CourseLesson[]>(`/v1/courses/modules/${moduleId}/lessons`),
+
+  createLesson: (moduleId: string, data: { title: string; contentType: string; contentUrl?: string; durationMinutes?: number; sortOrder?: number; isFree?: boolean }) =>
+    request<CourseLesson>(`/v1/courses/modules/${moduleId}/lessons`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteLesson: (lessonId: string) =>
+    request<void>(`/v1/courses/lessons/${lessonId}`, {
+      method: "DELETE",
+    }),
 }
 
 // ---------------------------------------------------------------------------

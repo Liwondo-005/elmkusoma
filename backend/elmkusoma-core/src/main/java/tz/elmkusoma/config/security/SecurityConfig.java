@@ -20,6 +20,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
+import tz.elmkusoma.shared.repository.UserRepository;
+
 
 @Configuration
 @EnableWebSecurity
@@ -27,8 +30,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final JwtRequestAttributeFilter jwtRequestAttributeFilter;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+    private final UserRepository userRepository;
+    private final InstitutionMembershipRepository membershipRepository;
 
     private static final String[] PUBLIC_URLS = {
             "/v1/auth/**",
@@ -45,6 +50,9 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService);
+        JwtRequestAttributeFilter attrFilter = new JwtRequestAttributeFilter(jwtTokenProvider, userRepository, membershipRepository);
+
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
@@ -53,8 +61,8 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtRequestAttributeFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(attrFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
