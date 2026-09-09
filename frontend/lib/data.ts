@@ -2075,7 +2075,7 @@ export const institutions: Institution[] = [
     facilities: ["Fully Equipped Labs", "Music Hall", "Swimming Pool", "Tuck Shop"],
   },
   {
-    id: "mlimani",
+    id: "mlimani-primary",
     name: "Mlimani Primary School",
     educationLevel: "Primary",
     description: "Continuing the learning journey from nursery to primary excellence.",
@@ -2091,12 +2091,12 @@ export const institutions: Institution[] = [
     facilities: ["Digital Library", "Playground", "Cafeteria", "Assembly Hall"],
   },
   {
-    id: "tegeta-a",
+    id: "tegeta-a-primary",
     name: "Tegeta A Primary School",
     educationLevel: "Primary",
     description: "A well-established school with structured programs from Standard 1 to 6.",
     location: "Temeke, DSM",
-    images: ["/images/schools/primary/tegeta-primary-1.jpg", "/images/schools/primary/tegeta-primary-2.jpg", "/images/schools/primary/tegeta-primary-3.jpg", "/images/schools/primary/tegeta-primary-4.jpg"],
+    images: ["/images/schools/primary/tegeta-primary-1.jpg", "/images/schools/primary/tegeta-primary-2.jpg", "/images/schools/primary/tegeta-primary-3.jpg"],
     ownership: "Private",
     verified: true,
     students: 350,
