@@ -1,6 +1,6 @@
 import type { ApiResponse } from "./types/api"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 const INSTITUTION_ID = process.env.NEXT_PUBLIC_INSTITUTION_ID || ""
 
 interface RequestOptions extends RequestInit {
