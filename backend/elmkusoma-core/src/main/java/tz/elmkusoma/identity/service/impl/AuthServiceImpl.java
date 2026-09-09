@@ -229,6 +229,8 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse.UserInfo buildUserInfo(User user) {
         String classGroupId = null;
+        String institutionId = null;
+
         var studentOpt = studentRepository.findByUserIdAndIsDeletedFalse(user.getId());
         if (studentOpt.isPresent()) {
             var assignments = studentClassAssignmentRepository
@@ -240,6 +242,10 @@ public class AuthServiceImpl implements AuthService {
                     .orElse(null);
         }
 
+        if (user.getInstitutionId() != null) {
+            institutionId = user.getInstitutionId().toString();
+        }
+
         return AuthResponse.UserInfo.builder()
                 .id(user.getId().toString())
                 .email(user.getEmail())
@@ -247,7 +253,7 @@ public class AuthServiceImpl implements AuthService {
                 .lastName(user.getLastName())
                 .role(user.getRole().name())
                 .emailVerified(user.getIsEmailVerified())
-                .institutionId(user.getInstitutionId() != null ? user.getInstitutionId().toString() : null)
+                .institutionId(institutionId)
                 .classGroupId(classGroupId)
                 .build();
     }
