@@ -1,2 +1,2 @@
--- V07: Subjects table already created in V06
--- This migration is intentionally left as a no-op
+-- V07: Add category column to subjects (table created in V06)
+ALTER TABLE subjects ADD COLUMN IF NOT EXISTS category VARCHAR(100);
