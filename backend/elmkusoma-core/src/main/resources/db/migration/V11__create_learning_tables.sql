@@ -60,7 +60,7 @@ CREATE TABLE assignments (
     CONSTRAINT fk_assignments_institution FOREIGN KEY (institution_id) REFERENCES institutions(id)
 );
 
-CREATE INDEX idx_assignments_class_group ON assignments(class_group_id) WHERE is_deleted = false;
+CREATE INDEX idx_assignments_cg ON assignments(class_group_id) WHERE is_deleted = false;
 
 CREATE TABLE assignment_submissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
