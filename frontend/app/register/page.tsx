@@ -26,6 +26,7 @@ const registerSchema = z
     middleName: z.string().optional(),
     lastName: z.string().min(1, "Last name / surname is required").min(2, "Last name must be at least 2 characters"),
     email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+    phone: z.string().min(1, "Phone number is required").min(10, "Phone number must be at least 10 digits"),
     role: z.string().min(1, "Please select your role"),
     password: z
       .string()
@@ -73,6 +74,7 @@ export default function RegisterPage() {
       middleName: values.middleName || undefined,
       lastName: values.lastName,
       email: values.email,
+      phone: values.phone,
       password: values.password,
       role: values.role,
     })
@@ -210,6 +212,22 @@ export default function RegisterPage() {
                   />
                   {errors.email && (
                     <p className="mt-1.5 text-xs text-destructive">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-foreground">
+                    Phone Number
+                  </label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    placeholder="+255 700 000 000"
+                    {...register("phone")}
+                    className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+                  />
+                  {errors.phone && (
+                    <p className="mt-1.5 text-xs text-destructive">{errors.phone.message}</p>
                   )}
                 </div>
 
