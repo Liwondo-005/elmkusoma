@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
+@org.springframework.stereotype.Component
 public class JwtRequestAttributeFilter extends OncePerRequestFilter implements Ordered {
 
     private static final int FILTER_ORDER = Ordered.HIGHEST_PRECEDENCE + 2;

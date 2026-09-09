@@ -30,8 +30,8 @@ public class GradingScaleServiceImpl implements GradingScaleService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .scaleType(GradingScale.ScaleType.valueOf(request.getScaleType()))
-                .minValue(request.getMinValue().doubleValue())
-                .maxValue(request.getMaxValue().doubleValue())
+                .minValue(request.getMinValue())
+                .maxValue(request.getMaxValue())
                 .isDefault(request.getIsDefault())
                 .build();
 
@@ -66,8 +66,8 @@ public class GradingScaleServiceImpl implements GradingScaleService {
         scale.setName(request.getName());
         scale.setDescription(request.getDescription());
         scale.setScaleType(GradingScale.ScaleType.valueOf(request.getScaleType()));
-        scale.setMinValue(request.getMinValue().doubleValue());
-        scale.setMaxValue(request.getMaxValue().doubleValue());
+        scale.setMinValue(request.getMinValue());
+        scale.setMaxValue(request.getMaxValue());
         scale.setIsDefault(request.getIsDefault());
 
         GradingScale saved = gradingScaleRepository.save(scale);
@@ -99,8 +99,8 @@ public class GradingScaleServiceImpl implements GradingScaleService {
                 .name(scale.getName())
                 .description(scale.getDescription())
                 .scaleType(scale.getScaleType().name())
-                .minValue(BigDecimal.valueOf(scale.getMinValue()))
-                .maxValue(BigDecimal.valueOf(scale.getMaxValue()))
+                .minValue(scale.getMinValue())
+                .maxValue(scale.getMaxValue())
                 .isDefault(scale.getIsDefault())
                 .isActive(scale.getIsActive())
                 .createdAt(scale.getCreatedAt())
