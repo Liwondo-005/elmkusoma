@@ -129,9 +129,8 @@ export default async function LessonPage({
               <div>
                 <p className="text-sm font-semibold text-foreground">Learning Material</p>
                 <p className="text-xs text-muted-foreground">
-                    Complete this lesson to track your progress.
-                  </p>
-                </div>
+                  Complete this lesson to track your progress.
+                </p>
               </div>
               <div className="mt-4 rounded-lg border border-dashed border-border bg-background p-8 text-center">
                 <p className="text-sm text-muted-foreground">

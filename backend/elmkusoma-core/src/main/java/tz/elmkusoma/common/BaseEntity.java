@@ -1,6 +1,7 @@
 package tz.elmkusoma.common;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -45,6 +46,7 @@ public abstract class BaseEntity {
     @Column(name = "updated_by")
     private String updatedBy;
 
+    @Builder.Default
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
 }
