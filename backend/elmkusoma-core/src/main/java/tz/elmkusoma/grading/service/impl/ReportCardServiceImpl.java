@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.common.exception.ResourceNotFoundException;
+import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.grading.domain.ReportCard;
 import tz.elmkusoma.grading.domain.ReportCard.ReportCardStatus;
 import tz.elmkusoma.grading.dto.request.GenerateReportCardRequest;
@@ -40,45 +41,50 @@ public class ReportCardServiceImpl implements ReportCardService {
 
     @Override
     @Transactional(readOnly = true)
-    public ReportCardResponse getById(UUID id) {
+    public ReportCardResponse getById(UUID id, UUID institutionId) {
         ReportCard reportCard = reportCardRepository.findById(id)
                 .filter(rc -> !rc.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Report card not found"));
+        OwnershipGuard.verifyInstitution(reportCard.getInstitutionId(), institutionId, "report card");
         return mapToResponse(reportCard);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ReportCardResponse> getByStudentId(UUID studentId) {
+    public List<ReportCardResponse> getByStudentId(UUID studentId, UUID institutionId) {
         return reportCardRepository.findByStudentIdAndIsDeletedFalse(studentId)
                 .stream()
+                .filter(rc -> rc.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ReportCardResponse> getByTermId(UUID termId) {
+    public List<ReportCardResponse> getByTermId(UUID termId, UUID institutionId) {
         return reportCardRepository.findByTermIdAndIsDeletedFalse(termId)
                 .stream()
+                .filter(rc -> rc.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ReportCardResponse getByStudentAndTerm(UUID studentId, UUID termId) {
+    public ReportCardResponse getByStudentAndTerm(UUID studentId, UUID termId, UUID institutionId) {
         ReportCard reportCard = reportCardRepository.findByStudentIdAndTermIdAndIsDeletedFalse(studentId, termId)
                 .orElseThrow(() -> new ResourceNotFoundException("Report card not found for student in term"));
+        OwnershipGuard.verifyInstitution(reportCard.getInstitutionId(), institutionId, "report card");
         return mapToResponse(reportCard);
     }
 
     @Override
     @Transactional
-    public ReportCardResponse updateStatus(UUID id, String status) {
+    public ReportCardResponse updateStatus(UUID id, UUID institutionId, String status) {
         ReportCard reportCard = reportCardRepository.findById(id)
                 .filter(rc -> !rc.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Report card not found"));
+        OwnershipGuard.verifyInstitution(reportCard.getInstitutionId(), institutionId, "report card");
         reportCard.setStatus(ReportCardStatus.valueOf(status));
         if (ReportCardStatus.PUBLISHED.name().equals(status)) {
             reportCard.setPublishedAt(LocalDateTime.now());

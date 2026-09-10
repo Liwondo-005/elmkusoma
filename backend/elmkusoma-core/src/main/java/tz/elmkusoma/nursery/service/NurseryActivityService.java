@@ -11,15 +11,15 @@ public interface NurseryActivityService {
 
     NurseryActivityResponse create(UUID institutionId, UUID conductedBy, CreateNurseryActivityRequest request);
 
-    List<NurseryActivityResponse> getByClassGroupId(UUID classGroupId);
+    List<NurseryActivityResponse> getByClassGroupId(UUID classGroupId, UUID institutionId);
 
-    List<NurseryActivityResponse> getByClassAndDate(UUID classGroupId, LocalDate date);
+    List<NurseryActivityResponse> getByClassAndDate(UUID classGroupId, LocalDate date, UUID institutionId);
 
-    NurseryActivityResponse getById(UUID id);
+    NurseryActivityResponse getById(UUID id, UUID institutionId);
 
-    NurseryActivityResponse update(UUID id, CreateNurseryActivityRequest request);
+    NurseryActivityResponse update(UUID id, UUID institutionId, CreateNurseryActivityRequest request);
 
-    void delete(UUID id);
+    void delete(UUID id, UUID institutionId);
 
-    List<NurseryActivityResponse> getByType(String activityType);
+    List<NurseryActivityResponse> getByType(String activityType, UUID institutionId);
 }

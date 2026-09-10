@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.grading.domain.GradeBoundary;
 import tz.elmkusoma.grading.dto.request.CreateGradeBoundaryRequest;
 import tz.elmkusoma.grading.dto.response.GradeBoundaryResponse;
@@ -59,18 +60,20 @@ public class GradeBoundaryServiceImpl implements GradeBoundaryService {
 
     @Override
     @Transactional(readOnly = true)
-    public GradeBoundaryResponse getById(UUID id) {
+    public GradeBoundaryResponse getById(UUID id, UUID institutionId) {
         GradeBoundary boundary = gradeBoundaryRepository.findById(id)
                 .filter(b -> !b.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Grade boundary not found"));
+        OwnershipGuard.verifyInstitution(boundary.getInstitutionId(), institutionId, "grade boundary");
         return mapToResponse(boundary);
     }
 
     @Override
-    public GradeBoundaryResponse update(UUID id, CreateGradeBoundaryRequest request) {
+    public GradeBoundaryResponse update(UUID id, UUID institutionId, CreateGradeBoundaryRequest request) {
         GradeBoundary boundary = gradeBoundaryRepository.findById(id)
                 .filter(b -> !b.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Grade boundary not found"));
+        OwnershipGuard.verifyInstitution(boundary.getInstitutionId(), institutionId, "grade boundary");
 
         boundary.setGradeLabel(request.getGradeLabel());
         boundary.setGradeName(request.getGradeName());
@@ -84,9 +87,10 @@ public class GradeBoundaryServiceImpl implements GradeBoundaryService {
     }
 
     @Override
-    public void delete(UUID id) {
+    public void delete(UUID id, UUID institutionId) {
         GradeBoundary boundary = gradeBoundaryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade boundary not found"));
+        OwnershipGuard.verifyInstitution(boundary.getInstitutionId(), institutionId, "grade boundary");
         boundary.setIsDeleted(true);
         gradeBoundaryRepository.save(boundary);
     }

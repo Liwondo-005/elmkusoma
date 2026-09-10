@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.learning.domain.*;
 import tz.elmkusoma.learning.dto.request.AssignmentRequest;
 import tz.elmkusoma.learning.dto.request.LessonRequest;
@@ -46,16 +47,22 @@ public class LearningServiceImpl implements LearningService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId) {
+    public List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId, UUID institutionId) {
         return lessonRepository.findBySubjectIdAndClassGroupIdAndIsDeletedFalseOrderBySortOrder(subjectId, classGroupId)
-                .stream().map(this::toLessonResponse).toList();
+                .stream()
+                .filter(l -> l.getInstitutionId().equals(institutionId))
+                .map(this::toLessonResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<LessonResponse> getLessonsByClass(UUID classGroupId) {
+    public List<LessonResponse> getLessonsByClass(UUID classGroupId, UUID institutionId) {
         return lessonRepository.findByClassGroupIdAndIsDeletedFalseOrderBySortOrder(classGroupId)
-                .stream().map(this::toLessonResponse).toList();
+                .stream()
+                .filter(l -> l.getInstitutionId().equals(institutionId))
+                .map(this::toLessonResponse)
+                .toList();
     }
 
     @Override
@@ -85,14 +92,17 @@ public class LearningServiceImpl implements LearningService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProgressResponse> getStudentProgress(UUID studentId) {
+    public List<ProgressResponse> getStudentProgress(UUID studentId, UUID institutionId) {
         return lessonProgressRepository.findByStudentIdAndIsDeletedFalse(studentId)
-                .stream().map(this::toProgressResponse).toList();
+                .stream()
+                .filter(p -> p.getInstitutionId().equals(institutionId))
+                .map(this::toProgressResponse)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Double getStudentAverageCompletion(UUID studentId) {
+    public Double getStudentAverageCompletion(UUID studentId, UUID institutionId) {
         return lessonProgressRepository.getAverageCompletionByStudent(studentId);
     }
 
@@ -114,9 +124,12 @@ public class LearningServiceImpl implements LearningService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssignmentResponse> getAssignmentsByClass(UUID classGroupId) {
+    public List<AssignmentResponse> getAssignmentsByClass(UUID classGroupId, UUID institutionId) {
         return assignmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId)
-                .stream().map(this::toAssignmentResponse).toList();
+                .stream()
+                .filter(a -> a.getInstitutionId().equals(institutionId))
+                .map(this::toAssignmentResponse)
+                .toList();
     }
 
     @Override
@@ -145,16 +158,21 @@ public class LearningServiceImpl implements LearningService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId) {
+    public List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId, UUID institutionId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found with id: " + assignmentId));
+        OwnershipGuard.verifyInstitution(assignment.getInstitutionId(), institutionId, "assignment");
         return submissionRepository.findByAssignmentIdAndIsDeletedFalse(assignmentId)
                 .stream().map(this::toSubmissionResponse).toList();
     }
 
     @Override
-    public SubmissionResponse gradeSubmission(UUID submissionId, Integer grade, String feedback, UUID gradedBy) {
+    public SubmissionResponse gradeSubmission(UUID submissionId, Integer grade, String feedback, UUID gradedBy, UUID institutionId) {
         AssignmentSubmission submission = submissionRepository.findById(submissionId)
                 .filter(s -> !s.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found with id: " + submissionId));
+        OwnershipGuard.verifyInstitution(submission.getInstitutionId(), institutionId, "assignment submission");
 
         submission.setGrade(grade);
         submission.setFeedback(feedback);

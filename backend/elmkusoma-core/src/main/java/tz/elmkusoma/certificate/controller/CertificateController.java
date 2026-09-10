@@ -115,7 +115,7 @@ public class CertificateController {
             @RequestAttribute("institutionId") UUID institutionId) {
         List<CertificateResponse> response;
         if (studentId != null) {
-            response = certificateService.getCertificatesByStudent(studentId);
+            response = certificateService.getCertificatesByStudent(studentId, institutionId);
         } else {
             response = certificateService.getCertificatesByInstitution(institutionId);
         }
@@ -151,8 +151,9 @@ public class CertificateController {
     @GetMapping("/transcripts")
     @Operation(summary = "List transcripts by student")
     public ResponseEntity<ApiResponse<List<TranscriptResponse>>> getTranscripts(
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam UUID studentId) {
-        List<TranscriptResponse> response = certificateService.getTranscriptsByStudent(studentId);
+        List<TranscriptResponse> response = certificateService.getTranscriptsByStudent(studentId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

@@ -3,7 +3,9 @@ package tz.elmkusoma.student.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
@@ -66,16 +68,18 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
-    public StudentResponse getStudent(UUID id) {
+    public StudentResponse getStudent(UUID id, UUID institutionId) {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
+        OwnershipGuard.verifyInstitution(student.getInstitutionId(), institutionId, "student");
         return toResponse(student);
     }
 
     @Transactional(readOnly = true)
-    public StudentResponse getStudentByAdmissionNumber(String admissionNumber) {
+    public StudentResponse getStudentByAdmissionNumber(String admissionNumber, UUID institutionId) {
         Student student = studentRepository.findByAdmissionNumberAndIsDeletedFalse(admissionNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "admissionNumber", admissionNumber));
+        OwnershipGuard.verifyInstitution(student.getInstitutionId(), institutionId, "student");
         return toResponse(student);
     }
 
@@ -104,9 +108,10 @@ public class StudentService {
                 .toList();
     }
 
-    public StudentResponse updateStudent(UUID id, StudentRequest request) {
+    public StudentResponse updateStudent(UUID id, UUID institutionId, StudentRequest request) {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
+        OwnershipGuard.verifyInstitution(student.getInstitutionId(), institutionId, "student");
 
         if (request.getDateOfBirth() != null) student.setDateOfBirth(request.getDateOfBirth());
         if (request.getGender() != null) student.setGender(request.getGender());
@@ -137,9 +142,10 @@ public class StudentService {
         return toResponse(student);
     }
 
-    public StudentClassAssignment assignToClass(UUID studentId, AssignClassRequest request) {
+    public StudentClassAssignment assignToClass(UUID studentId, UUID institutionId, AssignClassRequest request) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
+        OwnershipGuard.verifyInstitution(student.getInstitutionId(), institutionId, "student");
 
         assignmentRepository.findByStudentIdAndClassGroupIdAndIsActiveTrueAndIsDeletedFalse(
                         studentId, request.getClassGroupId())

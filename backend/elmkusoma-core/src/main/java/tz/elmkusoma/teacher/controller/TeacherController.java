@@ -31,7 +31,7 @@ public class TeacherController {
     @PostMapping
     @Operation(summary = "Create a new teacher profile")
     public ResponseEntity<ApiResponse<TeacherResponse>> createTeacher(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @Valid @RequestBody TeacherRequest request) {
         TeacherResponse teacher = teacherService.createTeacher(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -41,7 +41,7 @@ public class TeacherController {
     @GetMapping("/{id}")
     @Operation(summary = "Get a teacher by ID")
     public ResponseEntity<ApiResponse<TeacherResponse>> getTeacher(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id) {
         TeacherResponse teacher = teacherService.getTeacher(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(teacher));
@@ -50,7 +50,7 @@ public class TeacherController {
     @GetMapping
     @Operation(summary = "List all teachers in an institution")
     public ResponseEntity<ApiResponse<PageResponse<TeacherResponse>>> listTeachers(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<TeacherResponse> teachers = teacherService.listTeachers(institutionId, page, size);
@@ -60,7 +60,7 @@ public class TeacherController {
     @PutMapping("/{id}")
     @Operation(summary = "Update a teacher profile")
     public ResponseEntity<ApiResponse<TeacherResponse>> updateTeacher(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody TeacherRequest request) {
         TeacherResponse teacher = teacherService.updateTeacher(institutionId, id, request);
@@ -70,7 +70,7 @@ public class TeacherController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete a teacher")
     public ResponseEntity<ApiResponse<Void>> deleteTeacher(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id) {
         teacherService.deleteTeacher(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Teacher deleted successfully", null));
@@ -79,7 +79,7 @@ public class TeacherController {
     @PostMapping("/{id}/assignments")
     @Operation(summary = "Add a class-subject assignment to a teacher")
     public ResponseEntity<ApiResponse<TeacherAssignmentResponse>> addAssignment(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody TeacherAssignmentRequest request) {
         TeacherAssignmentResponse assignment = teacherService.addAssignment(institutionId, id, request);
@@ -90,7 +90,7 @@ public class TeacherController {
     @GetMapping("/{id}/assignments")
     @Operation(summary = "Get all assignments for a teacher")
     public ResponseEntity<ApiResponse<List<TeacherAssignmentResponse>>> getAssignments(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id) {
         List<TeacherAssignmentResponse> assignments = teacherService.getAssignments(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(assignments));
@@ -99,7 +99,7 @@ public class TeacherController {
     @DeleteMapping("/assignments/{assignmentId}")
     @Operation(summary = "Remove a teacher assignment")
     public ResponseEntity<ApiResponse<Void>> removeAssignment(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID assignmentId) {
         teacherService.removeAssignment(institutionId, assignmentId);
         return ResponseEntity.ok(ApiResponse.success("Assignment removed successfully", null));
@@ -108,7 +108,7 @@ public class TeacherController {
     @PostMapping("/{id}/qualifications")
     @Operation(summary = "Add a qualification to a teacher")
     public ResponseEntity<ApiResponse<TeacherQualificationResponse>> addQualification(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody TeacherQualificationRequest request) {
         TeacherQualificationResponse qualification = teacherService.addQualification(institutionId, id, request);
@@ -119,7 +119,7 @@ public class TeacherController {
     @GetMapping("/{id}/qualifications")
     @Operation(summary = "Get all qualifications for a teacher")
     public ResponseEntity<ApiResponse<List<TeacherQualificationResponse>>> getQualifications(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id) {
         List<TeacherQualificationResponse> qualifications = teacherService.getQualifications(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(qualifications));
@@ -128,7 +128,7 @@ public class TeacherController {
     @DeleteMapping("/qualifications/{qualificationId}")
     @Operation(summary = "Remove a teacher qualification")
     public ResponseEntity<ApiResponse<Void>> removeQualification(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID qualificationId) {
         teacherService.removeQualification(institutionId, qualificationId);
         return ResponseEntity.ok(ApiResponse.success("Qualification removed successfully", null));

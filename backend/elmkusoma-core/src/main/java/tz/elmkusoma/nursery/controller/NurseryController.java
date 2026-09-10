@@ -31,8 +31,8 @@ public class NurseryController {
     @PostMapping("/activities")
     @Operation(summary = "Create a nursery activity")
     public ResponseEntity<ApiResponse<NurseryActivityResponse>> createActivity(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID conductedBy,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID conductedBy,
             @Valid @RequestBody CreateNurseryActivityRequest request) {
         NurseryActivityResponse response = nurseryActivityService.create(institutionId, conductedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -42,55 +42,63 @@ public class NurseryController {
     @GetMapping("/activities")
     @Operation(summary = "Get nursery activities by class")
     public ResponseEntity<ApiResponse<List<NurseryActivityResponse>>> getActivitiesByClass(
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam UUID classId) {
-        List<NurseryActivityResponse> response = nurseryActivityService.getByClassGroupId(classId);
+        List<NurseryActivityResponse> response = nurseryActivityService.getByClassGroupId(classId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/activities/class/{classId}/date/{date}")
     @Operation(summary = "Get nursery activities by class and date")
     public ResponseEntity<ApiResponse<List<NurseryActivityResponse>>> getActivitiesByClassAndDate(
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID classId,
             @PathVariable @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate date) {
-        List<NurseryActivityResponse> response = nurseryActivityService.getByClassAndDate(classId, date);
+        List<NurseryActivityResponse> response = nurseryActivityService.getByClassAndDate(classId, date, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/activities/{id}")
     @Operation(summary = "Get nursery activity by ID")
-    public ResponseEntity<ApiResponse<NurseryActivityResponse>> getActivity(@PathVariable UUID id) {
-        NurseryActivityResponse response = nurseryActivityService.getById(id);
+    public ResponseEntity<ApiResponse<NurseryActivityResponse>> getActivity(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        NurseryActivityResponse response = nurseryActivityService.getById(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/activities/{id}")
     @Operation(summary = "Update nursery activity")
     public ResponseEntity<ApiResponse<NurseryActivityResponse>> updateActivity(
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody CreateNurseryActivityRequest request) {
-        NurseryActivityResponse response = nurseryActivityService.update(id, request);
+        NurseryActivityResponse response = nurseryActivityService.update(id, institutionId, request);
         return ResponseEntity.ok(ApiResponse.success("Nursery activity updated successfully", response));
     }
 
     @DeleteMapping("/activities/{id}")
     @Operation(summary = "Delete nursery activity")
-    public ResponseEntity<ApiResponse<Void>> deleteActivity(@PathVariable UUID id) {
-        nurseryActivityService.delete(id);
+    public ResponseEntity<ApiResponse<Void>> deleteActivity(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        nurseryActivityService.delete(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Nursery activity deleted successfully", null));
     }
 
     @GetMapping("/activities/type/{type}")
     @Operation(summary = "Get nursery activities by type")
     public ResponseEntity<ApiResponse<List<NurseryActivityResponse>>> getActivitiesByType(
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable String type) {
-        List<NurseryActivityResponse> response = nurseryActivityService.getByType(type);
+        List<NurseryActivityResponse> response = nurseryActivityService.getByType(type, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping("/milestones")
     @Operation(summary = "Create a nursery milestone")
     public ResponseEntity<ApiResponse<NurseryMilestoneResponse>> createMilestone(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @Valid @RequestBody CreateNurseryMilestoneRequest request) {
         NurseryMilestoneResponse response = nurseryMilestoneService.create(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -100,40 +108,47 @@ public class NurseryController {
     @GetMapping("/milestones/student/{studentId}")
     @Operation(summary = "Get milestones by student")
     public ResponseEntity<ApiResponse<List<NurseryMilestoneResponse>>> getMilestonesByStudent(
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID studentId) {
-        List<NurseryMilestoneResponse> response = nurseryMilestoneService.getByStudentId(studentId);
+        List<NurseryMilestoneResponse> response = nurseryMilestoneService.getByStudentId(studentId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/milestones/student/{studentId}/category/{category}")
     @Operation(summary = "Get milestones by student and category")
     public ResponseEntity<ApiResponse<List<NurseryMilestoneResponse>>> getMilestonesByStudentAndCategory(
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID studentId,
             @PathVariable String category) {
-        List<NurseryMilestoneResponse> response = nurseryMilestoneService.getByStudentAndCategory(studentId, category);
+        List<NurseryMilestoneResponse> response = nurseryMilestoneService.getByStudentAndCategory(studentId, category, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/milestones/{id}")
     @Operation(summary = "Get milestone by ID")
-    public ResponseEntity<ApiResponse<NurseryMilestoneResponse>> getMilestone(@PathVariable UUID id) {
-        NurseryMilestoneResponse response = nurseryMilestoneService.getById(id);
+    public ResponseEntity<ApiResponse<NurseryMilestoneResponse>> getMilestone(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        NurseryMilestoneResponse response = nurseryMilestoneService.getById(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/milestones/{id}")
     @Operation(summary = "Update milestone")
     public ResponseEntity<ApiResponse<NurseryMilestoneResponse>> updateMilestone(
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody CreateNurseryMilestoneRequest request) {
-        NurseryMilestoneResponse response = nurseryMilestoneService.update(id, request);
+        NurseryMilestoneResponse response = nurseryMilestoneService.update(id, institutionId, request);
         return ResponseEntity.ok(ApiResponse.success("Milestone updated successfully", response));
     }
 
     @DeleteMapping("/milestones/{id}")
     @Operation(summary = "Delete milestone")
-    public ResponseEntity<ApiResponse<Void>> deleteMilestone(@PathVariable UUID id) {
-        nurseryMilestoneService.delete(id);
+    public ResponseEntity<ApiResponse<Void>> deleteMilestone(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        nurseryMilestoneService.delete(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Milestone deleted successfully", null));
     }
 }

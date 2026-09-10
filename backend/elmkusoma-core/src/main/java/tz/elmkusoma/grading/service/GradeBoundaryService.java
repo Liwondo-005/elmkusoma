@@ -16,11 +16,11 @@ public interface GradeBoundaryService {
 
     List<GradeBoundaryResponse> getByInstitutionId(UUID institutionId);
 
-    GradeBoundaryResponse getById(UUID id);
+    GradeBoundaryResponse getById(UUID id, UUID institutionId);
 
-    GradeBoundaryResponse update(UUID id, CreateGradeBoundaryRequest request);
+    GradeBoundaryResponse update(UUID id, UUID institutionId, CreateGradeBoundaryRequest request);
 
-    void delete(UUID id);
+    void delete(UUID id, UUID institutionId);
 
     String calculateGradeForPercentage(UUID gradingScaleId, java.math.BigDecimal percentage);
 }

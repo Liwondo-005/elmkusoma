@@ -50,8 +50,10 @@ public class AcademicController {
     }
 
     @GetMapping("/years/{id}")
-    public ResponseEntity<ApiResponse<AcademicYear>> getAcademicYear(@PathVariable UUID id) {
-        AcademicYear year = academicService.getAcademicYear(id);
+    public ResponseEntity<ApiResponse<AcademicYear>> getAcademicYear(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        AcademicYear year = academicService.getAcademicYear(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(year));
     }
 
@@ -94,8 +96,10 @@ public class AcademicController {
     }
 
     @GetMapping("/grades/{id}")
-    public ResponseEntity<ApiResponse<Grade>> getGrade(@PathVariable UUID id) {
-        Grade grade = academicService.getGrade(id);
+    public ResponseEntity<ApiResponse<Grade>> getGrade(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        Grade grade = academicService.getGrade(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(grade));
     }
 
@@ -120,8 +124,10 @@ public class AcademicController {
     }
 
     @GetMapping("/subjects/{id}")
-    public ResponseEntity<ApiResponse<Subject>> getSubject(@PathVariable UUID id) {
-        Subject subject = academicService.getSubject(id);
+    public ResponseEntity<ApiResponse<Subject>> getSubject(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        Subject subject = academicService.getSubject(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(subject));
     }
 
@@ -150,8 +156,10 @@ public class AcademicController {
     }
 
     @GetMapping("/classes/{id}")
-    public ResponseEntity<ApiResponse<ClassGroup>> getClassGroup(@PathVariable UUID id) {
-        ClassGroup classGroup = academicService.getClassGroup(id);
+    public ResponseEntity<ApiResponse<ClassGroup>> getClassGroup(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        ClassGroup classGroup = academicService.getClassGroup(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(classGroup));
     }
 }

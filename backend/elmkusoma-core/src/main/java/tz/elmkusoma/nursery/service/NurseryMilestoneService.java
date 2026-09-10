@@ -10,13 +10,13 @@ public interface NurseryMilestoneService {
 
     NurseryMilestoneResponse create(UUID institutionId, CreateNurseryMilestoneRequest request);
 
-    List<NurseryMilestoneResponse> getByStudentId(UUID studentId);
+    List<NurseryMilestoneResponse> getByStudentId(UUID studentId, UUID institutionId);
 
-    List<NurseryMilestoneResponse> getByStudentAndCategory(UUID studentId, String category);
+    List<NurseryMilestoneResponse> getByStudentAndCategory(UUID studentId, String category, UUID institutionId);
 
-    NurseryMilestoneResponse getById(UUID id);
+    NurseryMilestoneResponse getById(UUID id, UUID institutionId);
 
-    NurseryMilestoneResponse update(UUID id, CreateNurseryMilestoneRequest request);
+    NurseryMilestoneResponse update(UUID id, UUID institutionId, CreateNurseryMilestoneRequest request);
 
-    void delete(UUID id);
+    void delete(UUID id, UUID institutionId);
 }

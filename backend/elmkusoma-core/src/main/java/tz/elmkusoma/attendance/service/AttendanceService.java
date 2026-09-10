@@ -13,13 +13,13 @@ public interface AttendanceService {
 
     AttendanceRecordResponse markAttendance(UUID institutionId, UUID markedBy, MarkAttendanceRequest request);
 
-    List<AttendanceRecordResponse> getByClassAndDate(UUID classGroupId, LocalDate date);
+    List<AttendanceRecordResponse> getByClassAndDate(UUID classGroupId, LocalDate date, UUID institutionId);
 
-    List<AttendanceRecordResponse> getByStudentAndDateRange(UUID studentId, LocalDate startDate, LocalDate endDate);
+    List<AttendanceRecordResponse> getByStudentAndDateRange(UUID studentId, LocalDate startDate, LocalDate endDate, UUID institutionId);
 
-    AttendanceSummaryResponse getSummary(UUID studentId, UUID termId);
+    AttendanceSummaryResponse getSummary(UUID studentId, UUID termId, UUID institutionId);
 
-    List<AttendanceSummaryResponse> getByClassAndTerm(UUID classGroupId, UUID termId);
+    List<AttendanceSummaryResponse> getByClassAndTerm(UUID classGroupId, UUID termId, UUID institutionId);
 
     void markBulkAttendance(UUID institutionId, UUID markedBy, BulkMarkAttendanceRequest request);
 
