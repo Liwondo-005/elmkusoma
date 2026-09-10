@@ -21,10 +21,10 @@ export default function DashboardCoursesPage() {
     try {
       setLoading(true)
       const [coursesData, progressData] = await Promise.all([
-        courseApi.list().catch(() => ({ content: [] as Course[] })),
+        courseApi.listCourses(user?.institutionId || "").catch(() => [] as Course[]),
         learningApi.getStudentProgress(user!.id).catch(() => []),
       ])
-      setCourses(coursesData.content || [])
+      setCourses(Array.isArray(coursesData) ? coursesData : [])
       setProgress(progressData)
     } catch {
       setCourses([])

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, TrendingUp, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -50,7 +50,7 @@ const primaryNav = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const secondaryNav = [
+const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -90,6 +90,7 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
   { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
   { label: "Gradebook", href: "/dashboard/teacher/gradebook", icon: BarChart3 },
+  { label: "Analytics", href: "/dashboard/teacher/analytics", icon: TrendingUp },
   { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Calendar },
   { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
   { label: "Profile", href: "/dashboard/profile", icon: User },
