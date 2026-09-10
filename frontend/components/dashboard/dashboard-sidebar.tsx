@@ -42,6 +42,7 @@ const teacherNav = [
 
 const adminNav = [
   { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
+  { label: "Institutions", href: "/dashboard/admin/institutions", icon: School },
   { label: "Roles", href: "/dashboard/admin/roles", icon: Shield },
   { label: "Data Import", href: "/dashboard/admin/import", icon: FileText },
   { label: "Audit", href: "/dashboard/audit", icon: Shield },

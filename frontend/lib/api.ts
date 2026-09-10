@@ -1128,3 +1128,75 @@ export const auditApi = {
   getComplianceReport: (institutionId: string) =>
     request<ComplianceReportResponse>(`/v1/audit/compliance?institutionId=${institutionId}`),
 }
+
+export interface Institution {
+  id: string
+  name: string
+  description: string | null
+  type: string
+  status: string | null
+  logoUrl: string | null
+  website: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  city: string | null
+  country: string | null
+  createdAt: string
+}
+
+export interface CreateInstitutionRequest {
+  name: string
+  description?: string
+  type: string
+  logoUrl?: string
+  website?: string
+  email?: string
+  phone?: string
+  address?: string
+  city?: string
+  country?: string
+}
+
+export interface UpdateInstitutionRequest {
+  name?: string
+  description?: string
+  logoUrl?: string
+  website?: string
+  email?: string
+  phone?: string
+  address?: string
+  city?: string
+  country?: string
+}
+
+export const institutionApi = {
+  get: (id: string) =>
+    request<Institution>(`/v1/institutions/${id}`),
+
+  list: (page = 0, size = 20) =>
+    request<{ content: Institution[]; totalElements: number; totalPages: number }>(
+      `/v1/institutions?page=${page}&size=${size}`
+    ),
+
+  create: (data: CreateInstitutionRequest) =>
+    request<Institution>("/v1/institutions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateInstitutionRequest) =>
+    request<Institution>(`/v1/institutions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    request<void>(`/v1/institutions/${id}`, { method: "DELETE" }),
+
+  activate: (id: string) =>
+    request<Institution>(`/v1/institutions/${id}/activate`, { method: "PUT" }),
+
+  deactivate: (id: string) =>
+    request<Institution>(`/v1/institutions/${id}/deactivate`, { method: "PUT" }),
+}
