@@ -1,7 +1,7 @@
 -- ============================================================
 -- SAMPLE DATA FOR ELMKUSOMA
 -- All UUIDs use valid hex characters (0-9, a-f only)
--- Applied directly via psql, not as Flyway migration
+-- Apply via psql: psql -U postgres -d elmkusoma -f V21__sample_data.sql
 -- ============================================================
 
 -- 1. UPDATE INSTITUTION
@@ -288,6 +288,6 @@ VALUES
 -- 27. EXTRA CERTIFICATES
 INSERT INTO certificates (institution_id, student_id, certificate_type, title, description, student_name, student_id_number, course_or_programme, completion_date, grade, status, serial_number, verification_code, issued_by, issue_date, created_by, is_deleted)
 VALUES
-  ('fbd2e3e3-99df-48f3-b138-58d6f6f84103', 'a5000000-0000-0000-0000-000000000001', 'ACHIEVEMENT', 'Mathematics Excellence Award', 'Awarded for outstanding performance in Mathematics', 'Fatima Hassan Ali', 'STU-2026-002', 'Mathematics', '2026-04-10', 'A', 'ISSUED', 'CERT-ACH-2026-000001', 'ACH2026001ABCDEF', '22548351-f15a-4f60-b1ff-f807743ef4cc', '2026-04-10', 'admin@test.com', false),
+   ('fbd2e3e3-99df-48f3-b138-58d6f6f84103', 'a5000000-0000-0000-0000-000000000001', 'ACHIEVEMENT', 'Mathematics Excellence Award', 'Awarded for outstanding performance in Mathematics', 'Fatima Hassan Ali', 'STU-2026-002', 'Mathematics', '2026-04-10', 'A', 'ISSUED', 'CERT-ACH-2026-000001', 'ACH2026001ABCDEF', '22548351-f15a-4f60-b1ff-f807743ef4cc', '2026-04-10', 'admin@test.com', false),
   ('fbd2e3e3-99df-48f3-b138-58d6f6f84103', 'a5000000-0000-0000-0000-000000000002', 'PARTICIPATION', 'Sports Day Certificate', 'Participated in inter-school athletics competition', 'Peter Joseph Mushi', 'STU-2026-003', 'Physical Education', '2026-03-15', NULL, 'ISSUED', 'CERT-PAR-2026-000001', 'PAR2026001ABCDEF', '22548351-f15a-4f60-b1ff-f807743ef4cc', '2026-03-15', 'admin@test.com', false),
   ('fbd2e3e3-99df-48f3-b138-58d6f6f84103', '0e0e3551-c758-4463-92cc-5eda51699af1', 'ACHIEVEMENT', 'Science Fair Winner', 'First place in school science fair 2026', 'Test Student', 'STU-2026-001', 'Science and Technology', '2026-03-20', 'A', 'ISSUED', 'CERT-ACH-2026-000002', 'ACH2026002ABCDEF', '22548351-f15a-4f60-b1ff-f807743ef4cc', '2026-03-20', 'admin@test.com', false);
