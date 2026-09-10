@@ -16,11 +16,9 @@ import org.springframework.core.Ordered;
 import org.springframework.util.StringUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-@Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ordered {
 
     private static final int FILTER_ORDER = Ordered.HIGHEST_PRECEDENCE + 1;
@@ -53,6 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
                 String email = jwtTokenProvider.getEmailFromToken(token);
                 log.debug("JWT Filter: email from token = {}", email);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                log.debug("JWT Filter: userDetails loaded for {}", email);
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -62,7 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
                 log.debug("JWT Filter: authentication set for {}", email);
             }
         } catch (Exception ex) {
-            log.error("Could not set user authentication in security context: {}", ex.getMessage());
+            log.error("Could not set user authentication in security context: {}", ex.getMessage(), ex);
         }
 
         filterChain.doFilter(request, response);
