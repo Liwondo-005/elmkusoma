@@ -1,0 +1,27 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< tz.elmkusoma:elmkusoma-core >---------------------
+[INFO] Building ELMKUSOMA Core 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.4.1:run (default-cli) > test-compile @ elmkusoma-core >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ elmkusoma-core ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 21 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ elmkusoma-core ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ elmkusoma-core ---
+[INFO] skip non existing resourceDirectory C:\Users\dell\Desktop\elmkusoma\backend\elmkusoma-core\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ elmkusoma-core ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] <<< spring-boot:3.4.1:run (default-cli) < test-compile @ elmkusoma-core <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.4.1:run (default-cli) @ elmkusoma-core ---
+[INFO] Attaching agents: []
