@@ -2,19 +2,27 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useRequireAuth } from "@/lib/auth"
 import { dashboardApi, type DashboardSummary, type ContinueLearningItem, type RecentActivity } from "@/lib/api"
 import { BookOpen, Clock, CheckCircle, TrendingUp, Users, Award, ArrowRight, BarChart3, Video, FileText } from "lucide-react"
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useRequireAuth()
+  const router = useRouter()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [continueItems, setContinueItems] = useState<ContinueLearningItem[]>([])
   const [activities, setActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) return
+    if (!authLoading && user?.role === "Parent") {
+      router.replace("/dashboard/parent")
+    }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
+    if (!user || user.role === "Parent") return
     loadDashboard()
   }, [user])
 
@@ -36,7 +44,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (authLoading || loading) {
+  if (authLoading || loading || user?.role === "Parent") {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
