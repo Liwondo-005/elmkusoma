@@ -9,20 +9,74 @@ import { useAuth } from "@/lib/auth"
 
 const studentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Academic", href: "/dashboard/academic", icon: School },
-  { label: "Students", href: "/dashboard/students", icon: Users },
-  { label: "All Courses", href: "/dashboard/admin/courses", icon: BookOpen },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "Enrollments", href: "/dashboard/enrollment", icon: ClipboardList },
   { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
   { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
-  { label: "Live Classes", href: "/live-classes", icon: Video },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
   { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
   { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, badge: 2 },
-  { label: "Certificates", href: "/dashboard/certificates", icon: Award },
-  { label: "Templates", href: "/dashboard/certificates/templates", icon: FileText },
-  { label: "Issue / Revoke", href: "/dashboard/certificates/generate", icon: Award },
-  { label: "Transcripts", href: "/dashboard/certificates/transcripts", icon: ClipboardList },
+  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const nurseryNav = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Activities", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Fun Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "My Drawings", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const primaryNav = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const secondaryNav = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const universityNav = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
   { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
@@ -50,6 +104,13 @@ const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboar
   { label: "Audit", href: "/dashboard/audit", icon: Shield },
 ]
 
+function getStudentNavForContext(user: { role?: string } | null) {
+  const role = user?.role?.toLowerCase() || ""
+  // Default to secondaryNav for students — context-aware selection could be
+  // enhanced with student.level from API in the future
+  return secondaryNav
+}
+
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
@@ -59,7 +120,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isAdmin = user?.role === "Admin" || user?.role === "Institution Admin"
   const isStudent = !isTeacher && !isAdmin
 
-  const activeNav = isTeacher ? teacherNav : studentNav
+  const activeNav = isTeacher ? teacherNav : isStudent ? getStudentNavForContext(user) : secondaryNav
 
   function handleLogout() {
     logout()
@@ -107,8 +168,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           <>
             <div className="my-2 border-t border-border" />
             <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Administration
-            </p>
+              Administration</p>
             {adminNav.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href)
               return (
