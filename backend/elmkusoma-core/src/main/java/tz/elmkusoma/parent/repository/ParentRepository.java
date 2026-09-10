@@ -23,4 +23,7 @@ public interface ParentRepository extends JpaRepository<Parent, UUID> {
     Optional<Parent> findByUserIdAndInstitutionId(@Param("userId") UUID userId, @Param("institutionId") UUID institutionId);
 
     boolean existsByUserIdAndInstitutionIdAndIsDeletedFalse(UUID userId, UUID institutionId);
+
+    @Query("SELECT p FROM Parent p WHERE p.userId = :userId AND p.isDeleted = false")
+    List<Parent> findAllByUserId(@Param("userId") UUID userId);
 }

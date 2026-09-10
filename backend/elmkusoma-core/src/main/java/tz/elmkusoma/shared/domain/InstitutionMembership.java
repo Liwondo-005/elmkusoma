@@ -47,6 +47,7 @@ public class InstitutionMembership {
         OWNER,
         ADMIN,
         TEACHER,
-        STUDENT
+        STUDENT,
+        PARENT
     }
 }

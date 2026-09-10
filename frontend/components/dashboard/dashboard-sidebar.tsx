@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, Bell } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -23,6 +23,19 @@ const nav = [
   { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const parentNav = [
+  { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
+  { label: "My Children", href: "/dashboard/parent/children", icon: Users },
+  { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
+  { label: "Assignments", href: "/dashboard/parent/assignments", icon: FileText },
+  { label: "Results", href: "/dashboard/parent/results", icon: BarChart3 },
+  { label: "Calendar", href: "/dashboard/parent/calendar", icon: Clock },
+  { label: "Live Classes", href: "/live-classes", icon: Video },
+  { label: "Messages", href: "/dashboard/parent/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/parent/notifications", icon: Bell },
+  { label: "Settings", href: "/dashboard/parent/settings", icon: Settings },
 ]
 
 const adminNav = [
@@ -48,7 +61,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {nav.map((item) => {
+        {(user?.role === "Parent" ? parentNav : nav).map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
           return (
             <Link

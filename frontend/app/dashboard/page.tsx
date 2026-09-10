@@ -1,8 +1,10 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { BookOpen, Video, Clock, Award, CheckCircle, ArrowRight } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { BookOpen, Video, Clock, Award, ArrowRight } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -34,8 +36,19 @@ const activity = [
 ]
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  const router = useRouter()
   const firstName = user?.name?.split(" ")[0] || "Student"
+
+  useEffect(() => {
+    if (!loading && user?.role === "Parent") {
+      router.replace("/dashboard/parent")
+    }
+  }, [user, loading, router])
+
+  if (user?.role === "Parent") {
+    return null
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
