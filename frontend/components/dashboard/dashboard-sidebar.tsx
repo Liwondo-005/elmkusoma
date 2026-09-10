@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, TrendingUp, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, TrendingUp, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -97,6 +97,19 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
+const parentNav = [
+  { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
+  { label: "My Children", href: "/dashboard/parent/children", icon: Users },
+  { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
+  { label: "Assignments", href: "/dashboard/parent/assignments", icon: FileText },
+  { label: "Results", href: "/dashboard/parent/results", icon: BarChart3 },
+  { label: "Calendar", href: "/dashboard/parent/calendar", icon: Clock },
+  { label: "Live Classes", href: "/live-classes", icon: Video },
+  { label: "Messages", href: "/dashboard/parent/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/parent/notifications", icon: Bell },
+  { label: "Settings", href: "/dashboard/parent/settings", icon: Settings },
+]
+
 const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
   { label: "Institutions", href: "/dashboard/admin/institutions", icon: School },
@@ -107,8 +120,6 @@ const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboar
 
 function getStudentNavForContext(user: { role?: string } | null) {
   const role = user?.role?.toLowerCase() || ""
-  // Default to secondaryNav for students — context-aware selection could be
-  // enhanced with student.level from API in the future
   return secondaryNav
 }
 
@@ -119,9 +130,16 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const isTeacher = user?.role === "Teacher" || user?.role === "Instructor"
   const isAdmin = user?.role === "Admin" || user?.role === "Institution Admin"
-  const isStudent = !isTeacher && !isAdmin
+  const isParent = user?.role === "Parent"
+  const isStudent = !isTeacher && !isAdmin && !isParent
 
-  const activeNav = isTeacher ? teacherNav : isStudent ? getStudentNavForContext(user) : secondaryNav
+  const activeNav = isParent
+    ? parentNav
+    : isTeacher
+      ? teacherNav
+      : isStudent
+        ? getStudentNavForContext(user)
+        : secondaryNav
 
   function handleLogout() {
     logout()
@@ -169,7 +187,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           <>
             <div className="my-2 border-t border-border" />
             <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Administration</p>
+              Administration
+            </p>
             {adminNav.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href)
               return (
