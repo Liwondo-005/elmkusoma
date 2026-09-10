@@ -15,11 +15,11 @@ public interface InstitutionService {
 
     PageResponse<InstitutionResponse> listInstitutions(int page, int size);
 
-    InstitutionResponse updateInstitution(UUID id, UpdateInstitutionRequest request);
+    InstitutionResponse updateInstitution(UUID id, UUID institutionId, UpdateInstitutionRequest request);
 
-    void deleteInstitution(UUID id);
+    void deleteInstitution(UUID id, UUID institutionId);
 
-    InstitutionResponse activateInstitution(UUID id);
+    InstitutionResponse activateInstitution(UUID id, UUID institutionId);
 
-    InstitutionResponse deactivateInstitution(UUID id);
+    InstitutionResponse deactivateInstitution(UUID id, UUID institutionId);
 }

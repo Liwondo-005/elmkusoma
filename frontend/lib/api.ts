@@ -79,14 +79,29 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers,
   })
 
-  const body = await res.json()
+  if (res.status === 204) return undefined as T
+
+  const contentType = res.headers.get("content-type") || ""
+  let body: Record<string, unknown>
+  try {
+    if (contentType.includes("application/json")) {
+      body = await res.json()
+    } else {
+      const text = await res.text()
+      try { body = JSON.parse(text) } catch { body = {} }
+    }
+  } catch {
+    body = {}
+  }
 
   if (!res.ok || body.success === false) {
-    const errorMsg = body.error || body.message || `Request failed (${res.status})`
+    const errorMsg = (body.error as string) || (body.message as string) || `Request failed (${res.status})`
     throw new ApiRequestError(errorMsg, res.status, body)
   }
 
-  return body.data !== undefined ? body.data : body as T
+  return (body as Record<string, unknown>).data !== undefined
+    ? (body as Record<string, unknown>).data as T
+    : body as T
 }
 
 export class ApiRequestError extends Error {

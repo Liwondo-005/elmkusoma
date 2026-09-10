@@ -30,7 +30,7 @@ public class EnrollmentController {
     @PostMapping
     @Operation(summary = "Enroll a student in a class")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> enroll(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @Valid @RequestBody EnrollmentRequest request) {
         EnrollmentResponse response = enrollmentService.enroll(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -40,7 +40,7 @@ public class EnrollmentController {
     @GetMapping
     @Operation(summary = "Get all enrollments for an institution")
     public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> getEnrollments(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<EnrollmentResponse> response = enrollmentService.getEnrollments(institutionId, page, size);
@@ -49,24 +49,29 @@ public class EnrollmentController {
 
     @GetMapping("/student/{studentId}")
     @Operation(summary = "Get enrollments by student")
-    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> getByStudent(@PathVariable UUID studentId) {
-        List<EnrollmentResponse> response = enrollmentService.getEnrollmentsByStudent(studentId);
+    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> getByStudent(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID studentId) {
+        List<EnrollmentResponse> response = enrollmentService.getEnrollmentsByStudent(studentId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/class/{classGroupId}")
     @Operation(summary = "Get enrollments by class group")
-    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> getByClass(@PathVariable UUID classGroupId) {
-        List<EnrollmentResponse> response = enrollmentService.getEnrollmentsByClass(classGroupId);
+    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> getByClass(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID classGroupId) {
+        List<EnrollmentResponse> response = enrollmentService.getEnrollmentsByClass(classGroupId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/{id}/status")
     @Operation(summary = "Update enrollment status")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> updateStatus(
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @RequestParam Enrollment.EnrollmentStatus status) {
-        EnrollmentResponse response = enrollmentService.updateStatus(id, status);
+        EnrollmentResponse response = enrollmentService.updateStatus(id, institutionId, status);
         return ResponseEntity.ok(ApiResponse.success("Status updated", response));
     }
 
@@ -74,8 +79,8 @@ public class EnrollmentController {
     @Operation(summary = "Transfer student to another class")
     public ResponseEntity<ApiResponse<TransferResponse>> transfer(
             @PathVariable UUID id,
-            @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
             @Valid @RequestBody TransferRequest request) {
         TransferResponse response = enrollmentService.transfer(id, institutionId, request, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -84,8 +89,10 @@ public class EnrollmentController {
 
     @GetMapping("/{id}/transfers")
     @Operation(summary = "Get transfer history for an enrollment")
-    public ResponseEntity<ApiResponse<List<TransferResponse>>> getTransferHistory(@PathVariable UUID id) {
-        List<TransferResponse> response = enrollmentService.getTransferHistory(id);
+    public ResponseEntity<ApiResponse<List<TransferResponse>>> getTransferHistory(
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID id) {
+        List<TransferResponse> response = enrollmentService.getTransferHistory(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

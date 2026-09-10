@@ -147,9 +147,8 @@ public class TeacherServiceImpl implements TeacherService {
 
     @Override
     public TeacherAssignmentResponse addAssignment(UUID institutionId, UUID teacherId, TeacherAssignmentRequest request) {
-        if (!teacherRepository.existsById(teacherId)) {
-            throw new ResourceNotFoundException("Teacher", "id", teacherId);
-        }
+        Teacher teacher = teacherRepository.findByIdAndInstitutionId(teacherId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
 
         TeacherAssignment assignment = TeacherAssignment.builder()
                 .teacherId(teacherId)
@@ -167,6 +166,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Transactional(readOnly = true)
     public List<TeacherAssignmentResponse> getAssignments(UUID institutionId, UUID teacherId) {
         return assignmentRepository.findAllByTeacherId(teacherId).stream()
+                .filter(a -> a.getInstitutionId().equals(institutionId))
                 .map(this::mapToAssignmentResponse)
                 .toList();
     }
@@ -182,9 +182,8 @@ public class TeacherServiceImpl implements TeacherService {
 
     @Override
     public TeacherQualificationResponse addQualification(UUID institutionId, UUID teacherId, TeacherQualificationRequest request) {
-        if (!teacherRepository.existsById(teacherId)) {
-            throw new ResourceNotFoundException("Teacher", "id", teacherId);
-        }
+        Teacher teacher = teacherRepository.findByIdAndInstitutionId(teacherId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
 
         TeacherQualification qualification = TeacherQualification.builder()
                 .teacherId(teacherId)
@@ -204,6 +203,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Transactional(readOnly = true)
     public List<TeacherQualificationResponse> getQualifications(UUID institutionId, UUID teacherId) {
         return qualificationRepository.findAllByTeacherId(teacherId).stream()
+                .filter(q -> q.getInstitutionId().equals(institutionId))
                 .map(this::mapToQualificationResponse)
                 .toList();
     }

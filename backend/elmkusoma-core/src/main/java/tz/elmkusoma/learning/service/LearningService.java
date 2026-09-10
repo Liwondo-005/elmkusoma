@@ -12,23 +12,23 @@ public interface LearningService {
 
     LessonResponse createLesson(UUID institutionId, LessonRequest request);
 
-    List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId);
+    List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId, UUID institutionId);
 
-    List<LessonResponse> getLessonsByClass(UUID classGroupId);
+    List<LessonResponse> getLessonsByClass(UUID classGroupId, UUID institutionId);
 
     ProgressResponse updateProgress(UUID institutionId, UUID studentId, ProgressRequest request);
 
-    List<ProgressResponse> getStudentProgress(UUID studentId);
+    List<ProgressResponse> getStudentProgress(UUID studentId, UUID institutionId);
 
-    Double getStudentAverageCompletion(UUID studentId);
+    Double getStudentAverageCompletion(UUID studentId, UUID institutionId);
 
     AssignmentResponse createAssignment(UUID institutionId, AssignmentRequest request);
 
-    List<AssignmentResponse> getAssignmentsByClass(UUID classGroupId);
+    List<AssignmentResponse> getAssignmentsByClass(UUID classGroupId, UUID institutionId);
 
     SubmissionResponse submitAssignment(UUID assignmentId, UUID studentId, UUID institutionId);
 
-    List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId);
+    List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId, UUID institutionId);
 
-    SubmissionResponse gradeSubmission(UUID submissionId, Integer grade, String feedback, UUID gradedBy);
+    SubmissionResponse gradeSubmission(UUID submissionId, Integer grade, String feedback, UUID gradedBy, UUID institutionId);
 }
