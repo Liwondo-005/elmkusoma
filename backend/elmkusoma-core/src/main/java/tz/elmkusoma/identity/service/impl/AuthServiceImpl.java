@@ -93,7 +93,10 @@ public class AuthServiceImpl implements AuthService {
         user = userRepository.save(user);
         log.info("User registered successfully: {}", user.getEmail());
 
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail());
+        UUID instId = user.getInstitutionId();
+
+        String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
+                user.getEmail(), user.getId(), user.getRole().name(), instId);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
 
         return AuthResponse.builder()
@@ -120,7 +123,8 @@ public class AuthServiceImpl implements AuthService {
             throw new ForbiddenException("Account is deactivated. Please contact support.");
         }
 
-        String accessToken = jwtTokenProvider.generateAccessToken(authentication);
+        String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
+                user.getEmail(), user.getId(), user.getRole().name(), user.getInstitutionId());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
 
         log.info("User logged in: {}", user.getEmail());
@@ -153,7 +157,8 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmailAndIsDeletedFalse(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getEmail());
+        String newAccessToken = jwtTokenProvider.generateAccessTokenWithClaims(
+                user.getEmail(), user.getId(), user.getRole().name(), user.getInstitutionId());
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
 
         return AuthResponse.builder()
