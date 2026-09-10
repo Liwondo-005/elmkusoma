@@ -11,7 +11,7 @@ const studentNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Academic", href: "/dashboard/academic", icon: School },
   { label: "Students", href: "/dashboard/students", icon: Users },
-  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "All Courses", href: "/dashboard/admin/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
   { label: "Enrollments", href: "/dashboard/enrollment", icon: ClipboardList },
   { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
@@ -20,6 +20,9 @@ const studentNav = [
   { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
   { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, badge: 2 },
   { label: "Certificates", href: "/dashboard/certificates", icon: Award },
+  { label: "Templates", href: "/dashboard/certificates/templates", icon: FileText },
+  { label: "Issue / Revoke", href: "/dashboard/certificates/generate", icon: Award },
+  { label: "Transcripts", href: "/dashboard/certificates/transcripts", icon: ClipboardList },
   { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
@@ -39,7 +42,9 @@ const teacherNav = [
 
 const adminNav = [
   { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
+  { label: "Institutions", href: "/dashboard/admin/institutions", icon: School },
   { label: "Roles", href: "/dashboard/admin/roles", icon: Shield },
+  { label: "Data Import", href: "/dashboard/admin/import", icon: FileText },
   { label: "Audit", href: "/dashboard/audit", icon: Shield },
 ]
 

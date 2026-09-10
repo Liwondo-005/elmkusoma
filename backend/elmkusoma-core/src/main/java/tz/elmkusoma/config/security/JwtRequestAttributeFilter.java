@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
-@org.springframework.stereotype.Component
 public class JwtRequestAttributeFilter extends OncePerRequestFilter implements Ordered {
 
     private static final int FILTER_ORDER = Ordered.HIGHEST_PRECEDENCE + 2;
@@ -60,6 +59,8 @@ public class JwtRequestAttributeFilter extends OncePerRequestFilter implements O
                     User user = userRepository.findByEmailAndIsDeletedFalse(email).orElse(null);
                     if (user != null) {
                         request.setAttribute("userId", user.getId());
+                        request.setAttribute("userEmail", user.getEmail());
+                        request.setAttribute("userRole", user.getRole().name());
 
                         List<InstitutionMembership> memberships =
                                 membershipRepository.findByUserIdAndIsActiveTrue(user.getId());

@@ -13,13 +13,19 @@ import tz.elmkusoma.certificate.domain.TranscriptEntry;
 import tz.elmkusoma.certificate.dto.*;
 import tz.elmkusoma.certificate.mapper.CertificateMapper;
 import tz.elmkusoma.certificate.repository.*;
+import tz.elmkusoma.audit.domain.AuditLog;
+import tz.elmkusoma.audit.domain.SecurityEvent;
+import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -33,16 +39,23 @@ public class CertificateService {
     private final TranscriptRepository transcriptRepository;
     private final TranscriptEntryRepository transcriptEntryRepository;
     private final CertificateMapper certificateMapper;
+    private final AuditService auditService;
+    private final StudentRepository studentRepository;
 
     // ── Template Management ──
 
-    public TemplateResponse createTemplate(CreateTemplateRequest request, UUID institutionId) {
+    public TemplateResponse createTemplate(CreateTemplateRequest request, UUID institutionId,
+                                            String userEmail, String userRole) {
         if (templateRepository.existsByNameAndInstitutionIdAndIsDeletedFalse(request.getName(), institutionId)) {
             throw new IllegalArgumentException("Template with name '" + request.getName() + "' already exists");
         }
 
         CertificateTemplate template = certificateMapper.toTemplateEntity(request, institutionId);
         templateRepository.save(template);
+
+        auditService.recordAuditLog(institutionId, null, userEmail, userRole,
+                "CertificateTemplate", template.getId(), template.getName(),
+                AuditLog.AuditAction.CREATE, null, Map.of("name", template.getName(), "type", template.getTemplateType().name()));
 
         log.info("Created certificate template: {} for institution: {}", template.getName(), institutionId);
         return certificateMapper.toTemplateResponse(template);
@@ -69,7 +82,8 @@ public class CertificateService {
 
     // ── Certificate Generation ──
 
-    public CertificateResponse generateCertificate(GenerateCertificateRequest request, UUID institutionId, UUID issuedBy) {
+    public CertificateResponse generateCertificate(GenerateCertificateRequest request, UUID institutionId,
+                                                    UUID issuedBy, String userEmail, String userRole) {
         // Validate template exists
         CertificateTemplate template = templateRepository.findByIdAndIsDeletedFalse(request.getTemplateId())
                 .orElseThrow(() -> new ResourceNotFoundException("CertificateTemplate", "id", request.getTemplateId()));
@@ -87,9 +101,19 @@ public class CertificateService {
         // Build verification URL
         String verificationUrl = "/api/v1/certificates/" + verificationCode + "/verify";
 
+        // Resolve student ID: if not a valid student record, try to find by user ID
+        UUID studentId = request.getStudentId();
+        if (studentId != null) {
+            Student student = studentRepository.findByUserIdAndIsDeletedFalse(studentId)
+                    .orElse(null);
+            if (student != null) {
+                studentId = student.getId();
+            }
+        }
+
         Certificate certificate = Certificate.builder()
                 .templateId(request.getTemplateId())
-                .studentId(request.getStudentId())
+                .studentId(studentId)
                 .issuedBy(issuedBy)
                 .serialNumber(serialNumber)
                 .certificateType(request.getCertificateType())
@@ -112,12 +136,19 @@ public class CertificateService {
 
         certificateRepository.save(certificate);
 
+        auditService.recordAuditLog(institutionId, issuedBy, userEmail, userRole,
+                "Certificate", certificate.getId(), certificate.getSerialNumber(),
+                AuditLog.AuditAction.CREATE, null,
+                Map.of("serialNumber", serialNumber, "type", request.getCertificateType().name(),
+                        "studentName", request.getStudentName(), "title", request.getTitle()));
+
         log.info("Generated certificate: {} for student: {} in institution: {}",
                 serialNumber, request.getStudentId(), institutionId);
         return certificateMapper.toCertificateResponse(certificate);
     }
 
-    public CertificateResponse issueCertificate(UUID certificateId, UUID institutionId) {
+    public CertificateResponse issueCertificate(UUID certificateId, UUID institutionId,
+                                                  String userEmail, String userRole) {
         Certificate certificate = certificateRepository.findByIdAndIsDeletedFalse(certificateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Certificate", "id", certificateId));
 
@@ -133,11 +164,18 @@ public class CertificateService {
         certificate.setIssueDate(LocalDateTime.now());
         certificateRepository.save(certificate);
 
+        auditService.recordAuditLog(institutionId, null, userEmail, userRole,
+                "Certificate", certificate.getId(), certificate.getSerialNumber(),
+                AuditLog.AuditAction.UPDATE,
+                Map.of("status", "DRAFT"), Map.of("status", "ISSUED"));
+
         log.info("Issued certificate: {}", certificate.getSerialNumber());
         return certificateMapper.toCertificateResponse(certificate);
     }
 
-    public CertificateResponse revokeCertificate(UUID certificateId, UUID institutionId, RevokeCertificateRequest request) {
+    public CertificateResponse revokeCertificate(UUID certificateId, UUID institutionId,
+                                                    RevokeCertificateRequest request,
+                                                    String userEmail, String userRole) {
         Certificate certificate = certificateRepository.findByIdAndIsDeletedFalse(certificateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Certificate", "id", certificateId));
 
@@ -153,6 +191,16 @@ public class CertificateService {
         certificate.setRevokedReason(request.getReason());
         certificate.setRevokedAt(LocalDateTime.now());
         certificateRepository.save(certificate);
+
+        auditService.recordAuditLog(institutionId, null, userEmail, userRole,
+                "Certificate", certificate.getId(), certificate.getSerialNumber(),
+                AuditLog.AuditAction.UPDATE,
+                Map.of("status", "ISSUED"), Map.of("status", "REVOKED", "reason", request.getReason()));
+
+        auditService.recordSecurityEvent(institutionId, null, userEmail,
+                SecurityEvent.SecurityEventType.CERTIFICATE_REVOKED,
+                "Certificate " + certificate.getSerialNumber() + " revoked: " + request.getReason(),
+                SecurityEvent.Severity.MEDIUM, null, null);
 
         log.info("Revoked certificate: {} Reason: {}", certificate.getSerialNumber(), request.getReason());
         return certificateMapper.toCertificateResponse(certificate);
@@ -256,7 +304,8 @@ public class CertificateService {
 
     // ── Transcript Generation ──
 
-    public TranscriptResponse generateTranscript(GenerateTranscriptRequest request, UUID institutionId, UUID issuedBy) {
+    public TranscriptResponse generateTranscript(GenerateTranscriptRequest request, UUID institutionId,
+                                                  UUID issuedBy, String userEmail, String userRole) {
         // Check for existing transcript for this period
         if (request.getAcademicYear() != null && request.getTerm() != null) {
             transcriptRepository.findByStudentAndPeriod(request.getStudentId(), request.getAcademicYear(), request.getTerm())
@@ -303,11 +352,17 @@ public class CertificateService {
         log.info("Generated transcript: {} for student: {} in institution: {}",
                 serialNumber, request.getStudentId(), institutionId);
 
+        auditService.recordAuditLog(institutionId, issuedBy, userEmail, userRole,
+                "Transcript", transcript.getId(), transcript.getSerialNumber(),
+                AuditLog.AuditAction.CREATE, null,
+                Map.of("serialNumber", serialNumber, "studentId", request.getStudentId().toString()));
+
         List<TranscriptEntry> entries = transcriptEntryRepository.findAllByTranscriptId(transcript.getId());
         return certificateMapper.toTranscriptResponse(transcript, entries);
     }
 
-    public TranscriptResponse issueTranscript(UUID transcriptId, UUID institutionId) {
+    public TranscriptResponse issueTranscript(UUID transcriptId, UUID institutionId,
+                                                String userEmail, String userRole) {
         Transcript transcript = transcriptRepository.findByIdAndIsDeletedFalse(transcriptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transcript", "id", transcriptId));
 
@@ -322,6 +377,11 @@ public class CertificateService {
         transcript.setStatus(Transcript.TranscriptStatus.ISSUED);
         transcript.setIssuedAt(LocalDateTime.now());
         transcriptRepository.save(transcript);
+
+        auditService.recordAuditLog(institutionId, null, userEmail, userRole,
+                "Transcript", transcript.getId(), transcript.getSerialNumber(),
+                AuditLog.AuditAction.UPDATE,
+                Map.of("status", "DRAFT"), Map.of("status", "ISSUED"));
 
         List<TranscriptEntry> entries = transcriptEntryRepository.findAllByTranscriptId(transcriptId);
         return certificateMapper.toTranscriptResponse(transcript, entries);

@@ -55,8 +55,10 @@ public class AdministrationController {
     @Operation(summary = "Create or update a system setting")
     public ResponseEntity<ApiResponse<SettingResponse>> upsertSetting(
             @Valid @RequestBody SettingRequest request,
-            @RequestAttribute UUID institutionId) {
-        SettingResponse response = administrationService.createOrUpdateSetting(request, institutionId);
+            @RequestAttribute UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        SettingResponse response = administrationService.createOrUpdateSetting(request, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Setting updated successfully", response));
     }
 
@@ -66,8 +68,10 @@ public class AdministrationController {
     @Operation(summary = "Create a custom role")
     public ResponseEntity<ApiResponse<RoleResponse>> createRole(
             @Valid @RequestBody CreateRoleRequest request,
-            @RequestAttribute UUID institutionId) {
-        RoleResponse response = administrationService.createRole(request, institutionId);
+            @RequestAttribute UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        RoleResponse response = administrationService.createRole(request, institutionId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Role created successfully", response));
     }
@@ -93,8 +97,10 @@ public class AdministrationController {
     @Operation(summary = "Delete a custom role")
     public ResponseEntity<ApiResponse<Void>> deleteRole(
             @PathVariable UUID roleId,
-            @RequestAttribute UUID institutionId) {
-        administrationService.deleteRole(roleId, institutionId);
+            @RequestAttribute UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        administrationService.deleteRole(roleId, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Role deleted successfully", null));
     }
 
@@ -106,8 +112,10 @@ public class AdministrationController {
             @RequestParam String importType,
             @RequestParam String fileName,
             @RequestAttribute UUID institutionId,
-            @RequestAttribute("userId") UUID userId) {
-        ImportJobResponse response = administrationService.createImportJob(importType, fileName, institutionId, userId);
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        ImportJobResponse response = administrationService.createImportJob(importType, fileName, institutionId, userId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Import job created successfully", response));
     }

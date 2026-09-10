@@ -28,8 +28,10 @@ public class CertificateController {
     @Operation(summary = "Create a certificate template")
     public ResponseEntity<ApiResponse<TemplateResponse>> createTemplate(
             @Valid @RequestBody CreateTemplateRequest request,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        TemplateResponse response = certificateService.createTemplate(request, institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        TemplateResponse response = certificateService.createTemplate(request, institutionId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Template created successfully", response));
     }
@@ -58,8 +60,10 @@ public class CertificateController {
     public ResponseEntity<ApiResponse<CertificateResponse>> generateCertificate(
             @Valid @RequestBody GenerateCertificateRequest request,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID userId) {
-        CertificateResponse response = certificateService.generateCertificate(request, institutionId, userId);
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        CertificateResponse response = certificateService.generateCertificate(request, institutionId, userId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Certificate generated successfully", response));
     }
@@ -68,8 +72,10 @@ public class CertificateController {
     @Operation(summary = "Issue a draft certificate")
     public ResponseEntity<ApiResponse<CertificateResponse>> issueCertificate(
             @PathVariable UUID certificateId,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        CertificateResponse response = certificateService.issueCertificate(certificateId, institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        CertificateResponse response = certificateService.issueCertificate(certificateId, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Certificate issued successfully", response));
     }
 
@@ -78,8 +84,10 @@ public class CertificateController {
     public ResponseEntity<ApiResponse<CertificateResponse>> revokeCertificate(
             @PathVariable UUID certificateId,
             @Valid @RequestBody RevokeCertificateRequest request,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        CertificateResponse response = certificateService.revokeCertificate(certificateId, institutionId, request);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        CertificateResponse response = certificateService.revokeCertificate(certificateId, institutionId, request, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Certificate revoked successfully", response));
     }
 
@@ -121,8 +129,10 @@ public class CertificateController {
     public ResponseEntity<ApiResponse<TranscriptResponse>> generateTranscript(
             @Valid @RequestBody GenerateTranscriptRequest request,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID userId) {
-        TranscriptResponse response = certificateService.generateTranscript(request, institutionId, userId);
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        TranscriptResponse response = certificateService.generateTranscript(request, institutionId, userId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Transcript generated successfully", response));
     }
@@ -131,8 +141,10 @@ public class CertificateController {
     @Operation(summary = "Issue a draft transcript")
     public ResponseEntity<ApiResponse<TranscriptResponse>> issueTranscript(
             @PathVariable UUID transcriptId,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        TranscriptResponse response = certificateService.issueTranscript(transcriptId, institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        TranscriptResponse response = certificateService.issueTranscript(transcriptId, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Transcript issued successfully", response));
     }
 
