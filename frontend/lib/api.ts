@@ -1389,3 +1389,95 @@ export const gradingApi = {
   getStudentReportCards: (studentId: string) =>
     request<unknown[]>(`/v1/grading/report-cards/student/${studentId}`),
 }
+
+// ── Student Dashboard API ────────────────────────────────────────────────────
+
+export interface DashboardSummary {
+  studentId: string
+  admissionNumber: string
+  status: string
+  totalEnrollments: number
+  activeEnrollments: number
+  totalReportCards: number
+  monthAttendanceTotal: number
+  monthAttendancePresent: number
+  monthAttendanceRate: number
+  totalLessonsStarted: number
+  completedLessons: number
+  overallAverage: number
+}
+
+export interface ContinueLearningItem {
+  lessonId: string
+  completionPercentage: number
+  startedAt: string
+  completedAt: string | null
+}
+
+export interface RecentActivity {
+  type: string
+  lessonId?: string
+  completedAt?: string
+  date?: string
+  status?: string
+}
+
+export interface SubjectGradeResult {
+  subjectId: string
+  marksObtained: number
+  grade: string
+  gradePoints: number
+  teacherRemarks: string
+}
+
+export interface StudentResult {
+  id: string
+  academicYearId: string
+  termId: string
+  totalMarks: number
+  averageMark: number
+  classRank: number
+  remarks: string
+  overallGrade: string
+  isPublished: boolean
+  subjectGrades: SubjectGradeResult[]
+}
+
+export interface AttendanceRecordItem {
+  id: string
+  date: string
+  status: string
+  checkInTime: string | null
+  checkOutTime: string | null
+  remarks: string | null
+}
+
+export interface AttendanceSummary {
+  totalDays: number
+  present: number
+  absent: number
+  late: number
+  excused: number
+  attendanceRate: number
+  records: AttendanceRecordItem[]
+}
+
+export const dashboardApi = {
+  getSummary: () =>
+    request<DashboardSummary>("/v1/student/dashboard/summary"),
+
+  getContinueLearning: () =>
+    request<ContinueLearningItem[]>("/v1/student/dashboard/continue-learning"),
+
+  getRecentActivity: () =>
+    request<RecentActivity[]>("/v1/student/dashboard/recent-activity"),
+
+  getResults: () =>
+    request<StudentResult[]>("/v1/student/dashboard/results"),
+
+  getAttendance: () =>
+    request<AttendanceSummary>("/v1/student/dashboard/attendance"),
+
+  getLiveClasses: () =>
+    request<unknown[]>("/v1/student/dashboard/live-classes"),
+}
