@@ -1200,3 +1200,186 @@ export const institutionApi = {
   deactivate: (id: string) =>
     request<Institution>(`/v1/institutions/${id}/deactivate`, { method: "PUT" }),
 }
+
+export interface TeacherProfile {
+  id: string
+  userId: string
+  fullName: string
+  email: string
+  phone: string
+  employeeNumber: string
+  status: string
+  specialization: string
+  hireDate: string
+  bio: string
+  createdAt: string
+}
+
+export interface TeacherClassGroup {
+  classGroupId: string
+  className: string
+  classSection: string
+  subjectId: string
+  subjectName: string
+  academicYear: string
+  enrolledStudents: number
+  totalAssignments: number
+  totalLessons: number
+}
+
+export interface TeacherStudent {
+  studentId: string
+  fullName: string
+  email: string
+  admissionNumber: string
+  className: string
+  subjectName: string
+  gender: string
+  status: string
+  classGroupId: string
+}
+
+export interface TeacherDashboard {
+  totalStudents: number
+  totalClasses: number
+  totalAssignments: number
+  totalAssessments: number
+  pendingSubmissions: number
+  pendingGrading: number
+  classes: Array<{
+    classGroupId: string
+    className: string
+    subjectName: string
+    enrolledStudents: number
+  }>
+  recentActivity: Array<{
+    type: string
+    title: string
+    description: string
+    timestamp: string
+  }>
+}
+
+export interface LiveClass {
+  id: string
+  subjectId: string
+  teacherId: string
+  title: string
+  description: string
+  scheduledAt: string
+  durationMinutes: number
+  status: string
+  meetingUrl: string
+  maxParticipants: number
+  recordingUrl: string
+  createdAt: string
+}
+
+export const teacherApi = {
+  getProfile: () =>
+    request<TeacherProfile>("/v1/teachers/me/profile"),
+
+  getClasses: () =>
+    request<TeacherClassGroup[]>("/v1/teachers/me/classes"),
+
+  getStudents: () =>
+    request<TeacherStudent[]>("/v1/teachers/me/students"),
+
+  getDashboard: () =>
+    request<TeacherDashboard>("/v1/teachers/me/dashboard"),
+}
+
+export interface CreateLessonRequest {
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  contentText?: string
+  videoUrl?: string
+  fileAttachments?: string
+  sortOrder?: number
+  isPublished?: boolean
+}
+
+export const lessonApi = {
+  create: (data: CreateLessonRequest) =>
+    request<Lesson>("/v1/learning/lessons", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}
+
+export interface CreateAssessmentRequest {
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  timeLimitMinutes?: number
+  totalMarks: number
+  passMarks: number
+  isPublished?: boolean
+  startsAt?: string
+  endsAt?: string
+}
+
+export const assessmentCreateApi = {
+  create: (data: CreateAssessmentRequest) =>
+    request<Assessment>("/v1/assessments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}
+
+export interface CreateAssignmentRequest {
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  dueDate?: string
+  totalMarks: number
+  attachments?: string
+}
+
+export const assignmentCreateApi = {
+  create: (data: CreateAssignmentRequest) =>
+    request<Assignment>("/v1/learning/assignments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}
+
+export const liveClassApi = {
+  getByTeacher: (teacherId: string) =>
+    request<LiveClass[]>(`/v1/teachers/${teacherId}/live-classes`),
+}
+
+export const attendanceApi = {
+  getByClassAndDate: (classGroupId: string, date: string) =>
+    request<unknown[]>(`/v1/attendance?classGroupId=${classGroupId}&date=${date}`),
+
+  mark: (data: { studentId: string; classGroupId: string; attendanceDate: string; status: string; remarks?: string }) =>
+    request<unknown>("/v1/attendance/mark", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  bulkMark: (data: { classGroupId: string; attendanceDate: string; records: Array<{ studentId: string; status: string; remarks?: string }> }) =>
+    request<unknown>("/v1/attendance/bulk", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getSummary: (studentId: string) =>
+    request<unknown>(`/v1/attendance/summary/student/${studentId}`),
+}
+
+export const gradingApi = {
+  getScales: () =>
+    request<unknown[]>("/v1/grading/scales"),
+
+  getReportCard: (id: string) =>
+    request<unknown>(`/v1/grading/report-cards/${id}`),
+
+  getStudentReportCards: (studentId: string) =>
+    request<unknown[]>(`/v1/grading/report-cards/student/${studentId}`),
+}

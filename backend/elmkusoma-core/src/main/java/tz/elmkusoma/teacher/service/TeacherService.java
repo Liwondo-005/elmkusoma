@@ -4,9 +4,7 @@ import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.teacher.dto.request.TeacherAssignmentRequest;
 import tz.elmkusoma.teacher.dto.request.TeacherQualificationRequest;
 import tz.elmkusoma.teacher.dto.request.TeacherRequest;
-import tz.elmkusoma.teacher.dto.response.TeacherAssignmentResponse;
-import tz.elmkusoma.teacher.dto.response.TeacherQualificationResponse;
-import tz.elmkusoma.teacher.dto.response.TeacherResponse;
+import tz.elmkusoma.teacher.dto.response.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,4 +32,12 @@ public interface TeacherService {
     List<TeacherQualificationResponse> getQualifications(UUID institutionId, UUID teacherId);
 
     void removeQualification(UUID institutionId, UUID qualificationId);
+
+    TeacherResponse getTeacherByUserId(UUID userId, UUID institutionId);
+
+    List<TeacherClassResponse> getTeacherClasses(UUID userId, UUID institutionId);
+
+    List<TeacherStudentResponse> getTeacherStudents(UUID userId, UUID institutionId);
+
+    TeacherDashboardResponse getTeacherDashboard(UUID userId, UUID institutionId);
 }

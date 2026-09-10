@@ -12,10 +12,7 @@ import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.teacher.dto.request.TeacherAssignmentRequest;
 import tz.elmkusoma.teacher.dto.request.TeacherQualificationRequest;
 import tz.elmkusoma.teacher.dto.request.TeacherRequest;
-import tz.elmkusoma.teacher.dto.response.TeacherAssignmentResponse;
-import tz.elmkusoma.teacher.dto.response.TeacherQualificationResponse;
-import tz.elmkusoma.teacher.dto.response.TeacherResponse;
-import tz.elmkusoma.teacher.service.TeacherService;
+import tz.elmkusoma.teacher.dto.response.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,7 +23,43 @@ import java.util.UUID;
 @Tag(name = "Teacher Management", description = "CRUD operations for teachers, assignments, and qualifications")
 public class TeacherController {
 
-    private final TeacherService teacherService;
+    private final tz.elmkusoma.teacher.service.TeacherService teacherService;
+
+    @GetMapping("/me/profile")
+    @Operation(summary = "Get current teacher's profile")
+    public ResponseEntity<ApiResponse<TeacherResponse>> getMyProfile(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId) {
+        TeacherResponse teacher = teacherService.getTeacherByUserId(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(teacher));
+    }
+
+    @GetMapping("/me/classes")
+    @Operation(summary = "Get current teacher's assigned classes")
+    public ResponseEntity<ApiResponse<List<TeacherClassResponse>>> getMyClasses(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId) {
+        List<TeacherClassResponse> classes = teacherService.getTeacherClasses(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(classes));
+    }
+
+    @GetMapping("/me/students")
+    @Operation(summary = "Get students in current teacher's assigned classes")
+    public ResponseEntity<ApiResponse<List<TeacherStudentResponse>>> getMyStudents(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId) {
+        List<TeacherStudentResponse> students = teacherService.getTeacherStudents(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(students));
+    }
+
+    @GetMapping("/me/dashboard")
+    @Operation(summary = "Get current teacher's dashboard data")
+    public ResponseEntity<ApiResponse<TeacherDashboardResponse>> getMyDashboard(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId) {
+        TeacherDashboardResponse dashboard = teacherService.getTeacherDashboard(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(dashboard));
+    }
 
     @PostMapping
     @Operation(summary = "Create a new teacher profile")

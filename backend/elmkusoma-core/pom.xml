@@ -18,7 +18,7 @@
     <description>ELMKUSOMA Education Platform - Core Service</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>17</java.version>
         <jjwt.version>0.12.6</jjwt.version>
         <lombok.version>1.18.36</lombok.version>
     </properties>

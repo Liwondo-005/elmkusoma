@@ -7,10 +7,22 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.assessment.domain.Assessment;
+import tz.elmkusoma.assessment.repository.AssessmentRepository;
+import tz.elmkusoma.attendance.domain.AttendanceRecord;
+import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
 import tz.elmkusoma.common.PageResponse;
+import tz.elmkusoma.enrollment.domain.Enrollment;
+import tz.elmkusoma.enrollment.repository.EnrollmentRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.learning.domain.Assignment;
+import tz.elmkusoma.learning.domain.Lesson;
+import tz.elmkusoma.learning.repository.AssignmentRepository;
+import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.domain.TeacherAssignment;
 import tz.elmkusoma.teacher.domain.TeacherQualification;
@@ -18,16 +30,15 @@ import tz.elmkusoma.teacher.domain.TeacherStatus;
 import tz.elmkusoma.teacher.dto.request.TeacherAssignmentRequest;
 import tz.elmkusoma.teacher.dto.request.TeacherQualificationRequest;
 import tz.elmkusoma.teacher.dto.request.TeacherRequest;
-import tz.elmkusoma.teacher.dto.response.TeacherAssignmentResponse;
-import tz.elmkusoma.teacher.dto.response.TeacherQualificationResponse;
-import tz.elmkusoma.teacher.dto.response.TeacherResponse;
+import tz.elmkusoma.teacher.dto.response.*;
 import tz.elmkusoma.teacher.repository.TeacherAssignmentRepository;
 import tz.elmkusoma.teacher.repository.TeacherQualificationRepository;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 import tz.elmkusoma.teacher.service.TeacherService;
 
-import java.util.List;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +49,12 @@ public class TeacherServiceImpl implements TeacherService {
     private final TeacherAssignmentRepository assignmentRepository;
     private final TeacherQualificationRepository qualificationRepository;
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final AssignmentRepository assignmentRepo;
+    private final LessonRepository lessonRepository;
+    private final AssessmentRepository assessmentRepository;
+    private final AttendanceRecordRepository attendanceRepository;
 
     @Override
     public TeacherResponse createTeacher(UUID institutionId, TeacherRequest request) {
@@ -198,6 +215,152 @@ public class TeacherServiceImpl implements TeacherService {
                 .orElseThrow(() -> new ResourceNotFoundException("Qualification", "id", qualificationId));
         qualification.setIsDeleted(true);
         qualificationRepository.save(qualification);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TeacherResponse getTeacherByUserId(UUID userId, UUID institutionId) {
+        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        User user = userRepository.findById(teacher.getUserId()).orElse(null);
+        return mapToResponse(teacher, user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TeacherClassResponse> getTeacherClasses(UUID userId, UUID institutionId) {
+        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+
+        List<TeacherAssignment> assignments = assignmentRepository.findAllByTeacherId(teacher.getId());
+
+        return assignments.stream().map(assignment -> {
+            long enrolledCount = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(assignment.getClassGroupId())
+                    .stream().filter(e -> e.getStatus() == Enrollment.EnrollmentStatus.ENROLLED).count();
+            long assignmentCount = assignmentRepo.findByClassGroupIdAndIsDeletedFalse(assignment.getClassGroupId()).size();
+            long lessonCount = lessonRepository.findByClassGroupIdAndIsDeletedFalseOrderBySortOrder(assignment.getClassGroupId()).size();
+
+            return TeacherClassResponse.builder()
+                    .classGroupId(assignment.getClassGroupId())
+                    .className("Class Group")
+                    .subjectId(assignment.getSubjectId())
+                    .subjectName("Subject")
+                    .academicYear(assignment.getAcademicYear())
+                    .enrolledStudents(enrolledCount)
+                    .totalAssignments(assignmentCount)
+                    .totalLessons(lessonCount)
+                    .build();
+        }).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TeacherStudentResponse> getTeacherStudents(UUID userId, UUID institutionId) {
+        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+
+        List<TeacherAssignment> assignments = assignmentRepository.findAllByTeacherId(teacher.getId());
+        Set<UUID> classGroupIds = assignments.stream()
+                .map(TeacherAssignment::getClassGroupId)
+                .collect(Collectors.toSet());
+
+        List<TeacherStudentResponse> students = new ArrayList<>();
+        for (UUID classGroupId : classGroupIds) {
+            List<Enrollment> enrollments = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
+            for (Enrollment enrollment : enrollments) {
+                if (enrollment.getStatus() == Enrollment.EnrollmentStatus.ENROLLED) {
+                    Student student = studentRepository.findById(enrollment.getStudentId()).orElse(null);
+                    if (student != null) {
+                        User studentUser = userRepository.findById(student.getUserId()).orElse(null);
+                        TeacherAssignment matchedAssignment = assignments.stream()
+                                .filter(a -> a.getClassGroupId().equals(classGroupId))
+                                .findFirst().orElse(null);
+
+                        students.add(TeacherStudentResponse.builder()
+                                .studentId(student.getId())
+                                .fullName(studentUser != null ? studentUser.getFullName() : "Unknown")
+                                .email(studentUser != null ? studentUser.getEmail() : "")
+                                .admissionNumber(student.getAdmissionNumber())
+                                .className("Class Group")
+                                .subjectName(matchedAssignment != null ? "Subject" : "")
+                                .gender(student.getGender())
+                                .status(student.getStatus().name())
+                                .classGroupId(classGroupId)
+                                .build());
+                    }
+                }
+            }
+        }
+        return students;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TeacherDashboardResponse getTeacherDashboard(UUID userId, UUID institutionId) {
+        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+
+        List<TeacherAssignment> assignments = assignmentRepository.findAllByTeacherId(teacher.getId());
+        Set<UUID> classGroupIds = assignments.stream()
+                .map(TeacherAssignment::getClassGroupId)
+                .collect(Collectors.toSet());
+
+        long totalStudents = 0;
+        long totalAssignments = 0;
+        long totalAssessments = 0;
+        long pendingSubmissions = 0;
+        List<TeacherDashboardResponse.TeacherClassSummary> classSummaries = new ArrayList<>();
+        List<TeacherDashboardResponse.RecentActivity> activities = new ArrayList<>();
+
+        for (UUID classGroupId : classGroupIds) {
+            List<Enrollment> enrollments = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
+            long activeStudents = enrollments.stream()
+                    .filter(e -> e.getStatus() == Enrollment.EnrollmentStatus.ENROLLED).count();
+            totalStudents += activeStudents;
+
+            List<Assignment> classAssignments = assignmentRepo.findByClassGroupIdAndIsDeletedFalse(classGroupId);
+            totalAssignments += classAssignments.size();
+
+            List<Assessment> classAssessments = assessmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
+            totalAssessments += classAssessments.size();
+
+            for (Assignment a : classAssignments) {
+                if (a.getDueDate() != null && a.getDueDate().isAfter(java.time.LocalDateTime.now())) {
+                    pendingSubmissions++;
+                }
+            }
+
+            TeacherAssignment matchedAssignment = assignments.stream()
+                    .filter(a -> a.getClassGroupId().equals(classGroupId))
+                    .findFirst().orElse(null);
+
+            classSummaries.add(TeacherDashboardResponse.TeacherClassSummary.builder()
+                    .classGroupId(classGroupId.toString())
+                    .className("Class Group")
+                    .subjectName(matchedAssignment != null ? "Subject" : "")
+                    .enrolledStudents(activeStudents)
+                    .build());
+
+            for (Assignment a : classAssignments.stream().limit(3).toList()) {
+                activities.add(TeacherDashboardResponse.RecentActivity.builder()
+                        .type("assignment")
+                        .title(a.getTitle())
+                        .description("Due: " + (a.getDueDate() != null ? a.getDueDate().toLocalDate() : "No date"))
+                        .timestamp(a.getCreatedAt())
+                        .build());
+            }
+        }
+
+        return TeacherDashboardResponse.builder()
+                .totalStudents(totalStudents)
+                .totalClasses(classGroupIds.size())
+                .totalAssignments(totalAssignments)
+                .totalAssessments(totalAssessments)
+                .pendingSubmissions(pendingSubmissions)
+                .pendingGrading(0)
+                .classes(classSummaries)
+                .recentActivity(activities.stream().limit(10).toList())
+                .build();
     }
 
     private TeacherResponse mapToResponse(Teacher teacher, User user) {

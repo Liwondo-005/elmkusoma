@@ -2,17 +2,31 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
-import { learningApi, type Assignment, type AssignmentSubmission } from "@/lib/api"
+import { learningApi, teacherApi, assignmentCreateApi, type Assignment, type AssignmentSubmission, type TeacherClassGroup, type CreateAssignmentRequest } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { FileText, Clock, CheckCircle, Plus, Eye } from "lucide-react"
+import { FileText, Clock, CheckCircle, Plus, Eye, X, AlertCircle } from "lucide-react"
 
 export default function TeacherAssignmentsPage() {
   const { user } = useAuth()
   const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [classes, setClasses] = useState<TeacherClassGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAssignment, setSelectedAssignment] = useState<string | null>(null)
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([])
   const [loadingSubmissions, setLoadingSubmissions] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const [form, setForm] = useState<CreateAssignmentRequest>({
+    subjectId: "",
+    classGroupId: "",
+    title: "",
+    description: "",
+    dueDate: "",
+    totalMarks: 100,
+  })
 
   useEffect(() => {
     if (!user) return
@@ -22,10 +36,22 @@ export default function TeacherAssignmentsPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const data = await learningApi.getAssignments(user?.classGroupId || "")
-      setAssignments(data)
+      setError(null)
+      const classesData = await teacherApi.getClasses()
+      setClasses(classesData)
+
+      const allAssignments: Assignment[] = []
+      for (const cls of classesData) {
+        try {
+          const data = await learningApi.getAssignments(cls.classGroupId)
+          allAssignments.push(...data)
+        } catch {
+          // skip
+        }
+      }
+      setAssignments(allAssignments)
     } catch {
-      setAssignments([])
+      setError("Failed to load assignments")
     } finally {
       setLoading(false)
     }
@@ -44,12 +70,24 @@ export default function TeacherAssignmentsPage() {
     }
   }
 
-  async function handleGrade(submissionId: string, grade: number) {
+  async function handleCreate() {
+    if (!form.title || !form.classGroupId || !form.subjectId) return
     try {
-      await learningApi.getSubmissions(selectedAssignment || "")
+      setCreating(true)
+      setError(null)
+      await assignmentCreateApi.create({
+        ...form,
+        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
+      })
+      setSuccess("Assignment created successfully")
+      setShowCreate(false)
+      setForm({ subjectId: "", classGroupId: "", title: "", description: "", dueDate: "", totalMarks: 100 })
       loadData()
+      setTimeout(() => setSuccess(null), 3000)
     } catch {
-      // ignore
+      setError("Failed to create assignment")
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -58,6 +96,8 @@ export default function TeacherAssignmentsPage() {
     return new Date(dueDate) < new Date()
   }
 
+  const selectedClass = classes.find(c => c.classGroupId === form.classGroupId)
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
@@ -65,11 +105,96 @@ export default function TeacherAssignmentsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Assignments</h1>
           <p className="mt-1 text-sm text-muted-foreground">Create and manage assignments for your students.</p>
         </div>
-        <Button className="gap-2">
-          <Plus className="size-4" />
-          Create Assignment
+        <Button className="gap-2" onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? <X className="size-4" /> : <Plus className="size-4" />}
+          {showCreate ? "Cancel" : "Create Assignment"}
         </Button>
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" />{error}
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="rounded-2xl border border-teal/20 bg-teal/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-teal">
+            <CheckCircle className="size-4" />{success}
+          </div>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
+          <h2 className="text-base font-semibold text-foreground">New Assignment</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Class *</label>
+              <select
+                value={form.classGroupId}
+                onChange={(e) => {
+                  const cls = classes.find(c => c.classGroupId === e.target.value)
+                  setForm({ ...form, classGroupId: e.target.value, subjectId: cls?.subjectId || "" })
+                }}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              >
+                <option value="">Select class</option>
+                {classes.map(c => (
+                  <option key={c.classGroupId} value={c.classGroupId}>{c.className} - {c.subjectName}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Title *</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Assignment title"
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Assignment instructions..."
+                rows={3}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Due Date</label>
+              <input
+                type="datetime-local"
+                value={form.dueDate}
+                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Total Marks</label>
+              <input
+                type="number"
+                value={form.totalMarks}
+                onChange={(e) => setForm({ ...form, totalMarks: Number(e.target.value) })}
+                min={1}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={creating || !form.title || !form.classGroupId}>
+              {creating ? "Creating..." : "Create Assignment"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

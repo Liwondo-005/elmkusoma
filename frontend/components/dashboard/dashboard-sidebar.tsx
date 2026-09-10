@@ -2,12 +2,12 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 
-const studentNav = [
+const studentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Academic", href: "/dashboard/academic", icon: School },
   { label: "Students", href: "/dashboard/students", icon: Users },
@@ -28,19 +28,21 @@ const studentNav = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const teacherNav = [
+const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard },
-  { label: "My Courses", href: "/dashboard/teacher/courses", icon: BookOpen },
+  { label: "My Classes", href: "/dashboard/teacher/courses", icon: BookOpen },
   { label: "Students", href: "/dashboard/teacher/students", icon: Users },
   { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
   { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
+  { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
+  { label: "Gradebook", href: "/dashboard/teacher/gradebook", icon: BarChart3 },
+  { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Calendar },
   { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, badge: 2 },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const adminNav = [
+const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
   { label: "Institutions", href: "/dashboard/admin/institutions", icon: School },
   { label: "Roles", href: "/dashboard/admin/roles", icon: Shield },

@@ -3,23 +3,16 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { teacherService } from "@/lib/services/teacher"
-import { learningApi, assessmentApi, type Assignment, type Assessment } from "@/lib/api"
-import { BookOpen, Users, FileText, PenTool, Video, Clock, ArrowRight, TrendingUp, GraduationCap, Calendar } from "lucide-react"
-
-interface TeacherStats {
-  totalStudents: number
-  totalCourses: number
-  pendingSubmissions: number
-  upcomingClasses: number
-}
+import { teacherApi, type TeacherDashboard, type Assignment, type Assessment, learningApi, assessmentApi } from "@/lib/api"
+import { BookOpen, Users, FileText, PenTool, Video, Clock, ArrowRight, TrendingUp, GraduationCap, Calendar, AlertCircle, ClipboardCheck, BarChart3 } from "lucide-react"
 
 export default function TeacherDashboardPage() {
   const { user } = useAuth()
-  const [stats, setStats] = useState<TeacherStats>({ totalStudents: 0, totalCourses: 0, pendingSubmissions: 0, upcomingClasses: 0 })
-  const [recentAssignments, setRecentAssignments] = useState<Assignment[]>([])
-  const [recentAssessments, setRecentAssessments] = useState<Assessment[]>([])
+  const [dashboard, setDashboard] = useState<TeacherDashboard | null>(null)
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [assessments, setAssessments] = useState<Assessment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -29,23 +22,53 @@ export default function TeacherDashboardPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const [assignmentsData, assessmentsData] = await Promise.allSettled([
-        learningApi.getAssignments(user?.classGroupId || ""),
-        assessmentApi.getByClass(user?.classGroupId || ""),
+      setError(null)
+
+      const [dashboardData, assignmentsData, assessmentsData] = await Promise.allSettled([
+        teacherApi.getDashboard(),
+        loadAssignments(),
+        loadAssessments(),
       ])
-      setRecentAssignments(assignmentsData.status === "fulfilled" ? assignmentsData.value.slice(0, 5) : [])
-      setRecentAssessments(assessmentsData.status === "fulfilled" ? assessmentsData.value.slice(0, 5) : [])
-      setStats({
-        totalStudents: 0,
-        totalCourses: 0,
-        pendingSubmissions: assignmentsData.status === "fulfilled" ? assignmentsData.value.length : 0,
-        upcomingClasses: assessmentsData.status === "fulfilled" ? assessmentsData.value.length : 0,
-      })
+
+      if (dashboardData.status === "fulfilled") {
+        setDashboard(dashboardData.value)
+      }
+
+      setAssignments(assignmentsData.status === "fulfilled" ? assignmentsData.value : [])
+      setAssessments(assessmentsData.status === "fulfilled" ? assessmentsData.value : [])
     } catch {
-      // empty state
+      setError("Failed to load dashboard data")
     } finally {
       setLoading(false)
     }
+  }
+
+  async function loadAssignments(): Promise<Assignment[]> {
+    if (!dashboard?.classes?.length) return []
+    const all: Assignment[] = []
+    for (const cls of dashboard.classes.slice(0, 5)) {
+      try {
+        const data = await learningApi.getAssignments(cls.classGroupId)
+        all.push(...data)
+      } catch {
+        // skip failed class
+      }
+    }
+    return all.slice(0, 10)
+  }
+
+  async function loadAssessments(): Promise<Assessment[]> {
+    if (!dashboard?.classes?.length) return []
+    const all: Assessment[] = []
+    for (const cls of dashboard.classes.slice(0, 5)) {
+      try {
+        const data = await assessmentApi.getByClass(cls.classGroupId)
+        all.push(...data)
+      } catch {
+        // skip failed class
+      }
+    }
+    return all.slice(0, 10)
   }
 
   const firstName = user?.name?.split(" ")[0] || "Teacher"
@@ -57,16 +80,71 @@ export default function TeacherDashboardPage() {
           Teacher Dashboard
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Welcome back, {firstName}. Here&apos;s an overview of your teaching activity.
+          Welcome back, {firstName}. Here&apos;s your teaching overview.
         </p>
       </div>
 
+      {error && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" />
+            {error}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users} label="Total Students" value={String(stats.totalStudents)} note="Enrolled" />
-        <StatCard icon={BookOpen} label="My Courses" value={String(stats.totalCourses)} note="Active" />
-        <StatCard icon={FileText} label="Pending Submissions" value={String(stats.pendingSubmissions)} note="To grade" />
-        <StatCard icon={Calendar} label="Upcoming Classes" value={String(stats.upcomingClasses)} note="Scheduled" />
+        <StatCard
+          icon={Users}
+          label="My Students"
+          value={loading ? "..." : String(dashboard?.totalStudents ?? 0)}
+          note="Across all classes"
+        />
+        <StatCard
+          icon={BookOpen}
+          label="My Classes"
+          value={loading ? "..." : String(dashboard?.totalClasses ?? 0)}
+          note="Class groups"
+        />
+        <StatCard
+          icon={FileText}
+          label="Assignments"
+          value={loading ? "..." : String(dashboard?.totalAssignments ?? 0)}
+          note={`${dashboard?.pendingSubmissions ?? 0} pending`}
+        />
+        <StatCard
+          icon={PenTool}
+          label="Assessments"
+          value={loading ? "..." : String(dashboard?.totalAssessments ?? 0)}
+          note="Total created"
+        />
       </div>
+
+      {dashboard?.classes && dashboard.classes.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <h2 className="text-base font-semibold text-foreground">My Classes</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {dashboard.classes.map((cls) => (
+              <div key={cls.classGroupId} className="rounded-xl border border-border p-4 hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+                    <GraduationCap className="size-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{cls.className}</p>
+                    <p className="text-xs text-muted-foreground">{cls.subjectName}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Users className="size-3" /> {cls.enrolledStudents} students
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -81,10 +159,10 @@ export default function TeacherDashboardPage() {
               <div className="flex justify-center py-8">
                 <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
-            ) : recentAssignments.length === 0 ? (
+            ) : assignments.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">No assignments yet</p>
             ) : (
-              recentAssignments.map((a) => (
+              assignments.slice(0, 5).map((a) => (
                 <div key={a.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
                     <FileText className="size-4 text-primary" />
@@ -111,10 +189,10 @@ export default function TeacherDashboardPage() {
               <div className="flex justify-center py-8">
                 <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
-            ) : recentAssessments.length === 0 ? (
+            ) : assessments.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">No assessments yet</p>
             ) : (
-              recentAssessments.map((a) => (
+              assessments.slice(0, 5).map((a) => (
                 <div key={a.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
                     <PenTool className="size-4 text-primary" />
@@ -135,8 +213,12 @@ export default function TeacherDashboardPage() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <QuickAction href="/dashboard/teacher/courses" icon={BookOpen} label="Manage Courses" />
           <QuickAction href="/dashboard/teacher/students" icon={Users} label="View Students" />
-          <QuickAction href="/dashboard/teacher/assignments" icon={FileText} label="Create Assignment" />
-          <QuickAction href="/dashboard/teacher/assessments" icon={PenTool} label="Create Assessment" />
+          <QuickAction href="/dashboard/teacher/assignments" icon={FileText} label="Assignments" />
+          <QuickAction href="/dashboard/teacher/assessments" icon={PenTool} label="Assessments" />
+          <QuickAction href="/dashboard/teacher/attendance" icon={ClipboardCheck} label="Take Attendance" />
+          <QuickAction href="/dashboard/teacher/gradebook" icon={BarChart3} label="Gradebook" />
+          <QuickAction href="/dashboard/teacher/live-classes" icon={Video} label="Live Classes" />
+          <QuickAction href="/dashboard/teacher/schedule" icon={Calendar} label="My Schedule" />
         </div>
       </section>
     </div>
