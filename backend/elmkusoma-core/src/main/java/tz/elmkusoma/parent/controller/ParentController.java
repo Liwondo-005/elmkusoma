@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
@@ -23,6 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/parents")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Parent Management", description = "CRUD operations for parents and parent-student linkages")
 public class ParentController {
 

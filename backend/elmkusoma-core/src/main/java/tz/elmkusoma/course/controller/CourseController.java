@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.dto.*;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/courses")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Course Management", description = "Full CRUD for courses, modules, and lessons")
 public class CourseController {
 

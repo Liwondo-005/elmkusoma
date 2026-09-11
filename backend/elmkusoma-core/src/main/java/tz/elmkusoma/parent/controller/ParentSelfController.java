@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.parent.dto.response.*;
@@ -16,6 +17,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/my")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('PARENT')")
 @Tag(name = "Parent Self-Service", description = "Parent dashboard and family management endpoints")
 public class ParentSelfController {
 

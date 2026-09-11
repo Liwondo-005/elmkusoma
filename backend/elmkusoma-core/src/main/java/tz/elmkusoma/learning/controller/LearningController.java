@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.learning.dto.request.AssignmentRequest;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/learning")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Learning", description = "Lessons, assignments, and progress management")
 public class LearningController {
 

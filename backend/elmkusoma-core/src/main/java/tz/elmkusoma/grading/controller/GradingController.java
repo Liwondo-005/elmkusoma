@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.grading.dto.request.CreateGradeBoundaryRequest;
@@ -24,6 +25,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/grading")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Grading", description = "Grading scales, boundaries, and report cards")
 public class GradingController {
 

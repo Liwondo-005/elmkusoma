@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.certificate.dto.*;
 import tz.elmkusoma.certificate.service.CertificateService;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/certificates")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Certificate Management", description = "Certificate templates, generation, and verification")
 public class CertificateController {
 

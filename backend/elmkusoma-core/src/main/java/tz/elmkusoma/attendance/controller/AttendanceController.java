@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.attendance.dto.request.BulkMarkAttendanceRequest;
 import tz.elmkusoma.attendance.dto.request.MarkAttendanceRequest;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/attendance")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Attendance", description = "Student attendance management")
 public class AttendanceController {
 

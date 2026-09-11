@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.student.domain.StudentClassAssignment;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/students")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 public class StudentController {
 
     private final StudentService studentService;
@@ -32,7 +34,7 @@ public class StudentController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudentResponse>>> getStudents(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) UUID classId,
             @RequestParam(required = false) String query) {
         List<StudentResponse> students;
@@ -81,14 +83,14 @@ public class StudentController {
 
     @GetMapping("/stats/count")
     public ResponseEntity<ApiResponse<Long>> countStudents(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId) {
         long count = studentService.countStudents(institutionId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }
 
     @GetMapping("/stats/active")
     public ResponseEntity<ApiResponse<Long>> countActiveStudents(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId) {
         long count = studentService.countActiveStudents(institutionId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }

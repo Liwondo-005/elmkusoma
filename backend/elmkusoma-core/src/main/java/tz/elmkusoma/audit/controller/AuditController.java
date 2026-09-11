@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.audit.dto.*;
 import tz.elmkusoma.audit.mapper.AuditMapper;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/audit")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Audit & Compliance", description = "Audit logs, activity feeds, security events, and compliance reporting")
 public class AuditController {
 

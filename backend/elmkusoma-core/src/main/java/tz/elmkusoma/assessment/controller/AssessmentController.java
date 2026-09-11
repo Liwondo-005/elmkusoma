@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.assessment.dto.request.AssessmentRequest;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/assessments")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Assessment", description = "Assessment, quiz, and exam management")
 public class AssessmentController {
 

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.academic.domain.AcademicYear;
 import tz.elmkusoma.academic.domain.ClassGroup;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/academic")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 public class AcademicController {
 
     private final AcademicService academicService;
@@ -41,7 +43,7 @@ public class AcademicController {
 
     @GetMapping("/years")
     public ResponseEntity<ApiResponse<List<AcademicYear>>> getAcademicYears(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) EducationLevel educationLevel) {
         List<AcademicYear> years = educationLevel != null
                 ? academicService.getAcademicYearsByLevel(institutionId, educationLevel)
@@ -115,7 +117,7 @@ public class AcademicController {
 
     @GetMapping("/subjects")
     public ResponseEntity<ApiResponse<List<Subject>>> getSubjects(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) EducationLevel educationLevel) {
         List<Subject> subjects = educationLevel != null
                 ? academicService.getSubjectsByLevel(institutionId, educationLevel)
@@ -143,7 +145,7 @@ public class AcademicController {
 
     @GetMapping("/classes")
     public ResponseEntity<ApiResponse<List<ClassGroup>>> getClassGroups(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) UUID gradeId,
             @RequestParam(required = false) UUID termId) {
         List<ClassGroup> classes;

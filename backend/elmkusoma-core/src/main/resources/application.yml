@@ -69,7 +69,7 @@ management:
       show-details: when-authorized
 
 jwt:
-  secret: Y2hvb3NlYS1hLXNlY3VyZS1zZWNyZXQta2V5LWZvci1lbG1rdXNvbWEtand0LXRva2VuLWdlbmVyYXRpb24tMjAyNA==
+  secret: ${JWT_SECRET:Y2hvb3NlYS1hLXNlY3VyZS1zZWNyZXQta2V5LWZvci1lbG1rdXNvbWEtand0LXRva2VuLWdlbmVyYXRpb24tMjAyNA==}
   access-token-expiration-ms: 3600000
   refresh-token-expiration-ms: 604800000
 

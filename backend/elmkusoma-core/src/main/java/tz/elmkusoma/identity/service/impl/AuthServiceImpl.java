@@ -19,6 +19,7 @@ import tz.elmkusoma.identity.dto.request.*;
 import tz.elmkusoma.identity.dto.response.AuthResponse;
 import tz.elmkusoma.identity.repository.EmailVerificationTokenRepository;
 import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
+import tz.elmkusoma.identity.repository.RevokedTokenRepository;
 import tz.elmkusoma.identity.service.AuthService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -26,7 +27,11 @@ import tz.elmkusoma.student.domain.StudentClassAssignment;
 import tz.elmkusoma.student.repository.StudentClassAssignmentRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Service
@@ -43,6 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final StudentRepository studentRepository;
     private final StudentClassAssignmentRepository studentClassAssignmentRepository;
+    private final RevokedTokenRepository revokedTokenRepository;
 
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
@@ -54,7 +60,8 @@ public class AuthServiceImpl implements AuthService {
                            PasswordResetTokenRepository passwordResetTokenRepository,
                            EmailVerificationTokenRepository emailVerificationTokenRepository,
                            StudentRepository studentRepository,
-                           StudentClassAssignmentRepository studentClassAssignmentRepository) {
+                           StudentClassAssignmentRepository studentClassAssignmentRepository,
+                           RevokedTokenRepository revokedTokenRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -63,6 +70,7 @@ public class AuthServiceImpl implements AuthService {
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.studentRepository = studentRepository;
         this.studentClassAssignmentRepository = studentClassAssignmentRepository;
+        this.revokedTokenRepository = revokedTokenRepository;
     }
 
     @Override
@@ -71,12 +79,10 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("An account with this email already exists");
         }
 
-        User.Role role;
-        try {
-            role = User.Role.valueOf(request.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid role: " + request.getRole());
+        if (request.getRole() != null) {
+            throw new IllegalArgumentException("Cannot set role via registration. All self-registrations are STUDENT role.");
         }
+        User.Role role = User.Role.STUDENT;
 
         User user = User.builder()
                 .email(request.getEmail())
@@ -151,6 +157,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new ForbiddenException("Invalid or expired refresh token");
+        }
+
+        if (revokedTokenRepository.existsByTokenHash(hashToken(refreshToken))) {
+            throw new ForbiddenException("Refresh token has been revoked");
         }
 
         String email = jwtTokenProvider.getEmailFromToken(refreshToken);
@@ -229,7 +239,33 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout(String refreshToken) {
-        log.info("Logout requested for token");
+        String hash = hashToken(refreshToken);
+
+        if (!revokedTokenRepository.existsByTokenHash(hash)) {
+            tz.elmkusoma.identity.domain.RevokedToken revokedToken = tz.elmkusoma.identity.domain.RevokedToken.builder()
+                    .tokenHash(hash)
+                    .revokedAt(LocalDateTime.now())
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .build();
+            revokedTokenRepository.save(revokedToken);
+        }
+        log.info("Refresh token revoked successfully");
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not available", e);
+        }
     }
 
     private AuthResponse.UserInfo buildUserInfo(User user) {
