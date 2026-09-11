@@ -1625,3 +1625,430 @@ Phase 7: developer-06 (certificate + administration + audit) → develop
 ---
 
 **Next step:** Should I proceed with creating the `core-base-setup` (Spring Boot skeleton, shared entities, configs) on the `feature/core-base-setup` branch?
+
+---
+
+## 11. Non-Formal Education Extension — Architecture Specification
+
+### 11.1 Vision
+
+ELMKUSOMA will support multiple education ecosystems under one platform. The Non-Formal Education (NFE) extension enables organizations and individuals who provide education outside the traditional school system to use the platform — without modifying or disrupting existing formal education workflows.
+
+### 11.2 Ecosystem Overview
+
+```
+ELMKUSOMA PLATFORM
+│
+├── FORMAL EDUCATION (Existing)
+│   ├── Students
+│   ├── Parents
+│   ├── Teachers
+│   ├── Schools / Institutions
+│   └── All existing modules (academic, grading, attendance, etc.)
+│
+├── EDUCATION OVERSIGHT (Future)
+│   ├── National Level
+│   ├── Regional Level
+│   ├── District Level
+│   └── Ward Level
+│
+└── NON-FORMAL EDUCATION (New Extension)
+    ├── Education Providers (organizations, trainers)
+    ├── Programs / Courses / Seminars / Workshops
+    ├── Learners / Participants
+    ├── Live Sessions
+    ├── Learning Materials
+    ├── Assessments
+    ├── Attendance
+    └── Certificates
+```
+
+### 11.3 Core Concept: Education Provider
+
+An **Education Provider** is an entity that delivers non-formal education. It is NOT a School, NOT a Teacher, and NOT an Institution in the formal-education sense.
+
+An Education Provider may represent:
+
+| Type | Example |
+|---|---|
+| Organization | NGO, Community-Based Organization |
+| Company | Bank, Telecom, Corporation |
+| Government Institution | Ministry of Health, District Council |
+| Religious Organization | Church, Mosque, Religious School |
+| Training Organization | ICT Academy, Vocational Center |
+| Professional Educator | Individual trainer, Consultant |
+
+### 11.4 Core Concept: Learner / Participant
+
+A **Learner** (or Participant) is a person enrolled in a non-formal education program. This is conceptually distinct from a **Student** in the formal education system.
+
+A single person may exist in both ecosystems simultaneously:
+
+| Ecosystem | Entity | Identity |
+|---|---|---|
+| Formal Education | Student | `users` + `students` tables |
+| Non-Formal Education | Learner | `users` + `learners` table |
+
+Both share the same `users` table for authentication. The distinction is in the role-specific entity.
+
+### 11.5 Constraints — What Must NOT Change
+
+The following must remain exactly as they currently work:
+
+1. **Existing roles**: STUDENT, TEACHER, PARENT, ADMIN, INSTITUTION_ADMIN — no modifications
+2. **Student workflow**: enrollment, class assignment, attendance, grading, report cards — no modifications
+3. **Parent workflow**: child linking, notification preferences — no modifications
+4. **Teacher workflow**: assignments, qualifications, grading — no modifications
+5. **School administration**: settings, roles, import jobs — no modifications
+6. **Authentication**: existing JWT flow, login, register — no modifications
+7. **Institution/multi-tenancy**: existing institution model — no modifications
+
+The NFE extension is an **addition**, not a replacement.
+
+### 11.6 Future Module Structure
+
+When implemented, the NFE extension will follow the same modular monolith pattern:
+
+```
+elmkusoma-core
+└── src/main/java/tz/elmkusoma/
+    │
+    ├── nfe/                              # Non-Formal Education root module
+    │   │
+    │   ├── provider/                     # Education Provider management
+    │   │   ├── controller/
+    │   │   ├── service/
+    │   │   ├── repository/
+    │   │   ├── domain/                    # EducationProvider entity
+    │   │   ├── dto/
+    │   │   └── mapper/
+    │   │
+    │   ├── program/                      # Programs (wraps courses/seminars)
+    │   │   ├── controller/
+    │   │   ├── service/
+    │   │   ├── repository/
+    │   │   ├── domain/                    # Program, ProgramModule entities
+    │   │   ├── dto/
+    │   │   └── mapper/
+    │   │
+    │   ├── learner/                      # Learner/Participant management
+    │   │   ├── controller/
+    │   │   ├── service/
+    │   │   ├── repository/
+    │   │   ├── domain/                    # Learner entity (links to User)
+    │   │   ├── dto/
+    │   │   └── mapper/
+    │   │
+    │   ├── session/                      # Live sessions, seminars, workshops
+    │   │   ├── controller/
+    │   │   ├── service/
+    │   │   ├── repository/
+    │   │   ├── domain/                    # LiveSession, Seminar, Workshop entities
+    │   │   ├── dto/
+    │   │   └── mapper/
+    │   │
+    │   ├── material/                     # Learning materials
+    │   │   ├── controller/
+    │   │   ├── service/
+    │   │   ├── repository/
+    │   │   ├── domain/                    # LearningMaterial entity
+    │   │   ├── dto/
+    │   │   └── mapper/
+    │   │
+    │   ├── nfe-assessment/               # Assessments for NFE
+    │   │   ├── controller/
+    │   │   ├── service/
+    │   │   ├── repository/
+    │   │   ├── domain/                    # NfeAssessment, NfeAttempt entities
+    │   │   ├── dto/
+    │   │   └── mapper/
+    │   │
+    │   ├── nfe-attendance/               # Attendance for NFE programs
+    │   │   ├── controller/
+    │   │   ├── service/
+    │   │   ├── repository/
+    │   │   ├── domain/                    # NfeAttendance entity
+    │   │   ├── dto/
+    │   │   └── mapper/
+    │   │
+    │   └── nfe-certificate/              # Certificates for NFE completion
+    │       ├── controller/
+    │       ├── service/
+    │       ├── repository/
+    │       ├── domain/                    # NfeCertificate entity
+    │       ├── dto/
+    │       └── mapper/
+    │
+    └── (existing modules unchanged)
+```
+
+### 11.7 Future Database Schema (Conceptual)
+
+NFE tables will be prefixed with `nfe_` or placed under a clear naming convention to avoid collisions with formal education tables.
+
+```sql
+-- Education Provider
+CREATE TABLE nfe_providers (
+    id UUID PRIMARY KEY,
+    institution_id UUID,                    -- Optional: if provider is also a formal institution
+    name VARCHAR(255) NOT NULL,
+    provider_type VARCHAR(50) NOT NULL,     -- ORGANIZATION, COMPANY, GOVERNMENT, RELIGIOUS, TRAINING, INDIVIDUAL
+    description TEXT,
+    logo_url VARCHAR(500),
+    website VARCHAR(500),
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    address TEXT,
+    city VARCHAR(100),
+    country VARCHAR(100),
+    contact_person_name VARCHAR(255),
+    contact_person_email VARCHAR(255),
+    contact_person_phone VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    is_verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Learner (linked to users table)
+CREATE TABLE nfe_learners (
+    id UUID PRIMARY KEY,
+    provider_id UUID NOT NULL REFERENCES nfe_providers(id),
+    user_id UUID NOT NULL REFERENCES users(id),
+    participant_number VARCHAR(50),
+    occupation VARCHAR(255),
+    organization VARCHAR(255),
+    status VARCHAR(20) DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Program (wraps courses, seminars, workshops)
+CREATE TABLE nfe_programs (
+    id UUID PRIMARY KEY,
+    provider_id UUID NOT NULL REFERENCES nfe_providers(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    program_type VARCHAR(50) NOT NULL,     -- PROGRAM, COURSE, SEMINAR, WORKSHOP
+    category VARCHAR(100),
+    target_audience VARCHAR(255),
+    start_date DATE,
+    end_date DATE,
+    max_participants INTEGER,
+    is_published BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Program enrollment
+CREATE TABLE nfe_program_enrollments (
+    id UUID PRIMARY KEY,
+    program_id UUID NOT NULL REFERENCES nfe_programs(id),
+    learner_id UUID NOT NULL REFERENCES nfe_learners(id),
+    enrolled_at TIMESTAMP DEFAULT NOW(),
+    status VARCHAR(20) DEFAULT 'ENROLLED',
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Live sessions / Seminars / Workshops
+CREATE TABLE nfe_sessions (
+    id UUID PRIMARY KEY,
+    provider_id UUID NOT NULL REFERENCES nfe_providers(id),
+    program_id UUID REFERENCES nfe_programs(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    session_type VARCHAR(50) NOT NULL,     -- LIVE, SEMINAR, WORKSHOP, WEBINAR
+    scheduled_at TIMESTAMP,
+    duration_minutes INTEGER,
+    meeting_url VARCHAR(500),
+    max_participants INTEGER,
+    status VARCHAR(20) DEFAULT 'SCHEDULED',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Learning materials
+CREATE TABLE nfe_materials (
+    id UUID PRIMARY KEY,
+    provider_id UUID NOT NULL REFERENCES nfe_providers(id),
+    program_id UUID REFERENCES nfe_programs(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    material_type VARCHAR(50),             -- DOCUMENT, VIDEO, AUDIO, LINK, FILE
+    content_url VARCHAR(500),
+    sort_order INTEGER DEFAULT 0,
+    is_free BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Assessments
+CREATE TABLE nfe_assessments (
+    id UUID PRIMARY KEY,
+    provider_id UUID NOT NULL REFERENCES nfe_providers(id),
+    program_id UUID REFERENCES nfe_programs(id),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    assessment_type VARCHAR(50),           -- QUIZ, EXAM, SURVEY, FEEDBACK
+    total_marks INTEGER,
+    pass_marks INTEGER,
+    time_limit_minutes INTEGER,
+    is_published BOOLEAN DEFAULT FALSE,
+    starts_at TIMESTAMP,
+    ends_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Attendance
+CREATE TABLE nfe_attendance (
+    id UUID PRIMARY KEY,
+    provider_id UUID NOT NULL REFERENCES nfe_providers(id),
+    session_id UUID NOT NULL REFERENCES nfe_sessions(id),
+    learner_id UUID NOT NULL REFERENCES nfe_learners(id),
+    status VARCHAR(20) NOT NULL,           -- PRESENT, ABSENT, LATE, EXCUSED
+    check_in_time TIMESTAMP,
+    check_out_time TIMESTAMP,
+    remarks TEXT,
+    marked_by UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- Certificates
+CREATE TABLE nfe_certificates (
+    id UUID PRIMARY KEY,
+    provider_id UUID NOT NULL REFERENCES nfe_providers(id),
+    learner_id UUID NOT NULL REFERENCES nfe_learners(id),
+    program_id UUID REFERENCES nfe_programs(id),
+    certificate_type VARCHAR(50),          -- COMPLETION, PARTICIPATION, ACHIEVEMENT
+    title VARCHAR(255),
+    student_name VARCHAR(255),
+    serial_number VARCHAR(100),
+    verification_code VARCHAR(50),
+    issued_at TIMESTAMP,
+    expiry_date DATE,
+    status VARCHAR(20) DEFAULT 'DRAFT',
+    issued_by UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+```
+
+### 11.8 Future API Structure
+
+NFE endpoints will follow a parallel naming convention:
+
+```
+/v1/nfe/providers/**              # Education Provider CRUD
+/v1/nfe/programs/**               # Program management
+/v1/nfe/learners/**               # Learner management
+/v1/nfe/sessions/**               # Live sessions, seminars, workshops
+/v1/nfe/materials/**              # Learning materials
+/v1/nfe/assessments/**            # NFE assessments
+/v1/nfe/attendance/**             # NFE attendance
+/v1/nfe/certificates/**           # NFE certificates
+/v1/nfe/dashboard/**              # Provider dashboard stats
+```
+
+### 11.9 Future Frontend Structure
+
+```
+frontend/app/
+├── dashboard/
+│   ├── provider/                         # Education Provider dashboard
+│   │   ├── page.tsx                      # Overview / stats
+│   │   ├── programs/
+│   │   ├── learners/
+│   │   ├── sessions/
+│   │   ├── materials/
+│   │   ├── assessments/
+│   │   ├── attendance/
+│   │   ├── certificates/
+│   │   └── settings/
+│   │
+│   ├── learner/                          # Learner dashboard
+│   │   ├── page.tsx                      # My programs, progress
+│   │   ├── programs/
+│   │   ├── sessions/
+│   │   ├── materials/
+│   │   ├── assessments/
+│   │   └── certificates/
+│   │
+│   └── (existing admin/teacher/student dashboards unchanged)
+```
+
+### 11.10 Integration Points with Existing System
+
+| Existing Component | Integration Point | Notes |
+|---|---|---|
+| `users` table | Shared | Learners and Providers use the same auth system |
+| `User.Role` enum | Extend | Add `LEARNER`, `PROVIDER_ADMIN`, `PROVIDER_STAFF` roles |
+| `InstitutionMembership` | Reuse or parallel | Providers may or may not be formal institutions |
+| `JwtRequestAttributeFilter` | Extend | Add `providerId` attribute for NFE context |
+| `SecurityConfig` | Extend | Add NFE public/protected URL patterns |
+| `CertificateService` | Separate module | NFE certificates are structurally different from school certificates |
+| `AuditService` | Reuse | NFE operations should generate audit logs |
+| Frontend sidebar | Extend | Add NFE navigation for Provider and Learner roles |
+
+### 11.11 Key Design Decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Provider vs Institution | Separate entities | Providers are not schools; different attributes and workflows |
+| Learner vs Student | Separate entities, shared User | A person can be both; avoids role conflicts |
+| NFE table prefix | `nfe_` | Clear namespace separation from formal education tables |
+| NFE API prefix | `/v1/nfe/` | Clean separation; no collision with existing endpoints |
+| NFE module package | `tz.elmkusoma.nfe.*` | Follows existing modular monolith pattern |
+| Shared auth | Yes | Single login for users who participate in both ecosystems |
+| Provider = Institution? | Optional link | A provider MAY also be a formal institution, but is not required to be |
+
+### 11.12 Implementation Phases (Future)
+
+| Phase | Scope | Priority |
+|---|---|---|
+| Phase 1 | Education Provider entity, CRUD, dashboard | High |
+| Phase 2 | Program management, Learner enrollment | High |
+| Phase 3 | Live sessions, Seminars, Workshops | Medium |
+| Phase 4 | Learning materials, Content management | Medium |
+| Phase 5 | NFE assessments, Quizzes, Surveys | Medium |
+| Phase 6 | NFE attendance tracking | Medium |
+| Phase 7 | NFE certificates, Verification | High |
+| Phase 8 | Provider analytics, Reports | Low |
+| Phase 9 | Learner dashboard, Self-service | Medium |
+| Phase 10 | Public provider discovery, Search | Low |
+
+### 11.13 Verification Matrix
+
+| Invariant | Status |
+|---|---|
+| Existing Student workflow unchanged | PASS — no modifications |
+| Existing Parent workflow unchanged | PASS — no modifications |
+| Existing Teacher workflow unchanged | PASS — no modifications |
+| Existing Admin workflow unchanged | PASS — no modifications |
+| Existing authentication unchanged | PASS — no modifications |
+| Existing roles unchanged | PASS — no modifications |
+| NFE is isolated from formal education | PASS — separate module, tables, API prefix |
+| NFE shares auth system with formal education | DESIGN — single User entity, separate role |
+| No existing table schemas modified | PASS — NFE uses new tables only |
+
+### 11.14 Architectural Extension Point
+
+The existing modular monolith architecture naturally supports this extension:
+
+1. **Module isolation**: Each NFE sub-module (provider, learner, program, etc.) follows the same `controller/service/repository/domain/dto/mapper` pattern
+2. **Multi-tenancy**: NFE tables include `provider_id` (analogous to `institution_id` in formal education)
+3. **OwnershipGuard**: The existing `OwnershipGuard.verifyInstitution()` pattern can be extended to `OwnershipGuard.verifyProvider()` for NFE resources
+4. **Frontend**: NFE dashboards are separate route groups under `/dashboard/provider/` and `/dashboard/learner/`
+5. **Security**: NFE endpoints are isolated under `/v1/nfe/**` — no collision with existing URL patterns
+
+The platform's modular design means NFE can be developed on a separate branch, merged independently, and activated via feature flags without affecting the existing formal education ecosystem.
