@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.attendance.dto.request.BulkMarkAttendanceRequest;
 import tz.elmkusoma.attendance.dto.request.MarkAttendanceRequest;
@@ -28,6 +29,7 @@ public class AttendanceController {
 
     @PostMapping("/mark")
     @Operation(summary = "Mark attendance for a student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<AttendanceRecordResponse>> markAttendance(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestHeader("X-User-Id") UUID markedBy,
@@ -39,6 +41,7 @@ public class AttendanceController {
 
     @PostMapping("/bulk")
     @Operation(summary = "Bulk mark attendance for a class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<Void>> bulkMarkAttendance(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestHeader("X-User-Id") UUID markedBy,
@@ -50,6 +53,7 @@ public class AttendanceController {
 
     @GetMapping
     @Operation(summary = "Get attendance by class and date")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<AttendanceRecordResponse>>> getAttendance(
             @RequestParam UUID classId,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -59,6 +63,7 @@ public class AttendanceController {
 
     @GetMapping("/student/{studentId}")
     @Operation(summary = "Get attendance by student and date range")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<AttendanceRecordResponse>>> getStudentAttendance(
             @PathVariable UUID studentId,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -69,6 +74,7 @@ public class AttendanceController {
 
     @GetMapping("/summary")
     @Operation(summary = "Get attendance summary for a student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> getAttendanceSummary(
             @RequestParam UUID studentId,
             @RequestParam UUID termId) {
@@ -78,6 +84,7 @@ public class AttendanceController {
 
     @GetMapping("/summary/class/{classId}")
     @Operation(summary = "Get attendance summary for a class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<AttendanceSummaryResponse>>> getClassAttendanceSummary(
             @PathVariable UUID classId,
             @RequestParam UUID termId) {

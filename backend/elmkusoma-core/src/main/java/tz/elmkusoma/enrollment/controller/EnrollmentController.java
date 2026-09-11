@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
@@ -29,6 +30,7 @@ public class EnrollmentController {
 
     @PostMapping
     @Operation(summary = "Enroll a student in a class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> enroll(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody EnrollmentRequest request) {
@@ -39,6 +41,7 @@ public class EnrollmentController {
 
     @GetMapping
     @Operation(summary = "Get all enrollments for an institution")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> getEnrollments(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
@@ -49,6 +52,7 @@ public class EnrollmentController {
 
     @GetMapping("/student/{studentId}")
     @Operation(summary = "Get enrollments by student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> getByStudent(@PathVariable UUID studentId) {
         List<EnrollmentResponse> response = enrollmentService.getEnrollmentsByStudent(studentId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -56,6 +60,7 @@ public class EnrollmentController {
 
     @GetMapping("/class/{classGroupId}")
     @Operation(summary = "Get enrollments by class group")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> getByClass(@PathVariable UUID classGroupId) {
         List<EnrollmentResponse> response = enrollmentService.getEnrollmentsByClass(classGroupId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -63,6 +68,7 @@ public class EnrollmentController {
 
     @PutMapping("/{id}/status")
     @Operation(summary = "Update enrollment status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> updateStatus(
             @PathVariable UUID id,
             @RequestParam Enrollment.EnrollmentStatus status) {
@@ -72,6 +78,7 @@ public class EnrollmentController {
 
     @PostMapping("/{id}/transfer")
     @Operation(summary = "Transfer student to another class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TransferResponse>> transfer(
             @PathVariable UUID id,
             @RequestHeader("X-Institution-Id") UUID institutionId,
@@ -84,6 +91,7 @@ public class EnrollmentController {
 
     @GetMapping("/{id}/transfers")
     @Operation(summary = "Get transfer history for an enrollment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<TransferResponse>>> getTransferHistory(@PathVariable UUID id) {
         List<TransferResponse> response = enrollmentService.getTransferHistory(id);
         return ResponseEntity.ok(ApiResponse.success(response));

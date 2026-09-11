@@ -3,6 +3,7 @@ package tz.elmkusoma.institution.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +31,7 @@ public class InstitutionController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<InstitutionResponse>> createInstitution(
             @Valid @RequestBody CreateInstitutionRequest request) {
         UUID ownerUserId = getCurrentUserId();
@@ -39,12 +41,14 @@ public class InstitutionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<InstitutionResponse>> getInstitution(@PathVariable UUID id) {
         InstitutionResponse response = institutionService.getInstitution(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<InstitutionResponse>>> listInstitutions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -53,6 +57,7 @@ public class InstitutionController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<InstitutionResponse>> updateInstitution(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateInstitutionRequest request) {
@@ -61,18 +66,21 @@ public class InstitutionController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteInstitution(@PathVariable UUID id) {
         institutionService.deleteInstitution(id);
         return ResponseEntity.ok(ApiResponse.success("Institution deleted successfully", null));
     }
 
     @PutMapping("/{id}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<InstitutionResponse>> activateInstitution(@PathVariable UUID id) {
         InstitutionResponse response = institutionService.activateInstitution(id);
         return ResponseEntity.ok(ApiResponse.success("Institution activated", response));
     }
 
     @PutMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<InstitutionResponse>> deactivateInstitution(@PathVariable UUID id) {
         InstitutionResponse response = institutionService.deactivateInstitution(id);
         return ResponseEntity.ok(ApiResponse.success("Institution deactivated", response));

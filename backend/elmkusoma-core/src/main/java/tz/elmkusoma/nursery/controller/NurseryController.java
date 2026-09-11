@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.nursery.dto.request.CreateNurseryActivityRequest;
@@ -30,6 +31,7 @@ public class NurseryController {
 
     @PostMapping("/activities")
     @Operation(summary = "Create a nursery activity")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<NurseryActivityResponse>> createActivity(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestHeader("X-User-Id") UUID conductedBy,
@@ -41,6 +43,7 @@ public class NurseryController {
 
     @GetMapping("/activities")
     @Operation(summary = "Get nursery activities by class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<NurseryActivityResponse>>> getActivitiesByClass(
             @RequestParam UUID classId) {
         List<NurseryActivityResponse> response = nurseryActivityService.getByClassGroupId(classId);
@@ -49,6 +52,7 @@ public class NurseryController {
 
     @GetMapping("/activities/class/{classId}/date/{date}")
     @Operation(summary = "Get nursery activities by class and date")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<NurseryActivityResponse>>> getActivitiesByClassAndDate(
             @PathVariable UUID classId,
             @PathVariable @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -58,6 +62,7 @@ public class NurseryController {
 
     @GetMapping("/activities/{id}")
     @Operation(summary = "Get nursery activity by ID")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<NurseryActivityResponse>> getActivity(@PathVariable UUID id) {
         NurseryActivityResponse response = nurseryActivityService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -65,6 +70,7 @@ public class NurseryController {
 
     @PutMapping("/activities/{id}")
     @Operation(summary = "Update nursery activity")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<NurseryActivityResponse>> updateActivity(
             @PathVariable UUID id,
             @Valid @RequestBody CreateNurseryActivityRequest request) {
@@ -74,6 +80,7 @@ public class NurseryController {
 
     @DeleteMapping("/activities/{id}")
     @Operation(summary = "Delete nursery activity")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<Void>> deleteActivity(@PathVariable UUID id) {
         nurseryActivityService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Nursery activity deleted successfully", null));
@@ -81,6 +88,7 @@ public class NurseryController {
 
     @GetMapping("/activities/type/{type}")
     @Operation(summary = "Get nursery activities by type")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<NurseryActivityResponse>>> getActivitiesByType(
             @PathVariable String type) {
         List<NurseryActivityResponse> response = nurseryActivityService.getByType(type);
@@ -89,6 +97,7 @@ public class NurseryController {
 
     @PostMapping("/milestones")
     @Operation(summary = "Create a nursery milestone")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<NurseryMilestoneResponse>> createMilestone(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody CreateNurseryMilestoneRequest request) {
@@ -99,6 +108,7 @@ public class NurseryController {
 
     @GetMapping("/milestones/student/{studentId}")
     @Operation(summary = "Get milestones by student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<NurseryMilestoneResponse>>> getMilestonesByStudent(
             @PathVariable UUID studentId) {
         List<NurseryMilestoneResponse> response = nurseryMilestoneService.getByStudentId(studentId);
@@ -107,6 +117,7 @@ public class NurseryController {
 
     @GetMapping("/milestones/student/{studentId}/category/{category}")
     @Operation(summary = "Get milestones by student and category")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<NurseryMilestoneResponse>>> getMilestonesByStudentAndCategory(
             @PathVariable UUID studentId,
             @PathVariable String category) {
@@ -116,6 +127,7 @@ public class NurseryController {
 
     @GetMapping("/milestones/{id}")
     @Operation(summary = "Get milestone by ID")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<NurseryMilestoneResponse>> getMilestone(@PathVariable UUID id) {
         NurseryMilestoneResponse response = nurseryMilestoneService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -123,6 +135,7 @@ public class NurseryController {
 
     @PutMapping("/milestones/{id}")
     @Operation(summary = "Update milestone")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<NurseryMilestoneResponse>> updateMilestone(
             @PathVariable UUID id,
             @Valid @RequestBody CreateNurseryMilestoneRequest request) {
@@ -132,6 +145,7 @@ public class NurseryController {
 
     @DeleteMapping("/milestones/{id}")
     @Operation(summary = "Delete milestone")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<Void>> deleteMilestone(@PathVariable UUID id) {
         nurseryMilestoneService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Milestone deleted successfully", null));

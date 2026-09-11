@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
@@ -30,6 +31,7 @@ public class ParentController {
 
     @PostMapping
     @Operation(summary = "Create a new parent profile")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ParentResponse>> createParent(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody ParentRequest request) {
@@ -40,6 +42,7 @@ public class ParentController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a parent by ID")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<ParentResponse>> getParent(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -49,6 +52,7 @@ public class ParentController {
 
     @GetMapping
     @Operation(summary = "List all parents in an institution")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<ParentResponse>>> listParents(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
@@ -59,6 +63,7 @@ public class ParentController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a parent profile")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ParentResponse>> updateParent(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -69,6 +74,7 @@ public class ParentController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete a parent")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteParent(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -78,6 +84,7 @@ public class ParentController {
 
     @PostMapping("/{id}/link-student")
     @Operation(summary = "Link a student to a parent")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ParentStudentResponse>> linkStudent(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -89,6 +96,7 @@ public class ParentController {
 
     @GetMapping("/{id}/children")
     @Operation(summary = "Get all children linked to a parent")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PARENT')")
     public ResponseEntity<ApiResponse<List<ParentStudentResponse>>> getChildren(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -98,6 +106,7 @@ public class ParentController {
 
     @DeleteMapping("/links/{linkId}")
     @Operation(summary = "Unlink a student from a parent")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> unlinkStudent(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID linkId) {
@@ -107,6 +116,7 @@ public class ParentController {
 
     @GetMapping("/{id}/notification-preferences")
     @Operation(summary = "Get parent notification preferences")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PARENT')")
     public ResponseEntity<ApiResponse<ParentNotificationPreferenceResponse>> getNotificationPreferences(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -116,6 +126,7 @@ public class ParentController {
 
     @PutMapping("/{id}/notification-preferences")
     @Operation(summary = "Update parent notification preferences")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PARENT')")
     public ResponseEntity<ApiResponse<ParentNotificationPreferenceResponse>> updateNotificationPreferences(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,

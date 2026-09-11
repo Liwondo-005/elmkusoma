@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.assessment.dto.request.AssessmentRequest;
@@ -27,6 +28,7 @@ public class AssessmentController {
 
     @PostMapping
     @Operation(summary = "Create a new assessment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<AssessmentResponse>> createAssessment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody AssessmentRequest request) {
@@ -37,6 +39,7 @@ public class AssessmentController {
 
     @GetMapping("/class/{classGroupId}")
     @Operation(summary = "Get assessments by class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<AssessmentResponse>>> getByClass(@PathVariable UUID classGroupId) {
         List<AssessmentResponse> response = assessmentService.getAssessmentsByClass(classGroupId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -44,6 +47,7 @@ public class AssessmentController {
 
     @GetMapping("/subject/{subjectId}")
     @Operation(summary = "Get assessments by subject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<AssessmentResponse>>> getBySubject(@PathVariable UUID subjectId) {
         List<AssessmentResponse> response = assessmentService.getAssessmentsBySubject(subjectId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -51,6 +55,7 @@ public class AssessmentController {
 
     @PostMapping("/{id}/questions")
     @Operation(summary = "Add a question to an assessment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<QuestionResponse>> addQuestion(
             @PathVariable UUID id,
             @RequestHeader("X-Institution-Id") UUID institutionId,
@@ -62,6 +67,7 @@ public class AssessmentController {
 
     @GetMapping("/{id}/questions")
     @Operation(summary = "Get all questions for an assessment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestions(@PathVariable UUID id) {
         List<QuestionResponse> response = assessmentService.getQuestions(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -69,6 +75,7 @@ public class AssessmentController {
 
     @PostMapping("/{id}/start")
     @Operation(summary = "Start an assessment attempt")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<AttemptResponse>> startAttempt(
             @PathVariable UUID id,
             @RequestHeader("X-User-Id") UUID studentId,
@@ -80,6 +87,7 @@ public class AssessmentController {
 
     @PostMapping("/attempts/{attemptId}/submit")
     @Operation(summary = "Submit an assessment attempt")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<AttemptResponse>> submitAttempt(
             @PathVariable UUID attemptId,
             @RequestHeader("X-User-Id") UUID studentId,
@@ -90,6 +98,7 @@ public class AssessmentController {
 
     @GetMapping("/{id}/results")
     @Operation(summary = "Get all results for an assessment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<AssessmentResultResponse>>> getResults(@PathVariable UUID id) {
         List<AssessmentResultResponse> response = assessmentService.getResults(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -97,6 +106,7 @@ public class AssessmentController {
 
     @GetMapping("/{id}/results/student/{studentId}")
     @Operation(summary = "Get a student's result for an assessment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<AssessmentResultResponse>> getResult(
             @PathVariable UUID id, @PathVariable UUID studentId) {
         AssessmentResultResponse response = assessmentService.getResult(id, studentId);

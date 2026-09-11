@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.learning.dto.request.AssignmentRequest;
@@ -27,6 +28,7 @@ public class LearningController {
 
     @PostMapping("/lessons")
     @Operation(summary = "Create a new lesson")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<LessonResponse>> createLesson(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody LessonRequest request) {
@@ -37,6 +39,7 @@ public class LearningController {
 
     @GetMapping("/lessons/subject/{subjectId}/class/{classGroupId}")
     @Operation(summary = "Get lessons by subject and class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessons(
             @PathVariable UUID subjectId, @PathVariable UUID classGroupId) {
         List<LessonResponse> response = learningService.getLessonsBySubjectAndClass(subjectId, classGroupId);
@@ -45,6 +48,7 @@ public class LearningController {
 
     @GetMapping("/lessons/class/{classGroupId}")
     @Operation(summary = "Get all lessons for a class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessonsByClass(@PathVariable UUID classGroupId) {
         List<LessonResponse> response = learningService.getLessonsByClass(classGroupId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -52,6 +56,7 @@ public class LearningController {
 
     @PostMapping("/progress")
     @Operation(summary = "Update lesson progress for a student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<ProgressResponse>> updateProgress(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestHeader("X-User-Id") UUID studentId,
@@ -62,6 +67,7 @@ public class LearningController {
 
     @GetMapping("/progress/student/{studentId}")
     @Operation(summary = "Get all lesson progress for a student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<ProgressResponse>>> getStudentProgress(@PathVariable UUID studentId) {
         List<ProgressResponse> response = learningService.getStudentProgress(studentId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -69,6 +75,7 @@ public class LearningController {
 
     @GetMapping("/progress/student/{studentId}/average")
     @Operation(summary = "Get average completion for a student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<Double>> getAverageCompletion(@PathVariable UUID studentId) {
         Double average = learningService.getStudentAverageCompletion(studentId);
         return ResponseEntity.ok(ApiResponse.success(average));
@@ -76,6 +83,7 @@ public class LearningController {
 
     @PostMapping("/assignments")
     @Operation(summary = "Create a new assignment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<AssignmentResponse>> createAssignment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody AssignmentRequest request) {
@@ -86,6 +94,7 @@ public class LearningController {
 
     @GetMapping("/assignments/class/{classGroupId}")
     @Operation(summary = "Get assignments by class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<AssignmentResponse>>> getAssignments(@PathVariable UUID classGroupId) {
         List<AssignmentResponse> response = learningService.getAssignmentsByClass(classGroupId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -93,6 +102,7 @@ public class LearningController {
 
     @PostMapping("/assignments/{id}/submit")
     @Operation(summary = "Submit an assignment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<SubmissionResponse>> submitAssignment(
             @PathVariable UUID id,
             @RequestHeader("X-User-Id") UUID studentId,
@@ -104,6 +114,7 @@ public class LearningController {
 
     @GetMapping("/assignments/{id}/submissions")
     @Operation(summary = "Get all submissions for an assignment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(@PathVariable UUID id) {
         List<SubmissionResponse> response = learningService.getSubmissionsByAssignment(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -111,6 +122,7 @@ public class LearningController {
 
     @PutMapping("/submissions/{id}/grade")
     @Operation(summary = "Grade a submission")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<SubmissionResponse>> gradeSubmission(
             @PathVariable UUID id,
             @RequestParam Integer grade,

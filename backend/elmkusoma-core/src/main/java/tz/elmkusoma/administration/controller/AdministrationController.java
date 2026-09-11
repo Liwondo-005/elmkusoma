@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.service.AdministrationService;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @RequestMapping("/v1/admin")
 @RequiredArgsConstructor
 @Tag(name = "Administration", description = "System settings, roles, dashboard, and user management")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
 public class AdministrationController {
 
     private final AdministrationService administrationService;

@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.grading.dto.request.CreateGradeBoundaryRequest;
@@ -33,6 +34,7 @@ public class GradingController {
 
     @PostMapping("/scales")
     @Operation(summary = "Create a grading scale")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<GradingScaleResponse>> createGradingScale(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody CreateGradingScaleRequest request) {
@@ -43,6 +45,7 @@ public class GradingController {
 
     @GetMapping("/scales")
     @Operation(summary = "Get grading scales by institution")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<GradingScaleResponse>>> getGradingScales(
             @RequestHeader("X-Institution-Id") UUID institutionId) {
         List<GradingScaleResponse> response = gradingScaleService.getByInstitutionId(institutionId);
@@ -51,6 +54,7 @@ public class GradingController {
 
     @GetMapping("/scales/{id}")
     @Operation(summary = "Get grading scale by ID")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<GradingScaleResponse>> getGradingScale(@PathVariable UUID id) {
         GradingScaleResponse response = gradingScaleService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -58,6 +62,7 @@ public class GradingController {
 
     @PutMapping("/scales/{id}")
     @Operation(summary = "Update grading scale")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<GradingScaleResponse>> updateGradingScale(
             @PathVariable UUID id,
             @Valid @RequestBody CreateGradingScaleRequest request) {
@@ -67,6 +72,7 @@ public class GradingController {
 
     @DeleteMapping("/scales/{id}")
     @Operation(summary = "Delete grading scale")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteGradingScale(@PathVariable UUID id) {
         gradingScaleService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Grading scale deleted successfully", null));
@@ -74,6 +80,7 @@ public class GradingController {
 
     @PostMapping("/boundaries")
     @Operation(summary = "Create a grade boundary")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<GradeBoundaryResponse>> createGradeBoundary(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody CreateGradeBoundaryRequest request) {
@@ -84,6 +91,7 @@ public class GradingController {
 
     @GetMapping("/boundaries/scale/{scaleId}")
     @Operation(summary = "Get grade boundaries by scale")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<GradeBoundaryResponse>>> getGradeBoundaries(@PathVariable UUID scaleId) {
         List<GradeBoundaryResponse> response = gradeBoundaryService.getByGradingScaleId(scaleId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -91,6 +99,7 @@ public class GradingController {
 
     @GetMapping("/boundaries/{id}")
     @Operation(summary = "Get grade boundary by ID")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<GradeBoundaryResponse>> getGradeBoundary(@PathVariable UUID id) {
         GradeBoundaryResponse response = gradeBoundaryService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -98,6 +107,7 @@ public class GradingController {
 
     @PutMapping("/boundaries/{id}")
     @Operation(summary = "Update grade boundary")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<GradeBoundaryResponse>> updateGradeBoundary(
             @PathVariable UUID id,
             @Valid @RequestBody CreateGradeBoundaryRequest request) {
@@ -107,6 +117,7 @@ public class GradingController {
 
     @DeleteMapping("/boundaries/{id}")
     @Operation(summary = "Delete grade boundary")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteGradeBoundary(@PathVariable UUID id) {
         gradeBoundaryService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Grade boundary deleted successfully", null));
@@ -114,6 +125,7 @@ public class GradingController {
 
     @PostMapping("/report-cards/generate")
     @Operation(summary = "Generate a report card for a student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ReportCardResponse>> generateReportCard(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody GenerateReportCardRequest request) {
@@ -124,6 +136,7 @@ public class GradingController {
 
     @GetMapping("/report-cards/{id}")
     @Operation(summary = "Get report card by ID")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<ReportCardResponse>> getReportCard(@PathVariable UUID id) {
         ReportCardResponse response = reportCardService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -131,6 +144,7 @@ public class GradingController {
 
     @GetMapping("/report-cards/student/{studentId}")
     @Operation(summary = "Get report cards by student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<ReportCardResponse>>> getReportCardsByStudent(@PathVariable UUID studentId) {
         List<ReportCardResponse> response = reportCardService.getByStudentId(studentId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -138,6 +152,7 @@ public class GradingController {
 
     @GetMapping("/report-cards/term/{termId}")
     @Operation(summary = "Get report cards by term")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<ReportCardResponse>>> getReportCardsByTerm(@PathVariable UUID termId) {
         List<ReportCardResponse> response = reportCardService.getByTermId(termId);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -145,6 +160,7 @@ public class GradingController {
 
     @PatchMapping("/report-cards/{id}/status")
     @Operation(summary = "Update report card status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ReportCardResponse>> updateReportCardStatus(
             @PathVariable UUID id,
             @RequestParam String status) {

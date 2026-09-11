@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.student.domain.StudentClassAssignment;
@@ -23,6 +24,7 @@ public class StudentController {
     private final StudentService studentService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<StudentResponse>> createStudent(
             @Valid @RequestBody StudentRequest request) {
         StudentResponse student = studentService.createStudent(request);
@@ -31,6 +33,7 @@ public class StudentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<StudentResponse>>> getStudents(
             @RequestParam UUID institutionId,
             @RequestParam(required = false) UUID classId,
@@ -45,12 +48,14 @@ public class StudentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<StudentResponse>> getStudent(@PathVariable UUID id) {
         StudentResponse student = studentService.getStudent(id);
         return ResponseEntity.ok(ApiResponse.success(student));
     }
 
     @GetMapping("/admission/{admissionNumber}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<StudentResponse>> getStudentByAdmission(
             @PathVariable String admissionNumber) {
         StudentResponse student = studentService.getStudentByAdmissionNumber(admissionNumber);
@@ -58,6 +63,7 @@ public class StudentController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudentResponse>> updateStudent(
             @PathVariable UUID id,
             @Valid @RequestBody StudentRequest request) {
@@ -66,6 +72,7 @@ public class StudentController {
     }
 
     @PostMapping("/{id}/assign-class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudentClassAssignment>> assignToClass(
             @PathVariable UUID id,
             @Valid @RequestBody AssignClassRequest request) {
@@ -75,6 +82,7 @@ public class StudentController {
     }
 
     @GetMapping("/stats/count")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Long>> countStudents(
             @RequestParam UUID institutionId) {
         long count = studentService.countStudents(institutionId);
@@ -82,6 +90,7 @@ public class StudentController {
     }
 
     @GetMapping("/stats/active")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Long>> countActiveStudents(
             @RequestParam UUID institutionId) {
         long count = studentService.countActiveStudents(institutionId);
