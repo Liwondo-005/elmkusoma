@@ -38,6 +38,18 @@ const parentNav = [
   { label: "Settings", href: "/dashboard/parent/settings", icon: Settings },
 ]
 
+const teacherNav = [
+  { label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard },
+  { label: "My Classes", href: "/dashboard/teacher/classes", icon: Users },
+  { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardList },
+  { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
+  { label: "Grading", href: "/dashboard/teacher/grading", icon: BarChart3 },
+  { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Clock },
+  { label: "Messages", href: "/dashboard/teacher/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
+  { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
+]
+
 const adminNav = [
   { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
   { label: "Roles", href: "/dashboard/admin/roles", icon: Shield },
@@ -61,7 +73,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {(user?.role === "Parent" ? parentNav : nav).map((item) => {
+        {(user?.role === "Parent" ? parentNav : user?.role === "Teacher" ? teacherNav : nav).map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
           return (
             <Link
