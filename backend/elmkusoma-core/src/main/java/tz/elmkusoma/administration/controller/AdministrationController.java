@@ -18,9 +18,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/admin")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('INSTITUTION_ADMIN','ADMIN')")
-@Tag(name = "Administration", description = "System settings, roles, dashboard, and user management")
 @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+@Tag(name = "Administration", description = "System settings, roles, dashboard, and user management")
 public class AdministrationController {
 
     private final AdministrationService administrationService;

@@ -50,7 +50,7 @@ export function LiveClassesBrowser() {
 
   useEffect(() => {
     dashboardApi.getLiveClasses()
-      .then((data) => setClasses((data || []).map(mapApiToCard)))
+      .then((data) => setClasses(((data as ApiLiveClass[]) || []).map(mapApiToCard)))
       .catch(() => setClasses([]))
       .finally(() => setLoading(false))
   }, [])

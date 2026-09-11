@@ -39,7 +39,7 @@ export function LivePreviewSection() {
 
   useEffect(() => {
     dashboardApi.getLiveClasses()
-      .then((data) => setClasses((data || []).slice(0, 4).map(mapApiToCard)))
+      .then((data) => setClasses(((data as ApiLiveClass[]) || []).slice(0, 4).map(mapApiToCard)))
       .catch(() => setClasses([]))
   }, [])
 

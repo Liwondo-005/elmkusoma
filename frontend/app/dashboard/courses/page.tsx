@@ -21,10 +21,10 @@ export default function DashboardCoursesPage() {
     try {
       setLoading(true)
       const [coursesData, progressData] = await Promise.all([
-        courseApi.list().catch(() => ({ content: [] as Course[] })),
+        courseApi.listCourses(localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001").catch(() => [] as Course[]),
         learningApi.getStudentProgress(user!.id).catch(() => []),
       ])
-      setCourses(coursesData.content || [])
+      setCourses(coursesData || [])
       setProgress(progressData)
     } catch {
       setCourses([])

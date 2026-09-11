@@ -179,14 +179,14 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             >
               <item.icon className="size-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
-              {item.badge ? (
+              {(item as any).badge ? (
                 <span
                   className={cn(
                     "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
                     active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
                   )}
                 >
-                  {item.badge}
+                  {(item as any).badge}
                 </span>
               ) : null}
             </Link>

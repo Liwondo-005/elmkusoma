@@ -72,9 +72,9 @@ export default function DashboardPage() {
         const students = await studentApi.getStudents(institutionId).catch(() => [])
         const student = students.find((s: any) => s.userId === user?.id || s.email === user?.email)
 
-        if (student?.classGroupId) {
+        if ((student as any)?.classGroupId) {
           try {
-            const classGroup = await academicApi.getClassGroup(student.classGroupId)
+            const classGroup = await academicApi.getClassGroup((student as any).classGroupId)
             if (classGroup?.gradeId) {
               const grade = await academicApi.getGrade(classGroup.gradeId)
               if (grade?.educationLevel) {
@@ -84,7 +84,7 @@ export default function DashboardPage() {
           } catch { /* education level stays default */ }
         }
 
-        const classId = user?.classGroupId || student?.classGroupId || ""
+        const classId = user?.classGroupId || (student as any)?.classGroupId || ""
 
         const [assignments, assessments, certificates, lessons] = await Promise.all([
           classId ? learningApi.getAssignments(classId).catch(() => []) : Promise.resolve([]),

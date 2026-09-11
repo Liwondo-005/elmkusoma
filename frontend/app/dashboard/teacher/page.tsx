@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { teacherApi, type TeacherDashboard, type Assignment, type Assessment, learningApi, assessmentApi } from "@/lib/api"
+import { type TeacherDashboard, type Assignment, type Assessment, learningApi, assessmentApi, teacherApi as apiTeacher } from "@/lib/api"
+import { teacherApi } from "@/lib/teacher-api"
 import { BookOpen, Users, FileText, PenTool, Video, Clock, ArrowRight, TrendingUp, GraduationCap, Calendar, AlertCircle, ClipboardCheck, BarChart3, ChevronRight, Loader2, AlertTriangle, CheckCircle, ClipboardList } from "lucide-react"
 
 export default function TeacherDashboardPage() {
@@ -34,7 +35,7 @@ export default function TeacherDashboardPage() {
       setError(null)
 
       const [dashboardData, assignmentsData, assessmentsData] = await Promise.allSettled([
-        teacherApi.getDashboard(),
+        apiTeacher.getDashboard(),
         loadAssignments(),
         loadAssessments(),
       ])

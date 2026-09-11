@@ -300,7 +300,7 @@ export default function TeacherAssignmentsPage() {
                           Due: {new Date(a.dueDate).toLocaleDateString()}
                         </span>
                       )}
-                      <span className="inline-flex items-center gap-1"><Users className="size-3" />{a.submissionCount ?? 0}/{a.totalStudents ?? 0} submitted</span>
+                      <span className="inline-flex items-center gap-1"><Users className="size-3" />{(a as any).submissionCount ?? 0}/{(a as any).totalStudents ?? 0} submitted</span>
                     </div>
                   </div>
                   <Button

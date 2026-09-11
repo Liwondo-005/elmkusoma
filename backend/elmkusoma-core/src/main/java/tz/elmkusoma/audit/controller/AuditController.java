@@ -20,9 +20,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/audit")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('INSTITUTION_ADMIN','ADMIN')")
-@Tag(name = "Audit & Compliance", description = "Audit logs, activity feeds, security events, and compliance reporting")
 @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+@Tag(name = "Audit & Compliance", description = "Audit logs, activity feeds, security events, and compliance reporting")
 public class AuditController {
 
     private final AuditService auditService;
