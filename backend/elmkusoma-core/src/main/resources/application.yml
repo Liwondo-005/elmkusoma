@@ -6,7 +6,7 @@ spring:
     name: elmkusoma-core
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/elmkusoma?createDatabaseIfNotExist=true
+    url: jdbc:postgresql://localhost:5432/elmkusoma
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:mwesiga}
     driver-class-name: org.postgresql.Driver
