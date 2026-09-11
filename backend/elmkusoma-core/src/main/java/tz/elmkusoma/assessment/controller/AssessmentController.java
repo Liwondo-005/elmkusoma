@@ -21,6 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/assessments")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Assessment", description = "Assessment, quiz, and exam management")
 public class AssessmentController {
 

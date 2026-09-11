@@ -20,6 +20,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/v1/institutions")
+@PreAuthorize("hasAnyRole('INSTITUTION_ADMIN','ADMIN')")
 public class InstitutionController {
 
     private final InstitutionService institutionService;

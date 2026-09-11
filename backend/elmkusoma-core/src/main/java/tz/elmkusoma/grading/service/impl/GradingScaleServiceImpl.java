@@ -9,6 +9,7 @@ import tz.elmkusoma.grading.dto.request.CreateGradingScaleRequest;
 import tz.elmkusoma.grading.dto.response.GradeBoundaryResponse;
 import tz.elmkusoma.grading.dto.response.GradingScaleResponse;
 import tz.elmkusoma.grading.repository.GradingScaleRepository;
+import tz.elmkusoma.grading.repository.GradeBoundaryRepository;
 import tz.elmkusoma.grading.service.GradingScaleService;
 
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class GradingScaleServiceImpl implements GradingScaleService {
 
     private final GradingScaleRepository gradingScaleRepository;
+    private final GradeBoundaryRepository gradeBoundaryRepository;
 
     @Override
     public GradingScaleResponse create(UUID institutionId, CreateGradingScaleRequest request) {
@@ -88,8 +90,19 @@ public class GradingScaleServiceImpl implements GradingScaleService {
         if (!gradingScaleRepository.existsById(scaleId)) {
             throw new ResourceNotFoundException("Grading scale not found");
         }
-        // This would need to be injected - for now return empty list
-        return List.of();
+        return gradeBoundaryRepository.findByGradingScaleIdAndIsDeletedFalse(scaleId)
+                .stream()
+                .map(gb -> GradeBoundaryResponse.builder()
+                        .id(gb.getId())
+                        .gradingScaleId(gb.getGradingScaleId())
+                        .gradeLabel(gb.getGradeLabel())
+                        .gradeName(gb.getGradeName())
+                        .minPercentage(gb.getMinPercentage())
+                        .maxPercentage(gb.getMaxPercentage())
+                        .gpaPoints(gb.getGpaPoints())
+                        .sortOrder(gb.getSortOrder())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private GradingScaleResponse mapToResponse(GradingScale scale) {

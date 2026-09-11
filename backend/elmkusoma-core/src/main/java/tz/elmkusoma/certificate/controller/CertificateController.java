@@ -18,6 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/certificates")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Certificate Management", description = "Certificate templates, generation, and verification")
 public class CertificateController {
 

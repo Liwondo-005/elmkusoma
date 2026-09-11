@@ -23,5 +23,5 @@ public interface AttendanceService {
 
     void markBulkAttendance(UUID institutionId, UUID markedBy, BulkMarkAttendanceRequest request);
 
-    void updateSummary(UUID studentId, UUID termId, UUID classGroupId, UUID academicYearId);
+    void updateSummary(UUID studentId, UUID termId, UUID classGroupId, UUID academicYearId, UUID institutionId);
 }

@@ -39,7 +39,10 @@ public class SecurityConfig {
             "/v1/public/**",
             "/v1/certificates/verify/**",
             "/v1/institutions",
-            "/v1/institutions/{id}",
+            "/v1/institutions/{id}"
+    };
+
+    private static final String[] ADMIN_ONLY_URLS = {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
@@ -94,6 +97,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll()
+                        .requestMatchers(ADMIN_ONLY_URLS).hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)

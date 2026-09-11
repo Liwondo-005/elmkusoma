@@ -21,6 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/learning")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Learning", description = "Lessons, assignments, and progress management")
 public class LearningController {
 

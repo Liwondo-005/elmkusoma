@@ -23,6 +23,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/nursery")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Nursery", description = "Nursery activities and milestone tracking")
 public class NurseryController {
 

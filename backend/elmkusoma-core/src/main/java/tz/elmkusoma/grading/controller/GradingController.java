@@ -25,6 +25,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/grading")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Grading", description = "Grading scales, boundaries, and report cards")
 public class GradingController {
 

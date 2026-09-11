@@ -24,6 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/parents")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Parent Management", description = "CRUD operations for parents and parent-student linkages")
 public class ParentController {
 

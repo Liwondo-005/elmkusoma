@@ -26,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/academic")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 public class AcademicController {
 
     private final AcademicService academicService;
@@ -44,7 +45,7 @@ public class AcademicController {
     @GetMapping("/years")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<AcademicYear>>> getAcademicYears(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) EducationLevel educationLevel) {
         List<AcademicYear> years = educationLevel != null
                 ? academicService.getAcademicYearsByLevel(institutionId, educationLevel)
@@ -122,7 +123,7 @@ public class AcademicController {
     @GetMapping("/subjects")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<Subject>>> getSubjects(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) EducationLevel educationLevel) {
         List<Subject> subjects = educationLevel != null
                 ? academicService.getSubjectsByLevel(institutionId, educationLevel)
@@ -151,7 +152,7 @@ public class AcademicController {
     @GetMapping("/classes")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<ClassGroup>>> getClassGroups(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) UUID gradeId,
             @RequestParam(required = false) UUID termId) {
         List<ClassGroup> classes;

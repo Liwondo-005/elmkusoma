@@ -22,6 +22,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/attendance")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Attendance", description = "Student attendance management")
 public class AttendanceController {
 

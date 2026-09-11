@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.student.service.StudentDashboardService;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/student/dashboard")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('STUDENT')")
 @Tag(name = "Student Dashboard", description = "Student dashboard summary, results, and attendance")
 public class StudentDashboardController {
 

@@ -18,6 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/courses")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Course Management", description = "Full CRUD for courses, modules, and lessons")
 public class CourseController {
 

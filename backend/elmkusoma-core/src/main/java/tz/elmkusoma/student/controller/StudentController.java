@@ -19,6 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/students")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 public class StudentController {
 
     private final StudentService studentService;
@@ -35,7 +36,7 @@ public class StudentController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<StudentResponse>>> getStudents(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) UUID classId,
             @RequestParam(required = false) String query) {
         List<StudentResponse> students;
@@ -84,7 +85,7 @@ public class StudentController {
     @GetMapping("/stats/count")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Long>> countStudents(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId) {
         long count = studentService.countStudents(institutionId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }
@@ -92,7 +93,7 @@ public class StudentController {
     @GetMapping("/stats/active")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Long>> countActiveStudents(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId) {
         long count = studentService.countActiveStudents(institutionId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }
