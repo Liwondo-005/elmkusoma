@@ -2,6 +2,7 @@ package tz.elmkusoma.administration.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
@@ -16,7 +17,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class DataImportJob extends BaseEntity {
 
     @Column(name = "imported_by", nullable = false)
