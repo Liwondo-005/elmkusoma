@@ -20,7 +20,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Administration", description = "System settings, roles, dashboard, and user management")
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
 public class AdministrationController {
 
     private final AdministrationService administrationService;
