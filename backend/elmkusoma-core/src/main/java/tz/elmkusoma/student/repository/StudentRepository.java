@@ -26,9 +26,13 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
 
     boolean existsByUserIdAndIsDeletedFalse(UUID userId);
 
-    @Query("SELECT s FROM Student s WHERE s.institutionId = :institutionId AND s.isDeleted = false " +
+    @Query("SELECT s FROM Student s JOIN tz.elmkusoma.shared.domain.User u ON s.userId = u.id " +
+           "WHERE s.institutionId = :institutionId AND s.isDeleted = false AND u.isDeleted = false " +
            "AND (LOWER(s.admissionNumber) LIKE LOWER(CONCAT('%', :query, '%')) " +
-           "OR LOWER(s.gender) = LOWER(:query))")
+           "OR LOWER(s.gender) = LOWER(:query) " +
+           "OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<Student> search(@Param("institutionId") UUID institutionId, @Param("query") String query);
 
     @Query("SELECT COUNT(s) FROM Student s WHERE s.institutionId = :institutionId AND s.isDeleted = false")

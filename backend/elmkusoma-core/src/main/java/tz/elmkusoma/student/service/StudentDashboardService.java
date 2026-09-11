@@ -18,7 +18,11 @@ import tz.elmkusoma.learning.repository.LessonProgressRepository;
 import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.student.repository.StudentRepository;
 
+import tz.elmkusoma.course.domain.LiveClass;
+import tz.elmkusoma.course.repository.LiveClassRepository;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,6 +38,7 @@ public class StudentDashboardService {
     private final SubjectGradeRepository subjectGradeRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final LessonProgressRepository lessonProgressRepository;
+    private final LiveClassRepository liveClassRepository;
 
     public Student getStudentByUserId(UUID userId) {
         return studentRepository.findByUserIdAndIsDeletedFalse(userId)
@@ -227,8 +232,27 @@ public class StudentDashboardService {
     }
 
     public List<Map<String, Object>> getUpcomingLiveClasses(UUID userId) {
-        // Placeholder — live class entity to be created
-        return new ArrayList<>();
+        Student student = getStudentByUserId(userId);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime weekFromNow = now.plusDays(7);
+
+        List<LiveClass> upcoming = liveClassRepository.findByInstitutionIdAndScheduledAtBetween(
+                student.getInstitutionId(), now, weekFromNow);
+
+        return upcoming.stream().map(lc -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", lc.getId());
+            item.put("title", lc.getTitle());
+            item.put("description", lc.getDescription());
+            item.put("subjectId", lc.getSubjectId());
+            item.put("teacherId", lc.getTeacherId());
+            item.put("scheduledAt", lc.getScheduledAt());
+            item.put("durationMinutes", lc.getDurationMinutes());
+            item.put("status", lc.getStatus());
+            item.put("meetingUrl", lc.getMeetingUrl());
+            item.put("maxParticipants", lc.getMaxParticipants());
+            return item;
+        }).collect(Collectors.toList());
     }
 
     private int compareNullable(Comparable a, Comparable b) {

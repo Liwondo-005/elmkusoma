@@ -2,10 +2,12 @@ package tz.elmkusoma.learning.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
@@ -14,6 +16,8 @@ import tz.elmkusoma.learning.dto.request.LessonRequest;
 import tz.elmkusoma.learning.dto.request.ProgressRequest;
 import tz.elmkusoma.learning.dto.response.*;
 import tz.elmkusoma.learning.service.LearningService;
+import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +30,8 @@ import java.util.UUID;
 public class LearningController {
 
     private final LearningService learningService;
+    private final StudentRepository studentRepository;
+    private final ParentStudentLinkRepository parentStudentLinkRepository;
 
     @PostMapping("/lessons")
     @Operation(summary = "Create a new lesson")
@@ -69,7 +75,9 @@ public class LearningController {
     @GetMapping("/progress/student/{studentId}")
     @Operation(summary = "Get all lesson progress for a student")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
-    public ResponseEntity<ApiResponse<List<ProgressResponse>>> getStudentProgress(@PathVariable UUID studentId) {
+    public ResponseEntity<ApiResponse<List<ProgressResponse>>> getStudentProgress(
+            @PathVariable UUID studentId, HttpServletRequest request) {
+        verifyStudentAccess(studentId, request);
         List<ProgressResponse> response = learningService.getStudentProgress(studentId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -77,9 +85,29 @@ public class LearningController {
     @GetMapping("/progress/student/{studentId}/average")
     @Operation(summary = "Get average completion for a student")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
-    public ResponseEntity<ApiResponse<Double>> getAverageCompletion(@PathVariable UUID studentId) {
+    public ResponseEntity<ApiResponse<Double>> getAverageCompletion(
+            @PathVariable UUID studentId, HttpServletRequest request) {
+        verifyStudentAccess(studentId, request);
         Double average = learningService.getStudentAverageCompletion(studentId);
         return ResponseEntity.ok(ApiResponse.success(average));
+    }
+
+    private void verifyStudentAccess(UUID studentId, HttpServletRequest request) {
+        String role = (String) request.getAttribute("userRole");
+        if ("STUDENT".equals(role)) {
+            UUID userId = (UUID) request.getAttribute("userId");
+            var student = studentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+            if (student == null || !student.getId().equals(studentId)) {
+                throw new AccessDeniedException("You can only access your own progress");
+            }
+        } else if ("PARENT".equals(role)) {
+            UUID userId = (UUID) request.getAttribute("userId");
+            var parent = parentStudentLinkRepository.findAllByParentId(userId);
+            boolean isChild = parent.stream().anyMatch(link -> link.getStudentId().equals(studentId));
+            if (!isChild) {
+                throw new AccessDeniedException("You can only access your child's progress");
+            }
+        }
     }
 
     @PostMapping("/assignments")

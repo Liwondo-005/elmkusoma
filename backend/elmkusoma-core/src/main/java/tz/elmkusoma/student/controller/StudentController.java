@@ -1,9 +1,11 @@
 package tz.elmkusoma.student.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
@@ -50,7 +52,17 @@ public class StudentController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
-    public ResponseEntity<ApiResponse<StudentResponse>> getStudent(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<StudentResponse>> getStudent(
+            @PathVariable UUID id, HttpServletRequest request) {
+        String role = (String) request.getAttribute("userRole");
+        if ("STUDENT".equals(role)) {
+            UUID userId = (UUID) request.getAttribute("userId");
+            StudentResponse student = studentService.getStudent(id);
+            if (!id.equals(studentService.getStudentIdByUserId(userId))) {
+                throw new AccessDeniedException("You can only view your own profile");
+            }
+            return ResponseEntity.ok(ApiResponse.success(student));
+        }
         StudentResponse student = studentService.getStudent(id);
         return ResponseEntity.ok(ApiResponse.success(student));
     }

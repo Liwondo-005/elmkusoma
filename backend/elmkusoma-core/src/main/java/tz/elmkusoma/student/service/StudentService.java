@@ -170,6 +170,13 @@ public class StudentService {
         return studentRepository.countByInstitutionIdAndStatus(institutionId, StudentStatus.ACTIVE);
     }
 
+    @Transactional(readOnly = true)
+    public UUID getStudentIdByUserId(UUID userId) {
+        return studentRepository.findByUserIdAndIsDeletedFalse(userId)
+                .map(Student::getId)
+                .orElse(null);
+    }
+
     // ── Helpers ────────────────────────────────────────────────────
 
     private String generateAdmissionNumber(String institutionCode, UUID institutionId) {
