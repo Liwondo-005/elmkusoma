@@ -1838,7 +1838,7 @@ export const collegeList: CollegeInfo[] = [
   { id: "dit", name: "Dar es Salaam Institute of Technology", abbreviation: "DIT", location: "Dar es Salaam", students: 4500, rating: 4.7, departments: ["engineering", "ict", "business"], description: "A leading technical institute offering diploma and degree programs in engineering and technology." },
   { id: "cbe", name: "College of Business Education", abbreviation: "CBE", location: "Dar es Salaam", students: 3800, rating: 4.6, departments: ["business", "ict"], description: "Specializing in business education with programs in accountancy, marketing and management." },
   { id: "ifm", name: "Institute of Finance Management", abbreviation: "IFM", location: "Dar es Salaam", students: 3200, rating: 4.8, departments: ["business", "ict"], description: "Tanzania's premier institution for finance, banking and insurance education." },
-  { id: "tit", name: "Tanzania Institute of Transport", abbreviation: "TIT", location: "Dar es Salaam", students: 2100, rating: 4.4, departments: ["engineering"], description: "Focused on transport logistics, maritime studies and automotive engineering." },
+  { id: "tit", name: "National Institute of Transport", abbreviation: "NIT", location: "Dar es Salaam", students: 2100, rating: 4.4, departments: ["engineering"], description: "Focused on transport logistics, maritime studies and automotive engineering." },
   { id: "must", name: "Mbeya University of Science and Technology", abbreviation: "MUST", location: "Mbeya", students: 5200, rating: 4.5, departments: ["engineering", "ict", "education", "agriculture"], description: "A full university offering science, technology and education programs at diploma and degree level." },
 ]
 
@@ -2267,7 +2267,7 @@ export const institutions: Institution[] = [
   },
   {
     id: "tit",
-    name: "Tanzania Institute of Transport",
+    name: "National Institute of Transport",
     educationLevel: "Colleges",
     description: "Focused on transport logistics, maritime studies and automotive engineering.",
     location: "Dar es Salaam",
