@@ -23,7 +23,7 @@ public class StudentDashboardController {
     @GetMapping("/summary")
     @Operation(summary = "Get student dashboard summary")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboardSummary(
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestAttribute("userId") UUID userId) {
         Map<String, Object> summary = studentDashboardService.getDashboardSummary(userId);
         return ResponseEntity.ok(ApiResponse.success(summary));
     }
@@ -31,7 +31,7 @@ public class StudentDashboardController {
     @GetMapping("/continue-learning")
     @Operation(summary = "Get continue learning items (in-progress lessons)")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getContinueLearning(
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestAttribute("userId") UUID userId) {
         List<Map<String, Object>> items = studentDashboardService.getContinueLearning(userId);
         return ResponseEntity.ok(ApiResponse.success(items));
     }
@@ -39,7 +39,7 @@ public class StudentDashboardController {
     @GetMapping("/recent-activity")
     @Operation(summary = "Get recent activity")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getRecentActivity(
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestAttribute("userId") UUID userId) {
         List<Map<String, Object>> activities = studentDashboardService.getRecentActivity(userId);
         return ResponseEntity.ok(ApiResponse.success(activities));
     }
@@ -47,7 +47,7 @@ public class StudentDashboardController {
     @GetMapping("/results")
     @Operation(summary = "Get student results (report cards with subject grades)")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getStudentResults(
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestAttribute("userId") UUID userId) {
         List<Map<String, Object>> results = studentDashboardService.getStudentResults(userId);
         return ResponseEntity.ok(ApiResponse.success(results));
     }
@@ -55,7 +55,7 @@ public class StudentDashboardController {
     @GetMapping("/attendance")
     @Operation(summary = "Get attendance summary and records")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAttendanceSummary(
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestAttribute("userId") UUID userId) {
         Map<String, Object> summary = studentDashboardService.getAttendanceSummary(userId);
         return ResponseEntity.ok(ApiResponse.success(summary));
     }
@@ -63,7 +63,7 @@ public class StudentDashboardController {
     @GetMapping("/live-classes")
     @Operation(summary = "Get upcoming live classes")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getUpcomingLiveClasses(
-            @RequestHeader("X-User-Id") UUID userId) {
+            @RequestAttribute("userId") UUID userId) {
         List<Map<String, Object>> classes = studentDashboardService.getUpcomingLiveClasses(userId);
         return ResponseEntity.ok(ApiResponse.success(classes));
     }

@@ -23,7 +23,7 @@ const studentNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const nurseryNav = [
+const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Activities", href: "/dashboard/courses", icon: BookOpen },
   { label: "Fun Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -35,7 +35,7 @@ const nurseryNav = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const primaryNav = [
+const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -66,7 +66,7 @@ const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDash
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const universityNav = [
+const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -97,7 +97,7 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const parentNav = [
+const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
   { label: "My Children", href: "/dashboard/parent/children", icon: Users },
   { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
