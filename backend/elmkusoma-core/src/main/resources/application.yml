@@ -6,9 +6,9 @@ spring:
     name: elmkusoma-core
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/elmkusoma
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:mwesiga}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:elmkusoma}
+    username: ${DB_USERNAME:elmkusoma}
+    password: ${DB_PASSWORD:changeme}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
