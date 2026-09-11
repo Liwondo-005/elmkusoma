@@ -109,6 +109,7 @@ function mapRoleToFrontend(backendRole: string): string {
     STUDENT: "Student",
     TEACHER: "Teacher",
     PARENT: "Parent",
+    OTHER_LEARNER: "Other Learner",
     ADMIN: "Admin",
     INSTITUTION_ADMIN: "Institution Admin",
   }
@@ -122,6 +123,7 @@ function mapRoleToBackend(frontendRole: string): string {
     Lecturer: "TEACHER",
     Facilitator: "TEACHER",
     Parent: "PARENT",
+    "Other Learner": "OTHER_LEARNER",
     Admin: "ADMIN",
     "Institution Admin": "INSTITUTION_ADMIN",
   }
