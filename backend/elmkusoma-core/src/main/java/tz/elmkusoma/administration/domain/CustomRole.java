@@ -2,6 +2,7 @@ package tz.elmkusoma.administration.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 @Entity
@@ -10,7 +11,7 @@ import tz.elmkusoma.common.BaseEntity;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class CustomRole extends BaseEntity {
 
     @Column(name = "name", nullable = false)

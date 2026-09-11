@@ -2,6 +2,7 @@ package tz.elmkusoma.administration.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
@@ -14,7 +15,7 @@ import java.util.Map;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class SystemSetting extends BaseEntity {
 
     @Column(name = "setting_key", nullable = false)
