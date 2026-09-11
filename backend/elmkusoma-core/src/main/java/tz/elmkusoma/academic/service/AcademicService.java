@@ -7,7 +7,6 @@ import tz.elmkusoma.academic.domain.*;
 import tz.elmkusoma.academic.dto.*;
 import tz.elmkusoma.academic.repository.*;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 
 import java.util.List;
 import java.util.UUID;
@@ -44,11 +43,9 @@ public class AcademicService {
     }
 
     @Transactional(readOnly = true)
-    public AcademicYear getAcademicYear(UUID id, UUID institutionId) {
-        AcademicYear year = academicYearRepository.findById(id)
+    public AcademicYear getAcademicYear(UUID id) {
+        return academicYearRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("AcademicYear", "id", id));
-        OwnershipGuard.verifyInstitution(year.getInstitutionId(), institutionId, "academic year");
-        return year;
     }
 
     @Transactional(readOnly = true)
@@ -59,7 +56,7 @@ public class AcademicService {
     // ── Term ───────────────────────────────────────────────────────
 
     public Term createTerm(UUID academicYearId, TermRequest request) {
-        getAcademicYear(academicYearId, request.getInstitutionId()); // validate exists
+        getAcademicYear(academicYearId); // validate exists
         Term term = Term.builder()
                 .institutionId(request.getInstitutionId())
                 .academicYearId(academicYearId)
@@ -78,11 +75,9 @@ public class AcademicService {
     }
 
     @Transactional(readOnly = true)
-    public Term getTerm(UUID id, UUID institutionId) {
-        Term term = termRepository.findById(id)
+    public Term getTerm(UUID id) {
+        return termRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Term", "id", id));
-        OwnershipGuard.verifyInstitution(term.getInstitutionId(), institutionId, "term");
-        return term;
     }
 
     // ── Grade ──────────────────────────────────────────────────────
@@ -110,11 +105,9 @@ public class AcademicService {
     }
 
     @Transactional(readOnly = true)
-    public Grade getGrade(UUID id, UUID institutionId) {
-        Grade grade = gradeRepository.findById(id)
+    public Grade getGrade(UUID id) {
+        return gradeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grade", "id", id));
-        OwnershipGuard.verifyInstitution(grade.getInstitutionId(), institutionId, "grade");
-        return grade;
     }
 
     // ── Subject ────────────────────────────────────────────────────
@@ -142,19 +135,17 @@ public class AcademicService {
     }
 
     @Transactional(readOnly = true)
-    public Subject getSubject(UUID id, UUID institutionId) {
-        Subject subject = subjectRepository.findById(id)
+    public Subject getSubject(UUID id) {
+        return subjectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", id));
-        OwnershipGuard.verifyInstitution(subject.getInstitutionId(), institutionId, "subject");
-        return subject;
     }
 
     // ── Class Group ────────────────────────────────────────────────
 
     public ClassGroup createClassGroup(ClassGroupRequest request) {
-        getGrade(request.getGradeId(), request.getInstitutionId());
-        getAcademicYear(request.getAcademicYearId(), request.getInstitutionId());
-        getTerm(request.getTermId(), request.getInstitutionId());
+        getGrade(request.getGradeId());
+        getAcademicYear(request.getAcademicYearId());
+        getTerm(request.getTermId());
 
         ClassGroup classGroup = ClassGroup.builder()
                 .institutionId(request.getInstitutionId())
@@ -181,10 +172,8 @@ public class AcademicService {
     }
 
     @Transactional(readOnly = true)
-    public ClassGroup getClassGroup(UUID id, UUID institutionId) {
-        ClassGroup classGroup = classGroupRepository.findById(id)
+    public ClassGroup getClassGroup(UUID id) {
+        return classGroupRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ClassGroup", "id", id));
-        OwnershipGuard.verifyInstitution(classGroup.getInstitutionId(), institutionId, "class group");
-        return classGroup;
     }
 }

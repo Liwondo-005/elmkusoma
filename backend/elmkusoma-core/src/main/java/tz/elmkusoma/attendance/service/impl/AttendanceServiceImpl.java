@@ -12,7 +12,6 @@ import tz.elmkusoma.attendance.dto.response.AttendanceSummaryResponse;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
 import tz.elmkusoma.attendance.repository.AttendanceSummaryRepository;
 import tz.elmkusoma.attendance.service.AttendanceService;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -48,39 +47,35 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AttendanceRecordResponse> getByClassAndDate(UUID classGroupId, LocalDate date, UUID institutionId) {
+    public List<AttendanceRecordResponse> getByClassAndDate(UUID classGroupId, LocalDate date) {
         return attendanceRecordRepository.findByClassGroupIdAndAttendanceDateAndIsDeletedFalse(classGroupId, date)
                 .stream()
-                .filter(r -> r.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AttendanceRecordResponse> getByStudentAndDateRange(UUID studentId, LocalDate startDate, LocalDate endDate, UUID institutionId) {
+    public List<AttendanceRecordResponse> getByStudentAndDateRange(UUID studentId, LocalDate startDate, LocalDate endDate) {
         return attendanceRecordRepository.findByStudentAndDateRange(studentId, startDate, endDate)
                 .stream()
-                .filter(r -> r.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AttendanceSummaryResponse getSummary(UUID studentId, UUID termId, UUID institutionId) {
+    public AttendanceSummaryResponse getSummary(UUID studentId, UUID termId) {
         return attendanceSummaryRepository.findByStudentIdAndTermIdAndIsDeletedFalse(studentId, termId)
-                .filter(s -> s.getInstitutionId().equals(institutionId))
                 .map(this::mapToSummaryResponse)
                 .orElse(null);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AttendanceSummaryResponse> getByClassAndTerm(UUID classGroupId, UUID termId, UUID institutionId) {
+    public List<AttendanceSummaryResponse> getByClassAndTerm(UUID classGroupId, UUID termId) {
         return attendanceSummaryRepository.findByClassGroupIdAndTermIdAndIsDeletedFalse(classGroupId, termId)
                 .stream()
-                .filter(s -> s.getInstitutionId().equals(institutionId))
                 .map(this::mapToSummaryResponse)
                 .collect(Collectors.toList());
     }

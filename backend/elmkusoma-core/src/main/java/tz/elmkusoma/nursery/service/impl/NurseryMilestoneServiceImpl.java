@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.nursery.domain.NurseryMilestone;
 import tz.elmkusoma.nursery.dto.request.CreateNurseryMilestoneRequest;
 import tz.elmkusoma.nursery.dto.response.NurseryMilestoneResponse;
@@ -42,41 +41,37 @@ public class NurseryMilestoneServiceImpl implements NurseryMilestoneService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<NurseryMilestoneResponse> getByStudentId(UUID studentId, UUID institutionId) {
+    public List<NurseryMilestoneResponse> getByStudentId(UUID studentId) {
         return nurseryMilestoneRepository.findByStudentIdAndIsDeletedFalse(studentId)
                 .stream()
-                .filter(m -> m.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<NurseryMilestoneResponse> getByStudentAndCategory(UUID studentId, String category, UUID institutionId) {
+    public List<NurseryMilestoneResponse> getByStudentAndCategory(UUID studentId, String category) {
         return nurseryMilestoneRepository.findByStudentAndCategory(
                         studentId, NurseryMilestone.MilestoneCategory.valueOf(category))
                 .stream()
-                .filter(m -> m.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public NurseryMilestoneResponse getById(UUID id, UUID institutionId) {
+    public NurseryMilestoneResponse getById(UUID id) {
         NurseryMilestone milestone = nurseryMilestoneRepository.findById(id)
                 .filter(m -> !m.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery milestone not found"));
-        OwnershipGuard.verifyInstitution(milestone.getInstitutionId(), institutionId, "nursery milestone");
         return mapToResponse(milestone);
     }
 
     @Override
-    public NurseryMilestoneResponse update(UUID id, UUID institutionId, CreateNurseryMilestoneRequest request) {
+    public NurseryMilestoneResponse update(UUID id, CreateNurseryMilestoneRequest request) {
         NurseryMilestone milestone = nurseryMilestoneRepository.findById(id)
                 .filter(m -> !m.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery milestone not found"));
-        OwnershipGuard.verifyInstitution(milestone.getInstitutionId(), institutionId, "nursery milestone");
 
         milestone.setCategory(NurseryMilestone.MilestoneCategory.valueOf(request.getCategory()));
         milestone.setMilestoneName(request.getMilestoneName());
@@ -91,10 +86,9 @@ public class NurseryMilestoneServiceImpl implements NurseryMilestoneService {
     }
 
     @Override
-    public void delete(UUID id, UUID institutionId) {
+    public void delete(UUID id) {
         NurseryMilestone milestone = nurseryMilestoneRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery milestone not found"));
-        OwnershipGuard.verifyInstitution(milestone.getInstitutionId(), institutionId, "nursery milestone");
         milestone.setIsDeleted(true);
         nurseryMilestoneRepository.save(milestone);
     }

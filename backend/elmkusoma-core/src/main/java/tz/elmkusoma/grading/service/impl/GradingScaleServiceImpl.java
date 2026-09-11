@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.grading.domain.GradingScale;
 import tz.elmkusoma.grading.dto.request.CreateGradingScaleRequest;
 import tz.elmkusoma.grading.dto.response.GradeBoundaryResponse;
@@ -51,20 +50,18 @@ public class GradingScaleServiceImpl implements GradingScaleService {
 
     @Override
     @Transactional(readOnly = true)
-    public GradingScaleResponse getById(UUID id, UUID institutionId) {
+    public GradingScaleResponse getById(UUID id) {
         GradingScale scale = gradingScaleRepository.findById(id)
                 .filter(s -> !s.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Grading scale not found"));
-        OwnershipGuard.verifyInstitution(scale.getInstitutionId(), institutionId, "grading scale");
         return mapToResponse(scale);
     }
 
     @Override
-    public GradingScaleResponse update(UUID id, UUID institutionId, CreateGradingScaleRequest request) {
+    public GradingScaleResponse update(UUID id, CreateGradingScaleRequest request) {
         GradingScale scale = gradingScaleRepository.findById(id)
                 .filter(s -> !s.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Grading scale not found"));
-        OwnershipGuard.verifyInstitution(scale.getInstitutionId(), institutionId, "grading scale");
 
         scale.setName(request.getName());
         scale.setDescription(request.getDescription());
@@ -78,10 +75,9 @@ public class GradingScaleServiceImpl implements GradingScaleService {
     }
 
     @Override
-    public void delete(UUID id, UUID institutionId) {
+    public void delete(UUID id) {
         GradingScale scale = gradingScaleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Grading scale not found"));
-        OwnershipGuard.verifyInstitution(scale.getInstitutionId(), institutionId, "grading scale");
         scale.setIsDeleted(true);
         gradingScaleRepository.save(scale);
     }

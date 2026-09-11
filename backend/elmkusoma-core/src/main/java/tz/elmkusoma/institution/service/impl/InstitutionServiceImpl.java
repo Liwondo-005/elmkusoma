@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.institution.dto.request.CreateInstitutionRequest;
 import tz.elmkusoma.institution.dto.request.UpdateInstitutionRequest;
 import tz.elmkusoma.institution.dto.response.InstitutionResponse;
@@ -110,10 +109,9 @@ public class InstitutionServiceImpl implements InstitutionService {
     }
 
     @Override
-    public InstitutionResponse updateInstitution(UUID id, UUID institutionId, UpdateInstitutionRequest request) {
+    public InstitutionResponse updateInstitution(UUID id, UpdateInstitutionRequest request) {
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", id));
-        OwnershipGuard.verifyInstitution(institution.getId(), institutionId, "institution");
 
         if (request.getName() != null) institution.setName(request.getName());
         if (request.getDescription() != null) institution.setDescription(request.getDescription());
@@ -132,20 +130,18 @@ public class InstitutionServiceImpl implements InstitutionService {
     }
 
     @Override
-    public void deleteInstitution(UUID id, UUID institutionId) {
+    public void deleteInstitution(UUID id) {
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", id));
-        OwnershipGuard.verifyInstitution(institution.getId(), institutionId, "institution");
         institution.setIsDeleted(true);
         institutionRepository.save(institution);
         log.info("Institution soft-deleted: {} (ID: {})", institution.getName(), institution.getId());
     }
 
     @Override
-    public InstitutionResponse activateInstitution(UUID id, UUID institutionId) {
+    public InstitutionResponse activateInstitution(UUID id) {
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", id));
-        OwnershipGuard.verifyInstitution(institution.getId(), institutionId, "institution");
         institution.setIsActive(true);
         institution = institutionRepository.save(institution);
         log.info("Institution activated: {} (ID: {})", institution.getName(), institution.getId());
@@ -153,10 +149,9 @@ public class InstitutionServiceImpl implements InstitutionService {
     }
 
     @Override
-    public InstitutionResponse deactivateInstitution(UUID id, UUID institutionId) {
+    public InstitutionResponse deactivateInstitution(UUID id) {
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", id));
-        OwnershipGuard.verifyInstitution(institution.getId(), institutionId, "institution");
         institution.setIsActive(false);
         institution = institutionRepository.save(institution);
         log.info("Institution deactivated: {} (ID: {})", institution.getName(), institution.getId());

@@ -45,36 +45,31 @@ public class StudentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<StudentResponse>> getStudent(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID id) {
-        StudentResponse student = studentService.getStudent(id, institutionId);
+    public ResponseEntity<ApiResponse<StudentResponse>> getStudent(@PathVariable UUID id) {
+        StudentResponse student = studentService.getStudent(id);
         return ResponseEntity.ok(ApiResponse.success(student));
     }
 
     @GetMapping("/admission/{admissionNumber}")
     public ResponseEntity<ApiResponse<StudentResponse>> getStudentByAdmission(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable String admissionNumber) {
-        StudentResponse student = studentService.getStudentByAdmissionNumber(admissionNumber, institutionId);
+        StudentResponse student = studentService.getStudentByAdmissionNumber(admissionNumber);
         return ResponseEntity.ok(ApiResponse.success(student));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentResponse>> updateStudent(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody StudentRequest request) {
-        StudentResponse student = studentService.updateStudent(id, institutionId, request);
+        StudentResponse student = studentService.updateStudent(id, request);
         return ResponseEntity.ok(ApiResponse.success("Student updated", student));
     }
 
     @PostMapping("/{id}/assign-class")
     public ResponseEntity<ApiResponse<StudentClassAssignment>> assignToClass(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody AssignClassRequest request) {
-        StudentClassAssignment assignment = studentService.assignToClass(id, institutionId, request);
+        StudentClassAssignment assignment = studentService.assignToClass(id, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Student assigned to class", assignment));
     }

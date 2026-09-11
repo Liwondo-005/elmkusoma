@@ -16,13 +16,13 @@ public interface EnrollmentService {
 
     PageResponse<EnrollmentResponse> getEnrollments(UUID institutionId, int page, int size);
 
-    List<EnrollmentResponse> getEnrollmentsByStudent(UUID studentId, UUID institutionId);
+    List<EnrollmentResponse> getEnrollmentsByStudent(UUID studentId);
 
-    List<EnrollmentResponse> getEnrollmentsByClass(UUID classGroupId, UUID institutionId);
+    List<EnrollmentResponse> getEnrollmentsByClass(UUID classGroupId);
 
-    EnrollmentResponse updateStatus(UUID enrollmentId, UUID institutionId, Enrollment.EnrollmentStatus status);
+    EnrollmentResponse updateStatus(UUID enrollmentId, Enrollment.EnrollmentStatus status);
 
     TransferResponse transfer(UUID enrollmentId, UUID institutionId, TransferRequest request, UUID performedBy);
 
-    List<TransferResponse> getTransferHistory(UUID enrollmentId, UUID institutionId);
+    List<TransferResponse> getTransferHistory(UUID enrollmentId);
 }

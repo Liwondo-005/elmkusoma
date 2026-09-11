@@ -31,7 +31,7 @@ public class ParentController {
     @PostMapping
     @Operation(summary = "Create a new parent profile")
     public ResponseEntity<ApiResponse<ParentResponse>> createParent(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody ParentRequest request) {
         ParentResponse parent = parentService.createParent(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -41,7 +41,7 @@ public class ParentController {
     @GetMapping("/{id}")
     @Operation(summary = "Get a parent by ID")
     public ResponseEntity<ApiResponse<ParentResponse>> getParent(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
         ParentResponse parent = parentService.getParent(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(parent));
@@ -50,7 +50,7 @@ public class ParentController {
     @GetMapping
     @Operation(summary = "List all parents in an institution")
     public ResponseEntity<ApiResponse<PageResponse<ParentResponse>>> listParents(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<ParentResponse> parents = parentService.listParents(institutionId, page, size);
@@ -60,7 +60,7 @@ public class ParentController {
     @PutMapping("/{id}")
     @Operation(summary = "Update a parent profile")
     public ResponseEntity<ApiResponse<ParentResponse>> updateParent(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody ParentRequest request) {
         ParentResponse parent = parentService.updateParent(institutionId, id, request);
@@ -70,7 +70,7 @@ public class ParentController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete a parent")
     public ResponseEntity<ApiResponse<Void>> deleteParent(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
         parentService.deleteParent(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Parent deleted successfully", null));
@@ -79,7 +79,7 @@ public class ParentController {
     @PostMapping("/{id}/link-student")
     @Operation(summary = "Link a student to a parent")
     public ResponseEntity<ApiResponse<ParentStudentResponse>> linkStudent(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody LinkStudentRequest request) {
         ParentStudentResponse link = parentService.linkStudent(institutionId, id, request);
@@ -90,7 +90,7 @@ public class ParentController {
     @GetMapping("/{id}/children")
     @Operation(summary = "Get all children linked to a parent")
     public ResponseEntity<ApiResponse<List<ParentStudentResponse>>> getChildren(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
         List<ParentStudentResponse> children = parentService.getChildren(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(children));
@@ -99,7 +99,7 @@ public class ParentController {
     @DeleteMapping("/links/{linkId}")
     @Operation(summary = "Unlink a student from a parent")
     public ResponseEntity<ApiResponse<Void>> unlinkStudent(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID linkId) {
         parentService.unlinkStudent(institutionId, linkId);
         return ResponseEntity.ok(ApiResponse.success("Student unlinked successfully", null));
@@ -108,7 +108,7 @@ public class ParentController {
     @GetMapping("/{id}/notification-preferences")
     @Operation(summary = "Get parent notification preferences")
     public ResponseEntity<ApiResponse<ParentNotificationPreferenceResponse>> getNotificationPreferences(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
         ParentNotificationPreferenceResponse prefs = parentService.getNotificationPreferences(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(prefs));
@@ -117,7 +117,7 @@ public class ParentController {
     @PutMapping("/{id}/notification-preferences")
     @Operation(summary = "Update parent notification preferences")
     public ResponseEntity<ApiResponse<ParentNotificationPreferenceResponse>> updateNotificationPreferences(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody ParentNotificationPreferenceRequest request) {
         ParentNotificationPreferenceResponse prefs = parentService.updateNotificationPreferences(institutionId, id, request);

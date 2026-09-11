@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, TrendingUp, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -23,7 +23,7 @@ const studentNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
+const nurseryNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Activities", href: "/dashboard/courses", icon: BookOpen },
   { label: "Fun Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -35,7 +35,7 @@ const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
+const primaryNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -50,7 +50,7 @@ const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
+const secondaryNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -66,7 +66,7 @@ const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDash
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
+const universityNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -90,14 +90,13 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
   { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
   { label: "Gradebook", href: "/dashboard/teacher/gradebook", icon: BarChart3 },
-  { label: "Analytics", href: "/dashboard/teacher/analytics", icon: TrendingUp },
   { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Calendar },
   { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
+const parentNav = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
   { label: "My Children", href: "/dashboard/parent/children", icon: Users },
   { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },

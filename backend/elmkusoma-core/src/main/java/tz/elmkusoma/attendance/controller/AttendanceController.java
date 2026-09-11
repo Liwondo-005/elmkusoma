@@ -29,8 +29,8 @@ public class AttendanceController {
     @PostMapping("/mark")
     @Operation(summary = "Mark attendance for a student")
     public ResponseEntity<ApiResponse<AttendanceRecordResponse>> markAttendance(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID markedBy,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader("X-User-Id") UUID markedBy,
             @Valid @RequestBody MarkAttendanceRequest request) {
         AttendanceRecordResponse response = attendanceService.markAttendance(institutionId, markedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -40,8 +40,8 @@ public class AttendanceController {
     @PostMapping("/bulk")
     @Operation(summary = "Bulk mark attendance for a class")
     public ResponseEntity<ApiResponse<Void>> bulkMarkAttendance(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID markedBy,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader("X-User-Id") UUID markedBy,
             @Valid @RequestBody BulkMarkAttendanceRequest request) {
         attendanceService.markBulkAttendance(institutionId, markedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -51,41 +51,37 @@ public class AttendanceController {
     @GetMapping
     @Operation(summary = "Get attendance by class and date")
     public ResponseEntity<ApiResponse<List<AttendanceRecordResponse>>> getAttendance(
-            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam UUID classId,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate date) {
-        List<AttendanceRecordResponse> response = attendanceService.getByClassAndDate(classId, date, institutionId);
+        List<AttendanceRecordResponse> response = attendanceService.getByClassAndDate(classId, date);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/student/{studentId}")
     @Operation(summary = "Get attendance by student and date range")
     public ResponseEntity<ApiResponse<List<AttendanceRecordResponse>>> getStudentAttendance(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID studentId,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        List<AttendanceRecordResponse> response = attendanceService.getByStudentAndDateRange(studentId, startDate, endDate, institutionId);
+        List<AttendanceRecordResponse> response = attendanceService.getByStudentAndDateRange(studentId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/summary")
     @Operation(summary = "Get attendance summary for a student")
     public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> getAttendanceSummary(
-            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam UUID studentId,
             @RequestParam UUID termId) {
-        AttendanceSummaryResponse response = attendanceService.getSummary(studentId, termId, institutionId);
+        AttendanceSummaryResponse response = attendanceService.getSummary(studentId, termId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/summary/class/{classId}")
     @Operation(summary = "Get attendance summary for a class")
     public ResponseEntity<ApiResponse<List<AttendanceSummaryResponse>>> getClassAttendanceSummary(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID classId,
             @RequestParam UUID termId) {
-        List<AttendanceSummaryResponse> response = attendanceService.getByClassAndTerm(classId, termId, institutionId);
+        List<AttendanceSummaryResponse> response = attendanceService.getByClassAndTerm(classId, termId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

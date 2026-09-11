@@ -28,7 +28,7 @@ public class LearningController {
     @PostMapping("/lessons")
     @Operation(summary = "Create a new lesson")
     public ResponseEntity<ApiResponse<LessonResponse>> createLesson(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody LessonRequest request) {
         LessonResponse response = learningService.createLesson(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -38,26 +38,23 @@ public class LearningController {
     @GetMapping("/lessons/subject/{subjectId}/class/{classGroupId}")
     @Operation(summary = "Get lessons by subject and class")
     public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessons(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID subjectId, @PathVariable UUID classGroupId) {
-        List<LessonResponse> response = learningService.getLessonsBySubjectAndClass(subjectId, classGroupId, institutionId);
+        List<LessonResponse> response = learningService.getLessonsBySubjectAndClass(subjectId, classGroupId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/lessons/class/{classGroupId}")
     @Operation(summary = "Get all lessons for a class")
-    public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessonsByClass(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID classGroupId) {
-        List<LessonResponse> response = learningService.getLessonsByClass(classGroupId, institutionId);
+    public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessonsByClass(@PathVariable UUID classGroupId) {
+        List<LessonResponse> response = learningService.getLessonsByClass(classGroupId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping("/progress")
     @Operation(summary = "Update lesson progress for a student")
     public ResponseEntity<ApiResponse<ProgressResponse>> updateProgress(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID studentId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestHeader("X-User-Id") UUID studentId,
             @Valid @RequestBody ProgressRequest request) {
         ProgressResponse response = learningService.updateProgress(institutionId, studentId, request);
         return ResponseEntity.ok(ApiResponse.success("Progress updated", response));
@@ -65,26 +62,22 @@ public class LearningController {
 
     @GetMapping("/progress/student/{studentId}")
     @Operation(summary = "Get all lesson progress for a student")
-    public ResponseEntity<ApiResponse<List<ProgressResponse>>> getStudentProgress(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID studentId) {
-        List<ProgressResponse> response = learningService.getStudentProgress(studentId, institutionId);
+    public ResponseEntity<ApiResponse<List<ProgressResponse>>> getStudentProgress(@PathVariable UUID studentId) {
+        List<ProgressResponse> response = learningService.getStudentProgress(studentId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/progress/student/{studentId}/average")
     @Operation(summary = "Get average completion for a student")
-    public ResponseEntity<ApiResponse<Double>> getAverageCompletion(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID studentId) {
-        Double average = learningService.getStudentAverageCompletion(studentId, institutionId);
+    public ResponseEntity<ApiResponse<Double>> getAverageCompletion(@PathVariable UUID studentId) {
+        Double average = learningService.getStudentAverageCompletion(studentId);
         return ResponseEntity.ok(ApiResponse.success(average));
     }
 
     @PostMapping("/assignments")
     @Operation(summary = "Create a new assignment")
     public ResponseEntity<ApiResponse<AssignmentResponse>> createAssignment(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody AssignmentRequest request) {
         AssignmentResponse response = learningService.createAssignment(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -93,10 +86,8 @@ public class LearningController {
 
     @GetMapping("/assignments/class/{classGroupId}")
     @Operation(summary = "Get assignments by class")
-    public ResponseEntity<ApiResponse<List<AssignmentResponse>>> getAssignments(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID classGroupId) {
-        List<AssignmentResponse> response = learningService.getAssignmentsByClass(classGroupId, institutionId);
+    public ResponseEntity<ApiResponse<List<AssignmentResponse>>> getAssignments(@PathVariable UUID classGroupId) {
+        List<AssignmentResponse> response = learningService.getAssignmentsByClass(classGroupId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -104,8 +95,8 @@ public class LearningController {
     @Operation(summary = "Submit an assignment")
     public ResponseEntity<ApiResponse<SubmissionResponse>> submitAssignment(
             @PathVariable UUID id,
-            @RequestAttribute("userId") UUID studentId,
-            @RequestAttribute("institutionId") UUID institutionId) {
+            @RequestHeader("X-User-Id") UUID studentId,
+            @RequestHeader("X-Institution-Id") UUID institutionId) {
         SubmissionResponse response = learningService.submitAssignment(id, studentId, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Assignment submitted", response));
@@ -113,22 +104,19 @@ public class LearningController {
 
     @GetMapping("/assignments/{id}/submissions")
     @Operation(summary = "Get all submissions for an assignment")
-    public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID id) {
-        List<SubmissionResponse> response = learningService.getSubmissionsByAssignment(id, institutionId);
+    public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(@PathVariable UUID id) {
+        List<SubmissionResponse> response = learningService.getSubmissionsByAssignment(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/submissions/{id}/grade")
     @Operation(summary = "Grade a submission")
     public ResponseEntity<ApiResponse<SubmissionResponse>> gradeSubmission(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @RequestParam Integer grade,
             @RequestParam(required = false) String feedback,
-            @RequestAttribute("userId") UUID gradedBy) {
-        SubmissionResponse response = learningService.gradeSubmission(id, grade, feedback, gradedBy, institutionId);
+            @RequestHeader("X-User-Id") UUID gradedBy) {
+        SubmissionResponse response = learningService.gradeSubmission(id, grade, feedback, gradedBy);
         return ResponseEntity.ok(ApiResponse.success("Submission graded", response));
     }
 }

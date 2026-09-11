@@ -14,11 +14,11 @@ public interface GradingScaleService {
 
     List<GradingScaleResponse> getByInstitutionId(UUID institutionId);
 
-    GradingScaleResponse getById(UUID id, UUID institutionId);
+    GradingScaleResponse getById(UUID id);
 
-    GradingScaleResponse update(UUID id, UUID institutionId, CreateGradingScaleRequest request);
+    GradingScaleResponse update(UUID id, CreateGradingScaleRequest request);
 
-    void delete(UUID id, UUID institutionId);
+    void delete(UUID id);
 
     List<GradeBoundaryResponse> getBoundaries(UUID scaleId);
 }

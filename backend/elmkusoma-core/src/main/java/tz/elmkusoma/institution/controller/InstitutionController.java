@@ -54,34 +54,27 @@ public class InstitutionController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<InstitutionResponse>> updateInstitution(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateInstitutionRequest request) {
-        InstitutionResponse response = institutionService.updateInstitution(id, institutionId, request);
+        InstitutionResponse response = institutionService.updateInstitution(id, request);
         return ResponseEntity.ok(ApiResponse.success("Institution updated successfully", response));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteInstitution(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID id) {
-        institutionService.deleteInstitution(id, institutionId);
+    public ResponseEntity<ApiResponse<Void>> deleteInstitution(@PathVariable UUID id) {
+        institutionService.deleteInstitution(id);
         return ResponseEntity.ok(ApiResponse.success("Institution deleted successfully", null));
     }
 
     @PutMapping("/{id}/activate")
-    public ResponseEntity<ApiResponse<InstitutionResponse>> activateInstitution(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID id) {
-        InstitutionResponse response = institutionService.activateInstitution(id, institutionId);
+    public ResponseEntity<ApiResponse<InstitutionResponse>> activateInstitution(@PathVariable UUID id) {
+        InstitutionResponse response = institutionService.activateInstitution(id);
         return ResponseEntity.ok(ApiResponse.success("Institution activated", response));
     }
 
     @PutMapping("/{id}/deactivate")
-    public ResponseEntity<ApiResponse<InstitutionResponse>> deactivateInstitution(
-            @RequestAttribute("institutionId") UUID institutionId,
-            @PathVariable UUID id) {
-        InstitutionResponse response = institutionService.deactivateInstitution(id, institutionId);
+    public ResponseEntity<ApiResponse<InstitutionResponse>> deactivateInstitution(@PathVariable UUID id) {
+        InstitutionResponse response = institutionService.deactivateInstitution(id);
         return ResponseEntity.ok(ApiResponse.success("Institution deactivated", response));
     }
 

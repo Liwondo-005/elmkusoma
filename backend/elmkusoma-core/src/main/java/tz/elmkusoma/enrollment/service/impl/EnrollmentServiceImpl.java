@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.enrollment.domain.Enrollment;
 import tz.elmkusoma.enrollment.domain.TransferRecord;
 import tz.elmkusoma.enrollment.dto.request.EnrollmentRequest;
@@ -77,28 +76,25 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<EnrollmentResponse> getEnrollmentsByStudent(UUID studentId, UUID institutionId) {
+    public List<EnrollmentResponse> getEnrollmentsByStudent(UUID studentId) {
         return enrollmentRepository.findByStudentIdAndIsDeletedFalse(studentId).stream()
-                .filter(e -> e.getInstitutionId().equals(institutionId))
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<EnrollmentResponse> getEnrollmentsByClass(UUID classGroupId, UUID institutionId) {
+    public List<EnrollmentResponse> getEnrollmentsByClass(UUID classGroupId) {
         return enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId).stream()
-                .filter(e -> e.getInstitutionId().equals(institutionId))
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
-    public EnrollmentResponse updateStatus(UUID enrollmentId, UUID institutionId, Enrollment.EnrollmentStatus status) {
+    public EnrollmentResponse updateStatus(UUID enrollmentId, Enrollment.EnrollmentStatus status) {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .filter(e -> !e.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
-        OwnershipGuard.verifyInstitution(enrollment.getInstitutionId(), institutionId, "enrollment");
 
         enrollment.setStatus(status);
 
@@ -116,7 +112,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .filter(e -> !e.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
-        OwnershipGuard.verifyInstitution(enrollment.getInstitutionId(), institutionId, "enrollment");
 
         TransferRecord transfer = TransferRecord.builder()
                 .institutionId(institutionId)
@@ -136,11 +131,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TransferResponse> getTransferHistory(UUID enrollmentId, UUID institutionId) {
-        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
-                .filter(e -> !e.getIsDeleted())
-                .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
-        OwnershipGuard.verifyInstitution(enrollment.getInstitutionId(), institutionId, "enrollment");
+    public List<TransferResponse> getTransferHistory(UUID enrollmentId) {
         return transferRecordRepository.findByEnrollmentIdAndIsDeletedFalse(enrollmentId).stream()
                 .map(this::toTransferResponse)
                 .toList();

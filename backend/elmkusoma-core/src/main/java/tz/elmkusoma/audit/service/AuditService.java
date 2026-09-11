@@ -15,7 +15,6 @@ import tz.elmkusoma.audit.mapper.AuditMapper;
 import tz.elmkusoma.audit.repository.ActivityFeedRepository;
 import tz.elmkusoma.audit.repository.AuditLogRepository;
 import tz.elmkusoma.audit.repository.SecurityEventRepository;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -74,7 +73,7 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuditLogResponse> getAuditLogsByUser(UUID userId, UUID institutionId, int page, int size) {
+    public Page<AuditLogResponse> getAuditLogsByUser(UUID userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return auditLogRepository.findByUserId(userId, pageable)
                 .map(auditMapper::toAuditLogResponse);
@@ -116,7 +115,7 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ActivityFeedResponse> getActivityFeedByUser(UUID userId, UUID institutionId, int page, int size) {
+    public Page<ActivityFeedResponse> getActivityFeedByUser(UUID userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return activityFeedRepository.findByUserId(userId, pageable)
                 .map(auditMapper::toActivityFeedResponse);
@@ -151,10 +150,9 @@ public class AuditService {
         return event;
     }
 
-    public SecurityEvent resolveSecurityEvent(UUID eventId, UUID institutionId, UUID resolvedBy) {
+    public SecurityEvent resolveSecurityEvent(UUID eventId, UUID resolvedBy) {
         SecurityEvent event = securityEventRepository.findById(eventId)
                 .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("SecurityEvent", "id", eventId));
-        OwnershipGuard.verifyInstitution(event.getInstitutionId(), institutionId, "security event");
 
         event.setResolved(true);
         event.setResolvedAt(LocalDateTime.now());

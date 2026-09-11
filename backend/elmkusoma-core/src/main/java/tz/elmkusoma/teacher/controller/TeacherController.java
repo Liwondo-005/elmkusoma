@@ -70,7 +70,7 @@ public class TeacherController {
     @Operation(summary = "Create a new teacher profile")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TeacherResponse>> createTeacher(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody TeacherRequest request) {
         TeacherResponse teacher = teacherService.createTeacher(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -81,7 +81,7 @@ public class TeacherController {
     @Operation(summary = "Get a teacher by ID")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TeacherResponse>> getTeacher(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
         TeacherResponse teacher = teacherService.getTeacher(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(teacher));
@@ -91,7 +91,7 @@ public class TeacherController {
     @Operation(summary = "List all teachers in an institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<TeacherResponse>>> listTeachers(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<TeacherResponse> teachers = teacherService.listTeachers(institutionId, page, size);
@@ -102,7 +102,7 @@ public class TeacherController {
     @Operation(summary = "Update a teacher profile")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TeacherResponse>> updateTeacher(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody TeacherRequest request) {
         TeacherResponse teacher = teacherService.updateTeacher(institutionId, id, request);
@@ -113,7 +113,7 @@ public class TeacherController {
     @Operation(summary = "Soft-delete a teacher")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteTeacher(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
         teacherService.deleteTeacher(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Teacher deleted successfully", null));
@@ -123,7 +123,7 @@ public class TeacherController {
     @Operation(summary = "Add a class-subject assignment to a teacher")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TeacherAssignmentResponse>> addAssignment(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody TeacherAssignmentRequest request) {
         TeacherAssignmentResponse assignment = teacherService.addAssignment(institutionId, id, request);
@@ -135,7 +135,7 @@ public class TeacherController {
     @Operation(summary = "Get all assignments for a teacher")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<TeacherAssignmentResponse>>> getAssignments(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
         List<TeacherAssignmentResponse> assignments = teacherService.getAssignments(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(assignments));
@@ -145,7 +145,7 @@ public class TeacherController {
     @Operation(summary = "Remove a teacher assignment")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> removeAssignment(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID assignmentId) {
         teacherService.removeAssignment(institutionId, assignmentId);
         return ResponseEntity.ok(ApiResponse.success("Assignment removed successfully", null));
@@ -155,7 +155,7 @@ public class TeacherController {
     @Operation(summary = "Add a qualification to a teacher")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TeacherQualificationResponse>> addQualification(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody TeacherQualificationRequest request) {
         TeacherQualificationResponse qualification = teacherService.addQualification(institutionId, id, request);
@@ -167,7 +167,7 @@ public class TeacherController {
     @Operation(summary = "Get all qualifications for a teacher")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<TeacherQualificationResponse>>> getQualifications(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
         List<TeacherQualificationResponse> qualifications = teacherService.getQualifications(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(qualifications));
@@ -177,7 +177,7 @@ public class TeacherController {
     @Operation(summary = "Remove a teacher qualification")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> removeQualification(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID qualificationId) {
         teacherService.removeQualification(institutionId, qualificationId);
         return ResponseEntity.ok(ApiResponse.success("Qualification removed successfully", null));

@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.parent.domain.Parent;
 import tz.elmkusoma.parent.domain.ParentNotificationPreference;
 import tz.elmkusoma.parent.domain.ParentStudentLink;
@@ -137,8 +136,9 @@ public class ParentServiceImpl implements ParentService {
 
     @Override
     public ParentStudentResponse linkStudent(UUID institutionId, UUID parentId, LinkStudentRequest request) {
-        Parent parent = parentRepository.findByIdAndInstitutionId(parentId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Parent", "id", parentId));
+        if (!parentRepository.existsById(parentId)) {
+            throw new ResourceNotFoundException("Parent", "id", parentId);
+        }
 
         UUID studentId = UUID.fromString(request.getStudentId());
 
@@ -166,10 +166,7 @@ public class ParentServiceImpl implements ParentService {
     @Override
     @Transactional(readOnly = true)
     public List<ParentStudentResponse> getChildren(UUID institutionId, UUID parentId) {
-        Parent parent = parentRepository.findByIdAndInstitutionId(parentId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Parent", "id", parentId));
         return studentLinkRepository.findAllByParentId(parentId).stream()
-                .filter(l -> l.getInstitutionId().equals(institutionId))
                 .map(this::mapToStudentResponse)
                 .toList();
     }
@@ -186,8 +183,6 @@ public class ParentServiceImpl implements ParentService {
     @Override
     @Transactional(readOnly = true)
     public ParentNotificationPreferenceResponse getNotificationPreferences(UUID institutionId, UUID parentId) {
-        Parent parent = parentRepository.findByIdAndInstitutionId(parentId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Parent", "id", parentId));
         ParentNotificationPreference prefs = notificationPreferenceRepository.findByParentId(parentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification preferences", "parentId", parentId));
         return mapToNotificationResponse(prefs);
@@ -195,8 +190,6 @@ public class ParentServiceImpl implements ParentService {
 
     @Override
     public ParentNotificationPreferenceResponse updateNotificationPreferences(UUID institutionId, UUID parentId, ParentNotificationPreferenceRequest request) {
-        Parent parent = parentRepository.findByIdAndInstitutionId(parentId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Parent", "id", parentId));
         ParentNotificationPreference prefs = notificationPreferenceRepository.findByParentId(parentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification preferences", "parentId", parentId));
 

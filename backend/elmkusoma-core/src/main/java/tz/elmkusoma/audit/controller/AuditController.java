@@ -48,11 +48,10 @@ public class AuditController {
     @GetMapping("/logs/user/{userId}")
     @Operation(summary = "Get audit logs by user")
     public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getAuditLogsByUser(
-            @RequestAttribute UUID institutionId,
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AuditLogResponse> response = auditService.getAuditLogsByUser(userId, institutionId, page, size);
+        Page<AuditLogResponse> response = auditService.getAuditLogsByUser(userId, page, size);
         return ResponseEntity.ok(ApiResponse.success(response.getContent()));
     }
 
@@ -81,11 +80,10 @@ public class AuditController {
     @GetMapping("/activity/user/{userId}")
     @Operation(summary = "Get activity feed for a specific user")
     public ResponseEntity<ApiResponse<List<ActivityFeedResponse>>> getActivityFeedByUser(
-            @RequestAttribute UUID institutionId,
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ActivityFeedResponse> response = auditService.getActivityFeedByUser(userId, institutionId, page, size);
+        Page<ActivityFeedResponse> response = auditService.getActivityFeedByUser(userId, page, size);
         return ResponseEntity.ok(ApiResponse.success(response.getContent()));
     }
 
@@ -112,10 +110,9 @@ public class AuditController {
     @PostMapping("/security/{eventId}/resolve")
     @Operation(summary = "Resolve a security event")
     public ResponseEntity<ApiResponse<SecurityEventResponse>> resolveSecurityEvent(
-            @RequestAttribute UUID institutionId,
             @PathVariable UUID eventId,
             @RequestAttribute("userId") UUID userId) {
-        var event = auditService.resolveSecurityEvent(eventId, institutionId, userId);
+        var event = auditService.resolveSecurityEvent(eventId, userId);
         return ResponseEntity.ok(ApiResponse.success("Security event resolved", auditMapper.toSecurityEventResponse(event)));
     }
 

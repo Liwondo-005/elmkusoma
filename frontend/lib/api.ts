@@ -79,29 +79,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers,
   })
 
-  if (res.status === 204) return undefined as T
-
-  const contentType = res.headers.get("content-type") || ""
-  let body: Record<string, unknown>
-  try {
-    if (contentType.includes("application/json")) {
-      body = await res.json()
-    } else {
-      const text = await res.text()
-      try { body = JSON.parse(text) } catch { body = {} }
-    }
-  } catch {
-    body = {}
-  }
+  const body = await res.json()
 
   if (!res.ok || body.success === false) {
-    const errorMsg = (body.error as string) || (body.message as string) || `Request failed (${res.status})`
+    const errorMsg = body.error || body.message || `Request failed (${res.status})`
     throw new ApiRequestError(errorMsg, res.status, body)
   }
 
-  return (body as Record<string, unknown>).data !== undefined
-    ? (body as Record<string, unknown>).data as T
-    : body as T
+  return body.data !== undefined ? body.data : body as T
 }
 
 export class ApiRequestError extends Error {
@@ -247,13 +232,11 @@ export interface AssignmentSubmission {
   id: string
   assignmentId: string
   studentId: string
-  content?: string
   fileUrl?: string
   submittedAt: string
   grade?: number
   feedback?: string
   gradedAt?: string
-  gradedBy?: string
   createdAt: string
 }
 
@@ -276,11 +259,6 @@ export const learningApi = {
     request<AssignmentSubmission>(`/v1/learning/assignments/${assignmentId}/submit`, { method: "POST" }),
   getSubmissions: (assignmentId: string) =>
     request<AssignmentSubmission[]>(`/v1/learning/assignments/${assignmentId}/submissions`),
-  gradeSubmission: (submissionId: string, grade: number, feedback?: string) => {
-    const params = new URLSearchParams({ grade: String(grade) })
-    if (feedback) params.set("feedback", feedback)
-    return request<AssignmentSubmission>(`/v1/learning/submissions/${submissionId}/grade?${params}`, { method: "PUT" })
-  },
 }
 
 // Assessment API

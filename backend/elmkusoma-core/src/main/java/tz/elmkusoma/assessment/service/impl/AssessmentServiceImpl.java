@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.assessment.domain.*;
 import tz.elmkusoma.assessment.dto.request.AssessmentRequest;
 import tz.elmkusoma.assessment.dto.request.QuestionRequest;
@@ -51,22 +50,16 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssessmentResponse> getAssessmentsByClass(UUID classGroupId, UUID institutionId) {
+    public List<AssessmentResponse> getAssessmentsByClass(UUID classGroupId) {
         return assessmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId)
-                .stream()
-                .filter(a -> a.getInstitutionId().equals(institutionId))
-                .map(this::toAssessmentResponse)
-                .toList();
+                .stream().map(this::toAssessmentResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssessmentResponse> getAssessmentsBySubject(UUID subjectId, UUID institutionId) {
+    public List<AssessmentResponse> getAssessmentsBySubject(UUID subjectId) {
         return assessmentRepository.findBySubjectIdAndIsDeletedFalse(subjectId)
-                .stream()
-                .filter(a -> a.getInstitutionId().equals(institutionId))
-                .map(this::toAssessmentResponse)
-                .toList();
+                .stream().map(this::toAssessmentResponse).toList();
     }
 
     @Override
@@ -74,7 +67,6 @@ public class AssessmentServiceImpl implements AssessmentService {
         Assessment assessment = assessmentRepository.findById(assessmentId)
                 .filter(a -> !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Assessment not found with id: " + assessmentId));
-        OwnershipGuard.verifyInstitution(assessment.getInstitutionId(), institutionId, "assessment");
 
         Question question = Question.builder()
                 .institutionId(institutionId)
@@ -110,11 +102,7 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<QuestionResponse> getQuestions(UUID assessmentId, UUID institutionId) {
-        Assessment assessment = assessmentRepository.findById(assessmentId)
-                .filter(a -> !a.getIsDeleted())
-                .orElseThrow(() -> new ResourceNotFoundException("Assessment not found with id: " + assessmentId));
-        OwnershipGuard.verifyInstitution(assessment.getInstitutionId(), institutionId, "assessment");
+    public List<QuestionResponse> getQuestions(UUID assessmentId) {
         List<Question> questions = questionRepository.findByAssessmentIdAndIsDeletedFalseOrderBySortOrder(assessmentId);
         return questions.stream().map(q -> {
             QuestionResponse response = toQuestionResponse(q);
@@ -131,7 +119,6 @@ public class AssessmentServiceImpl implements AssessmentService {
         Assessment assessment = assessmentRepository.findById(assessmentId)
                 .filter(a -> !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Assessment not found with id: " + assessmentId));
-        OwnershipGuard.verifyInstitution(assessment.getInstitutionId(), institutionId, "assessment");
 
         boolean hasIncompleteAttempt = attemptRepository
                 .findByAssessmentIdAndStudentIdAndIsCompletedAndIsDeletedFalse(
@@ -226,22 +213,14 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssessmentResultResponse> getResults(UUID assessmentId, UUID institutionId) {
-        Assessment assessment = assessmentRepository.findById(assessmentId)
-                .filter(a -> !a.getIsDeleted())
-                .orElseThrow(() -> new ResourceNotFoundException("Assessment not found with id: " + assessmentId));
-        OwnershipGuard.verifyInstitution(assessment.getInstitutionId(), institutionId, "assessment");
+    public List<AssessmentResultResponse> getResults(UUID assessmentId) {
         return resultRepository.findByAssessmentIdAndIsDeletedFalse(assessmentId)
                 .stream().map(this::toResultResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AssessmentResultResponse getResult(UUID assessmentId, UUID studentId, UUID institutionId) {
-        Assessment assessment = assessmentRepository.findById(assessmentId)
-                .filter(a -> !a.getIsDeleted())
-                .orElseThrow(() -> new ResourceNotFoundException("Assessment not found with id: " + assessmentId));
-        OwnershipGuard.verifyInstitution(assessment.getInstitutionId(), institutionId, "assessment");
+    public AssessmentResultResponse getResult(UUID assessmentId, UUID studentId) {
         AssessmentResult result = resultRepository
                 .findByAssessmentIdAndStudentIdAndIsDeletedFalse(assessmentId, studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Result not found"));

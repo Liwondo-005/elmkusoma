@@ -15,7 +15,6 @@ import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 
@@ -170,10 +169,7 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public List<CourseModuleResponse> getModules(UUID courseId, UUID institutionId) {
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
-        OwnershipGuard.verifyInstitution(course.getInstitutionId(), institutionId, "course");
+    public List<CourseModuleResponse> getModules(UUID courseId) {
         List<CourseModule> modules = moduleRepository.findByCourseIdAndIsDeletedFalseOrderBySortOrder(courseId);
         return modules.stream()
                 .map(m -> {
@@ -186,7 +182,7 @@ public class CourseService {
     public void deleteModule(UUID moduleId, UUID institutionId) {
         CourseModule module = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new ResourceNotFoundException("CourseModule", "id", moduleId));
-        OwnershipGuard.verifyInstitution(module.getInstitutionId(), institutionId, "course module");
+
         module.setIsDeleted(true);
         moduleRepository.save(module);
         log.info("Deleted module: {} from institution: {}", moduleId, institutionId);
@@ -211,10 +207,7 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public List<CourseLessonResponse> getLessons(UUID moduleId, UUID institutionId) {
-        CourseModule module = moduleRepository.findById(moduleId)
-                .orElseThrow(() -> new ResourceNotFoundException("CourseModule", "id", moduleId));
-        OwnershipGuard.verifyInstitution(module.getInstitutionId(), institutionId, "course module");
+    public List<CourseLessonResponse> getLessons(UUID moduleId) {
         List<CourseLesson> lessons = lessonRepository.findByModuleIdAndIsDeletedFalseOrderBySortOrder(moduleId);
         return lessons.stream()
                 .map(courseMapper::toLessonResponse)
@@ -224,7 +217,7 @@ public class CourseService {
     public void deleteLesson(UUID lessonId, UUID institutionId) {
         CourseLesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new ResourceNotFoundException("CourseLesson", "id", lessonId));
-        OwnershipGuard.verifyInstitution(lesson.getInstitutionId(), institutionId, "course lesson");
+
         lesson.setIsDeleted(true);
         lessonRepository.save(lesson);
         log.info("Deleted lesson: {} from institution: {}", lessonId, institutionId);

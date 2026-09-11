@@ -13,19 +13,19 @@ public interface AssessmentService {
 
     AssessmentResponse createAssessment(UUID institutionId, AssessmentRequest request);
 
-    List<AssessmentResponse> getAssessmentsByClass(UUID classGroupId, UUID institutionId);
+    List<AssessmentResponse> getAssessmentsByClass(UUID classGroupId);
 
-    List<AssessmentResponse> getAssessmentsBySubject(UUID subjectId, UUID institutionId);
+    List<AssessmentResponse> getAssessmentsBySubject(UUID subjectId);
 
     QuestionResponse addQuestion(UUID assessmentId, UUID institutionId, QuestionRequest request);
 
-    List<QuestionResponse> getQuestions(UUID assessmentId, UUID institutionId);
+    List<QuestionResponse> getQuestions(UUID assessmentId);
 
     AttemptResponse startAttempt(UUID assessmentId, UUID studentId, UUID institutionId);
 
     AttemptResponse submitAttempt(UUID attemptId, UUID studentId, SubmitAssessmentRequest request);
 
-    List<AssessmentResultResponse> getResults(UUID assessmentId, UUID institutionId);
+    List<AssessmentResultResponse> getResults(UUID assessmentId);
 
-    AssessmentResultResponse getResult(UUID assessmentId, UUID studentId, UUID institutionId);
+    AssessmentResultResponse getResult(UUID assessmentId, UUID studentId);
 }

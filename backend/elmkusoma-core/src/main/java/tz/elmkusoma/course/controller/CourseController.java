@@ -104,9 +104,8 @@ public class CourseController {
     @GetMapping("/{courseId}/modules")
     @Operation(summary = "List modules for a course")
     public ResponseEntity<ApiResponse<List<CourseModuleResponse>>> getModules(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID courseId) {
-        List<CourseModuleResponse> response = courseService.getModules(courseId, institutionId);
+        List<CourseModuleResponse> response = courseService.getModules(courseId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -135,9 +134,8 @@ public class CourseController {
     @GetMapping("/modules/{moduleId}/lessons")
     @Operation(summary = "List lessons for a module")
     public ResponseEntity<ApiResponse<List<CourseLessonResponse>>> getLessons(
-            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID moduleId) {
-        List<CourseLessonResponse> response = courseService.getLessons(moduleId, institutionId);
+        List<CourseLessonResponse> response = courseService.getLessons(moduleId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

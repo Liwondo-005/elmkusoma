@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.shared.security.OwnershipGuard;
 import tz.elmkusoma.nursery.domain.NurseryActivity;
 import tz.elmkusoma.nursery.dto.request.CreateNurseryActivityRequest;
 import tz.elmkusoma.nursery.dto.response.NurseryActivityResponse;
@@ -46,40 +45,36 @@ public class NurseryActivityServiceImpl implements NurseryActivityService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<NurseryActivityResponse> getByClassGroupId(UUID classGroupId, UUID institutionId) {
+    public List<NurseryActivityResponse> getByClassGroupId(UUID classGroupId) {
         return nurseryActivityRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId)
                 .stream()
-                .filter(a -> a.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<NurseryActivityResponse> getByClassAndDate(UUID classGroupId, java.time.LocalDate date, UUID institutionId) {
+    public List<NurseryActivityResponse> getByClassAndDate(UUID classGroupId, java.time.LocalDate date) {
         return nurseryActivityRepository.findByClassGroupIdAndActivityDateAndIsDeletedFalse(classGroupId, date)
                 .stream()
-                .filter(a -> a.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public NurseryActivityResponse getById(UUID id, UUID institutionId) {
+    public NurseryActivityResponse getById(UUID id) {
         NurseryActivity activity = nurseryActivityRepository.findById(id)
                 .filter(a -> !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery activity not found"));
-        OwnershipGuard.verifyInstitution(activity.getInstitutionId(), institutionId, "nursery activity");
         return mapToResponse(activity);
     }
 
     @Override
-    public NurseryActivityResponse update(UUID id, UUID institutionId, CreateNurseryActivityRequest request) {
+    public NurseryActivityResponse update(UUID id, CreateNurseryActivityRequest request) {
         NurseryActivity activity = nurseryActivityRepository.findById(id)
                 .filter(a -> !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery activity not found"));
-        OwnershipGuard.verifyInstitution(activity.getInstitutionId(), institutionId, "nursery activity");
 
         activity.setActivityName(request.getActivityName());
         activity.setActivityType(NurseryActivity.ActivityType.valueOf(request.getActivityType()));
@@ -97,21 +92,19 @@ public class NurseryActivityServiceImpl implements NurseryActivityService {
     }
 
     @Override
-    public void delete(UUID id, UUID institutionId) {
+    public void delete(UUID id) {
         NurseryActivity activity = nurseryActivityRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Nursery activity not found"));
-        OwnershipGuard.verifyInstitution(activity.getInstitutionId(), institutionId, "nursery activity");
         activity.setIsDeleted(true);
         nurseryActivityRepository.save(activity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<NurseryActivityResponse> getByType(String activityType, UUID institutionId) {
+    public List<NurseryActivityResponse> getByType(String activityType) {
         return nurseryActivityRepository.findByActivityTypeAndIsDeletedFalse(
                         NurseryActivity.ActivityType.valueOf(activityType))
                 .stream()
-                .filter(a -> a.getInstitutionId().equals(institutionId))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }

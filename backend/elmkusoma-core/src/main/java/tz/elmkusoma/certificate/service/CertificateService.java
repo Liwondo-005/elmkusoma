@@ -277,9 +277,8 @@ public class CertificateService {
     // ── Certificate Queries ──
 
     @Transactional(readOnly = true)
-    public List<CertificateResponse> getCertificatesByStudent(UUID studentId, UUID institutionId) {
+    public List<CertificateResponse> getCertificatesByStudent(UUID studentId) {
         return certificateRepository.findAllByStudentId(studentId).stream()
-                .filter(c -> c.getInstitutionId().equals(institutionId))
                 .map(certificateMapper::toCertificateResponse)
                 .toList();
     }
@@ -389,10 +388,9 @@ public class CertificateService {
     }
 
     @Transactional(readOnly = true)
-    public List<TranscriptResponse> getTranscriptsByStudent(UUID studentId, UUID institutionId) {
+    public List<TranscriptResponse> getTranscriptsByStudent(UUID studentId) {
         List<Transcript> transcripts = transcriptRepository.findAllByStudentId(studentId);
         return transcripts.stream()
-                .filter(t -> t.getInstitutionId().equals(institutionId))
                 .map(t -> {
                     List<TranscriptEntry> entries = transcriptEntryRepository.findAllByTranscriptId(t.getId());
                     return certificateMapper.toTranscriptResponse(t, entries);

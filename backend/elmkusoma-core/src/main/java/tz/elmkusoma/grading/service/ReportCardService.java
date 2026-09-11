@@ -10,15 +10,15 @@ public interface ReportCardService {
 
     ReportCardResponse generate(UUID institutionId, GenerateReportCardRequest request);
 
-    ReportCardResponse getById(UUID id, UUID institutionId);
+    ReportCardResponse getById(UUID id);
 
-    List<ReportCardResponse> getByStudentId(UUID studentId, UUID institutionId);
+    List<ReportCardResponse> getByStudentId(UUID studentId);
 
-    List<ReportCardResponse> getByTermId(UUID termId, UUID institutionId);
+    List<ReportCardResponse> getByTermId(UUID termId);
 
-    ReportCardResponse getByStudentAndTerm(UUID studentId, UUID termId, UUID institutionId);
+    ReportCardResponse getByStudentAndTerm(UUID studentId, UUID termId);
 
-    ReportCardResponse updateStatus(UUID id, UUID institutionId, String status);
+    ReportCardResponse updateStatus(UUID id, String status);
 
     void calculateClassRanks(UUID termId);
 }
