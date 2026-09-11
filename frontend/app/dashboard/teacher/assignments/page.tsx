@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learningApi, teacherApi, assignmentCreateApi, type Assignment, type AssignmentSubmission, type TeacherClassGroup, type CreateAssignmentRequest } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { FileText, Clock, CheckCircle, Plus, Eye, X, AlertCircle } from "lucide-react"
+import { FileText, Clock, CheckCircle, Plus, Eye, X, AlertCircle, Loader2, ChevronDown, Calendar, Users } from "lucide-react"
 
 export default function TeacherAssignmentsPage() {
   const { user } = useAuth()
@@ -18,6 +18,7 @@ export default function TeacherAssignmentsPage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [selectedClassId, setSelectedClassId] = useState<string>("")
 
   const [form, setForm] = useState<CreateAssignmentRequest>({
     subjectId: "",
@@ -96,7 +97,17 @@ export default function TeacherAssignmentsPage() {
     return new Date(dueDate) < new Date()
   }
 
-  const selectedClass = classes.find(c => c.classGroupId === form.classGroupId)
+  const filteredAssignments = selectedClassId
+    ? assignments.filter((a) => a.classGroupId === selectedClassId)
+    : assignments
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -123,6 +134,25 @@ export default function TeacherAssignmentsPage() {
         <div className="rounded-2xl border border-teal/20 bg-teal/5 p-4">
           <div className="flex items-center gap-2 text-sm text-teal">
             <CheckCircle className="size-4" />{success}
+          </div>
+        </div>
+      )}
+
+      {classes.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
+          <label className="text-sm font-medium text-foreground">Filter by Class</label>
+          <div className="relative mt-1">
+            <select
+              value={selectedClassId}
+              onChange={(e) => { setSelectedClassId(e.target.value); setSelectedAssignment(null); setSubmissions([]) }}
+              className="w-full appearance-none rounded-lg border border-border bg-background px-3 py-2.5 pr-10 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">All classes</option>
+              {classes.map((c) => (
+                <option key={c.classGroupId} value={c.classGroupId}>{c.className} - {c.subjectName}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           </div>
         </div>
       )}
@@ -196,11 +226,52 @@ export default function TeacherAssignmentsPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      {selectedAssignment && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">Submissions</h2>
+            <Button variant="ghost" size="sm" onClick={() => { setSelectedAssignment(null); setSubmissions([]) }}>
+              Close
+            </Button>
+          </div>
+          {loadingSubmissions ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : submissions.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">No submissions yet</p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2">Student</th>
+                    <th className="px-3 py-2">Submitted</th>
+                    <th className="px-3 py-2">Marks</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((s) => (
+                    <tr key={s.id} className="border-b border-border last:border-0">
+                      <td className="px-3 py-2 font-medium text-foreground">{(s as any).studentName || s.studentId.slice(0, 8)}...</td>
+                      <td className="px-3 py-2 text-muted-foreground">{new Date(s.submittedAt).toLocaleDateString()}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{(s as any).obtainedMarks ?? s.grade ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          s.grade !== null && s.grade !== undefined ? "bg-teal/10 text-teal" : "bg-orange/10 text-orange"
+                        }`}>{s.grade !== null && s.grade !== undefined ? "GRADED" : "PENDING"}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      ) : assignments.length === 0 ? (
+      )}
+
+      {filteredAssignments.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <FileText className="mx-auto size-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-semibold text-foreground">No Assignments</h3>
@@ -208,7 +279,7 @@ export default function TeacherAssignmentsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {assignments.map((a) => {
+          {filteredAssignments.map((a) => {
             const overdue = isOverdue(a.dueDate)
             return (
               <div key={a.id} className="rounded-2xl border border-border bg-card p-4 transition-all hover:shadow-sm">
@@ -222,13 +293,14 @@ export default function TeacherAssignmentsPage() {
                       <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{a.description}</p>
                     )}
                     <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>Total: {a.totalMarks} marks</span>
+                      <span className="inline-flex items-center gap-1"><Calendar className="size-3" />Total: {a.totalMarks} marks</span>
                       {a.dueDate && (
                         <span className={`flex items-center gap-1 ${overdue ? "text-destructive" : ""}`}>
                           <Clock className="size-3" />
                           Due: {new Date(a.dueDate).toLocaleDateString()}
                         </span>
                       )}
+                      <span className="inline-flex items-center gap-1"><Users className="size-3" />{a.submissionCount ?? 0}/{a.totalStudents ?? 0} submitted</span>
                     </div>
                   </div>
                   <Button
@@ -243,42 +315,6 @@ export default function TeacherAssignmentsPage() {
               </div>
             )
           })}
-        </div>
-      )}
-
-      {selectedAssignment && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Submissions</h2>
-            <Button variant="ghost" size="sm" onClick={() => { setSelectedAssignment(null); setSubmissions([]) }}>
-              Close
-            </Button>
-          </div>
-          {loadingSubmissions ? (
-            <div className="flex justify-center py-8">
-              <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            </div>
-          ) : submissions.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">No submissions yet</p>
-          ) : (
-            <div className="mt-4 space-y-2">
-              {submissions.map((s) => (
-                <div key={s.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Student: {s.studentId.slice(0, 8)}...</p>
-                    <p className="text-xs text-muted-foreground">Submitted: {new Date(s.submittedAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {s.grade !== null && s.grade !== undefined ? (
-                      <span className="text-sm font-semibold text-primary">Grade: {s.grade}</span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Pending</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>

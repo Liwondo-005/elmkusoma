@@ -11,12 +11,14 @@ import {
 import { Button } from "@/components/ui/button"
 import {
   ClipboardCheck,
+  ClipboardList,
   Calendar,
   Users,
   Check,
   X,
   Clock,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react"
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | null
@@ -166,13 +168,29 @@ export default function TeacherAttendancePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Attendance
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Mark student attendance for your classes.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Mark Attendance
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Record daily attendance for your classes.
+          </p>
+        </div>
+        {selectedClassId && students.length > 0 && (
+          <Button
+            onClick={submitAttendance}
+            disabled={submitting || markedCount === 0}
+            size="sm"
+          >
+            {submitting ? (
+              <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+            ) : (
+              <ClipboardCheck className="size-3.5" />
+            )}
+            {submitting ? "Submitting..." : "Submit Attendance"}
+          </Button>
+        )}
       </div>
 
       {error && (
