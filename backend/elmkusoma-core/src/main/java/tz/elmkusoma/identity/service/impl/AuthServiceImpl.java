@@ -49,6 +49,8 @@ public class AuthServiceImpl implements AuthService {
     private final StudentRepository studentRepository;
     private final StudentClassAssignmentRepository studentClassAssignmentRepository;
     private final RevokedTokenRepository revokedTokenRepository;
+    private final tz.elmkusoma.parent.repository.ParentRepository parentRepository;
+    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
 
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
@@ -61,7 +63,9 @@ public class AuthServiceImpl implements AuthService {
                            EmailVerificationTokenRepository emailVerificationTokenRepository,
                            StudentRepository studentRepository,
                            StudentClassAssignmentRepository studentClassAssignmentRepository,
-                           RevokedTokenRepository revokedTokenRepository) {
+                           RevokedTokenRepository revokedTokenRepository,
+                           tz.elmkusoma.parent.repository.ParentRepository parentRepository,
+                           tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -71,6 +75,8 @@ public class AuthServiceImpl implements AuthService {
         this.studentRepository = studentRepository;
         this.studentClassAssignmentRepository = studentClassAssignmentRepository;
         this.revokedTokenRepository = revokedTokenRepository;
+        this.parentRepository = parentRepository;
+        this.teacherRepository = teacherRepository;
     }
 
     private static final java.util.Set<User.Role> PUBLIC_REGISTRATION_ROLES = java.util.Set.of(
@@ -126,6 +132,18 @@ public class AuthServiceImpl implements AuthService {
 
         user = userRepository.save(user);
         log.info("User registered successfully: {}", user.getEmail());
+
+        if (role == User.Role.PARENT) {
+            parentRepository.save(tz.elmkusoma.parent.domain.Parent.builder()
+                    .userId(user.getId())
+                    .relationshipType(tz.elmkusoma.parent.domain.Parent.RelationshipType.GUARDIAN)
+                    .build());
+        } else if (role == User.Role.TEACHER) {
+            teacherRepository.save(tz.elmkusoma.teacher.domain.Teacher.builder()
+                    .userId(user.getId())
+                    .status(tz.elmkusoma.teacher.domain.TeacherStatus.ACTIVE)
+                    .build());
+        }
 
         UUID instId = user.getInstitutionId();
 
