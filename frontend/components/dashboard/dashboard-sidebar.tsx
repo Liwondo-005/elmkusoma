@@ -85,16 +85,17 @@ const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDas
 
 const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard },
-  { label: "My Classes", href: "/dashboard/teacher/courses", icon: BookOpen },
+  { label: "My Classes", href: "/dashboard/teacher/classes", icon: BookOpen },
   { label: "Students", href: "/dashboard/teacher/students", icon: Users },
   { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
   { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
   { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
   { label: "Gradebook", href: "/dashboard/teacher/gradebook", icon: BarChart3 },
+  { label: "Grading", href: "/dashboard/teacher/grading", icon: Award },
   { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Calendar },
   { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
+  { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
 ]
 
 const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [

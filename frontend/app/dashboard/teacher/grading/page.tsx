@@ -139,8 +139,12 @@ export default function TeacherGradingPage() {
           </div>
           <div className="rounded-2xl border border-dashed border-border py-12 text-center">
             <BarChart3 className="mx-auto mb-3 size-8 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">Report cards will appear here</p>
-            <p className="mt-1 text-xs text-muted-foreground">Select a class to view student report cards.</p>
+            <p className="text-sm font-medium text-foreground">
+              {selectedClassId ? "Loading report cards..." : "Select a class to view student report cards."}
+            </p>
+            {!selectedClassId && (
+              <p className="mt-1 text-xs text-muted-foreground">Choose a class above to see report cards.</p>
+            )}
           </div>
         </div>
       )}

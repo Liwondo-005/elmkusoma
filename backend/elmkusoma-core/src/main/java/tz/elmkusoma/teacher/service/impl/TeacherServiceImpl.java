@@ -55,6 +55,8 @@ public class TeacherServiceImpl implements TeacherService {
     private final LessonRepository lessonRepository;
     private final AssessmentRepository assessmentRepository;
     private final AttendanceRecordRepository attendanceRepository;
+    private final tz.elmkusoma.academic.repository.ClassGroupRepository classGroupRepository;
+    private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
 
     @Override
     public TeacherResponse createTeacher(UUID institutionId, TeacherRequest request) {
@@ -240,11 +242,18 @@ public class TeacherServiceImpl implements TeacherService {
             long assignmentCount = assignmentRepo.findByClassGroupIdAndIsDeletedFalse(assignment.getClassGroupId()).size();
             long lessonCount = lessonRepository.findByClassGroupIdAndIsDeletedFalseOrderBySortOrder(assignment.getClassGroupId()).size();
 
+            String className = classGroupRepository.findById(assignment.getClassGroupId())
+                    .map(tz.elmkusoma.academic.domain.ClassGroup::getName).orElse("Class Group");
+            String subjectName = assignment.getSubjectId() != null
+                    ? subjectRepository.findById(assignment.getSubjectId())
+                    .map(tz.elmkusoma.academic.domain.Subject::getName).orElse("Subject")
+                    : "General";
+
             return TeacherClassResponse.builder()
                     .classGroupId(assignment.getClassGroupId())
-                    .className("Class Group")
+                    .className(className)
                     .subjectId(assignment.getSubjectId())
-                    .subjectName("Subject")
+                    .subjectName(subjectName)
                     .academicYear(assignment.getAcademicYear())
                     .enrolledStudents(enrolledCount)
                     .totalAssignments(assignmentCount)
@@ -275,14 +284,20 @@ public class TeacherServiceImpl implements TeacherService {
                         TeacherAssignment matchedAssignment = assignments.stream()
                                 .filter(a -> a.getClassGroupId().equals(classGroupId))
                                 .findFirst().orElse(null);
+                        String sClassName = classGroupRepository.findById(classGroupId)
+                                .map(tz.elmkusoma.academic.domain.ClassGroup::getName).orElse("Class Group");
+                        String sSubjectName = matchedAssignment != null && matchedAssignment.getSubjectId() != null
+                                ? subjectRepository.findById(matchedAssignment.getSubjectId())
+                                .map(tz.elmkusoma.academic.domain.Subject::getName).orElse("")
+                                : "";
 
                         students.add(TeacherStudentResponse.builder()
                                 .studentId(student.getId())
                                 .fullName(studentUser != null ? studentUser.getFullName() : "Unknown")
                                 .email(studentUser != null ? studentUser.getEmail() : "")
                                 .admissionNumber(student.getAdmissionNumber())
-                                .className("Class Group")
-                                .subjectName(matchedAssignment != null ? "Subject" : "")
+                                .className(sClassName)
+                                .subjectName(sSubjectName)
                                 .gender(student.getGender())
                                 .status(student.getStatus().name())
                                 .classGroupId(classGroupId)
