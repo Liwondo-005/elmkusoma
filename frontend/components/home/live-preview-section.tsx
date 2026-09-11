@@ -1,10 +1,50 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { liveClasses } from "@/lib/data"
+import { dashboardApi, type LiveClass as ApiLiveClass } from "@/lib/api"
 import { LiveClassCard } from "@/components/live-class-card"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import type { LiveClass } from "@/lib/data"
+
+function mapApiToCard(lc: ApiLiveClass): LiveClass {
+  const now = new Date()
+  const scheduled = new Date(lc.scheduledAt)
+  const end = new Date(scheduled.getTime() + lc.durationMinutes * 60000)
+  const isPast = end < now
+  const isLive = scheduled <= now && end >= now
+
+  let status: LiveClass["status"]
+  let badge: string
+  if (isPast) { status = "past"; badge = "RECORDED" }
+  else if (isLive) { status = "live"; badge = "LIVE NOW" }
+  else { status = "scheduled"; badge = scheduled.toLocaleDateString() }
+
+  return {
+    id: lc.id,
+    title: lc.title,
+    subtitle: lc.description?.slice(0, 40) || "",
+    instructor: "",
+    image: "/images/class-default.png",
+    status,
+    badge,
+    time: isPast ? "Ended" : scheduled.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    level: "Intermediate",
+  }
+}
 
 export function LivePreviewSection() {
+  const [classes, setClasses] = useState<LiveClass[]>([])
+
+  useEffect(() => {
+    dashboardApi.getLiveClasses()
+      .then((data) => setClasses((data || []).slice(0, 4).map(mapApiToCard)))
+      .catch(() => setClasses([]))
+  }, [])
+
+  if (classes.length === 0) return null
+
   return (
     <section className="py-16 lg:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -31,7 +71,7 @@ export function LivePreviewSection() {
         </div>
 
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {liveClasses.slice(0, 4).map((item) => (
+          {classes.map((item) => (
             <LiveClassCard key={item.id} item={item} />
           ))}
         </div>

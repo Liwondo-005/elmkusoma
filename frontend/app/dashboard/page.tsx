@@ -66,11 +66,23 @@ export default function DashboardPage() {
       setActivities(activityData)
 
       try {
-        const { studentApi, learningApi, assessmentApi, certificateApi } = await import("@/lib/api")
+        const { studentApi, learningApi, assessmentApi, certificateApi, academicApi } = await import("@/lib/api")
         const institutionId = localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
 
         const students = await studentApi.getStudents(institutionId).catch(() => [])
         const student = students.find((s: any) => s.userId === user?.id || s.email === user?.email)
+
+        if (student?.classGroupId) {
+          try {
+            const classGroup = await academicApi.getClassGroup(student.classGroupId)
+            if (classGroup?.gradeId) {
+              const grade = await academicApi.getGrade(classGroup.gradeId)
+              if (grade?.educationLevel) {
+                localStorage.setItem("elmkusoma_education_level", grade.educationLevel)
+              }
+            }
+          } catch { /* education level stays default */ }
+        }
 
         const classId = user?.classGroupId || student?.classGroupId || ""
 

@@ -123,7 +123,13 @@ const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboar
 ]
 
 function getStudentNavForContext(user: { role?: string } | null) {
-  const role = user?.role?.toLowerCase() || ""
+  let level = ""
+  if (typeof window !== "undefined") {
+    level = (localStorage.getItem("elmkusoma_education_level") || "").toLowerCase()
+  }
+  if (level.includes("nursery")) return nurseryNav
+  if (level.includes("primary")) return primaryNav
+  if (level.includes("universit")) return universityNav
   return secondaryNav
 }
 

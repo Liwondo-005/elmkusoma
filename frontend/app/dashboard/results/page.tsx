@@ -2,14 +2,21 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { dashboardApi, type StudentResult } from "@/lib/api"
+import { dashboardApi, academicApi, type StudentResult } from "@/lib/api"
 import { Award, ChevronDown, ChevronUp } from "lucide-react"
+
+interface ResolvedNames {
+  termNames: Record<string, string>
+  yearNames: Record<string, string>
+  subjectNames: Record<string, string>
+}
 
 export default function ResultsPage() {
   const { user } = useRequireAuth()
   const [results, setResults] = useState<StudentResult[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [names, setNames] = useState<ResolvedNames>({ termNames: {}, yearNames: {}, subjectNames: {} })
 
   useEffect(() => {
     if (!user) return
@@ -21,12 +28,40 @@ export default function ResultsPage() {
       setLoading(true)
       const data = await dashboardApi.getResults().catch(() => [])
       setResults(data)
+
+      const termNames: Record<string, string> = {}
+      const yearNames: Record<string, string> = {}
+      const subjectNames: Record<string, string> = {}
+
+      const yearIds = [...new Set(data.map((r) => r.academicYearId).filter(Boolean))]
+      await Promise.all(yearIds.map(async (id) => {
+        try {
+          const year = await academicApi.getAcademicYear(id)
+          if (year) yearNames[id] = year.yearLabel
+          const terms = await academicApi.getTerms(id)
+          for (const t of terms) termNames[t.id] = t.name
+        } catch {}
+      }))
+
+      const subjectIds = [...new Set(data.flatMap((r) => (r.subjectGrades || []).map((sg) => sg.subjectId).filter(Boolean)))]
+      await Promise.all(subjectIds.map(async (id) => {
+        try {
+          const subject = await academicApi.getSubject(id)
+          if (subject) subjectNames[id] = subject.name
+        } catch {}
+      }))
+
+      setNames({ termNames, yearNames, subjectNames })
     } catch {
       setResults([])
     } finally {
       setLoading(false)
     }
   }
+
+  function resolveTerm(id: string) { return names.termNames[id] || `Term ${id?.slice(0, 8) || "N/A"}` }
+  function resolveYear(id: string) { return names.yearNames[id] || `Year ${id?.slice(0, 8) || "N/A"}` }
+  function resolveSubject(id: string) { return names.subjectNames[id] || id?.slice(0, 8) || "—" }
 
   if (loading) {
     return (
@@ -66,10 +101,10 @@ export default function ResultsPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">
-                        Term {result.termId?.slice(0, 8) || "N/A"}
+                        {resolveTerm(result.termId)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Year {result.academicYearId?.slice(0, 8) || "N/A"}
+                        {resolveYear(result.academicYearId)}
                       </p>
                     </div>
                   </div>
@@ -107,7 +142,7 @@ export default function ResultsPage() {
                         <tbody>
                           {result.subjectGrades.map((sg, i) => (
                             <tr key={i} className="border-t border-border">
-                              <td className="px-4 py-2.5 font-medium text-foreground">{sg.subjectId?.slice(0, 8) || "—"}</td>
+                              <td className="px-4 py-2.5 font-medium text-foreground">{resolveSubject(sg.subjectId)}</td>
                               <td className="px-4 py-2.5 text-right text-foreground">{sg.marksObtained}</td>
                               <td className="px-4 py-2.5 text-right font-semibold text-foreground">{sg.grade}</td>
                               <td className="px-4 py-2.5 text-right text-foreground">{sg.gradePoints}</td>
