@@ -49,6 +49,7 @@ public class User extends BaseEntity {
         STUDENT,
         TEACHER,
         PARENT,
+        OTHER_LEARNER,
         ADMIN,
         INSTITUTION_ADMIN
     }
