@@ -2,11 +2,12 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
-import { Menu, X, Search } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { Menu, X, Search, ChevronDown } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { levels } from "@/lib/data"
 
 const nav = [
   { label: "Home", href: "/" },
@@ -18,6 +19,18 @@ const nav = [
 export function SiteHeader() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [browseOpen, setBrowseOpen] = useState(false)
+  const browseRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (browseRef.current && !browseRef.current.contains(e.target as Node)) {
+        setBrowseOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur">
@@ -57,6 +70,39 @@ export function SiteHeader() {
           <Link href="/login" className={cn(buttonVariants({ variant: "outline" }), "hidden h-10 px-4 sm:inline-flex")}>
             Login
           </Link>
+          <div ref={browseRef} className="relative hidden sm:block">
+            <button
+              type="button"
+              onClick={() => setBrowseOpen((v) => !v)}
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "h-10 gap-1.5 px-4 text-sm font-medium"
+              )}
+            >
+              Browse
+              <ChevronDown className={cn("size-3.5 transition-transform", browseOpen && "rotate-180")} />
+            </button>
+            {browseOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                <div className="p-1.5">
+                  <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Browse by Level
+                  </p>
+                  {levels.map((level) => (
+                    <Link
+                      key={level.name}
+                      href={level.href}
+                      onClick={() => setBrowseOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                    >
+                      <span className="flex-1">{level.name}</span>
+                      <span className="text-xs text-muted-foreground">{level.desc}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <Link href="/register" className={cn(buttonVariants(), "hidden h-10 px-4 sm:inline-flex")}>
             Register
           </Link>
@@ -92,6 +138,21 @@ export function SiteHeader() {
               <Link href="/register" className={cn(buttonVariants(), "h-10 flex-1")}>
                 Register
               </Link>
+            </div>
+            <p className="mt-3 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Browse Schools
+            </p>
+            <div className="grid grid-cols-2 gap-1">
+              {levels.map((level) => (
+                <Link
+                  key={level.name}
+                  href={level.href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                >
+                  {level.name}
+                </Link>
+              ))}
             </div>
           </nav>
         </div>
