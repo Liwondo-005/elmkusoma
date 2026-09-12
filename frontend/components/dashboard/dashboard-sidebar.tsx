@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -94,6 +94,8 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Grading", href: "/dashboard/teacher/grading", icon: Award },
   { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Calendar },
   { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
+  { label: "Announcements", href: "/dashboard/teacher/announcements", icon: Bell },
+  { label: "Analytics", href: "/dashboard/teacher/analytics", icon: TrendingUp },
   { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
   { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
 ]

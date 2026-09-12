@@ -37,4 +37,13 @@ public class Assignment extends BaseEntity {
 
     @Column(name = "attachments")
     private String attachments;
+
+    @Column(name = "assignment_type", length = 50)
+    private String assignmentType;
+
+    @Column(name = "instructions", columnDefinition = "TEXT")
+    private String instructions;
+
+    @Column(name = "status", length = 20)
+    private String status = "PUBLISHED";
 }

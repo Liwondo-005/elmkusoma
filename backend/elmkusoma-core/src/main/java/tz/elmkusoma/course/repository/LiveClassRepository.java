@@ -23,4 +23,10 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
 
     @Query("SELECT lc FROM LiveClass lc WHERE lc.institutionId = :institutionId AND lc.isDeleted = false AND lc.scheduledAt >= :from AND lc.scheduledAt <= :to ORDER BY lc.scheduledAt")
     List<LiveClass> findByInstitutionIdAndScheduledAtBetween(@Param("institutionId") UUID institutionId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT lc FROM LiveClass lc WHERE lc.teacherId = :teacherId AND lc.isDeleted = false ORDER BY lc.scheduledAt DESC")
+    List<LiveClass> findByTeacherIdAndIsDeletedFalse(@Param("teacherId") UUID teacherId);
+
+    @Query("SELECT lc FROM LiveClass lc WHERE lc.teacherId = :teacherId AND lc.status = :status AND lc.isDeleted = false ORDER BY lc.scheduledAt DESC")
+    List<LiveClass> findByTeacherIdAndStatusAndIsDeletedFalse(@Param("teacherId") UUID teacherId, @Param("status") String status);
 }
