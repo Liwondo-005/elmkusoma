@@ -38,8 +38,8 @@ export function UniversityCta() {
             <Link
               href="/register"
               className={cn(
-                buttonVariants(),
-                "mt-8 h-11 w-full gap-2 sm:w-auto sm:self-start",
+                buttonVariants({ variant: "outline" }),
+                "mt-8 h-11 w-full gap-2 border-primary/30 text-primary hover:bg-accent sm:w-auto sm:self-start",
               )}
             >
               Apply Now
