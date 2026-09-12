@@ -25,3 +25,17 @@ Thumbs.db
 # Backup files
 *.backup
 *.bak
+
+# Temp build/run scripts
+backend/*.bat
+backend/*.cmd
+*.bat
+*.cmd
+
+# Empty junk files
+CD
+type
+git
+
+# Target build output (rebuild when needed)
+backend/elmkusoma-core/target/
