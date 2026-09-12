@@ -25,13 +25,13 @@ export function CtaSection() {
                   Start Learning Free
                 </Link>
                 <Link
-                  href="/live-classes"
+                  href="/schools/nursery"
                   className={cn(
                     buttonVariants({ variant: "outline" }),
                     "h-12 border-primary-foreground/30 bg-transparent px-6 text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground",
                   )}
                 >
-                  Explore Live Classes
+                  Browse Schools
                 </Link>
               </div>
 

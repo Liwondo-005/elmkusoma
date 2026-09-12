@@ -33,10 +33,10 @@ export function HeroSection() {
                 Start Learning
               </Link>
               <Link
-                href="/live-classes"
+                href="/schools/nursery"
                 className={cn(buttonVariants({ variant: "outline" }), "h-12 gap-2 px-6 text-base")}
               >
-                Join Live Class
+                Browse Schools
               </Link>
             </div>
 
