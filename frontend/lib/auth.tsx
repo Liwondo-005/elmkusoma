@@ -13,6 +13,7 @@ export interface AuthUser {
   lastName?: string
   institutionId?: string
   classGroupId?: string
+  learningLevel?: string | null
 }
 
 interface AuthContextValue {
@@ -99,6 +100,7 @@ function mapUserInfo(info: UserInfo): AuthUser {
     lastName: info.lastName,
     institutionId: info.institutionId,
     classGroupId: info.classGroupId || undefined,
+    learningLevel: info.learningLevel || null,
   }
 }
 
@@ -197,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string
     phone?: string
     role: string
+    learningLevel?: string
   }) => {
     try {
       const backendRole = mapRoleToBackend(data.role)
@@ -208,6 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: data.password,
         phone: data.phone,
         role: backendRole,
+        learningLevel: data.learningLevel,
       })
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)

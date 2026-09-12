@@ -45,12 +45,24 @@ public class User extends BaseEntity {
     @Column(name = "profile_image_url")
     private String profileImageUrl;
 
+    @Column(name = "learning_level")
+    @Enumerated(EnumType.STRING)
+    private LearningLevel learningLevel;
+
     public enum Role {
         STUDENT,
         TEACHER,
         PARENT,
         ADMIN,
         INSTITUTION_ADMIN
+    }
+
+    public enum LearningLevel {
+        NURSERY,
+        PRIMARY,
+        SECONDARY,
+        COLLEGE,
+        UNIVERSITY
     }
 
     public String getFullName() {

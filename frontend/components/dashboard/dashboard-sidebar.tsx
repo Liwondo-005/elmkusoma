@@ -7,24 +7,7 @@ import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 
-const studentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
-  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
-  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
-  { label: "Results", href: "/dashboard/results", icon: Award },
-  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
-  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
-  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, badge: 2 },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
-]
-
-const nurseryNav = [
+const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Activities", href: "/dashboard/courses", icon: BookOpen },
   { label: "Fun Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -37,7 +20,7 @@ const nurseryNav = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const primaryNav = [
+const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -48,12 +31,11 @@ const primaryNav = [
   { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
   { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const secondaryNav = [
+const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -65,12 +47,11 @@ const secondaryNav = [
   { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
   { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const universityNav = [
+const collegeNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
   { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
@@ -82,7 +63,22 @@ const universityNav = [
   { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
   { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
@@ -101,7 +97,7 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const parentNav = [
+const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
   { label: "My Children", href: "/dashboard/parent/children", icon: Users },
   { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
@@ -122,14 +118,12 @@ const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboar
   { label: "Audit", href: "/dashboard/audit", icon: Shield },
 ]
 
-function getStudentNavForContext(user: { role?: string } | null) {
-  let level = ""
-  if (typeof window !== "undefined") {
-    level = (localStorage.getItem("elmkusoma_education_level") || "").toLowerCase()
-  }
-  if (level.includes("nursery")) return nurseryNav
-  if (level.includes("primary")) return primaryNav
-  if (level.includes("universit")) return universityNav
+function getStudentNav(user: { learningLevel?: string | null } | null) {
+  const level = (user?.learningLevel || "").toUpperCase()
+  if (level === "NURSERY") return nurseryNav
+  if (level === "PRIMARY") return primaryNav
+  if (level === "COLLEGE") return collegeNav
+  if (level === "UNIVERSITY") return universityNav
   return secondaryNav
 }
 
@@ -138,23 +132,20 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth()
   const router = useRouter()
 
+  function handleLogout() {
+    logout()
+    router.push("/login")
+  }
+
   const isTeacher = user?.role === "Teacher" || user?.role === "Instructor"
   const isAdmin = user?.role === "Admin" || user?.role === "Institution Admin"
   const isParent = user?.role === "Parent"
-  const isStudent = !isTeacher && !isAdmin && !isParent
 
   const activeNav = isParent
     ? parentNav
     : isTeacher
       ? teacherNav
-      : isStudent
-        ? getStudentNavForContext(user)
-        : secondaryNav
-
-  function handleLogout() {
-    logout()
-    router.push("/login")
-  }
+      : getStudentNav(user)
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -179,14 +170,14 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             >
               <item.icon className="size-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
-              {(item as any).badge ? (
+              {"badge" in item && item.badge ? (
                 <span
                   className={cn(
                     "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
                     active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
                   )}
                 >
-                  {(item as any).badge}
+                  {item.badge}
                 </span>
               ) : null}
             </Link>

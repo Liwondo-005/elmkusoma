@@ -30,5 +30,6 @@ public class AuthResponse {
         private boolean emailVerified;
         private String institutionId;
         private String classGroupId;
+        private String learningLevel;
     }
 }

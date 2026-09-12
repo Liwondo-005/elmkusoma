@@ -96,6 +96,14 @@ public class AuthServiceImpl implements AuthService {
                 .isEmailVerified(false)
                 .build();
 
+        if (role == User.Role.STUDENT && request.getLearningLevel() != null && !request.getLearningLevel().isBlank()) {
+            try {
+                user.setLearningLevel(User.LearningLevel.valueOf(request.getLearningLevel().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid learning level: {}, skipping", request.getLearningLevel());
+            }
+        }
+
         user = userRepository.save(user);
         log.info("User registered successfully: {}", user.getEmail());
 
@@ -296,6 +304,7 @@ public class AuthServiceImpl implements AuthService {
                 .emailVerified(user.getIsEmailVerified())
                 .institutionId(institutionId)
                 .classGroupId(classGroupId)
+                .learningLevel(user.getLearningLevel() != null ? user.getLearningLevel().name() : null)
                 .build();
     }
 }

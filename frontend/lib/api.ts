@@ -110,6 +110,7 @@ export interface UserInfo {
   role: string
   institutionId: string
   classGroupId: string | null
+  learningLevel?: string | null
 }
 
 export interface AuthResponse {
@@ -128,6 +129,7 @@ export interface RegisterPayload {
   password: string
   phone?: string
   role: string
+  learningLevel?: string
 }
 
 export interface LoginPayload {
