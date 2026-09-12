@@ -6,24 +6,7 @@ import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, A
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
-
-const nav = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Academic", href: "/dashboard/academic", icon: School },
-  { label: "Students", href: "/dashboard/students", icon: Users },
-  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
-  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "Enrollments", href: "/dashboard/enrollment", icon: ClipboardList },
-  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
-  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
-  { label: "Live Classes", href: "/live-classes", icon: Video },
-  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, badge: 2 },
-  { label: "Certificates", href: "/dashboard/certificates", icon: Award },
-  { label: "Bookmarks", href: "/dashboard/bookmarks", icon: Bookmark },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
-]
+import { getDashboardConfig, type LearningLevel } from "@/lib/learner-config"
 
 const parentNav = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
@@ -56,6 +39,12 @@ const adminNav = [
   { label: "Audit", href: "/dashboard/audit", icon: Shield },
 ]
 
+const studentExtraNav = [
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Certificates", href: "/dashboard/certificates", icon: Award },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
@@ -66,6 +55,16 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     router.push("/login")
   }
 
+  let items = nav
+  if (user?.role === "Parent") {
+    items = parentNav
+  } else if (user?.role === "Teacher") {
+    items = teacherNav
+  } else if (user?.role === "Student") {
+    const config = getDashboardConfig(user?.learningLevel as LearningLevel | null)
+    items = [...config.navItems, ...studentExtraNav]
+  }
+
   return (
     <div className="flex h-full flex-col bg-card">
       <div className="flex h-16 items-center border-b border-border px-5">
@@ -73,7 +72,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {(user?.role === "Parent" ? parentNav : user?.role === "Teacher" ? teacherNav : nav).map((item) => {
+        {items.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
           return (
             <Link
@@ -89,7 +88,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             >
               <item.icon className="size-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
-              {item.badge ? (
+              {"badge" in item && item.badge ? (
                 <span
                   className={cn(
                     "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
@@ -145,3 +144,14 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     </div>
   )
 }
+
+const nav = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]

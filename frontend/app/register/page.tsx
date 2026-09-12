@@ -20,6 +20,14 @@ const roles = [
   "Parent",
 ]
 
+const learningLevels = [
+  { value: "NURSERY", label: "Nursery" },
+  { value: "PRIMARY", label: "Primary" },
+  { value: "SECONDARY", label: "Secondary" },
+  { value: "COLLEGE", label: "College" },
+  { value: "UNIVERSITY", label: "University" },
+]
+
 const registerSchema = z
   .object({
     firstName: z.string().min(1, "First name is required").min(2, "First name must be at least 2 characters"),
@@ -28,6 +36,7 @@ const registerSchema = z
     email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
     phone: z.string().min(1, "Phone number is required").min(10, "Phone number must be at least 10 digits"),
     role: z.string().min(1, "Please select your role"),
+    learningLevel: z.string().optional(),
     password: z
       .string()
       .min(1, "Password is required")
@@ -58,10 +67,13 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
   })
+
+  const selectedRole = watch("role")
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
@@ -77,6 +89,7 @@ export default function RegisterPage() {
       phone: values.phone,
       password: values.password,
       role: values.role,
+      learningLevel: values.role === "Student" ? values.learningLevel : undefined,
     })
     if (result.error) {
       setServerError(result.error)
@@ -251,6 +264,29 @@ export default function RegisterPage() {
                     <p className="mt-1.5 text-xs text-destructive">{errors.role.message}</p>
                   )}
                 </div>
+
+                {selectedRole === "Student" && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                    <label htmlFor="learningLevel" className="block text-sm font-medium text-foreground">
+                      Learning Level
+                    </label>
+                    <select
+                      id="learningLevel"
+                      {...register("learningLevel")}
+                      className="mt-1.5 h-11 w-full appearance-none rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors focus:border-ring focus:bg-background"
+                    >
+                      <option value="">Select your learning level</option>
+                      {learningLevels.map((level) => (
+                        <option key={level.value} value={level.value}>
+                          {level.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      This helps us customize your learning experience.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-foreground">

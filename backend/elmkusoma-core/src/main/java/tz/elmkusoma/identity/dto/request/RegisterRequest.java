@@ -30,4 +30,6 @@ public class RegisterRequest {
 
     @NotBlank(message = "Role is required")
     private String role;
+
+    private String learningLevel;
 }

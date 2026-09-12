@@ -3,35 +3,36 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { BookOpen, FileText, Loader2, PenTool, BarChart3, ArrowRight } from "lucide-react"
-import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { BookOpen, FileText, PenTool, BarChart3, ArrowRight, Loader2, Award } from "lucide-react"
 import { useAuth } from "@/lib/auth"
+import { getDashboardConfig, getLevelLabel, type LearningLevel } from "@/lib/learner-config"
+import { LearnerHeader, ContinueLearningCard, LearningItemCard, AssignmentCard, ProgressCard, EmptyState, LoadingState } from "@/components/learner/shared"
 
-interface DashboardStats {
-  enrolledCourses: number
-  liveClasses: number
+interface DashboardData {
   totalLessons: number
-  certificates: number
   pendingAssignments: number
   assessments: number
-  completedLessons: number
+  certificates: number
+  recentLessons: { title: string; subject: string; progress: number; id?: string }[]
+  pendingWork: { title: string; subject?: string; dueDate?: string; status: string }[]
+  recentActivity: { label: string; detail: string; time: string }[]
 }
 
 export default function DashboardPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const firstName = user?.name?.split(" ")[0] || "Student"
-  const [stats, setStats] = useState<DashboardStats>({
-    enrolledCourses: 0,
-    liveClasses: 0,
+  const level = user?.learningLevel as LearningLevel | null
+  const config = getDashboardConfig(level)
+  const [data, setData] = useState<DashboardData>({
     totalLessons: 0,
-    certificates: 0,
     pendingAssignments: 0,
     assessments: 0,
-    completedLessons: 0,
+    certificates: 0,
+    recentLessons: [],
+    pendingWork: [],
+    recentActivity: [],
   })
-  const [recentLessons, setRecentLessons] = useState<{ title: string; subject: string; progress: number }[]>([])
   const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
@@ -51,7 +52,6 @@ export default function DashboardPage() {
 
         const students = await studentApi.getStudents(institutionId).catch(() => [])
         const student = students.find((s: any) => s.userId === user?.id || s.email === user?.email)
-
         const classId = user?.classGroupId || student?.classGroupId || ""
 
         const [assignments, assessments, certificates, lessons] = await Promise.all([
@@ -61,24 +61,34 @@ export default function DashboardPage() {
           classId ? learningApi.getLessonsByClass(classId).catch(() => []) : Promise.resolve([]),
         ])
 
-        setStats({
-          enrolledCourses: classId ? 1 : 0,
-          liveClasses: 0,
-          totalLessons: lessons.length,
-          certificates: Array.isArray(certificates) ? certificates.length : 0,
-          pendingAssignments: Array.isArray(assignments) ? assignments.filter((a: any) => a.status === "ACTIVE" || a.status === "PENDING").length : 0,
-          assessments: Array.isArray(assessments) ? assessments.length : 0,
-          completedLessons: 0,
-        })
+        const lessonList = (Array.isArray(lessons) ? lessons : []).map((l: any) => ({
+          title: l.title || "Untitled Lesson",
+          subject: l.subjectName || "",
+          progress: l.completionPercentage || 0,
+          id: l.id,
+        }))
 
-        setRecentLessons(
-          (Array.isArray(lessons) ? lessons.slice(0, 3) : []).map((l: any) => ({
-            title: l.title || "Untitled Lesson",
-            subject: l.subjectName || "",
-            progress: l.completionPercentage || 0,
-          }))
-        )
-      } catch { /* dashboard loads with zero stats */ }
+        const assignmentList = (Array.isArray(assignments) ? assignments : []).slice(0, 5).map((a: any) => ({
+          title: a.title || "Assignment",
+          subject: a.subjectName || "",
+          dueDate: a.dueDate,
+          status: a.status || "PENDING",
+        }))
+
+        setData({
+          totalLessons: lessonList.length,
+          pendingAssignments: assignmentList.filter((a: any) => a.status === "PENDING" || a.status === "ACTIVE").length,
+          assessments: Array.isArray(assessments) ? assessments.length : 0,
+          certificates: Array.isArray(certificates) ? certificates.length : 0,
+          recentLessons: lessonList.slice(0, 3),
+          pendingWork: assignmentList,
+          recentActivity: lessonList.slice(0, 3).map((l: any) => ({
+            label: "Lesson available",
+            detail: l.title,
+            time: "",
+          })),
+        })
+      } catch { /* loads with zero data */ }
       finally { setLoadingData(false) }
     }
     load()
@@ -88,82 +98,42 @@ export default function DashboardPage() {
     return null
   }
 
-  const statCards = [
-    { label: "My Lessons", value: String(stats.totalLessons), note: "Available", icon: BookOpen },
-    { label: "Assignments", value: String(stats.pendingAssignments), note: "Pending", icon: FileText },
-    { label: "Assessments", value: String(stats.assessments), note: "Available", icon: PenTool },
-    { label: "Certificates", value: String(stats.certificates), note: "Earned", icon: Award },
-  ]
+  if (loading || loadingData) return <LoadingState />
+
+  const levelLabel = getLevelLabel(level)
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back, {firstName}!</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Keep up the great work and continue your learning journey.
-        </p>
-      </div>
+      <LearnerHeader firstName={firstName} level={levelLabel} subtitle={config.subtitle} />
 
+      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <s.icon className="mb-2 size-5 text-muted-foreground" />
-            <p className="text-2xl font-extrabold text-foreground">{loadingData ? "—" : s.value}</p>
-            <p className="text-sm font-medium text-foreground">{s.label}</p>
-            <p className="text-xs text-muted-foreground">{s.note}</p>
-          </div>
-        ))}
+        <ProgressCard label="Lessons" value={data.totalLessons} />
+        <ProgressCard label="Pending Assignments" value={data.pendingAssignments} />
+        <ProgressCard label="Assessments" value={data.assessments} />
+        <ProgressCard label="Certificates" value={data.certificates} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Continue Learning</h2>
-            <Link href="/dashboard/lessons" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              View All <ArrowRight className="size-3" />
-            </Link>
-          </div>
-          {loadingData ? (
-            <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
-          ) : recentLessons.length === 0 ? (
-            <div className="py-8 text-center">
-              <BookOpen className="mx-auto mb-3 size-8 text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">No lessons yet</p>
-              <p className="mt-1 text-xs text-muted-foreground">Lessons from your classes will appear here.</p>
-            </div>
+        {/* Continue Learning */}
+        <div className="lg:col-span-2">
+          {data.recentLessons.length > 0 ? (
+            <ContinueLearningCard
+              title={data.recentLessons[0].title}
+              subject={data.recentLessons[0].subject}
+              progress={data.recentLessons[0].progress}
+              onResume={() => data.recentLessons[0].id && router.push(`/dashboard/lessons`)}
+            />
           ) : (
-            <div className="mt-4 space-y-4">
-              {recentLessons.map((lesson) => (
-                <div key={lesson.title} className="flex items-center gap-4">
-                  <div className="size-14 shrink-0 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <BookOpen className="size-6 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="truncate text-sm font-medium text-foreground">{lesson.title}</p>
-                      <span className="text-xs font-semibold text-teal">{lesson.progress}%</span>
-                    </div>
-                    {lesson.subject && <p className="text-xs text-muted-foreground">{lesson.subject}</p>}
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-teal" style={{ width: `${lesson.progress}%` }} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ContinueLearningCard title={undefined} onResume={() => router.push("/dashboard/lessons")} />
           )}
-        </section>
+        </div>
 
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        {/* Quick Links */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <h2 className="text-base font-semibold text-foreground">Quick Links</h2>
           <div className="mt-4 space-y-2">
-            {[
-              { label: "Lessons", href: "/dashboard/lessons", icon: BookOpen },
-              { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
-              { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
-              { label: "Certificates", href: "/dashboard/certificates", icon: Award },
-              { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
-            ].map((item) => (
+            {config.navItems.slice(1, 5).map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -175,8 +145,57 @@ export default function DashboardPage() {
               </Link>
             ))}
           </div>
-        </section>
+        </div>
       </div>
+
+      {/* Today's Learning */}
+      {data.recentLessons.length > 0 && (
+        <section>
+          <h2 className="text-base font-semibold text-foreground">Today&apos;s Learning</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.recentLessons.map((lesson, i) => (
+              <LearningItemCard
+                key={i}
+                title={lesson.title}
+                subject={lesson.subject}
+                icon={<BookOpen className="size-4" />}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Pending Work */}
+      {data.pendingWork.length > 0 && (
+        <section>
+          <h2 className="text-base font-semibold text-foreground">Pending Work</h2>
+          <div className="mt-3 space-y-2">
+            {data.pendingWork.map((work, i) => (
+              <AssignmentCard
+                key={i}
+                title={work.title}
+                subject={work.subject}
+                dueDate={work.dueDate}
+                status={work.status}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Empty state if no data */}
+      {data.totalLessons === 0 && data.pendingAssignments === 0 && (
+        <EmptyState
+          icon={<BookOpen className="size-8" />}
+          title={config.emptyStateTitle}
+          description={config.emptyStateDescription}
+          action={
+            <Link href="/dashboard/lessons" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Browse Lessons <ArrowRight className="size-4" />
+            </Link>
+          }
+        />
+      )}
     </div>
   )
 }
