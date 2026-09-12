@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server"
 
 const teacherRoutes = ["/dashboard/teacher"]
 const adminRoutes = ["/dashboard/admin", "/dashboard/audit"]
+const learnerRoutes = ["/dashboard/learner"]
 const studentRoutes = ["/dashboard/courses", "/dashboard/lessons", "/dashboard/assignments", "/dashboard/assessments", "/dashboard/results", "/dashboard/attendance", "/dashboard/live-classes", "/dashboard/progress", "/dashboard/messages", "/dashboard/bookmarks"]
 
 export function middleware(request: NextRequest) {
@@ -24,6 +25,7 @@ export function middleware(request: NextRequest) {
 
         const isTeacherRoute = teacherRoutes.some((r) => pathname.startsWith(r))
         const isAdminRoute = adminRoutes.some((r) => pathname.startsWith(r))
+        const isLearnerRoute = learnerRoutes.some((r) => pathname.startsWith(r))
         const isStudentRoute = studentRoutes.some((r) => pathname.startsWith(r))
 
         if (isTeacherRoute && role !== "Teacher" && role !== "Instructor") {

@@ -24,4 +24,7 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, UUID
 
     @Query("SELECT a FROM Announcement a WHERE a.institutionId = :institutionId AND a.classGroupId IS NULL AND a.isDeleted = false ORDER BY a.createdAt DESC")
     List<Announcement> findInstitutionWideByInstitutionIdAndIsDeletedFalse(@Param("institutionId") UUID institutionId);
+
+    @Query("SELECT a FROM Announcement a WHERE a.isDeleted = false ORDER BY a.createdAt DESC")
+    List<Announcement> findAllAndIsDeletedFalse();
 }

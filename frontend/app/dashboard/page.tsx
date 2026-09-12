@@ -46,6 +46,8 @@ export default function DashboardPage() {
       router.replace("/dashboard/teacher")
     } else if (!authLoading && (user?.role === "Admin" || user?.role === "Institution Admin")) {
       router.replace("/dashboard/admin")
+    } else if (!authLoading && user?.role === "Other Learner") {
+      router.replace("/dashboard/learner")
     }
   }, [user, authLoading, router])
 

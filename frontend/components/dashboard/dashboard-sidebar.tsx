@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -83,6 +83,19 @@ const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDas
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
+const learnerNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard },
+  { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+  { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
+  { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
+  { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
+  { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
+  { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
+  { label: "Notifications", href: "/dashboard/learner/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/learner/profile", icon: User },
+  { label: "Settings", href: "/dashboard/learner/settings", icon: Settings },
+]
+
 const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard },
   { label: "My Classes", href: "/dashboard/teacher/classes", icon: BookOpen },
@@ -143,12 +156,15 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isTeacher = user?.role === "Teacher" || user?.role === "Instructor"
   const isAdmin = user?.role === "Admin" || user?.role === "Institution Admin"
   const isParent = user?.role === "Parent"
+  const isLearner = user?.role === "Other Learner"
 
   const activeNav = isParent
     ? parentNav
     : isTeacher
       ? teacherNav
-      : getStudentNav(user)
+      : isLearner
+        ? learnerNav
+        : getStudentNav(user)
 
   return (
     <div className="flex h-full flex-col bg-card">
