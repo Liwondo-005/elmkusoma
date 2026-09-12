@@ -1,7 +1,11 @@
+import Link from "next/link"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+
 export function NurseryHero() {
   return (
     <section className="relative overflow-hidden border-b border-border bg-gradient-to-br from-accent via-background to-accent/50">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-20 lg:px-8">
         <div className="max-w-3xl">
           <span className="inline-flex items-center gap-1.5 rounded-md bg-orange/10 px-2.5 py-1 text-xs font-semibold text-orange">
             Nursery Level
@@ -13,6 +17,15 @@ export function NurseryHero() {
             Fun, interactive classes for the youngest learners. Explore nursery schools with
             Baby, Middle and Top levels — taught through games, stories and creative activities.
           </p>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/register" className={cn(buttonVariants(), "h-12 px-6 text-base")}>
+              Register Now
+            </Link>
+            <Link href="/schools/nursery/fortune" className={cn(buttonVariants({ variant: "outline" }), "h-12 px-6 text-base")}>
+              View Schools
+            </Link>
+          </div>
 
           <div className="mt-8 flex flex-wrap gap-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
