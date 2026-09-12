@@ -18,6 +18,7 @@ const roles = [
   "Student",
   "Teacher",
   "Parent",
+  "Other Learner",
 ]
 
 const learningLevels = [
