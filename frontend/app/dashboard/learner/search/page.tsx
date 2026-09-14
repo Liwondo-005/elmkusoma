@@ -36,7 +36,8 @@ export default function LearnerSearchPage() {
     try {
       setLoading(true)
       setError(null)
-      const searchType = type === "all" ? undefined : type
+      const typeMap: Record<string, string> = { courses: "COURSE", resources: "RESOURCE", "live-classes": "LIVE_CLASS" }
+      const searchType = type === "all" ? undefined : (typeMap[type] || type)
       const data = await learnerApi.search(q, searchType)
       setResults(data)
     } catch {
