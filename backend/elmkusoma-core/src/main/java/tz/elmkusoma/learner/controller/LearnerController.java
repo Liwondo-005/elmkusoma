@@ -226,6 +226,17 @@ public class LearnerController {
                 .progressPercentage(0.0)
                 .build();
         enrollment = enrollmentRepository.save(enrollment);
+
+        LearnerNotification notification = LearnerNotification.builder()
+                .userId(userId)
+                .title("Enrolled in " + course.getTitle())
+                .message("You have successfully enrolled in " + course.getTitle() + ". Start learning now!")
+                .notificationType("ENROLLMENT")
+                .targetType("course")
+                .targetId(courseId)
+                .build();
+        notificationRepository.save(notification);
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Enrolled successfully", toEnrollmentResponse(enrollment)));
     }
@@ -278,8 +289,21 @@ public class LearnerController {
 
         // Update enrollment progress
         enrollmentRepository.findByUserIdAndCourseIdAndIsDeletedFalse(userId, courseId).ifPresent(e -> {
+            boolean wasIncomplete = e.getProgressPercentage() == null || e.getProgressPercentage() < 100.0;
             e.setProgressPercentage(progress);
-            if (progress >= 100.0) e.setCompletedAt(LocalDateTime.now());
+            if (progress >= 100.0 && wasIncomplete) {
+                e.setCompletedAt(LocalDateTime.now());
+                Course course = courseRepository.findById(courseId).orElse(null);
+                LearnerNotification completionNotification = LearnerNotification.builder()
+                        .userId(userId)
+                        .title("Course Completed!")
+                        .message("Congratulations! You have completed " + (course != null ? course.getTitle() : "the course") + ". Check your certificates.")
+                        .notificationType("COURSE_COMPLETION")
+                        .targetType("course")
+                        .targetId(courseId)
+                        .build();
+                notificationRepository.save(completionNotification);
+            }
             enrollmentRepository.save(e);
         });
 
