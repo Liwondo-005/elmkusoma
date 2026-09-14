@@ -1,3 +1,7 @@
+# =============================================================================
+# ELMKUSOMA .gitignore
+# =============================================================================
+
 # Environment files (keep .env.example, ignore actual .env)
 .env
 .env.local
@@ -44,6 +48,3 @@ frontend/tsconfig.tsbuildinfo
 # Redis dump
 dump.rdb
 *.rdb
-
-# Target build output (rebuild when needed)
-backend/elmkusoma-core/target/
