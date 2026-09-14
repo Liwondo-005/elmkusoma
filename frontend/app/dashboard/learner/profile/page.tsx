@@ -106,7 +106,7 @@ export default function LearnerProfilePage() {
             </h2>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Learning Level: {user?.learningLevel || "Not set"}
+              General Learner
             </p>
           </div>
         </div>
