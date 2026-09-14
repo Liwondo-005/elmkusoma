@@ -31,14 +31,18 @@ if (Test-Path $envFile) {
 
 # 2. Set defaults if not in env
 if (-not $env:DB_USERNAME) { $env:DB_USERNAME = "postgres" }
-if (-not $env:DB_PASSWORD) { $env:DB_PASSWORD = "changeme" }
 if (-not $env:DB_HOST)     { $env:DB_HOST = "localhost" }
 if (-not $env:DB_PORT)     { $env:DB_PORT = "5432" }
 if (-not $env:DB_NAME)     { $env:DB_NAME = "elmkusoma" }
 if (-not $env:JWT_SECRET)  { $env:JWT_SECRET = "Y2hvb3NlYS1hLXNlY3VyZS1zZWNyZXQta2V5LWZvci1lbG1rdXNvbWEtand0LXRva2VuLWdlbmVyYXRpb24tMjAyNA==" }
 
-$env:DB_USERNAME = $env:DB_USERNAME
-$env:DB_PASSWORD = $env:DB_PASSWORD
+if (-not $env:DB_PASSWORD) {
+    Write-Host "ERROR: DB_PASSWORD is not set." -ForegroundColor Red
+    Write-Host "Copy .env.example to .env and set your PostgreSQL password:" -ForegroundColor Yellow
+    Write-Host "  cp .env.example .env" -ForegroundColor Gray
+    Write-Host "  # Edit .env and set DB_PASSWORD=your_local_password" -ForegroundColor Gray
+    exit 1
+}
 
 # 3. Check Java
 $javaHome = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot"
