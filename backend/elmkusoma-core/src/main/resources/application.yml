@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/elmkusoma?createDatabaseIfNotExist=true
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:mwesiga}
+    password: ${DB_PASSWORD:gtwina @Tz#}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
