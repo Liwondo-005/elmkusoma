@@ -83,7 +83,7 @@ export default function LearnerDashboardPage() {
                     <Clock className="size-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{item.courseName}</p>
+                    <p className="text-sm font-medium text-foreground truncate">{item.courseTitle}</p>
                     <p className="text-xs text-muted-foreground">
                       {item.progressPercentage}% complete
                     </p>
@@ -196,7 +196,7 @@ export default function LearnerDashboardPage() {
                   <BookOpen className="size-4 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{enrollment.courseName}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{enrollment.courseTitle}</p>
                   <p className="text-xs text-muted-foreground">{enrollment.progressPercentage}% complete</p>
                 </div>
                 <Link
