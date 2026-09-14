@@ -28,6 +28,7 @@ interface AuthContextValue {
     password: string
     phone?: string
     role: string
+    learningLevel?: string
   }) => Promise<{ error?: string }>
   logout: () => Promise<void>
   token: string | null
