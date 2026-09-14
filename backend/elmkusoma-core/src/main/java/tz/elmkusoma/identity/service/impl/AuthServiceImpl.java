@@ -102,29 +102,6 @@ public class AuthServiceImpl implements AuthService {
         return role;
     }
 
-    private static final java.util.Set<User.Role> PUBLIC_REGISTRATION_ROLES = java.util.Set.of(
-            User.Role.STUDENT,
-            User.Role.TEACHER,
-            User.Role.PARENT,
-            User.Role.OTHER_LEARNER
-    );
-
-    private User.Role resolveRegistrationRole(String requestedRole) {
-        if (requestedRole == null || requestedRole.isBlank()) {
-            return User.Role.STUDENT;
-        }
-        User.Role role;
-        try {
-            role = User.Role.valueOf(requestedRole.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid role: " + requestedRole);
-        }
-        if (!PUBLIC_REGISTRATION_ROLES.contains(role)) {
-            throw new IllegalArgumentException("Role '" + role + "' is not allowed for public registration");
-        }
-        return role;
-    }
-
     @Override
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {

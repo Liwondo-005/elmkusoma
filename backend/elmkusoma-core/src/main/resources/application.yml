@@ -33,7 +33,8 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 6
-    validate-on-migrate: false
+    validate-on-migrate: true
+    out-of-order: true
 
   data:
     redis:
