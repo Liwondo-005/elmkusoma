@@ -18,6 +18,8 @@ import tz.elmkusoma.audit.domain.SecurityEvent;
 import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.learner.domain.LearnerNotification;
+import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.student.repository.StudentRepository;
@@ -41,6 +43,7 @@ public class CertificateService {
     private final CertificateMapper certificateMapper;
     private final AuditService auditService;
     private final StudentRepository studentRepository;
+    private final LearnerNotificationRepository learnerNotificationRepository;
 
     // ── Template Management ──
 
@@ -163,6 +166,20 @@ public class CertificateService {
         certificate.setStatus(CertificateStatus.ISSUED);
         certificate.setIssueDate(LocalDateTime.now());
         certificateRepository.save(certificate);
+
+        try {
+            LearnerNotification certNotification = LearnerNotification.builder()
+                    .userId(certificate.getStudentId())
+                    .title("Certificate Issued!")
+                    .message("Your certificate \"" + certificate.getTitle() + "\" has been issued. Verification code: " + certificate.getVerificationCode())
+                    .notificationType("CERTIFICATE")
+                    .targetType("certificate")
+                    .targetId(certificate.getId())
+                    .build();
+            learnerNotificationRepository.save(certNotification);
+        } catch (Exception e) {
+            log.warn("Failed to create certificate issuance notification for student {}: {}", certificate.getStudentId(), e.getMessage());
+        }
 
         auditService.recordAuditLog(institutionId, null, userEmail, userRole,
                 "Certificate", certificate.getId(), certificate.getSerialNumber(),

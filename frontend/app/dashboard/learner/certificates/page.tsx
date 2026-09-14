@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type Certificate } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Award, ExternalLink, AlertCircle } from "lucide-react"
+import { Award, ExternalLink, AlertCircle, Download, ShieldCheck, Calendar, Hash } from "lucide-react"
 
 export default function LearnerCertificatesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -37,6 +37,32 @@ export default function LearnerCertificatesPage() {
       DRAFT: "bg-yellow-500/10 text-yellow-600",
     }
     return styles[status] || "bg-muted text-muted-foreground"
+  }
+
+  function handleDownload(cert: Certificate) {
+    const verifyUrl = `${window.location.origin}/certificates/verify/${cert.verificationCode}`
+    const content = [
+      "CERTIFICATE OF COMPLETION",
+      "",
+      `Title: ${cert.title}`,
+      cert.description ? `Description: ${cert.description}` : "",
+      `Student: ${cert.studentName}`,
+      cert.courseOrProgramme ? `Course/Programme: ${cert.courseOrProgramme}` : "",
+      `Completed: ${new Date(cert.completionDate).toLocaleDateString()}`,
+      `Issued: ${new Date(cert.issueDate).toLocaleDateString()}`,
+      `Verification Code: ${cert.verificationCode}`,
+      `Verify at: ${verifyUrl}`,
+    ].filter(Boolean).join("\n")
+
+    const blob = new Blob([content], { type: "text/plain" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `certificate-${cert.verificationCode}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   if (authLoading || user?.role !== "Other Learner") {
@@ -84,31 +110,42 @@ export default function LearnerCertificatesPage() {
                 <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cert.description}</p>
               )}
               {cert.courseOrProgramme && (
-                <p className="mt-2 text-xs text-muted-foreground">{cert.courseOrProgramme}</p>
+                <p className="mt-2 text-xs font-medium text-foreground">{cert.courseOrProgramme}</p>
               )}
-              <div className="mt-3 space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Issued</span>
-                  <span className="text-foreground">{new Date(cert.issueDate).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Completion</span>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <Calendar className="size-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">Completed:</span>
                   <span className="text-foreground">{new Date(cert.completionDate).toLocaleDateString()}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Verification</span>
+                <div className="flex items-center gap-2 text-xs">
+                  <Calendar className="size-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">Issued:</span>
+                  <span className="text-foreground">{new Date(cert.issueDate).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <Hash className="size-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">Code:</span>
                   <span className="font-mono text-foreground">{cert.verificationCode}</span>
                 </div>
               </div>
-              <a
-                href={`/certificates/verify/${cert.verificationCode}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                <ExternalLink className="size-3" />
-                Verify Certificate
-              </a>
+              <div className="mt-4 flex gap-2">
+                <a
+                  href={`/certificates/verify/${cert.verificationCode}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  <ShieldCheck className="size-3" />
+                  Verify
+                </a>
+                <button
+                  onClick={() => handleDownload(cert)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  <Download className="size-3" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

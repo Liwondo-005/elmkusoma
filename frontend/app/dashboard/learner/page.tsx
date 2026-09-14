@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type DashboardData, type CourseSummary } from "@/lib/learner-api"
+import { learnerApi, type DashboardData, type CourseSummary, type LearnerNotification } from "@/lib/learner-api"
 import { LearnerHeader, ContinueLearningCard, EmptyState, LoadingState } from "@/components/learner/shared"
-import { BookOpen, Library, Video, Award, ArrowRight, Clock, Loader2, AlertCircle, Bookmark, History } from "lucide-react"
+import { BookOpen, Library, Video, Award, ArrowRight, Clock, Loader2, AlertCircle, Bookmark, History, Bell } from "lucide-react"
 
 export default function LearnerDashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
+  const [recentNotifications, setRecentNotifications] = useState<LearnerNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,8 +23,12 @@ export default function LearnerDashboardPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await learnerApi.getDashboard()
+      const [data, notifs] = await Promise.all([
+        learnerApi.getDashboard(),
+        learnerApi.getNotifications().catch(() => []),
+      ])
       setDashboard(data)
+      setRecentNotifications(notifs.slice(0, 5))
     } catch {
       setError("Failed to load dashboard data")
     } finally {
@@ -155,6 +160,39 @@ export default function LearnerDashboardPage() {
           </div>
         </div>
       </div>
+
+      {recentNotifications.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Bell className="size-4 text-muted-foreground" />
+              Recent Notifications
+              {dashboard && dashboard.unreadNotifications > 0 && (
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                  {dashboard.unreadNotifications} unread
+                </span>
+              )}
+            </h2>
+            <Link href="/dashboard/learner/notifications" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              View All <ArrowRight className="size-3" />
+            </Link>
+          </div>
+          <div className="mt-3 space-y-2">
+            {recentNotifications.map((notif) => (
+              <div key={notif.id} className={`flex items-center gap-3 rounded-lg border p-3 ${notif.isRead ? "border-border" : "border-primary/20 bg-primary/5"}`}>
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <Bell className="size-4 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{notif.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{notif.message}</p>
+                </div>
+                {!notif.isRead && <span className="size-2 shrink-0 rounded-full bg-primary" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {dashboard?.recommended && dashboard.recommended.length > 0 && (
         <section>

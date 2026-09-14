@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type LiveClass } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Video, Calendar, Clock, Users, ExternalLink, Search, AlertCircle } from "lucide-react"
+import { Video, Calendar, Clock, Users, ExternalLink, Search, AlertCircle, Bookmark, BookmarkCheck } from "lucide-react"
 
 export default function LearnerLiveClassesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -12,6 +12,7 @@ export default function LearnerLiveClassesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!user || user.role !== "Other Learner") return
@@ -24,10 +25,44 @@ export default function LearnerLiveClassesPage() {
       setError(null)
       const data = await learnerApi.getLiveClasses()
       setLiveClasses(data)
+
+      try {
+        const bookmarks = await learnerApi.getBookmarks()
+        const lcBookmarks = new Set(
+          bookmarks.filter((b) => b.targetType === "liveclass" || b.targetType === "live_class").map((b) => b.targetId)
+        )
+        setBookmarkedIds(lcBookmarks)
+      } catch {
+        // Ignore bookmark check failure
+      }
     } catch {
       setError("Failed to load live classes")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function toggleBookmark(liveClassId: string) {
+    try {
+      if (bookmarkedIds.has(liveClassId)) {
+        const bookmarks = await learnerApi.getBookmarks()
+        const existing = bookmarks.find(
+          (b) => (b.targetType === "liveclass" || b.targetType === "live_class") && b.targetId === liveClassId
+        )
+        if (existing) {
+          await learnerApi.removeBookmark(existing.id)
+        }
+        setBookmarkedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(liveClassId)
+          return next
+        })
+      } else {
+        await learnerApi.addBookmark("liveclass", liveClassId)
+        setBookmarkedIds((prev) => new Set(prev).add(liveClassId))
+      }
+    } catch {
+      // Silent fail
     }
   }
 
@@ -111,9 +146,22 @@ export default function LearnerLiveClassesPage() {
                   <div key={cls.id} className="rounded-2xl border border-green-500/30 bg-card p-5 shadow-xs">
                     <div className="flex items-start justify-between">
                       <h3 className="text-sm font-semibold text-foreground">{cls.title}</h3>
-                      <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
-                        LIVE
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
+                          LIVE
+                        </span>
+                        <button
+                          onClick={() => toggleBookmark(cls.id)}
+                          className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          title={bookmarkedIds.has(cls.id) ? "Remove bookmark" : "Bookmark"}
+                        >
+                          {bookmarkedIds.has(cls.id) ? (
+                            <BookmarkCheck className="size-4 text-primary" />
+                          ) : (
+                            <Bookmark className="size-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     {cls.description && (
                       <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
@@ -153,9 +201,22 @@ export default function LearnerLiveClassesPage() {
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
                     <div className="flex items-start justify-between">
                       <h3 className="text-sm font-semibold text-foreground">{cls.title}</h3>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusBadge(cls.status)}`}>
-                        {getStatusLabel(cls.status)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusBadge(cls.status)}`}>
+                          {getStatusLabel(cls.status)}
+                        </span>
+                        <button
+                          onClick={() => toggleBookmark(cls.id)}
+                          className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          title={bookmarkedIds.has(cls.id) ? "Remove bookmark" : "Bookmark"}
+                        >
+                          {bookmarkedIds.has(cls.id) ? (
+                            <BookmarkCheck className="size-4 text-primary" />
+                          ) : (
+                            <Bookmark className="size-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     {cls.description && (
                       <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
@@ -201,9 +262,22 @@ export default function LearnerLiveClassesPage() {
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs opacity-60">
                     <div className="flex items-start justify-between">
                       <h3 className="text-sm font-semibold text-foreground">{cls.title}</h3>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusBadge(cls.status)}`}>
-                        {getStatusLabel(cls.status)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusBadge(cls.status)}`}>
+                          {getStatusLabel(cls.status)}
+                        </span>
+                        <button
+                          onClick={() => toggleBookmark(cls.id)}
+                          className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          title={bookmarkedIds.has(cls.id) ? "Remove bookmark" : "Bookmark"}
+                        >
+                          {bookmarkedIds.has(cls.id) ? (
+                            <BookmarkCheck className="size-4 text-primary" />
+                          ) : (
+                            <Bookmark className="size-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-3 space-y-1">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
