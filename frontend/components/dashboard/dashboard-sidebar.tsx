@@ -113,7 +113,7 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
 ]
 
-const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
   { label: "My Children", href: "/dashboard/parent/children", icon: Users },
   { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
