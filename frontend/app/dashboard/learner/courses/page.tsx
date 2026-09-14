@@ -98,7 +98,7 @@ export default function LearnerCoursesPage() {
           >
             <option value="all">All Levels</option>
             {levels.map((level) => (
-              <option key={level} value={level}>{level}</option>
+              <option key={String(level)} value={String(level)}>{String(level)}</option>
             ))}
           </select>
           <select
@@ -108,7 +108,7 @@ export default function LearnerCoursesPage() {
           >
             <option value="all">All Categories</option>
             {categories.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={String(cat)} value={String(cat)}>{String(cat)}</option>
             ))}
           </select>
         </div>

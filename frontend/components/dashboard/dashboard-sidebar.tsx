@@ -113,7 +113,7 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
 ]
 
-const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
   { label: "My Children", href: "/dashboard/parent/children", icon: Users },
   { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
@@ -189,14 +189,14 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             >
               <item.icon className="size-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
-              {"badge" in item && item.badge ? (
+              {(item as { badge?: number }).badge ? (
                 <span
                   className={cn(
                     "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
                     active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
                   )}
                 >
-                  {item.badge}
+                  {(item as { badge?: number }).badge}
                 </span>
               ) : null}
             </Link>

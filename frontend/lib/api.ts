@@ -234,11 +234,13 @@ export interface AssignmentSubmission {
   id: string
   assignmentId: string
   studentId: string
+  content?: string
   fileUrl?: string
   submittedAt: string
   grade?: number
   feedback?: string
   gradedAt?: string
+  gradedBy?: string
   createdAt: string
 }
 
@@ -261,6 +263,11 @@ export const learningApi = {
     request<AssignmentSubmission>(`/v1/learning/assignments/${assignmentId}/submit`, { method: "POST" }),
   getSubmissions: (assignmentId: string) =>
     request<AssignmentSubmission[]>(`/v1/learning/assignments/${assignmentId}/submissions`),
+  gradeSubmission: (submissionId: string, grade: number, feedback?: string) => {
+    const params = new URLSearchParams({ grade: String(grade) })
+    if (feedback) params.set("feedback", feedback)
+    return request<AssignmentSubmission>(`/v1/learning/submissions/${submissionId}/grade?${params}`, { method: "PUT" })
+  },
 }
 
 // Assessment API
