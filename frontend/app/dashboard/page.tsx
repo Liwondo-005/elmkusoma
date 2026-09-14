@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { BookOpen, FileText, PenTool, BarChart3, ArrowRight, Loader2, Award } from "lucide-react"
-import { useAuth } from "@/lib/auth"
+import { useRequireAuth } from "@/lib/auth"
+import { dashboardApi, type DashboardSummary, type ContinueLearningItem, type RecentActivity } from "@/lib/api"
+import { BookOpen, FileText, Loader2, PenTool, BarChart3, ArrowRight, Award, Users, TrendingUp, Clock, CheckCircle } from "lucide-react"
 import { getDashboardConfig, getLevelLabel, type LearningLevel } from "@/lib/learner-config"
 import { LearnerHeader, ContinueLearningCard, LearningItemCard, AssignmentCard, ProgressCard, EmptyState, LoadingState } from "@/components/learner/shared"
 
@@ -19,8 +20,12 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth()
+  const { user, loading: authLoading } = useRequireAuth()
   const router = useRouter()
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [continueItems, setContinueItems] = useState<ContinueLearningItem[]>([])
+  const [activities, setActivities] = useState<RecentActivity[]>([])
+  const [loading, setLoading] = useState(true)
   const firstName = user?.name?.split(" ")[0] || "Student"
   const level = user?.learningLevel as LearningLevel | null
   const config = getDashboardConfig(level)
@@ -33,26 +38,56 @@ export default function DashboardPage() {
     pendingWork: [],
     recentActivity: [],
   })
-  const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
-    if (!loading) {
-      if (user?.role === "Parent") router.replace("/dashboard/parent")
-      else if (user?.role === "Teacher") router.replace("/dashboard/teacher")
-      else if (user?.role === "Admin" || user?.role === "Institution Admin") router.replace("/dashboard/admin")
+    if (!authLoading && user?.role === "Parent") {
+      router.replace("/dashboard/parent")
+    } else if (!authLoading && user?.role === "Teacher") {
+      router.replace("/dashboard/teacher")
+    } else if (!authLoading && (user?.role === "Admin" || user?.role === "Institution Admin")) {
+      router.replace("/dashboard/admin")
+    } else if (!authLoading && user?.role === "Other Learner") {
+      router.replace("/dashboard/learner")
     }
-  }, [user, loading, router])
+  }, [user, authLoading, router])
 
   useEffect(() => {
-    if (loading || !user || user.role !== "Student") return
-    async function load() {
+    if (!user || user.role === "Parent" || user.role === "Teacher" || user.role === "Admin" || user.role === "Institution Admin") return
+    loadDashboard()
+  }, [user])
+
+  async function loadDashboard() {
+    try {
+      setLoading(true)
+      const [summaryData, continueData, activityData] = await Promise.all([
+        dashboardApi.getSummary().catch(() => null),
+        dashboardApi.getContinueLearning().catch(() => []),
+        dashboardApi.getRecentActivity().catch(() => []),
+      ])
+      setSummary(summaryData)
+      setContinueItems(continueData)
+      setActivities(activityData)
+
       try {
-        const { studentApi, learningApi, assessmentApi, certificateApi } = await import("@/lib/api")
+        const { studentApi, learningApi, assessmentApi, certificateApi, academicApi } = await import("@/lib/api")
         const institutionId = localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
 
         const students = await studentApi.getStudents(institutionId).catch(() => [])
         const student = students.find((s: any) => s.userId === user?.id || s.email === user?.email)
-        const classId = user?.classGroupId || student?.classGroupId || ""
+
+        if ((student as any)?.classGroupId) {
+          try {
+            const classGroup = await academicApi.getClassGroup((student as any).classGroupId)
+            if (classGroup?.gradeId) {
+              const grade = await academicApi.getGrade(classGroup.gradeId)
+              if (grade?.educationLevel) {
+                localStorage.setItem("elmkusoma_education_level", grade.educationLevel)
+              }
+            }
+          } catch { /* education level stays default */ }
+        }
+
+        const classId = user?.classGroupId || (student as any)?.classGroupId || ""
 
         const [assignments, assessments, certificates, lessons] = await Promise.all([
           classId ? learningApi.getAssignments(classId).catch(() => []) : Promise.resolve([]),
@@ -89,16 +124,16 @@ export default function DashboardPage() {
           })),
         })
       } catch { /* loads with zero data */ }
-      finally { setLoadingData(false) }
+    } catch {
+      // Dashboard data unavailable
+    } finally {
+      setLoading(false)
     }
-    load()
-  }, [user, loading])
-
-  if (user?.role === "Parent" || user?.role === "Teacher" || user?.role === "Admin" || user?.role === "Institution Admin") {
-    return null
   }
 
-  if (loading || loadingData) return <LoadingState />
+  if (authLoading || loading || user?.role === "Parent" || user?.role === "Teacher" || user?.role === "Admin" || user?.role === "Institution Admin") {
+    return <LoadingState />
+  }
 
   const levelLabel = getLevelLabel(level)
 
@@ -108,21 +143,47 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <ProgressCard label="Lessons" value={data.totalLessons} />
-        <ProgressCard label="Pending Assignments" value={data.pendingAssignments} />
-        <ProgressCard label="Assessments" value={data.assessments} />
-        <ProgressCard label="Certificates" value={data.certificates} />
+        <ProgressCard label="Enrolled Courses" value={summary?.activeEnrollments ?? 0} />
+        <ProgressCard label="Lessons Completed" value={summary?.completedLessons ?? 0} />
+        <ProgressCard label="Attendance Rate" value={summary?.monthAttendanceRate ?? 0} />
+        <ProgressCard label="Overall Average" value={summary?.overallAverage ?? 0} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Continue Learning */}
         <div className="lg:col-span-2">
-          {data.recentLessons.length > 0 ? (
+          {continueItems.length > 0 ? (
+            <div className="space-y-3">
+              {continueItems.map((item) => (
+                <Link
+                  key={item.lessonId}
+                  href={`/dashboard/lessons/${item.lessonId}`}
+                  className="flex items-center gap-4 rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
+                >
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+                    <Clock className="size-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">Lesson {item.lessonId.slice(0, 8)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.startedAt ? new Date(item.startedAt).toLocaleDateString() : "Recently started"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-primary">{Math.round(item.completionPercentage)}%</p>
+                    <div className="mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${item.completionPercentage}%` }} />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : data.recentLessons.length > 0 ? (
             <ContinueLearningCard
               title={data.recentLessons[0].title}
               subject={data.recentLessons[0].subject}
               progress={data.recentLessons[0].progress}
-              onResume={() => data.recentLessons[0].id && router.push(`/dashboard/lessons`)}
+              onResume={() => data.recentLessons[0].id && router.push("/dashboard/lessons")}
             />
           ) : (
             <ContinueLearningCard title={undefined} onResume={() => router.push("/dashboard/lessons")} />
@@ -165,26 +226,51 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Pending Work */}
-      {data.pendingWork.length > 0 && (
-        <section>
-          <h2 className="text-base font-semibold text-foreground">Pending Work</h2>
-          <div className="mt-3 space-y-2">
-            {data.pendingWork.map((work, i) => (
-              <AssignmentCard
-                key={i}
-                title={work.title}
-                subject={work.subject}
-                dueDate={work.dueDate}
-                status={work.status}
-              />
+      {/* Recent Activity */}
+      {activities.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
+          <div className="space-y-3">
+            {activities.map((activity, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                <div className={`flex size-8 items-center justify-center rounded-lg ${
+                  activity.type === "lesson_completed" ? "bg-green-500/10" : "bg-blue-500/10"
+                }`}>
+                  {activity.type === "lesson_completed" ? (
+                    <CheckCircle className="size-4 text-green-600" />
+                  ) : (
+                    <Clock className="size-4 text-blue-600" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    {activity.type === "lesson_completed" ? "Completed a lesson" : "Attendance recorded"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {activity.completedAt
+                      ? new Date(activity.completedAt).toLocaleDateString()
+                      : activity.date
+                        ? new Date(activity.date).toLocaleDateString()
+                        : ""}
+                  </p>
+                </div>
+                {activity.status && (
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    activity.status === "PRESENT" ? "bg-green-100 text-green-700" :
+                    activity.status === "ABSENT" ? "bg-red-100 text-red-700" :
+                    "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {activity.status}
+                  </span>
+                )}
+              </div>
             ))}
           </div>
-        </section>
+        </div>
       )}
 
       {/* Empty state if no data */}
-      {data.totalLessons === 0 && data.pendingAssignments === 0 && (
+      {data.totalLessons === 0 && continueItems.length === 0 && activities.length === 0 && (
         <EmptyState
           icon={<BookOpen className="size-8" />}
           title={config.emptyStateTitle}

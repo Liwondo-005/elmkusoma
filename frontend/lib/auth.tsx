@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { authApi, setTokens, clearTokens, type UserInfo } from "@/lib/api"
+import { authApi, setTokens, clearTokens, getRefreshToken, type UserInfo } from "@/lib/api"
 
 export interface AuthUser {
   id: string
@@ -28,9 +28,11 @@ interface AuthContextValue {
     password: string
     phone?: string
     role: string
+    learningLevel?: string
   }) => Promise<{ error?: string }>
   logout: () => Promise<void>
   token: string | null
+  refreshToken: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -71,6 +73,24 @@ function setAuthCookie(token: string | null) {
   }
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64 = token.split(".")[1]
+    const json = atob(base64.replace(/-/g, "+").replace(/_/g, "/"))
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
+
+function isTokenExpiringSoon(token: string): boolean {
+  const payload = decodeJwtPayload(token)
+  if (!payload || !payload.exp) return true
+  const expiresAt = (payload.exp as number) * 1000
+  const now = Date.now()
+  return expiresAt - now < 5 * 60 * 1000
+}
+
 function mapUserInfo(info: UserInfo): AuthUser {
   return {
     id: info.id,
@@ -90,6 +110,7 @@ function mapRoleToFrontend(backendRole: string): string {
     STUDENT: "Student",
     TEACHER: "Teacher",
     PARENT: "Parent",
+    OTHER_LEARNER: "Other Learner",
     ADMIN: "Admin",
     INSTITUTION_ADMIN: "Institution Admin",
   }
@@ -103,6 +124,7 @@ function mapRoleToBackend(frontendRole: string): string {
     Lecturer: "TEACHER",
     Facilitator: "TEACHER",
     Parent: "PARENT",
+    "Other Learner": "OTHER_LEARNER",
     Admin: "ADMIN",
     "Institution Admin": "INSTITUTION_ADMIN",
   }
@@ -113,14 +135,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const doRefreshToken = useCallback(async (): Promise<boolean> => {
+    const refreshToken = getRefreshToken()
+    if (!refreshToken) return false
+    try {
+      const response = await authApi.refresh(refreshToken)
+      const authUser = mapUserInfo(response.user)
+      authUser.role = mapRoleToFrontend(response.user.role)
+      setTokens(response.accessToken, response.refreshToken)
+      setAuthCookie(response.accessToken)
+      setCurrentUser(authUser)
+      setUser(authUser)
+      return true
+    } catch {
+      clearTokens()
+      setAuthCookie(null)
+      setCurrentUser(null)
+      setUser(null)
+      return false
+    }
+  }, [])
+
   useEffect(() => {
     const token = getStoredToken()
     const stored = getStoredUser()
     if (token && stored) {
       setUser(stored)
+      if (isTokenExpiringSoon(token)) {
+        doRefreshToken()
+      }
     }
     setLoading(false)
-  }, [])
+  }, [doRefreshToken])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const token = getStoredToken()
+      if (token && isTokenExpiringSoon(token)) {
+        doRefreshToken()
+      }
+    }, 60 * 1000)
+    return () => clearInterval(interval)
+  }, [doRefreshToken])
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -182,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, token: getStoredToken() }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, token: getStoredToken(), refreshToken: doRefreshToken }}>
       {children}
     </AuthContext.Provider>
   )

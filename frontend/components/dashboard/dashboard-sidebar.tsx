@@ -2,13 +2,118 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, Bell, Clock } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
-import { getDashboardConfig, type LearningLevel } from "@/lib/learner-config"
 
-const parentNav = [
+const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Activities", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Fun Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "My Drawings", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const collegeNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
+  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
+  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
+  { label: "Results", href: "/dashboard/results", icon: Award },
+  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
+  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
+  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+]
+
+const learnerNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard },
+  { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+  { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
+  { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
+  { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
+  { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
+  { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
+  { label: "Notifications", href: "/dashboard/learner/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/learner/profile", icon: User },
+  { label: "Settings", href: "/dashboard/learner/settings", icon: Settings },
+]
+
+const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
+  { label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard },
+  { label: "My Classes", href: "/dashboard/teacher/classes", icon: BookOpen },
+  { label: "Students", href: "/dashboard/teacher/students", icon: Users },
+  { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
+  { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
+  { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
+  { label: "Gradebook", href: "/dashboard/teacher/gradebook", icon: BarChart3 },
+  { label: "Grading", href: "/dashboard/teacher/grading", icon: Award },
+  { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Calendar },
+  { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
+  { label: "Announcements", href: "/dashboard/teacher/announcements", icon: Bell },
+  { label: "Analytics", href: "/dashboard/teacher/analytics", icon: TrendingUp },
+  { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
+  { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
+]
+
+const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
   { label: "My Children", href: "/dashboard/parent/children", icon: Users },
   { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
@@ -21,29 +126,22 @@ const parentNav = [
   { label: "Settings", href: "/dashboard/parent/settings", icon: Settings },
 ]
 
-const teacherNav = [
-  { label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard },
-  { label: "My Classes", href: "/dashboard/teacher/classes", icon: Users },
-  { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardList },
-  { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
-  { label: "Grading", href: "/dashboard/teacher/grading", icon: BarChart3 },
-  { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Clock },
-  { label: "Messages", href: "/dashboard/teacher/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
-  { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
-]
-
-const adminNav = [
+const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
+  { label: "Institutions", href: "/dashboard/admin/institutions", icon: School },
   { label: "Roles", href: "/dashboard/admin/roles", icon: Shield },
+  { label: "Data Import", href: "/dashboard/admin/import", icon: FileText },
   { label: "Audit", href: "/dashboard/audit", icon: Shield },
 ]
 
-const studentExtraNav = [
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Certificates", href: "/dashboard/certificates", icon: Award },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
-]
+function getStudentNav(user: { learningLevel?: string | null } | null) {
+  const level = (user?.learningLevel || "").toUpperCase()
+  if (level === "NURSERY") return nurseryNav
+  if (level === "PRIMARY") return primaryNav
+  if (level === "COLLEGE") return collegeNav
+  if (level === "UNIVERSITY") return universityNav
+  return secondaryNav
+}
 
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
@@ -55,15 +153,18 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     router.push("/login")
   }
 
-  let items = nav
-  if (user?.role === "Parent") {
-    items = parentNav
-  } else if (user?.role === "Teacher") {
-    items = teacherNav
-  } else if (user?.role === "Student") {
-    const config = getDashboardConfig(user?.learningLevel as LearningLevel | null)
-    items = [...config.navItems, ...studentExtraNav]
-  }
+  const isTeacher = user?.role === "Teacher" || user?.role === "Instructor"
+  const isAdmin = user?.role === "Admin" || user?.role === "Institution Admin"
+  const isParent = user?.role === "Parent"
+  const isLearner = user?.role === "Other Learner"
+
+  const activeNav = isParent
+    ? parentNav
+    : isTeacher
+      ? teacherNav
+      : isLearner
+        ? learnerNav
+        : getStudentNav(user)
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -72,8 +173,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {items.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
+        {activeNav.map((item) => {
+          const active = pathname === item.href || (item.href !== "/dashboard" && item.href !== "/dashboard/teacher" && pathname.startsWith(item.href))
           return (
             <Link
               key={item.href}
@@ -88,21 +189,21 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             >
               <item.icon className="size-4 shrink-0" />
               <span className="flex-1">{item.label}</span>
-              {"badge" in item && item.badge ? (
+              {(item as { badge?: number }).badge ? (
                 <span
                   className={cn(
                     "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
                     active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
                   )}
                 >
-                  {item.badge}
+                  {(item as { badge?: number }).badge}
                 </span>
               ) : null}
             </Link>
           )
         })}
 
-        {(user?.role === "Admin" || user?.role === "Institution Admin") && (
+        {isAdmin && (
           <>
             <div className="my-2 border-t border-border" />
             <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -144,14 +245,3 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     </div>
   )
 }
-
-const nav = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
-  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
-  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
-]

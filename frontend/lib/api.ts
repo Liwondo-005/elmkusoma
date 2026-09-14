@@ -157,6 +157,12 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  refresh: (refreshToken: string) =>
+    request<AuthResponse>("/v1/auth/refresh", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken }),
+    }),
 }
 
 // Enrollment API
@@ -228,11 +234,13 @@ export interface AssignmentSubmission {
   id: string
   assignmentId: string
   studentId: string
+  content?: string
   fileUrl?: string
   submittedAt: string
   grade?: number
   feedback?: string
   gradedAt?: string
+  gradedBy?: string
   createdAt: string
 }
 
@@ -255,6 +263,11 @@ export const learningApi = {
     request<AssignmentSubmission>(`/v1/learning/assignments/${assignmentId}/submit`, { method: "POST" }),
   getSubmissions: (assignmentId: string) =>
     request<AssignmentSubmission[]>(`/v1/learning/assignments/${assignmentId}/submissions`),
+  gradeSubmission: (submissionId: string, grade: number, feedback?: string) => {
+    const params = new URLSearchParams({ grade: String(grade) })
+    if (feedback) params.set("feedback", feedback)
+    return request<AssignmentSubmission>(`/v1/learning/submissions/${submissionId}/grade?${params}`, { method: "PUT" })
+  },
 }
 
 // Assessment API
@@ -800,7 +813,66 @@ export interface DashboardResponse {
   activeStudents: number
   certificatesIssued: number
   pendingImportJobs: number
+  totalCourses: number
+  publishedCourses: number
+  draftCourses: number
+  totalModules: number
+  totalLessons: number
+  liveClassesScheduled: number
   additionalStats: Record<string, unknown>
+}
+
+export interface Course {
+  id: string
+  institutionId: string
+  subjectId: string | null
+  subjectName: string | null
+  title: string
+  description: string | null
+  thumbnailUrl: string | null
+  level: string
+  category: string | null
+  isPublished: boolean
+  isFeatured: boolean
+  createdByName: string | null
+  moduleCount: number
+  lessonCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CourseModule {
+  id: string
+  courseId: string
+  title: string
+  description: string | null
+  sortOrder: number
+  lessonCount: number
+  createdAt: string
+}
+
+export interface CourseLesson {
+  id: string
+  moduleId: string
+  title: string
+  contentType: string
+  contentUrl: string | null
+  durationMinutes: number | null
+  sortOrder: number
+  isFree: boolean
+  createdAt: string
+}
+
+export interface CourseStats {
+  totalCourses: number
+  publishedCourses: number
+  draftCourses: number
+  featuredCourses: number
+  totalModules: number
+  totalLessons: number
+  liveClassesScheduled: number
+  liveClassesCompleted: number
+  coursesByLevel: Record<string, number>
 }
 
 export interface SettingResponse {
@@ -905,6 +977,71 @@ export const adminApi = {
 }
 
 // ---------------------------------------------------------------------------
+// Course API
+// ---------------------------------------------------------------------------
+
+export const courseApi = {
+  listCourses: (institutionId: string) =>
+    request<Course[]>(`/v1/courses`),
+
+  getCourse: (courseId: string) =>
+    request<Course>(`/v1/courses/${courseId}`),
+
+  createCourse: (data: { title: string; description?: string; subjectId?: string; level?: string; category?: string; thumbnailUrl?: string; isPublished?: boolean; isFeatured?: boolean }) =>
+    request<Course>(`/v1/courses`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateCourse: (courseId: string, data: { title?: string; description?: string; subjectId?: string; level?: string; category?: string; thumbnailUrl?: string; isPublished?: boolean; isFeatured?: boolean }) =>
+    request<Course>(`/v1/courses/${courseId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteCourse: (courseId: string) =>
+    request<void>(`/v1/courses/${courseId}`, {
+      method: "DELETE",
+    }),
+
+  togglePublish: (courseId: string) =>
+    request<Course>(`/v1/courses/${courseId}/toggle-publish`, {
+      method: "POST",
+    }),
+
+  getStats: () =>
+    request<CourseStats>(`/v1/courses/stats`),
+
+  listModules: (courseId: string) =>
+    request<CourseModule[]>(`/v1/courses/${courseId}/modules`),
+
+  createModule: (courseId: string, data: { title: string; description?: string; sortOrder?: number }) =>
+    request<CourseModule>(`/v1/courses/${courseId}/modules`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteModule: (moduleId: string) =>
+    request<void>(`/v1/courses/modules/${moduleId}`, {
+      method: "DELETE",
+    }),
+
+  listLessons: (moduleId: string) =>
+    request<CourseLesson[]>(`/v1/courses/modules/${moduleId}/lessons`),
+
+  createLesson: (moduleId: string, data: { title: string; contentType: string; contentUrl?: string; durationMinutes?: number; sortOrder?: number; isFree?: boolean }) =>
+    request<CourseLesson>(`/v1/courses/modules/${moduleId}/lessons`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteLesson: (lessonId: string) =>
+    request<void>(`/v1/courses/lessons/${lessonId}`, {
+      method: "DELETE",
+    }),
+}
+
+// ---------------------------------------------------------------------------
 // Audit API
 // ---------------------------------------------------------------------------
 
@@ -1005,4 +1142,351 @@ export const auditApi = {
 
   getComplianceReport: (institutionId: string) =>
     request<ComplianceReportResponse>(`/v1/audit/compliance?institutionId=${institutionId}`),
+}
+
+export interface Institution {
+  id: string
+  name: string
+  description: string | null
+  type: string
+  status: string | null
+  logoUrl: string | null
+  website: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  city: string | null
+  country: string | null
+  createdAt: string
+}
+
+export interface CreateInstitutionRequest {
+  name: string
+  description?: string
+  type: string
+  logoUrl?: string
+  website?: string
+  email?: string
+  phone?: string
+  address?: string
+  city?: string
+  country?: string
+}
+
+export interface UpdateInstitutionRequest {
+  name?: string
+  description?: string
+  logoUrl?: string
+  website?: string
+  email?: string
+  phone?: string
+  address?: string
+  city?: string
+  country?: string
+}
+
+export const institutionApi = {
+  get: (id: string) =>
+    request<Institution>(`/v1/institutions/${id}`),
+
+  list: (page = 0, size = 20) =>
+    request<{ content: Institution[]; totalElements: number; totalPages: number }>(
+      `/v1/institutions?page=${page}&size=${size}`
+    ),
+
+  create: (data: CreateInstitutionRequest) =>
+    request<Institution>("/v1/institutions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: UpdateInstitutionRequest) =>
+    request<Institution>(`/v1/institutions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    request<void>(`/v1/institutions/${id}`, { method: "DELETE" }),
+
+  activate: (id: string) =>
+    request<Institution>(`/v1/institutions/${id}/activate`, { method: "PUT" }),
+
+  deactivate: (id: string) =>
+    request<Institution>(`/v1/institutions/${id}/deactivate`, { method: "PUT" }),
+}
+
+export interface TeacherProfile {
+  id: string
+  userId: string
+  fullName: string
+  email: string
+  phone: string
+  employeeNumber: string
+  status: string
+  specialization: string
+  hireDate: string
+  bio: string
+  createdAt: string
+}
+
+export interface TeacherClassGroup {
+  classGroupId: string
+  className: string
+  classSection: string
+  subjectId: string
+  subjectName: string
+  academicYear: string
+  enrolledStudents: number
+  totalAssignments: number
+  totalLessons: number
+}
+
+export interface TeacherStudent {
+  studentId: string
+  fullName: string
+  email: string
+  admissionNumber: string
+  className: string
+  subjectName: string
+  gender: string
+  status: string
+  classGroupId: string
+}
+
+export interface TeacherDashboard {
+  totalStudents: number
+  totalClasses: number
+  totalAssignments: number
+  totalAssessments: number
+  pendingSubmissions: number
+  pendingGrading: number
+  classes: Array<{
+    classGroupId: string
+    className: string
+    subjectName: string
+    enrolledStudents: number
+  }>
+  recentActivity: Array<{
+    type: string
+    title: string
+    description: string
+    timestamp: string
+  }>
+}
+
+export interface LiveClass {
+  id: string
+  subjectId: string
+  teacherId: string
+  title: string
+  description: string
+  scheduledAt: string
+  durationMinutes: number
+  status: string
+  meetingUrl: string
+  maxParticipants: number
+  recordingUrl: string
+  createdAt: string
+}
+
+export const teacherApi = {
+  getProfile: () =>
+    request<TeacherProfile>("/v1/teachers/me/profile"),
+
+  getClasses: () =>
+    request<TeacherClassGroup[]>("/v1/teachers/me/classes"),
+
+  getStudents: () =>
+    request<TeacherStudent[]>("/v1/teachers/me/students"),
+
+  getDashboard: () =>
+    request<TeacherDashboard>("/v1/teachers/me/dashboard"),
+}
+
+export interface CreateLessonRequest {
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  contentText?: string
+  videoUrl?: string
+  fileAttachments?: string
+  sortOrder?: number
+  isPublished?: boolean
+}
+
+export const lessonApi = {
+  create: (data: CreateLessonRequest) =>
+    request<Lesson>("/v1/learning/lessons", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}
+
+export interface CreateAssessmentRequest {
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  timeLimitMinutes?: number
+  totalMarks: number
+  passMarks: number
+  isPublished?: boolean
+  startsAt?: string
+  endsAt?: string
+}
+
+export const assessmentCreateApi = {
+  create: (data: CreateAssessmentRequest) =>
+    request<Assessment>("/v1/assessments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}
+
+export interface CreateAssignmentRequest {
+  subjectId: string
+  classGroupId: string
+  title: string
+  description?: string
+  dueDate?: string
+  totalMarks: number
+  attachments?: string
+}
+
+export const assignmentCreateApi = {
+  create: (data: CreateAssignmentRequest) =>
+    request<Assignment>("/v1/learning/assignments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}
+
+export const liveClassApi = {
+  getByTeacher: (teacherId: string) =>
+    request<LiveClass[]>(`/v1/teachers/${teacherId}/live-classes`),
+}
+
+export const attendanceApi = {
+  getByClassAndDate: (classGroupId: string, date: string) =>
+    request<unknown[]>(`/v1/attendance?classGroupId=${classGroupId}&date=${date}`),
+
+  mark: (data: { studentId: string; classGroupId: string; attendanceDate: string; status: string; remarks?: string }) =>
+    request<unknown>("/v1/attendance/mark", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  bulkMark: (data: { classGroupId: string; attendanceDate: string; records: Array<{ studentId: string; status: string; remarks?: string }> }) =>
+    request<unknown>("/v1/attendance/bulk", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getSummary: (studentId: string) =>
+    request<unknown>(`/v1/attendance/summary/student/${studentId}`),
+}
+
+export const gradingApi = {
+  getScales: () =>
+    request<unknown[]>("/v1/grading/scales"),
+
+  getReportCard: (id: string) =>
+    request<unknown>(`/v1/grading/report-cards/${id}`),
+
+  getStudentReportCards: (studentId: string) =>
+    request<unknown[]>(`/v1/grading/report-cards/student/${studentId}`),
+}
+
+// ── Student Dashboard API ────────────────────────────────────────────────────
+
+export interface DashboardSummary {
+  studentId: string
+  admissionNumber: string
+  status: string
+  totalEnrollments: number
+  activeEnrollments: number
+  totalReportCards: number
+  monthAttendanceTotal: number
+  monthAttendancePresent: number
+  monthAttendanceRate: number
+  totalLessonsStarted: number
+  completedLessons: number
+  overallAverage: number
+}
+
+export interface ContinueLearningItem {
+  lessonId: string
+  completionPercentage: number
+  startedAt: string
+  completedAt: string | null
+}
+
+export interface RecentActivity {
+  type: string
+  lessonId?: string
+  completedAt?: string
+  date?: string
+  status?: string
+}
+
+export interface SubjectGradeResult {
+  subjectId: string
+  marksObtained: number
+  grade: string
+  gradePoints: number
+  teacherRemarks: string
+}
+
+export interface StudentResult {
+  id: string
+  academicYearId: string
+  termId: string
+  totalMarks: number
+  averageMark: number
+  classRank: number
+  remarks: string
+  overallGrade: string
+  isPublished: boolean
+  subjectGrades: SubjectGradeResult[]
+}
+
+export interface AttendanceRecordItem {
+  id: string
+  date: string
+  status: string
+  checkInTime: string | null
+  checkOutTime: string | null
+  remarks: string | null
+}
+
+export interface AttendanceSummary {
+  totalDays: number
+  present: number
+  absent: number
+  late: number
+  excused: number
+  attendanceRate: number
+  records: AttendanceRecordItem[]
+}
+
+export const dashboardApi = {
+  getSummary: () =>
+    request<DashboardSummary>("/v1/student/dashboard/summary"),
+
+  getContinueLearning: () =>
+    request<ContinueLearningItem[]>("/v1/student/dashboard/continue-learning"),
+
+  getRecentActivity: () =>
+    request<RecentActivity[]>("/v1/student/dashboard/recent-activity"),
+
+  getResults: () =>
+    request<StudentResult[]>("/v1/student/dashboard/results"),
+
+  getAttendance: () =>
+    request<AttendanceSummary>("/v1/student/dashboard/attendance"),
+
+  getLiveClasses: () =>
+    request<unknown[]>("/v1/student/dashboard/live-classes"),
 }
