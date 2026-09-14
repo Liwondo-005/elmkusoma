@@ -1,17 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { Settings, Save, Loader2 } from "lucide-react"
+import { Settings, Save, Loader2, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 
 export default function TeacherSettingsPage() {
   const { user } = useAuth()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState("")
   const [firstName, setFirstName] = useState(user?.firstName || "")
   const [lastName, setLastName] = useState(user?.lastName || "")
   const [phone, setPhone] = useState("")
-  const [department, setDepartment] = useState("")
   const [notifAttendance, setNotifAttendance] = useState(true)
   const [notifAssignments, setNotifAssignments] = useState(true)
   const [notifMessages, setNotifMessages] = useState(false)
@@ -19,10 +19,29 @@ export default function TeacherSettingsPage() {
 
   async function handleSave() {
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 800))
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    setError("")
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
+      const res = await fetch(`/v1/teachers/me/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ firstName, lastName }),
+      })
+      if (res.ok) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      } else {
+        const body = await res.json().catch(() => ({}))
+        setError(body.error || body.message || "Failed to save. Profile updates may require admin assistance.")
+      }
+    } catch {
+      setError("Network error. Please try again.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -42,6 +61,13 @@ export default function TeacherSettingsPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="size-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Profile</h3>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -60,10 +86,6 @@ export default function TeacherSettingsPage() {
           <div>
             <label className="text-xs font-medium text-muted-foreground">Phone</label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder="+255..." />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-xs font-medium text-muted-foreground">Department</label>
-            <input value={department} onChange={(e) => setDepartment(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder="e.g. Mathematics" />
           </div>
         </div>
       </div>

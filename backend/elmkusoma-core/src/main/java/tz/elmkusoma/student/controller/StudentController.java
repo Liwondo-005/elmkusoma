@@ -1,9 +1,12 @@
 package tz.elmkusoma.student.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.student.domain.StudentClassAssignment;
@@ -18,11 +21,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/students")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 public class StudentController {
 
     private final StudentService studentService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<StudentResponse>> createStudent(
             @Valid @RequestBody StudentRequest request) {
         StudentResponse student = studentService.createStudent(request);
@@ -31,8 +36,9 @@ public class StudentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<StudentResponse>>> getStudents(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) UUID classId,
             @RequestParam(required = false) String query) {
         List<StudentResponse> students;
@@ -45,12 +51,24 @@ public class StudentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<StudentResponse>> getStudent(@PathVariable UUID id) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    public ResponseEntity<ApiResponse<StudentResponse>> getStudent(
+            @PathVariable UUID id, HttpServletRequest request) {
+        String role = (String) request.getAttribute("userRole");
+        if ("STUDENT".equals(role)) {
+            UUID userId = (UUID) request.getAttribute("userId");
+            StudentResponse student = studentService.getStudent(id);
+            if (!id.equals(studentService.getStudentIdByUserId(userId))) {
+                throw new AccessDeniedException("You can only view your own profile");
+            }
+            return ResponseEntity.ok(ApiResponse.success(student));
+        }
         StudentResponse student = studentService.getStudent(id);
         return ResponseEntity.ok(ApiResponse.success(student));
     }
 
     @GetMapping("/admission/{admissionNumber}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<StudentResponse>> getStudentByAdmission(
             @PathVariable String admissionNumber) {
         StudentResponse student = studentService.getStudentByAdmissionNumber(admissionNumber);
@@ -58,6 +76,7 @@ public class StudentController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudentResponse>> updateStudent(
             @PathVariable UUID id,
             @Valid @RequestBody StudentRequest request) {
@@ -66,6 +85,7 @@ public class StudentController {
     }
 
     @PostMapping("/{id}/assign-class")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudentClassAssignment>> assignToClass(
             @PathVariable UUID id,
             @Valid @RequestBody AssignClassRequest request) {
@@ -75,15 +95,17 @@ public class StudentController {
     }
 
     @GetMapping("/stats/count")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Long>> countStudents(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId) {
         long count = studentService.countStudents(institutionId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }
 
     @GetMapping("/stats/active")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Long>> countActiveStudents(
-            @RequestParam UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId) {
         long count = studentService.countActiveStudents(institutionId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }

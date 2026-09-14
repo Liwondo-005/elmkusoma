@@ -59,6 +59,8 @@ public class JwtRequestAttributeFilter extends OncePerRequestFilter implements O
                     User user = userRepository.findByEmailAndIsDeletedFalse(email).orElse(null);
                     if (user != null) {
                         request.setAttribute("userId", user.getId());
+                        request.setAttribute("userEmail", user.getEmail());
+                        request.setAttribute("userRole", user.getRole().name());
 
                         List<InstitutionMembership> memberships =
                                 membershipRepository.findByUserIdAndIsActiveTrue(user.getId());

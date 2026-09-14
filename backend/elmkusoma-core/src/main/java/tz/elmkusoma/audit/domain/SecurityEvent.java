@@ -65,7 +65,12 @@ public class SecurityEvent {
     private UUID resolvedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
 
     public enum SecurityEventType {
         LOGIN_SUCCESS,
@@ -79,13 +84,16 @@ public class SecurityEvent {
         SUSPICIOUS_ACTIVITY,
         DATA_EXPORT,
         DATA_BREACH_ATTEMPT,
-        SESSION_EXPIRED
+        SESSION_EXPIRED,
+        CERTIFICATE_REVOKED,
+        CERTIFICATE_ISSUED
     }
 
     public enum Severity {
         INFO,
         WARNING,
         ERROR,
-        CRITICAL
+        CRITICAL,
+        MEDIUM
     }
 }

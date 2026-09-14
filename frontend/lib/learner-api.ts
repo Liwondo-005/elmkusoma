@@ -43,7 +43,8 @@ export interface CourseSummary {
   createdAt: string
 }
 
-export interface CourseDetail extends CourseSummary {
+export interface CourseDetail {
+  course: CourseSummary
   modules: CourseModuleSummary[]
 }
 
@@ -66,19 +67,21 @@ export interface CourseLesson {
 export interface Enrollment {
   id: string
   courseId: string
-  courseName: string
+  courseTitle: string
+  courseDescription: string | null
+  courseThumbnailUrl: string | null
+  courseLevel: string | null
+  courseCategory: string | null
   enrolledAt: string
   completedAt: string | null
   progressPercentage: number
-  thumbnailUrl: string | null
 }
 
 export interface Bookmark {
   id: string
   targetType: string
   targetId: string
-  title: string
-  description: string | null
+  targetTitle: string
   createdAt: string
 }
 

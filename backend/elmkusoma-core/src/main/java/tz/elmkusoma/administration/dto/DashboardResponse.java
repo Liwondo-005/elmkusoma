@@ -21,5 +21,11 @@ public class DashboardResponse {
     private Long activeStudents;
     private Long certificatesIssued;
     private Long pendingImportJobs;
+    private Long totalCourses;
+    private Long publishedCourses;
+    private Long draftCourses;
+    private Long totalModules;
+    private Long totalLessons;
+    private Long liveClassesScheduled;
     private Map<String, Object> additionalStats;
 }

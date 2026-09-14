@@ -2,6 +2,7 @@ package tz.elmkusoma.identity.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -28,7 +29,8 @@ public class RegisterRequest {
 
     private String phone;
 
-    @NotBlank(message = "Role is required")
+    @Pattern(regexp = "STUDENT|TEACHER|PARENT|OTHER_LEARNER",
+            message = "Role must be one of: STUDENT, TEACHER, PARENT, OTHER_LEARNER")
     private String role;
 
     private String learningLevel;

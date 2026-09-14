@@ -546,12 +546,33 @@ public class LearnerController {
     }
 
     private BookmarkResponse toBookmarkResponse(Bookmark b) {
+        String targetTitle = resolveTargetTitle(b.getTargetType(), b.getTargetId());
         return BookmarkResponse.builder()
                 .id(b.getId())
                 .targetType(b.getTargetType())
                 .targetId(b.getTargetId())
+                .targetTitle(targetTitle)
                 .createdAt(b.getCreatedAt())
                 .build();
+    }
+
+    private String resolveTargetTitle(String targetType, UUID targetId) {
+        if (targetType == null || targetId == null) return null;
+        try {
+            switch (targetType.toLowerCase()) {
+                case "course":
+                    return courseRepository.findById(targetId).map(Course::getTitle).orElse(null);
+                case "resource":
+                    return resourceRepository.findById(targetId).map(Resource::getTitle).orElse(null);
+                case "liveclass":
+                case "live_class":
+                    return liveClassRepository.findById(targetId).map(LiveClass::getTitle).orElse(null);
+                default:
+                    return null;
+            }
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private NotificationResponse toNotificationResponse(LearnerNotification n) {

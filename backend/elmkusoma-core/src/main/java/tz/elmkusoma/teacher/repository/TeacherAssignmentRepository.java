@@ -20,4 +20,10 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
 
     @Query("SELECT ta FROM TeacherAssignment ta WHERE ta.classGroupId = :classGroupId AND ta.isDeleted = false")
     List<TeacherAssignment> findAllByClassGroupId(@Param("classGroupId") UUID classGroupId);
+
+    @Query("SELECT DISTINCT ta.classGroupId FROM TeacherAssignment ta WHERE ta.teacherId = :teacherId AND ta.isDeleted = false")
+    List<UUID> findClassGroupIdsByTeacherId(@Param("teacherId") UUID teacherId);
+
+    @Query("SELECT ta.classGroupId FROM TeacherAssignment ta WHERE ta.teacherId = :teacherId AND ta.subjectId = :subjectId AND ta.isDeleted = false")
+    List<UUID> findClassGroupIdsByTeacherIdAndSubjectId(@Param("teacherId") UUID teacherId, @Param("subjectId") UUID subjectId);
 }

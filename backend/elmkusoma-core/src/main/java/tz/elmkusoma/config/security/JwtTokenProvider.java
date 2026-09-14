@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -41,6 +42,28 @@ public class JwtTokenProvider {
         return generateToken(email, accessTokenExpirationMs);
     }
 
+    public String generateAccessTokenWithClaims(String email, UUID userId, String role, UUID institutionId) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + accessTokenExpirationMs);
+
+        var builder = Jwts.builder()
+                .subject(email)
+                .issuedAt(now)
+                .expiration(expiryDate);
+
+        if (userId != null) {
+            builder.claim("userId", userId.toString());
+        }
+        if (role != null) {
+            builder.claim("role", role);
+        }
+        if (institutionId != null) {
+            builder.claim("institutionId", institutionId.toString());
+        }
+
+        return builder.signWith(getSigningKey()).compact();
+    }
+
     public String generateRefreshToken(String email) {
         return generateToken(email, refreshTokenExpirationMs);
     }
@@ -58,12 +81,31 @@ public class JwtTokenProvider {
     }
 
     public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parser()
+        Claims claims = getClaimsFromToken(token);
+        return claims.getSubject();
+    }
+
+    public String getUserIdFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("userId", String.class);
+    }
+
+    public String getRoleFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("role", String.class);
+    }
+
+    public String getInstitutionIdFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("institutionId", String.class);
+    }
+
+    private Claims getClaimsFromToken(String token) {
+        return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return claims.getSubject();
     }
 
     public boolean validateToken(String token) {

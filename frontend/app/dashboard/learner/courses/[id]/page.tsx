@@ -14,7 +14,7 @@ export default function CourseDetailPage() {
   const router = useRouter()
   const courseId = params.id as string
 
-  const [course, setCourse] = useState<CourseDetail | null>(null)
+  const [courseData, setCourseData] = useState<CourseDetail | null>(null)
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const [moduleLessons, setModuleLessons] = useState<Record<string, CourseLesson[]>>({})
@@ -36,7 +36,7 @@ export default function CourseDetailPage() {
         learnerApi.getCourse(courseId),
         learnerApi.getEnrollments().catch(() => []),
       ])
-      setCourse(courseData)
+      setCourseData(courseData)
       const existingEnrollment = enrollmentsData.find((e) => e.courseId === courseId)
       setEnrollment(existingEnrollment || null)
     } catch {
@@ -82,7 +82,7 @@ export default function CourseDetailPage() {
     return <LoadingState />
   }
 
-  if (!course) {
+  if (!courseData) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
@@ -97,6 +97,8 @@ export default function CourseDetailPage() {
       </div>
     )
   }
+
+  const { course, modules } = courseData
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -147,9 +149,9 @@ export default function CourseDetailPage() {
               {course.category}
             </span>
           )}
-          {course.modules && (
+          {modules && (
             <span className="text-xs text-muted-foreground">
-              {course.modules.length} modules
+              {modules.length} modules
             </span>
           )}
         </div>
@@ -189,11 +191,11 @@ export default function CourseDetailPage() {
         </div>
       </div>
 
-      {course.modules && course.modules.length > 0 && (
+      {modules && modules.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <h2 className="text-lg font-semibold text-foreground">Course Modules</h2>
           <div className="mt-4 space-y-3">
-            {course.modules.sort((a, b) => a.sortOrder - b.sortOrder).map((module) => (
+            {modules.sort((a, b) => a.sortOrder - b.sortOrder).map((module) => (
               <div key={module.id} className="rounded-xl border border-border overflow-hidden">
                 <button
                   onClick={() => toggleModule(module.id)}

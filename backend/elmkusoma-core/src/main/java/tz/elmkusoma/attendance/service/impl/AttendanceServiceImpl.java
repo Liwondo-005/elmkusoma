@@ -95,11 +95,11 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     @Override
-    public void updateSummary(UUID studentId, UUID termId, UUID classGroupId, UUID academicYearId) {
+    public void updateSummary(UUID studentId, UUID termId, UUID classGroupId, UUID academicYearId, UUID institutionId) {
         AttendanceSummary summary = attendanceSummaryRepository
                 .findByStudentIdAndTermIdAndIsDeletedFalse(studentId, termId)
                 .orElse(AttendanceSummary.builder()
-                        .institutionId(UUID.randomUUID()) // Would need to get from context
+                        .institutionId(institutionId)
                         .studentId(studentId)
                         .classGroupId(classGroupId)
                         .academicYearId(academicYearId)

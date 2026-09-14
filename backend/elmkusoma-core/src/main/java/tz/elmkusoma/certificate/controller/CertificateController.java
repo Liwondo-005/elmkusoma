@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.certificate.dto.*;
 import tz.elmkusoma.certificate.service.CertificateService;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/certificates")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 @Tag(name = "Certificate Management", description = "Certificate templates, generation, and verification")
 public class CertificateController {
 
@@ -26,16 +28,20 @@ public class CertificateController {
 
     @PostMapping("/templates")
     @Operation(summary = "Create a certificate template")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TemplateResponse>> createTemplate(
             @Valid @RequestBody CreateTemplateRequest request,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        TemplateResponse response = certificateService.createTemplate(request, institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        TemplateResponse response = certificateService.createTemplate(request, institutionId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Template created successfully", response));
     }
 
     @GetMapping("/templates")
     @Operation(summary = "List all certificate templates for institution")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<TemplateResponse>>> getTemplates(
             @RequestAttribute("institutionId") UUID institutionId) {
         List<TemplateResponse> response = certificateService.getTemplates(institutionId);
@@ -44,6 +50,7 @@ public class CertificateController {
 
     @GetMapping("/templates/{templateId}")
     @Operation(summary = "Get a specific certificate template")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<TemplateResponse>> getTemplateById(
             @PathVariable UUID templateId,
             @RequestAttribute("institutionId") UUID institutionId) {
@@ -55,31 +62,40 @@ public class CertificateController {
 
     @PostMapping("/generate")
     @Operation(summary = "Generate a new certificate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<CertificateResponse>> generateCertificate(
             @Valid @RequestBody GenerateCertificateRequest request,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID userId) {
-        CertificateResponse response = certificateService.generateCertificate(request, institutionId, userId);
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        CertificateResponse response = certificateService.generateCertificate(request, institutionId, userId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Certificate generated successfully", response));
     }
 
     @PostMapping("/{certificateId}/issue")
     @Operation(summary = "Issue a draft certificate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<CertificateResponse>> issueCertificate(
             @PathVariable UUID certificateId,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        CertificateResponse response = certificateService.issueCertificate(certificateId, institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        CertificateResponse response = certificateService.issueCertificate(certificateId, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Certificate issued successfully", response));
     }
 
     @PostMapping("/{certificateId}/revoke")
     @Operation(summary = "Revoke an issued certificate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<CertificateResponse>> revokeCertificate(
             @PathVariable UUID certificateId,
             @Valid @RequestBody RevokeCertificateRequest request,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        CertificateResponse response = certificateService.revokeCertificate(certificateId, institutionId, request);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        CertificateResponse response = certificateService.revokeCertificate(certificateId, institutionId, request, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Certificate revoked successfully", response));
     }
 
@@ -93,6 +109,7 @@ public class CertificateController {
 
     @GetMapping("/{certificateId}")
     @Operation(summary = "Get a specific certificate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<CertificateResponse>> getCertificateById(
             @PathVariable UUID certificateId,
             @RequestAttribute("institutionId") UUID institutionId) {
@@ -102,6 +119,7 @@ public class CertificateController {
 
     @GetMapping
     @Operation(summary = "List certificates by student or institution")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<CertificateResponse>>> getCertificates(
             @RequestParam(required = false) UUID studentId,
             @RequestAttribute("institutionId") UUID institutionId) {
@@ -118,26 +136,33 @@ public class CertificateController {
 
     @PostMapping("/transcripts/generate")
     @Operation(summary = "Generate a transcript")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TranscriptResponse>> generateTranscript(
             @Valid @RequestBody GenerateTranscriptRequest request,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID userId) {
-        TranscriptResponse response = certificateService.generateTranscript(request, institutionId, userId);
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        TranscriptResponse response = certificateService.generateTranscript(request, institutionId, userId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Transcript generated successfully", response));
     }
 
     @PostMapping("/transcripts/{transcriptId}/issue")
     @Operation(summary = "Issue a draft transcript")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TranscriptResponse>> issueTranscript(
             @PathVariable UUID transcriptId,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        TranscriptResponse response = certificateService.issueTranscript(transcriptId, institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        TranscriptResponse response = certificateService.issueTranscript(transcriptId, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Transcript issued successfully", response));
     }
 
     @GetMapping("/transcripts")
     @Operation(summary = "List transcripts by student")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<TranscriptResponse>>> getTranscripts(
             @RequestParam UUID studentId) {
         List<TranscriptResponse> response = certificateService.getTranscriptsByStudent(studentId);
