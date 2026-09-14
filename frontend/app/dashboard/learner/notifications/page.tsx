@@ -57,6 +57,7 @@ export default function LearnerNotificationsPage() {
   function getNotificationIcon(type: string) {
     switch (type?.toLowerCase()) {
       case "course": case "enrollment": return <BookOpen className="size-4 text-blue-500" />
+      case "course_completion": return <Award className="size-4 text-green-500" />
       case "assignment": return <FileText className="size-4 text-orange" />
       case "liveclass": case "live_class": return <Video className="size-4 text-red-500" />
       case "certificate": return <Award className="size-4 text-yellow-500" />

@@ -1,6 +1,6 @@
 import {
   BookOpen, FileText, PenTool, BarChart3, Clock, Calendar,
-  GraduationCap, Award, Users, Home, ClipboardList, Library
+  GraduationCap, Award, Users, Home, ClipboardList, Library, Bookmark
 } from "lucide-react"
 import type { ComponentType } from "react"
 
@@ -113,7 +113,44 @@ const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
   },
 }
 
-export function getDashboardConfig(level?: string | null): DashboardConfig {
+export function getLearnerNavItems(role?: string, level?: string | null): NavItem[] {
+  if (role === "Other Learner") {
+    return [
+      { label: "Dashboard", href: "/dashboard/learner", icon: Home },
+      { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+      { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
+      { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
+      { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
+      { label: "History", href: "/dashboard/learner/history", icon: Clock },
+      { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
+      { label: "Profile", href: "/dashboard/learner/profile", icon: Users },
+    ]
+  }
+  const key = (level?.toUpperCase() || "SECONDARY") as LearningLevel
+  return dashboardConfigs[key]?.navItems || dashboardConfigs.SECONDARY.navItems
+}
+
+const otherLearnerConfig: DashboardConfig = {
+  greeting: "Welcome back!",
+  subtitle: "Continue exploring and expanding your knowledge.",
+  navItems: [
+    { label: "Dashboard", href: "/dashboard/learner", icon: Home },
+    { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+    { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
+    { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
+    { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
+    { label: "History", href: "/dashboard/learner/history", icon: Clock },
+    { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
+    { label: "Profile", href: "/dashboard/learner/profile", icon: Users },
+  ],
+  sections: ["continue", "enrolled", "recommended", "recent"],
+  emptyStateTitle: "Start your learning journey",
+  emptyStateDescription: "Explore courses and begin learning at your own pace.",
+  cardStyle: "professional",
+}
+
+export function getDashboardConfig(level?: string | null, role?: string): DashboardConfig {
+  if (role === "Other Learner") return otherLearnerConfig
   const key = (level?.toUpperCase() || "SECONDARY") as LearningLevel
   return dashboardConfigs[key] || dashboardConfigs.SECONDARY
 }

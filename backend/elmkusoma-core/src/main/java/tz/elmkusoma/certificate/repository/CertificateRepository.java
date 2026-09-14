@@ -25,6 +25,9 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
     @Query("SELECT c FROM Certificate c WHERE c.studentId = :studentId AND c.isDeleted = false ORDER BY c.createdAt DESC")
     List<Certificate> findAllByStudentId(@Param("studentId") UUID studentId);
 
+    @Query("SELECT c FROM Certificate c WHERE c.studentId = :studentId AND c.status = 'ISSUED' AND c.isDeleted = false ORDER BY c.issueDate DESC")
+    List<Certificate> findIssuedByStudentId(@Param("studentId") UUID studentId);
+
     @Query("SELECT c FROM Certificate c WHERE c.institutionId = :institutionId AND c.status = :status AND c.isDeleted = false")
     List<Certificate> findByInstitutionIdAndStatus(@Param("institutionId") UUID institutionId,
                                                     @Param("status") Certificate.CertificateStatus status);

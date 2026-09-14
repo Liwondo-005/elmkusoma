@@ -18,4 +18,6 @@ public interface LearnerEnrollmentRepository extends JpaRepository<LearnerEnroll
     long countByUserIdAndIsDeletedFalse(UUID userId);
 
     long countByUserIdAndCompletedAtIsNotNullAndIsDeletedFalse(UUID userId);
+
+    List<LearnerEnrollment> findByCourseIdAndIsDeletedFalse(UUID courseId);
 }

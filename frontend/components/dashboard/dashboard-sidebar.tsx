@@ -93,6 +93,7 @@ const learnerNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "My Registrations", href: "/dashboard/learner/events/registered", icon: ClipboardList },
   { label: "Video Library", href: "/dashboard/learner/video-library", icon: Video },
   { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
+  { label: "History", href: "/dashboard/learner/history", icon: Clock },
   { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
   { label: "Notifications", href: "/dashboard/learner/notifications", icon: Bell },
   { label: "Profile", href: "/dashboard/learner/profile", icon: User },

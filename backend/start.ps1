@@ -30,7 +30,7 @@ if (Test-Path $envFile) {
 }
 
 # 2. Set defaults if not in env
-if (-not $env:DB_USERNAME) { $env:DB_USERNAME = "elmkusoma" }
+if (-not $env:DB_USERNAME) { $env:DB_USERNAME = "postgres" }
 if (-not $env:DB_PASSWORD) { $env:DB_PASSWORD = "changeme" }
 if (-not $env:DB_HOST)     { $env:DB_HOST = "localhost" }
 if (-not $env:DB_PORT)     { $env:DB_PORT = "5432" }
