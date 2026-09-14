@@ -15,4 +15,8 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
     List<Assignment> findByClassGroupIdAndIsDeletedFalse(UUID classGroupId);
 
     List<Assignment> findByInstitutionIdAndIsDeletedFalse(UUID institutionId);
+
+    List<Assignment> findByClassGroupIdAndStatusAndIsDeletedFalse(UUID classGroupId, String status);
+
+    List<Assignment> findByClassGroupIdAndStatusInAndIsDeletedFalse(UUID classGroupId, List<String> statuses);
 }
