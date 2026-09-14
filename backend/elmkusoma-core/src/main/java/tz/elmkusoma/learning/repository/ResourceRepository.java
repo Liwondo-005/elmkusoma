@@ -29,4 +29,7 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
 
     @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%')) AND r.resourceType = :resourceType ORDER BY r.createdAt DESC")
     List<Resource> searchByTitleAndResourceTypeAndIsDeletedFalse(@Param("query") String query, @Param("resourceType") Resource.ResourceType resourceType);
+
+    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.id <> :excludeId AND ((r.subjectId IS NOT NULL AND r.subjectId = :subjectId) OR LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY r.createdAt DESC")
+    List<Resource> findRelatedResources(@Param("excludeId") UUID excludeId, @Param("subjectId") UUID subjectId, @Param("query") String query);
 }

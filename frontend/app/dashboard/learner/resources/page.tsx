@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { learnerApi, type Resource } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, AlertCircle, Bookmark, BookmarkCheck } from "lucide-react"
+import Link from "next/link"
 
 export default function LearnerResourcesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -148,7 +149,11 @@ export default function LearnerResourcesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredResources.map((resource) => (
-            <div key={resource.id} className="rounded-2xl border border-border bg-card p-4 shadow-xs">
+            <Link
+              key={resource.id}
+              href={`/dashboard/learner/resources/${resource.id}`}
+              className="rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:shadow-md hover:border-primary/30 block"
+            >
               <div className="flex items-start gap-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted">
                   {getResourceIcon(resource.resourceType)}
@@ -190,7 +195,7 @@ export default function LearnerResourcesPage() {
               <p className="mt-2 text-[10px] text-muted-foreground">
                 Added {new Date(resource.createdAt).toLocaleDateString()}
               </p>
-            </div>
+            </Link>
           ))}
         </div>
       )}

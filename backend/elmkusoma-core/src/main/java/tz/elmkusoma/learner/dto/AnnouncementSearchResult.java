@@ -12,12 +12,11 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BookmarkResponse {
+public class AnnouncementSearchResult {
 
     private UUID id;
-    private String targetType;
-    private UUID targetId;
-    private String targetTitle;
-    private Boolean targetAvailable;
+    private String title;
+    private String content;
+    private String priority;
     private LocalDateTime createdAt;
 }

@@ -6,14 +6,14 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type SearchResult, type CourseSummary, type Resource, type LiveClass, type SearchFilters } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Search, BookOpen, FileText, Video, AlertCircle, SlidersHorizontal, ChevronDown } from "lucide-react"
+import { Search, BookOpen, FileText, Video, AlertCircle, SlidersHorizontal, ChevronDown, Megaphone } from "lucide-react"
 
 export default function LearnerSearchPage() {
   const { user, loading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const router = useRouter()
   const [query, setQuery] = useState(searchParams.get("q") || "")
-  const [activeTab, setActiveTab] = useState<"all" | "courses" | "resources" | "live-classes">(
+  const [activeTab, setActiveTab] = useState<"all" | "courses" | "resources" | "live-classes" | "announcements">(
     (searchParams.get("type") as any) || "all"
   )
   const [results, setResults] = useState<SearchResult | null>(null)
@@ -23,6 +23,9 @@ export default function LearnerSearchPage() {
   const [filters, setFilters] = useState<SearchFilters>({
     level: searchParams.get("level") || undefined,
     category: searchParams.get("category") || undefined,
+    provider: searchParams.get("provider") || undefined,
+    dateFrom: searchParams.get("dateFrom") || undefined,
+    dateTo: searchParams.get("dateTo") || undefined,
     sort: searchParams.get("sort") || "newest",
   })
 
@@ -40,6 +43,9 @@ export default function LearnerSearchPage() {
     const t = searchParams.get("type")
     const lvl = searchParams.get("level")
     const cat = searchParams.get("category")
+    const prv = searchParams.get("provider")
+    const df = searchParams.get("dateFrom")
+    const dt = searchParams.get("dateTo")
     const srt = searchParams.get("sort")
     if (q) {
       setQuery(q)
@@ -47,9 +53,12 @@ export default function LearnerSearchPage() {
       setFilters({
         level: lvl || undefined,
         category: cat || undefined,
+        provider: prv || undefined,
+        dateFrom: df || undefined,
+        dateTo: dt || undefined,
         sort: srt || "newest",
       })
-      performSearch(q, t || "all", { level: lvl || undefined, category: cat || undefined, sort: srt || "newest" })
+      performSearch(q, t || "all", { level: lvl || undefined, category: cat || undefined, provider: prv || undefined, dateFrom: df || undefined, dateTo: dt || undefined, sort: srt || "newest" })
     }
   }, [user, searchParams])
 
@@ -58,7 +67,7 @@ export default function LearnerSearchPage() {
     try {
       setLoading(true)
       setError(null)
-      const typeMap: Record<string, string> = { courses: "COURSE", resources: "RESOURCE", "live-classes": "LIVE_CLASS" }
+      const typeMap: Record<string, string> = { courses: "COURSE", resources: "RESOURCE", "live-classes": "LIVE_CLASS", announcements: "ANNOUNCEMENT" }
       const searchType = type === "all" ? undefined : (typeMap[type] || type)
       const data = await learnerApi.search(q, searchType, searchFilters || filters)
       setResults(data)
@@ -69,29 +78,30 @@ export default function LearnerSearchPage() {
     }
   }
 
+  function buildParams(extraType?: string) {
+    const params = new URLSearchParams()
+    params.set("q", query)
+    params.set("type", extraType || activeTab)
+    if (filters.level) params.set("level", filters.level)
+    if (filters.category) params.set("category", filters.category)
+    if (filters.provider) params.set("provider", filters.provider)
+    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom)
+    if (filters.dateTo) params.set("dateTo", filters.dateTo)
+    if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort)
+    return params.toString()
+  }
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (!query.trim()) return
-    const params = new URLSearchParams()
-    params.set("q", query)
-    params.set("type", activeTab)
-    if (filters.level) params.set("level", filters.level)
-    if (filters.category) params.set("category", filters.category)
-    if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort)
-    router.push(`/dashboard/learner/search?${params.toString()}`)
+    router.push(`/dashboard/learner/search?${buildParams()}`)
     performSearch(query, activeTab)
   }
 
   function handleTabChange(tab: typeof activeTab) {
     setActiveTab(tab)
     if (query.trim()) {
-      const params = new URLSearchParams()
-      params.set("q", query)
-      params.set("type", tab)
-      if (filters.level) params.set("level", filters.level)
-      if (filters.category) params.set("category", filters.category)
-      if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort)
-      router.push(`/dashboard/learner/search?${params.toString()}`)
+      router.push(`/dashboard/learner/search?${buildParams(tab)}`)
       performSearch(query, tab)
     }
   }
@@ -105,6 +115,9 @@ export default function LearnerSearchPage() {
       params.set("type", activeTab)
       if (newFilters.level) params.set("level", newFilters.level)
       if (newFilters.category) params.set("category", newFilters.category)
+      if (newFilters.provider) params.set("provider", newFilters.provider)
+      if (newFilters.dateFrom) params.set("dateFrom", newFilters.dateFrom)
+      if (newFilters.dateTo) params.set("dateTo", newFilters.dateTo)
       if (newFilters.sort && newFilters.sort !== "newest") params.set("sort", newFilters.sort)
       router.push(`/dashboard/learner/search?${params.toString()}`)
       performSearch(query, activeTab, newFilters)
@@ -119,13 +132,14 @@ export default function LearnerSearchPage() {
     }
   }
 
-  const hasActiveFilters = filters.level || filters.category || (filters.sort && filters.sort !== "newest")
+  const hasActiveFilters = filters.level || filters.category || filters.provider || filters.dateFrom || filters.dateTo || (filters.sort && filters.sort !== "newest")
 
   const tabs = [
-    { key: "all" as const, label: "All", count: results ? (results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) : 0 },
+    { key: "all" as const, label: "All", count: results ? (results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0) : 0 },
     { key: "courses" as const, label: "Courses", count: results?.courses?.length || 0 },
     { key: "resources" as const, label: "Resources", count: results?.resources?.length || 0 },
     { key: "live-classes" as const, label: "Live Classes", count: results?.liveClasses?.length || 0 },
+    { key: "announcements" as const, label: "Announcements", count: results?.announcements?.length || 0 },
   ]
 
   if (authLoading || user?.role !== "Other Learner") {
@@ -190,7 +204,7 @@ export default function LearnerSearchPage() {
           Filters
           {hasActiveFilters && (
             <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] text-primary-foreground">
-              {[filters.level, filters.category, filters.sort !== "newest" ? filters.sort : null].filter(Boolean).length}
+              {[filters.level, filters.category, filters.provider, filters.dateFrom, filters.dateTo, filters.sort !== "newest" ? filters.sort : null].filter(Boolean).length}
             </span>
           )}
         </button>
@@ -244,6 +258,36 @@ export default function LearnerSearchPage() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Provider ID</label>
+              <input
+                type="text"
+                value={filters.provider || ""}
+                onChange={(e) => handleFilterChange("provider", e.target.value)}
+                placeholder="Institution UUID"
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Date From</label>
+              <input
+                type="date"
+                value={filters.dateFrom || ""}
+                onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Date To</label>
+              <input
+                type="date"
+                value={filters.dateTo || ""}
+                onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-ring"
+              />
             </div>
           </div>
         </div>
@@ -373,7 +417,42 @@ export default function LearnerSearchPage() {
             </section>
           )}
 
-          {results.courses?.length === 0 && results.resources?.length === 0 && results.liveClasses?.length === 0 && (
+          {(activeTab === "all" || activeTab === "announcements") && results.announcements && results.announcements.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground">Announcements</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {results.announcements.map((ann) => (
+                  <div key={ann.id} className="rounded-xl border border-border p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-yellow-500/10">
+                        <Megaphone className="size-5 text-yellow-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-semibold text-foreground truncate">{ann.title}</h3>
+                        {ann.content && (
+                          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{ann.content}</p>
+                        )}
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            ann.priority === "URGENT" ? "bg-red-500/10 text-red-500" :
+                            ann.priority === "HIGH" ? "bg-orange/10 text-orange" :
+                            "bg-muted text-muted-foreground"
+                          }`}>
+                            {ann.priority}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(ann.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {results.courses?.length === 0 && results.resources?.length === 0 && results.liveClasses?.length === 0 && results.announcements?.length === 0 && (
             <EmptyState
               icon={<Search className="size-8" />}
               title="No results found"

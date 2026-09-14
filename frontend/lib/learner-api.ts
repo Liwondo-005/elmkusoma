@@ -82,6 +82,7 @@ export interface Bookmark {
   targetType: string
   targetId: string
   targetTitle: string
+  targetAvailable: boolean
   createdAt: string
 }
 
@@ -103,6 +104,7 @@ export interface DashboardData {
   recentEnrollments: Enrollment[]
   continueLearning: Enrollment[]
   recommended: CourseSummary[]
+  unreadNotifications: number
 }
 
 export interface Resource {
@@ -151,15 +153,27 @@ export interface Certificate {
   courseOrProgramme: string | null
 }
 
+export interface AnnouncementSearchResult {
+  id: string
+  title: string
+  content: string
+  priority: string
+  createdAt: string
+}
+
 export interface SearchResult {
   courses: CourseSummary[]
   resources: Resource[]
   liveClasses: LiveClass[]
+  announcements: AnnouncementSearchResult[]
 }
 
 export interface SearchFilters {
   level?: string
   category?: string
+  provider?: string
+  dateFrom?: string
+  dateTo?: string
   sort?: string
 }
 
@@ -228,10 +242,15 @@ export const learnerApi = {
   getCertificates: () => learnerFetch<Certificate[]>("/v1/learner/me/certificates"),
   getCertificateDetail: (id: string) => learnerFetch<Certificate>(`/v1/learner/me/certificates/${id}`),
   getRelatedCourses: (courseId: string) => learnerFetch<CourseSummary[]>(`/v1/learner/courses/${courseId}/related`),
+  getRelatedResources: (resourceId: string) => learnerFetch<Resource[]>(`/v1/learner/resources/${resourceId}/related`),
+  getRelatedLiveClasses: (liveClassId: string) => learnerFetch<LiveClass[]>(`/v1/learner/live-classes/${liveClassId}/related`),
   search: (q: string, type?: string, filters?: SearchFilters) => {
     let url = `/v1/learner/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`
     if (filters?.level) url += `&level=${encodeURIComponent(filters.level)}`
     if (filters?.category) url += `&category=${encodeURIComponent(filters.category)}`
+    if (filters?.provider) url += `&provider=${encodeURIComponent(filters.provider)}`
+    if (filters?.dateFrom) url += `&dateFrom=${encodeURIComponent(filters.dateFrom)}`
+    if (filters?.dateTo) url += `&dateTo=${encodeURIComponent(filters.dateTo)}`
     if (filters?.sort) url += `&sort=${encodeURIComponent(filters.sort)}`
     return learnerFetch<SearchResult>(url)
   },

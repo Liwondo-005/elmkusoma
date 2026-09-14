@@ -15,6 +15,10 @@ import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.learner.domain.LearnerEnrollment;
+import tz.elmkusoma.learner.domain.LearnerNotification;
+import tz.elmkusoma.learner.repository.LearnerEnrollmentRepository;
+import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 
@@ -33,6 +37,8 @@ public class CourseService {
     private final UserRepository userRepository;
     private final SubjectRepository subjectRepository;
     private final CourseMapper courseMapper;
+    private final LearnerEnrollmentRepository enrollmentRepository;
+    private final LearnerNotificationRepository notificationRepository;
 
     // ── Course CRUD ──
 
@@ -107,6 +113,23 @@ public class CourseService {
 
         courseRepository.save(course);
         log.info("Updated course: {} in institution: {}", courseId, institutionId);
+
+        try {
+            List<LearnerEnrollment> enrolled = enrollmentRepository.findByCourseIdAndIsDeletedFalse(courseId);
+            for (LearnerEnrollment enrollment : enrolled) {
+                LearnerNotification notification = LearnerNotification.builder()
+                        .userId(enrollment.getUserId())
+                        .title("Course Updated")
+                        .message("The course \"" + course.getTitle() + "\" has been updated. Check for new content.")
+                        .notificationType("COURSE_UPDATE")
+                        .targetType("course")
+                        .targetId(courseId)
+                        .build();
+                notificationRepository.save(notification);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send course update notifications for course {}: {}", courseId, e.getMessage());
+        }
 
         long modules = moduleRepository.countByCourseIdAndIsDeletedFalse(courseId);
         long lessons = countLessonsForCourse(courseId);

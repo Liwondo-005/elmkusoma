@@ -16,4 +16,5 @@ public class SearchResultResponse {
     private List<CourseSummaryResponse> courses;
     private List<ResourceSearchResult> resources;
     private List<LiveClassSearchResult> liveClasses;
+    private List<AnnouncementSearchResult> announcements;
 }

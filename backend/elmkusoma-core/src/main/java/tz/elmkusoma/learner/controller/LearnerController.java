@@ -3,6 +3,7 @@ package tz.elmkusoma.learner.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,7 +12,11 @@ import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.domain.*;
 import tz.elmkusoma.course.repository.*;
 import tz.elmkusoma.certificate.domain.Certificate;
+import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
+import tz.elmkusoma.certificate.domain.Certificate.CertificateType;
+import tz.elmkusoma.certificate.domain.CertificateTemplate;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
+import tz.elmkusoma.certificate.repository.CertificateTemplateRepository;
 import tz.elmkusoma.learning.domain.LessonProgress;
 import tz.elmkusoma.learning.domain.Resource;
 import tz.elmkusoma.learning.repository.LessonProgressRepository;
@@ -22,7 +27,9 @@ import tz.elmkusoma.learner.repository.*;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,6 +38,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('OTHER_LEARNER')")
 @Tag(name = "General Learner", description = "General Learner / Participant workspace")
+@Slf4j
 public class LearnerController {
 
     private final GeneralLearnerProfileRepository profileRepository;
@@ -45,6 +53,7 @@ public class LearnerController {
     private final AnnouncementRepository announcementRepository;
     private final LessonProgressRepository lessonProgressRepository;
     private final CertificateRepository certificateRepository;
+    private final CertificateTemplateRepository certificateTemplateRepository;
     private final UserRepository userRepository;
 
     // ── Profile ──────────────────────────────────────────────────────────
@@ -294,6 +303,7 @@ public class LearnerController {
             if (progress >= 100.0 && wasIncomplete) {
                 e.setCompletedAt(LocalDateTime.now());
                 Course course = courseRepository.findById(courseId).orElse(null);
+
                 LearnerNotification completionNotification = LearnerNotification.builder()
                         .userId(userId)
                         .title("Course Completed!")
@@ -303,6 +313,47 @@ public class LearnerController {
                         .targetId(courseId)
                         .build();
                 notificationRepository.save(completionNotification);
+
+                try {
+                    List<CertificateTemplate> templates = certificateTemplateRepository.findAllByInstitutionId(course != null ? course.getInstitutionId() : null);
+                    if (templates != null && !templates.isEmpty()) {
+                        CertificateTemplate template = templates.get(0);
+                        User user = userRepository.findById(userId).orElse(null);
+                        String studentName = user != null ? user.getFullName() : "Student";
+                        String serialNumber = "CERT-" + System.currentTimeMillis() + "-" + userId.toString().substring(0, 8);
+                        String verificationCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+
+                        Certificate certificate = Certificate.builder()
+                                .templateId(template.getId())
+                                .studentId(userId)
+                                .issuedBy(userId)
+                                .serialNumber(serialNumber)
+                                .certificateType(CertificateType.COMPLETION)
+                                .title("Certificate of Completion - " + (course != null ? course.getTitle() : ""))
+                                .description("Awarded for successfully completing " + (course != null ? course.getTitle() : "the course"))
+                                .studentName(studentName)
+                                .courseOrProgramme(course != null ? course.getTitle() : null)
+                                .completionDate(LocalDate.now())
+                                .issueDate(LocalDateTime.now())
+                                .status(CertificateStatus.ISSUED)
+                                .verificationCode(verificationCode)
+                                .build();
+                        if (course != null) certificate.setInstitutionId(course.getInstitutionId());
+                        certificateRepository.save(certificate);
+
+                        LearnerNotification certNotification = LearnerNotification.builder()
+                                .userId(userId)
+                                .title("Certificate Issued!")
+                                .message("Your certificate for " + (course != null ? course.getTitle() : "the course") + " is ready. Verification code: " + verificationCode)
+                                .notificationType("CERTIFICATE")
+                                .targetType("certificate")
+                                .targetId(certificate.getId())
+                                .build();
+                        notificationRepository.save(certNotification);
+                    }
+                } catch (Exception ex) {
+                    log.warn("Failed to auto-issue certificate for user {} course {}: {}", userId, courseId, ex.getMessage());
+                }
             }
             enrollmentRepository.save(e);
         });
@@ -517,34 +568,36 @@ public class LearnerController {
     // ── Search ───────────────────────────────────────────────────────────
 
     @GetMapping("/search")
-    @Operation(summary = "Search courses, resources, and live classes with filters")
+    @Operation(summary = "Search courses, resources, live classes, and announcements with filters")
     public ResponseEntity<ApiResponse<SearchResultResponse>> search(
             @RequestParam String q,
             @RequestParam(defaultValue = "ALL") String type,
             @RequestParam(required = false) String level,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) UUID provider,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo,
             @RequestParam(defaultValue = "newest") String sort) {
         String query = q.toLowerCase();
+        LocalDateTime fromDate = parseDate(dateFrom);
+        LocalDateTime toDate = parseDate(dateTo) != null ? parseDate(dateTo).plusDays(1) : null;
         SearchResultResponse result;
 
         if ("COURSE".equalsIgnoreCase(type)) {
-            List<Course> filteredCourses = courseRepository.searchPublishedWithFilters(query, level, category);
+            List<Course> filteredCourses = courseRepository.searchPublishedWithAllFilters(query, level, category, provider, fromDate, toDate);
             result = SearchResultResponse.builder()
                     .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
                     .resources(Collections.emptyList())
                     .liveClasses(Collections.emptyList())
+                    .announcements(Collections.emptyList())
                     .build();
         } else if ("RESOURCE".equalsIgnoreCase(type)) {
-            List<Resource> resources;
-            if (level != null || category != null) {
-                resources = resourceRepository.searchByTitleAndIsDeletedFalse(query);
-            } else {
-                resources = resourceRepository.searchByTitleAndIsDeletedFalse(query);
-            }
+            List<Resource> resources = resourceRepository.searchByTitleAndIsDeletedFalse(query);
             result = SearchResultResponse.builder()
                     .courses(Collections.emptyList())
                     .resources(resources.stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
                     .liveClasses(Collections.emptyList())
+                    .announcements(Collections.emptyList())
                     .build();
         } else if ("LIVE_CLASS".equalsIgnoreCase(type)) {
             result = SearchResultResponse.builder()
@@ -552,27 +605,49 @@ public class LearnerController {
                     .resources(Collections.emptyList())
                     .liveClasses(liveClassRepository.searchByTitleAndIsDeletedFalse(query)
                             .stream().map(this::toLiveClassSearchResult).collect(Collectors.toList()))
+                    .announcements(Collections.emptyList())
+                    .build();
+        } else if ("ANNOUNCEMENT".equalsIgnoreCase(type)) {
+            result = SearchResultResponse.builder()
+                    .courses(Collections.emptyList())
+                    .resources(Collections.emptyList())
+                    .liveClasses(Collections.emptyList())
+                    .announcements(announcementRepository.searchByTitleOrContentAndIsDeletedFalse(query)
+                            .stream().map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
                     .build();
         } else {
-            List<Course> filteredCourses = courseRepository.searchPublishedWithFilters(query, level, category);
+            List<Course> filteredCourses = courseRepository.searchPublishedWithAllFilters(query, level, category, provider, fromDate, toDate);
             result = SearchResultResponse.builder()
                     .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
                     .resources(resourceRepository.searchByTitleAndIsDeletedFalse(query)
                             .stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
                     .liveClasses(liveClassRepository.searchByTitleAndIsDeletedFalse(query)
                             .stream().map(this::toLiveClassSearchResult).collect(Collectors.toList()))
+                    .announcements(announcementRepository.searchByTitleOrContentAndIsDeletedFalse(query)
+                            .stream().map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
                     .build();
         }
 
         if ("oldest".equalsIgnoreCase(sort)) {
             if (result.getCourses() != null) Collections.reverse(result.getCourses());
             if (result.getResources() != null) Collections.reverse(result.getResources());
+            if (result.getAnnouncements() != null) Collections.reverse(result.getAnnouncements());
         } else if ("az".equalsIgnoreCase(sort)) {
             if (result.getCourses() != null) result.getCourses().sort(Comparator.comparing(CourseSummaryResponse::getTitle));
             if (result.getResources() != null) result.getResources().sort(Comparator.comparing(ResourceSearchResult::getTitle));
+            if (result.getAnnouncements() != null) result.getAnnouncements().sort(Comparator.comparing(AnnouncementSearchResult::getTitle));
         }
 
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    private LocalDateTime parseDate(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) return null;
+        try {
+            return LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ── Related Content ──────────────────────────────────────────────────
@@ -595,6 +670,42 @@ public class LearnerController {
         List<CourseSummaryResponse> response = related.stream()
                 .limit(6)
                 .map(this::toCourseSummaryResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/resources/{id}/related")
+    @Operation(summary = "Get related resources based on subject")
+    public ResponseEntity<ApiResponse<List<ResourceSearchResult>>> getRelatedResources(@PathVariable UUID id) {
+        Resource resource = resourceRepository.findById(id)
+                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                .orElse(null);
+        if (resource == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Resource not found"));
+        }
+        String query = resource.getTitle() != null ? resource.getTitle().substring(0, Math.min(3, resource.getTitle().length())) : "";
+        List<Resource> related = resourceRepository.findRelatedResources(id, resource.getSubjectId(), query);
+        List<ResourceSearchResult> response = related.stream()
+                .limit(6)
+                .map(this::toResourceSearchResult)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/live-classes/{id}/related")
+    @Operation(summary = "Get related live classes based on subject")
+    public ResponseEntity<ApiResponse<List<LiveClassSearchResult>>> getRelatedLiveClasses(@PathVariable UUID id) {
+        LiveClass liveClass = liveClassRepository.findById(id)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
+        }
+        String query = liveClass.getTitle() != null ? liveClass.getTitle().substring(0, Math.min(3, liveClass.getTitle().length())) : "";
+        List<LiveClass> related = liveClassRepository.findRelatedLiveClasses(id, liveClass.getSubjectId(), query);
+        List<LiveClassSearchResult> response = related.stream()
+                .limit(6)
+                .map(this::toLiveClassSearchResult)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -639,6 +750,7 @@ public class LearnerController {
                 .targetType(b.getTargetType())
                 .targetId(b.getTargetId())
                 .targetTitle(targetTitle)
+                .targetAvailable(targetTitle != null)
                 .createdAt(b.getCreatedAt())
                 .build();
     }
@@ -693,6 +805,16 @@ public class LearnerController {
                 .status(lc.getStatus())
                 .scheduledAt(lc.getScheduledAt())
                 .durationMinutes(lc.getDurationMinutes())
+                .build();
+    }
+
+    private AnnouncementSearchResult toAnnouncementSearchResult(Announcement a) {
+        return AnnouncementSearchResult.builder()
+                .id(a.getId())
+                .title(a.getTitle())
+                .content(a.getContent())
+                .priority(a.getPriority())
+                .createdAt(a.getCreatedAt())
                 .build();
     }
 }
