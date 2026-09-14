@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type DashboardData, type CourseSummary } from "@/lib/learner-api"
 import { LearnerHeader, ContinueLearningCard, EmptyState, LoadingState } from "@/components/learner/shared"
-import { BookOpen, Library, Video, Award, ArrowRight, Clock, Loader2, AlertCircle } from "lucide-react"
+import { BookOpen, Library, Video, Award, ArrowRight, Clock, Loader2, AlertCircle, Bookmark, History } from "lucide-react"
 
 export default function LearnerDashboardPage() {
   const { user, loading: authLoading } = useAuth()
@@ -126,6 +126,22 @@ export default function LearnerDashboardPage() {
             >
               <Video className="size-4 shrink-0 text-muted-foreground" />
               <span className="flex-1">Live Classes</span>
+              <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
+            </Link>
+            <Link
+              href="/dashboard/learner/bookmarks"
+              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <Bookmark className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1">Bookmarks</span>
+              <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
+            </Link>
+            <Link
+              href="/dashboard/learner/history"
+              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <History className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1">History</span>
               <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
             </Link>
             <Link
