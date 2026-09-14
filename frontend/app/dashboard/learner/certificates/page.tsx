@@ -32,9 +32,9 @@ export default function LearnerCertificatesPage() {
 
   function getStatusBadge(status: string) {
     const styles: Record<string, string> = {
-      ACTIVE: "bg-green-500/10 text-green-600",
+      ISSUED: "bg-green-500/10 text-green-600",
       REVOKED: "bg-red-500/10 text-red-500",
-      PENDING: "bg-yellow-500/10 text-yellow-600",
+      DRAFT: "bg-yellow-500/10 text-yellow-600",
     }
     return styles[status] || "bg-muted text-muted-foreground"
   }

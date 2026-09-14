@@ -110,15 +110,12 @@ export default function LearnerBookmarksPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <Link href={getLink(bookmark)} className="text-sm font-medium text-foreground hover:text-primary truncate">
-                    {bookmark.title}
+                    {bookmark.targetTitle || "Untitled"}
                   </Link>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getTypeBadge(bookmark.targetType)}`}>
                     {bookmark.targetType}
                   </span>
                 </div>
-                {bookmark.description && (
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{bookmark.description}</p>
-                )}
                 <p className="mt-1 text-[10px] text-muted-foreground">
                   Saved {new Date(bookmark.createdAt).toLocaleDateString()}
                 </p>

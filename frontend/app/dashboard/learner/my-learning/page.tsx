@@ -34,7 +34,7 @@ export default function MyLearningPage() {
   }
 
   const filteredEnrollments = enrollments.filter((e) => {
-    const matchesSearch = search === "" || e.courseName.toLowerCase().includes(search.toLowerCase())
+    const matchesSearch = search === "" || (e.courseTitle || "").toLowerCase().includes(search.toLowerCase())
     const matchesFilter = filter === "all" || 
       (filter === "in-progress" && !e.completedAt) ||
       (filter === "completed" && e.completedAt)
@@ -140,9 +140,9 @@ export default function MyLearningPage() {
         <div className="space-y-3">
           {filteredEnrollments.map((enrollment) => (
             <div key={enrollment.id} className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-xs">
-              {enrollment.thumbnailUrl ? (
+              {enrollment.courseThumbnailUrl ? (
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
-                  <img src={enrollment.thumbnailUrl} alt={enrollment.courseName} className="h-full w-full object-cover" />
+                  <img src={enrollment.courseThumbnailUrl} alt={enrollment.courseTitle} className="h-full w-full object-cover" />
                 </div>
               ) : (
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -150,7 +150,7 @@ export default function MyLearningPage() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{enrollment.courseName}</p>
+                <p className="text-sm font-medium text-foreground truncate">{enrollment.courseTitle}</p>
                 <div className="mt-1 flex items-center gap-2">
                   {enrollment.completedAt ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
