@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type Resource } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, AlertCircle } from "lucide-react"
+import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, AlertCircle, Bookmark, BookmarkCheck } from "lucide-react"
 
 export default function LearnerResourcesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -13,6 +13,7 @@ export default function LearnerResourcesPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!user || user.role !== "Other Learner") return
@@ -25,10 +26,42 @@ export default function LearnerResourcesPage() {
       setError(null)
       const data = await learnerApi.getResources()
       setResources(data)
+
+      try {
+        const bookmarks = await learnerApi.getBookmarks()
+        const resourceBookmarks = new Set(
+          bookmarks.filter((b) => b.targetType === "resource").map((b) => b.targetId)
+        )
+        setBookmarkedIds(resourceBookmarks)
+      } catch {
+        // Ignore bookmark check failure
+      }
     } catch {
       setError("Failed to load resources")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function toggleBookmark(resourceId: string) {
+    try {
+      if (bookmarkedIds.has(resourceId)) {
+        const bookmarks = await learnerApi.getBookmarks()
+        const existing = bookmarks.find((b) => b.targetType === "resource" && b.targetId === resourceId)
+        if (existing) {
+          await learnerApi.removeBookmark(existing.id)
+        }
+        setBookmarkedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(resourceId)
+          return next
+        })
+      } else {
+        await learnerApi.addBookmark("resource", resourceId)
+        setBookmarkedIds((prev) => new Set(prev).add(resourceId))
+      }
+    } catch {
+      // Silent fail for bookmark toggle
     }
   }
 
@@ -131,7 +164,18 @@ export default function LearnerResourcesPage() {
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getResourceTypeBadge(resource.resourceType)}`}>
                   {resource.resourceType}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => toggleBookmark(resource.id)}
+                    className="inline-flex items-center justify-center rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    title={bookmarkedIds.has(resource.id) ? "Remove bookmark" : "Bookmark"}
+                  >
+                    {bookmarkedIds.has(resource.id) ? (
+                      <BookmarkCheck className="size-4 text-primary" />
+                    ) : (
+                      <Bookmark className="size-4" />
+                    )}
+                  </button>
                   <a
                     href={resource.fileUrl}
                     target="_blank"

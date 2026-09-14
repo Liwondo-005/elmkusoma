@@ -157,6 +157,12 @@ export interface SearchResult {
   liveClasses: LiveClass[]
 }
 
+export interface SearchFilters {
+  level?: string
+  category?: string
+  sort?: string
+}
+
 export interface CourseProgress {
   courseId: string
   completedLessons: number
@@ -198,7 +204,9 @@ export const learnerApi = {
       method: "POST",
       body: JSON.stringify({ lessonId, completionPercentage }),
     }),
-  getResources: () => learnerFetch<Resource[]>("/v1/learner/resources"),
+  getResources: (type?: string) =>
+    learnerFetch<Resource[]>(`/v1/learner/resources${type && type !== "all" ? `?type=${type}` : ""}`),
+  getResource: (id: string) => learnerFetch<Resource>(`/v1/learner/resources/${id}`),
   getLiveClasses: () => learnerFetch<LiveClass[]>("/v1/learner/live-classes"),
   getAnnouncements: () => learnerFetch<Announcement[]>("/v1/learner/announcements"),
   getBookmarks: () => learnerFetch<Bookmark[]>("/v1/learner/me/bookmarks"),
@@ -218,8 +226,13 @@ export const learnerApi = {
   markAllRead: () =>
     learnerFetch<void>("/v1/learner/me/notifications/read-all", { method: "PUT" }),
   getCertificates: () => learnerFetch<Certificate[]>("/v1/learner/me/certificates"),
-  search: (q: string, type?: string) =>
-    learnerFetch<SearchResult>(
-      `/v1/learner/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`,
-    ),
+  getCertificateDetail: (id: string) => learnerFetch<Certificate>(`/v1/learner/me/certificates/${id}`),
+  getRelatedCourses: (courseId: string) => learnerFetch<CourseSummary[]>(`/v1/learner/courses/${courseId}/related`),
+  search: (q: string, type?: string, filters?: SearchFilters) => {
+    let url = `/v1/learner/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`
+    if (filters?.level) url += `&level=${encodeURIComponent(filters.level)}`
+    if (filters?.category) url += `&category=${encodeURIComponent(filters.category)}`
+    if (filters?.sort) url += `&sort=${encodeURIComponent(filters.sort)}`
+    return learnerFetch<SearchResult>(url)
+  },
 }

@@ -316,9 +316,20 @@ public class LearnerController {
     // ── Resources ────────────────────────────────────────────────────────
 
     @GetMapping("/resources")
-    @Operation(summary = "Browse all resources across institutions")
-    public ResponseEntity<ApiResponse<List<Resource>>> browseResources() {
-        List<Resource> resources = resourceRepository.findAllAndIsDeletedFalse();
+    @Operation(summary = "Browse all resources with optional type filter")
+    public ResponseEntity<ApiResponse<List<Resource>>> browseResources(
+            @RequestParam(required = false) String type) {
+        List<Resource> resources;
+        if (type != null && !type.isEmpty() && !"all".equalsIgnoreCase(type)) {
+            try {
+                Resource.ResourceType resourceType = Resource.ResourceType.valueOf(type.toUpperCase());
+                resources = resourceRepository.findByResourceTypeAndIsDeletedFalse(resourceType);
+            } catch (IllegalArgumentException e) {
+                resources = resourceRepository.findAllAndIsDeletedFalse();
+            }
+        } else {
+            resources = resourceRepository.findAllAndIsDeletedFalse();
+        }
         return ResponseEntity.ok(ApiResponse.success(resources));
     }
 
@@ -461,35 +472,54 @@ public class LearnerController {
     // ── Certificates ─────────────────────────────────────────────────────
 
     @GetMapping("/me/certificates")
-    @Operation(summary = "List my certificates")
+    @Operation(summary = "List my issued certificates")
     public ResponseEntity<ApiResponse<List<Certificate>>> myCertificates(
             @RequestAttribute("userId") UUID userId) {
-        List<Certificate> certificates = certificateRepository.findAllByStudentId(userId);
+        List<Certificate> certificates = certificateRepository.findIssuedByStudentId(userId);
         return ResponseEntity.ok(ApiResponse.success(certificates));
+    }
+
+    @GetMapping("/me/certificates/{certificateId}")
+    @Operation(summary = "Get my certificate detail")
+    public ResponseEntity<ApiResponse<Certificate>> myCertificateDetail(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID certificateId) {
+        return certificateRepository.findById(certificateId)
+                .filter(c -> c.getStudentId().equals(userId) && !Boolean.TRUE.equals(c.getIsDeleted()))
+                .map(c -> ResponseEntity.ok(ApiResponse.success(c)))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Certificate not found")));
     }
 
     // ── Search ───────────────────────────────────────────────────────────
 
     @GetMapping("/search")
-    @Operation(summary = "Search courses, resources, and live classes")
+    @Operation(summary = "Search courses, resources, and live classes with filters")
     public ResponseEntity<ApiResponse<SearchResultResponse>> search(
             @RequestParam String q,
-            @RequestParam(defaultValue = "ALL") String type) {
+            @RequestParam(defaultValue = "ALL") String type,
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "newest") String sort) {
         String query = q.toLowerCase();
         SearchResultResponse result;
 
         if ("COURSE".equalsIgnoreCase(type)) {
+            List<Course> filteredCourses = courseRepository.searchPublishedWithFilters(query, level, category);
             result = SearchResultResponse.builder()
-                    .courses(courseRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
+                    .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
                     .resources(Collections.emptyList())
                     .liveClasses(Collections.emptyList())
                     .build();
         } else if ("RESOURCE".equalsIgnoreCase(type)) {
+            List<Resource> resources;
+            if (level != null || category != null) {
+                resources = resourceRepository.searchByTitleAndIsDeletedFalse(query);
+            } else {
+                resources = resourceRepository.searchByTitleAndIsDeletedFalse(query);
+            }
             result = SearchResultResponse.builder()
                     .courses(Collections.emptyList())
-                    .resources(resourceRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
+                    .resources(resources.stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
                     .liveClasses(Collections.emptyList())
                     .build();
         } else if ("LIVE_CLASS".equalsIgnoreCase(type)) {
@@ -500,16 +530,49 @@ public class LearnerController {
                             .stream().map(this::toLiveClassSearchResult).collect(Collectors.toList()))
                     .build();
         } else {
+            List<Course> filteredCourses = courseRepository.searchPublishedWithFilters(query, level, category);
             result = SearchResultResponse.builder()
-                    .courses(courseRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
+                    .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
                     .resources(resourceRepository.searchByTitleAndIsDeletedFalse(query)
                             .stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
                     .liveClasses(liveClassRepository.searchByTitleAndIsDeletedFalse(query)
                             .stream().map(this::toLiveClassSearchResult).collect(Collectors.toList()))
                     .build();
         }
+
+        if ("oldest".equalsIgnoreCase(sort)) {
+            if (result.getCourses() != null) Collections.reverse(result.getCourses());
+            if (result.getResources() != null) Collections.reverse(result.getResources());
+        } else if ("az".equalsIgnoreCase(sort)) {
+            if (result.getCourses() != null) result.getCourses().sort(Comparator.comparing(CourseSummaryResponse::getTitle));
+            if (result.getResources() != null) result.getResources().sort(Comparator.comparing(ResourceSearchResult::getTitle));
+        }
+
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    // ── Related Content ──────────────────────────────────────────────────
+
+    @GetMapping("/courses/{id}/related")
+    @Operation(summary = "Get related courses based on level and category")
+    public ResponseEntity<ApiResponse<List<CourseSummaryResponse>>> getRelatedCourses(@PathVariable UUID id) {
+        Course course = courseRepository.findById(id)
+                .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                .orElse(null);
+        if (course == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Course not found"));
+        }
+        List<Course> related = courseRepository.findRelatedPublishedCourses(
+                id,
+                course.getTitle() != null ? course.getTitle().substring(0, Math.min(3, course.getTitle().length())) : "",
+                course.getLevel(),
+                course.getCategory()
+        );
+        List<CourseSummaryResponse> response = related.stream()
+                .limit(6)
+                .map(this::toCourseSummaryResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     // ── Mapping Helpers ──────────────────────────────────────────────────

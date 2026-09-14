@@ -4,9 +4,9 @@ import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type SearchResult, type CourseSummary, type Resource, type LiveClass } from "@/lib/learner-api"
+import { learnerApi, type SearchResult, type CourseSummary, type Resource, type LiveClass, type SearchFilters } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Search, BookOpen, FileText, Video, AlertCircle } from "lucide-react"
+import { Search, BookOpen, FileText, Video, AlertCircle, SlidersHorizontal, ChevronDown } from "lucide-react"
 
 export default function LearnerSearchPage() {
   const { user, loading: authLoading } = useAuth()
@@ -19,26 +19,48 @@ export default function LearnerSearchPage() {
   const [results, setResults] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<SearchFilters>({
+    level: searchParams.get("level") || undefined,
+    category: searchParams.get("category") || undefined,
+    sort: searchParams.get("sort") || "newest",
+  })
+
+  const levels = ["NURSERY", "PRIMARY", "SECONDARY", "COLLEGE", "VETA", "UNIVERSITY"]
+  const categories = ["Mathematics", "Science", "English", "Kiswahili", "History", "Geography", "Computer Science", "Business", "Vocational"]
+  const sortOptions = [
+    { value: "newest", label: "Newest First" },
+    { value: "oldest", label: "Oldest First" },
+    { value: "az", label: "A - Z" },
+  ]
 
   useEffect(() => {
     if (!user || user.role !== "Other Learner") return
     const q = searchParams.get("q")
     const t = searchParams.get("type")
+    const lvl = searchParams.get("level")
+    const cat = searchParams.get("category")
+    const srt = searchParams.get("sort")
     if (q) {
       setQuery(q)
       if (t) setActiveTab(t as any)
-      performSearch(q, t || "all")
+      setFilters({
+        level: lvl || undefined,
+        category: cat || undefined,
+        sort: srt || "newest",
+      })
+      performSearch(q, t || "all", { level: lvl || undefined, category: cat || undefined, sort: srt || "newest" })
     }
   }, [user, searchParams])
 
-  async function performSearch(q: string, type: string) {
+  async function performSearch(q: string, type: string, searchFilters?: SearchFilters) {
     if (!q.trim()) return
     try {
       setLoading(true)
       setError(null)
       const typeMap: Record<string, string> = { courses: "COURSE", resources: "RESOURCE", "live-classes": "LIVE_CLASS" }
       const searchType = type === "all" ? undefined : (typeMap[type] || type)
-      const data = await learnerApi.search(q, searchType)
+      const data = await learnerApi.search(q, searchType, searchFilters || filters)
       setResults(data)
     } catch {
       setError("Search failed. Please try again.")
@@ -50,17 +72,54 @@ export default function LearnerSearchPage() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (!query.trim()) return
-    router.push(`/dashboard/learner/search?q=${encodeURIComponent(query)}&type=${activeTab}`)
+    const params = new URLSearchParams()
+    params.set("q", query)
+    params.set("type", activeTab)
+    if (filters.level) params.set("level", filters.level)
+    if (filters.category) params.set("category", filters.category)
+    if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort)
+    router.push(`/dashboard/learner/search?${params.toString()}`)
     performSearch(query, activeTab)
   }
 
   function handleTabChange(tab: typeof activeTab) {
     setActiveTab(tab)
     if (query.trim()) {
-      router.push(`/dashboard/learner/search?q=${encodeURIComponent(query)}&type=${tab}`)
+      const params = new URLSearchParams()
+      params.set("q", query)
+      params.set("type", tab)
+      if (filters.level) params.set("level", filters.level)
+      if (filters.category) params.set("category", filters.category)
+      if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort)
+      router.push(`/dashboard/learner/search?${params.toString()}`)
       performSearch(query, tab)
     }
   }
+
+  function handleFilterChange(key: keyof SearchFilters, value: string) {
+    const newFilters = { ...filters, [key]: value || undefined }
+    setFilters(newFilters)
+    if (query.trim()) {
+      const params = new URLSearchParams()
+      params.set("q", query)
+      params.set("type", activeTab)
+      if (newFilters.level) params.set("level", newFilters.level)
+      if (newFilters.category) params.set("category", newFilters.category)
+      if (newFilters.sort && newFilters.sort !== "newest") params.set("sort", newFilters.sort)
+      router.push(`/dashboard/learner/search?${params.toString()}`)
+      performSearch(query, activeTab, newFilters)
+    }
+  }
+
+  function clearFilters() {
+    setFilters({ sort: "newest" })
+    if (query.trim()) {
+      router.push(`/dashboard/learner/search?q=${encodeURIComponent(query)}&type=${activeTab}`)
+      performSearch(query, activeTab, { sort: "newest" })
+    }
+  }
+
+  const hasActiveFilters = filters.level || filters.category || (filters.sort && filters.sort !== "newest")
 
   const tabs = [
     { key: "all" as const, label: "All", count: results ? (results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) : 0 },
@@ -97,6 +156,99 @@ export default function LearnerSearchPage() {
         </button>
       </form>
 
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 border-b border-border flex-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === tab.key
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowFilters(!showFilters)}
+          className={`ml-4 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            showFilters || hasActiveFilters
+              ? "border-primary bg-primary/5 text-primary"
+              : "border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <SlidersHorizontal className="size-3" />
+          Filters
+          {hasActiveFilters && (
+            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] text-primary-foreground">
+              {[filters.level, filters.category, filters.sort !== "newest" ? filters.sort : null].filter(Boolean).length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {showFilters && (
+        <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground">Advanced Filters</h3>
+            {hasActiveFilters && (
+              <button onClick={clearFilters} className="text-xs text-primary hover:underline">
+                Clear all
+              </button>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Level</label>
+              <select
+                value={filters.level || ""}
+                onChange={(e) => handleFilterChange("level", e.target.value)}
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-ring"
+              >
+                <option value="">All Levels</option>
+                {levels.map((lvl) => (
+                  <option key={lvl} value={lvl}>{lvl}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Category</label>
+              <select
+                value={filters.category || ""}
+                onChange={(e) => handleFilterChange("category", e.target.value)}
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-ring"
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Sort By</label>
+              <select
+                value={filters.sort || "newest"}
+                onChange={(e) => handleFilterChange("sort", e.target.value)}
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-ring"
+              >
+                {sortOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 text-sm text-destructive">
@@ -105,27 +257,6 @@ export default function LearnerSearchPage() {
           </div>
         </div>
       )}
-
-      <div className="flex gap-2 border-b border-border">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => handleTabChange(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
-              activeTab === tab.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.label}
-            {tab.count > 0 && (
-              <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold">
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
 
       {loading ? (
         <LoadingState />
@@ -191,9 +322,22 @@ export default function LearnerSearchPage() {
                         {resource.description && (
                           <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{resource.description}</p>
                         )}
-                        <span className="mt-2 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {resource.resourceType}
-                        </span>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {resource.resourceType}
+                          </span>
+                          {resource.fileUrl && (
+                            <a
+                              href={resource.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] font-medium text-primary hover:underline"
+                            >
+                              Download
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -233,7 +377,7 @@ export default function LearnerSearchPage() {
             <EmptyState
               icon={<Search className="size-8" />}
               title="No results found"
-              description={`No results for "${query}". Try different keywords.`}
+              description={`No results for "${query}". Try different keywords or adjust your filters.`}
             />
           )}
         </div>

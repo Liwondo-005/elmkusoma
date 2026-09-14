@@ -4,9 +4,9 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type CourseDetail, type CourseModuleSummary, type CourseLesson, type Enrollment } from "@/lib/learner-api"
+import { learnerApi, type CourseDetail, type CourseModuleSummary, type CourseLesson, type Enrollment, type CourseSummary } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
-import { BookOpen, ArrowLeft, ChevronDown, ChevronRight, Loader2, AlertCircle, CheckCircle } from "lucide-react"
+import { BookOpen, ArrowLeft, ChevronDown, ChevronRight, Loader2, AlertCircle, CheckCircle, Bookmark, BookmarkCheck } from "lucide-react"
 
 export default function CourseDetailPage() {
   const { user, loading: authLoading } = useAuth()
@@ -22,6 +22,9 @@ export default function CourseDetailPage() {
   const [enrolling, setEnrolling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [relatedCourses, setRelatedCourses] = useState<CourseSummary[]>([])
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   useEffect(() => {
     if (!user || user.role !== "Other Learner") return
@@ -39,6 +42,9 @@ export default function CourseDetailPage() {
       setCourseData(courseData)
       const existingEnrollment = enrollmentsData.find((e) => e.courseId === courseId)
       setEnrollment(existingEnrollment || null)
+
+      learnerApi.getRelatedCourses(courseId).then(setRelatedCourses).catch(() => {})
+      learnerApi.checkBookmark("course", courseId).then((res) => setIsBookmarked(res.bookmarked)).catch(() => {})
     } catch {
       setError("Failed to load course details")
     } finally {
@@ -57,6 +63,27 @@ export default function CourseDetailPage() {
       setError(err.message || "Failed to enroll in course")
     } finally {
       setEnrolling(false)
+    }
+  }
+
+  async function toggleBookmark() {
+    try {
+      setBookmarkLoading(true)
+      if (isBookmarked) {
+        const bookmarks = await learnerApi.getBookmarks()
+        const existing = bookmarks.find((b) => b.targetType === "course" && b.targetId === courseId)
+        if (existing) {
+          await learnerApi.removeBookmark(existing.id)
+        }
+        setIsBookmarked(false)
+      } else {
+        await learnerApi.addBookmark("course", courseId)
+        setIsBookmarked(true)
+      }
+    } catch {
+      // Silent fail for bookmark toggle
+    } finally {
+      setBookmarkLoading(false)
     }
   }
 
@@ -134,10 +161,22 @@ export default function CourseDetailPage() {
             <BookOpen className="size-12 text-primary/40" />
           </div>
         )}
-        <h1 className="text-xl font-bold text-foreground">{course.title}</h1>
-        {course.description && (
-          <p className="mt-2 text-sm text-muted-foreground">{course.description}</p>
-        )}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-foreground">{course.title}</h1>
+            {course.description && (
+              <p className="mt-2 text-sm text-muted-foreground">{course.description}</p>
+            )}
+          </div>
+          <button
+            onClick={toggleBookmark}
+            disabled={bookmarkLoading}
+            className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+            title={isBookmarked ? "Remove bookmark" : "Bookmark this course"}
+          >
+            {isBookmarked ? <BookmarkCheck className="size-5 text-primary" /> : <Bookmark className="size-5" />}
+          </button>
+        </div>
         <div className="mt-4 flex items-center gap-3 flex-wrap">
           {course.level && (
             <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -238,6 +277,42 @@ export default function CourseDetailPage() {
                   </div>
                 )}
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {relatedCourses.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+          <h2 className="text-lg font-semibold text-foreground">Related Courses</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {relatedCourses.map((rc) => (
+              <Link
+                key={rc.id}
+                href={`/dashboard/learner/courses/${rc.id}`}
+                className="rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
+              >
+                {rc.thumbnailUrl ? (
+                  <div className="mb-3 h-24 overflow-hidden rounded-lg bg-muted">
+                    <img src={rc.thumbnailUrl} alt={rc.title} className="h-full w-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-primary/10">
+                    <BookOpen className="size-6 text-primary/40" />
+                  </div>
+                )}
+                <h3 className="text-sm font-semibold text-foreground truncate">{rc.title}</h3>
+                <div className="mt-1 flex items-center gap-2">
+                  {rc.level && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      {rc.level}
+                    </span>
+                  )}
+                  {rc.category && (
+                    <span className="text-[10px] text-muted-foreground">{rc.category}</span>
+                  )}
+                </div>
+              </Link>
             ))}
           </div>
         </div>
