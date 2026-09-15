@@ -40,10 +40,11 @@ cd backend
 cp .env.example .env
 ```
 
-Edit `.env` and set your PostgreSQL password:
+Edit `.env` and set your PostgreSQL password and JWT secret:
 
 ```
 DB_PASSWORD=your_postgres_password_here
+JWT_SECRET=generate-a-secure-base64-encoded-key-here
 ```
 
 All other values can stay as defaults. The `.env` file is **git-ignored** and will never be committed.
