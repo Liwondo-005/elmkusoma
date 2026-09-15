@@ -1,6 +1,6 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
 
-async function teacherFetch<T>(path: string, options?: RequestInit): Promise<T> {
+export async function teacherFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
   const institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001" : "00000000-0000-0000-0000-000000000001"
   const res = await fetch(`${API_BASE_URL}${path}`, {
