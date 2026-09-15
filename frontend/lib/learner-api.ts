@@ -82,7 +82,6 @@ export interface Bookmark {
   targetType: string
   targetId: string
   targetTitle: string
-  targetAvailable: boolean
   createdAt: string
 }
 
@@ -104,7 +103,6 @@ export interface DashboardData {
   recentEnrollments: Enrollment[]
   continueLearning: Enrollment[]
   recommended: CourseSummary[]
-  unreadNotifications: number
 }
 
 export interface Resource {
@@ -153,28 +151,67 @@ export interface Certificate {
   courseOrProgramme: string | null
 }
 
-export interface AnnouncementSearchResult {
+export interface EventItem {
   id: string
+  institutionId: string
+  organizerId: string
+  organizerName: string | null
   title: string
-  content: string
-  priority: string
+  description: string | null
+  eventType: string
+  category: string | null
+  location: string | null
+  meetingUrl: string | null
+  startsAt: string
+  endsAt: string | null
+  durationMinutes: number | null
+  maxParticipants: number | null
+  registeredCount: number
+  availableSpots: number | null
+  status: string
+  thumbnailUrl: string | null
+  tags: string | null
+  isFree: boolean
+  requiresApproval: boolean
+  isRegistered: boolean
+  registrationStatus: string | null
+  materialCount: number
+  hasRecording: boolean
   createdAt: string
+}
+
+export interface EventRegistration {
+  id: string
+  eventId: string
+  eventTitle: string
+  eventStartsAt: string | null
+  eventEndsAt: string | null
+  eventLocation: string | null
+  eventMeetingUrl: string | null
+  eventType: string | null
+  status: string
+  registeredAt: string
+  cancelledAt: string | null
+  attended: boolean
+}
+
+export interface EventMaterial {
+  id: string
+  eventId: string
+  title: string
+  description: string | null
+  materialType: string
+  fileUrl: string
+  fileSize: number | null
+  durationMinutes: number | null
+  sortOrder: number
+  isPublic: boolean
 }
 
 export interface SearchResult {
   courses: CourseSummary[]
   resources: Resource[]
   liveClasses: LiveClass[]
-  announcements: AnnouncementSearchResult[]
-}
-
-export interface SearchFilters {
-  level?: string
-  category?: string
-  provider?: string
-  dateFrom?: string
-  dateTo?: string
-  sort?: string
 }
 
 export interface CourseProgress {
@@ -218,9 +255,7 @@ export const learnerApi = {
       method: "POST",
       body: JSON.stringify({ lessonId, completionPercentage }),
     }),
-  getResources: (type?: string) =>
-    learnerFetch<Resource[]>(`/v1/learner/resources${type && type !== "all" ? `?type=${type}` : ""}`),
-  getResource: (id: string) => learnerFetch<Resource>(`/v1/learner/resources/${id}`),
+  getResources: () => learnerFetch<Resource[]>("/v1/learner/resources"),
   getLiveClasses: () => learnerFetch<LiveClass[]>("/v1/learner/live-classes"),
   getAnnouncements: () => learnerFetch<Announcement[]>("/v1/learner/announcements"),
   getBookmarks: () => learnerFetch<Bookmark[]>("/v1/learner/me/bookmarks"),
@@ -240,18 +275,35 @@ export const learnerApi = {
   markAllRead: () =>
     learnerFetch<void>("/v1/learner/me/notifications/read-all", { method: "PUT" }),
   getCertificates: () => learnerFetch<Certificate[]>("/v1/learner/me/certificates"),
-  getCertificateDetail: (id: string) => learnerFetch<Certificate>(`/v1/learner/me/certificates/${id}`),
-  getRelatedCourses: (courseId: string) => learnerFetch<CourseSummary[]>(`/v1/learner/courses/${courseId}/related`),
-  getRelatedResources: (resourceId: string) => learnerFetch<Resource[]>(`/v1/learner/resources/${resourceId}/related`),
-  getRelatedLiveClasses: (liveClassId: string) => learnerFetch<LiveClass[]>(`/v1/learner/live-classes/${liveClassId}/related`),
-  search: (q: string, type?: string, filters?: SearchFilters) => {
-    let url = `/v1/learner/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`
-    if (filters?.level) url += `&level=${encodeURIComponent(filters.level)}`
-    if (filters?.category) url += `&category=${encodeURIComponent(filters.category)}`
-    if (filters?.provider) url += `&provider=${encodeURIComponent(filters.provider)}`
-    if (filters?.dateFrom) url += `&dateFrom=${encodeURIComponent(filters.dateFrom)}`
-    if (filters?.dateTo) url += `&dateTo=${encodeURIComponent(filters.dateTo)}`
-    if (filters?.sort) url += `&sort=${encodeURIComponent(filters.sort)}`
-    return learnerFetch<SearchResult>(url)
+  search: (q: string, type?: string) =>
+    learnerFetch<SearchResult>(
+      `/v1/learner/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`,
+    ),
+  getEvents: (params?: { eventType?: string; category?: string; search?: string }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.eventType) searchParams.set("eventType", params.eventType)
+    if (params?.category) searchParams.set("category", params.category)
+    if (params?.search) searchParams.set("search", params.search)
+    const qs = searchParams.toString()
+    return learnerFetch<EventItem[]>(`/v1/learner/events${qs ? `?${qs}` : ""}`)
   },
+  getUpcomingEvents: () => learnerFetch<EventItem[]>("/v1/learner/events/upcoming"),
+  getPastEvents: () => learnerFetch<EventItem[]>("/v1/learner/events/past"),
+  getEvent: (id: string) => learnerFetch<EventItem>(`/v1/learner/events/${id}`),
+  registerForEvent: (eventId: string) =>
+    learnerFetch<EventRegistration>(`/v1/learner/events/${eventId}/register`, { method: "POST" }),
+  cancelEventRegistration: (eventId: string, reason?: string) =>
+    learnerFetch<void>(`/v1/learner/events/${eventId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason || "" }),
+    }),
+  getRegisteredEvents: () => learnerFetch<EventItem[]>("/v1/learner/events/registered"),
+  getRegisteredPastEvents: () => learnerFetch<EventItem[]>("/v1/learner/events/registered/past"),
+  getEventMaterials: (eventId: string) =>
+    learnerFetch<EventMaterial[]>(`/v1/learner/events/${eventId}/materials`),
+  getVideoLibrary: () => learnerFetch<Resource[]>("/v1/learner/resources"),
+  getVideoResources: () =>
+    learnerFetch<Resource[]>("/v1/learner/resources").then((resources) =>
+      resources.filter((r) => r.resourceType === "VIDEO")
+    ),
 }

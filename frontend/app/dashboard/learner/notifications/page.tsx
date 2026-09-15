@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type LearnerNotification } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Bell, CheckCheck, AlertCircle, Clock, FileText, BookOpen, Video, Award } from "lucide-react"
+import { Bell, CheckCheck, AlertCircle, Clock, FileText, BookOpen, Video, Award, Calendar } from "lucide-react"
 
 export default function LearnerNotificationsPage() {
   const { user, loading: authLoading } = useAuth()
@@ -61,6 +61,7 @@ export default function LearnerNotificationsPage() {
       case "assignment": return <FileText className="size-4 text-orange" />
       case "liveclass": case "live_class": return <Video className="size-4 text-red-500" />
       case "certificate": return <Award className="size-4 text-yellow-500" />
+      case "event": return <Calendar className="size-4 text-green-500" />
       default: return <Bell className="size-4 text-primary" />
     }
   }
@@ -72,6 +73,7 @@ export default function LearnerNotificationsPage() {
       case "liveclass": case "live_class": return `/dashboard/learner/live-classes`
       case "resource": return `/dashboard/learner/resources`
       case "certificate": return `/dashboard/learner/certificates`
+      case "event": return `/dashboard/learner/events/${notification.targetId}`
       default: return null
     }
   }

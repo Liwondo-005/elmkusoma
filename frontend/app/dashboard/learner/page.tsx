@@ -3,16 +3,17 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type DashboardData, type CourseSummary, type LearnerNotification } from "@/lib/learner-api"
+import { learnerApi, type DashboardData, type CourseSummary } from "@/lib/learner-api"
 import { LearnerHeader, ContinueLearningCard, EmptyState, LoadingState } from "@/components/learner/shared"
-import { BookOpen, Library, Video, Award, ArrowRight, Clock, Loader2, AlertCircle, Bookmark, History, Bell } from "lucide-react"
+import { BookOpen, Library, Video, Award, ArrowRight, Clock, Loader2, AlertCircle, CalendarDays } from "lucide-react"
+import { type EventItem } from "@/lib/learner-api"
 
 export default function LearnerDashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
-  const [recentNotifications, setRecentNotifications] = useState<LearnerNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [upcomingEvents, setUpcomingEvents] = useState<EventItem[]>([])
 
   useEffect(() => {
     if (!user || user.role !== "Other Learner") return
@@ -23,12 +24,12 @@ export default function LearnerDashboardPage() {
     try {
       setLoading(true)
       setError(null)
-      const [data, notifs] = await Promise.all([
+      const [data, events] = await Promise.all([
         learnerApi.getDashboard(),
-        learnerApi.getNotifications().catch(() => []),
+        learnerApi.getUpcomingEvents().catch(() => []),
       ])
       setDashboard(data)
-      setRecentNotifications(notifs.slice(0, 5))
+      setUpcomingEvents(events.slice(0, 3))
     } catch {
       setError("Failed to load dashboard data")
     } finally {
@@ -134,19 +135,19 @@ export default function LearnerDashboardPage() {
               <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
             </Link>
             <Link
-              href="/dashboard/learner/bookmarks"
+              href="/dashboard/learner/events"
               className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
-              <Bookmark className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Bookmarks</span>
+              <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1">Events &amp; Workshops</span>
               <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
             </Link>
             <Link
-              href="/dashboard/learner/history"
+              href="/dashboard/learner/video-library"
               className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
-              <History className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">History</span>
+              <Video className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1">Video Library</span>
               <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
             </Link>
             <Link
@@ -161,37 +162,45 @@ export default function LearnerDashboardPage() {
         </div>
       </div>
 
-      {recentNotifications.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+      {upcomingEvents.length > 0 && (
+        <section>
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-              <Bell className="size-4 text-muted-foreground" />
-              Recent Notifications
-              {dashboard && dashboard.unreadNotifications > 0 && (
-                <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                  {dashboard.unreadNotifications} unread
-                </span>
-              )}
-            </h2>
-            <Link href="/dashboard/learner/notifications" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            <h2 className="text-base font-semibold text-foreground">Upcoming Events</h2>
+            <Link href="/dashboard/learner/events" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
               View All <ArrowRight className="size-3" />
             </Link>
           </div>
-          <div className="mt-3 space-y-2">
-            {recentNotifications.map((notif) => (
-              <div key={notif.id} className={`flex items-center gap-3 rounded-lg border p-3 ${notif.isRead ? "border-border" : "border-primary/20 bg-primary/5"}`}>
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <Bell className="size-4 text-primary" />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {upcomingEvents.map((event) => (
+              <Link
+                key={event.id}
+                href={`/dashboard/learner/events/${event.id}`}
+                className="rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {event.eventType}
+                  </span>
+                  {event.isFree && (
+                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                      Free
+                    </span>
+                  )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{notif.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">{notif.message}</p>
+                <h3 className="text-sm font-semibold text-foreground truncate">{event.title}</h3>
+                <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                  <CalendarDays className="size-3" />
+                  {new Date(event.startsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  {" at "}
+                  {new Date(event.startsAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                 </div>
-                {!notif.isRead && <span className="size-2 shrink-0 rounded-full bg-primary" />}
-              </div>
+                {event.location && (
+                  <p className="mt-1 text-xs text-muted-foreground truncate">{event.location}</p>
+                )}
+              </Link>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {dashboard?.recommended && dashboard.recommended.length > 0 && (
