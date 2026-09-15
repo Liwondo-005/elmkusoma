@@ -29,4 +29,10 @@ public class AssignmentRequest {
     private Integer totalMarks;
 
     private String attachments;
+
+    private String assignmentType;
+
+    private String instructions;
+
+    private String status;
 }

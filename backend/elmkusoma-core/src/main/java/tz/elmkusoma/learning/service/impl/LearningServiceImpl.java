@@ -215,6 +215,35 @@ public class LearningServiceImpl implements LearningService {
         return toSubmissionResponse(submissionRepository.save(submission));
     }
 
+    @Override
+    public AssignmentResponse updateAssignment(UUID assignmentId, AssignmentRequest request) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found with id: " + assignmentId));
+
+        assignment.setSubjectId(request.getSubjectId());
+        assignment.setClassGroupId(request.getClassGroupId());
+        assignment.setTitle(request.getTitle());
+        assignment.setDescription(request.getDescription());
+        assignment.setDueDate(request.getDueDate());
+        assignment.setTotalMarks(request.getTotalMarks());
+        assignment.setAttachments(request.getAttachments());
+        if (request.getAssignmentType() != null) assignment.setAssignmentType(request.getAssignmentType());
+        if (request.getInstructions() != null) assignment.setInstructions(request.getInstructions());
+        if (request.getStatus() != null) assignment.setStatus(request.getStatus());
+
+        return toAssignmentResponse(assignmentRepository.save(assignment));
+    }
+
+    @Override
+    public void deleteAssignment(UUID assignmentId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment not found with id: " + assignmentId));
+        assignment.setIsDeleted(true);
+        assignmentRepository.save(assignment);
+    }
+
     private LessonResponse toLessonResponse(Lesson l) {
         return LessonResponse.builder()
                 .id(l.getId())
@@ -253,6 +282,9 @@ public class LearningServiceImpl implements LearningService {
                 .dueDate(a.getDueDate())
                 .totalMarks(a.getTotalMarks())
                 .attachments(a.getAttachments())
+                .assignmentType(a.getAssignmentType())
+                .instructions(a.getInstructions())
+                .status(a.getStatus())
                 .createdAt(a.getCreatedAt())
                 .build();
     }

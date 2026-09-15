@@ -22,5 +22,8 @@ public class AssignmentResponse {
     private LocalDateTime dueDate;
     private Integer totalMarks;
     private String attachments;
+    private String assignmentType;
+    private String instructions;
+    private String status;
     private LocalDateTime createdAt;
 }

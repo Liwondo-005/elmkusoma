@@ -1,121 +1,24 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BarChart3, Loader2, ChevronDown } from "lucide-react"
+import { BarChart3, Loader2, ChevronDown, AlertCircle, Users, Award } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { teacherFetch, type ClassGroupInfo, type GradingScale, type ReportCard } from "@/lib/teacher-api"
+import type { ClassGroupInfo, GradingScale } from "@/lib/teacher-api"
 
-interface StudentReport {
+interface ReportCardEntry {
+  id: string
   studentId: string
-  fullName: string
-  admissionNumber: string
-  average: number
-  grade: string
-  totalSubmissions: number
-  gradedCount: number
-}
-
-function ReportCards({ classId }: { classId: string }) {
-  const [reports, setReports] = useState<StudentReport[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!classId) { setReports([]); return }
-    async function load() {
-      setLoading(true)
-      setError(null)
-      try {
-        const { teacherApi } = await import("@/lib/teacher-api")
-        const [students, assignments, scales] = await Promise.all([
-          teacherApi.getStudentsByClass(classId).catch(() => []),
-          teacherApi.getAssignmentsByClass(classId).catch(() => []),
-          teacherApi.getGradingScales().catch(() => []),
-        ])
-
-        const gradeMap: Record<string, { total: number; count: number }> = {}
-        for (const a of assignments) {
-          const submissions = await teacherApi.getSubmissions(a.id).catch(() => [])
-          for (const sub of submissions) {
-            if (sub.grade != null) {
-              const gradeNum = Number(sub.grade)
-              if (isNaN(gradeNum)) continue
-              const key = sub.studentId || (sub as any).userId
-              if (!key) continue
-              if (!gradeMap[key]) gradeMap[key] = { total: 0, count: 0 }
-              gradeMap[key].total += gradeNum
-              gradeMap[key].count++
-            }
-          }
-        }
-
-        const results: StudentReport[] = students.map((s) => {
-          const g = gradeMap[s.id]
-          const avg = g && g.count > 0 ? g.total / g.count : 0
-          return { studentId: s.id, fullName: `${s.firstName} ${s.lastName}`, admissionNumber: s.admissionNumber, average: Math.round(avg * 10) / 10, grade: resolveGrade(avg, scales), totalSubmissions: assignments.length, gradedCount: g?.count ?? 0 }
-        })
-        setReports(results.sort((a, b) => b.average - a.average))
-      } catch {
-        setError("Failed to load report cards")
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [classId])
-
-  if (!classId) return null
-  if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
-  if (error) return <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>
-  if (reports.length === 0) return <div className="rounded-2xl border border-dashed border-border py-12 text-center"><p className="text-sm text-muted-foreground">No students found in this class.</p></div>
-
-  return (
-    <div className="rounded-2xl border border-border bg-card shadow-xs overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <th className="px-4 py-3">#</th>
-            <th className="px-4 py-3">Student</th>
-            <th className="px-4 py-3">Admission #</th>
-            <th className="px-4 py-3 text-center">Average</th>
-            <th className="px-4 py-3 text-center">Grade</th>
-            <th className="px-4 py-3 text-center">Graded / Total</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {reports.map((r, i) => (
-            <tr key={r.studentId} className="hover:bg-muted/30">
-              <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
-              <td className="px-4 py-3 font-medium text-foreground">{r.fullName}</td>
-              <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{r.admissionNumber}</td>
-              <td className="px-4 py-3 text-center font-semibold text-foreground">{r.average}%</td>
-              <td className="px-4 py-3 text-center">
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  r.average >= 75 ? "bg-emerald-500/10 text-emerald-700" : r.average >= 50 ? "bg-yellow-500/10 text-yellow-700" : "bg-red-500/10 text-red-700"
-                }`}>{r.grade}</span>
-              </td>
-              <td className="px-4 py-3 text-center text-muted-foreground">{r.gradedCount} / {r.totalSubmissions}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function resolveGrade(avg: number, scales: GradingScale[]): string {
-  const scale = scales[0]
-  if (!scale || scale.gradeBoundaries.length === 0) {
-    if (avg >= 75) return "A"
-    if (avg >= 65) return "B"
-    if (avg >= 50) return "C"
-    if (avg >= 40) return "D"
-    return "F"
-  }
-  for (const gb of scale.gradeBoundaries.sort((a, b) => b.minMark - a.minMark)) {
-    if (avg >= gb.minMark) return gb.grade
-  }
-  return "F"
+  studentName: string
+  className: string
+  term: string
+  academicYear: string
+  overallGrade: string | null
+  averageMark: number | null
+  classRank: number | null
+  totalStudentsInClass: number | null
+  remarks: string | null
+  status: string
+  publishedAt: string | null
 }
 
 export default function TeacherGradingPage() {
@@ -123,24 +26,27 @@ export default function TeacherGradingPage() {
   const [classes, setClasses] = useState<ClassGroupInfo[]>([])
   const [selectedClassId, setSelectedClassId] = useState<string>("")
   const [scales, setScales] = useState<GradingScale[]>([])
-  const [reportCards, setReportCards] = useState<ReportCard[]>([])
+  const [reportCards, setReportCards] = useState<ReportCardEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [reportLoading, setReportLoading] = useState(false)
+  const [loadingReports, setLoadingReports] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"scales" | "reports">("scales")
 
   useEffect(() => {
     async function load() {
       try {
-        const profileRes = await teacherFetch<{ content: { id: string; email: string }[] }>("/v1/teachers?page=0&size=50")
+        setLoading(true)
+        const { teacherApi } = await import("@/lib/teacher-api")
+        const profileRes = await teacherApi.listTeachers(0, 50)
         const teacher = profileRes.content?.find((t) => t.email === user?.email)
         if (teacher) {
-          const assigns = await teacherFetch<{ classGroupId: string }[]>(`/v1/teachers/${teacher.id}/assignments`).catch(() => [])
+          const assigns = await teacherApi.getAssignments(teacher.id).catch(() => [])
           const assignedClassIds = [...new Set(assigns.map((a) => a.classGroupId))]
-          const allClasses = await teacherFetch<ClassGroupInfo[]>("/v1/academic/class-groups").catch(() => [])
+          const allClasses = await teacherApi.getClassGroups().catch(() => [])
           const filtered = allClasses.filter((c) => assignedClassIds.includes(c.id))
           setClasses(filtered.length > 0 ? filtered : allClasses.slice(0, 10))
         }
-        const gradingScales = await teacherFetch<GradingScale[]>("/v1/grading/scales").catch(() => [])
+        const gradingScales = await teacherApi.getGradingScales().catch(() => [])
         setScales(gradingScales)
       } catch { /* empty */ }
       finally { setLoading(false) }
@@ -149,27 +55,41 @@ export default function TeacherGradingPage() {
   }, [user?.email])
 
   useEffect(() => {
-    if (activeTab !== "reports") return
-    setReportCards([])
-    if (!selectedClassId) return
-
-    let cancelled = false
-    async function loadReportCards() {
-      setReportLoading(true)
+    if (!selectedClassId || activeTab !== "reports") return
+    async function loadReports() {
       try {
-        const students = await teacherFetch<{ id: string }[]>(`/v1/students?classId=${selectedClassId}`).catch(() => [])
-        const allCards: ReportCard[] = []
-        for (const s of students.slice(0, 20)) {
-          const cards = await teacherFetch<ReportCard[]>(`/v1/grading/report-cards/student/${s.id}`).catch(() => [])
-          allCards.push(...cards)
+        setLoadingReports(true)
+        setError(null)
+        const { teacherApi } = await import("@/lib/teacher-api")
+        const students = await teacherApi.getStudentsByClass(selectedClassId).catch(() => [])
+        if (students.length === 0) {
+          setReportCards([])
+          return
         }
-        if (!cancelled) setReportCards(allCards)
-      } catch { if (!cancelled) setReportCards([]) }
-      finally { if (!cancelled) setReportLoading(false) }
+        const allCards: ReportCardEntry[] = []
+        await Promise.all(
+          students.map(async (s) => {
+            try {
+              const cards = await teacherApi.getReportCardsByStudent(s.id)
+              allCards.push(...cards.map((c) => ({
+                ...c,
+                studentName: `${s.firstName} ${s.lastName}`,
+              })))
+            } catch { /* skip */ }
+          })
+        )
+        setReportCards(allCards.sort((a, b) => (b.averageMark ?? 0) - (a.averageMark ?? 0)))
+      } catch {
+        setError("Failed to load report cards")
+        setReportCards([])
+      } finally {
+        setLoadingReports(false)
+      }
     }
-    loadReportCards()
-    return () => { cancelled = true }
-  }, [activeTab, selectedClassId])
+    loadReports()
+  }, [selectedClassId, activeTab])
+
+  const selectedClass = classes.find((c) => c.id === selectedClassId)
 
   if (loading) {
     return (
@@ -185,6 +105,15 @@ export default function TeacherGradingPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Grading</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage grading scales and view report cards.</p>
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" />
+            {error}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2 border-b border-border">
         <button
@@ -267,59 +196,96 @@ export default function TeacherGradingPage() {
               >
                 <option value="">Choose a class...</option>
                 {classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name} ({c.studentCount} students)</option>
                 ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             </div>
           </div>
-{reportLoading ? (
+
+          {loadingReports ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading report cards...</span>
             </div>
-          ) : reportCards.length > 0 ? (
-            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    <th className="px-4 py-3">Student</th>
-                    <th className="px-4 py-3">Term</th>
-                    <th className="px-4 py-3">Average</th>
-                    <th className="px-4 py-3">Grade</th>
-                    <th className="px-4 py-3">Rank</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportCards.map((rc) => (
-                    <tr key={rc.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-3 font-medium text-foreground">{rc.studentName}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{rc.term || "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{rc.averageMark != null ? `${rc.averageMark}%` : "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{rc.overallGrade || "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{rc.classRank != null ? `#${rc.classRank}` : "—"}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          rc.status === "PUBLISHED" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                        }`}>{rc.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : selectedClassId ? (
-            <div className="rounded-2xl border border-dashed border-border py-12 text-center">
-              <BarChart3 className="mx-auto mb-3 size-8 text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">No report cards found</p>
-              <p className="mt-1 text-xs text-muted-foreground">Report cards for this class have not been generated yet.</p>
-            </div>
-          ) : (
+          ) : !selectedClassId ? (
             <div className="rounded-2xl border border-dashed border-border py-12 text-center">
               <BarChart3 className="mx-auto mb-3 size-8 text-muted-foreground" />
               <p className="text-sm font-medium text-foreground">Select a class to view student report cards.</p>
               <p className="mt-1 text-xs text-muted-foreground">Choose a class above to see report cards.</p>
             </div>
+          ) : reportCards.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border py-12 text-center">
+              <Award className="mx-auto mb-3 size-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">No report cards found</p>
+              <p className="mt-1 text-xs text-muted-foreground">No report cards have been generated for {selectedClass?.name} yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
+                  <p className="text-xs font-medium text-muted-foreground">Students</p>
+                  <p className="mt-1 text-2xl font-extrabold text-foreground">{reportCards.length}</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
+                  <p className="text-xs font-medium text-muted-foreground">Published</p>
+                  <p className="mt-1 text-2xl font-extrabold text-foreground">{reportCards.filter((r) => r.status === "PUBLISHED").length}</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
+                  <p className="text-xs font-medium text-muted-foreground">Average Mark</p>
+                  <p className="mt-1 text-2xl font-extrabold text-foreground">
+                    {reportCards.length > 0 ? Math.round(reportCards.reduce((sum, r) => sum + (r.averageMark ?? 0), 0) / reportCards.length) : 0}%
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-3">Student</th>
+                        <th className="px-4 py-3">Average</th>
+                        <th className="px-4 py-3">Grade</th>
+                        <th className="px-4 py-3">Rank</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportCards.map((card) => (
+                        <tr key={card.id} className="border-b border-border last:border-0">
+                          <td className="px-4 py-3 font-medium text-foreground">{card.studentName}</td>
+                          <td className="px-4 py-3">
+                            <span className={`font-semibold ${card.averageMark != null && card.averageMark >= 70 ? "text-green-600" : card.averageMark != null && card.averageMark >= 50 ? "text-foreground" : "text-red-600"}`}>
+                              {card.averageMark != null ? `${card.averageMark}%` : "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                              {card.overallGrade || "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {card.classRank != null ? `${card.classRank}/${card.totalStudentsInClass || "?"}` : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              card.status === "PUBLISHED" ? "bg-green-100 text-green-700" :
+                              card.status === "DRAFT" ? "bg-gray-100 text-gray-700" :
+                              "bg-orange-100 text-orange-700"
+                            }`}>
+                              {card.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground truncate max-w-[200px]">{card.remarks || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
