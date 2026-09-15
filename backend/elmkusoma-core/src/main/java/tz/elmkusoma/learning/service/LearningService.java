@@ -12,6 +12,10 @@ public interface LearningService {
 
     LessonResponse createLesson(UUID institutionId, LessonRequest request);
 
+    LessonResponse updateLesson(UUID lessonId, LessonRequest request);
+
+    void deleteLesson(UUID lessonId);
+
     List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId);
 
     List<LessonResponse> getLessonsByClass(UUID classGroupId);
@@ -23,6 +27,10 @@ public interface LearningService {
     Double getStudentAverageCompletion(UUID studentId);
 
     AssignmentResponse createAssignment(UUID institutionId, AssignmentRequest request);
+
+    AssignmentResponse updateAssignment(UUID assignmentId, AssignmentRequest request);
+
+    void deleteAssignment(UUID assignmentId);
 
     List<AssignmentResponse> getAssignmentsByClass(UUID classGroupId);
 

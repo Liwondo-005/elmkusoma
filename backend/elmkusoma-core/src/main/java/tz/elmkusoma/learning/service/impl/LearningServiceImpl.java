@@ -45,6 +45,32 @@ public class LearningServiceImpl implements LearningService {
     }
 
     @Override
+    public LessonResponse updateLesson(UUID lessonId, LessonRequest request) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .filter(l -> !l.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson", "id", lessonId));
+
+        if (request.getTitle() != null) lesson.setTitle(request.getTitle());
+        if (request.getDescription() != null) lesson.setDescription(request.getDescription());
+        if (request.getContentText() != null) lesson.setContentText(request.getContentText());
+        if (request.getVideoUrl() != null) lesson.setVideoUrl(request.getVideoUrl());
+        if (request.getFileAttachments() != null) lesson.setFileAttachments(request.getFileAttachments());
+        if (request.getSortOrder() != null) lesson.setSortOrder(request.getSortOrder());
+        if (request.getIsPublished() != null) lesson.setIsPublished(request.getIsPublished());
+
+        return toLessonResponse(lessonRepository.save(lesson));
+    }
+
+    @Override
+    public void deleteLesson(UUID lessonId) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .filter(l -> !l.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson", "id", lessonId));
+        lesson.setIsDeleted(true);
+        lessonRepository.save(lesson);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId) {
         return lessonRepository.findBySubjectIdAndClassGroupIdAndIsDeletedFalseOrderBySortOrder(subjectId, classGroupId)
@@ -110,6 +136,31 @@ public class LearningServiceImpl implements LearningService {
                 .build();
 
         return toAssignmentResponse(assignmentRepository.save(assignment));
+    }
+
+    @Override
+    public AssignmentResponse updateAssignment(UUID assignmentId, AssignmentRequest request) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment", "id", assignmentId));
+
+        if (request.getTitle() != null) assignment.setTitle(request.getTitle());
+        if (request.getDescription() != null) assignment.setDescription(request.getDescription());
+        if (request.getDueDate() != null) assignment.setDueDate(request.getDueDate());
+        if (request.getTotalMarks() != null) assignment.setTotalMarks(request.getTotalMarks());
+        if (request.getAttachments() != null) assignment.setAttachments(request.getAttachments());
+        if (request.getSubjectId() != null) assignment.setSubjectId(request.getSubjectId());
+
+        return toAssignmentResponse(assignmentRepository.save(assignment));
+    }
+
+    @Override
+    public void deleteAssignment(UUID assignmentId) {
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment", "id", assignmentId));
+        assignment.setIsDeleted(true);
+        assignmentRepository.save(assignment);
     }
 
     @Override

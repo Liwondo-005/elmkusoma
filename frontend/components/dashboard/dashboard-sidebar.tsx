@@ -106,6 +106,7 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Students", href: "/dashboard/teacher/students", icon: Users },
   { label: "Learner Support", href: "/dashboard/teacher/learner-support", icon: HeartPulse },
   { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
+  { label: "Lessons", href: "/dashboard/teacher/lessons", icon: BookOpen },
   { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
   { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
   { label: "Gradebook", href: "/dashboard/teacher/gradebook", icon: BarChart3 },

@@ -44,6 +44,24 @@ public class LearningController {
                 .body(ApiResponse.success("Lesson created", response));
     }
 
+    @PutMapping("/lessons/{id}")
+    @Operation(summary = "Update a lesson")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<LessonResponse>> updateLesson(
+            @PathVariable UUID id,
+            @Valid @RequestBody LessonRequest request) {
+        LessonResponse response = learningService.updateLesson(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Lesson updated", response));
+    }
+
+    @DeleteMapping("/lessons/{id}")
+    @Operation(summary = "Delete a lesson")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<Void>> deleteLesson(@PathVariable UUID id) {
+        learningService.deleteLesson(id);
+        return ResponseEntity.ok(ApiResponse.success("Lesson deleted", null));
+    }
+
     @GetMapping("/lessons/subject/{subjectId}/class/{classGroupId}")
     @Operation(summary = "Get lessons by subject and class")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
@@ -119,6 +137,24 @@ public class LearningController {
         AssignmentResponse response = learningService.createAssignment(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Assignment created", response));
+    }
+
+    @PutMapping("/assignments/{id}")
+    @Operation(summary = "Update an assignment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<AssignmentResponse>> updateAssignment(
+            @PathVariable UUID id,
+            @Valid @RequestBody AssignmentRequest request) {
+        AssignmentResponse response = learningService.updateAssignment(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Assignment updated", response));
+    }
+
+    @DeleteMapping("/assignments/{id}")
+    @Operation(summary = "Delete an assignment")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<Void>> deleteAssignment(@PathVariable UUID id) {
+        learningService.deleteAssignment(id);
+        return ResponseEntity.ok(ApiResponse.success("Assignment deleted", null));
     }
 
     @GetMapping("/assignments/class/{classGroupId}")

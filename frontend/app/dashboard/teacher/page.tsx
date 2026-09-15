@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth"
 import { type TeacherDashboard, type Assignment, type Assessment, learningApi, assessmentApi, teacherApi as apiTeacher } from "@/lib/api"
 import { teacherApi } from "@/lib/teacher-api"
 import { BookOpen, Users, FileText, PenTool, Video, Clock, ArrowRight, TrendingUp, GraduationCap, Calendar, AlertCircle, ClipboardCheck, BarChart3, ChevronRight, Loader2, AlertTriangle, CheckCircle, ClipboardList } from "lucide-react"
+import { teacherFetch } from "@/lib/teacher-api"
 
 export default function TeacherDashboardPage() {
   const { user } = useAuth()
@@ -23,6 +24,9 @@ export default function TeacherDashboardPage() {
     todayAttendance: 0,
     attendanceRate: 0,
   })
+  const [todayClasses, setTodayClasses] = useState<{ className: string; subjectName: string }[]>([])
+  const [todayLiveClasses, setTodayLiveClasses] = useState<{ title: string; scheduledAt: string; status: string }[]>([])
+  const [recentActivity, setRecentActivity] = useState<{ type: string; title: string; description: string; timestamp: string }[]>([])
 
   useEffect(() => {
     if (!user) return
@@ -71,10 +75,23 @@ export default function TeacherDashboardPage() {
             totalStudents,
             totalClasses: classIds.length,
             totalSubjects: uniqueSubjects.length,
-            pendingGrading: 0,
+            pendingGrading: dashboardData.status === "fulfilled" ? (dashboardData.value?.pendingGrading ?? 0) : 0,
             todayAttendance: 0,
             attendanceRate: 0,
           })
+
+          if (dashboardData.status === "fulfilled" && dashboardData.value?.classes) {
+            setTodayClasses(dashboardData.value.classes.map((c) => ({ className: c.className, subjectName: c.subjectName })))
+          }
+          if (dashboardData.status === "fulfilled" && dashboardData.value?.recentActivity) {
+            setRecentActivity(dashboardData.value.recentActivity)
+          }
+
+          try {
+            const liveClasses = await teacherFetch<{ title: string; scheduledAt: string; status: string }[]>("/v1/teachers/me/live-classes").catch(() => [])
+            const today = new Date().toISOString().split("T")[0]
+            setTodayLiveClasses(liveClasses.filter((lc) => lc.scheduledAt?.startsWith(today)))
+          } catch { /* skip */ }
         }
       } catch { /* dashboard loads with zero stats */ }
     } catch {
@@ -163,7 +180,7 @@ export default function TeacherDashboardPage() {
           <h2 className="text-base font-semibold text-foreground">My Classes</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {dashboard.classes.map((cls) => (
-              <div key={cls.classGroupId} className="rounded-xl border border-border p-4 hover:bg-muted/30 transition-colors">
+              <Link key={cls.classGroupId} href={`/dashboard/teacher/classes/${cls.classGroupId}`} className="group rounded-xl border border-border p-4 transition-colors hover:bg-muted/30">
                 <div className="flex items-center gap-3">
                   <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
                     <GraduationCap className="size-4 text-primary" />
@@ -172,11 +189,44 @@ export default function TeacherDashboardPage() {
                     <p className="truncate text-sm font-medium text-foreground">{cls.className}</p>
                     <p className="text-xs text-muted-foreground">{cls.subjectName}</p>
                   </div>
+                  <ArrowRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                 </div>
                 <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Users className="size-3" /> {cls.enrolledStudents} students
-                  </span>
+                  <span className="flex items-center gap-1"><Users className="size-3" /> {cls.enrolledStudents} students</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {todayLiveClasses.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <h2 className="text-base font-semibold text-foreground">Today&apos;s Live Classes</h2>
+          <div className="mt-4 space-y-3">
+            {todayLiveClasses.map((lc, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-green-500/10"><Video className="size-4 text-green-600" /></div>
+                <div className="min-w-0 flex-1"><p className="text-sm font-medium text-foreground">{lc.title}</p><p className="text-xs text-muted-foreground">{new Date(lc.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p></div>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${lc.status === "IN_PROGRESS" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>{lc.status}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recentActivity.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
+          <div className="mt-4 space-y-3">
+            {recentActivity.slice(0, 5).map((activity, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+                  {activity.type === "assignment" ? <FileText className="size-4 text-primary" /> : <BookOpen className="size-4 text-primary" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{activity.title}</p>
+                  <p className="text-xs text-muted-foreground">{activity.description}</p>
                 </div>
               </div>
             ))}
@@ -194,6 +244,14 @@ export default function TeacherDashboardPage() {
             >
               <BookOpen className="size-4 shrink-0 text-muted-foreground" />
               <span className="flex-1">My Classes</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </Link>
+            <Link
+              href="/dashboard/teacher/lessons"
+              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <BookOpen className="size-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1">Create Lesson</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
             <Link
