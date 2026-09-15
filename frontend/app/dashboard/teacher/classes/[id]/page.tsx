@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { Users, BookOpen, Loader2, CheckCircle, XCircle, Clock } from "lucide-react"
+import { Users, BookOpen, Loader2, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react"
 import type { ClassGroupInfo, StudentInClass, AttendanceSummary } from "@/lib/teacher-api"
 
 export default function TeacherClassDetailPage() {
@@ -12,6 +12,7 @@ export default function TeacherClassDetailPage() {
   const [students, setStudents] = useState<StudentInClass[]>([])
   const [summaries, setSummaries] = useState<AttendanceSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"students" | "attendance">("students")
 
   useEffect(() => {
@@ -26,7 +27,9 @@ export default function TeacherClassDetailPage() {
         setCls(allClasses.find((c) => c.id === classId) || null)
         setStudents(studs)
         setSummaries(attSummaries)
-      } catch { /* empty */ }
+      } catch {
+        setError("Failed to load class details")
+      }
       finally { setLoading(false) }
     }
     load()
@@ -50,6 +53,15 @@ export default function TeacherClassDetailPage() {
           {cls?.gradeName} &middot; {students.length} students
         </p>
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" />
+            {error}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2 border-b border-border">
         <button

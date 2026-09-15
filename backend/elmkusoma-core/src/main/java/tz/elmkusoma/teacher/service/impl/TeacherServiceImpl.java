@@ -18,6 +18,7 @@ import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learning.domain.Assignment;
 import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.repository.AssignmentRepository;
+import tz.elmkusoma.learning.repository.AssignmentSubmissionRepository;
 import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -52,6 +53,7 @@ public class TeacherServiceImpl implements TeacherService {
     private final StudentRepository studentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final AssignmentRepository assignmentRepo;
+    private final AssignmentSubmissionRepository submissionRepository;
     private final LessonRepository lessonRepository;
     private final AssessmentRepository assessmentRepository;
     private final AttendanceRecordRepository attendanceRepository;
@@ -324,6 +326,7 @@ public class TeacherServiceImpl implements TeacherService {
         long totalAssignments = 0;
         long totalAssessments = 0;
         long pendingSubmissions = 0;
+        long pendingGrading = 0;
         List<TeacherDashboardResponse.TeacherClassSummary> classSummaries = new ArrayList<>();
         List<TeacherDashboardResponse.RecentActivity> activities = new ArrayList<>();
 
@@ -343,16 +346,28 @@ public class TeacherServiceImpl implements TeacherService {
                 if (a.getDueDate() != null && a.getDueDate().isAfter(java.time.LocalDateTime.now())) {
                     pendingSubmissions++;
                 }
+                long ungraded = submissionRepository.findByAssignmentIdAndIsDeletedFalse(a.getId()).stream()
+                        .filter(s -> s.getGrade() == null).count();
+                pendingGrading += ungraded;
             }
+
+            String className = classGroupRepository.findById(classGroupId)
+                    .map(tz.elmkusoma.academic.domain.ClassGroup::getName).orElse("Unknown Class");
 
             TeacherAssignment matchedAssignment = assignments.stream()
                     .filter(a -> a.getClassGroupId().equals(classGroupId))
                     .findFirst().orElse(null);
 
+            String subjectName = "";
+            if (matchedAssignment != null && matchedAssignment.getSubjectId() != null) {
+                subjectName = subjectRepository.findById(matchedAssignment.getSubjectId())
+                        .map(tz.elmkusoma.academic.domain.Subject::getName).orElse("");
+            }
+
             classSummaries.add(TeacherDashboardResponse.TeacherClassSummary.builder()
                     .classGroupId(classGroupId.toString())
-                    .className("Class Group")
-                    .subjectName(matchedAssignment != null ? "Subject" : "")
+                    .className(className)
+                    .subjectName(subjectName)
                     .enrolledStudents(activeStudents)
                     .build());
 
@@ -372,7 +387,7 @@ public class TeacherServiceImpl implements TeacherService {
                 .totalAssignments(totalAssignments)
                 .totalAssessments(totalAssessments)
                 .pendingSubmissions(pendingSubmissions)
-                .pendingGrading(0)
+                .pendingGrading(pendingGrading)
                 .classes(classSummaries)
                 .recentActivity(activities.stream().limit(10).toList())
                 .build();

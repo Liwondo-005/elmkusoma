@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Users, ChevronRight, Loader2, BookOpen } from "lucide-react"
+import { Users, ChevronRight, Loader2, BookOpen, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import type { ClassGroupInfo, TeacherAssignment } from "@/lib/teacher-api"
 
@@ -11,6 +11,7 @@ export default function TeacherClassesPage() {
   const [classes, setClasses] = useState<ClassGroupInfo[]>([])
   const [assignments, setAssignments] = useState<TeacherAssignment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -28,7 +29,9 @@ export default function TeacherClassesPage() {
           const filtered = allClasses.filter((c) => assignedClassIds.includes(c.id))
           setClasses(filtered.length > 0 ? filtered : allClasses.slice(0, 10))
         }
-      } catch { /* empty */ }
+      } catch {
+        setError("Failed to load classes")
+      }
       finally { setLoading(false) }
     }
     load()
@@ -48,6 +51,15 @@ export default function TeacherClassesPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">My Classes</h1>
         <p className="mt-1 text-sm text-muted-foreground">Classes you are assigned to teach.</p>
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" />
+            {error}
+          </div>
+        </div>
+      )}
 
       {classes.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
