@@ -38,6 +38,9 @@ export default function TeacherStudentsPage() {
   )
 
   const classGroups = Array.from(new Set(students.map(s => s.classGroupId)))
+  const classNames = Object.fromEntries(
+    classGroups.map(cg => [cg, students.find(s => s.classGroupId === cg)?.className || cg.slice(0, 8)])
+  )
   const [selectedClass, setSelectedClass] = useState<string>("all")
 
   const displayed = selectedClass === "all"
@@ -81,7 +84,7 @@ export default function TeacherStudentsPage() {
           >
             <option value="all">All Classes</option>
             {classGroups.map((cg) => (
-              <option key={cg} value={cg}>Class {cg.slice(0, 8)}</option>
+              <option key={cg} value={cg}>{classNames[cg]}</option>
             ))}
           </select>
         )}

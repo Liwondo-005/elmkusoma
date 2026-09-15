@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { Users, BookOpen, Loader2, CheckCircle, XCircle, Clock, FileText, PenTool, Video } from "lucide-react"
+import { Users, BookOpen, Loader2, CheckCircle, XCircle, Clock, FileText, PenTool, Video, AlertCircle } from "lucide-react"
 import { teacherFetch, type ClassGroupInfo, type StudentInClass, type AttendanceSummary } from "@/lib/teacher-api"
 
 interface Lesson { id: string; title: string; description: string | null; isPublished: boolean; sortOrder: number; createdAt: string }
@@ -23,6 +23,7 @@ export default function TeacherClassDetailPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>("students")
 
   useEffect(() => {
@@ -42,8 +43,9 @@ export default function TeacherClassDetailPage() {
         setLessons(classLessons)
         setAssignments(classAssignments)
         setAssessments(classAssessments)
-      } catch { /* empty */ }
-      finally { setLoading(false) }
+      } catch {
+        setError("Failed to load class details")
+      } finally { setLoading(false) }
     }
     load()
   }, [classId])
@@ -70,6 +72,15 @@ export default function TeacherClassDetailPage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{cls?.name || "Class Details"}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{cls?.gradeName} &middot; {students.length} students &middot; {lessons.length} lessons &middot; {assignments.length} assignments</p>
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" />
+            {error}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2 overflow-x-auto border-b border-border">
         {tabs.map((tab) => (

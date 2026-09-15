@@ -42,7 +42,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && user?.role === "Parent") {
       router.replace("/dashboard/parent")
-    } else if (!authLoading && user?.role === "Teacher") {
+    } else if (!authLoading && (user?.role === "Teacher" || user?.role === "Instructor")) {
       router.replace("/dashboard/teacher")
     } else if (!authLoading && (user?.role === "Admin" || user?.role === "Institution Admin")) {
       router.replace("/dashboard/admin")

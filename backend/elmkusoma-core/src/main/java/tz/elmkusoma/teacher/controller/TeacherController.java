@@ -94,7 +94,15 @@ public class TeacherController {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<TeacherResponse>> getTeacher(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestAttribute("userId") UUID userId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"))) {
+            TeacherResponse me = teacherService.getTeacherByUserId(userId, institutionId);
+            if (!me.getId().equals(id)) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Cannot access another teacher's profile");
+            }
+        }
         TeacherResponse teacher = teacherService.getTeacher(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(teacher));
     }
@@ -116,7 +124,15 @@ public class TeacherController {
     public ResponseEntity<ApiResponse<TeacherResponse>> updateTeacher(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
-            @Valid @RequestBody TeacherRequest request) {
+            @Valid @RequestBody TeacherRequest request,
+            @RequestAttribute("userId") UUID userId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"))) {
+            TeacherResponse me = teacherService.getTeacherByUserId(userId, institutionId);
+            if (!me.getId().equals(id)) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Cannot update another teacher's profile");
+            }
+        }
         TeacherResponse teacher = teacherService.updateTeacher(institutionId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Teacher updated successfully", teacher));
     }
@@ -148,7 +164,15 @@ public class TeacherController {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<TeacherAssignmentResponse>>> getAssignments(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestAttribute("userId") UUID userId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"))) {
+            TeacherResponse me = teacherService.getTeacherByUserId(userId, institutionId);
+            if (!me.getId().equals(id)) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Cannot access another teacher's assignments");
+            }
+        }
         List<TeacherAssignmentResponse> assignments = teacherService.getAssignments(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(assignments));
     }
@@ -169,7 +193,15 @@ public class TeacherController {
     public ResponseEntity<ApiResponse<TeacherQualificationResponse>> addQualification(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
-            @Valid @RequestBody TeacherQualificationRequest request) {
+            @Valid @RequestBody TeacherQualificationRequest request,
+            @RequestAttribute("userId") UUID userId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"))) {
+            TeacherResponse me = teacherService.getTeacherByUserId(userId, institutionId);
+            if (!me.getId().equals(id)) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Cannot add qualifications to another teacher's profile");
+            }
+        }
         TeacherQualificationResponse qualification = teacherService.addQualification(institutionId, id, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Qualification added successfully", qualification));
@@ -180,7 +212,15 @@ public class TeacherController {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<TeacherQualificationResponse>>> getQualifications(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestAttribute("userId") UUID userId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        if (userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"))) {
+            TeacherResponse me = teacherService.getTeacherByUserId(userId, institutionId);
+            if (!me.getId().equals(id)) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Cannot access another teacher's qualifications");
+            }
+        }
         List<TeacherQualificationResponse> qualifications = teacherService.getQualifications(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(qualifications));
     }

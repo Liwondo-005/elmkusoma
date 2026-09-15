@@ -330,9 +330,9 @@ public class TeacherServiceImpl implements TeacherService {
         long totalAssignments = 0;
         long totalAssessments = 0;
         long pendingSubmissions = 0;
+        long pendingGrading = 0;
         List<TeacherDashboardResponse.TeacherClassSummary> classSummaries = new ArrayList<>();
         List<TeacherDashboardResponse.RecentActivity> activities = new ArrayList<>();
-        long pendingGrading = 0;
 
         for (UUID classGroupId : classGroupIds) {
             List<Enrollment> enrollments = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
@@ -356,6 +356,9 @@ public class TeacherServiceImpl implements TeacherService {
                 if (a.getDueDate() != null && a.getDueDate().isAfter(java.time.LocalDateTime.now())) {
                     pendingSubmissions++;
                 }
+                long ungraded = submissionRepository.findByAssignmentIdAndIsDeletedFalse(a.getId()).stream()
+                        .filter(s -> s.getGrade() == null).count();
+                pendingGrading += ungraded;
             }
 
             TeacherAssignment matchedAssignment = assignments.stream()

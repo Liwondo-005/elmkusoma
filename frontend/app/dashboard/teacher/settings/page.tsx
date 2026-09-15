@@ -13,10 +13,22 @@ export default function TeacherSettingsPage() {
   const [firstName, setFirstName] = useState(user?.firstName || "")
   const [lastName, setLastName] = useState(user?.lastName || "")
   const [phone, setPhone] = useState("")
-  const [notifAttendance, setNotifAttendance] = useState(true)
-  const [notifAssignments, setNotifAssignments] = useState(true)
-  const [notifMessages, setNotifMessages] = useState(false)
-  const [notifResults, setNotifResults] = useState(true)
+  const [notifAttendance, setNotifAttendance] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("teacher_notif_attendance") !== "false"
+    return true
+  })
+  const [notifAssignments, setNotifAssignments] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("teacher_notif_assignments") !== "false"
+    return true
+  })
+  const [notifMessages, setNotifMessages] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("teacher_notif_messages") === "true"
+    return false
+  })
+  const [notifResults, setNotifResults] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("teacher_notif_results") !== "false"
+    return true
+  })
 
   const [activeTab, setActiveTab] = useState<"profile" | "qualifications">("profile")
   const [qualifications, setQualifications] = useState<TeacherQualification[]>([])
@@ -29,6 +41,11 @@ export default function TeacherSettingsPage() {
   useEffect(() => {
     if (activeTab === "qualifications") loadQualifications()
   }, [activeTab])
+
+  useEffect(() => { localStorage.setItem("teacher_notif_attendance", String(notifAttendance)) }, [notifAttendance])
+  useEffect(() => { localStorage.setItem("teacher_notif_assignments", String(notifAssignments)) }, [notifAssignments])
+  useEffect(() => { localStorage.setItem("teacher_notif_messages", String(notifMessages)) }, [notifMessages])
+  useEffect(() => { localStorage.setItem("teacher_notif_results", String(notifResults)) }, [notifResults])
 
   async function loadQualifications() {
     try {
