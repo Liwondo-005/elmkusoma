@@ -3,29 +3,7 @@
 import { useState, useEffect } from "react"
 import { Settings, Save, Loader2, AlertCircle, GraduationCap, Plus, Trash2, Award } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import type { TeacherQualification } from "@/lib/teacher-api"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
-
-async function teacherFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
-  const institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001" : "00000000-0000-0000-0000-000000000001"
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Institution-Id": institutionId,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || body.message || `Request failed: ${res.status}`)
-  }
-  const json = await res.json()
-  return json.data ?? json
-}
+import { teacherFetch, type TeacherQualification } from "@/lib/teacher-api"
 
 export default function TeacherSettingsPage() {
   const { user } = useAuth()
@@ -70,26 +48,20 @@ export default function TeacherSettingsPage() {
     setSaving(true)
     setError("")
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
-      const institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001" : "00000000-0000-0000-0000-000000000001"
-      const res = await fetch(`${API_BASE_URL}/v1/teachers/me/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Institution-Id": institutionId,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ userId: user?.id || "", firstName, lastName, phone: phone || undefined }),
-      })
-      if (res.ok) {
-        setSaved(true)
-        setTimeout(() => setSaved(false), 3000)
-      } else {
-        const body = await res.json().catch(() => ({}))
-        setError(body.error || body.message || "Failed to save.")
+      const profileRes = await teacherFetch<{ content: Array<{ id: string; email: string }> }>("/v1/teachers?page=0&size=50")
+      const teacher = profileRes.content?.find((t) => t.email === user?.email)
+      if (!teacher) {
+        setError("Teacher profile not found.")
+        return
       }
-    } catch {
-      setError("Network error. Please try again.")
+      await teacherFetch(`/v1/teachers/${teacher.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ userId: teacher.id, firstName, lastName, phone: phone || undefined }),
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save.")
     } finally {
       setSaving(false)
     }

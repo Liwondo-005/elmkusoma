@@ -4,28 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Send, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, Search, Users } from "lucide-react"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
-
-async function teacherFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
-  const institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001" : "00000000-0000-0000-0000-000000000001"
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Institution-Id": institutionId,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || body.message || `Request failed: ${res.status}`)
-  }
-  const json = await res.json()
-  return json.data ?? json
-}
+import { teacherFetch } from "@/lib/teacher-api"
 
 interface Message {
   id: string
