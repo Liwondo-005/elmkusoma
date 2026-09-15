@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -101,6 +101,7 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard },
   { label: "My Classes", href: "/dashboard/teacher/classes", icon: BookOpen },
   { label: "Students", href: "/dashboard/teacher/students", icon: Users },
+  { label: "Learner Support", href: "/dashboard/teacher/learner-support", icon: HeartPulse },
   { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
   { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
   { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
@@ -110,6 +111,7 @@ const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
   { label: "Announcements", href: "/dashboard/teacher/announcements", icon: Bell },
   { label: "Analytics", href: "/dashboard/teacher/analytics", icon: TrendingUp },
+  { label: "Reports", href: "/dashboard/teacher/reports", icon: FileBarChart },
   { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
   { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
 ]
