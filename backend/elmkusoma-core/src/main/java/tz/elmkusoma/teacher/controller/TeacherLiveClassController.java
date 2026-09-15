@@ -10,8 +10,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.domain.LiveClass;
+import tz.elmkusoma.course.domain.LiveClassParticipant;
 import tz.elmkusoma.course.dto.CreateLiveClassRequest;
 import tz.elmkusoma.course.dto.LiveClassResponse;
+import tz.elmkusoma.course.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.course.service.LiveClassService;
 import tz.elmkusoma.exception.ResourceNotFoundException;
@@ -19,7 +21,9 @@ import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -33,6 +37,7 @@ public class TeacherLiveClassController {
     private final LiveClassRepository liveClassRepository;
     private final TeacherRepository teacherRepository;
     private final NotificationService notificationService;
+    private final LiveClassParticipantRepository participantRepository;
 
     @GetMapping
     @Operation(summary = "List my live classes")
@@ -159,5 +164,33 @@ public class TeacherLiveClassController {
 
         LiveClassResponse response = liveClassService.getLiveClassById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{id}/participants")
+    @Operation(summary = "Get participants for a live class")
+    public ResponseEntity<ApiResponse<List<LiveClassParticipant>>> getParticipants(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID id) {
+        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        List<LiveClassParticipant> participants = participantRepository.findByLiveClassIdAndIsDeletedFalse(id);
+        return ResponseEntity.ok(ApiResponse.success(participants));
+    }
+
+    @GetMapping("/{id}/stats")
+    @Operation(summary = "Get participation stats for a live class")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getParticipantStats(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID id) {
+        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        long totalJoined = participantRepository.countByLiveClassId(id);
+        long completed = participantRepository.countCompletedByLiveClassId(id);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "totalJoined", totalJoined,
+                "completed", completed
+        )));
     }
 }

@@ -56,6 +56,7 @@ public class LearnerController {
     private final CertificateRepository certificateRepository;
     private final CertificateTemplateRepository certificateTemplateRepository;
     private final UserRepository userRepository;
+    private final LiveClassParticipantRepository liveClassParticipantRepository;
 
     // ── Profile ──────────────────────────────────────────────────────────
 
@@ -453,6 +454,66 @@ public class LearnerController {
                 .filter(lc -> user.getInstitutionId().equals(lc.getInstitutionId()))
                 .map(lc -> ResponseEntity.ok(ApiResponse.success(toLiveClassResponse(lc))))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found")));
+    }
+
+    @PostMapping("/live-classes/{id}/join")
+    @Operation(summary = "Record joining a live class")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> joinLiveClass(
+            @PathVariable UUID id,
+            @RequestAttribute("userId") UUID userId) {
+        LiveClass liveClass = liveClassRepository.findById(id)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
+        }
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("User not found"));
+        }
+        LiveClassParticipant existing = liveClassParticipantRepository
+                .findByLiveClassIdAndStudentIdAndIsDeletedFalse(id, userId).orElse(null);
+        if (existing == null) {
+            LiveClassParticipant participant = LiveClassParticipant.builder()
+                    .liveClassId(id)
+                    .studentId(userId)
+                    .joinedAt(LocalDateTime.now())
+                    .attendanceStatus("JOINED")
+                    .build();
+            liveClassParticipantRepository.save(participant);
+        } else if (existing.getLeftAt() != null) {
+            existing.setLeftAt(null);
+            existing.setJoinedAt(LocalDateTime.now());
+            existing.setAttendanceStatus("JOINED");
+            liveClassParticipantRepository.save(existing);
+        }
+        long totalJoined = liveClassParticipantRepository.countByLiveClassId(id);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "status", "joined",
+                "totalParticipants", totalJoined
+        )));
+    }
+
+    @PostMapping("/live-classes/{id}/leave")
+    @Operation(summary = "Record leaving a live class")
+    public ResponseEntity<ApiResponse<Void>> leaveLiveClass(
+            @PathVariable UUID id,
+            @RequestAttribute("userId") UUID userId) {
+        LiveClassParticipant participant = liveClassParticipantRepository
+                .findByLiveClassIdAndStudentIdAndIsDeletedFalse(id, userId).orElse(null);
+        if (participant != null) {
+            participant.setLeftAt(LocalDateTime.now());
+            participant.setAttendanceStatus("LEFT");
+            liveClassParticipantRepository.save(participant);
+        }
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @GetMapping("/live-classes/{id}/participants")
+    @Operation(summary = "Get participants for a live class")
+    public ResponseEntity<ApiResponse<List<LiveClassParticipant>>> getLiveClassParticipants(@PathVariable UUID id) {
+        List<LiveClassParticipant> participants = liveClassParticipantRepository.findByLiveClassIdAndIsDeletedFalse(id);
+        return ResponseEntity.ok(ApiResponse.success(participants));
     }
 
     // ── Announcements ────────────────────────────────────────────────────
