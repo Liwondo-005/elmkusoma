@@ -16,7 +16,7 @@ export default function LearnerNotificationsPage() {
   const [marking, setMarking] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadNotifications()
   }, [user])
 
@@ -59,7 +59,10 @@ export default function LearnerNotificationsPage() {
       case "course": case "enrollment": return <BookOpen className="size-4 text-blue-500" />
       case "course_completion": return <Award className="size-4 text-green-500" />
       case "assignment": return <FileText className="size-4 text-orange" />
-      case "liveclass": case "live_class": return <Video className="size-4 text-red-500" />
+      case "liveclass": case "live_class": case "live_class_scheduled": return <Video className="size-4 text-blue-600" />
+      case "live_class_started": return <Video className="size-4 text-red-500 animate-pulse" />
+      case "live_class_cancelled": return <Video className="size-4 text-muted-foreground" />
+      case "live_class_completed": return <Video className="size-4 text-green-500" />
       case "certificate": return <Award className="size-4 text-yellow-500" />
       case "event": return <Calendar className="size-4 text-green-500" />
       default: return <Bell className="size-4 text-primary" />
@@ -70,7 +73,8 @@ export default function LearnerNotificationsPage() {
     if (!notification.targetType || !notification.targetId) return null
     switch (notification.targetType.toLowerCase()) {
       case "course": return `/dashboard/learner/courses/${notification.targetId}`
-      case "liveclass": case "live_class": return `/dashboard/learner/live-classes`
+      case "liveclass": case "live_class": case "live_class_scheduled": case "live_class_started": case "live_class_cancelled": case "live_class_completed":
+        return `/live-classes/${notification.targetId}`
       case "resource": return `/dashboard/learner/resources`
       case "certificate": return `/dashboard/learner/certificates`
       case "event": return `/dashboard/learner/events/${notification.targetId}`
@@ -80,7 +84,7 @@ export default function LearnerNotificationsPage() {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

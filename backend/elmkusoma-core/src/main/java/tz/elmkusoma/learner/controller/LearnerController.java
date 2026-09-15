@@ -420,17 +420,37 @@ public class LearnerController {
     // ── Live Classes ─────────────────────────────────────────────────────
 
     @GetMapping("/live-classes")
-    @Operation(summary = "Browse all active live classes")
-    public ResponseEntity<ApiResponse<List<LiveClass>>> browseLiveClasses() {
-        List<LiveClass> classes = liveClassRepository.findAllActiveAndIsDeletedFalse();
+    @Operation(summary = "Browse all active live classes in user's institution")
+    public ResponseEntity<ApiResponse<List<LiveClass>>> browseLiveClasses(
+            @RequestAttribute("userId") UUID userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("User not found"));
+        }
+        if (user.getInstitutionId() == null) {
+            return ResponseEntity.ok(ApiResponse.success(List.of()));
+        }
+        List<LiveClass> classes = liveClassRepository.findByInstitutionIdAndIsDeletedFalse(user.getInstitutionId())
+                .stream()
+                .filter(lc -> !"CANCELLED".equals(lc.getStatus()))
+                .toList();
         return ResponseEntity.ok(ApiResponse.success(classes));
     }
 
     @GetMapping("/live-classes/{id}")
     @Operation(summary = "Get live class detail")
-    public ResponseEntity<ApiResponse<LiveClass>> getLiveClassDetail(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<LiveClass>> getLiveClassDetail(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID id) {
         return liveClassRepository.findById(id)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .filter(lc -> {
+                    User user = userRepository.findById(userId).orElse(null);
+                    if (user == null || user.getInstitutionId() == null || lc.getInstitutionId() == null) {
+                        return false;
+                    }
+                    return user.getInstitutionId().equals(lc.getInstitutionId());
+                })
                 .map(lc -> ResponseEntity.ok(ApiResponse.success(lc)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found")));
     }

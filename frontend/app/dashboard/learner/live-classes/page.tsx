@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type LiveClass } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Video, Calendar, Clock, Users, ExternalLink, Search, AlertCircle, Bookmark, BookmarkCheck } from "lucide-react"
+import { Video, Calendar, Clock, Users, ExternalLink, Search, AlertCircle, Bookmark, BookmarkCheck, MessageSquare } from "lucide-react"
 
 export default function LearnerLiveClassesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -15,7 +15,7 @@ export default function LearnerLiveClassesPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadLiveClasses()
   }, [user])
 
@@ -94,7 +94,7 @@ export default function LearnerLiveClassesPage() {
   const liveNowClasses = filteredClasses.filter((cls) => cls.status === "IN_PROGRESS")
   const pastClasses = filteredClasses.filter((cls) => cls.status === "COMPLETED" || cls.status === "CANCELLED")
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 
@@ -187,6 +187,13 @@ export default function LearnerLiveClassesPage() {
                         Join Now
                       </a>
                     )}
+                    <a
+                      href={`/live-classes/${cls.id}`}
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                    >
+                      <MessageSquare className="size-4" />
+                      Join Chat
+                    </a>
                   </div>
                 ))}
               </div>
@@ -248,6 +255,13 @@ export default function LearnerLiveClassesPage() {
                         Join Link
                       </a>
                     )}
+                    <a
+                      href={`/live-classes/${cls.id}`}
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                    >
+                      <MessageSquare className="size-4" />
+                      View Classroom
+                    </a>
                   </div>
                 ))}
               </div>
