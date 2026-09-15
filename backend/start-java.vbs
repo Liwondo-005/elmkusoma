@@ -6,8 +6,8 @@ javaHome = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot"
 
 ' Load .env from backend folder if it exists
 envFile = "C:\Users\manyusi\Desktop\Elmukusoma\backend\.env"
-dbUser = "elmkusoma"
-dbPass = "changeme"
+dbUser = "postgres"
+dbPass = ""
 
 If fso.FileExists(envFile) Then
     Set f = fso.OpenTextFile(envFile, 1)
