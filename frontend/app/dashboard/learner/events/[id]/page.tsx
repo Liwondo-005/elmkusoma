@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { learnerApi, type EventItem, type EventMaterial } from "@/lib/learner-api"
 import { VideoPlayer } from "@/components/events/video-player"
-import { CalendarDays, Clock, MapPin, Users, ArrowLeft, CheckCircle, XCircle, Loader2, Download, Play, FileText, Presentation, File } from "lucide-react"
+import { CalendarDays, Clock, MapPin, Users, ArrowLeft, CheckCircle, XCircle, Loader2, Download, Play, FileText, Presentation, File, Tag } from "lucide-react"
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })

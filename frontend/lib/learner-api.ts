@@ -257,6 +257,7 @@ export const learnerApi = {
     }),
   getResources: () => learnerFetch<Resource[]>("/v1/learner/resources"),
   getLiveClasses: () => learnerFetch<LiveClass[]>("/v1/learner/live-classes"),
+  getLiveClass: (id: string) => learnerFetch<LiveClass>(`/v1/learner/live-classes/${id}`),
   getAnnouncements: () => learnerFetch<Announcement[]>("/v1/learner/announcements"),
   getBookmarks: () => learnerFetch<Bookmark[]>("/v1/learner/me/bookmarks"),
   addBookmark: (targetType: string, targetId: string) =>

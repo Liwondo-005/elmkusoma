@@ -15,4 +15,10 @@ public interface LiveClassService {
     LiveClassResponse updateLiveClass(UUID teacherId, UUID liveClassId, CreateLiveClassRequest request);
 
     void cancelLiveClass(UUID teacherId, UUID liveClassId);
+
+    LiveClassResponse startSession(UUID teacherId, UUID liveClassId);
+
+    LiveClassResponse endSession(UUID teacherId, UUID liveClassId);
+
+    LiveClassResponse getLiveClassById(UUID liveClassId);
 }
