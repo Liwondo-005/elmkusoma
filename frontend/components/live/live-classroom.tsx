@@ -55,6 +55,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [videoTracks, setVideoTracks] = useState<Map<string, MediaStream>>(new Map())
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null)
+  const [serviceMode, setServiceMode] = useState<"full" | "chat-only" | "unknown">("unknown")
   const wsRef = useRef<WebSocket | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const startTimeRef = useRef<Date | null>(null)
@@ -117,6 +118,23 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         setJoinError("")
         retryCountRef.current = 0
         ws.send(JSON.stringify({ type: "JOIN" }))
+
+        fetch(`/v1/live-session/join/${liveClass.id}`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "X-Institution-Id": user?.institutionId || "",
+            "Content-Type": "application/json",
+          },
+        }).then(r => r.json()).then(data => {
+          if (data?.data?.liveKitAvailable) {
+            setServiceMode("full")
+          } else {
+            setServiceMode("chat-only")
+          }
+        }).catch(() => {
+          setServiceMode("chat-only")
+        })
       }
 
       ws.onmessage = (event) => {
@@ -440,6 +458,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-center justify-between">
           <span>{joinError}</span>
           <button onClick={() => setJoinError("")} className="text-red-500 hover:text-red-700"><XCircle className="size-3.5" /></button>
+        </div>
+      )}
+
+      {serviceMode === "chat-only" && isInProgress && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700">
+          <p className="font-medium">Video service unavailable</p>
+          <p className="mt-0.5 text-amber-600">Live video is temporarily unavailable. You can still participate via chat. The teacher has been notified.</p>
         </div>
       )}
 

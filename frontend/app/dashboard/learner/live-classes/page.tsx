@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type LiveClass } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Video, Calendar, Clock, Users, ExternalLink, Search, AlertCircle, Bookmark, BookmarkCheck, MessageSquare } from "lucide-react"
+import { Video, Calendar, Clock, Users, ExternalLink, Search, AlertCircle, Bookmark, BookmarkCheck, MessageSquare, Play } from "lucide-react"
 
 export default function LearnerLiveClassesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -273,7 +273,7 @@ export default function LearnerLiveClassesPage() {
               <h2 className="text-lg font-semibold text-foreground text-muted-foreground">Past Classes</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {pastClasses.map((cls) => (
-                  <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs opacity-60">
+                  <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs opacity-80">
                     <div className="flex items-start justify-between">
                       <h3 className="text-sm font-semibold text-foreground">{cls.title}</h3>
                       <div className="flex items-center gap-1.5">
@@ -302,6 +302,27 @@ export default function LearnerLiveClassesPage() {
                         <Clock className="size-3" />
                         {cls.durationMinutes} minutes
                       </div>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      {cls.recordingUrl ? (
+                        <a
+                          href={cls.recordingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                        >
+                          <Play className="size-3" />
+                          Watch Recording
+                        </a>
+                      ) : (
+                        <a
+                          href={`/live-classes/${cls.id}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                        >
+                          <MessageSquare className="size-3" />
+                          View Details
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
