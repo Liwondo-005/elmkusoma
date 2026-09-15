@@ -21,6 +21,8 @@ public interface LiveClassParticipantRepository extends JpaRepository<LiveClassP
 
     long countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(UUID liveClassId);
 
+    long countByLiveClassIdAndIsDeletedFalse(UUID liveClassId);
+
     @Query("SELECT lcp FROM LiveClassParticipant lcp WHERE lcp.liveClassId = :liveClassId AND lcp.isDeleted = false AND lcp.leftAt IS NULL AND lcp.connectionId = :connectionId")
     Optional<LiveClassParticipant> findByLiveClassIdAndConnectionIdAndIsDeletedFalse(@Param("liveClassId") UUID liveClassId, @Param("connectionId") String connectionId);
 }

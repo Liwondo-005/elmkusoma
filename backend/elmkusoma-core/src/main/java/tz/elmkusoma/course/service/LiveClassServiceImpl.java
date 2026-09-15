@@ -19,6 +19,7 @@ import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,6 +39,25 @@ public class LiveClassServiceImpl implements LiveClassService {
     public List<LiveClassResponse> getTeacherLiveClasses(UUID teacherId) {
         return liveClassRepository.findByTeacherIdAndIsDeletedFalse(teacherId).stream()
                 .filter(lc -> !"CANCELLED".equals(lc.getStatus()))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LiveClassResponse> getUpcomingClasses(UUID institutionId) {
+        return liveClassRepository.findByInstitutionIdAndIsDeletedFalse(institutionId).stream()
+                .filter(lc -> "SCHEDULED".equals(lc.getStatus()))
+                .filter(lc -> lc.getScheduledAt() != null && lc.getScheduledAt().isAfter(LocalDateTime.now()))
+                .sorted(Comparator.comparing(LiveClass::getScheduledAt))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LiveClassResponse> getLiveClassesByStatus(UUID institutionId, String status) {
+        return liveClassRepository.findByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, status).stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -181,6 +201,9 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .subjectName(subjectName)
                 .teacherName(teacherName)
                 .teacherId(liveClass.getTeacherId())
+                .subjectId(liveClass.getSubjectId())
+                .recordingUrl(liveClass.getRecordingUrl())
+                .canJoin("IN_PROGRESS".equals(liveClass.getStatus()))
                 .build();
     }
 

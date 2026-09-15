@@ -74,7 +74,7 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
         <div className="mt-4 pt-1">
           {isLive ? (
             <Link
-              href="/login"
+              href={`/live-classes/${item.id}`}
               className={cn(buttonVariants(), "h-9 w-full bg-teal text-teal-foreground hover:bg-primary")}
             >
               Join Live Class

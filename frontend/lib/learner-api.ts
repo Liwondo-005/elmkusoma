@@ -127,7 +127,30 @@ export interface LiveClass {
   maxParticipants: number | null
   teacherId: string
   subjectId: string | null
+  teacherName: string | null
+  subjectName: string | null
+  recordingUrl: string | null
+  canJoin: boolean | null
   createdAt: string
+}
+
+export interface LiveSessionJoinResponse {
+  liveKitToken: string | null
+  liveKitUrl: string | null
+  roomName: string
+  liveKitAvailable: boolean
+  classStatus: string
+  message: string
+}
+
+export interface ParticipantInfo {
+  userId: string
+  userName: string
+  role: string
+  joinedAt: string | null
+  leftAt: string | null
+  durationSeconds: number | null
+  online: boolean
 }
 
 export interface Announcement {
@@ -258,6 +281,15 @@ export const learnerApi = {
   getResources: () => learnerFetch<Resource[]>("/v1/learner/resources"),
   getLiveClasses: () => learnerFetch<LiveClass[]>("/v1/learner/live-classes"),
   getLiveClass: (id: string) => learnerFetch<LiveClass>(`/v1/learner/live-classes/${id}`),
+  joinLiveSession: (classId: string) =>
+    learnerFetch<LiveSessionJoinResponse>(`/v1/live-session/join/${classId}`, { method: "POST" }),
+  getLiveParticipants: (classId: string) =>
+    learnerFetch<ParticipantInfo[]>(`/v1/live-session/participants/${classId}`),
+  reportLiveIssue: (classId: string, issueType: string, description?: string) =>
+    learnerFetch<void>(`/v1/live-session/report/${classId}`, {
+      method: "POST",
+      body: JSON.stringify({ issueType, description }),
+    }),
   getAnnouncements: () => learnerFetch<Announcement[]>("/v1/learner/announcements"),
   getBookmarks: () => learnerFetch<Bookmark[]>("/v1/learner/me/bookmarks"),
   addBookmark: (targetType: string, targetId: string) =>

@@ -10,7 +10,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
+import tz.elmkusoma.liveclass.domain.LiveClassChatMessage;
+import tz.elmkusoma.liveclass.domain.LiveClassSessionEvent;
+import tz.elmkusoma.liveclass.repository.LiveClassChatMessageRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
+import tz.elmkusoma.liveclass.repository.LiveClassSessionEventRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -19,6 +23,9 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class LiveClassWebSocketHandler extends TextWebSocketHandler {
@@ -27,6 +34,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
 
     private final LiveClassRepository liveClassRepository;
     private final LiveClassParticipantRepository participantRepository;
+    private final LiveClassChatMessageRepository chatMessageRepository;
+    private final LiveClassSessionEventRepository sessionEventRepository;
     private final UserRepository userRepository;
     private final InstitutionMembershipRepository membershipRepository;
     private final ObjectMapper objectMapper;
@@ -35,14 +44,22 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, UUID> sessionUserMap = new ConcurrentHashMap<>();
     private final Map<String, UUID> sessionClassMap = new ConcurrentHashMap<>();
     private final Map<UUID, Set<String>> classSessions = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> sessionHandRaised = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> sessionScreenSharing = new ConcurrentHashMap<>();
+
+    private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor();
 
     public LiveClassWebSocketHandler(LiveClassRepository liveClassRepository,
                                       LiveClassParticipantRepository participantRepository,
+                                      LiveClassChatMessageRepository chatMessageRepository,
+                                      LiveClassSessionEventRepository sessionEventRepository,
                                       UserRepository userRepository,
                                       InstitutionMembershipRepository membershipRepository,
                                       ObjectMapper objectMapper) {
         this.liveClassRepository = liveClassRepository;
         this.participantRepository = participantRepository;
+        this.chatMessageRepository = chatMessageRepository;
+        this.sessionEventRepository = sessionEventRepository;
         this.userRepository = userRepository;
         this.membershipRepository = membershipRepository;
         this.objectMapper = objectMapper;
@@ -67,6 +84,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         sessions.put(session.getId(), session);
         sessionClassMap.put(session.getId(), classId);
 
+        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
+
         log.info("WebSocket connected: session={}, classId={}, userId={}", session.getId(), classId, userId);
     }
 
@@ -81,10 +100,17 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
+
         switch (type) {
             case "JOIN" -> handleJoin(session, classId, payload);
             case "CHAT" -> handleChat(session, classId, payload);
             case "LEAVE" -> handleLeave(session, classId);
+            case "RAISE_HAND" -> handleRaiseHand(session, classId, payload);
+            case "LOWER_HAND" -> handleLowerHand(session, classId);
+            case "SCREEN_SHARE_START" -> handleScreenShareStart(session, classId);
+            case "SCREEN_SHARE_STOP" -> handleScreenShareStop(session, classId);
+            case "HEARTBEAT" -> handleHeartbeat(session);
             default -> sendError(session, "Unknown message type: " + type);
         }
     }
@@ -139,7 +165,6 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             participant = existing.get();
             participant.setLeftAt(null);
             participant.setConnectionId(session.getId());
-            participant.setJoinedAt(LocalDateTime.now());
         } else {
             if (liveClass.getMaxParticipants() != null) {
                 long currentCount = participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId);
@@ -164,8 +189,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         classSessions.computeIfAbsent(classId, k -> ConcurrentHashMap.newKeySet()).add(session.getId());
 
         String displayName = user.getFullName();
-
         session.getAttributes().put("userName", displayName);
+
+        recordEvent(classId, userId, "USER_JOINED", displayName);
 
         Map<String, Object> joinEvent = new HashMap<>();
         joinEvent.put("type", "USER_JOINED");
@@ -193,6 +219,22 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         participantResponse.put("participants", participantList);
         sendMessage(session, participantResponse);
 
+        List<LiveClassChatMessage> recentMessages = chatMessageRepository
+                .findByLiveClassIdAndIsDeletedFalseOrderBySentAtDesc(classId);
+        if (!recentMessages.isEmpty()) {
+            Map<String, Object> historyEvent = new HashMap<>();
+            historyEvent.put("type", "CHAT_HISTORY");
+            historyEvent.put("messages", recentMessages.stream().limit(50).map(m -> {
+                Map<String, Object> msg = new HashMap<>();
+                msg.put("userId", m.getUserId().toString());
+                msg.put("userName", m.getUserName());
+                msg.put("message", m.getMessage());
+                msg.put("timestamp", m.getSentAt().toString());
+                return msg;
+            }).toList());
+            sendMessage(session, historyEvent);
+        }
+
         log.info("User {} joined live class {} (session: {})", userId, classId, session.getId());
     }
 
@@ -210,11 +252,21 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        User user = userRepository.findById(userId).orElse(null);
         String displayName = (String) session.getAttributes().get("userName");
         if (displayName == null) {
+            User user = userRepository.findById(userId).orElse(null);
             displayName = user != null ? user.getFullName() : "Unknown";
         }
+
+        LiveClassChatMessage chatMessage = LiveClassChatMessage.builder()
+                .liveClassId(classId)
+                .userId(userId)
+                .userName(displayName)
+                .message(msgContent)
+                .messageType("CHAT")
+                .sentAt(LocalDateTime.now())
+                .build();
+        chatMessageRepository.save(chatMessage);
 
         Map<String, Object> chatEvent = new HashMap<>();
         chatEvent.put("type", "CHAT_MESSAGE");
@@ -235,11 +287,94 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    private void handleRaiseHand(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+        UUID userId = sessionUserMap.get(session.getId());
+        if (userId == null) {
+            sendError(session, "You must join the session first");
+            return;
+        }
+
+        sessionHandRaised.put(session.getId(), true);
+
+        User user = userRepository.findById(userId).orElse(null);
+        String displayName = user != null ? user.getFullName() : "Unknown";
+
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "HAND_RAISED");
+        event.put("userId", userId.toString());
+        event.put("userName", displayName);
+        event.put("timestamp", LocalDateTime.now().toString());
+
+        broadcastToClass(classId, event, null);
+        recordEvent(classId, userId, "HAND_RAISED", displayName);
+    }
+
+    private void handleLowerHand(WebSocketSession session, UUID classId) throws IOException {
+        UUID userId = sessionUserMap.get(session.getId());
+        if (userId == null) return;
+
+        sessionHandRaised.put(session.getId(), false);
+
+        User user = userRepository.findById(userId).orElse(null);
+        String displayName = user != null ? user.getFullName() : "Unknown";
+
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "HAND_LOWERED");
+        event.put("userId", userId.toString());
+        event.put("userName", displayName);
+        event.put("timestamp", LocalDateTime.now().toString());
+
+        broadcastToClass(classId, event, null);
+    }
+
+    private void handleScreenShareStart(WebSocketSession session, UUID classId) throws IOException {
+        UUID userId = sessionUserMap.get(session.getId());
+        if (userId == null) return;
+
+        sessionScreenSharing.put(session.getId(), true);
+
+        User user = userRepository.findById(userId).orElse(null);
+        String displayName = user != null ? user.getFullName() : "Unknown";
+
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "SCREEN_SHARE_STARTED");
+        event.put("userId", userId.toString());
+        event.put("userName", displayName);
+        event.put("timestamp", LocalDateTime.now().toString());
+
+        broadcastToClass(classId, event, null);
+        recordEvent(classId, userId, "SCREEN_SHARE_START", displayName);
+    }
+
+    private void handleScreenShareStop(WebSocketSession session, UUID classId) throws IOException {
+        UUID userId = sessionUserMap.get(session.getId());
+        if (userId == null) return;
+
+        sessionScreenSharing.put(session.getId(), false);
+
+        User user = userRepository.findById(userId).orElse(null);
+        String displayName = user != null ? user.getFullName() : "Unknown";
+
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "SCREEN_SHARE_STOPPED");
+        event.put("userId", userId.toString());
+        event.put("userName", displayName);
+        event.put("timestamp", LocalDateTime.now().toString());
+
+        broadcastToClass(classId, event, null);
+    }
+
+    private void handleHeartbeat(WebSocketSession session) {
+        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
+    }
+
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         UUID classId = sessionClassMap.remove(session.getId());
         UUID userId = sessionUserMap.remove(session.getId());
         sessions.remove(session.getId());
+        sessionHandRaised.remove(session.getId());
+        sessionScreenSharing.remove(session.getId());
 
         if (classId != null) {
             Set<String> classSessionSet = classSessions.get(classId);
@@ -272,17 +407,34 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                 });
 
         User user = userRepository.findById(userId).orElse(null);
+        String displayName = user != null ? user.getFullName() : "Unknown";
+
+        recordEvent(classId, userId, "USER_LEFT", displayName);
 
         Map<String, Object> leaveEvent = new HashMap<>();
         leaveEvent.put("type", "USER_LEFT");
         leaveEvent.put("userId", userId.toString());
-        leaveEvent.put("userName", user != null ? user.getFullName() : "Unknown");
+        leaveEvent.put("userName", displayName);
         leaveEvent.put("timestamp", LocalDateTime.now().toString());
         leaveEvent.put("participantCount", (int) participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId));
 
         broadcastToClass(classId, leaveEvent, null);
 
         log.info("User {} left live class {}", userId, classId);
+    }
+
+    private void recordEvent(UUID classId, UUID userId, String eventType, String eventData) {
+        try {
+            LiveClassSessionEvent event = LiveClassSessionEvent.builder()
+                    .liveClassId(classId)
+                    .userId(userId)
+                    .eventType(eventType)
+                    .eventData(eventData)
+                    .build();
+            sessionEventRepository.save(event);
+        } catch (Exception e) {
+            log.error("Failed to record session event: {}", eventType, e);
+        }
     }
 
     private void broadcastToClass(UUID classId, Map<String, Object> message, String excludeSessionId) {

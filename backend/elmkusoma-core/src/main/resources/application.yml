@@ -74,6 +74,15 @@ jwt:
   access-token-expiration-ms: 3600000
   refresh-token-expiration-ms: 604800000
 
+livekit:
+  server:
+    url: ${LIVEKIT_URL:ws://localhost:7880}
+    api-key: ${LIVEKIT_API_KEY:}
+    api-secret: ${LIVEKIT_API_SECRET:}
+  room:
+    empty-timeout: 300
+    max-participants: 10000
+
 logging:
   level:
     tz.elmkusoma: INFO

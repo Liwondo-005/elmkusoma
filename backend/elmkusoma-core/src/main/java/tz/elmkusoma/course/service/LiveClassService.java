@@ -21,4 +21,8 @@ public interface LiveClassService {
     LiveClassResponse endSession(UUID teacherId, UUID liveClassId);
 
     LiveClassResponse getLiveClassById(UUID liveClassId);
+
+    List<LiveClassResponse> getUpcomingClasses(UUID institutionId);
+
+    List<LiveClassResponse> getLiveClassesByStatus(UUID institutionId, String status);
 }

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.domain.*;
 import tz.elmkusoma.course.repository.*;
+import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateType;
@@ -421,7 +422,7 @@ public class LearnerController {
 
     @GetMapping("/live-classes")
     @Operation(summary = "Browse all active live classes in user's institution")
-    public ResponseEntity<ApiResponse<List<LiveClass>>> browseLiveClasses(
+    public ResponseEntity<ApiResponse<List<LiveClassResponse>>> browseLiveClasses(
             @RequestAttribute("userId") UUID userId) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
@@ -430,28 +431,27 @@ public class LearnerController {
         if (user.getInstitutionId() == null) {
             return ResponseEntity.ok(ApiResponse.success(List.of()));
         }
-        List<LiveClass> classes = liveClassRepository.findByInstitutionIdAndIsDeletedFalse(user.getInstitutionId())
+        List<LiveClassResponse> classes = liveClassRepository.findByInstitutionIdAndIsDeletedFalse(user.getInstitutionId())
                 .stream()
                 .filter(lc -> !"CANCELLED".equals(lc.getStatus()))
+                .map(this::toLiveClassResponse)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(classes));
     }
 
     @GetMapping("/live-classes/{id}")
     @Operation(summary = "Get live class detail")
-    public ResponseEntity<ApiResponse<LiveClass>> getLiveClassDetail(
+    public ResponseEntity<ApiResponse<LiveClassResponse>> getLiveClassDetail(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null || user.getInstitutionId() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("User not found"));
+        }
         return liveClassRepository.findById(id)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
-                .filter(lc -> {
-                    User user = userRepository.findById(userId).orElse(null);
-                    if (user == null || user.getInstitutionId() == null || lc.getInstitutionId() == null) {
-                        return false;
-                    }
-                    return user.getInstitutionId().equals(lc.getInstitutionId());
-                })
-                .map(lc -> ResponseEntity.ok(ApiResponse.success(lc)))
+                .filter(lc -> user.getInstitutionId().equals(lc.getInstitutionId()))
+                .map(lc -> ResponseEntity.ok(ApiResponse.success(toLiveClassResponse(lc))))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found")));
     }
 
@@ -825,6 +825,21 @@ public class LearnerController {
                 .status(lc.getStatus())
                 .scheduledAt(lc.getScheduledAt())
                 .durationMinutes(lc.getDurationMinutes())
+                .build();
+    }
+
+    private LiveClassResponse toLiveClassResponse(LiveClass lc) {
+        return LiveClassResponse.builder()
+                .id(lc.getId())
+                .title(lc.getTitle())
+                .description(lc.getDescription())
+                .scheduledAt(lc.getScheduledAt() != null ? lc.getScheduledAt().toString() : null)
+                .durationMinutes(lc.getDurationMinutes())
+                .status(lc.getStatus())
+                .meetingUrl(lc.getMeetingUrl())
+                .maxParticipants(lc.getMaxParticipants())
+                .teacherId(lc.getTeacherId())
+                .subjectId(lc.getSubjectId())
                 .build();
     }
 
