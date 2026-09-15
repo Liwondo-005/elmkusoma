@@ -18,6 +18,7 @@ import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learning.domain.Assignment;
 import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.repository.AssignmentRepository;
+import tz.elmkusoma.learning.repository.AssignmentSubmissionRepository;
 import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -52,6 +53,7 @@ public class TeacherServiceImpl implements TeacherService {
     private final StudentRepository studentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final AssignmentRepository assignmentRepo;
+    private final AssignmentSubmissionRepository submissionRepository;
     private final LessonRepository lessonRepository;
     private final AssessmentRepository assessmentRepository;
     private final AttendanceRecordRepository attendanceRepository;
@@ -136,6 +138,10 @@ public class TeacherServiceImpl implements TeacherService {
 
         Teacher saved = teacherRepository.save(teacher);
         User user = userRepository.findById(saved.getUserId()).orElse(null);
+        if (user != null && request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+            userRepository.save(user);
+        }
         return mapToResponse(saved, user);
     }
 
@@ -326,6 +332,7 @@ public class TeacherServiceImpl implements TeacherService {
         long pendingSubmissions = 0;
         List<TeacherDashboardResponse.TeacherClassSummary> classSummaries = new ArrayList<>();
         List<TeacherDashboardResponse.RecentActivity> activities = new ArrayList<>();
+        long pendingGrading = 0;
 
         for (UUID classGroupId : classGroupIds) {
             List<Enrollment> enrollments = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
@@ -335,6 +342,12 @@ public class TeacherServiceImpl implements TeacherService {
 
             List<Assignment> classAssignments = assignmentRepo.findByClassGroupIdAndIsDeletedFalse(classGroupId);
             totalAssignments += classAssignments.size();
+
+            for (Assignment a : classAssignments) {
+                long ungradedCount = submissionRepository.findByAssignmentIdAndIsDeletedFalse(a.getId())
+                        .stream().filter(s -> s.getGradedAt() == null).count();
+                pendingGrading += ungradedCount;
+            }
 
             List<Assessment> classAssessments = assessmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
             totalAssessments += classAssessments.size();
@@ -349,10 +362,17 @@ public class TeacherServiceImpl implements TeacherService {
                     .filter(a -> a.getClassGroupId().equals(classGroupId))
                     .findFirst().orElse(null);
 
+            String className = classGroupRepository.findById(classGroupId)
+                    .map(tz.elmkusoma.academic.domain.ClassGroup::getName).orElse("Class Group");
+            String subjectName = matchedAssignment != null && matchedAssignment.getSubjectId() != null
+                    ? subjectRepository.findById(matchedAssignment.getSubjectId())
+                    .map(tz.elmkusoma.academic.domain.Subject::getName).orElse("Subject")
+                    : "General";
+
             classSummaries.add(TeacherDashboardResponse.TeacherClassSummary.builder()
                     .classGroupId(classGroupId.toString())
-                    .className("Class Group")
-                    .subjectName(matchedAssignment != null ? "Subject" : "")
+                    .className(className)
+                    .subjectName(subjectName)
                     .enrolledStudents(activeStudents)
                     .build());
 
@@ -372,7 +392,7 @@ public class TeacherServiceImpl implements TeacherService {
                 .totalAssignments(totalAssignments)
                 .totalAssessments(totalAssessments)
                 .pendingSubmissions(pendingSubmissions)
-                .pendingGrading(0)
+                .pendingGrading(pendingGrading)
                 .classes(classSummaries)
                 .recentActivity(activities.stream().limit(10).toList())
                 .build();

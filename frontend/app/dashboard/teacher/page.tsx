@@ -189,7 +189,7 @@ export default function TeacherDashboardPage() {
           <h2 className="text-base font-semibold text-foreground">Quick Actions</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Link
-              href="/dashboard/teacher/courses"
+              href="/dashboard/teacher/classes"
               className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               <BookOpen className="size-4 shrink-0 text-muted-foreground" />

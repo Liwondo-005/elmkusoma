@@ -19,4 +19,6 @@ public class TeacherRequest {
     private LocalDate hireDate;
 
     private String bio;
+
+    private String phone;
 }

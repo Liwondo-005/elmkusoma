@@ -11,9 +11,6 @@ import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.dto.AnnouncementResponse;
 import tz.elmkusoma.course.dto.CreateAnnouncementRequest;
 import tz.elmkusoma.course.service.AnnouncementService;
-import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.teacher.domain.Teacher;
-import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,7 +23,6 @@ import java.util.UUID;
 public class TeacherAnnouncementController {
 
     private final AnnouncementService announcementService;
-    private final TeacherRepository teacherRepository;
 
     @GetMapping
     @Operation(summary = "List my announcements")

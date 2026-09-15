@@ -36,6 +36,18 @@ public class TeacherController {
         return ResponseEntity.ok(ApiResponse.success(teacher));
     }
 
+    @PutMapping("/me/profile")
+    @Operation(summary = "Update current teacher's profile")
+    @PreAuthorize("hasRole('TEACHER')")
+    public ResponseEntity<ApiResponse<TeacherResponse>> updateMyProfile(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestBody TeacherRequest request) {
+        TeacherResponse teacher = teacherService.getTeacherByUserId(userId, institutionId);
+        TeacherResponse updated = teacherService.updateTeacher(institutionId, teacher.getId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
+    }
+
     @GetMapping("/me/classes")
     @Operation(summary = "Get current teacher's assigned classes")
     @PreAuthorize("hasRole('TEACHER')")

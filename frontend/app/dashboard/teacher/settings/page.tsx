@@ -28,7 +28,7 @@ export default function TeacherSettingsPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ firstName, lastName }),
+        body: JSON.stringify({ userId: user?.id || "", firstName, lastName, phone: phone || undefined }),
       })
       if (res.ok) {
         setSaved(true)

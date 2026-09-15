@@ -1,1 +1,1 @@
-ALTER TABLE users ADD COLUMN learning_level VARCHAR(20);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS learning_level VARCHAR(20);

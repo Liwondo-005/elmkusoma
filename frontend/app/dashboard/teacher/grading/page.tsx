@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BarChart3, Loader2, ChevronDown, Save } from "lucide-react"
+import { BarChart3, Loader2, ChevronDown } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import type { ClassGroupInfo, GradingScale, ReportCard, AssignmentSubmission } from "@/lib/teacher-api"
+import { teacherFetch, type ClassGroupInfo, type GradingScale, type ReportCard } from "@/lib/teacher-api"
 
 export default function TeacherGradingPage() {
   const { user } = useAuth()
@@ -12,28 +12,51 @@ export default function TeacherGradingPage() {
   const [scales, setScales] = useState<GradingScale[]>([])
   const [reportCards, setReportCards] = useState<ReportCard[]>([])
   const [loading, setLoading] = useState(true)
+  const [reportLoading, setReportLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<"scales" | "reports">("scales")
 
   useEffect(() => {
     async function load() {
       try {
-        const { teacherApi } = await import("@/lib/teacher-api")
-        const profileRes = await teacherApi.listTeachers(0, 50)
+        const profileRes = await teacherFetch<{ content: { id: string; email: string }[] }>("/v1/teachers?page=0&size=50")
         const teacher = profileRes.content?.find((t) => t.email === user?.email)
         if (teacher) {
-          const assigns = await teacherApi.getAssignments(teacher.id).catch(() => [])
+          const assigns = await teacherFetch<{ classGroupId: string }[]>(`/v1/teachers/${teacher.id}/assignments`).catch(() => [])
           const assignedClassIds = [...new Set(assigns.map((a) => a.classGroupId))]
-          const allClasses = await teacherApi.getClassGroups().catch(() => [])
+          const allClasses = await teacherFetch<ClassGroupInfo[]>("/v1/academic/class-groups").catch(() => [])
           const filtered = allClasses.filter((c) => assignedClassIds.includes(c.id))
           setClasses(filtered.length > 0 ? filtered : allClasses.slice(0, 10))
         }
-        const gradingScales = await teacherApi.getGradingScales().catch(() => [])
+        const gradingScales = await teacherFetch<GradingScale[]>("/v1/grading/scales").catch(() => [])
         setScales(gradingScales)
       } catch { /* empty */ }
       finally { setLoading(false) }
     }
     load()
   }, [user?.email])
+
+  useEffect(() => {
+    if (activeTab !== "reports") return
+    setReportCards([])
+    if (!selectedClassId) return
+
+    let cancelled = false
+    async function loadReportCards() {
+      setReportLoading(true)
+      try {
+        const students = await teacherFetch<{ id: string }[]>(`/v1/students?classId=${selectedClassId}`).catch(() => [])
+        const allCards: ReportCard[] = []
+        for (const s of students.slice(0, 20)) {
+          const cards = await teacherFetch<ReportCard[]>(`/v1/grading/report-cards/student/${s.id}`).catch(() => [])
+          allCards.push(...cards)
+        }
+        if (!cancelled) setReportCards(allCards)
+      } catch { if (!cancelled) setReportCards([]) }
+      finally { if (!cancelled) setReportLoading(false) }
+    }
+    loadReportCards()
+    return () => { cancelled = true }
+  }, [activeTab, selectedClassId])
 
   if (loading) {
     return (
@@ -137,15 +160,55 @@ export default function TeacherGradingPage() {
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             </div>
           </div>
-          <div className="rounded-2xl border border-dashed border-border py-12 text-center">
-            <BarChart3 className="mx-auto mb-3 size-8 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">
-              {selectedClassId ? "Loading report cards..." : "Select a class to view student report cards."}
-            </p>
-            {!selectedClassId && (
+
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : reportCards.length > 0 ? (
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <th className="px-4 py-3">Student</th>
+                    <th className="px-4 py-3">Term</th>
+                    <th className="px-4 py-3">Average</th>
+                    <th className="px-4 py-3">Grade</th>
+                    <th className="px-4 py-3">Rank</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportCards.map((rc) => (
+                    <tr key={rc.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 font-medium text-foreground">{rc.studentName}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{rc.term || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{rc.averageMark != null ? `${rc.averageMark}%` : "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{rc.overallGrade || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{rc.classRank != null ? `#${rc.classRank}` : "—"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          rc.status === "PUBLISHED" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                        }`}>{rc.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : selectedClassId ? (
+            <div className="rounded-2xl border border-dashed border-border py-12 text-center">
+              <BarChart3 className="mx-auto mb-3 size-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">No report cards found</p>
+              <p className="mt-1 text-xs text-muted-foreground">Report cards for this class have not been generated yet.</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border py-12 text-center">
+              <BarChart3 className="mx-auto mb-3 size-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">Select a class to view student report cards.</p>
               <p className="mt-1 text-xs text-muted-foreground">Choose a class above to see report cards.</p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

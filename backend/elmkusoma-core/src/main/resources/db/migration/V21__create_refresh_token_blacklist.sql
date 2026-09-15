@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS revoked_tokens (
     expires_at TIMESTAMP NOT NULL
 );
 
-CREATE INDEX idx_revoked_tokens_hash ON revoked_tokens(token_hash);
-CREATE INDEX idx_revoked_tokens_expires ON revoked_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_revoked_tokens_hash ON revoked_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);
