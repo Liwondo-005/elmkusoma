@@ -122,16 +122,10 @@ export default function TeacherAssignmentsPage() {
     try {
       setLoading(true)
       setError(null)
-      const [classesData, assignmentsData] = await Promise.allSettled([
-        teacherFetch<ClassOption[]>("/v1/teachers/me/classes"),
-        loadAllAssignments(),
-      ])
-      if (classesData.status === "fulfilled") {
-        setClasses(classesData.value)
-      }
-      if (assignmentsData.status === "fulfilled") {
-        setAssignments(assignmentsData.value)
-      }
+      const classesRes = await teacherFetch<ClassOption[]>("/v1/teachers/me/classes")
+      setClasses(classesRes)
+      const allAssignments = await loadAllAssignments(classesRes)
+      setAssignments(allAssignments)
     } catch {
       setError("Failed to load data")
     } finally {
@@ -139,10 +133,10 @@ export default function TeacherAssignmentsPage() {
     }
   }
 
-  async function loadAllAssignments(): Promise<Assignment[]> {
-    const classesRes = await teacherFetch<ClassOption[]>("/v1/teachers/me/classes")
+  async function loadAllAssignments(classesRes?: ClassOption[]): Promise<Assignment[]> {
+    const classList = classesRes ?? await teacherFetch<ClassOption[]>("/v1/teachers/me/classes")
     const all: Assignment[] = []
-    for (const cls of classesRes) {
+    for (const cls of classList) {
       try {
         const data = await teacherFetch<Assignment[]>(`/v1/learning/assignments/class/${cls.classGroupId}`)
         const enriched = data.map((a) => ({

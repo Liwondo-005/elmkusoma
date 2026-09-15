@@ -58,12 +58,12 @@ export default function TeacherMessagesPage() {
     try {
       setLoading(true)
       setError(null)
-      const [messagesData, studentsData] = await Promise.all([
+      const [messagesResult, studentsResult] = await Promise.allSettled([
         teacherFetch<Message[]>("/v1/teachers/me/announcements"),
-        teacherFetch<StudentInfo[]>("/v1/teachers/me/students").catch(() => []),
+        teacherFetch<StudentInfo[]>("/v1/teachers/me/students"),
       ])
-      setMessages(messagesData)
-      setStudents(studentsData)
+      setMessages(messagesResult.status === "fulfilled" ? messagesResult.value : [])
+      setStudents(studentsResult.status === "fulfilled" ? studentsResult.value : [])
     } catch {
       setError("Failed to load messages")
     } finally {

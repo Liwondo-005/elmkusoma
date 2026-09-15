@@ -4,9 +4,8 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { type TeacherDashboard, type Assignment, type Assessment, learningApi, assessmentApi, teacherApi as apiTeacher } from "@/lib/api"
-import { teacherApi } from "@/lib/teacher-api"
-import { BookOpen, Users, FileText, PenTool, Video, Clock, ArrowRight, TrendingUp, GraduationCap, Calendar, AlertCircle, ClipboardCheck, BarChart3, ChevronRight, Loader2, AlertTriangle, CheckCircle, ClipboardList } from "lucide-react"
-import { teacherFetch } from "@/lib/teacher-api"
+import { teacherApi, teacherFetch } from "@/lib/teacher-api"
+import { BookOpen, Users, FileText, PenTool, Video, ArrowRight, GraduationCap, AlertCircle, BarChart3, ChevronRight, Loader2, AlertTriangle, ClipboardList } from "lucide-react"
 
 export default function TeacherDashboardPage() {
   const { user } = useAuth()
@@ -38,15 +37,18 @@ export default function TeacherDashboardPage() {
       setLoading(true)
       setError(null)
 
-      const [dashboardData, assignmentsData, assessmentsData] = await Promise.allSettled([
+      const [dashboardData] = await Promise.allSettled([
         apiTeacher.getDashboard(),
-        loadAssignments(),
-        loadAssessments(),
       ])
 
       if (dashboardData.status === "fulfilled") {
         setDashboard(dashboardData.value)
       }
+
+      const [assignmentsData, assessmentsData] = await Promise.allSettled([
+        loadAssignments(dashboardData.status === "fulfilled" ? dashboardData.value : null),
+        loadAssessments(dashboardData.status === "fulfilled" ? dashboardData.value : null),
+      ])
 
       setAssignments(assignmentsData.status === "fulfilled" ? assignmentsData.value : [])
       setAssessments(assessmentsData.status === "fulfilled" ? assessmentsData.value : [])
@@ -101,10 +103,10 @@ export default function TeacherDashboardPage() {
     }
   }
 
-  async function loadAssignments(): Promise<Assignment[]> {
-    if (!dashboard?.classes?.length) return []
+  async function loadAssignments(dash: TeacherDashboard | null): Promise<Assignment[]> {
+    if (!dash?.classes?.length) return []
     const all: Assignment[] = []
-    for (const cls of dashboard.classes.slice(0, 5)) {
+    for (const cls of dash.classes.slice(0, 5)) {
       try {
         const data = await learningApi.getAssignments(cls.classGroupId)
         all.push(...data)
@@ -115,10 +117,10 @@ export default function TeacherDashboardPage() {
     return all.slice(0, 10)
   }
 
-  async function loadAssessments(): Promise<Assessment[]> {
-    if (!dashboard?.classes?.length) return []
+  async function loadAssessments(dash: TeacherDashboard | null): Promise<Assessment[]> {
+    if (!dash?.classes?.length) return []
     const all: Assessment[] = []
-    for (const cls of dashboard.classes.slice(0, 5)) {
+    for (const cls of dash.classes.slice(0, 5)) {
       try {
         const data = await assessmentApi.getByClass(cls.classGroupId)
         all.push(...data)
