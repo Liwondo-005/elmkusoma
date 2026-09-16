@@ -14,6 +14,8 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, UUID> {
 
     List<MediaAsset> findByInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID institutionId);
 
+    List<MediaAsset> findByInstitutionIdAndMediaTypeAndIsDeletedFalseOrderByCreatedAtDesc(UUID institutionId, String mediaType);
+
     List<MediaAsset> findBySourceTypeAndSourceIdAndIsDeletedFalse(String sourceType, UUID sourceId);
 
     List<MediaAsset> findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID teacherId);

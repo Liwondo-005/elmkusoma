@@ -14,6 +14,7 @@ import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 import tz.elmkusoma.liveclass.domain.LiveClassIssue;
 import tz.elmkusoma.liveclass.dto.*;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
+import tz.elmkusoma.liveclass.repository.LiveClassChatMessageRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassIssueRepository;
 import tz.elmkusoma.liveclass.service.LiveKitService;
 import tz.elmkusoma.shared.domain.User;
@@ -38,6 +39,7 @@ public class LiveSessionController {
     private final LiveClassRepository liveClassRepository;
     private final LiveClassParticipantRepository participantRepository;
     private final LiveClassIssueRepository issueRepository;
+    private final LiveClassChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
     private final TeacherRepository teacherRepository;
     private final InstitutionMembershipRepository membershipRepository;
@@ -150,11 +152,15 @@ public class LiveSessionController {
 
         long totalParticipants = participantRepository.countByLiveClassIdAndIsDeletedFalse(classId);
         long currentOnline = participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId);
+        long totalChatMessages = chatMessageRepository.countByLiveClassIdAndIsDeletedFalse(classId);
 
         List<LiveClassParticipant> allParticipants = participantRepository
                 .findByLiveClassIdAndIsDeletedFalse(classId);
 
-        int peak = allParticipants.size();
+        int peak = allParticipants.stream()
+                .filter(p -> p.getLeftAt() == null)
+                .mapToInt(p -> 1).sum();
+        if (peak == 0) peak = (int) totalParticipants;
         long avgDuration = (long) allParticipants.stream()
                 .filter(p -> p.getDurationSeconds() != null)
                 .mapToLong(LiveClassParticipant::getDurationSeconds)
@@ -164,6 +170,7 @@ public class LiveSessionController {
                 .totalParticipants((int) totalParticipants)
                 .currentOnline((int) currentOnline)
                 .peakParticipants(peak)
+                .totalChatMessages(totalChatMessages)
                 .averageDurationSeconds(avgDuration)
                 .build();
 

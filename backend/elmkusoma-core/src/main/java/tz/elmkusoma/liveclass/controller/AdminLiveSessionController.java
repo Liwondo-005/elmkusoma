@@ -62,9 +62,9 @@ public class AdminLiveSessionController {
             @RequestHeader("X-Institution-Id") UUID institutionId) {
 
         long total = liveClassRepository.countByInstitutionIdAndIsDeletedFalse(institutionId);
-        long scheduled = liveClassRepository.findByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "SCHEDULED").size();
-        long inProgress = liveClassRepository.findByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "IN_PROGRESS").size();
-        long completed = liveClassRepository.findByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "COMPLETED").size();
+        long scheduled = liveClassRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "SCHEDULED");
+        long inProgress = liveClassRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "IN_PROGRESS");
+        long completed = liveClassRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "COMPLETED");
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("totalSessions", total);

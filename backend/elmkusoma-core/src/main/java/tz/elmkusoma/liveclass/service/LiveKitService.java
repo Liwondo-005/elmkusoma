@@ -41,7 +41,7 @@ public class LiveKitService {
             );
 
             Date now = new Date();
-            Date expiry = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+            Date expiry = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
             Map<String, Object> videoGrants = new HashMap<>();
             videoGrants.put("roomJoin", true);

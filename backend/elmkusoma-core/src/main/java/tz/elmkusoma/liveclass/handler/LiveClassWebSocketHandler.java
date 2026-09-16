@@ -23,9 +23,6 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class LiveClassWebSocketHandler extends TextWebSocketHandler {
@@ -47,7 +44,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Boolean> sessionHandRaised = new ConcurrentHashMap<>();
     private final Map<String, Boolean> sessionScreenSharing = new ConcurrentHashMap<>();
 
-    private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor();
+    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
 
     public LiveClassWebSocketHandler(LiveClassRepository liveClassRepository,
                                       LiveClassParticipantRepository participantRepository,
@@ -55,7 +52,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                                       LiveClassSessionEventRepository sessionEventRepository,
                                       UserRepository userRepository,
                                       InstitutionMembershipRepository membershipRepository,
-                                      ObjectMapper objectMapper) {
+                                      ObjectMapper objectMapper,
+                                      tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository) {
         this.liveClassRepository = liveClassRepository;
         this.participantRepository = participantRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -63,6 +61,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         this.userRepository = userRepository;
         this.membershipRepository = membershipRepository;
         this.objectMapper = objectMapper;
+        this.teacherRepository = teacherRepository;
     }
 
     @Override
@@ -157,6 +156,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        boolean isTeacher = teacherRepository.findByUserIdAndInstitutionId(userId, classInstitutionId).isPresent();
+        String participantRole = isTeacher ? "TEACHER" : "LEARNER";
+
         Optional<LiveClassParticipant> existing = participantRepository
                 .findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId);
 
@@ -165,8 +167,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             participant = existing.get();
             participant.setLeftAt(null);
             participant.setConnectionId(session.getId());
+            participant.setRole(participantRole);
         } else {
-            if (liveClass.getMaxParticipants() != null) {
+            if (!isTeacher && liveClass.getMaxParticipants() != null) {
                 long currentCount = participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId);
                 if (currentCount >= liveClass.getMaxParticipants()) {
                     sendError(session, "This live class is full");
@@ -178,7 +181,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                     .liveClassId(classId)
                     .userId(userId)
                     .institutionId(classInstitutionId)
-                    .role("LEARNER")
+                    .role(participantRole)
                     .joinedAt(LocalDateTime.now())
                     .connectionId(session.getId())
                     .build();

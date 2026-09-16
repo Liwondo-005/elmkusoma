@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.dto.MediaAssetResponse;
+import tz.elmkusoma.liveclass.dto.MediaAssetRequest;
 import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
 
 import java.util.List;
@@ -33,7 +34,7 @@ public class MediaLibraryController {
 
         List<MediaAsset> assets;
         if (type != null && !type.isEmpty()) {
-            assets = mediaAssetRepository.findByMediaTypeAndIsDeletedFalseOrderByCreatedAtDesc(type);
+            assets = mediaAssetRepository.findByInstitutionIdAndMediaTypeAndIsDeletedFalseOrderByCreatedAtDesc(institutionId, type);
         } else {
             assets = mediaAssetRepository.findByInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(institutionId);
         }
@@ -104,6 +105,94 @@ public class MediaLibraryController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN')")
+    @Operation(summary = "Create a media asset")
+    public ResponseEntity<ApiResponse<MediaAssetResponse>> createMedia(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestBody MediaAssetRequest request) {
+
+        MediaAsset asset = MediaAsset.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .mediaType(request.getMediaType())
+                .fileUrl(request.getFileUrl())
+                .thumbnailUrl(request.getThumbnailUrl())
+                .durationSeconds(request.getDurationSeconds())
+                .fileSizeBytes(request.getFileSizeBytes())
+                .mimeType(request.getMimeType())
+                .status(request.getStatus() != null ? request.getStatus() : "READY")
+                .visibility(request.getVisibility() != null ? request.getVisibility() : "INSTITUTION")
+                .sourceType(request.getSourceType())
+                .sourceId(request.getSourceId())
+                .teacherId(userId)
+                .courseId(request.getCourseId())
+                .subjectId(request.getSubjectId())
+                .tags(request.getTags())
+                .build();
+        asset.setInstitutionId(institutionId);
+        asset = mediaAssetRepository.save(asset);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Media asset created", toResponse(asset)));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN')")
+    @Operation(summary = "Update a media asset")
+    public ResponseEntity<ApiResponse<MediaAssetResponse>> updateMedia(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID id,
+            @RequestBody MediaAssetRequest request) {
+
+        MediaAsset asset = mediaAssetRepository.findById(id)
+                .filter(a -> !Boolean.TRUE.equals(a.getIsDeleted()))
+                .filter(a -> institutionId.equals(a.getInstitutionId()))
+                .orElse(null);
+        if (asset == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Media asset not found"));
+        }
+
+        if (request.getTitle() != null) asset.setTitle(request.getTitle());
+        if (request.getDescription() != null) asset.setDescription(request.getDescription());
+        if (request.getMediaType() != null) asset.setMediaType(request.getMediaType());
+        if (request.getFileUrl() != null) asset.setFileUrl(request.getFileUrl());
+        if (request.getThumbnailUrl() != null) asset.setThumbnailUrl(request.getThumbnailUrl());
+        if (request.getDurationSeconds() != null) asset.setDurationSeconds(request.getDurationSeconds());
+        if (request.getFileSizeBytes() != null) asset.setFileSizeBytes(request.getFileSizeBytes());
+        if (request.getMimeType() != null) asset.setMimeType(request.getMimeType());
+        if (request.getStatus() != null) asset.setStatus(request.getStatus());
+        if (request.getVisibility() != null) asset.setVisibility(request.getVisibility());
+        if (request.getTags() != null) asset.setTags(request.getTags());
+
+        asset = mediaAssetRepository.save(asset);
+        return ResponseEntity.ok(ApiResponse.success("Media asset updated", toResponse(asset)));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN')")
+    @Operation(summary = "Delete a media asset (soft delete)")
+    public ResponseEntity<ApiResponse<Void>> deleteMedia(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id) {
+
+        MediaAsset asset = mediaAssetRepository.findById(id)
+                .filter(a -> !Boolean.TRUE.equals(a.getIsDeleted()))
+                .filter(a -> institutionId.equals(a.getInstitutionId()))
+                .orElse(null);
+        if (asset == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Media asset not found"));
+        }
+
+        asset.setIsDeleted(true);
+        mediaAssetRepository.save(asset);
+        return ResponseEntity.ok(ApiResponse.success("Media asset deleted", null));
     }
 
     private MediaAssetResponse toResponse(MediaAsset asset) {
