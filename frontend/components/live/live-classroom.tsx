@@ -107,7 +107,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
       const wsHost = process.env.NEXT_PUBLIC_WS_HOST || window.location.hostname
       const wsPort = process.env.NEXT_PUBLIC_WS_PORT || "8080"
-      const wsUrl = `${protocol}//${wsHost}:${wsPort}/ws/live-class/${liveClass.id}?token=${encodeURIComponent(token)}`
+      const wsUrl = `${protocol}//${wsHost}:${wsPort}/ws/live-class/${liveClass.id}?token=${encodeURIComponent(token as string)}`
 
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws

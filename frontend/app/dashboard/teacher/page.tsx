@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { type TeacherDashboard, type Assignment, type Assessment, learningApi, assessmentApi, teacherApi as apiTeacher } from "@/lib/api"
 import { teacherApi, teacherFetch } from "@/lib/teacher-api"
-import { BookOpen, Users, FileText, PenTool, Video, ArrowRight, GraduationCap, AlertCircle, BarChart3, ChevronRight, Loader2, AlertTriangle, ClipboardList } from "lucide-react"
+import { BookOpen, Users, FileText, PenTool, Video, ArrowRight, GraduationCap, AlertCircle, BarChart3, ChevronRight, Loader2, AlertTriangle, ClipboardList, Calendar } from "lucide-react"
 
 export default function TeacherDashboardPage() {
   const { user } = useAuth()
