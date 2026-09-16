@@ -28,4 +28,8 @@ public interface AssessmentService {
     List<AssessmentResultResponse> getResults(UUID assessmentId);
 
     AssessmentResultResponse getResult(UUID assessmentId, UUID studentId);
+
+    AnswerResponse gradeEssay(UUID answerId, int marksObtained, String feedback, UUID gradedBy);
+
+    List<SubmissionResponse> getSubmissions(UUID assessmentId);
 }

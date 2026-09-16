@@ -6,22 +6,25 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AnswerResponse {
+public class SubmissionResponse {
 
-    private UUID id;
     private UUID attemptId;
-    private UUID questionId;
-    private UUID selectedOptionId;
-    private String textAnswer;
-    private Boolean isCorrect;
-    private Integer marksObtained;
-    private String feedback;
+    private UUID studentId;
+    private UUID assessmentId;
+    private LocalDateTime startedAt;
+    private LocalDateTime submittedAt;
+    private Boolean isCompleted;
+    private List<AnswerResponse> answers;
+    private Integer totalScore;
+    private Boolean isPassed;
     private UUID gradedBy;
     private LocalDateTime gradedAt;
+    private String feedback;
 }

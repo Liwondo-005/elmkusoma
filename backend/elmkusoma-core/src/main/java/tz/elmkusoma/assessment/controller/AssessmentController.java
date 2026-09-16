@@ -113,4 +113,24 @@ public class AssessmentController {
         AssessmentResultResponse response = assessmentService.getResult(id, studentId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @PutMapping("/answers/{answerId}/grade")
+    @Operation(summary = "Grade a SHORT_ANSWER or ESSAY answer manually")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<AnswerResponse>> gradeEssay(
+            @PathVariable UUID answerId,
+            @RequestParam int marksObtained,
+            @RequestParam(required = false) String feedback,
+            @RequestHeader("X-User-Id") UUID gradedBy) {
+        AnswerResponse response = assessmentService.gradeEssay(answerId, marksObtained, feedback, gradedBy);
+        return ResponseEntity.ok(ApiResponse.success("Answer graded", response));
+    }
+
+    @GetMapping("/{id}/submissions")
+    @Operation(summary = "Get all submissions for an assessment with student info")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(@PathVariable UUID id) {
+        List<SubmissionResponse> response = assessmentService.getSubmissions(id);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

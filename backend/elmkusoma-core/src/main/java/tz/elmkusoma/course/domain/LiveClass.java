@@ -44,6 +44,9 @@ public class LiveClass extends BaseEntity {
     @Column(name = "max_participants")
     private Integer maxParticipants;
 
+    @Column(name = "class_group_id")
+    private UUID classGroupId;
+
     @Column(name = "recording_url", length = 500)
     private String recordingUrl;
 

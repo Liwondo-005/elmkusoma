@@ -17,8 +17,12 @@ public class GradeBoundaryResponse {
     private UUID gradingScaleId;
     private String gradeLabel;
     private String gradeName;
+    private String grade;
     private BigDecimal minPercentage;
     private BigDecimal maxPercentage;
+    private BigDecimal minMark;
+    private BigDecimal maxMark;
     private BigDecimal gpaPoints;
+    private String remarks;
     private Integer sortOrder;
 }

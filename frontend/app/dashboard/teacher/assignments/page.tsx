@@ -18,6 +18,8 @@ import {
   Paperclip,
   Pencil,
   Trash2,
+  Award,
+  Save,
 } from "lucide-react"
 
 import { appFetch } from "@/lib/fetch"
@@ -112,6 +114,11 @@ export default function TeacherAssignmentsPage() {
   const [selectedAssignment, setSelectedAssignment] = useState<string | null>(null)
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([])
   const [loadingSubmissions, setLoadingSubmissions] = useState(false)
+
+  const [gradingSubmissionId, setGradingSubmissionId] = useState<string | null>(null)
+  const [gradeValue, setGradeValue] = useState<string>("")
+  const [gradeFeedback, setGradeFeedback] = useState("")
+  const [gradingLoading, setGradingLoading] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -248,6 +255,47 @@ export default function TeacherAssignmentsPage() {
       setSubmissions([])
     } finally {
       setLoadingSubmissions(false)
+    }
+  }
+
+  function startGrading(submission: AssignmentSubmission, assignmentTotalMarks: number) {
+    setGradingSubmissionId(submission.id)
+    setGradeValue(submission.obtainedMarks?.toString() ?? submission.grade?.toString() ?? "")
+    setGradeFeedback(submission.feedback ?? "")
+  }
+
+  function cancelGrading() {
+    setGradingSubmissionId(null)
+    setGradeValue("")
+    setGradeFeedback("")
+  }
+
+  async function submitGrade(submissionId: string, totalMarks: number) {
+    const grade = Number(gradeValue)
+    if (isNaN(grade) || grade < 0 || grade > totalMarks) {
+      setError(`Grade must be between 0 and ${totalMarks}`)
+      return
+    }
+    try {
+      setGradingLoading(true)
+      setError(null)
+      const params = new URLSearchParams({ grade: String(grade) })
+      if (gradeFeedback.trim()) {
+        params.set("feedback", gradeFeedback.trim())
+      }
+      await appFetch(`/v1/learning/submissions/${submissionId}/grade?${params.toString()}`, {
+        method: "PUT",
+      })
+      setSuccess("Submission graded successfully")
+      cancelGrading()
+      if (selectedAssignment) {
+        await viewSubmissions(selectedAssignment)
+      }
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to grade submission")
+    } finally {
+      setGradingLoading(false)
     }
   }
 
@@ -474,33 +522,101 @@ export default function TeacherAssignmentsPage() {
                     <th className="px-3 py-2">Submitted</th>
                     <th className="px-3 py-2">Marks</th>
                     <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {submissions.map((s) => (
-                    <tr key={s.id} className="border-b border-border last:border-0">
-                      <td className="px-3 py-2 font-medium text-foreground">
-                        {s.studentName || s.studentId.slice(0, 8)}...
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {new Date(s.submittedAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {s.obtainedMarks ?? s.grade ?? "—"}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            s.grade !== null && s.grade !== undefined
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-                          }`}
-                        >
-                          {s.grade !== null && s.grade !== undefined ? "GRADED" : "PENDING"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {submissions.map((s) => {
+                    const isGraded = s.grade !== null && s.grade !== undefined
+                    const isGrading = gradingSubmissionId === s.id
+                    const currentAssignment = filtered.find((a) => a.id === selectedAssignment)
+                    const totalMarks = currentAssignment?.totalMarks ?? 100
+                    return (
+                      <tr key={s.id} className="border-b border-border last:border-0">
+                        <td className="px-3 py-2 font-medium text-foreground">
+                          {s.studentName || s.studentId.slice(0, 8)}...
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {new Date(s.submittedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {s.obtainedMarks ?? s.grade ?? "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              isGraded
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                            }`}
+                          >
+                            {isGraded ? "GRADED" : "PENDING"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          {isGrading ? (
+                            <div className="flex flex-col gap-2 min-w-[200px]">
+                              <div className="flex items-center gap-2">
+                                <label className="text-xs text-muted-foreground shrink-0">Grade (0-{totalMarks}):</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={totalMarks}
+                                  value={gradeValue}
+                                  onChange={(e) => setGradeValue(e.target.value)}
+                                  className="h-7 w-20 rounded-lg border border-border bg-background px-2 text-xs outline-none focus:border-ring"
+                                  autoFocus
+                                />
+                              </div>
+                              <textarea
+                                value={gradeFeedback}
+                                onChange={(e) => setGradeFeedback(e.target.value)}
+                                placeholder="Feedback (optional)"
+                                rows={2}
+                                className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none focus:border-ring resize-none"
+                              />
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  onClick={() => submitGrade(s.id, totalMarks)}
+                                  disabled={gradingLoading || gradeValue === ""}
+                                  className="h-7 gap-1 text-xs"
+                                >
+                                  {gradingLoading ? (
+                                    <Loader2 className="size-3 animate-spin" />
+                                  ) : (
+                                    <Save className="size-3" />
+                                  )}
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={cancelGrading}
+                                  disabled={gradingLoading}
+                                  className="h-7 text-xs"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            !isGraded && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => startGrading(s, totalMarks)}
+                                className="gap-1 h-7 text-xs"
+                              >
+                                <Award className="size-3" />
+                                Grade
+                              </Button>
+                            )
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

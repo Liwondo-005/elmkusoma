@@ -24,6 +24,7 @@ public class LiveClassResponse {
     private String teacherName;
     private UUID teacherId;
     private UUID subjectId;
+    private UUID classGroupId;
     private String recordingUrl;
     private Integer currentParticipants;
     private Boolean canJoin;

@@ -26,6 +26,8 @@ public class CreateLiveClassRequest {
 
     private UUID subjectId;
 
+    private UUID classGroupId;
+
     @Min(value = 1, message = "Max participants must be at least 1")
     @Max(value = 10000, message = "Max participants must not exceed 10000")
     private Integer maxParticipants;

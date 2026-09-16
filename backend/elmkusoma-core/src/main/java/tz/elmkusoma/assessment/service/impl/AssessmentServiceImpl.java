@@ -15,6 +15,7 @@ import tz.elmkusoma.assessment.service.AssessmentService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -227,6 +228,101 @@ public class AssessmentServiceImpl implements AssessmentService {
         return toResultResponse(result);
     }
 
+    @Override
+    public AnswerResponse gradeEssay(UUID answerId, int marksObtained, String feedback, UUID gradedBy) {
+        Answer answer = answerRepository.findById(answerId)
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Answer not found with id: " + answerId));
+
+        Question question = questionRepository.findById(answer.getQuestionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Question not found"));
+
+        if (question.getQuestionType() != QuestionType.SHORT_ANSWER &&
+            question.getQuestionType() != QuestionType.ESSAY) {
+            throw new IllegalArgumentException("Only SHORT_ANSWER and ESSAY questions can be manually graded");
+        }
+
+        if (marksObtained < 0 || marksObtained > question.getMarks()) {
+            throw new IllegalArgumentException(
+                    "Marks obtained must be between 0 and " + question.getMarks());
+        }
+
+        answer.setMarksObtained(marksObtained);
+        answer.setFeedback(feedback);
+        answer.setGradedBy(gradedBy);
+        answer.setGradedAt(LocalDateTime.now());
+        answer.setIsCorrect(marksObtained > 0);
+
+        Answer savedAnswer = answerRepository.save(answer);
+
+        recalculateResultScore(answer.getAttemptId());
+
+        return toAnswerResponse(savedAnswer);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SubmissionResponse> getSubmissions(UUID assessmentId) {
+        assessmentRepository.findById(assessmentId)
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Assessment not found with id: " + assessmentId));
+
+        List<Attempt> attempts = attemptRepository.findByAssessmentIdAndIsDeletedFalse(assessmentId);
+
+        return attempts.stream().map(attempt -> {
+            List<Answer> answers = answerRepository.findByAttemptIdAndIsDeletedFalse(attempt.getId());
+
+            Optional<AssessmentResult> resultOpt = resultRepository
+                    .findByAssessmentIdAndStudentIdAndIsDeletedFalse(assessmentId, attempt.getStudentId());
+
+            AssessmentResult result = resultOpt.orElse(null);
+
+            return SubmissionResponse.builder()
+                    .attemptId(attempt.getId())
+                    .studentId(attempt.getStudentId())
+                    .assessmentId(attempt.getAssessmentId())
+                    .startedAt(attempt.getStartedAt())
+                    .submittedAt(attempt.getSubmittedAt())
+                    .isCompleted(attempt.getIsCompleted())
+                    .answers(answers.stream().map(this::toAnswerResponse).toList())
+                    .totalScore(result != null ? result.getTotalScore() : null)
+                    .isPassed(result != null ? result.getIsPassed() : null)
+                    .gradedBy(result != null ? result.getGradedBy() : null)
+                    .gradedAt(result != null ? result.getGradedAt() : null)
+                    .feedback(result != null ? result.getFeedback() : null)
+                    .build();
+        }).toList();
+    }
+
+    private void recalculateResultScore(UUID attemptId) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt not found"));
+
+        if (!attempt.getIsCompleted()) {
+            return;
+        }
+
+        Assessment assessment = assessmentRepository.findById(attempt.getAssessmentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Assessment not found"));
+
+        List<Answer> answers = answerRepository.findByAttemptIdAndIsDeletedFalse(attemptId);
+        int totalScore = answers.stream()
+                .filter(a -> a.getMarksObtained() != null)
+                .mapToInt(Answer::getMarksObtained)
+                .sum();
+
+        Optional<AssessmentResult> resultOpt = resultRepository
+                .findByAssessmentIdAndStudentIdAndIsDeletedFalse(
+                        attempt.getAssessmentId(), attempt.getStudentId());
+
+        resultOpt.ifPresent(result -> {
+            result.setTotalScore(totalScore);
+            result.setIsPassed(totalScore >= assessment.getPassMarks());
+            result.setGradedAt(LocalDateTime.now());
+            resultRepository.save(result);
+        });
+    }
+
     private AssessmentResponse toAssessmentResponse(Assessment a) {
         return AssessmentResponse.builder()
                 .id(a.getId())
@@ -285,6 +381,9 @@ public class AssessmentServiceImpl implements AssessmentService {
                 .textAnswer(a.getTextAnswer())
                 .isCorrect(a.getIsCorrect())
                 .marksObtained(a.getMarksObtained())
+                .feedback(a.getFeedback())
+                .gradedBy(a.getGradedBy())
+                .gradedAt(a.getGradedAt())
                 .build();
     }
 

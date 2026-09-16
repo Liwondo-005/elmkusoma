@@ -6,17 +6,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.SubjectRepository;
+import tz.elmkusoma.attendance.domain.AttendanceRecord;
+import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.domain.LiveClass.LiveClassStatus;
 import tz.elmkusoma.course.dto.CreateLiveClassRequest;
 import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
+import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -33,6 +38,8 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
     private final SubjectRepository subjectRepository;
+    private final LiveClassParticipantRepository participantRepository;
+    private final AttendanceRecordRepository attendanceRecordRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -85,6 +92,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .meetingUrl(request.getMeetingUrl())
                 .subjectId(request.getSubjectId())
                 .maxParticipants(request.getMaxParticipants())
+                .classGroupId(request.getClassGroupId())
                 .build();
         liveClass.setInstitutionId(institutionId);
 
@@ -150,7 +158,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     }
 
     @Override
-    public LiveClassResponse endSession(UUID teacherId, UUID liveClassId) {
+    public LiveClassResponse endSession(UUID teacherId, UUID liveClassId, UUID markedBy) {
         LiveClass liveClass = liveClassRepository.findById(liveClassId)
                 .filter(lc -> lc.getTeacherId().equals(teacherId) && !lc.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
@@ -161,6 +169,9 @@ public class LiveClassServiceImpl implements LiveClassService {
 
         liveClass.setStatus(LiveClassStatus.COMPLETED.name());
         LiveClass saved = liveClassRepository.save(liveClass);
+
+        createAttendanceFromParticipants(saved, markedBy);
+
         return mapToResponse(saved);
     }
 
@@ -171,6 +182,42 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .filter(lc -> !lc.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
         return mapToResponse(liveClass);
+    }
+
+    private void createAttendanceFromParticipants(LiveClass liveClass, UUID markedBy) {
+        if (liveClass.getClassGroupId() == null) {
+            log.warn("No classGroupId on LiveClass {}, skipping attendance creation", liveClass.getId());
+            return;
+        }
+
+        List<LiveClassParticipant> participants = participantRepository
+                .findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(liveClass.getId());
+
+        LocalDate today = LocalDate.now();
+        UUID classGroupId = liveClass.getClassGroupId();
+
+        for (LiveClassParticipant participant : participants) {
+            boolean alreadyExists = attendanceRecordRepository
+                    .findByClassGroupIdAndAttendanceDateAndIsDeletedFalse(classGroupId, today)
+                    .stream()
+                    .anyMatch(r -> r.getStudentId().equals(participant.getUserId()));
+
+            if (!alreadyExists) {
+                AttendanceRecord record = AttendanceRecord.builder()
+                        .institutionId(liveClass.getInstitutionId())
+                        .studentId(participant.getUserId())
+                        .classGroupId(classGroupId)
+                        .attendanceDate(today)
+                        .status(AttendanceRecord.AttendanceStatus.PRESENT)
+                        .markedBy(markedBy)
+                        .remarks("Auto-recorded from live class participation")
+                        .build();
+                attendanceRecordRepository.save(record);
+            }
+        }
+
+        log.info("Created attendance records for {} participants in live class {}",
+                participants.size(), liveClass.getId());
     }
 
     private LiveClassResponse mapToResponse(LiveClass liveClass) {
@@ -202,6 +249,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .teacherName(teacherName)
                 .teacherId(liveClass.getTeacherId())
                 .subjectId(liveClass.getSubjectId())
+                .classGroupId(liveClass.getClassGroupId())
                 .recordingUrl(liveClass.getRecordingUrl())
                 .canJoin("IN_PROGRESS".equals(liveClass.getStatus()))
                 .build();

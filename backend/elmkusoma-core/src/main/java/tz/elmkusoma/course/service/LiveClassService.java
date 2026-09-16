@@ -18,7 +18,7 @@ public interface LiveClassService {
 
     LiveClassResponse startSession(UUID teacherId, UUID liveClassId);
 
-    LiveClassResponse endSession(UUID teacherId, UUID liveClassId);
+    LiveClassResponse endSession(UUID teacherId, UUID liveClassId, UUID markedBy);
 
     LiveClassResponse getLiveClassById(UUID liveClassId);
 

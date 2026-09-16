@@ -135,7 +135,7 @@ public class TeacherLiveClassController {
             @PathVariable UUID id) {
         Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
-        LiveClassResponse ended = liveClassService.endSession(teacher.getId(), id);
+        LiveClassResponse ended = liveClassService.endSession(teacher.getId(), id, userId);
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
         if (liveClass != null) {

@@ -11,6 +11,11 @@ import tz.elmkusoma.learning.dto.request.ProgressRequest;
 import tz.elmkusoma.learning.dto.response.*;
 import tz.elmkusoma.learning.repository.*;
 import tz.elmkusoma.learning.service.LearningService;
+import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentClassAssignmentRepository;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,6 +30,9 @@ public class LearningServiceImpl implements LearningService {
     private final LessonProgressRepository lessonProgressRepository;
     private final AssignmentRepository assignmentRepository;
     private final AssignmentSubmissionRepository submissionRepository;
+    private final StudentClassAssignmentRepository studentClassAssignmentRepository;
+    private final StudentRepository studentRepository;
+    private final UserRepository userRepository;
 
     @Override
     public LessonResponse createLesson(UUID institutionId, LessonRequest request) {
@@ -133,6 +141,9 @@ public class LearningServiceImpl implements LearningService {
                 .dueDate(request.getDueDate())
                 .totalMarks(request.getTotalMarks())
                 .attachments(request.getAttachments())
+                .assignmentType(request.getAssignmentType())
+                .instructions(request.getInstructions())
+                .status(request.getStatus() != null ? request.getStatus() : "PUBLISHED")
                 .build();
 
         return toAssignmentResponse(assignmentRepository.save(assignment));
@@ -248,6 +259,8 @@ public class LearningServiceImpl implements LearningService {
     }
 
     private AssignmentResponse toAssignmentResponse(Assignment a) {
+        long submissionCount = submissionRepository.countByAssignmentIdAndIsDeletedFalse(a.getId());
+        long totalStudents = studentClassAssignmentRepository.countActiveByClassGroupId(a.getClassGroupId());
         return AssignmentResponse.builder()
                 .id(a.getId())
                 .subjectId(a.getSubjectId())
@@ -260,15 +273,26 @@ public class LearningServiceImpl implements LearningService {
                 .assignmentType(a.getAssignmentType())
                 .instructions(a.getInstructions())
                 .status(a.getStatus())
+                .submissionCount((int) submissionCount)
+                .totalStudents((int) totalStudents)
                 .createdAt(a.getCreatedAt())
                 .build();
     }
 
     private SubmissionResponse toSubmissionResponse(AssignmentSubmission s) {
+        String studentName = null;
+        Student student = studentRepository.findById(s.getStudentId()).orElse(null);
+        if (student != null) {
+            User user = userRepository.findById(student.getUserId()).orElse(null);
+            if (user != null) {
+                studentName = user.getFirstName() + " " + user.getLastName();
+            }
+        }
         return SubmissionResponse.builder()
                 .id(s.getId())
                 .assignmentId(s.getAssignmentId())
                 .studentId(s.getStudentId())
+                .studentName(studentName)
                 .fileUrl(s.getFileUrl())
                 .submittedAt(s.getSubmittedAt())
                 .grade(s.getGrade())
