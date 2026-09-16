@@ -204,4 +204,78 @@ public class LiveSessionController {
         log.info("Issue reported for live class {} by user {}: {}", classId, userId, request.getIssueType());
         return ResponseEntity.ok(ApiResponse.success("Issue reported successfully", null));
     }
+
+    @PostMapping("/classes/{classId}/recording/start")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
+    @Operation(summary = "Start recording a live class session (teacher only)")
+    public ResponseEntity<ApiResponse<Map<String, String>>> startRecording(
+            @PathVariable UUID classId,
+            @RequestAttribute UUID userId,
+            @RequestAttribute UUID institutionId) {
+
+        LiveClass liveClass = liveClassRepository.findById(classId).orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
+        }
+        if (!liveClass.getInstitutionId().equals(institutionId)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+
+        boolean isTeacher = liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(userId);
+        if (!isTeacher) {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user == null || (user.getRole() != User.Role.ADMIN && user.getRole() != User.Role.INSTITUTION_ADMIN)) {
+                return ResponseEntity.status(403).body(ApiResponse.error("Only the teacher can start recording"));
+            }
+        }
+
+        if (!liveKitService.isAvailable()) {
+            return ResponseEntity.status(503).body(ApiResponse.error("LiveKit not configured"));
+        }
+
+        String egressId = liveKitService.startRecording(classId);
+        if (egressId != null) {
+            liveClass.setRecordingUrl("egress:" + egressId);
+            liveClassRepository.save(liveClass);
+
+            Map<String, String> result = new HashMap<>();
+            result.put("egressId", egressId);
+            log.info("Recording started for class {} by teacher {}", classId, userId);
+            return ResponseEntity.ok(ApiResponse.success("Recording started", result));
+        }
+        return ResponseEntity.status(500).body(ApiResponse.error("Failed to start recording"));
+    }
+
+    @PostMapping("/classes/{classId}/recording/stop")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
+    @Operation(summary = "Stop recording a live class session (teacher only)")
+    public ResponseEntity<ApiResponse<String>> stopRecording(
+            @PathVariable UUID classId,
+            @RequestAttribute UUID userId,
+            @RequestAttribute UUID institutionId) {
+
+        LiveClass liveClass = liveClassRepository.findById(classId).orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
+        }
+        if (!liveClass.getInstitutionId().equals(institutionId)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+
+        String recordingUrl = liveClass.getRecordingUrl();
+        if (recordingUrl == null || !recordingUrl.startsWith("egress:")) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("No active recording found"));
+        }
+
+        String egressId = recordingUrl.substring("egress:".length());
+        boolean stopped = liveKitService.stopRecording(egressId);
+
+        if (stopped) {
+            liveClass.setRecordingUrl(null);
+            liveClassRepository.save(liveClass);
+            log.info("Recording stopped for class {} by teacher {}", classId, userId);
+            return ResponseEntity.ok(ApiResponse.success("Recording stopped", egressId));
+        }
+        return ResponseEntity.status(500).body(ApiResponse.error("Failed to stop recording"));
+    }
 }
