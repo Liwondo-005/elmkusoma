@@ -32,8 +32,8 @@ public class OversightService {
 
         long totalInstitutions = institutionRepository.countByIsDeletedFalse();
         long totalUsers = userRepository.countByIsDeletedFalse();
-        long totalTeachers = membershipRepository.countByRoleAndIsDeletedFalse(InstitutionMembership.Role.TEACHER);
-        long totalStudents = membershipRepository.countByRoleAndIsDeletedFalse(InstitutionMembership.Role.STUDENT);
+        long totalTeachers = membershipRepository.countByRoleAndIsActiveTrue(InstitutionMembership.Role.TEACHER);
+        long totalStudents = membershipRepository.countByRoleAndIsActiveTrue(InstitutionMembership.Role.STUDENT);
         long totalRegions = regionRepository.count();
         long totalDistricts = districtRepository.count();
 
