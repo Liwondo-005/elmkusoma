@@ -45,6 +45,12 @@ public class Institution {
     @Column(name = "region")
     private String region;
 
+    @Column(name = "region_id")
+    private UUID regionId;
+
+    @Column(name = "district_id")
+    private UUID districtId;
+
     @Column(name = "country", nullable = false)
     private String country = "Tanzania";
 

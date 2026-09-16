@@ -15,4 +15,6 @@ public interface InstitutionMembershipRepository extends JpaRepository<Instituti
     List<InstitutionMembership> findByInstitutionIdAndIsActiveTrue(UUID institutionId);
 
     boolean existsByUserIdAndInstitutionIdAndIsActiveTrue(UUID userId, UUID institutionId);
+
+    long countByRoleAndIsDeletedFalse(InstitutionMembership.Role role);
 }

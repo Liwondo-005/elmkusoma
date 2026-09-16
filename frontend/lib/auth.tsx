@@ -113,6 +113,9 @@ function mapRoleToFrontend(backendRole: string): string {
     OTHER_LEARNER: "Other Learner",
     ADMIN: "Admin",
     INSTITUTION_ADMIN: "Institution Admin",
+    NATIONAL_ADMIN: "National Admin",
+    REGIONAL_ADMIN: "Regional Admin",
+    DISTRICT_ADMIN: "District Admin",
   }
   return roleMap[backendRole] || backendRole
 }
