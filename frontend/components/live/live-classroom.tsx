@@ -12,7 +12,6 @@ import {
   Send,
   Users,
   Clock,
-  ExternalLink,
   Wifi,
   WifiOff,
   Hand,
@@ -81,7 +80,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const screenVideoRef = useRef<HTMLVideoElement>(null)
 
-  const isInProgress = liveClass.status === "IN_PROGRESS"
+  const isInProgress = liveClass.status === "IN_PROGRESS" || liveClass.status === "LIVE"
   const myUserId = user?.id || ""
 
   const getElapsed = useCallback(() => {
@@ -489,17 +488,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           </Link>
         </div>
         <div className="flex items-center gap-2">
-          {liveClass.meetingUrl && (
-            <a
-              href={liveClass.meetingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <ExternalLink className="size-3" />
-              External Tool
-            </a>
-          )}
           <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={handleLeave}>
             Leave
           </Button>
@@ -510,11 +498,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         <span className={cn(
           "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold",
           isInProgress ? "bg-teal text-teal-foreground" :
-          liveClass.status === "COMPLETED" ? "bg-gray-100 text-gray-600" :
+          liveClass.status === "SERVICE_DEGRADED" || liveClass.status === "SERVICE_UNAVAILABLE" ? "bg-amber-100 text-amber-700" :
+          liveClass.status === "RECOVERING" ? "bg-blue-100 text-blue-700" :
+          liveClass.status === "COMPLETED" || liveClass.status === "ENDED" ? "bg-gray-100 text-gray-600" :
           "bg-blue-100 text-blue-700"
         )}>
-          {isInProgress && <span className="size-1.5 animate-pulse rounded-full bg-white" />}
-          {liveClass.status}
+          {(isInProgress || liveClass.status === "LIVE") && <span className="size-1.5 animate-pulse rounded-full bg-white" />}
+          {liveClass.status === "IN_PROGRESS" ? "LIVE" : liveClass.status.replace(/_/g, " ")}
         </span>
         <div>
           <h1 className="text-base font-bold text-foreground">{liveClass.title}</h1>
@@ -550,8 +540,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
       {serviceMode === "chat-only" && isInProgress && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700">
-          <p className="font-medium">Video service unavailable</p>
-          <p className="mt-0.5 text-amber-600">Live video is temporarily unavailable. You can still participate via chat. The teacher has been notified.</p>
+          <p className="font-medium">Live service degraded</p>
+          <p className="mt-0.5 text-amber-600">ELMKUSOMA Live is experiencing a temporary technical issue with the real-time media service. You can still participate via chat. We are working to restore full service.</p>
         </div>
       )}
 
@@ -642,7 +632,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     </button>
                   </div>
                 </>
-              ) : liveClass.status === "COMPLETED" ? (
+              ) : liveClass.status === "COMPLETED" || liveClass.status === "ENDED" ? (
                 <div className="text-center text-white">
                   <p className="text-sm opacity-75">This session has ended</p>
                 </div>

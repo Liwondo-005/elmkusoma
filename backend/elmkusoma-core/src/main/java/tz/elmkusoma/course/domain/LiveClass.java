@@ -51,6 +51,7 @@ public class LiveClass extends BaseEntity {
     private String recordingUrl;
 
     public enum LiveClassStatus {
-        SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+        SCHEDULED, STARTING, IN_PROGRESS, LIVE, ENDING, COMPLETED, ENDED, CANCELLED,
+        SERVICE_DEGRADED, SERVICE_UNAVAILABLE, RECOVERING
     }
 }
