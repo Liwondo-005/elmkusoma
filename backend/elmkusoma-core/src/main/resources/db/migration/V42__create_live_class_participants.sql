@@ -1,6 +1,7 @@
 -- V42: Create live_class_participants table for real-time session tracking
+-- Uses IF NOT EXISTS to handle cases where Hibernate ddl-auto already created the table
 
-CREATE TABLE live_class_participants (
+CREATE TABLE IF NOT EXISTS live_class_participants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID,
     live_class_id UUID NOT NULL,
@@ -20,6 +21,6 @@ CREATE TABLE live_class_participants (
     CONSTRAINT uq_live_class_participant UNIQUE (live_class_id, user_id)
 );
 
-CREATE INDEX idx_lc_participant_class ON live_class_participants(live_class_id) WHERE is_deleted = false;
-CREATE INDEX idx_lc_participant_user ON live_class_participants(user_id) WHERE is_deleted = false;
-CREATE INDEX idx_lc_participant_connection ON live_class_participants(connection_id) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_lc_participant_class ON live_class_participants(live_class_id) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_lc_participant_user ON live_class_participants(user_id) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_lc_participant_connection ON live_class_participants(connection_id) WHERE is_deleted = false;

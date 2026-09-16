@@ -1,6 +1,7 @@
 -- V24: Create event, event_registration, and event_material tables
+-- Uses IF NOT EXISTS to handle cases where Hibernate ddl-auto already created the tables
 
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID NOT NULL,
     organizer_id UUID NOT NULL,
@@ -27,12 +28,12 @@ CREATE TABLE events (
     CONSTRAINT fk_events_institution FOREIGN KEY (institution_id) REFERENCES institutions(id)
 );
 
-CREATE INDEX idx_events_institution ON events(institution_id) WHERE is_deleted = false;
-CREATE INDEX idx_events_status ON events(status) WHERE is_deleted = false;
-CREATE INDEX idx_events_type ON events(event_type) WHERE is_deleted = false;
-CREATE INDEX idx_events_starts_at ON events(starts_at) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_events_institution ON events(institution_id) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_events_status ON events(status) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_events_starts_at ON events(starts_at) WHERE is_deleted = false;
 
-CREATE TABLE event_registrations (
+CREATE TABLE IF NOT EXISTS event_registrations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL,
     user_id UUID NOT NULL,
@@ -52,10 +53,10 @@ CREATE TABLE event_registrations (
     CONSTRAINT uq_event_registration UNIQUE (event_id, user_id)
 );
 
-CREATE INDEX idx_event_reg_event ON event_registrations(event_id) WHERE is_deleted = false;
-CREATE INDEX idx_event_reg_user ON event_registrations(user_id) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_event_reg_event ON event_registrations(event_id) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_event_reg_user ON event_registrations(user_id) WHERE is_deleted = false;
 
-CREATE TABLE event_materials (
+CREATE TABLE IF NOT EXISTS event_materials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL,
     title VARCHAR(300) NOT NULL,
@@ -75,4 +76,4 @@ CREATE TABLE event_materials (
     CONSTRAINT fk_event_mat_event FOREIGN KEY (event_id) REFERENCES events(id)
 );
 
-CREATE INDEX idx_event_materials_event ON event_materials(event_id) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_event_materials_event ON event_materials(event_id) WHERE is_deleted = false;
