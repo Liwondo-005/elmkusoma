@@ -163,6 +163,27 @@ export interface TeacherDashboardStats {
   averageClassPerformance: number
 }
 
+export interface TeacherAnalytics {
+  totalStudents: number
+  totalAssignments: number
+  totalLessons: number
+  averageAttendance: number
+  pendingGrading: number
+  classesCount: number
+  upcomingDeadlines: {
+    title: string
+    dueDate: string
+    subjectName: string
+    className: string
+  }[]
+  recentSubmissions: {
+    studentName: string
+    assignmentTitle: string
+    submittedAt: string
+    graded: boolean
+  }[]
+}
+
 export interface TeacherScheduleItem {
   id: string
   className: string
