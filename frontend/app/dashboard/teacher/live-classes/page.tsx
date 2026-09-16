@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Video, Plus, Clock, Users, Pencil, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2 } from "lucide-react"
+import { Video, Plus, Clock, Users, Pencil, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink } from "lucide-react"
 import { appFetch } from "@/lib/fetch"
 
 interface LiveClass {
@@ -152,6 +152,31 @@ export default function TeacherLiveClassesPage() {
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel live class")
+    }
+  }
+
+  async function handleStartLive(id: string) {
+    try {
+      setError(null)
+      await appFetch(`/v1/teachers/me/live-classes/${id}/start`, { method: "POST" })
+      setSuccess("Live class started!")
+      loadData()
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start live class")
+    }
+  }
+
+  async function handleEndLive(id: string) {
+    if (!confirm("End this live class? Students will no longer be able to join.")) return
+    try {
+      setError(null)
+      await appFetch(`/v1/teachers/me/live-classes/${id}/end`, { method: "POST" })
+      setSuccess("Live class ended")
+      loadData()
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to end live class")
     }
   }
 
@@ -327,23 +352,67 @@ export default function TeacherLiveClassesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => startEdit(lc)}
-                      title="Edit"
-                    >
-                      <Edit className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleCancel(lc.id)}
-                      title="Cancel"
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    {lc.status === "SCHEDULED" && (
+                      <>
+                        <Button
+                          size="sm"
+                          className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => handleStartLive(lc.id)}
+                        >
+                          <Play className="size-3" />
+                          Start Live
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => startEdit(lc)}
+                          title="Edit"
+                        >
+                          <Edit className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleCancel(lc.id)}
+                          title="Cancel"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </>
+                    )}
+                    {(lc.status === "IN_PROGRESS" || lc.status === "LIVE") && (
+                      <>
+                        <Button
+                          size="sm"
+                          className="gap-1"
+                          onClick={() => window.open(`/dashboard/teacher/live-classes/${lc.id}`, "_blank")}
+                        >
+                          <ExternalLink className="size-3" />
+                          Open Classroom
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="gap-1"
+                          onClick={() => handleEndLive(lc.id)}
+                        >
+                          <Square className="size-3" />
+                          End
+                        </Button>
+                      </>
+                    )}
+                    {(lc.status === "COMPLETED" || lc.status === "ENDED" || lc.status === "CANCELLED") && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleCancel(lc.id)}
+                        title="Delete"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
