@@ -17,6 +17,9 @@ import {
   Hand,
   XCircle,
   Flag,
+  Circle,
+  Paperclip,
+  FileText,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
 import { Button } from "@/components/ui/button"
@@ -68,6 +71,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [issueDescription, setIssueDescription] = useState("")
   const [issueSubmitting, setIssueSubmitting] = useState(false)
   const [issueSent, setIssueSent] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingEgressId, setRecordingEgressId] = useState<string | null>(null)
+  const [showMaterialInput, setShowMaterialInput] = useState(false)
+  const [materialName, setMaterialName] = useState("")
+  const [materialUrl, setMaterialUrl] = useState("")
+  const [attachedMaterials, setAttachedMaterials] = useState<Array<{name: string; url: string}>>([])
   const roomRef = useRef<Room | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
@@ -486,6 +495,50 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     }
   }
 
+  async function toggleRecording() {
+    if (!liveClass?.id) return
+    try {
+      const token = localStorage.getItem("elmkusoma_access_token")
+      const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+      if (isRecording && recordingEgressId) {
+        const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/stop`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          setIsRecording(false)
+          setRecordingEgressId(null)
+          setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Recording stopped", timestamp: new Date().toISOString(), system: true }])
+        }
+      } else {
+        const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/start`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const egressId = data?.data?.egressId
+          setIsRecording(true)
+          setRecordingEgressId(egressId || null)
+          setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Recording started", timestamp: new Date().toISOString(), system: true }])
+        }
+      }
+    } catch {
+      setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Failed to toggle recording", timestamp: new Date().toISOString(), system: true }])
+    }
+  }
+
+  function handleAttachMaterial() {
+    if (!materialName.trim() || !materialUrl.trim()) return
+    setAttachedMaterials((prev) => [...prev, { name: materialName.trim(), url: materialUrl.trim() }])
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "CHAT", message: `📎 Material shared: ${materialName.trim()} - ${materialUrl.trim()}` }))
+    }
+    setMaterialName("")
+    setMaterialUrl("")
+    setShowMaterialInput(false)
+  }
+
   function handleLeave() {
     retryCountRef.current = 10
     if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
@@ -654,6 +707,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     <ControlButton active={screenSharing} onClick={toggleScreenShare} label={screenSharing ? "Stop sharing" : "Share screen"}>
                       <MonitorUp className="size-4" />
                     </ControlButton>
+                    <ControlButton active={isRecording} onClick={toggleRecording} label={isRecording ? "Stop recording" : "Start recording"}>
+                      <Circle className={cn("size-4", isRecording && "fill-red-500 text-red-500 animate-pulse")} />
+                    </ControlButton>
+                    <ControlButton active={showMaterialInput} onClick={() => setShowMaterialInput(!showMaterialInput)} label="Attach material">
+                      <Paperclip className="size-4" />
+                    </ControlButton>
                     <ControlButton active={handRaised} onClick={toggleHand} label={handRaised ? "Lower hand" : "Raise hand"}>
                       <Hand className="size-4" />
                     </ControlButton>
@@ -667,6 +726,25 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       <Flag className="size-4" />
                     </button>
                   </div>
+                  {showMaterialInput && (
+                    <div className="absolute inset-x-0 bottom-16 flex items-center gap-2 bg-black/80 p-3 rounded-lg mx-3">
+                      <input
+                        type="text"
+                        value={materialName}
+                        onChange={(e) => setMaterialName(e.target.value)}
+                        placeholder="Material name"
+                        className="h-8 flex-1 rounded border border-white/20 bg-white/10 px-2 text-xs text-white placeholder:text-white/50 outline-none"
+                      />
+                      <input
+                        type="url"
+                        value={materialUrl}
+                        onChange={(e) => setMaterialUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="h-8 flex-1 rounded border border-white/20 bg-white/10 px-2 text-xs text-white placeholder:text-white/50 outline-none"
+                      />
+                      <Button size="sm" className="h-8 text-xs" onClick={handleAttachMaterial}>Share</Button>
+                    </div>
+                  )}
                 </>
               ) : liveClass.status === "COMPLETED" || liveClass.status === "ENDED" || liveClass.status === "CANCELLED" ? (
                 <div className="text-center text-white">
@@ -690,6 +768,19 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               {liveClass.description && <p className="whitespace-pre-line line-clamp-3">{liveClass.description}</p>}
             </div>
           </div>
+          {attachedMaterials.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <h2 className="text-xs font-semibold text-foreground mb-2">Attached Materials</h2>
+              <div className="space-y-1.5">
+                {attachedMaterials.map((m, i) => (
+                  <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline">
+                    <FileText className="size-3 shrink-0" />
+                    {m.name}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">

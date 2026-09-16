@@ -386,7 +386,7 @@ export default function TeacherLiveClassesPage() {
                         <Button
                           size="sm"
                           className="gap-1"
-                          onClick={() => window.open(`/dashboard/teacher/live-classes/${lc.id}`, "_blank")}
+                          onClick={() => window.open(`/live-classes/${lc.id}`, "_blank")}
                         >
                           <ExternalLink className="size-3" />
                           Open Classroom
