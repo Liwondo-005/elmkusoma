@@ -36,10 +36,10 @@ export default function RegionalDashboardPage() {
   async function fetchDashboard() {
     try {
       const token = localStorage.getItem("elmkusoma_access_token")
-      const regionId = user?.institutionId || ""
+      const regionId = user?.regionId || ""
 
       const [dashRes, distRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/v1/oversight/dashboard`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/v1/oversight/dashboard${regionId ? `?regionId=${regionId}` : ""}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         regionId

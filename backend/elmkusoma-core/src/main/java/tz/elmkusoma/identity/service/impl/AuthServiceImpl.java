@@ -346,6 +346,8 @@ public class AuthServiceImpl implements AuthService {
                 .institutionId(institutionId)
                 .classGroupId(classGroupId)
                 .learningLevel(user.getLearningLevel() != null ? user.getLearningLevel().name() : null)
+                .regionId(user.getRegionId() != null ? user.getRegionId().toString() : null)
+                .districtId(user.getDistrictId() != null ? user.getDistrictId().toString() : null)
                 .build();
     }
 }

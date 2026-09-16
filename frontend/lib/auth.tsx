@@ -14,6 +14,8 @@ export interface AuthUser {
   institutionId?: string
   classGroupId?: string
   learningLevel?: string | null
+  regionId?: string | null
+  districtId?: string | null
 }
 
 interface AuthContextValue {
@@ -102,6 +104,8 @@ function mapUserInfo(info: UserInfo): AuthUser {
     institutionId: info.institutionId,
     classGroupId: info.classGroupId || undefined,
     learningLevel: info.learningLevel || null,
+    regionId: info.regionId || null,
+    districtId: info.districtId || null,
   }
 }
 

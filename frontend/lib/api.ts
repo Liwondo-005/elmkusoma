@@ -120,6 +120,8 @@ export interface UserInfo {
   institutionId: string
   classGroupId: string | null
   learningLevel?: string | null
+  regionId?: string | null
+  districtId?: string | null
 }
 
 export interface AuthResponse {

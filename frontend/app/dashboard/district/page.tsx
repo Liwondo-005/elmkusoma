@@ -35,10 +35,10 @@ export default function DistrictDashboardPage() {
   async function fetchDashboard() {
     try {
       const token = localStorage.getItem("elmkusoma_access_token")
-      const districtId = user?.institutionId || ""
+      const districtId = user?.districtId || ""
 
       const [dashRes, instRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/v1/oversight/dashboard`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/v1/oversight/dashboard${districtId ? `?districtId=${districtId}` : ""}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         districtId
