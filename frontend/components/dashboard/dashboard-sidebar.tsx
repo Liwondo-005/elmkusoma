@@ -127,7 +127,7 @@ const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboa
   { label: "Assignments", href: "/dashboard/parent/assignments", icon: FileText },
   { label: "Results", href: "/dashboard/parent/results", icon: BarChart3 },
   { label: "Calendar", href: "/dashboard/parent/calendar", icon: Clock },
-  { label: "Live Classes", href: "/dashboard/parent/live-classes", icon: Video },
+  { label: "Live Classes", href: "/live-classes", icon: Video },
   { label: "Messages", href: "/dashboard/parent/messages", icon: MessageSquare },
   { label: "Notifications", href: "/dashboard/parent/notifications", icon: Bell },
   { label: "Settings", href: "/dashboard/parent/settings", icon: Settings },
