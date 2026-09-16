@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BarChart3, Loader2, ChevronDown, AlertCircle, Users, Award } from "lucide-react"
+import { BarChart3, Loader2, ChevronDown, AlertCircle, Users, Award, Download } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import type { ClassGroupInfo, GradingScale } from "@/lib/teacher-api"
 
@@ -237,6 +237,36 @@ export default function TeacherGradingPage() {
                     {reportCards.length > 0 ? Math.round(reportCards.reduce((sum, r) => sum + (r.averageMark ?? 0), 0) / reportCards.length) : 0}%
                   </p>
                 </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    const rows = [["Student Name", "Admission #", "Class", "Average %", "Grade", "Rank", "Status", "Remarks"]]
+                    reportCards.forEach((r) => rows.push([
+                      r.studentName,
+                      (r as any).admissionNumber ?? "",
+                      r.className,
+                      r.averageMark != null ? String(r.averageMark) : "",
+                      r.overallGrade ?? "",
+                      r.classRank != null ? `${r.classRank}/${r.totalStudentsInClass ?? "?"}` : "",
+                      r.status,
+                      r.remarks ?? "",
+                    ]))
+                    const csv = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n")
+                    const blob = new Blob([csv], { type: "text/csv" })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url
+                    a.download = `gradebook-${selectedClass?.name ?? "export"}-${new Date().toISOString().slice(0, 10)}.csv`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <Download className="size-3.5" />
+                  Export CSV
+                </button>
               </div>
 
               <div className="rounded-2xl border border-border bg-card shadow-xs">
