@@ -39,8 +39,4 @@ public interface LearningService {
     List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId);
 
     SubmissionResponse gradeSubmission(UUID submissionId, Integer grade, String feedback, UUID gradedBy);
-
-    AssignmentResponse updateAssignment(UUID assignmentId, AssignmentRequest request);
-
-    void deleteAssignment(UUID assignmentId);
 }

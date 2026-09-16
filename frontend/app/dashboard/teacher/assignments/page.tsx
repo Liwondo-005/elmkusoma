@@ -20,7 +20,7 @@ import {
   Trash2,
 } from "lucide-react"
 
-import { teacherFetch } from "@/lib/teacher-api"
+import { appFetch } from "@/lib/fetch"
 
 interface Assignment {
   id: string
@@ -122,10 +122,16 @@ export default function TeacherAssignmentsPage() {
     try {
       setLoading(true)
       setError(null)
-      const classesRes = await teacherFetch<ClassOption[]>("/v1/teachers/me/classes")
-      setClasses(classesRes)
-      const allAssignments = await loadAllAssignments(classesRes)
-      setAssignments(allAssignments)
+      const [classesData, assignmentsData] = await Promise.allSettled([
+        appFetch<ClassOption[]>("/v1/teachers/me/classes"),
+        loadAllAssignments(),
+      ])
+      if (classesData.status === "fulfilled") {
+        setClasses(classesData.value)
+      }
+      if (assignmentsData.status === "fulfilled") {
+        setAssignments(assignmentsData.value)
+      }
     } catch {
       setError("Failed to load data")
     } finally {
@@ -133,12 +139,12 @@ export default function TeacherAssignmentsPage() {
     }
   }
 
-  async function loadAllAssignments(classesRes?: ClassOption[]): Promise<Assignment[]> {
-    const classList = classesRes ?? await teacherFetch<ClassOption[]>("/v1/teachers/me/classes")
+  async function loadAllAssignments(): Promise<Assignment[]> {
+    const classesRes = await appFetch<ClassOption[]>("/v1/teachers/me/classes")
     const all: Assignment[] = []
-    for (const cls of classList) {
+    for (const cls of classesRes) {
       try {
-        const data = await teacherFetch<Assignment[]>(`/v1/learning/assignments/class/${cls.classGroupId}`)
+        const data = await appFetch<Assignment[]>(`/v1/learning/assignments/class/${cls.classGroupId}`)
         const enriched = data.map((a) => ({
           ...a,
           className: cls.className,
@@ -197,13 +203,13 @@ export default function TeacherAssignmentsPage() {
       }
 
       if (editingId) {
-        await teacherFetch(`/v1/learning/assignments/${editingId}`, {
+        await appFetch(`/v1/learning/assignments/${editingId}`, {
           method: "PUT",
           body: JSON.stringify(payload),
         })
         setSuccess("Assignment updated successfully")
       } else {
-        await teacherFetch("/v1/learning/assignments", {
+        await appFetch("/v1/learning/assignments", {
           method: "POST",
           body: JSON.stringify(payload),
         })
@@ -223,7 +229,7 @@ export default function TeacherAssignmentsPage() {
     if (!confirm("Are you sure you want to delete this assignment?")) return
     try {
       setError(null)
-      await teacherFetch(`/v1/learning/assignments/${id}`, { method: "DELETE" })
+      await appFetch(`/v1/learning/assignments/${id}`, { method: "DELETE" })
       setSuccess("Assignment deleted")
       loadData()
       setTimeout(() => setSuccess(null), 3000)
@@ -236,7 +242,7 @@ export default function TeacherAssignmentsPage() {
     try {
       setLoadingSubmissions(true)
       setSelectedAssignment(assignmentId)
-      const data = await teacherFetch<AssignmentSubmission[]>(`/v1/learning/assignments/${assignmentId}/submissions`)
+      const data = await appFetch<AssignmentSubmission[]>(`/v1/learning/assignments/${assignmentId}/submissions`)
       setSubmissions(data)
     } catch {
       setSubmissions([])

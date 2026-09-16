@@ -196,22 +196,4 @@ public class LearningController {
         SubmissionResponse response = learningService.gradeSubmission(id, grade, feedback, gradedBy);
         return ResponseEntity.ok(ApiResponse.success("Submission graded", response));
     }
-
-    @PutMapping("/assignments/{id}")
-    @Operation(summary = "Update an assignment")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<AssignmentResponse>> updateAssignment(
-            @PathVariable UUID id,
-            @Valid @RequestBody AssignmentRequest request) {
-        AssignmentResponse response = learningService.updateAssignment(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Assignment updated", response));
-    }
-
-    @DeleteMapping("/assignments/{id}")
-    @Operation(summary = "Delete an assignment")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteAssignment(@PathVariable UUID id) {
-        learningService.deleteAssignment(id);
-        return ResponseEntity.ok(ApiResponse.success("Assignment deleted", null));
-    }
 }

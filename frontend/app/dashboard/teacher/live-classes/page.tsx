@@ -1,11 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Video, Plus, Clock, Users, ExternalLink, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square } from "lucide-react"
-import { teacherFetch } from "@/lib/teacher-api"
+import { Video, Plus, Clock, Users, ExternalLink, Pencil, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2 } from "lucide-react"
+import { appFetch } from "@/lib/fetch"
 
 interface LiveClass {
   id: string
@@ -63,8 +62,8 @@ export default function TeacherLiveClassesPage() {
       setLoading(true)
       setError(null)
       const [liveClassesData, classesData] = await Promise.allSettled([
-        teacherFetch<LiveClass[]>("/v1/teachers/me/live-classes"),
-        teacherFetch<ClassOption[]>("/v1/teachers/me/classes"),
+        appFetch<LiveClass[]>("/v1/teachers/me/live-classes"),
+        appFetch<ClassOption[]>("/v1/teachers/me/classes"),
       ])
       if (liveClassesData.status === "fulfilled") {
         setLiveClasses(liveClassesData.value)
@@ -118,13 +117,13 @@ export default function TeacherLiveClassesPage() {
       }
 
       if (editingId) {
-        await teacherFetch(`/v1/teachers/me/live-classes/${editingId}`, {
+        await appFetch(`/v1/teachers/me/live-classes/${editingId}`, {
           method: "PUT",
           body: JSON.stringify(payload),
         })
         setSuccess("Live class updated successfully")
       } else {
-        await teacherFetch("/v1/teachers/me/live-classes", {
+        await appFetch("/v1/teachers/me/live-classes", {
           method: "POST",
           body: JSON.stringify(payload),
         })
@@ -144,37 +143,12 @@ export default function TeacherLiveClassesPage() {
     if (!confirm("Are you sure you want to cancel this live class?")) return
     try {
       setError(null)
-      await teacherFetch(`/v1/teachers/me/live-classes/${id}`, { method: "DELETE" })
+      await appFetch(`/v1/teachers/me/live-classes/${id}`, { method: "DELETE" })
       setSuccess("Live class cancelled")
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel live class")
-    }
-  }
-
-  async function handleStart(id: string) {
-    try {
-      setError(null)
-      await teacherFetch(`/v1/teachers/me/live-classes/${id}/start`, { method: "POST" })
-      setSuccess("Live session started!")
-      loadData()
-      setTimeout(() => setSuccess(null), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start session")
-    }
-  }
-
-  async function handleEnd(id: string) {
-    if (!confirm("End this live session?")) return
-    try {
-      setError(null)
-      await teacherFetch(`/v1/teachers/me/live-classes/${id}/end`, { method: "POST" })
-      setSuccess("Live session ended")
-      loadData()
-      setTimeout(() => setSuccess(null), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to end session")
     }
   }
 
@@ -371,37 +345,6 @@ export default function TeacherLiveClassesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {lc.status === "SCHEDULED" && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleStart(lc.id)}
-                        title="Start Session"
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                      >
-                        <Play className="size-3.5" />
-                      </Button>
-                    )}
-                    {lc.status === "IN_PROGRESS" && (
-                      <>
-                        <Link
-                          href={`/live-classes/${lc.id}`}
-                          className="inline-flex items-center justify-center size-8 rounded-md text-primary hover:bg-primary/10"
-                          title="Open Classroom"
-                        >
-                          <ExternalLink className="size-3.5" />
-                        </Link>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleEnd(lc.id)}
-                          title="End Session"
-                          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                        >
-                          <Square className="size-3.5" />
-                        </Button>
-                      </>
-                    )}
                     <Button
                       variant="ghost"
                       size="icon-sm"
