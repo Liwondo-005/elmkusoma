@@ -79,7 +79,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers,
   })
 
-  const body = await res.json()
+  let body: Record<string, unknown>
+  try {
+    body = await res.json()
+  } catch {
+    throw new ApiRequestError(
+      `Server returned non-JSON response (${res.status})`,
+      res.status,
+      null,
+    )
+  }
 
   if (!res.ok || body.success === false) {
     const errorMsg = body.error || body.message || `Request failed (${res.status})`
