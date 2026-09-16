@@ -10,10 +10,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.domain.LiveClass;
-import tz.elmkusoma.course.domain.LiveClassParticipant;
+import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 import tz.elmkusoma.course.dto.CreateLiveClassRequest;
 import tz.elmkusoma.course.dto.LiveClassResponse;
-import tz.elmkusoma.course.repository.LiveClassParticipantRepository;
+import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.course.service.LiveClassService;
 import tz.elmkusoma.exception.ResourceNotFoundException;
@@ -186,11 +186,11 @@ public class TeacherLiveClassController {
             @PathVariable UUID id) {
         Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
-        long totalJoined = participantRepository.countByLiveClassId(id);
-        long completed = participantRepository.countCompletedByLiveClassId(id);
+        long totalJoined = participantRepository.countByLiveClassIdAndIsDeletedFalse(id);
+        long currentlyConnected = participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(id);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "totalJoined", totalJoined,
-                "completed", completed
+                "currentlyConnected", currentlyConnected
         )));
     }
 }

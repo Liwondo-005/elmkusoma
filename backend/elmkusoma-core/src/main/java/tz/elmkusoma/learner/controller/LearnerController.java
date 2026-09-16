@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.domain.*;
 import tz.elmkusoma.course.repository.*;
+import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
+import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
@@ -472,22 +474,21 @@ public class LearnerController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("User not found"));
         }
         LiveClassParticipant existing = liveClassParticipantRepository
-                .findByLiveClassIdAndStudentIdAndIsDeletedFalse(id, userId).orElse(null);
+                .findByLiveClassIdAndUserIdAndIsDeletedFalse(id, userId).orElse(null);
         if (existing == null) {
             LiveClassParticipant participant = LiveClassParticipant.builder()
                     .liveClassId(id)
-                    .studentId(userId)
+                    .userId(userId)
+                    .role("STUDENT")
                     .joinedAt(LocalDateTime.now())
-                    .attendanceStatus("JOINED")
                     .build();
             liveClassParticipantRepository.save(participant);
         } else if (existing.getLeftAt() != null) {
             existing.setLeftAt(null);
             existing.setJoinedAt(LocalDateTime.now());
-            existing.setAttendanceStatus("JOINED");
             liveClassParticipantRepository.save(existing);
         }
-        long totalJoined = liveClassParticipantRepository.countByLiveClassId(id);
+        long totalJoined = liveClassParticipantRepository.countByLiveClassIdAndIsDeletedFalse(id);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "status", "joined",
                 "totalParticipants", totalJoined
@@ -500,10 +501,9 @@ public class LearnerController {
             @PathVariable UUID id,
             @RequestAttribute("userId") UUID userId) {
         LiveClassParticipant participant = liveClassParticipantRepository
-                .findByLiveClassIdAndStudentIdAndIsDeletedFalse(id, userId).orElse(null);
+                .findByLiveClassIdAndUserIdAndIsDeletedFalse(id, userId).orElse(null);
         if (participant != null) {
             participant.setLeftAt(LocalDateTime.now());
-            participant.setAttendanceStatus("LEFT");
             liveClassParticipantRepository.save(participant);
         }
         return ResponseEntity.ok(ApiResponse.success(null));

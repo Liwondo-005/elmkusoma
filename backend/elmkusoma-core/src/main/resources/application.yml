@@ -5,10 +5,6 @@ spring:
   application:
     name: elmkusoma-core
 
-<<<<<<< HEAD
-=======
-  
->>>>>>> a045579 (chore: disable Flyway migrations (schema managed by Hibernate ddl-auto:update))
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:elmkusoma}?sslmode=disable
     username: ${DB_USERNAME:postgres}
