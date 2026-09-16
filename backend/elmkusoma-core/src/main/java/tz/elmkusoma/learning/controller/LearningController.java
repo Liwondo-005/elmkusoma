@@ -84,7 +84,7 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<ProgressResponse>> updateProgress(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID studentId,
+            @RequestAttribute("userId") UUID studentId,
             @Valid @RequestBody ProgressRequest request) {
         ProgressResponse response = learningService.updateProgress(institutionId, studentId, request);
         return ResponseEntity.ok(ApiResponse.success("Progress updated", response));
@@ -170,7 +170,7 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<SubmissionResponse>> submitAssignment(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") UUID studentId,
+            @RequestAttribute("userId") UUID studentId,
             @RequestHeader("X-Institution-Id") UUID institutionId) {
         SubmissionResponse response = learningService.submitAssignment(id, studentId, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -192,7 +192,7 @@ public class LearningController {
             @PathVariable UUID id,
             @RequestParam Integer grade,
             @RequestParam(required = false) String feedback,
-            @RequestHeader("X-User-Id") UUID gradedBy) {
+            @RequestAttribute("userId") UUID gradedBy) {
         SubmissionResponse response = learningService.gradeSubmission(id, grade, feedback, gradedBy);
         return ResponseEntity.ok(ApiResponse.success("Submission graded", response));
     }
