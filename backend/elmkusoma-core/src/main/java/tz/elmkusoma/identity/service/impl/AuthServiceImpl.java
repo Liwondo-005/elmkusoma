@@ -134,22 +134,20 @@ public class AuthServiceImpl implements AuthService {
         log.info("User registered successfully: {}", user.getEmail());
 
         UUID instId = user.getInstitutionId();
-        if (instId != null) {
-            if (role == User.Role.PARENT) {
-                var parent = tz.elmkusoma.parent.domain.Parent.builder()
-                        .userId(user.getId())
-                        .relationshipType(tz.elmkusoma.parent.domain.Parent.RelationshipType.GUARDIAN)
-                        .build();
-                parent.setInstitutionId(instId);
-                parentRepository.save(parent);
-            } else if (role == User.Role.TEACHER) {
-                var teacher = tz.elmkusoma.teacher.domain.Teacher.builder()
-                        .userId(user.getId())
-                        .status(tz.elmkusoma.teacher.domain.TeacherStatus.ACTIVE)
-                        .build();
-                teacher.setInstitutionId(instId);
-                teacherRepository.save(teacher);
-            }
+        if (role == User.Role.PARENT) {
+            var parent = tz.elmkusoma.parent.domain.Parent.builder()
+                    .userId(user.getId())
+                    .relationshipType(tz.elmkusoma.parent.domain.Parent.RelationshipType.GUARDIAN)
+                    .build();
+            if (instId != null) parent.setInstitutionId(instId);
+            parentRepository.save(parent);
+        } else if (role == User.Role.TEACHER) {
+            var teacher = tz.elmkusoma.teacher.domain.Teacher.builder()
+                    .userId(user.getId())
+                    .status(tz.elmkusoma.teacher.domain.TeacherStatus.ACTIVE)
+                    .build();
+            if (instId != null) teacher.setInstitutionId(instId);
+            teacherRepository.save(teacher);
         }
 
         String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
