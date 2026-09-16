@@ -507,10 +507,30 @@ export default function TeacherAttendancePage() {
         `/v1/attendance?classId=${historyClassId}&date=${historyEndDate}`
       )
       setHistoryRecords(records)
-      const summary = await appFetch<AttendanceSummary[]>(
-        `/v1/attendance/summary/class/${historyClassId}?termId=00000000-0000-0000-0000-000000000000`
-      ).catch(() => [])
-      setHistorySummary(summary)
+      const summaryMap = new Map<string, { studentId: string; studentName: string; totalDays: number; presentDays: number; absentDays: number; lateDays: number; excusedDays: number; attendanceRate: number }>()
+      for (const r of records) {
+        const existing = summaryMap.get(r.studentId)
+        if (existing) {
+          existing.totalDays++
+          if (r.status === "PRESENT") existing.presentDays++
+          else if (r.status === "ABSENT") existing.absentDays++
+          else if (r.status === "LATE") existing.lateDays++
+          else if (r.status === "EXCUSED") existing.excusedDays++
+          existing.attendanceRate = existing.totalDays > 0 ? (existing.presentDays / existing.totalDays) * 100 : 0
+        } else {
+          summaryMap.set(r.studentId, {
+            studentId: r.studentId,
+            studentName: r.studentName || r.studentId,
+            totalDays: 1,
+            presentDays: r.status === "PRESENT" ? 1 : 0,
+            absentDays: r.status === "ABSENT" ? 1 : 0,
+            lateDays: r.status === "LATE" ? 1 : 0,
+            excusedDays: r.status === "EXCUSED" ? 1 : 0,
+            attendanceRate: r.status === "PRESENT" ? 100 : 0,
+          })
+        }
+      }
+      setHistorySummary(Array.from(summaryMap.values()))
     } catch {
       setHistoryRecords([])
       setHistorySummary([])
