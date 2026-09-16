@@ -10,7 +10,6 @@ interface LiveClass {
   title?: string
   scheduledAt?: string
   status?: string
-  meetingUrl?: string
 }
 
 export default function LiveClassesPage() {
@@ -91,16 +90,6 @@ export default function LiveClassesPage() {
                   </div>
                 )}
               </div>
-              {cls.meetingUrl && (
-                <a
-                  href={cls.meetingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 block rounded-xl bg-red-500 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-red-600 transition-colors"
-                >
-                  Join Class
-                </a>
-              )}
             </div>
           ))}
         </div>

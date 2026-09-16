@@ -38,9 +38,6 @@ public class LiveClass extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private String status = "SCHEDULED";
 
-    @Column(name = "meeting_url", length = 500)
-    private String meetingUrl;
-
     @Column(name = "max_participants")
     private Integer maxParticipants;
 

@@ -89,7 +89,6 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .scheduledAt(scheduledAt)
                 .durationMinutes(request.getDurationMinutes() != null ? request.getDurationMinutes() : 60)
                 .status(LiveClassStatus.SCHEDULED.name())
-                .meetingUrl(request.getMeetingUrl())
                 .subjectId(request.getSubjectId())
                 .maxParticipants(request.getMaxParticipants())
                 .classGroupId(request.getClassGroupId())
@@ -116,7 +115,6 @@ public class LiveClassServiceImpl implements LiveClassService {
             liveClass.setScheduledAt(newScheduledAt);
         }
         if (request.getDurationMinutes() != null) liveClass.setDurationMinutes(request.getDurationMinutes());
-        if (request.getMeetingUrl() != null) liveClass.setMeetingUrl(request.getMeetingUrl());
         if (request.getSubjectId() != null) liveClass.setSubjectId(request.getSubjectId());
         if (request.getMaxParticipants() != null) liveClass.setMaxParticipants(request.getMaxParticipants());
 
@@ -243,7 +241,6 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .scheduledAt(liveClass.getScheduledAt() != null ? liveClass.getScheduledAt().toString() : null)
                 .durationMinutes(liveClass.getDurationMinutes())
                 .status(liveClass.getStatus())
-                .meetingUrl(liveClass.getMeetingUrl())
                 .maxParticipants(liveClass.getMaxParticipants())
                 .subjectName(subjectName)
                 .teacherName(teacherName)
@@ -251,7 +248,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .subjectId(liveClass.getSubjectId())
                 .classGroupId(liveClass.getClassGroupId())
                 .recordingUrl(liveClass.getRecordingUrl())
-                .canJoin("IN_PROGRESS".equals(liveClass.getStatus()))
+                .canJoin("IN_PROGRESS".equals(liveClass.getStatus()) || "LIVE".equals(liveClass.getStatus()))
                 .build();
     }
 

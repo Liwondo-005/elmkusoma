@@ -1295,7 +1295,6 @@ export interface LiveClass {
   scheduledAt: string
   durationMinutes: number
   status: string
-  meetingUrl: string
   maxParticipants: number
   recordingUrl: string
   createdAt: string

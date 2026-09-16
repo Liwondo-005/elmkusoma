@@ -18,7 +18,6 @@ public class LiveClassResponse {
     private String scheduledAt;
     private Integer durationMinutes;
     private String status;
-    private String meetingUrl;
     private Integer maxParticipants;
     private String subjectName;
     private String teacherName;

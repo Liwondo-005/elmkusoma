@@ -76,7 +76,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const startTimeRef = useRef<Date | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const retryCountRef = useRef(0)
-  const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const screenVideoRef = useRef<HTMLVideoElement>(null)
 
@@ -162,18 +161,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       roomRef.current = null
     }
   }, [isInProgress, liveKitToken, liveKitUrl, serviceMode])
-
-  useEffect(() => {
-    if (!isInProgress) return
-    heartbeatRef.current = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "HEARTBEAT" }))
-      }
-    }, 30000)
-    return () => {
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
-    }
-  }, [isInProgress])
 
   useEffect(() => {
     if (!isInProgress || !token || !user) return
@@ -298,6 +285,41 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               system: true,
             }])
             break
+          case "PARTICIPANT_MUTED":
+            if (data.targetUserId === myUserId) {
+              setMicEnabled(false)
+              setCameraEnabled(false)
+              setJoinError("You have been muted by the teacher.")
+            } else {
+              setChat((prev) => [...prev, {
+                userId: "system",
+                userName: "System",
+                message: `A participant was muted by the teacher`,
+                timestamp: data.timestamp,
+                system: true,
+              }])
+            }
+            break
+          case "PARTICIPANT_UNMUTED":
+            if (data.targetUserId === myUserId) {
+              setJoinError("")
+            }
+            break
+          case "KICKED":
+            setJoinError(data.message || "You have been removed from the class.")
+            retryCountRef.current = 10
+            if (wsRef.current) wsRef.current.close()
+            break
+          case "PARTICIPANT_KICKED":
+            setParticipants((prev) => prev.filter((p) => p.userId !== data.targetUserId))
+            setChat((prev) => [...prev, {
+              userId: "system",
+              userName: "System",
+              message: `A participant was removed from the class`,
+              timestamp: data.timestamp,
+              system: true,
+            }])
+            break
           case "ERROR":
             setJoinError(data.error)
             break
@@ -324,7 +346,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     return () => {
       retryCountRef.current = 10
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
       if (roomRef.current) {
         roomRef.current.disconnect()
         roomRef.current = null
@@ -434,6 +455,22 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     setHandRaised(!handRaised)
   }
 
+  function muteParticipant(targetUserId: string) {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ type: "MUTE_PARTICIPANT", userId: targetUserId }))
+  }
+
+  function unmuteParticipant(targetUserId: string) {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ type: "UNMUTE_PARTICIPANT", userId: targetUserId }))
+  }
+
+  function kickParticipant(targetUserId: string) {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    if (!confirm("Remove this participant from the class?")) return
+    wsRef.current.send(JSON.stringify({ type: "KICK_PARTICIPANT", userId: targetUserId }))
+  }
+
   function sendChatMessage(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = message.trim()
@@ -452,7 +489,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   function handleLeave() {
     retryCountRef.current = 10
     if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
-    if (heartbeatRef.current) clearInterval(heartbeatRef.current)
     if (roomRef.current) {
       roomRef.current.disconnect()
       roomRef.current = null
@@ -632,7 +668,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     </button>
                   </div>
                 </>
-              ) : liveClass.status === "COMPLETED" || liveClass.status === "ENDED" ? (
+              ) : liveClass.status === "COMPLETED" || liveClass.status === "ENDED" || liveClass.status === "CANCELLED" ? (
                 <div className="text-center text-white">
                   <p className="text-sm opacity-75">This session has ended</p>
                 </div>
@@ -666,19 +702,32 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 <p className="text-[10px] text-muted-foreground">No participants yet</p>
               ) : (
                 participants.map((p) => (
-                  <div key={p.userId} className="flex items-center gap-2">
+                  <div key={p.userId} className="flex items-center gap-2 group">
                     <span className={cn(
                       "flex size-6 items-center justify-center rounded-full text-[10px] font-semibold",
                       p.userId === myUserId ? "bg-primary text-primary-foreground" : "bg-accent text-primary"
                     )}>
                       {p.userName?.charAt(0) || "?"}
                     </span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-medium text-foreground truncate">
                         {p.userName}
                         {p.userId === myUserId && <span className="text-muted-foreground"> (you)</span>}
                       </p>
                     </div>
+                    {p.userId !== myUserId && (user?.role === "Teacher" || user?.role === "Admin") && (
+                      <div className="hidden group-hover:flex items-center gap-0.5">
+                        <button onClick={() => muteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title="Mute">
+                          <MicOff className="size-3" />
+                        </button>
+                        <button onClick={() => unmuteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title="Unmute">
+                          <Mic className="size-3" />
+                        </button>
+                        <button onClick={() => kickParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Remove">
+                          <XCircle className="size-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}

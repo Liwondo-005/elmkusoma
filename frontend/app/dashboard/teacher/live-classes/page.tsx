@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Video, Plus, Clock, Users, ExternalLink, Pencil, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2 } from "lucide-react"
+import { Video, Plus, Clock, Users, Pencil, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2 } from "lucide-react"
 import { appFetch } from "@/lib/fetch"
 
 interface LiveClass {
@@ -12,7 +12,6 @@ interface LiveClass {
   description: string
   scheduledAt: string
   durationMinutes: number
-  meetingUrl: string
   maxParticipants: number
   status: string
   createdAt: string
@@ -26,9 +25,16 @@ interface ClassOption {
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   SCHEDULED: { label: "Scheduled", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  IN_PROGRESS: { label: "In Progress", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  STARTING: { label: "Starting", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  IN_PROGRESS: { label: "Live", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  LIVE: { label: "Live", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  ENDING: { label: "Ending", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
   COMPLETED: { label: "Completed", className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
+  ENDED: { label: "Ended", className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
   CANCELLED: { label: "Cancelled", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  SERVICE_DEGRADED: { label: "Degraded", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  SERVICE_UNAVAILABLE: { label: "Unavailable", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  RECOVERING: { label: "Recovering", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
 }
 
 const initialForm = {
@@ -36,7 +42,6 @@ const initialForm = {
   description: "",
   scheduledAt: "",
   durationMinutes: 60,
-  meetingUrl: "",
   maxParticipants: 50,
 }
 
@@ -92,7 +97,6 @@ export default function TeacherLiveClassesPage() {
       description: lc.description,
       scheduledAt: lc.scheduledAt ? new Date(lc.scheduledAt).toISOString().slice(0, 16) : "",
       durationMinutes: lc.durationMinutes,
-      meetingUrl: lc.meetingUrl,
       maxParticipants: lc.maxParticipants,
     })
     setEditingId(lc.id)
@@ -112,7 +116,6 @@ export default function TeacherLiveClassesPage() {
         description: form.description.trim(),
         scheduledAt: new Date(form.scheduledAt).toISOString(),
         durationMinutes: Number(form.durationMinutes) || 60,
-        meetingUrl: form.meetingUrl.trim(),
         maxParticipants: Number(form.maxParticipants) || 50,
       }
 
@@ -260,16 +263,6 @@ export default function TeacherLiveClassesPage() {
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Meeting URL</label>
-              <input
-                type="url"
-                value={form.meetingUrl}
-                onChange={(e) => setForm({ ...form, meetingUrl: e.target.value })}
-                placeholder="https://meet.google.com/..."
-                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
-              />
-            </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Max Participants</label>
               <input
@@ -331,17 +324,6 @@ export default function TeacherLiveClassesPage() {
                         <Users className="size-3" />
                         {lc.maxParticipants} max
                       </span>
-                      {lc.meetingUrl && (
-                        <a
-                          href={lc.meetingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline"
-                        >
-                          <ExternalLink className="size-3" />
-                          Join
-                        </a>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

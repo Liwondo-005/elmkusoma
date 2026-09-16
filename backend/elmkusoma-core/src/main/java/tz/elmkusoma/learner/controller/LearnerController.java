@@ -897,7 +897,6 @@ public class LearnerController {
                 .scheduledAt(lc.getScheduledAt() != null ? lc.getScheduledAt().toString() : null)
                 .durationMinutes(lc.getDurationMinutes())
                 .status(lc.getStatus())
-                .meetingUrl(lc.getMeetingUrl())
                 .maxParticipants(lc.getMaxParticipants())
                 .teacherId(lc.getTeacherId())
                 .subjectId(lc.getSubjectId())

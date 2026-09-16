@@ -176,15 +176,13 @@ export default function LearnerLiveClassesPage() {
                         {cls.durationMinutes} minutes
                       </div>
                     </div>
-                    {cls.meetingUrl && (
+                    {(cls.status === "IN_PROGRESS" || cls.status === "LIVE") && (
                       <a
-                        href={cls.meetingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={`/dashboard/learner/live-classes/${cls.id}`}
                         className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
                       >
-                        <ExternalLink className="size-4" />
-                        Join Now
+                        <Video className="size-4" />
+                        Join Live Class
                       </a>
                     )}
                     <a
@@ -244,19 +242,8 @@ export default function LearnerLiveClassesPage() {
                         </div>
                       )}
                     </div>
-                    {cls.meetingUrl && (
-                      <a
-                        href={cls.meetingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-                      >
-                        <ExternalLink className="size-4" />
-                        Join Link
-                      </a>
-                    )}
                     <a
-                      href={`/live-classes/${cls.id}`}
+                      href={`/dashboard/learner/live-classes/${cls.id}`}
                       className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                     >
                       <MessageSquare className="size-4" />
