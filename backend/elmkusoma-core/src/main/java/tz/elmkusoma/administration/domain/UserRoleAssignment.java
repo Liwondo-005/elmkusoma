@@ -2,6 +2,7 @@ package tz.elmkusoma.administration.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.time.LocalDateTime;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@SuperBuilder
 public class UserRoleAssignment extends BaseEntity {
 
     @Column(name = "user_id", nullable = false)

@@ -22,6 +22,7 @@ import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
+import tz.elmkusoma.teacher.service.TeacherService;
 
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
@@ -42,6 +43,7 @@ public class LiveSessionController {
     private final LiveClassChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
     private final TeacherRepository teacherRepository;
+    private final TeacherService teacherService;
     private final InstitutionMembershipRepository membershipRepository;
 
     @PostMapping("/join/{classId}")
@@ -138,10 +140,7 @@ public class LiveSessionController {
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId) {
 
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId).orElse(null);
-        if (teacher == null) {
-            return ResponseEntity.status(404).body(ApiResponse.error("Teacher profile not found"));
-        }
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
 
         LiveClass liveClass = liveClassRepository.findById(classId)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))

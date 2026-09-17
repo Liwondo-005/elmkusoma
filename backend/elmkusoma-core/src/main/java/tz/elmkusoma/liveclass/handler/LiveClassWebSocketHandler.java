@@ -169,7 +169,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                 return;
             }
             // Check if observer already joined
-            if (participantRepository.existsByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId)) {
+            if (participantRepository.findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId).isPresent()) {
                 // Update existing participant to observer role
                 participantRepository.findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId)
                         .ifPresent(p -> {

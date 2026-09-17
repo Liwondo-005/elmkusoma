@@ -1,6 +1,8 @@
 package tz.elmkusoma.administration.domain;
 
 import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
@@ -11,6 +13,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "data_import_jobs")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@SuperBuilder
 public class DataImportJob extends BaseEntity {
 
     @Column(name = "imported_by", nullable = false)
@@ -58,45 +65,20 @@ public class DataImportJob extends BaseEntity {
         FAILED
     }
 
-    public UUID getImportedBy() { return importedBy; }
-    public void setImportedBy(UUID importedBy) { this.importedBy = importedBy; }
-    public String getImportType() { return importType; }
-    public void setImportType(String importType) { this.importType = importType; }
-    public String getFileName() { return fileName; }
-    public void setFileName(String fileName) { this.fileName = fileName; }
-    public String getFileUrl() { return fileUrl; }
-    public void setFileUrl(String fileUrl) { this.fileUrl = fileUrl; }
-    public ImportStatus getStatus() { return status; }
-    public void setStatus(ImportStatus status) { this.status = status; }
-    public Integer getTotalRows() { return totalRows; }
-    public void setTotalRows(Integer totalRows) { this.totalRows = totalRows; }
-    public Integer getProcessedRows() { return processedRows; }
-    public void setProcessedRows(Integer processedRows) { this.processedRows = processedRows; }
-    public Integer getSuccessfulRows() { return successfulRows; }
-    public void setSuccessfulRows(Integer successfulRows) { this.successfulRows = successfulRows; }
-    public Integer getFailedRows() { return failedRows; }
-    public void setFailedRows(Integer failedRows) { this.failedRows = failedRows; }
-    public Map<String, Object> getErrorLog() { return errorLog; }
-    public void setErrorLog(Map<String, Object> errorLog) { this.errorLog = errorLog; }
-    public LocalDateTime getStartedAt() { return startedAt; }
-    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
-    public LocalDateTime getCompletedAt() { return completedAt; }
-    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
-
     public static DataImportJob of(UUID importedBy, String importType, String fileName,
                                    String fileUrl, UUID institutionId) {
-        DataImportJob job = new DataImportJob();
-        job.importedBy = importedBy;
-        job.importType = importType;
-        job.fileName = fileName;
-        job.fileUrl = fileUrl;
-        job.setInstitutionId(institutionId);
-        job.status = ImportStatus.PENDING;
-        job.totalRows = 0;
-        job.processedRows = 0;
-        job.successfulRows = 0;
-        job.failedRows = 0;
-        job.startedAt = java.time.LocalDateTime.now();
-        return job;
+        return DataImportJob.builder()
+                .importedBy(importedBy)
+                .importType(importType)
+                .fileName(fileName)
+                .fileUrl(fileUrl)
+                .institutionId(institutionId)
+                .status(ImportStatus.PENDING)
+                .totalRows(0)
+                .processedRows(0)
+                .successfulRows(0)
+                .failedRows(0)
+                .startedAt(LocalDateTime.now())
+                .build();
     }
 }

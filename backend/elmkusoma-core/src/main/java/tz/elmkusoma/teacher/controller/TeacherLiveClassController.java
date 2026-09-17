@@ -20,6 +20,7 @@ import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
+import tz.elmkusoma.teacher.service.TeacherService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,6 +37,7 @@ public class TeacherLiveClassController {
     private final LiveClassService liveClassService;
     private final LiveClassRepository liveClassRepository;
     private final TeacherRepository teacherRepository;
+    private final TeacherService teacherService;
     private final NotificationService notificationService;
     private final LiveClassParticipantRepository participantRepository;
     private final tz.elmkusoma.shared.repository.UserRepository userRepository;
@@ -45,8 +47,7 @@ public class TeacherLiveClassController {
     public ResponseEntity<ApiResponse<List<LiveClassResponse>>> getMyLiveClasses(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         List<LiveClassResponse> classes = liveClassService.getTeacherLiveClasses(teacher.getId());
         return ResponseEntity.ok(ApiResponse.success(classes));
     }
@@ -57,8 +58,7 @@ public class TeacherLiveClassController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @Valid @RequestBody CreateLiveClassRequest request) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         LiveClassResponse created = liveClassService.createLiveClass(teacher.getId(), institutionId, request);
 
         String schedInfo = created.getScheduledAt() != null
@@ -81,8 +81,7 @@ public class TeacherLiveClassController {
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id,
             @Valid @RequestBody CreateLiveClassRequest request) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         LiveClassResponse updated = liveClassService.updateLiveClass(teacher.getId(), id, request);
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
@@ -104,8 +103,7 @@ public class TeacherLiveClassController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         liveClassService.cancelLiveClass(teacher.getId(), id);
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
@@ -126,8 +124,7 @@ public class TeacherLiveClassController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         LiveClassResponse started = liveClassService.startSession(teacher.getId(), id);
 
         notificationService.notifyInstitutionStudentsExcluding(
@@ -145,8 +142,7 @@ public class TeacherLiveClassController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         LiveClassResponse ended = liveClassService.endSession(teacher.getId(), id, userId);
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
@@ -167,8 +163,7 @@ public class TeacherLiveClassController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
 
         LiveClass liveClass = liveClassRepository.findById(id)
                 .filter(lc -> lc.getTeacherId().equals(teacher.getId()) && !Boolean.TRUE.equals(lc.getIsDeleted()))
@@ -184,8 +179,7 @@ public class TeacherLiveClassController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         List<LiveClassParticipant> participants = participantRepository.findByLiveClassIdAndIsDeletedFalse(id);
 
         List<tz.elmkusoma.liveclass.dto.ParticipantInfo> info = participants.stream().map(p -> {
@@ -209,8 +203,7 @@ public class TeacherLiveClassController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         long totalJoined = participantRepository.countByLiveClassIdAndIsDeletedFalse(id);
         long currentlyConnected = participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(id);
         return ResponseEntity.ok(ApiResponse.success(Map.of(

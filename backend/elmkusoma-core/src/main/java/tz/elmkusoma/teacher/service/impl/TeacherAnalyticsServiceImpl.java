@@ -28,6 +28,7 @@ import tz.elmkusoma.teacher.dto.response.TeacherAnalyticsResponse;
 import tz.elmkusoma.teacher.repository.TeacherAssignmentRepository;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 import tz.elmkusoma.teacher.service.TeacherAnalyticsService;
+import tz.elmkusoma.teacher.service.TeacherService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 public class TeacherAnalyticsServiceImpl implements TeacherAnalyticsService {
 
     private final TeacherRepository teacherRepository;
+    private final TeacherService teacherService;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final AssignmentRepository assignmentRepository;
@@ -54,8 +56,7 @@ public class TeacherAnalyticsServiceImpl implements TeacherAnalyticsService {
 
     @Override
     public TeacherAnalyticsResponse getAnalytics(UUID userId, UUID institutionId) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
 
         List<TeacherAssignment> teacherAssignments = teacherAssignmentRepository.findAllByTeacherId(teacher.getId());
         Set<UUID> classGroupIds = teacherAssignments.stream()
