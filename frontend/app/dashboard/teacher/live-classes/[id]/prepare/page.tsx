@@ -59,7 +59,7 @@ export default function PrepareLiveClassPage() {
 
   useEffect(() => {
     if (!id) return
-    appFetch<LiveClass>(`/v1/learner/live-classes/${id}`)
+    appFetch<LiveClass>(`/v1/teachers/me/live-classes/${id}`)
       .then(setLiveClass)
       .catch(() => {})
       .finally(() => setLoading(false))

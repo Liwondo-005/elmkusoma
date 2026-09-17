@@ -55,7 +55,6 @@ const initialForm = {
   maxParticipants: 50,
   classGroupId: "",
   subjectId: "",
-  enableRecording: false,
 }
 
 export default function TeacherLiveClassesPage() {
@@ -127,7 +126,6 @@ export default function TeacherLiveClassesPage() {
       maxParticipants: lc.maxParticipants || 50,
       classGroupId: lc.classGroupId || "",
       subjectId: lc.subjectId || "",
-      enableRecording: false,
     })
     setEditingId(lc.id)
     setShowForm(true)
@@ -148,6 +146,7 @@ export default function TeacherLiveClassesPage() {
   }
 
   async function handleSubmit() {
+    if (submitting) return
     try {
       setSubmitting(true)
       setError(null)
@@ -391,19 +390,6 @@ export default function TeacherLiveClassesPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 rounded-lg border border-border bg-background p-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.enableRecording}
-                onChange={(e) => setForm({ ...form, enableRecording: e.target.checked })}
-                className="size-4 rounded border-border"
-              />
-              <span className="text-sm text-foreground">Enable recording</span>
-            </label>
-            <span className="text-xs text-muted-foreground">Record this session for replay</span>
-          </div>
-
           <div className="rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
             Timezone: Africa/Dar_es_Salaam (UTC+03:00)
           </div>
@@ -459,10 +445,6 @@ export default function TeacherLiveClassesPage() {
               </div>
             )}
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Recording</span>
-              <p className="text-foreground">{form.enableRecording ? "Enabled" : "Disabled"}</p>
-            </div>
-            <div>
               <span className="text-xs font-medium text-muted-foreground">Timezone</span>
               <p className="text-foreground">Africa/Dar_es_Salaam (UTC+03:00)</p>
             </div>
@@ -475,7 +457,7 @@ export default function TeacherLiveClassesPage() {
           )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setReviewMode(false)}>Back to Edit</Button>
-            <Button onClick={handleSubmit} disabled={submitting} className="gap-1 bg-green-600 hover:bg-green-700 text-white">
+            <Button onClick={() => { if (confirm("Schedule this live class?")) handleSubmit() }} disabled={submitting} className="gap-1 bg-green-600 hover:bg-green-700 text-white">
               {submitting ? "Scheduling..." : "Confirm & Schedule"}
             </Button>
           </div>
