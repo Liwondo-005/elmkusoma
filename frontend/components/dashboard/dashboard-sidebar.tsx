@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -89,6 +89,7 @@ const learnerNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
   { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
   { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
+  { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film },
   { label: "Events & Workshops", href: "/dashboard/learner/events", icon: Calendar },
   { label: "My Registrations", href: "/dashboard/learner/events/registered", icon: ClipboardList },
   { label: "Video Library", href: "/dashboard/learner/video-library", icon: Video },
@@ -140,6 +141,7 @@ const teacherNavSections: TeacherNavSection[] = [
     group: "COMMUNICATION",
     items: [
       { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
+      { label: "Media Library", href: "/dashboard/teacher/media-library", icon: Film },
       { label: "Messages", href: "/dashboard/teacher/messages", icon: MessageSquare },
       { label: "Announcements", href: "/dashboard/teacher/announcements", icon: Bell },
       { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },

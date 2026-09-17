@@ -84,6 +84,17 @@ public class TeacherLiveClassController {
         Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
         LiveClassResponse updated = liveClassService.updateLiveClass(teacher.getId(), id, request);
+
+        LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
+        if (liveClass != null && request.getScheduledAt() != null) {
+            notificationService.notifyInstitutionStudentsExcluding(
+                    institutionId, userId,
+                    "Live Class Rescheduled",
+                    "The live class \"" + updated.getTitle() + "\" has been rescheduled to " + updated.getScheduledAt(),
+                    "LIVE_CLASS_RESCHEDULED",
+                    "LIVE_CLASS", id);
+        }
+
         return ResponseEntity.ok(ApiResponse.success("Live class updated successfully", updated));
     }
 
