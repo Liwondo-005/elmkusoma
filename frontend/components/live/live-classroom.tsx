@@ -360,8 +360,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         roomRef.current = null
       }
       if (wsRef.current) {
-        if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+        if (wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({ type: "LEAVE" }))
+        }
+        if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
           wsRef.current.close()
         }
         wsRef.current = null
