@@ -138,7 +138,7 @@ export default function OversightAttendancePage() {
         <div className="rounded-2xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <AlertTriangle className="size-5 text-orange-500" />
-            Students Requiring Attention (Attendance < 75%)
+            Students Requiring Attention (Attendance &lt; 75%)
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

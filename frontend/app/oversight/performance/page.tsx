@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, Award } from "lucide-react"
+import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, Award, FileText, ClipboardList, BookOpen } from "lucide-react"
 import Link from "next/link"
 
 interface PerformanceMetrics {
@@ -183,5 +183,3 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
     </div>
   )
 }
-
-import { FileText, ClipboardList, BookOpen } from "lucide-react"

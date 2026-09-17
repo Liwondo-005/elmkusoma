@@ -214,7 +214,8 @@ export default function OversightAlertsPage() {
                     </td>
                   </tr>
                 )
-              )}
+              }
+            )}
             </tbody>
           </table>
         </div>

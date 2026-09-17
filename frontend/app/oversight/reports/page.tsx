@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, FileBarChart, FileText, Download, Calendar, ClipboardList, Award, BookOpen, ClipboardList, Video, AlertTriangle } from "lucide-react"
+import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, FileBarChart, FileText, Download, Calendar, ClipboardList, Award, BookOpen, Video, AlertTriangle } from "lucide-react"
 
 interface Report {
   id: string
@@ -165,4 +165,3 @@ function ReportCard({ report }: { report: Report }) {
   )
 }
 
-import { Download } from "lucide-react"

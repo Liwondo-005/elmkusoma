@@ -18,6 +18,10 @@ const nextConfig = {
       },
     ]
   },
+  // Explicitly bind to all interfaces
+  async headers() {
+    return []
+  },
 }
 
 export default nextConfig;

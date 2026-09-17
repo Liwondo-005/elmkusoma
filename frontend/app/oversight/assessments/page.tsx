@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, FileText, Award, PenTool, ClipboardList } from "lucide-react"
+import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, FileText, Award, PenTool, ClipboardList, CheckCircle } from "lucide-react"
 import Link from "next/link"
 
 interface AssessmentMetrics {
@@ -197,5 +197,3 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
     </div>
   )
 }
-
-import { CheckCircle } from "lucide-react"
