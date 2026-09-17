@@ -161,13 +161,20 @@ const teacherNavSections: TeacherNavSection[] = [
 const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
   { label: "My Children", href: "/dashboard/parent/children", icon: Users },
+  { label: "Learning", href: "/dashboard/parent/learning", icon: BookOpen },
   { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
   { label: "Assignments", href: "/dashboard/parent/assignments", icon: FileText },
   { label: "Results", href: "/dashboard/parent/results", icon: BarChart3 },
+  { label: "Achievements", href: "/dashboard/parent/achievements", icon: Award },
+  { label: "Goals", href: "/dashboard/parent/goals", icon: TrendingUp },
   { label: "Calendar", href: "/dashboard/parent/calendar", icon: Clock },
   { label: "Live Classes", href: "/live-classes", icon: Video },
+  { label: "Library", href: "/dashboard/parent/library", icon: Library },
+  { label: "Payments", href: "/dashboard/parent/payments", icon: FileText },
+  { label: "Services", href: "/dashboard/parent/services", icon: School },
   { label: "Messages", href: "/dashboard/parent/messages", icon: MessageSquare },
   { label: "Notifications", href: "/dashboard/parent/notifications", icon: Bell },
+  { label: "Support", href: "/dashboard/parent/support", icon: HeartPulse },
   { label: "Settings", href: "/dashboard/parent/settings", icon: Settings },
 ]
 

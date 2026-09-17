@@ -127,6 +127,202 @@ export interface ReportCardItem {
   publishedAt: string | null
 }
 
+export interface AttentionItem {
+  id: string
+  type: string
+  priority: string
+  title: string
+  description: string
+  timestamp: string
+  relatedEntityType: string
+  relatedEntityId: string
+  actionLabel: string
+  actionUrl: string
+}
+
+export interface PositiveSignal {
+  id: string
+  type: string
+  title: string
+  description: string
+  timestamp: string
+  relatedEntityType: string
+  relatedEntityId: string
+}
+
+export interface RecommendationItem {
+  id: string
+  type: string
+  title: string
+  description: string
+  actionLabel: string
+  actionUrl: string
+  evidenceSource: string
+}
+
+export interface UpcomingItem {
+  id: string
+  type: string
+  title: string
+  description: string
+  timestamp: string
+  relatedEntityType: string
+  relatedEntityId: string
+  actionLabel: string
+}
+
+export interface WeeklyBrief {
+  lessonsCompleted: number
+  assignmentsCompleted: number
+  assignmentsPending: number
+  assignmentsOverdue: number
+  liveClassesAttended: number
+  assessmentsCompleted: number
+  presentDays: number
+  absentDays: number
+  lateDays: number
+  highlights: string[]
+  focusNextWeek: string[]
+  upcomingThisWeek: UpcomingItem[]
+}
+
+export interface ParentIntelligence {
+  childId: string
+  childName: string
+  needsAttention: AttentionItem[]
+  doingWell: PositiveSignal[]
+  recommendations: RecommendationItem[]
+  weeklyBrief: WeeklyBrief
+  upcoming: UpcomingItem[]
+}
+
+export interface CalendarEvent {
+  id: string
+  type: string
+  title: string
+  description: string
+  start: string
+  end: string
+  status: string
+  relatedEntityType: string
+  relatedEntityId: string
+  isActionRequired: boolean
+}
+
+export interface ParentCalendar {
+  events: CalendarEvent[]
+}
+
+export interface PaymentItem {
+  id: string
+  amount: number
+  currency: string
+  description: string
+  serviceType: string
+  status: string
+  paidAt: string | null
+  createdAt: string
+  providerReference: string | null
+}
+
+export interface ParentPayments {
+  outstanding: number
+  paidThisTerm: number
+  recentPayments: PaymentItem[]
+  pendingPayments: PaymentItem[]
+}
+
+export interface AchievementItem {
+  id: string
+  title: string
+  description: string
+  achievementType: string
+  icon: string | null
+  color: string | null
+  relatedEntityType: string
+  relatedEntityId: string | null
+  achievedAt: string
+}
+
+export interface ParentAchievements {
+  achievements: AchievementItem[]
+  totalAchievements: number
+}
+
+export interface GoalItem {
+  id: string
+  title: string
+  description: string
+  goalType: string
+  status: string
+  progressPercentage: number
+  targetDate: string | null
+  completedAt: string | null
+  relatedEntityType: string
+  relatedEntityId: string | null
+}
+
+export interface ParentGoals {
+  goals: GoalItem[]
+  activeCount: number
+  completedCount: number
+}
+
+export interface LibraryCategory {
+  name: string
+  description: string
+  items: LibraryItem[]
+}
+
+export interface LibraryItem {
+  id: string
+  title: string
+  description: string
+  resourceType: string
+  fileUrl: string
+  subject: string
+  targetGroup: string
+}
+
+export interface ParentLibrary {
+  categories: LibraryCategory[]
+}
+
+export interface SupportTicketItem {
+  id: string
+  subject: string
+  description: string
+  category: string
+  priority: string
+  status: string
+  createdAt: string
+  resolvedAt: string | null
+  messageCount: number
+}
+
+export interface ParentSupport {
+  tickets: SupportTicketItem[]
+  openCount: number
+  resolvedCount: number
+}
+
+export interface EntitlementItem {
+  id: string
+  serviceType: string
+  serviceId: string
+  status: string
+  startsAt: string
+  expiresAt: string | null
+}
+
+export interface LiveClassItem {
+  id: string
+  title: string
+  status: string
+  scheduledAt: string
+  durationMinutes: number
+}
+
 export const parentApi = {
   getOverview: () => parentFetch<FamilyOverview>("/v1/my/overview"),
   getChildren: () => parentFetch<ChildOverview[]>("/v1/my/children"),
@@ -134,4 +330,34 @@ export const parentApi = {
   getChildAttendance: (id: string) => parentFetch<AttendanceData>(`/v1/my/children/${id}/attendance`),
   getChildAssignments: (id: string) => parentFetch<AssignmentData>(`/v1/my/children/${id}/assignments`),
   getChildResults: (id: string) => parentFetch<ResultData>(`/v1/my/children/${id}/results`),
+
+  getChildIntelligence: (id: string) => parentFetch<ParentIntelligence>(`/v1/my/children/${id}/intelligence`),
+  getChildCalendar: (id: string, days?: number) => parentFetch<ParentCalendar>(`/v1/my/children/${id}/calendar?daysAhead=${days || 30}`),
+  getChildAchievements: (id: string) => parentFetch<ParentAchievements>(`/v1/my/children/${id}/achievements`),
+  getChildGoals: (id: string) => parentFetch<ParentGoals>(`/v1/my/children/${id}/goals`),
+  getChildEntitlements: (id: string) => parentFetch<EntitlementItem[]>(`/v1/my/children/${id}/entitlements`),
+  getChildLiveClasses: (id: string) => parentFetch<LiveClassItem[]>(`/v1/my/children/${id}/live-classes`),
+
+  getPayments: () => parentFetch<ParentPayments>("/v1/my/payments"),
+  getChildPayments: (id: string) => parentFetch<PaymentItem[]>(`/v1/my/children/${id}/payments`),
+  initiatePayment: (data: { studentId: string; amount: number; serviceType: string; serviceId?: string; description?: string }) =>
+    parentFetch<{ paymentId: string; status: string; amount: number }>("/v1/my/payments/initiate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getLibrary: () => parentFetch<ParentLibrary>("/v1/my/library"),
+
+  getSupportTickets: () => parentFetch<ParentSupport>("/v1/my/support/tickets"),
+  createSupportTicket: (data: { subject: string; description: string; category: string; priority?: string }) =>
+    parentFetch<SupportTicketItem>("/v1/my/support/tickets", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getTicketMessages: (ticketId: string) => parentFetch<Array<{ id: string; senderId: string; message: string; createdAt: string }>>(`/v1/my/support/tickets/${ticketId}/messages`),
+  addTicketMessage: (ticketId: string, message: string) =>
+    parentFetch<{ id: string }>(`/v1/my/support/tickets/${ticketId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
 }

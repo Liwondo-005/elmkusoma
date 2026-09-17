@@ -25,4 +25,7 @@ public interface LiveClassParticipantRepository extends JpaRepository<LiveClassP
 
     @Query("SELECT lcp FROM LiveClassParticipant lcp WHERE lcp.liveClassId = :liveClassId AND lcp.isDeleted = false AND lcp.leftAt IS NULL AND lcp.connectionId = :connectionId")
     Optional<LiveClassParticipant> findByLiveClassIdAndConnectionIdAndIsDeletedFalse(@Param("liveClassId") UUID liveClassId, @Param("connectionId") String connectionId);
+
+    @Query("SELECT lcp FROM LiveClassParticipant lcp WHERE lcp.userId = :userId AND lcp.isDeleted = false")
+    List<LiveClassParticipant> findByUserIdAndIsDeletedFalse(@Param("userId") UUID userId);
 }
