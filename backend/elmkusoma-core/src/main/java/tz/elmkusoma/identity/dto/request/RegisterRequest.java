@@ -29,8 +29,8 @@ public class RegisterRequest {
 
     private String phone;
 
-    @Pattern(regexp = "STUDENT|TEACHER|PARENT|OTHER_LEARNER",
-            message = "Role must be one of: STUDENT, TEACHER, PARENT, OTHER_LEARNER")
+    @Pattern(regexp = "STUDENT|TEACHER|PARENT|OTHER_LEARNER|LEARNER|PROVIDER_ADMIN|PROVIDER_STAFF",
+            message = "Role must be one of: STUDENT, TEACHER, PARENT, OTHER_LEARNER, LEARNER, PROVIDER_ADMIN, PROVIDER_STAFF")
     private String role;
 
     private String learningLevel;
