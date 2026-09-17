@@ -1,0 +1,24 @@
+# OpenTelemetry Configuration for ELMKUSOMA
+# Add to application.yml or configure via environment variables
+
+otel:
+  service:
+    name: elmkusoma-core
+    version: 1.0.0
+    environment: development
+
+  exporter:
+    otlp:
+      endpoint: http://otel-collector:4317
+      protocol: grpc
+
+  traces:
+    exporter: otlp
+    sampler: always_on
+
+  metrics:
+    exporter: otlp
+    interval: 60s
+
+  logs:
+    exporter: otlp
