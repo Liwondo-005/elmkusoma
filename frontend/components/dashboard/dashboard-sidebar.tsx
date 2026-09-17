@@ -114,6 +114,7 @@ const teacherNavSections: TeacherNavSection[] = [
     group: "WORKSPACE",
     items: [
       { label: "My Classes", href: "/dashboard/teacher/classes", icon: BookOpen },
+      { label: "Courses", href: "/dashboard/teacher/courses", icon: GraduationCap },
       { label: "Students", href: "/dashboard/teacher/students", icon: Users },
       { label: "Learner Support", href: "/dashboard/teacher/learner-support", icon: HeartPulse },
     ],
@@ -139,6 +140,7 @@ const teacherNavSections: TeacherNavSection[] = [
     group: "COMMUNICATION",
     items: [
       { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
+      { label: "Messages", href: "/dashboard/teacher/messages", icon: MessageSquare },
       { label: "Announcements", href: "/dashboard/teacher/announcements", icon: Bell },
       { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
     ],

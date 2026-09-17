@@ -93,7 +93,6 @@ export default function TeacherDashboardPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [sectionErrors, setSectionErrors] = useState<Record<string, boolean>>({})
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalClasses: 0,
