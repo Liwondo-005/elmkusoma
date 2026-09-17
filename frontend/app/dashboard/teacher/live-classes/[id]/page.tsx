@@ -28,6 +28,7 @@ interface LiveClass {
   currentParticipants: number | null
   canJoin: boolean | null
   createdAt: string
+  recordingEnabled: boolean | null
 }
 
 interface Participant {
@@ -294,7 +295,7 @@ export default function LiveClassDetailPage() {
             <div className="flex items-center gap-2 text-sm">
               <Settings className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-muted-foreground">
-                Recording: {liveClass.recordingUrl ? "Available" : "Not enabled"}
+                Recording: {liveClass.recordingEnabled ? (liveClass.recordingUrl ? "Available" : "Enabled") : "Not enabled"}
               </span>
             </div>
           </div>

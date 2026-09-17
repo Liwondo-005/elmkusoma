@@ -47,6 +47,9 @@ public class LiveClass extends BaseEntity {
     @Column(name = "recording_url", length = 500)
     private String recordingUrl;
 
+    @Column(name = "recording_enabled")
+    private Boolean recordingEnabled = false;
+
     public enum LiveClassStatus {
         SCHEDULED, STARTING, IN_PROGRESS, LIVE, ENDING, COMPLETED, ENDED, CANCELLED,
         SERVICE_DEGRADED, SERVICE_UNAVAILABLE, RECOVERING

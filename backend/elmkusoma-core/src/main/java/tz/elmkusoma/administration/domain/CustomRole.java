@@ -44,7 +44,7 @@ public class CustomRole extends BaseEntity {
         role.name = name;
         role.displayName = displayName;
         role.description = description;
-        role.institutionId = institutionId;
+        role.setInstitutionId(institutionId);
         role.isSystemRole = false;
         role.isActive = true;
         return role;

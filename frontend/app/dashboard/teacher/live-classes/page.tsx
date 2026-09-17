@@ -20,6 +20,8 @@ interface LiveClass {
   classGroupId: string | null
   subjectId: string | null
   createdAt: string
+  recordingEnabled: boolean | null
+  currentParticipants: number | null
 }
 
 interface ClassOption {
@@ -96,9 +98,9 @@ export default function TeacherLiveClassesPage() {
         setClasses(classesData.value)
         const uniqueSubjects = new Map<string, SubjectOption>()
         classesData.value.forEach((c) => {
-          if (c.subjectName && c.classGroupId) {
-            uniqueSubjects.set(c.subjectName, {
-              id: c.classGroupId,
+          if (c.subjectId && c.subjectName) {
+            uniqueSubjects.set(c.subjectId, {
+              id: c.subjectId,
               name: c.subjectName,
               code: c.subjectName,
             })
@@ -129,7 +131,7 @@ export default function TeacherLiveClassesPage() {
       maxParticipants: lc.maxParticipants || 50,
       classGroupId: lc.classGroupId || "",
       subjectId: lc.subjectId || "",
-      enableRecording: false,
+      enableRecording: lc.recordingEnabled || false,
     })
     setEditingId(lc.id)
     setShowForm(true)
@@ -160,6 +162,7 @@ export default function TeacherLiveClassesPage() {
         scheduledAt: scheduledDate.toISOString(),
         durationMinutes: Number(form.durationMinutes) || 60,
         maxParticipants: Number(form.maxParticipants) || 50,
+        recordingEnabled: form.enableRecording,
       }
       if (form.classGroupId) payload.classGroupId = form.classGroupId
       if (form.subjectId) payload.subjectId = form.subjectId
@@ -540,7 +543,7 @@ export default function TeacherLiveClassesPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="size-3" />
-                        {lc.maxParticipants} max
+                        {lc.currentParticipants != null ? `${lc.currentParticipants}/` : ""}{lc.maxParticipants} max
                       </span>
                     </div>
                   </div>

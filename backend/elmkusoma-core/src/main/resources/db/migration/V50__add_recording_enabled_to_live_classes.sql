@@ -1,0 +1,1 @@
+ALTER TABLE live_classes ADD COLUMN IF NOT EXISTS recording_enabled BOOLEAN DEFAULT FALSE;

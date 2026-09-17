@@ -48,7 +48,7 @@ public class SystemSetting extends BaseEntity {
         setting.settingType = settingType;
         setting.description = description;
         setting.isPublic = isPublic;
-        setting.institutionId = institutionId;
+        setting.setInstitutionId(institutionId);
         return setting;
     }
 }

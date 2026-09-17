@@ -35,6 +35,6 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID> 
 
     List<Institution> findByDistrictIdAndIsDeletedFalse(UUID districtId);
 
-    @Query("SELECT COUNT(i) FROM Institution i WHERE i.id IN :institutionIds AND i.attendanceRate < :threshold AND i.isDeleted = false")
-    long countByInstitutionIdsAndAttendanceBelow(@Param("institutionIds") List<UUID> institutionIds, @Param("threshold") double threshold);
+    @Query("SELECT COUNT(i) FROM Institution i WHERE i.id IN :institutionIds AND i.isDeleted = false")
+    long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 }

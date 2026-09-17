@@ -58,10 +58,6 @@ public class DataImportJob extends BaseEntity {
         FAILED
     }
 
-    public UUID getId() { return super.getId(); }
-    public UUID getInstitutionId() { return super.getInstitutionId(); }
-    public void setInstitutionId(UUID institutionId) { super.setInstitutionId(institutionId); }
-
     public UUID getImportedBy() { return importedBy; }
     public void setImportedBy(UUID importedBy) { this.importedBy = importedBy; }
     public String getImportType() { return importType; }
@@ -87,10 +83,6 @@ public class DataImportJob extends BaseEntity {
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
 
-    public enum ImportStatus {
-        PENDING, PROCESSING, COMPLETED, FAILED
-    }
-
     public static DataImportJob of(UUID importedBy, String importType, String fileName,
                                    String fileUrl, UUID institutionId) {
         DataImportJob job = new DataImportJob();
@@ -98,7 +90,7 @@ public class DataImportJob extends BaseEntity {
         job.importType = importType;
         job.fileName = fileName;
         job.fileUrl = fileUrl;
-        job.institutionId = institutionId;
+        job.setInstitutionId(institutionId);
         job.status = ImportStatus.PENDING;
         job.totalRows = 0;
         job.processedRows = 0;

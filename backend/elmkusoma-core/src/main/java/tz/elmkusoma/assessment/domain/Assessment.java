@@ -41,9 +41,18 @@ public class Assessment extends BaseEntity {
     @Column(name = "is_published", nullable = false)
     private Boolean isPublished = false;
 
+    @Column(name = "status", length = 30)
+    private String status;
+
     @Column(name = "starts_at")
     private LocalDateTime startsAt;
 
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
     @Column(name = "ends_at")
     private LocalDateTime endsAt;
+
+    @Column(name = "participant_count")
+    private Long participantCount;
 }

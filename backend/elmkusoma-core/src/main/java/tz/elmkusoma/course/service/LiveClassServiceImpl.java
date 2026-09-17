@@ -102,6 +102,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .subjectId(request.getSubjectId())
                 .maxParticipants(request.getMaxParticipants())
                 .classGroupId(request.getClassGroupId())
+                .recordingEnabled(Boolean.TRUE.equals(request.getRecordingEnabled()))
                 .build();
         liveClass.setInstitutionId(institutionId);
 
@@ -128,6 +129,7 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (request.getSubjectId() != null) liveClass.setSubjectId(request.getSubjectId());
         if (request.getClassGroupId() != null) liveClass.setClassGroupId(request.getClassGroupId());
         if (request.getMaxParticipants() != null) liveClass.setMaxParticipants(request.getMaxParticipants());
+        if (request.getRecordingEnabled() != null) liveClass.setRecordingEnabled(request.getRecordingEnabled());
 
         LiveClass saved = liveClassRepository.save(liveClass);
         return mapToResponse(saved);
@@ -245,6 +247,9 @@ public class LiveClassServiceImpl implements LiveClassService {
             }
         }
 
+        long currentParticipants = participantRepository
+                .countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(liveClass.getId());
+
         return LiveClassResponse.builder()
                 .id(liveClass.getId())
                 .title(liveClass.getTitle())
@@ -259,7 +264,10 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .subjectId(liveClass.getSubjectId())
                 .classGroupId(liveClass.getClassGroupId())
                 .recordingUrl(liveClass.getRecordingUrl())
+                .recordingEnabled(Boolean.TRUE.equals(liveClass.getRecordingEnabled()))
+                .currentParticipants((int) currentParticipants)
                 .canJoin("IN_PROGRESS".equals(liveClass.getStatus()) || "LIVE".equals(liveClass.getStatus()))
+                .createdAt(liveClass.getCreatedAt() != null ? liveClass.getCreatedAt().toString() : null)
                 .build();
     }
 

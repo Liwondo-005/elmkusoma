@@ -31,4 +31,9 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
     List<Assessment> findRecentByInstitutionIds(
             @Param("institutionIds") List<UUID> institutionIds,
             @Param("limit") int limit);
+
+    @Query("SELECT COUNT(a) FROM Assessment a WHERE a.subjectId = :subjectId AND a.institutionId IN :institutionIds AND a.isDeleted = false")
+    long countBySubjectIdAndInstitutionIdsAndIsDeletedFalse(
+            @Param("subjectId") UUID subjectId,
+            @Param("institutionIds") List<UUID> institutionIds);
 }
