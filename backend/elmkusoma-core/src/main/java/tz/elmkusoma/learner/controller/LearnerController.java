@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/v1/learner")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('OTHER_LEARNER')")
+@PreAuthorize("hasAnyRole('OTHER_LEARNER', 'TEACHER', 'STUDENT', 'INSTITUTION_ADMIN', 'ADMIN')")
 @Tag(name = "General Learner", description = "General Learner / Participant workspace")
 @Slf4j
 public class LearnerController {
