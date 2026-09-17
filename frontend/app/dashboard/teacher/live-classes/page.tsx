@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap, CheckCircle2, Circle } from "lucide-react"
@@ -55,10 +56,12 @@ const initialForm = {
   maxParticipants: 50,
   classGroupId: "",
   subjectId: "",
+  enableRecording: false,
 }
 
 export default function TeacherLiveClassesPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [subjects, setSubjects] = useState<SubjectOption[]>([])
@@ -126,6 +129,7 @@ export default function TeacherLiveClassesPage() {
       maxParticipants: lc.maxParticipants || 50,
       classGroupId: lc.classGroupId || "",
       subjectId: lc.subjectId || "",
+      enableRecording: false,
     })
     setEditingId(lc.id)
     setShowForm(true)
@@ -146,7 +150,6 @@ export default function TeacherLiveClassesPage() {
   }
 
   async function handleSubmit() {
-    if (submitting) return
     try {
       setSubmitting(true)
       setError(null)
@@ -167,16 +170,18 @@ export default function TeacherLiveClassesPage() {
           body: JSON.stringify(payload),
         })
         setSuccess("Live class updated successfully")
+        resetForm()
+        loadData()
+        setTimeout(() => setSuccess(null), 3000)
       } else {
-        await appFetch("/v1/teachers/me/live-classes", {
+        const result = await appFetch<{ id: string }>("/v1/teachers/me/live-classes", {
           method: "POST",
           body: JSON.stringify(payload),
         })
-        setSuccess("Live class scheduled successfully")
+        resetForm()
+        loadData()
+        router.push(`/dashboard/teacher/live-classes/${result.id}`)
       }
-      resetForm()
-      loadData()
-      setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save live class")
     } finally {
@@ -390,6 +395,19 @@ export default function TeacherLiveClassesPage() {
             </div>
           </div>
 
+          <div className="flex items-center gap-4 rounded-lg border border-border bg-background p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.enableRecording}
+                onChange={(e) => setForm({ ...form, enableRecording: e.target.checked })}
+                className="size-4 rounded border-border"
+              />
+              <span className="text-sm text-foreground">Enable recording</span>
+            </label>
+            <span className="text-xs text-muted-foreground">Record this session for replay</span>
+          </div>
+
           <div className="rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
             Timezone: Africa/Dar_es_Salaam (UTC+03:00)
           </div>
@@ -445,6 +463,10 @@ export default function TeacherLiveClassesPage() {
               </div>
             )}
             <div>
+              <span className="text-xs font-medium text-muted-foreground">Recording</span>
+              <p className="text-foreground">{form.enableRecording ? "Enabled" : "Disabled"}</p>
+            </div>
+            <div>
               <span className="text-xs font-medium text-muted-foreground">Timezone</span>
               <p className="text-foreground">Africa/Dar_es_Salaam (UTC+03:00)</p>
             </div>
@@ -457,7 +479,7 @@ export default function TeacherLiveClassesPage() {
           )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setReviewMode(false)}>Back to Edit</Button>
-            <Button onClick={() => { if (confirm("Schedule this live class?")) handleSubmit() }} disabled={submitting} className="gap-1 bg-green-600 hover:bg-green-700 text-white">
+            <Button onClick={handleSubmit} disabled={submitting} className="gap-1 bg-green-600 hover:bg-green-700 text-white">
               {submitting ? "Scheduling..." : "Confirm & Schedule"}
             </Button>
           </div>
