@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Video, Plus, Clock, Users, Pencil, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink } from "lucide-react"
+import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap } from "lucide-react"
 import { appFetch } from "@/lib/fetch"
 
 interface LiveClass {
@@ -14,6 +14,10 @@ interface LiveClass {
   durationMinutes: number
   maxParticipants: number
   status: string
+  subjectName: string | null
+  teacherName: string | null
+  classGroupId: string | null
+  subjectId: string | null
   createdAt: string
 }
 
@@ -21,6 +25,12 @@ interface ClassOption {
   classGroupId: string
   className: string
   subjectName: string
+}
+
+interface SubjectOption {
+  id: string
+  name: string
+  code: string
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -43,12 +53,15 @@ const initialForm = {
   scheduledAt: "",
   durationMinutes: 60,
   maxParticipants: 50,
+  classGroupId: "",
+  subjectId: "",
 }
 
 export default function TeacherLiveClassesPage() {
   const { user } = useAuth()
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [classes, setClasses] = useState<ClassOption[]>([])
+  const [subjects, setSubjects] = useState<SubjectOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -77,6 +90,17 @@ export default function TeacherLiveClassesPage() {
       }
       if (classesData.status === "fulfilled") {
         setClasses(classesData.value)
+        const uniqueSubjects = new Map<string, SubjectOption>()
+        classesData.value.forEach((c) => {
+          if (c.subjectName && c.classGroupId) {
+            uniqueSubjects.set(c.subjectName, {
+              id: c.classGroupId,
+              name: c.subjectName,
+              code: c.subjectName,
+            })
+          }
+        })
+        setSubjects(Array.from(uniqueSubjects.values()))
       }
     } catch {
       setError("Failed to load data")
@@ -94,10 +118,12 @@ export default function TeacherLiveClassesPage() {
   function startEdit(lc: LiveClass) {
     setForm({
       title: lc.title,
-      description: lc.description,
+      description: lc.description || "",
       scheduledAt: lc.scheduledAt ? new Date(lc.scheduledAt).toISOString().slice(0, 16) : "",
       durationMinutes: lc.durationMinutes,
-      maxParticipants: lc.maxParticipants,
+      maxParticipants: lc.maxParticipants || 50,
+      classGroupId: lc.classGroupId || "",
+      subjectId: lc.subjectId || "",
     })
     setEditingId(lc.id)
     setShowForm(true)
@@ -108,16 +134,25 @@ export default function TeacherLiveClassesPage() {
       setError("Title and scheduled date/time are required")
       return
     }
+
+    const scheduledDate = new Date(form.scheduledAt)
+    if (scheduledDate < new Date()) {
+      setError("Scheduled time must be in the future")
+      return
+    }
+
     try {
       setSubmitting(true)
       setError(null)
-      const payload = {
+      const payload: Record<string, unknown> = {
         title: form.title.trim(),
         description: form.description.trim(),
-        scheduledAt: new Date(form.scheduledAt).toISOString(),
+        scheduledAt: scheduledDate.toISOString(),
         durationMinutes: Number(form.durationMinutes) || 60,
         maxParticipants: Number(form.maxParticipants) || 50,
       }
+      if (form.classGroupId) payload.classGroupId = form.classGroupId
+      if (form.subjectId) payload.subjectId = form.subjectId
 
       if (editingId) {
         await appFetch(`/v1/teachers/me/live-classes/${editingId}`, {
@@ -192,6 +227,12 @@ export default function TeacherLiveClassesPage() {
     })
   }
 
+  function getClassName(classGroupId: string | null) {
+    if (!classGroupId) return null
+    const found = classes.find((c) => c.classGroupId === classGroupId)
+    return found?.className || null
+  }
+
   const sortedClasses = [...liveClasses].sort((a, b) => {
     const dateA = new Date(a.scheduledAt).getTime()
     const dateB = new Date(b.scheduledAt).getTime()
@@ -248,6 +289,7 @@ export default function TeacherLiveClassesPage() {
           <h2 className="text-base font-semibold text-foreground">
             {editingId ? "Edit Live Class" : "Schedule New Live Class"}
           </h2>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Title *</label>
@@ -255,20 +297,60 @@ export default function TeacherLiveClassesPage() {
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Live class title"
+                placeholder="e.g. Algebra — Introduction to Linear Equations"
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <GraduationCap className="mr-1 inline size-3" />
+                Class / Group
+              </label>
+              <select
+                value={form.classGroupId}
+                onChange={(e) => setForm({ ...form, classGroupId: e.target.value })}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              >
+                <option value="">Select class (optional)</option>
+                {classes.map((c) => (
+                  <option key={c.classGroupId} value={c.classGroupId}>
+                    {c.className} {c.subjectName ? `— ${c.subjectName}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <BookOpen className="mr-1 inline size-3" />
+                Subject
+              </label>
+              <select
+                value={form.subjectId}
+                onChange={(e) => setForm({ ...form, subjectId: e.target.value })}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              >
+                <option value="">Select subject (optional)</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Brief description of the class..."
+                placeholder="What will be covered in this session..."
                 rows={3}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
               />
             </div>
+
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Date & Time *</label>
               <input
@@ -285,6 +367,7 @@ export default function TeacherLiveClassesPage() {
                 value={form.durationMinutes}
                 onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}
                 min={1}
+                max={480}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
@@ -299,6 +382,7 @@ export default function TeacherLiveClassesPage() {
               />
             </div>
           </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={resetForm}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={submitting || !form.title.trim() || !form.scheduledAt}>
@@ -320,6 +404,7 @@ export default function TeacherLiveClassesPage() {
         <div className="space-y-3">
           {sortedClasses.map((lc) => {
             const status = statusConfig[lc.status] || statusConfig.SCHEDULED
+            const className = getClassName(lc.classGroupId)
             return (
               <div key={lc.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:shadow-sm">
                 <div className="flex items-start gap-4">
@@ -332,6 +417,20 @@ export default function TeacherLiveClassesPage() {
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.className}`}>
                         {status.label}
                       </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                      {lc.subjectName && (
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="size-3" />
+                          {lc.subjectName}
+                        </span>
+                      )}
+                      {className && (
+                        <span className="flex items-center gap-1">
+                          <GraduationCap className="size-3" />
+                          {className}
+                        </span>
+                      )}
                     </div>
                     {lc.description && (
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{lc.description}</p>

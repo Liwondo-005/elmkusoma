@@ -82,6 +82,16 @@ public class LiveClassServiceImpl implements LiveClassService {
             throw new IllegalArgumentException("Scheduled time must be in the future");
         }
 
+        int duration = request.getDurationMinutes() != null ? request.getDurationMinutes() : 60;
+        LocalDateTime endTime = scheduledAt.plusMinutes(duration);
+        List<LiveClass> overlaps = liveClassRepository.findOverlappingForTeacher(
+                teacherId, scheduledAt.minusMinutes(1), endTime.plusMinutes(1));
+        if (!overlaps.isEmpty()) {
+            LiveClass conflict = overlaps.get(0);
+            throw new IllegalArgumentException("Schedule conflict: you already have \"" + conflict.getTitle()
+                    + "\" scheduled at " + conflict.getScheduledAt());
+        }
+
         LiveClass liveClass = LiveClass.builder()
                 .teacherId(teacherId)
                 .title(request.getTitle())
@@ -116,6 +126,7 @@ public class LiveClassServiceImpl implements LiveClassService {
         }
         if (request.getDurationMinutes() != null) liveClass.setDurationMinutes(request.getDurationMinutes());
         if (request.getSubjectId() != null) liveClass.setSubjectId(request.getSubjectId());
+        if (request.getClassGroupId() != null) liveClass.setClassGroupId(request.getClassGroupId());
         if (request.getMaxParticipants() != null) liveClass.setMaxParticipants(request.getMaxParticipants());
 
         LiveClass saved = liveClassRepository.save(liveClass);
