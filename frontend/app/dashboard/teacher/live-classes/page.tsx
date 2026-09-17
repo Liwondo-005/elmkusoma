@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap } from "lucide-react"
+import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap, CheckCircle2, Circle } from "lucide-react"
 import { appFetch } from "@/lib/fetch"
 
 interface LiveClass {
@@ -55,6 +55,7 @@ const initialForm = {
   maxParticipants: 50,
   classGroupId: "",
   subjectId: "",
+  enableRecording: false,
 }
 
 export default function TeacherLiveClassesPage() {
@@ -69,6 +70,7 @@ export default function TeacherLiveClassesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
+  const [reviewMode, setReviewMode] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -113,6 +115,7 @@ export default function TeacherLiveClassesPage() {
     setForm(initialForm)
     setEditingId(null)
     setShowForm(false)
+    setReviewMode(false)
   }
 
   function startEdit(lc: LiveClass) {
@@ -129,21 +132,25 @@ export default function TeacherLiveClassesPage() {
     setShowForm(true)
   }
 
-  async function handleSubmit() {
+  function handleProceedToReview() {
     if (!form.title.trim() || !form.scheduledAt) {
       setError("Title and scheduled date/time are required")
       return
     }
-
     const scheduledDate = new Date(form.scheduledAt)
     if (scheduledDate < new Date()) {
       setError("Scheduled time must be in the future")
       return
     }
+    setError(null)
+    setReviewMode(true)
+  }
 
+  async function handleSubmit() {
     try {
       setSubmitting(true)
       setError(null)
+      const scheduledDate = new Date(form.scheduledAt)
       const payload: Record<string, unknown> = {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -383,10 +390,92 @@ export default function TeacherLiveClassesPage() {
             </div>
           </div>
 
+          <div className="flex items-center gap-4 rounded-lg border border-border bg-background p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.enableRecording}
+                onChange={(e) => setForm({ ...form, enableRecording: e.target.checked })}
+                className="size-4 rounded border-border"
+              />
+              <span className="text-sm text-foreground">Enable recording</span>
+            </label>
+            <span className="text-xs text-muted-foreground">Record this session for replay</span>
+          </div>
+
+          <div className="rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+            Timezone: Africa/Dar_es_Salaam (UTC+03:00)
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={resetForm}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={submitting || !form.title.trim() || !form.scheduledAt}>
-              {submitting ? "Saving..." : editingId ? "Update Class" : "Schedule Class"}
+            {editingId ? (
+              <Button onClick={handleSubmit} disabled={submitting || !form.title.trim() || !form.scheduledAt}>
+                {submitting ? "Saving..." : "Update Class"}
+              </Button>
+            ) : (
+              <Button onClick={handleProceedToReview} disabled={!form.title.trim() || !form.scheduledAt}>
+                Review & Schedule
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {reviewMode && !editingId && (
+        <div className="rounded-2xl border border-primary/30 bg-card p-5 shadow-xs space-y-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="size-5 text-primary" />
+            <h2 className="text-base font-semibold text-foreground">Review Live Class</h2>
+          </div>
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Title</span>
+              <p className="text-foreground">{form.title}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Date & Time</span>
+              <p className="text-foreground">{form.scheduledAt ? new Date(form.scheduledAt).toLocaleString() : "—"}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Duration</span>
+              <p className="text-foreground">{form.durationMinutes} minutes</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Max Participants</span>
+              <p className="text-foreground">{form.maxParticipants}</p>
+            </div>
+            {form.classGroupId && (
+              <div>
+                <span className="text-xs font-medium text-muted-foreground">Class</span>
+                <p className="text-foreground">{getClassName(form.classGroupId) || form.classGroupId}</p>
+              </div>
+            )}
+            {form.subjectId && (
+              <div>
+                <span className="text-xs font-medium text-muted-foreground">Subject</span>
+                <p className="text-foreground">{subjects.find((s) => s.id === form.subjectId)?.name || form.subjectId}</p>
+              </div>
+            )}
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Recording</span>
+              <p className="text-foreground">{form.enableRecording ? "Enabled" : "Disabled"}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Timezone</span>
+              <p className="text-foreground">Africa/Dar_es_Salaam (UTC+03:00)</p>
+            </div>
+          </div>
+          {form.description && (
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Description</span>
+              <p className="mt-1 text-sm text-foreground whitespace-pre-line">{form.description}</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setReviewMode(false)}>Back to Edit</Button>
+            <Button onClick={handleSubmit} disabled={submitting} className="gap-1 bg-green-600 hover:bg-green-700 text-white">
+              {submitting ? "Scheduling..." : "Confirm & Schedule"}
             </Button>
           </div>
         </div>
@@ -453,6 +542,14 @@ export default function TeacherLiveClassesPage() {
                   <div className="flex items-center gap-1 shrink-0">
                     {lc.status === "SCHEDULED" && (
                       <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => window.open(`/dashboard/teacher/live-classes/${lc.id}/prepare`, "_blank")}
+                        >
+                          Prepare
+                        </Button>
                         <Button
                           size="sm"
                           className="gap-1 bg-green-600 hover:bg-green-700 text-white"
