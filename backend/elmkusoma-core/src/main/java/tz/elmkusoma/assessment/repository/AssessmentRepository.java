@@ -18,8 +18,10 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
 
     List<Assessment> findByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
+    @Query("SELECT COUNT(a) FROM Assessment a WHERE a.institutionId IN :institutionIds AND a.isDeleted = false")
     long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 
+    @Query("SELECT COUNT(a) FROM Assessment a WHERE a.institutionId IN :institutionIds AND a.status = :status AND a.isDeleted = false")
     long countByInstitutionIdsAndStatusAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds, @Param("status") String status);
 
     @Query("SELECT a FROM Assessment a WHERE a.subjectId = :subjectId AND a.institutionId IN :institutionIds AND a.isDeleted = false")
