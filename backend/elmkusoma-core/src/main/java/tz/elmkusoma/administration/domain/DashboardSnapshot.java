@@ -1,7 +1,10 @@
 package tz.elmkusoma.administration.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -15,7 +18,6 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class DashboardSnapshot {
 
     @Id
@@ -40,4 +42,15 @@ public class DashboardSnapshot {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public static DashboardSnapshot of(UUID institutionId, String snapshotType,
+                                       Map<String, Object> snapshotData,
+                                       LocalDateTime expiresAt) {
+        DashboardSnapshot snapshot = new DashboardSnapshot();
+        snapshot.setInstitutionId(institutionId);
+        snapshot.setSnapshotType(snapshotType);
+        snapshot.setSnapshotData(snapshotData);
+        snapshot.setExpiresAt(expiresAt);
+        return snapshot;
+    }
 }

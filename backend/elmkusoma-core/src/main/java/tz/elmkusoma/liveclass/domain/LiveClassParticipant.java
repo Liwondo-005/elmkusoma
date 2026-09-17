@@ -26,7 +26,7 @@ public class LiveClassParticipant extends BaseEntity {
     private UUID userId;
 
     @Column(name = "role", nullable = false, length = 20)
-    private String role;
+    private String role = "LEARNER";
 
     @Column(name = "joined_at")
     private LocalDateTime joinedAt;
@@ -39,4 +39,8 @@ public class LiveClassParticipant extends BaseEntity {
 
     @Column(name = "connection_id", length = 100)
     private String connectionId;
+
+    public static final String ROLE_LEARNER = "LEARNER";
+    public static final String ROLE_TEACHER = "TEACHER";
+    public static final String ROLE_OBSERVER = "OBSERVER";
 }

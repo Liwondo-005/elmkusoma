@@ -1,6 +1,8 @@
 package tz.elmkusoma.academic.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tz.elmkusoma.academic.domain.ClassGroup;
 
@@ -19,4 +21,7 @@ public interface ClassGroupRepository extends JpaRepository<ClassGroup, UUID> {
     List<ClassGroup> findByGradeIdAndTermIdAndIsDeletedFalse(UUID gradeId, UUID termId);
 
     List<ClassGroup> findByAcademicYearIdAndIsDeletedFalse(UUID academicYearId);
+
+    @Query("SELECT COUNT(cg) FROM ClassGroup cg WHERE cg.institutionId IN :institutionIds AND cg.isDeleted = false")
+    long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 }

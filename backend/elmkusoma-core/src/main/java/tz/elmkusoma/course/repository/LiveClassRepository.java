@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tz.elmkusoma.course.domain.LiveClass;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,21 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
     long countByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
     long countByInstitutionIdAndStatusAndIsDeletedFalse(UUID institutionId, String status);
+
+    @Query("SELECT COUNT(lc) FROM LiveClass lc WHERE lc.institutionId IN :institutionIds AND lc.status = :status AND lc.isDeleted = false")
+    long countByInstitutionIdsAndStatusAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds, @Param("status") String status);
+
+    @Query("SELECT COUNT(lc) FROM LiveClass lc WHERE lc.institutionId IN :institutionIds AND lc.status = :status AND DATE(lc.scheduledAt) = :today AND lc.isDeleted = false")
+    long countByInstitutionIdsAndStatusAndScheduledToday(@Param("institutionIds") List<UUID> institutionIds, @Param("status") String status, @Param("today") LocalDate today);
+
+    @Query("SELECT COUNT(lc) FROM LiveClass lc WHERE lc.institutionId IN :institutionIds AND lc.status = :status AND DATE(lc.scheduledAt) = :today AND lc.isDeleted = false")
+    long countByInstitutionIdsAndStatusAndCompletedToday(@Param("institutionIds") List<UUID> institutionIds, @Param("status") String status, @Param("today") LocalDate today);
+
+    @Query("SELECT COUNT(lc) FROM LiveClass lc WHERE lc.institutionId IN :institutionIds AND lc.scheduledAt >= :weekStart AND lc.scheduledAt <= :weekEnd AND lc.isDeleted = false")
+    long countByInstitutionIdsAndScheduledThisWeek(@Param("institutionIds") List<UUID> institutionIds, @Param("weekStart") LocalDateTime weekStart, @Param("weekEnd") LocalDateTime weekEnd);
+
+    @Query("SELECT lc FROM LiveClass lc WHERE lc.institutionId IN :institutionIds AND lc.isDeleted = false ORDER BY lc.scheduledAt")
+    List<LiveClass> findByInstitutionIdsAndIsDeletedFalseOrderByScheduledAt(@Param("institutionIds") List<UUID> institutionIds);
 
     @Query("SELECT lc FROM LiveClass lc WHERE lc.institutionId = :institutionId AND lc.isDeleted = false AND lc.scheduledAt >= :from AND lc.scheduledAt <= :to ORDER BY lc.scheduledAt")
     List<LiveClass> findByInstitutionIdAndScheduledAtBetween(@Param("institutionId") UUID institutionId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);

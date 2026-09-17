@@ -25,4 +25,21 @@ public interface AttendanceSummaryRepository extends JpaRepository<AttendanceSum
     List<AttendanceSummary> findStudentsWithLowAttendance(
             @Param("termId") UUID termId,
             @Param("minPercentage") double minPercentage);
+
+    @Query("SELECT asum FROM AttendanceSummary asum WHERE asum.institutionId IN :institutionIds AND asum.termId = :termId AND asum.isDeleted = false")
+    List<AttendanceSummary> findByInstitutionIdsAndTermIdAndIsDeletedFalse(
+            @Param("institutionIds") List<UUID> institutionIds,
+            @Param("termId") UUID termId);
+
+    @Query("SELECT COUNT(asum) FROM AttendanceSummary asum WHERE asum.institutionId IN :institutionIds AND asum.termId = :termId AND asum.attendancePercentage < :threshold AND asum.isDeleted = false")
+    long countByInstitutionIdsAndTermIdAndAttendanceBelow(
+            @Param("institutionIds") List<UUID> institutionIds,
+            @Param("termId") UUID termId,
+            @Param("threshold") double threshold);
+
+    @Query("SELECT COUNT(asum) FROM AttendanceSummary asum WHERE asum.institutionId IN :institutionIds AND asum.termId = :termId AND asum.status = :status AND asum.isDeleted = false")
+    long countByInstitutionIdsAndTermIdAndStatus(
+            @Param("institutionIds") List<UUID> institutionIds,
+            @Param("termId") UUID termId,
+            @Param("status") String status);
 }

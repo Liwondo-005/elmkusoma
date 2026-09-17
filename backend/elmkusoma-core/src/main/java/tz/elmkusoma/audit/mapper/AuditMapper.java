@@ -12,62 +12,62 @@ import tz.elmkusoma.audit.dto.SecurityEventResponse;
 public class AuditMapper {
 
     public AuditLogResponse toAuditLogResponse(AuditLog log) {
-        return AuditLogResponse.builder()
-                .id(log.getId())
-                .institutionId(log.getInstitutionId())
-                .userId(log.getUserId())
-                .userEmail(log.getUserEmail())
-                .userRole(log.getUserRole())
-                .entityType(log.getEntityType())
-                .entityId(log.getEntityId())
-                .entityName(log.getEntityName())
-                .action(log.getAction().name())
-                .oldValues(log.getOldValues())
-                .newValues(log.getNewValues())
-                .ipAddress(log.getIpAddress())
-                .userAgent(log.getUserAgent())
-                .requestMethod(log.getRequestMethod())
-                .requestUrl(log.getRequestUrl())
-                .responseStatus(log.getResponseStatus())
-                .durationMs(log.getDurationMs())
-                .createdAt(log.getCreatedAt())
-                .build();
+        return AuditLogResponse.of(
+                log.getId(),
+                log.getInstitutionId(),
+                log.getUserId(),
+                log.getUserEmail(),
+                log.getUserRole(),
+                log.getEntityType(),
+                log.getEntityId(),
+                log.getEntityName(),
+                log.getAction().name(),
+                log.getOldValues(),
+                log.getNewValues(),
+                log.getIpAddress(),
+                log.getUserAgent(),
+                log.getRequestMethod(),
+                log.getRequestUrl(),
+                log.getResponseStatus(),
+                log.getDurationMs(),
+                log.getCreatedAt()
+        );
     }
 
     public ActivityFeedResponse toActivityFeedResponse(ActivityFeed feed) {
-        return ActivityFeedResponse.builder()
-                .id(feed.getId())
-                .institutionId(feed.getInstitutionId())
-                .userId(feed.getUserId())
-                .actorName(feed.getActorName())
-                .action(feed.getAction())
-                .description(feed.getDescription())
-                .entityType(feed.getEntityType())
-                .entityId(feed.getEntityId())
-                .entityName(feed.getEntityName())
-                .metadata(feed.getMetadata())
-                .visibility(feed.getVisibility())
-                .createdAt(feed.getCreatedAt())
-                .build();
+        return ActivityFeedResponse.of(
+                feed.getId(),
+                feed.getInstitutionId(),
+                feed.getUserId(),
+                feed.getActorName(),
+                feed.getAction(),
+                feed.getDescription(),
+                feed.getEntityType(),
+                feed.getEntityId(),
+                feed.getEntityName(),
+                feed.getMetadata(),
+                feed.getVisibility(),
+                feed.getCreatedAt()
+        );
     }
 
     public SecurityEventResponse toSecurityEventResponse(SecurityEvent event) {
-        return SecurityEventResponse.builder()
-                .id(event.getId())
-                .institutionId(event.getInstitutionId())
-                .userId(event.getUserId())
-                .userEmail(event.getUserEmail())
-                .eventType(event.getEventType().name())
-                .description(event.getDescription())
-                .ipAddress(event.getIpAddress())
-                .userAgent(event.getUserAgent())
-                .location(event.getLocation())
-                .severity(event.getSeverity().name())
-                .metadata(event.getMetadata())
-                .resolved(event.getResolved())
-                .resolvedAt(event.getResolvedAt())
-                .resolvedBy(event.getResolvedBy())
-                .createdAt(event.getCreatedAt())
-                .build();
+        return SecurityEventResponse.of(
+                event.getId(),
+                event.getInstitutionId(),
+                event.getUserId(),
+                event.getUserEmail(),
+                event.getEventType().name(),
+                event.getDescription(),
+                event.getIpAddress(),
+                event.getUserAgent(),
+                event.getLocation(),
+                event.getSeverity().name(),
+                event.getMetadata(),
+                event.getResolved(),
+                event.getResolvedAt(),
+                event.getResolvedBy(),
+                event.getCreatedAt()
+        );
     }
 }

@@ -13,7 +13,6 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class UserRoleAssignment extends BaseEntity {
 
     @Column(name = "user_id", nullable = false)
@@ -33,4 +32,15 @@ public class UserRoleAssignment extends BaseEntity {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    public static UserRoleAssignment of(UUID userId, UUID roleId, UUID assignedBy,
+                                        LocalDateTime expiresAt, UUID institutionId) {
+        UserRoleAssignment ura = new UserRoleAssignment();
+        ura.setUserId(userId);
+        ura.setRoleId(roleId);
+        ura.setAssignedBy(assignedBy);
+        ura.setExpiresAt(expiresAt);
+        ura.setInstitutionId(institutionId);
+        return ura;
+    }
 }

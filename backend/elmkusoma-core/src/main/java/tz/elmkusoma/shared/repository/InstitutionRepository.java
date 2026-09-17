@@ -3,6 +3,8 @@ package tz.elmkusoma.shared.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tz.elmkusoma.shared.domain.Institution;
 
@@ -32,4 +34,7 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID> 
     List<Institution> findByRegionIdAndIsDeletedFalse(UUID regionId);
 
     List<Institution> findByDistrictIdAndIsDeletedFalse(UUID districtId);
+
+    @Query("SELECT COUNT(i) FROM Institution i WHERE i.id IN :institutionIds AND i.attendanceRate < :threshold AND i.isDeleted = false")
+    long countByInstitutionIdsAndAttendanceBelow(@Param("institutionIds") List<UUID> institutionIds, @Param("threshold") double threshold);
 }

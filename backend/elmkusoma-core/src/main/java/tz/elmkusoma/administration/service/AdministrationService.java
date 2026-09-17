@@ -97,24 +97,14 @@ public class AdministrationService {
             throw new IllegalArgumentException("Role with name '" + request.getName() + "' already exists");
         }
 
-        CustomRole role = CustomRole.builder()
-                .name(request.getName())
-                .displayName(request.getDisplayName())
-                .description(request.getDescription())
-                .isSystemRole(false)
-                .isActive(true)
-                .build();
-        role.setInstitutionId(institutionId);
-
+        CustomRole role = CustomRole.of(request.getName(), request.getDisplayName(),
+                request.getDescription(), institutionId);
         roleRepository.save(role);
 
         // Save permissions
         if (request.getPermissions() != null && !request.getPermissions().isEmpty()) {
             for (String permission : request.getPermissions()) {
-                RolePermission rolePermission = RolePermission.builder()
-                        .roleId(role.getId())
-                        .permission(permission)
-                        .build();
+                RolePermission rolePermission = RolePermission.of(role.getId(), permission);
                 permissionRepository.save(rolePermission);
             }
         }
@@ -187,21 +177,21 @@ public class AdministrationService {
 
         if (cached.isPresent()) {
             Map<String, Object> data = cached.get().getSnapshotData();
-            return DashboardResponse.builder()
-                    .institutionId(institutionId)
-                    .totalStudents(data.get("totalStudents") != null ? ((Number) data.get("totalStudents")).longValue() : 0L)
-                    .totalTeachers(data.get("totalTeachers") != null ? ((Number) data.get("totalTeachers")).longValue() : 0L)
-                    .totalParents(data.get("totalParents") != null ? ((Number) data.get("totalParents")).longValue() : 0L)
-                    .activeStudents(data.get("activeStudents") != null ? ((Number) data.get("activeStudents")).longValue() : 0L)
-                    .certificatesIssued(data.get("certificatesIssued") != null ? ((Number) data.get("certificatesIssued")).longValue() : 0L)
-                    .pendingImportJobs(data.get("pendingImportJobs") != null ? ((Number) data.get("pendingImportJobs")).longValue() : 0L)
-                    .totalCourses(data.get("totalCourses") != null ? ((Number) data.get("totalCourses")).longValue() : 0L)
-                    .publishedCourses(data.get("publishedCourses") != null ? ((Number) data.get("publishedCourses")).longValue() : 0L)
-                    .draftCourses(data.get("draftCourses") != null ? ((Number) data.get("draftCourses")).longValue() : 0L)
-                    .totalModules(data.get("totalModules") != null ? ((Number) data.get("totalModules")).longValue() : 0L)
-                    .totalLessons(data.get("totalLessons") != null ? ((Number) data.get("totalLessons")).longValue() : 0L)
-                    .liveClassesScheduled(data.get("liveClassesScheduled") != null ? ((Number) data.get("liveClassesScheduled")).longValue() : 0L)
-                    .build();
+            return DashboardResponse.of(
+                    institutionId,
+                    data.get("totalStudents") != null ? ((Number) data.get("totalStudents")).longValue() : 0L,
+                    data.get("totalTeachers") != null ? ((Number) data.get("totalTeachers")).longValue() : 0L,
+                    data.get("totalParents") != null ? ((Number) data.get("totalParents")).longValue() : 0L,
+                    data.get("activeStudents") != null ? ((Number) data.get("activeStudents")).longValue() : 0L,
+                    data.get("certificatesIssued") != null ? ((Number) data.get("certificatesIssued")).longValue() : 0L,
+                    data.get("pendingImportJobs") != null ? ((Number) data.get("pendingImportJobs")).longValue() : 0L,
+                    data.get("totalCourses") != null ? ((Number) data.get("totalCourses")).longValue() : 0L,
+                    data.get("publishedCourses") != null ? ((Number) data.get("publishedCourses")).longValue() : 0L,
+                    data.get("draftCourses") != null ? ((Number) data.get("draftCourses")).longValue() : 0L,
+                    data.get("totalModules") != null ? ((Number) data.get("totalModules")).longValue() : 0L,
+                    data.get("totalLessons") != null ? ((Number) data.get("totalLessons")).longValue() : 0L,
+                    data.get("liveClassesScheduled") != null ? ((Number) data.get("liveClassesScheduled")).longValue() : 0L
+            );
         }
 
         // Calculate stats
@@ -230,21 +220,21 @@ public class AdministrationService {
             }
         }
 
-        DashboardResponse response = DashboardResponse.builder()
-                .institutionId(institutionId)
-                .totalStudents(totalStudents)
-                .totalTeachers(totalTeachers)
-                .totalParents(totalParents)
-                .activeStudents(activeStudents)
-                .certificatesIssued(0L)
-                .pendingImportJobs(pendingJobs)
-                .totalCourses(totalCourses)
-                .publishedCourses(publishedCourses)
-                .draftCourses(draftCourses)
-                .totalModules(totalModules)
-                .totalLessons(totalLessons)
-                .liveClassesScheduled(0L)
-                .build();
+        DashboardResponse response = DashboardResponse.of(
+                institutionId,
+                totalStudents,
+                totalTeachers,
+                totalParents,
+                activeStudents,
+                0L,
+                pendingJobs,
+                totalCourses,
+                publishedCourses,
+                draftCourses,
+                totalModules,
+                totalLessons,
+                0L
+        );
 
         // Cache snapshot
         Map<String, Object> snapshotData = new HashMap<>();
@@ -261,13 +251,12 @@ public class AdministrationService {
         snapshotData.put("totalLessons", totalLessons);
         snapshotData.put("liveClassesScheduled", 0L);
 
-        DashboardSnapshot snapshot = DashboardSnapshot.builder()
-                .institutionId(institutionId)
-                .snapshotType("overview")
-                .snapshotData(snapshotData)
-                .generatedAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusMinutes(15))
-                .build();
+        DashboardSnapshot snapshot = DashboardSnapshot.of(
+                institutionId,
+                "overview",
+                snapshotData,
+                LocalDateTime.now().plusMinutes(15)
+        );
 
         snapshotRepository.save(snapshot);
 
@@ -278,13 +267,7 @@ public class AdministrationService {
 
     public ImportJobResponse createImportJob(String importType, String fileName, UUID institutionId,
                                               UUID userId, String userEmail, String userRole) {
-        DataImportJob job = DataImportJob.builder()
-                .importedBy(userId)
-                .importType(importType)
-                .fileName(fileName)
-                .status(DataImportJob.ImportStatus.PENDING)
-                .build();
-        job.setInstitutionId(institutionId);
+        DataImportJob job = DataImportJob.of(userId, importType, fileName, "", institutionId);
 
         importJobRepository.save(job);
 

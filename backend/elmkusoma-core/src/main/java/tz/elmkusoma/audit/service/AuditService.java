@@ -1,12 +1,13 @@
 package tz.elmkusoma.audit.service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tz.elmkusoma.audit.domain.ActivityFeed;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.domain.SecurityEvent;
@@ -22,9 +23,10 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 @Transactional
 public class AuditService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuditService.class);
 
     private final AuditLogRepository auditLogRepository;
     private final ActivityFeedRepository activityFeedRepository;
@@ -37,21 +39,19 @@ public class AuditService {
                                 String entityType, UUID entityId, String entityName,
                                 AuditLog.AuditAction action,
                                 Map<String, Object> oldValues, Map<String, Object> newValues) {
-        AuditLog auditLog = AuditLog.builder()
-                .institutionId(institutionId)
-                .userId(userId)
-                .userEmail(userEmail)
-                .userRole(userRole)
-                .entityType(entityType)
-                .entityId(entityId)
-                .entityName(entityName)
-                .action(action)
-                .oldValues(oldValues)
-                .newValues(newValues)
-                .build();
+        AuditLog auditLog = new AuditLog();
+        auditLog.setInstitutionId(institutionId);
+        auditLog.setUserId(userId);
+        auditLog.setUserEmail(userEmail);
+        auditLog.setUserRole(userRole);
+        auditLog.setEntityType(entityType);
+        auditLog.setEntityId(entityId);
+        auditLog.setEntityName(entityName);
+        auditLog.setAction(action);
+        auditLog.setOldValues(oldValues);
+        auditLog.setNewValues(newValues);
 
         auditLogRepository.save(auditLog);
-        log.debug("Audit log recorded: {} {} {} by {}", action, entityType, entityId, userEmail);
     }
 
     public void recordAuditLogWithContext(AuditLog auditLog) {
@@ -59,9 +59,9 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuditLogResponse> getAuditLogs(UUID institutionId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return auditLogRepository.findByInstitutionId(institutionId, pageable)
+    public org.springframework.data.domain.Page<AuditLogResponse> getAuditLogs(UUID institutionId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
+        return auditLogRepository.findByInstitutionId(institutionId, org.springframework.data.domain.PageRequest.of(page, size))
                 .map(auditMapper::toAuditLogResponse);
     }
 
@@ -73,8 +73,8 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuditLogResponse> getAuditLogsByUser(UUID userId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public org.springframework.data.domain.Page<AuditLogResponse> getAuditLogsByUser(UUID userId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
         return auditLogRepository.findByUserId(userId, pageable)
                 .map(auditMapper::toAuditLogResponse);
     }
@@ -91,32 +91,31 @@ public class AuditService {
     public ActivityFeed recordActivity(UUID institutionId, UUID userId, String actorName,
                                         String action, String description,
                                         String entityType, UUID entityId, String entityName) {
-        ActivityFeed feed = ActivityFeed.builder()
-                .institutionId(institutionId)
-                .userId(userId)
-                .actorName(actorName)
-                .action(action)
-                .description(description)
-                .entityType(entityType)
-                .entityId(entityId)
-                .entityName(entityName)
-                .visibility("PRIVATE")
-                .build();
+        ActivityFeed feed = new ActivityFeed();
+        feed.setInstitutionId(institutionId);
+        feed.setUserId(userId);
+        feed.setActorName(actorName);
+        feed.setAction(action);
+        feed.setDescription(description);
+        feed.setEntityType(entityType);
+        feed.setEntityId(entityId);
+        feed.setEntityName(entityName);
+        feed.setVisibility("PRIVATE");
 
         activityFeedRepository.save(feed);
         return feed;
     }
 
     @Transactional(readOnly = true)
-    public Page<ActivityFeedResponse> getActivityFeed(UUID institutionId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public org.springframework.data.domain.Page<ActivityFeedResponse> getActivityFeed(UUID institutionId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
         return activityFeedRepository.findByInstitutionId(institutionId, pageable)
                 .map(auditMapper::toActivityFeedResponse);
     }
 
     @Transactional(readOnly = true)
-    public Page<ActivityFeedResponse> getActivityFeedByUser(UUID userId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public org.springframework.data.domain.Page<ActivityFeedResponse> getActivityFeedByUser(UUID userId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
         return activityFeedRepository.findByUserId(userId, pageable)
                 .map(auditMapper::toActivityFeedResponse);
     }
@@ -134,19 +133,17 @@ public class AuditService {
                                               SecurityEvent.SecurityEventType eventType,
                                               String description, SecurityEvent.Severity severity,
                                               String ipAddress, String userAgent) {
-        SecurityEvent event = SecurityEvent.builder()
-                .institutionId(institutionId)
-                .userId(userId)
-                .userEmail(userEmail)
-                .eventType(eventType)
-                .description(description)
-                .severity(severity)
-                .ipAddress(ipAddress)
-                .userAgent(userAgent)
-                .build();
+        SecurityEvent event = new SecurityEvent();
+        event.setInstitutionId(institutionId);
+        event.setUserId(userId);
+        event.setUserEmail(userEmail);
+        event.setEventType(eventType);
+        event.setDescription(description);
+        event.setSeverity(severity);
+        event.setIpAddress(ipAddress);
+        event.setUserAgent(userAgent);
 
         securityEventRepository.save(event);
-        log.info("Security event recorded: {} for user: {} in institution: {}", eventType, userEmail, institutionId);
         return event;
     }
 
@@ -159,13 +156,12 @@ public class AuditService {
         event.setResolvedBy(resolvedBy);
 
         securityEventRepository.save(event);
-        log.info("Security event {} resolved by {}", eventId, resolvedBy);
         return event;
     }
 
     @Transactional(readOnly = true)
-    public Page<SecurityEventResponse> getSecurityEvents(UUID institutionId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+    public org.springframework.data.domain.Page<SecurityEventResponse> getSecurityEvents(UUID institutionId, int page, int size) {
+        org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
         return securityEventRepository.findByInstitutionId(institutionId, pageable)
                 .map(auditMapper::toSecurityEventResponse);
     }
@@ -191,29 +187,27 @@ public class AuditService {
         // Top event types
         List<Object[]> eventTypeCounts = securityEventRepository.countByEventTypeForInstitution(institutionId);
         List<ComplianceReportResponse.EventTypeCount> topEventTypes = eventTypeCounts.stream()
-                .map(row -> ComplianceReportResponse.EventTypeCount.builder()
-                        .eventType(((Enum<?>) row[0]).name())
-                        .count((Long) row[1])
-                        .build())
+                .map(row -> ComplianceReportResponse.EventTypeCount.of(
+                        ((Enum<?>) row[0]).name(),
+                        (Long) row[1]))
                 .collect(Collectors.toList());
 
         // Severity breakdown
         List<Object[]> severityCounts = securityEventRepository.countBySeverityForInstitution(institutionId);
         List<ComplianceReportResponse.SeverityCount> severityBreakdown = severityCounts.stream()
-                .map(row -> ComplianceReportResponse.SeverityCount.builder()
-                        .severity(((Enum<?>) row[0]).name())
-                        .count((Long) row[1])
-                        .build())
+                .map(row -> ComplianceReportResponse.SeverityCount.of(
+                        ((Enum<?>) row[0]).name(),
+                        (Long) row[1]))
                 .collect(Collectors.toList());
 
-        return ComplianceReportResponse.builder()
-                .totalAuditLogs(totalAuditLogs)
-                .totalSecurityEvents(totalSecurityEvents)
-                .unresolvedSecurityEvents(unresolvedSecurityEvents)
-                .criticalEvents(criticalEvents)
-                .failedLoginAttempts(failedLoginAttempts)
-                .topEventTypes(topEventTypes)
-                .severityBreakdown(severityBreakdown)
-                .build();
+        return ComplianceReportResponse.of(
+                totalAuditLogs,
+                totalSecurityEvents,
+                unresolvedSecurityEvents,
+                criticalEvents,
+                failedLoginAttempts,
+                topEventTypes,
+                severityBreakdown
+        );
     }
 }

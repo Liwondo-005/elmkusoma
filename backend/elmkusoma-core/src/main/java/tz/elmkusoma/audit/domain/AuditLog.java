@@ -1,7 +1,6 @@
 package tz.elmkusoma.audit.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -11,11 +10,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "audit_logs")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class AuditLog {
 
     @Id
@@ -84,18 +78,47 @@ public class AuditLog {
         if (createdAt == null) createdAt = LocalDateTime.now();
     }
 
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public UUID getInstitutionId() { return institutionId; }
+    public void setInstitutionId(UUID institutionId) { this.institutionId = institutionId; }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+    public String getUserEmail() { return userEmail; }
+    public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
+    public String getUserRole() { return userRole; }
+    public void setUserRole(String userRole) { this.userRole = userRole; }
+    public String getEntityType() { return entityType; }
+    public void setEntityType(String entityType) { this.entityType = entityType; }
+    public UUID getEntityId() { return entityId; }
+    public void setEntityId(UUID entityId) { this.entityId = entityId; }
+    public String getEntityName() { return entityName; }
+    public void setEntityName(String entityName) { this.entityName = entityName; }
+    public AuditAction getAction() { return action; }
+    public void setAction(AuditAction action) { this.action = action; }
+    public Map<String, Object> getOldValues() { return oldValues; }
+    public void setOldValues(Map<String, Object> oldValues) { this.oldValues = oldValues; }
+    public Map<String, Object> getNewValues() { return newValues; }
+    public void setNewValues(Map<String, Object> newValues) { this.newValues = newValues; }
+    public String getIpAddress() { return ipAddress; }
+    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+    public String getUserAgent() { return userAgent; }
+    public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
+    public String getRequestMethod() { return requestMethod; }
+    public void setRequestMethod(String requestMethod) { this.requestMethod = requestMethod; }
+    public String getRequestUrl() { return requestUrl; }
+    public void setRequestUrl(String requestUrl) { this.requestUrl = requestUrl; }
+    public Integer getResponseStatus() { return responseStatus; }
+    public void setResponseStatus(Integer responseStatus) { this.responseStatus = responseStatus; }
+    public Long getDurationMs() { return durationMs; }
+    public void setDurationMs(Long durationMs) { this.durationMs = durationMs; }
+    public String getSessionId() { return sessionId; }
+    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
     public enum AuditAction {
-        CREATE,
-        UPDATE,
-        DELETE,
-        LOGIN,
-        LOGOUT,
-        LOGIN_FAILED,
-        PASSWORD_CHANGE,
-        ROLE_CHANGE,
-        PERMISSION_CHANGE,
-        EXPORT,
-        IMPORT,
-        VIEW
+        CREATE, UPDATE, DELETE, LOGIN, LOGOUT, LOGIN_FAILED,
+        PASSWORD_CHANGE, ROLE_CHANGE, PERMISSION_CHANGE, EXPORT, IMPORT, VIEW
     }
 }
