@@ -18,4 +18,18 @@ public interface ParentDashboardService {
     ParentAssignmentResponse getChildAssignments(UUID userId, UUID studentId);
 
     ParentResultResponse getChildResults(UUID userId, UUID studentId);
+
+    ParentAssessmentResponse getChildAssessments(UUID userId, UUID studentId);
+
+    ParentLiveClassResponse getChildLiveClasses(UUID userId, UUID studentId);
+
+    ParentNotificationResponse getChildNotifications(UUID userId, UUID studentId);
+
+    ParentLearningProgressResponse getChildLearningProgress(UUID userId, UUID studentId);
+
+    ParentAnnouncementResponse getChildAnnouncements(UUID userId, UUID studentId);
+
+    ParentAllNotificationsResponse getAllChildrenNotifications(UUID userId);
+
+    ParentUpcomingResponse getUpcomingActivities(UUID userId);
 }

@@ -272,7 +272,7 @@ function HistoryTab({
           >
             <option value="">Select class</option>
             {classes.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.classGroupId} value={c.classGroupId}>{c.className}</option>
             ))}
           </select>
         </div>

@@ -113,9 +113,9 @@ export default function TeacherAssessmentsPage() {
       }
       if (questionType === "MCQ" || questionType === "TRUE_FALSE") {
         const opts = (questionType === "TRUE_FALSE"
-          ? [{ optionText: "True", isCorrect: questionOptions[0]?.isCorrect ?? false }, { optionText: "False", isCorrect: questionOptions[1]?.isCorrect ?? false }]
+          ? [{ text: "True", isCorrect: questionOptions[0]?.isCorrect ?? false }, { text: "False", isCorrect: questionOptions[1]?.isCorrect ?? false }]
           : questionOptions.filter(o => o.text.trim())
-        ).map((o, i) => ({ optionText: o.text.trim(), isCorrect: o.isCorrect, sortOrder: i + 1 }))
+        ).map((o, i) => ({ text: o.text.trim(), isCorrect: o.isCorrect, sortOrder: i + 1 }))
         payload.options = opts
       }
       await assessmentApi.addQuestion(questionsAssessmentId, payload as Partial<Question>)

@@ -91,11 +91,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (!res.ok || body.success === false) {
-    const errorMsg = body.error || body.message || `Request failed (${res.status})`
+    const errorMsg = String(body.error || body.message || `Request failed (${res.status})`)
     throw new ApiRequestError(errorMsg, res.status, body)
   }
 
-  return body.data !== undefined ? body.data : body as T
+  return body.data !== undefined ? (body.data as T) : body as T
 }
 
 export class ApiRequestError extends Error {

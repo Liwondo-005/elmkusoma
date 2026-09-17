@@ -82,6 +82,7 @@ export interface Bookmark {
   targetType: string
   targetId: string
   targetTitle: string
+  targetAvailable: boolean
   createdAt: string
 }
 
@@ -230,10 +231,21 @@ export interface EventMaterial {
   isPublic: boolean
 }
 
+export interface SearchFilters {
+  category?: string
+  level?: string
+  provider?: string
+  dateFrom?: string
+  dateTo?: string
+  sort?: string
+  sortBy?: string
+}
+
 export interface SearchResult {
   courses: CourseSummary[]
   resources: Resource[]
   liveClasses: LiveClass[]
+  announcements: any[]
 }
 
 export interface CourseProgress {
@@ -307,10 +319,21 @@ export const learnerApi = {
   markAllRead: () =>
     learnerFetch<void>("/v1/learner/me/notifications/read-all", { method: "PUT" }),
   getCertificates: () => learnerFetch<Certificate[]>("/v1/learner/me/certificates"),
-  search: (q: string, type?: string) =>
-    learnerFetch<SearchResult>(
-      `/v1/learner/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`,
-    ),
+  search: (q: string, type?: string, filters?: SearchFilters) => {
+    const searchParams = new URLSearchParams()
+    searchParams.set("q", q)
+    if (type) searchParams.set("type", type)
+    if (filters?.category) searchParams.set("category", filters.category)
+    if (filters?.level) searchParams.set("level", filters.level)
+    if (filters?.sortBy) searchParams.set("sortBy", filters.sortBy)
+    return learnerFetch<SearchResult>(`/v1/learner/search?${searchParams.toString()}`)
+  },
+  getRelatedCourses: (id: string) =>
+    learnerFetch<any[]>(`/v1/learner/courses/${id}/related`),
+  getResource: (id: string) =>
+    learnerFetch<any>(`/v1/learner/resources/${id}`),
+  getRelatedResources: (id: string) =>
+    learnerFetch<any[]>(`/v1/learner/resources/${id}/related`),
   getEvents: (params?: { eventType?: string; category?: string; search?: string }) => {
     const searchParams = new URLSearchParams()
     if (params?.eventType) searchParams.set("eventType", params.eventType)

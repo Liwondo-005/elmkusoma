@@ -3,17 +3,24 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Clock, FileText, BarChart3, BookOpen, ChevronRight, Loader2 } from "lucide-react"
-import { parentApi, type ChildOverview } from "@/lib/parent-api"
+import { ArrowLeft, Clock, FileText, BarChart3, ChevronRight, Loader2, PenTool, Video, TrendingUp, BookOpen } from "lucide-react"
+import { parentApi, type ChildOverview, type LearningProgressData } from "@/lib/parent-api"
 
 export default function ChildDetailPage() {
   const params = useParams()
   const studentId = params.id as string
   const [child, setChild] = useState<ChildOverview | null>(null)
+  const [progress, setProgress] = useState<LearningProgressData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    parentApi.getChild(studentId).then(setChild).finally(() => setLoading(false))
+    Promise.all([
+      parentApi.getChild(studentId),
+      parentApi.getChildLearningProgress(studentId).catch(() => null),
+    ]).then(([c, p]) => {
+      setChild(c)
+      setProgress(p)
+    }).finally(() => setLoading(false))
   }, [studentId])
 
   if (loading) {
@@ -83,6 +90,45 @@ export default function ChildDetailPage() {
         )}
       </div>
 
+      {progress && progress.courses.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">Learning Progress by Subject</h2>
+            <span className="text-sm font-bold text-primary">{progress.overallProgress}%</span>
+          </div>
+          <div className="mt-4 space-y-3">
+            {progress.courses.map((course) => (
+              <div key={course.subjectId} className="rounded-xl border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{course.subjectName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {course.completedLessons}/{course.totalLessons} lessons
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-foreground">{course.completionPercentage}%</p>
+                    <p className={`text-[10px] font-semibold ${
+                      course.status === "COMPLETED" ? "text-teal" : course.status === "IN_PROGRESS" ? "text-primary" : "text-muted-foreground"
+                    }`}>
+                      {course.status === "COMPLETED" ? "DONE" : course.status === "IN_PROGRESS" ? "IN PROGRESS" : "NOT STARTED"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      course.completionPercentage >= 100 ? "bg-teal" : course.completionPercentage > 0 ? "bg-primary" : "bg-muted"
+                    }`}
+                    style={{ width: `${Math.min(course.completionPercentage, 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Link
           href={`/dashboard/parent/attendance?child=${studentId}`}
@@ -107,6 +153,17 @@ export default function ChildDetailPage() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
         <Link
+          href={`/dashboard/parent/assessments?child=${studentId}`}
+          className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
+        >
+          <PenTool className="size-8 shrink-0 text-primary" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">Assessments</p>
+            <p className="text-xs text-muted-foreground">Tests, quizzes, and exams</p>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </Link>
+        <Link
           href={`/dashboard/parent/results?child=${studentId}`}
           className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
         >
@@ -118,13 +175,24 @@ export default function ChildDetailPage() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
         <Link
-          href="/live-classes"
+          href={`/dashboard/parent/live-classes?child=${studentId}`}
+          className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
+        >
+          <Video className="size-8 shrink-0 text-primary" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">Live Classes</p>
+            <p className="text-xs text-muted-foreground">Scheduled and upcoming sessions</p>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </Link>
+        <Link
+          href={`/dashboard/parent/notifications?child=${studentId}`}
           className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md"
         >
           <BookOpen className="size-8 shrink-0 text-primary" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">Live Classes</p>
-            <p className="text-xs text-muted-foreground">Available learning sessions</p>
+            <p className="text-sm font-semibold text-foreground">Announcements</p>
+            <p className="text-xs text-muted-foreground">School and class announcements</p>
           </div>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>

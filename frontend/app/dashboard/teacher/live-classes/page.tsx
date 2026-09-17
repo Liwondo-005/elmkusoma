@@ -127,6 +127,7 @@ export default function TeacherLiveClassesPage() {
       maxParticipants: lc.maxParticipants || 50,
       classGroupId: lc.classGroupId || "",
       subjectId: lc.subjectId || "",
+      enableRecording: false,
     })
     setEditingId(lc.id)
     setShowForm(true)

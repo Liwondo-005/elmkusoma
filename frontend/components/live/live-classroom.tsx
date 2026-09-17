@@ -141,7 +141,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
     room.on(RoomEvent.ParticipantConnected, (participant: LKParticipant) => {
       setRemoteParticipants(prev => new Map(prev).set(participant.identity, participant))
-      participant.on(RoomEvent.TrackSubscribed, (pub: TrackPublication) => {
+      participant.on(RoomEvent.TrackSubscribed, (_track: any, pub: TrackPublication) => {
         if (pub.kind === Track.Kind.Video) setRemoteVideoTrack(pub)
         if (pub.kind === Track.Kind.Audio) setRemoteAudioTrack(pub)
       })
@@ -155,7 +155,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       })
     })
 
-    room.on(RoomEvent.TrackSubscribed, (pub: TrackPublication, track: Track, participant: LKParticipant) => {
+    room.on(RoomEvent.TrackSubscribed, (_track: any, pub: TrackPublication, _participant: any) => {
       if (pub.kind === Track.Kind.Video) setRemoteVideoTrack(pub)
       if (pub.kind === Track.Kind.Audio) setRemoteAudioTrack(pub)
     })
@@ -178,7 +178,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
       const wsHost = process.env.NEXT_PUBLIC_WS_HOST || window.location.hostname
       const wsPort = process.env.NEXT_PUBLIC_WS_PORT || "8080"
-      const wsUrl = `${protocol}//${wsHost}:${wsPort}/ws/live-class/${liveClass.id}?token=${encodeURIComponent(token)}`
+      const wsUrl = `${protocol}//${wsHost}:${wsPort}/ws/live-class/${liveClass.id}?token=${encodeURIComponent(token ?? "")}`
 
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
