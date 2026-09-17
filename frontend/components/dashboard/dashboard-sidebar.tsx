@@ -173,7 +173,7 @@ const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboa
   { label: "Goals", href: "/dashboard/parent/goals", icon: Target },
   { label: "Teachers", href: "/dashboard/parent/teachers", icon: Users },
   { label: "Calendar", href: "/dashboard/parent/calendar", icon: Calendar },
-  { label: "Live Classes", href: "/live-classes", icon: Video },
+  { label: "Live Classes", href: "/dashboard/parent/live-classes", icon: Video },
   { label: "Library", href: "/dashboard/parent/library", icon: Library },
   { label: "Payments", href: "/dashboard/parent/payments", icon: FileText },
   { label: "Services", href: "/dashboard/parent/services", icon: School },
