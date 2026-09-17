@@ -100,24 +100,60 @@ const learnerNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Settings", href: "/dashboard/learner/settings", icon: Settings },
 ]
 
-const teacherNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
-  { label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard },
-  { label: "My Classes", href: "/dashboard/teacher/classes", icon: BookOpen },
-  { label: "Students", href: "/dashboard/teacher/students", icon: Users },
-  { label: "Learner Support", href: "/dashboard/teacher/learner-support", icon: HeartPulse },
-  { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
-  { label: "Lessons", href: "/dashboard/teacher/lessons", icon: BookOpen },
-  { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
-  { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
-  { label: "Gradebook", href: "/dashboard/teacher/gradebook", icon: BarChart3 },
-  { label: "Grading", href: "/dashboard/teacher/grading", icon: Award },
-  { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Calendar },
-  { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
-  { label: "Announcements", href: "/dashboard/teacher/announcements", icon: Bell },
-  { label: "Analytics", href: "/dashboard/teacher/analytics", icon: TrendingUp },
-  { label: "Reports", href: "/dashboard/teacher/reports", icon: FileBarChart },
-  { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
-  { label: "Settings", href: "/dashboard/teacher/settings", icon: Settings },
+type TeacherNavSection = {
+  group: string
+  items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }>
+}
+
+const teacherNavSections: TeacherNavSection[] = [
+  {
+    group: "OVERVIEW",
+    items: [{ label: "Dashboard", href: "/dashboard/teacher", icon: LayoutDashboard }],
+  },
+  {
+    group: "WORKSPACE",
+    items: [
+      { label: "My Classes", href: "/dashboard/teacher/classes", icon: BookOpen },
+      { label: "Students", href: "/dashboard/teacher/students", icon: Users },
+      { label: "Learner Support", href: "/dashboard/teacher/learner-support", icon: HeartPulse },
+    ],
+  },
+  {
+    group: "TEACHING",
+    items: [
+      { label: "Lessons", href: "/dashboard/teacher/lessons", icon: BookOpen },
+      { label: "Assignments", href: "/dashboard/teacher/assignments", icon: FileText },
+      { label: "Assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
+      { label: "Grading", href: "/dashboard/teacher/grading", icon: Award },
+    ],
+  },
+  {
+    group: "CLASS MANAGEMENT",
+    items: [
+      { label: "Attendance", href: "/dashboard/teacher/attendance", icon: ClipboardCheck },
+      { label: "Gradebook", href: "/dashboard/teacher/gradebook", icon: BarChart3 },
+      { label: "Schedule", href: "/dashboard/teacher/schedule", icon: Calendar },
+    ],
+  },
+  {
+    group: "COMMUNICATION",
+    items: [
+      { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
+      { label: "Announcements", href: "/dashboard/teacher/announcements", icon: Bell },
+      { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
+    ],
+  },
+  {
+    group: "INSIGHTS",
+    items: [
+      { label: "Analytics", href: "/dashboard/teacher/analytics", icon: TrendingUp },
+      { label: "Reports", href: "/dashboard/teacher/reports", icon: FileBarChart },
+    ],
+  },
+  {
+    group: "ACCOUNT",
+    items: [{ label: "Settings", href: "/dashboard/teacher/settings", icon: Settings }],
+  },
 ]
 
 const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
@@ -167,11 +203,41 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const activeNav = isParent
     ? parentNav
-    : isTeacher
-      ? teacherNav
-      : isLearner
-        ? learnerNav
-        : getStudentNav(user)
+    : isLearner
+      ? learnerNav
+      : getStudentNav(user)
+
+  function renderNavItems(items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }>) {
+    return items.map((item) => {
+      const active = pathname === item.href || (item.href !== "/dashboard" && item.href !== "/dashboard/teacher" && pathname.startsWith(item.href))
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+            active
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <item.icon className="size-4 shrink-0" />
+          <span className="flex-1">{item.label}</span>
+          {item.badge ? (
+            <span
+              className={cn(
+                "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
+                active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
+              )}
+            >
+              {item.badge}
+            </span>
+          ) : null}
+        </Link>
+      )
+    })
+  }
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -180,61 +246,28 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {activeNav.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard" && item.href !== "/dashboard/teacher" && pathname.startsWith(item.href))
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <item.icon className="size-4 shrink-0" />
-              <span className="flex-1">{item.label}</span>
-              {(item as { badge?: number }).badge ? (
-                <span
-                  className={cn(
-                    "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
-                    active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
-                  )}
-                >
-                  {(item as { badge?: number }).badge}
-                </span>
-              ) : null}
-            </Link>
-          )
-        })}
-
-        {isAdmin && (
+        {isTeacher ? (
+          teacherNavSections.map((section, si) => (
+            <div key={section.group}>
+              {si > 0 && <div className="my-2 border-t border-border" />}
+              <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.group}
+              </p>
+              {renderNavItems(section.items)}
+            </div>
+          ))
+        ) : (
           <>
-            <div className="my-2 border-t border-border" />
-            <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Administration
-            </p>
-            {adminNav.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(item.href)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  <item.icon className="size-4 shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                </Link>
-              )
-            })}
+            {renderNavItems(activeNav)}
+            {isAdmin && (
+              <>
+                <div className="my-2 border-t border-border" />
+                <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Administration
+                </p>
+                {renderNavItems(adminNav)}
+              </>
+            )}
           </>
         )}
       </nav>
