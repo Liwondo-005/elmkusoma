@@ -371,6 +371,18 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     }
   }, [isInProgress, liveClass.id, token, user, myUserId])
 
+  useEffect(() => {
+    if (localStream && cameraEnabled && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream
+    }
+  }, [localStream, cameraEnabled])
+
+  useEffect(() => {
+    if (screenStream && screenVideoRef.current) {
+      screenVideoRef.current.srcObject = screenStream
+    }
+  }, [screenStream])
+
   async function toggleCamera() {
     if (cameraEnabled) {
       if (localStream) {
@@ -389,9 +401,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         setLocalStream(stream)
         setCameraEnabled(true)
         setVideoTracks((prev) => new Map(prev).set("local-camera", stream))
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream
-        }
       } catch (err) {
         setJoinError("Could not access camera. Please check permissions.")
       }
@@ -432,9 +441,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         setScreenStream(stream)
         setScreenSharing(true)
         setVideoTracks((prev) => new Map(prev).set("local-screen", stream))
-        if (screenVideoRef.current) {
-          screenVideoRef.current.srcObject = stream
-        }
         stream.getVideoTracks()[0].onended = () => {
           setScreenSharing(false)
           setScreenStream(null)
