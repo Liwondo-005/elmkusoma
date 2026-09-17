@@ -323,6 +323,108 @@ export interface LiveClassItem {
   durationMinutes: number
 }
 
+export interface AssessmentItem {
+  id: string
+  title: string
+  subject: string
+  subjectId: string | null
+  totalMarks: number | null
+  passMarks: number | null
+  score: number | null
+  isPassed: boolean | null
+  percentage: number | null
+  createdAt: string
+  remarks: string | null
+  status: string
+}
+
+export interface ParentAssessments {
+  studentName: string
+  className: string
+  upcoming: AssessmentItem[]
+  completed: AssessmentItem[]
+}
+
+export interface ActivityItem {
+  id: string
+  type: string
+  title: string
+  description: string
+  timestamp: string
+  relatedEntityType: string
+  relatedEntityId: string
+  status: string
+}
+
+export interface ParentActivity {
+  activities: ActivityItem[]
+}
+
+export interface TeacherItem {
+  id: string
+  userId: string
+  fullName: string
+  email: string
+  phone: string
+  subject: string
+  subjectId: string | null
+  specialization: string
+}
+
+export interface ParentTeachers {
+  teachers: TeacherItem[]
+}
+
+export interface SubjectPerformanceItem {
+  subjectId: string
+  subjectName: string
+  averageMark: number | null
+  grade: string | null
+  gpa: number | null
+  totalAssessments: number
+  completedAssessments: number
+  trend: string | null
+}
+
+export interface ParentSubjectPerformance {
+  subjects: SubjectPerformanceItem[]
+}
+
+export interface CourseProgressItem {
+  courseId: string
+  courseName: string
+  progressPercentage: number
+  totalLessons: number
+  completedLessons: number
+  pendingLessons: number
+  currentLesson: string | null
+  lastActivity: string | null
+  lastActivityAt: string | null
+  nextLesson: string | null
+  status: string
+}
+
+export interface ParentLearningProgress {
+  courses: CourseProgressItem[]
+}
+
+export interface ParentNotificationItem {
+  id: string
+  title: string
+  message: string
+  category: string
+  priority: string
+  targetType: string
+  targetId: string | null
+  isRead: boolean
+  createdAt: string
+}
+
+export interface ParentNotifications {
+  notifications: ParentNotificationItem[]
+  unreadCount: number
+}
+
 export const parentApi = {
   getOverview: () => parentFetch<FamilyOverview>("/v1/my/overview"),
   getChildren: () => parentFetch<ChildOverview[]>("/v1/my/children"),
@@ -337,6 +439,11 @@ export const parentApi = {
   getChildGoals: (id: string) => parentFetch<ParentGoals>(`/v1/my/children/${id}/goals`),
   getChildEntitlements: (id: string) => parentFetch<EntitlementItem[]>(`/v1/my/children/${id}/entitlements`),
   getChildLiveClasses: (id: string) => parentFetch<LiveClassItem[]>(`/v1/my/children/${id}/live-classes`),
+  getChildAssessments: (id: string) => parentFetch<ParentAssessments>(`/v1/my/children/${id}/assessments`),
+  getChildActivity: (id: string) => parentFetch<ParentActivity>(`/v1/my/children/${id}/activity`),
+  getChildTeachers: (id: string) => parentFetch<ParentTeachers>(`/v1/my/children/${id}/teachers`),
+  getChildSubjectPerformance: (id: string) => parentFetch<ParentSubjectPerformance>(`/v1/my/children/${id}/subject-performance`),
+  getChildLearningProgress: (id: string) => parentFetch<ParentLearningProgress>(`/v1/my/children/${id}/learning-progress`),
 
   getPayments: () => parentFetch<ParentPayments>("/v1/my/payments"),
   getChildPayments: (id: string) => parentFetch<PaymentItem[]>(`/v1/my/children/${id}/payments`),
@@ -359,5 +466,16 @@ export const parentApi = {
     parentFetch<{ id: string }>(`/v1/my/support/tickets/${ticketId}/messages`, {
       method: "POST",
       body: JSON.stringify({ message }),
+    }),
+
+  getNotifications: (page?: number, size?: number) =>
+    parentFetch<ParentNotifications>(`/v1/my/notifications?page=${page || 0}&size=${size || 20}`),
+  markNotificationRead: (id: string) =>
+    parentFetch<string>(`/v1/my/notifications/${id}/read`, { method: "PUT" }),
+
+  updateProfile: (data: { firstName?: string; lastName?: string; phone?: string }) =>
+    parentFetch<{ status: string; fullName: string }>("/v1/my/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
     }),
 }

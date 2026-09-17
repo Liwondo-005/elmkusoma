@@ -1,15 +1,32 @@
 "use client"
 
 import { useState } from "react"
-import { User, Bell, Shield, Eye, Save } from "lucide-react"
+import { User, Bell, Shield, Save, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth"
+import { parentApi } from "@/lib/parent-api"
 
 export default function ParentSettingsPage() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<"profile" | "notifications" | "privacy">("profile")
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [firstName, setFirstName] = useState(user?.name?.split(" ")[0] || "")
+  const [lastName, setLastName] = useState(user?.name?.split(" ").slice(1).join(" ") || "")
+  const [phone, setPhone] = useState("")
 
-  function handleSave() {
+  async function handleProfileSave() {
+    setSaving(true)
+    try {
+      await parentApi.updateProfile({ firstName, lastName, phone: phone || undefined })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handlePrefsSave() {
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -24,13 +41,10 @@ export default function ParentSettingsPage() {
           { key: "notifications" as const, label: "Notifications", icon: Bell },
           { key: "privacy" as const, label: "Privacy", icon: Shield },
         ]).map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               activeTab === tab.key ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
+            }`}>
             <tab.icon className="size-4" />
             {tab.label}
           </button>
@@ -42,29 +56,30 @@ export default function ParentSettingsPage() {
           <h2 className="text-base font-semibold text-foreground">Profile Information</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Full Name</label>
-              <input type="text" defaultValue={user?.name || ""} className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              <label className="text-xs font-medium text-muted-foreground">First Name</label>
+              <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Last Name</label>
+              <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Email</label>
-              <input type="email" defaultValue={user?.email || ""} className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              <input type="email" defaultValue={user?.email || ""} disabled
+                className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-muted-foreground" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Phone</label>
-              <input type="tel" placeholder="+255 XXX XXX XXX" className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Relationship</label>
-              <select className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20">
-                <option>Mother</option>
-                <option>Father</option>
-                <option>Guardian</option>
-              </select>
+              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+255 XXX XXX XXX"
+                className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" />
             </div>
           </div>
-          <button onClick={handleSave} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            <Save className="size-4" />
-            {saved ? "Saved!" : "Save Changes"}
+          <button onClick={handleProfileSave} disabled={saving}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            {saved ? "Saved!" : saving ? "Saving..." : "Save Changes"}
           </button>
         </section>
       )}
@@ -88,7 +103,7 @@ export default function ParentSettingsPage() {
               <input type="checkbox" defaultChecked={pref.default} className="size-4 rounded border-border accent-primary" />
             </label>
           ))}
-          <button onClick={handleSave} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          <button onClick={handlePrefsSave} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
             <Save className="size-4" />
             {saved ? "Saved!" : "Save Preferences"}
           </button>

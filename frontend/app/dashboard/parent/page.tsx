@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Users, AlertTriangle, CheckCircle, Clock, FileText, BarChart3, ChevronRight, Loader2, Star, TrendingUp, Calendar, BookOpen, Video, Trophy, Target, AlertCircle, Info } from "lucide-react"
+import { Users, AlertTriangle, CheckCircle, Clock, FileText, BarChart3, ChevronRight, Loader2, Star, TrendingUp, Calendar, BookOpen, Video, Trophy, Target, AlertCircle, Info, PenTool, Activity } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type FamilyOverview, type ChildOverview, type ParentIntelligence, type AttentionItem, type PositiveSignal, type UpcomingItem } from "@/lib/parent-api"
 
@@ -214,12 +214,12 @@ export default function ParentDashboardPage() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs lg:col-span-2">
           <h2 className="text-base font-semibold text-foreground">Quick Actions</h2>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <QuickAction href="/dashboard/parent/attendance" icon={Clock} label="Attendance" />
-            <QuickAction href="/dashboard/parent/assignments" icon={FileText} label="Assignments" />
-            <QuickAction href="/dashboard/parent/results" icon={BarChart3} label="Results" />
             <QuickAction href="/dashboard/parent/learning" icon={BookOpen} label="Learning" />
+            <QuickAction href="/dashboard/parent/reports" icon={BarChart3} label="Progress" />
+            <QuickAction href="/dashboard/parent/assessments" icon={PenTool} label="Assessments" />
+            <QuickAction href="/dashboard/parent/activity" icon={Activity} label="Activity" />
+            <QuickAction href="/dashboard/parent/teachers" icon={Users} label="Teachers" />
             <QuickAction href="/dashboard/parent/calendar" icon={Calendar} label="Calendar" />
-            <QuickAction href="/dashboard/parent/payments" icon={FileText} label="Payments" />
           </div>
         </section>
 
