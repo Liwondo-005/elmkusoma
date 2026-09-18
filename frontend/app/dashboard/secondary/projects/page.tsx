@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, FolderOpen } from "lucide-react"
+import { ArrowLeft, FolderOpen, Globe } from "lucide-react"
 import Link from "next/link"
 
 export default function SecondaryProjectsPage() {
@@ -15,6 +15,19 @@ export default function SecondaryProjectsPage() {
           <p className="text-sm text-gray-500">Research, investigate, and create</p>
         </div>
       </div>
+
+      <Link
+        href="/dashboard/secondary/projects/passport"
+        className="flex items-center gap-4 rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-5 transition-all hover:border-indigo-300 hover:shadow-sm"
+      >
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-indigo-100">
+          <Globe className="size-6 text-indigo-600" />
+        </div>
+        <div>
+          <p className="font-semibold text-indigo-900">Learning Passport</p>
+          <p className="text-sm text-indigo-600">Your complete academic record</p>
+        </div>
+      </Link>
 
       <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
         <FolderOpen className="mx-auto size-12 text-gray-300" />

@@ -1,7 +1,15 @@
 "use client"
 
-import { ArrowLeft, TrendingUp, BookOpen, FileText, Clock, AlertCircle } from "lucide-react"
+import { ArrowLeft, TrendingUp, BookOpen, FileText, AlertCircle, Calendar } from "lucide-react"
 import Link from "next/link"
+
+const QUICK_ACTIONS = [
+  { icon: FileText, title: "Upcoming Assessments", desc: "Review what is coming next", color: "bg-amber-50 text-amber-600", href: "/dashboard/secondary/assess" },
+  { icon: BookOpen, title: "Recently Studied", desc: "Revisit recent topics", color: "bg-blue-50 text-blue-600", href: "/dashboard/secondary/learn" },
+  { icon: TrendingUp, title: "Practice Sets", desc: "Strengthen weak areas", color: "bg-green-50 text-green-600", href: "/dashboard/secondary/practice" },
+  { icon: AlertCircle, title: "Exam Prep", desc: "Prepare for upcoming exams", color: "bg-orange-50 text-orange-600", href: "/dashboard/secondary/revision/exam-prep" },
+  { icon: Calendar, title: "Study Planner", desc: "Plan your study sessions", color: "bg-indigo-50 text-indigo-600", href: "/dashboard/secondary/revision/study-planner" },
+]
 
 export default function SecondaryRevisionPage() {
   return (
@@ -17,12 +25,7 @@ export default function SecondaryRevisionPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {[
-          { icon: FileText, title: "Upcoming Assessments", desc: "Review what is coming next", color: "bg-amber-50 text-amber-600", href: "/dashboard/secondary/assess" },
-          { icon: BookOpen, title: "Recently Studied", desc: "Revisit recent topics", color: "bg-blue-50 text-blue-600", href: "/dashboard/secondary/learn" },
-          { icon: TrendingUp, title: "Practice Sets", desc: "Strengthen weak areas", color: "bg-green-50 text-green-600", href: "/dashboard/secondary/practice" },
-          { icon: AlertCircle, title: "Topics to Review", desc: "Focus on areas needing practice", color: "bg-orange-50 text-orange-600", href: "/dashboard/secondary/learn" },
-        ].map(item => (
+        {QUICK_ACTIONS.map(item => (
           <Link
             key={item.title}
             href={item.href}
