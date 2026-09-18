@@ -45,7 +45,7 @@ export default function SecondaryLearnPage() {
           {subjects.map(subject => (
             <Link
               key={subject.id}
-              href={`/dashboard/courses/${subject.id}`}
+              href={`/dashboard/secondary/subjects/${subject.id}`}
               className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 transition-all hover:border-indigo-200 hover:shadow-sm"
             >
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50">

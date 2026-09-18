@@ -218,6 +218,15 @@ export const secondaryApi = {
   getStudentProfile: (studentId: string) =>
     secondaryFetch<any>(`/v1/students/${studentId}`),
 
-  getMilestones: (studentId: string) =>
-    secondaryFetch<any[]>(`/v1/nursery/milestones/student/${studentId}`).catch(() => []),
+  getLessonsBySubject: (subjectId: string, classGroupId: string) =>
+    secondaryFetch<any[]>(`/v1/learning/lessons/subject/${subjectId}/class/${classGroupId}`),
+
+  getLessonProgress: (studentId: string) =>
+    secondaryFetch<any[]>(`/v1/learning/progress/student/${studentId}`),
+
+  updateLessonProgress: (lessonId: string, completionPercentage: number) =>
+    secondaryFetch<any>("/v1/learning/progress", {
+      method: "POST",
+      body: JSON.stringify({ lessonId, completionPercentage }),
+    }),
 }
