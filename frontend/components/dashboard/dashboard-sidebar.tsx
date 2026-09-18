@@ -8,16 +8,17 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 
 const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "My Activities", href: "/dashboard/courses", icon: BookOpen },
-  { label: "Fun Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "My Drawings", href: "/dashboard/progress", icon: BarChart3 },
-  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
-  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "My World", href: "/dashboard/nursery", icon: Home },
+  { label: "Learning Journey", href: "/dashboard/nursery/learning-journey", icon: GraduationCap },
+  { label: "Play & Learn", href: "/dashboard/nursery/play", icon: Activity },
+  { label: "Stories", href: "/dashboard/nursery/stories", icon: BookOpen },
+  { label: "Discovery", href: "/dashboard/nursery/discovery", icon: TrendingUp },
+  { label: "Create Studio", href: "/dashboard/nursery/create", icon: PenTool },
+  { label: "My Progress", href: "/dashboard/nursery/progress", icon: BarChart3 },
+  { label: "Backpack", href: "/dashboard/nursery/backpack", icon: Award },
+  { label: "Live Class", href: "/dashboard/nursery/live", icon: Video },
+  { label: "Notifications", href: "/dashboard/nursery/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/nursery/profile", icon: User },
 ]
 
 const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [

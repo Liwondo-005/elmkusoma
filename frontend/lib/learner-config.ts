@@ -24,10 +24,14 @@ export interface DashboardConfig {
 
 const baseNav: Record<LearningLevel, NavItem[]> = {
   NURSERY: [
-    { label: "Home", href: "/dashboard", icon: Home },
-    { label: "Subjects", href: "/dashboard/lessons", icon: BookOpen },
-    { label: "Activities", href: "/dashboard/assignments", icon: ClipboardList },
-    { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+    { label: "My World", href: "/dashboard/nursery", icon: Home },
+    { label: "Learning Journey", href: "/dashboard/nursery/learning-journey", icon: GraduationCap },
+    { label: "Play & Learn", href: "/dashboard/nursery/play", icon: ClipboardList },
+    { label: "Stories", href: "/dashboard/nursery/stories", icon: BookOpen },
+    { label: "Discovery", href: "/dashboard/nursery/discovery", icon: BarChart3 },
+    { label: "Create Studio", href: "/dashboard/nursery/create", icon: PenTool },
+    { label: "My Progress", href: "/dashboard/nursery/progress", icon: BarChart3 },
+    { label: "Backpack", href: "/dashboard/nursery/backpack", icon: Award },
   ],
   PRIMARY: [
     { label: "Home", href: "/dashboard", icon: Home },
@@ -67,12 +71,12 @@ const baseNav: Record<LearningLevel, NavItem[]> = {
 
 const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
   NURSERY: {
-    greeting: "Welcome to your fun learning space!",
-    subtitle: "Let's explore and learn together today.",
+    greeting: "Welcome to your fun learning world!",
+    subtitle: "Let's explore, play, and learn together today.",
     navItems: baseNav.NURSERY,
     sections: ["continue", "today", "activities", "progress", "recent"],
     emptyStateTitle: "Your adventure begins here!",
-    emptyStateDescription: "Fun activities and lessons will appear here.",
+    emptyStateDescription: "Fun activities, stories, and games will appear here.",
     cardStyle: "colorful",
   },
   PRIMARY: {

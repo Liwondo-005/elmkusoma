@@ -194,6 +194,48 @@
   }
 }
 
+/* Nursery World - Child-safe design tokens */
+.nursery-world {
+  --nursery-bg: #fef7f0;
+  --nursery-primary: #6366f1;
+  --nursery-accent: #f472b6;
+  --nursery-success: #22c55e;
+  --nursery-warning: #f59e0b;
+  background: var(--nursery-bg);
+  min-height: 100vh;
+}
+
+.nursery-card {
+  transition: all 0.2s ease;
+}
+
+.nursery-card:active {
+  transform: scale(0.98);
+}
+
+.nursery-card-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+}
+
+/* Nursery animations */
+@keyframes nursery-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes nursery-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.nursery-bounce {
+  animation: nursery-bounce 2s ease-in-out infinite;
+}
+
+.nursery-pulse {
+  animation: nursery-pulse 1.5s ease-in-out infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
