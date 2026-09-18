@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Home } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -21,19 +21,71 @@ const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Profile", href: "/dashboard/nursery/profile", icon: User },
 ]
 
-const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
-  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
-  { label: "Results", href: "/dashboard/results", icon: Award },
-  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
-  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
-  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+type PrimaryNavSection = {
+  group: string
+  items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; dotColor?: string }>
+}
+
+const primaryNavSections: PrimaryNavSection[] = [
+  {
+    group: "HOME",
+    items: [
+      { label: "My World", href: "/dashboard", icon: LayoutDashboard, dotColor: "bg-blue-500" },
+    ],
+  },
+  {
+    group: "LEARNING",
+    items: [
+      { label: "Learn", href: "/dashboard/lessons", icon: BookOpen, dotColor: "bg-teal-500" },
+      { label: "Journey", href: "/dashboard/journey", icon: Map, dotColor: "bg-indigo-500" },
+      { label: "Read", href: "/dashboard/reading", icon: BookOpen, dotColor: "bg-violet-500" },
+    ],
+  },
+  {
+    group: "PRACTICE ZONE",
+    items: [
+      { label: "Practice", href: "/dashboard/assignments", icon: ClipboardList, dotColor: "bg-yellow-500" },
+      { label: "Create", href: "/dashboard/create", icon: Palette, dotColor: "bg-pink-500" },
+      { label: "Assessments", href: "/dashboard/assessments", icon: PenTool, dotColor: "bg-rose-500" },
+      { label: "Discovery", href: "/dashboard/discovery", icon: Lightbulb, dotColor: "bg-amber-500" },
+      { label: "Labs", href: "/dashboard/labs", icon: FlaskConical, dotColor: "bg-emerald-500" },
+    ],
+  },
+  {
+    group: "CHALLENGES",
+    items: [
+      { label: "Quests", href: "/dashboard/quests", icon: Swords, dotColor: "bg-red-500" },
+      { label: "Challenge Zone", href: "/dashboard/challenge-zone", icon: Zap, dotColor: "bg-orange-500" },
+      { label: "Mistake Lab", href: "/dashboard/mistake-lab", icon: AlertCircle, dotColor: "bg-amber-600" },
+    ],
+  },
+  {
+    group: "COLLABORATION",
+    items: [
+      { label: "Learn Together", href: "/dashboard/learn-together", icon: Users, dotColor: "bg-cyan-500" },
+      { label: "Family", href: "/dashboard/family", icon: Home, dotColor: "bg-teal-600" },
+    ],
+  },
+  {
+    group: "TRACKING",
+    items: [
+      { label: "Live Learning", href: "/dashboard/live-classes", icon: Video, dotColor: "bg-red-500" },
+      { label: "Progress", href: "/dashboard/progress", icon: BarChart3, dotColor: "bg-cyan-500" },
+      { label: "Evidence", href: "/dashboard/evidence", icon: Award, dotColor: "bg-green-500" },
+      { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardCheck, dotColor: "bg-emerald-600" },
+    ],
+  },
+  {
+    group: "ACCOUNT",
+    items: [
+      { label: "My Teacher", href: "/dashboard/my-teachers", icon: GraduationCap, dotColor: "bg-purple-500" },
+      { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, dotColor: "bg-blue-600" },
+      { label: "Notifications", href: "/dashboard/notifications", icon: Bell, dotColor: "bg-orange-500" },
+      { label: "Portfolio", href: "/dashboard/portfolio", icon: Backpack, dotColor: "bg-violet-500" },
+      { label: "Profile", href: "/dashboard/profile", icon: User, dotColor: "bg-slate-500" },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings, dotColor: "bg-gray-500" },
+    ],
+  },
 ]
 
 const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
@@ -205,7 +257,7 @@ const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboar
 function getStudentNav(user: { learningLevel?: string | null } | null) {
   const level = (user?.learningLevel || "").toUpperCase()
   if (level === "NURSERY") return nurseryNav
-  if (level === "PRIMARY") return primaryNav
+  if (level === "PRIMARY") return primaryNavSections
   if (level === "COLLEGE") return collegeNav
   if (level === "UNIVERSITY") return universityNav
   return secondaryNav
@@ -225,6 +277,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isAdmin = user?.role === "Admin" || user?.role === "Institution Admin"
   const isParent = user?.role === "Parent"
   const isLearner = user?.role === "Other Learner"
+  const isPrimary = (user?.learningLevel || "").toUpperCase() === "PRIMARY"
 
   const activeNav = isParent
     ? parentNav
@@ -232,7 +285,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       ? learnerNav
       : getStudentNav(user)
 
-  function renderNavItems(items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }>) {
+  function renderNavItems(items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number; dotColor?: string }>) {
     return items.map((item) => {
       const active = pathname === item.href || (item.href !== "/dashboard" && item.href !== "/dashboard/teacher" && pathname.startsWith(item.href))
       return (
@@ -241,13 +294,16 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           href={item.href}
           onClick={onNavigate}
           className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
             active
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
-          <item.icon className="size-4 shrink-0" />
+          {isPrimary && !active && item.dotColor && (
+            <span className={`size-1.5 shrink-0 rounded-full ${item.dotColor}`} />
+          )}
+          {(!isPrimary || active) && <item.icon className="size-4 shrink-0" />}
           <span className="flex-1">{item.label}</span>
           {item.badge ? (
             <span
@@ -262,6 +318,18 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
       )
     })
+  }
+
+  function renderPrimarySections(sections: PrimaryNavSection[]) {
+    return sections.map((section, si) => (
+      <div key={section.group}>
+        {si > 0 && <div className="my-2 border-t border-border" />}
+        <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {section.group}
+        </p>
+        {renderNavItems(section.items)}
+      </div>
+    ))
   }
 
   return (
@@ -281,6 +349,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               {renderNavItems(section.items)}
             </div>
           ))
+        ) : isPrimary && !isParent && !isLearner ? (
+          renderPrimarySections(primaryNavSections)
         ) : (
           <>
             {renderNavItems(activeNav)}

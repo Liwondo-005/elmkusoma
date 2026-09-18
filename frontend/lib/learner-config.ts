@@ -1,6 +1,8 @@
 import {
   BookOpen, FileText, PenTool, BarChart3, Clock, Calendar,
-  GraduationCap, Award, Users, Home, ClipboardList, Library, Bookmark
+  GraduationCap, Award, Users, Home, ClipboardList, Library, Bookmark,
+  Compass, FlaskConical, Palette, Lightbulb, Target, Star, Trophy,
+  Globe, Mic, BookMarked, Brain, Video, Bell, User
 } from "lucide-react"
 import type { ComponentType } from "react"
 
@@ -10,6 +12,15 @@ export interface NavItem {
   label: string
   href: string
   icon: ComponentType<{ className?: string }>
+  badge?: string
+}
+
+export interface SubjectDomain {
+  name: string
+  icon: ComponentType<{ className?: string }>
+  color: string
+  bgColor: string
+  description: string
 }
 
 export interface DashboardConfig {
@@ -20,7 +31,30 @@ export interface DashboardConfig {
   emptyStateTitle: string
   emptyStateDescription: string
   cardStyle: "colorful" | "academic" | "professional"
+  subjects?: SubjectDomain[]
+  learningDomains?: string[]
 }
+
+export const primarySubjects: SubjectDomain[] = [
+  { name: "Mathematics", icon: Brain, color: "text-blue-600", bgColor: "bg-blue-50", description: "Numbers, shapes, and problem solving" },
+  { name: "English", icon: BookOpen, color: "text-emerald-600", bgColor: "bg-emerald-50", description: "Reading, writing, and communication" },
+  { name: "Kiswahili", icon: Mic, color: "text-orange-600", bgColor: "bg-orange-50", description: "Kusoma, kuandika, na mazungumzo" },
+  { name: "Science", icon: FlaskConical, color: "text-teal-600", bgColor: "bg-teal-50", description: "Explore the world around you" },
+  { name: "Social Studies", icon: Globe, color: "text-purple-600", bgColor: "bg-purple-50", description: "Tanzania, community, and geography" },
+  { name: "Religious Education", icon: BookMarked, color: "text-amber-600", bgColor: "bg-amber-50", description: "Faith and moral values" },
+  { name: "Creative Arts", icon: Palette, color: "text-pink-600", bgColor: "bg-pink-50", description: "Drawing, music, and crafts" },
+  { name: "Physical Education", icon: Target, color: "text-red-600", bgColor: "bg-red-50", description: "Health, fitness, and movement" },
+]
+
+export const primaryLearningDomains = [
+  "Learn",
+  "Practice",
+  "Check",
+  "Apply",
+  "Create",
+  "Reflect",
+  "Grow",
+]
 
 const baseNav: Record<LearningLevel, NavItem[]> = {
   NURSERY: [
@@ -34,11 +68,14 @@ const baseNav: Record<LearningLevel, NavItem[]> = {
     { label: "Backpack", href: "/dashboard/nursery/backpack", icon: Award },
   ],
   PRIMARY: [
-    { label: "Home", href: "/dashboard", icon: Home },
-    { label: "Subjects", href: "/dashboard/lessons", icon: BookOpen },
-    { label: "Homework", href: "/dashboard/assignments", icon: FileText },
-    { label: "Quizzes", href: "/dashboard/assessments", icon: PenTool },
+    { label: "My World", href: "/dashboard", icon: Home },
+    { label: "Learn", href: "/dashboard/lessons", icon: BookOpen },
+    { label: "Practice", href: "/dashboard/assignments", icon: ClipboardList },
+    { label: "Discover", href: "/dashboard/assessments", icon: Compass },
+    { label: "Live Learning", href: "/dashboard/live-classes", icon: Video },
     { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+    { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+    { label: "Profile", href: "/dashboard/profile", icon: User },
   ],
   SECONDARY: [
     { label: "Home", href: "/dashboard", icon: Home },
@@ -80,13 +117,15 @@ const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
     cardStyle: "colorful",
   },
   PRIMARY: {
-    greeting: "Ready to learn something new?",
-    subtitle: "Your subjects and homework are waiting for you.",
+    greeting: "Welcome back, Explorer!",
+    subtitle: "What would you like to learn today?",
     navItems: baseNav.PRIMARY,
-    sections: ["continue", "today", "subjects", "homework", "quizzes", "progress", "recent"],
+    sections: ["continue", "today", "subjects", "upcoming", "live", "progress", "feedback"],
     emptyStateTitle: "Your learning journey starts here",
-    emptyStateDescription: "Subjects and lessons will appear here once your teacher sets them up.",
+    emptyStateDescription: "Your subjects and lessons will appear here once your teacher sets them up.",
     cardStyle: "colorful",
+    subjects: primarySubjects,
+    learningDomains: primaryLearningDomains,
   },
   SECONDARY: {
     greeting: "Stay focused on your goals.",

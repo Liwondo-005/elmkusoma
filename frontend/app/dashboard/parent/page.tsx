@@ -89,6 +89,8 @@ export default function ParentDashboardPage() {
   const selectedChild = children.find((c) => c.studentId === selectedChildId)
   const brief = intelligence?.weeklyBrief
 
+  const hasPrimaryChild = children.some((c) => c.isPrimary)
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
@@ -99,6 +101,24 @@ export default function ParentDashboardPage() {
           Here&apos;s how your children are doing today.
         </p>
       </div>
+
+      {hasPrimaryChild && (
+        <Link
+          href="/dashboard/parent/primary-progress"
+          className="flex items-center gap-4 rounded-2xl border-2 border-primary/30 bg-primary/5 p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
+        >
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <BarChart3 className="size-6" />
+          </div>
+          <div className="flex-1">
+            <p className="text-base font-bold text-foreground">Primary School View</p>
+            <p className="text-sm text-muted-foreground">
+              See your child&apos;s progress with a kid-friendly dashboard, subject performance, and teacher info.
+            </p>
+          </div>
+          <ChevronRight className="size-5 shrink-0 text-primary" />
+        </Link>
+      )}
 
       {/* Child Selector */}
       {children.length > 1 && (
