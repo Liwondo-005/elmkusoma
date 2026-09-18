@@ -297,3 +297,180 @@ export interface StudyTask {
   notes?: string
   createdAt: string
 }
+
+// Higher Education Dashboard types
+export type EnrollmentStatusType = "ENROLLED" | "IN_PROGRESS" | "COMPLETED" | "DROPPED" | "WITHDRAWN" | "FAILED"
+
+export interface StudentCourseEnrollment {
+  id: string
+  studentId: string
+  courseId: string
+  programmeId?: string
+  semester?: string
+  academicYear?: string
+  creditHours?: number
+  status: EnrollmentStatusType
+  enrolledDate?: string
+  completedDate?: string
+  grade?: string
+  gradePoints?: number
+  instructorId?: string
+  institutionId: string
+}
+
+export interface AcademicRecord {
+  id: string
+  studentId: string
+  programmeId?: string
+  academicYear?: string
+  semester?: string
+  totalCreditHours?: number
+  earnedCreditHours?: number
+  semesterGpa?: number
+  cumulativeGpa?: number
+  totalCourses?: number
+  completedCourses?: number
+  failedCourses?: number
+  academicStanding?: string
+  classRank?: number
+  totalStudentsInClass?: number
+  institutionId: string
+}
+
+export interface CareerProfile {
+  id: string
+  studentId: string
+  careerObjective?: string
+  targetIndustry?: string
+  targetRole?: string
+  skills?: string
+  certifications?: string
+  experienceSummary?: string
+  cvFileUrl?: string
+  linkedinUrl?: string
+  portfolioUrl?: string
+  isPublic: boolean
+  institutionId: string
+}
+
+export interface WhatsNext {
+  title: string
+  description: string
+  type: string
+  url?: string
+  deadline?: string
+}
+
+export interface TodayItem {
+  title: string
+  type: string
+  time?: string
+  status: string
+}
+
+export interface TodayView {
+  totalTasks: number
+  completedTasks: number
+  pendingTasks: number
+  items: TodayItem[]
+}
+
+export interface ContinueLearning {
+  lastCourse?: string
+  lastModule?: string
+  progressPercent: number
+  courseId?: string
+}
+
+export interface LiveSessionSummary {
+  id: string
+  title: string
+  sessionType: string
+  startTime: string
+  status: string
+}
+
+export interface LiveCampus {
+  liveNow: number
+  upcomingToday: number
+  sessions: LiveSessionSummary[]
+}
+
+export interface CourseSummary {
+  id: string
+  title: string
+  progressPercent: number
+  totalModules: number
+  completedModules: number
+}
+
+export interface AcademicLoad {
+  totalCreditHours: number
+  enrolledCourses: number
+  completedCreditHours: number
+  currentSemesterCourses: number
+  currentSemesterGpa?: number
+  cumulativeGpa?: number
+}
+
+export interface MyProgress {
+  cumulativeGpa?: number
+  semesterGpa?: number
+  totalCourses: number
+  completedCourses: number
+  competenciesCompleted: number
+  competenciesTotal: number
+  projectsCompleted: number
+  projectsTotal: number
+  academicStanding?: string
+}
+
+export interface MyEvidence {
+  portfolioItems: number
+  demonstrations: number
+  projectSubmissions: number
+  logbookEntries: number
+  competenciesRecorded: number
+}
+
+export interface CareerWorld {
+  careerObjective?: string
+  targetIndustry?: string
+  targetRole?: string
+  skillsCount: number
+  hasProfile: boolean
+}
+
+export interface DayItem {
+  title: string
+  type: string
+  time?: string
+  date?: string
+  status: string
+}
+
+export interface DayWeekView {
+  todayItems: DayItem[]
+  weekItems: DayItem[]
+}
+
+export interface HigherEducationDashboard {
+  academicContext: string
+  programmeName?: string
+  departmentName?: string
+  academicYear?: string
+  semester?: string
+  whatsNext?: WhatsNext
+  today?: TodayView
+  continueLearning?: ContinueLearning
+  liveCampus?: LiveCampus
+  myCourses: CourseSummary[]
+  academicLoad?: AcademicLoad
+  projects: CourseSummary[]
+  research: ResearchProject[]
+  myProgress?: MyProgress
+  myEvidence?: MyEvidence
+  careerWorld?: CareerWorld
+  dayWeekView?: DayWeekView
+  studyPlannerTasks: StudyTask[]
+}
