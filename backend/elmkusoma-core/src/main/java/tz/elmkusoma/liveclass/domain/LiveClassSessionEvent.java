@@ -24,8 +24,4 @@ public class LiveClassSessionEvent extends BaseEntity {
 
     @Column(name = "event_data")
     private String eventData;
-
-    @Column(name = "created_at", nullable = false)
-    @Builder.Default
-    private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now();
 }

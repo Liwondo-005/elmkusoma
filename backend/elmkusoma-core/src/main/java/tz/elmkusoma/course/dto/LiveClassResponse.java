@@ -18,12 +18,12 @@ public class LiveClassResponse {
     private String scheduledAt;
     private Integer durationMinutes;
     private String status;
-    private String meetingUrl;
     private Integer maxParticipants;
     private String subjectName;
     private String teacherName;
     private UUID teacherId;
     private UUID subjectId;
+    private UUID classGroupId;
     private String recordingUrl;
     private Integer currentParticipants;
     private Boolean canJoin;

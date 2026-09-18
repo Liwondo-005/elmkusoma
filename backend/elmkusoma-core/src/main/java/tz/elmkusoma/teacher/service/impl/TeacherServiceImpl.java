@@ -155,9 +155,8 @@ public class TeacherServiceImpl implements TeacherService {
 
     @Override
     public TeacherAssignmentResponse addAssignment(UUID institutionId, UUID teacherId, TeacherAssignmentRequest request) {
-        if (!teacherRepository.existsById(teacherId)) {
-            throw new ResourceNotFoundException("Teacher", "id", teacherId);
-        }
+        Teacher teacher = teacherRepository.findByIdAndInstitutionId(teacherId, institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
 
         TeacherAssignment assignment = TeacherAssignment.builder()
                 .teacherId(teacherId)

@@ -11,6 +11,8 @@ public class LiveKitConfig {
 
     private ServerConfig server = new ServerConfig();
     private RoomConfig room = new RoomConfig();
+    private IngressConfig ingress = new IngressConfig();
+    private EgressConfig egress = new EgressConfig();
 
     @Data
     public static class ServerConfig {
@@ -25,8 +27,31 @@ public class LiveKitConfig {
         private int maxParticipants = 10000;
     }
 
+    @Data
+    public static class IngressConfig {
+        private boolean enabled = false;
+        private String whipEndpoint = "";
+        private String rtmpEndpoint = "";
+        private String srtEndpoint = "";
+    }
+
+    @Data
+    public static class EgressConfig {
+        private boolean enabled = false;
+        private String outputBucket = "";
+        private String outputPath = "recordings/";
+    }
+
     public boolean isConfigured() {
         return server.getApiKey() != null && !server.getApiKey().isEmpty()
                 && server.getApiSecret() != null && !server.getApiSecret().isEmpty();
+    }
+
+    public boolean isIngressEnabled() {
+        return isConfigured() && ingress.isEnabled();
+    }
+
+    public boolean isEgressEnabled() {
+        return isConfigured() && egress.isEnabled();
     }
 }

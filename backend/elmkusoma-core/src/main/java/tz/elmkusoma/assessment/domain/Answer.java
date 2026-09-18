@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -33,4 +34,13 @@ public class Answer extends BaseEntity {
 
     @Column(name = "marks_obtained")
     private Integer marksObtained;
+
+    @Column(name = "feedback", columnDefinition = "TEXT")
+    private String feedback;
+
+    @Column(name = "graded_by")
+    private UUID gradedBy;
+
+    @Column(name = "graded_at")
+    private LocalDateTime gradedAt;
 }

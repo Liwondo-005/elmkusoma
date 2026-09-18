@@ -21,10 +21,9 @@ public class CreateLiveClassRequest {
     @Max(value = 480, message = "Duration must not exceed 480 minutes")
     private Integer durationMinutes;
 
-    @Size(max = 500, message = "Meeting URL must not exceed 500 characters")
-    private String meetingUrl;
-
     private UUID subjectId;
+
+    private UUID classGroupId;
 
     @Min(value = 1, message = "Max participants must be at least 1")
     @Max(value = 10000, message = "Max participants must not exceed 10000")

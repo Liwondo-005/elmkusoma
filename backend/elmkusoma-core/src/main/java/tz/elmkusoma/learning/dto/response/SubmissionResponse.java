@@ -17,6 +17,7 @@ public class SubmissionResponse {
     private UUID id;
     private UUID assignmentId;
     private UUID studentId;
+    private String studentName;
     private String fileUrl;
     private LocalDateTime submittedAt;
     private Integer grade;

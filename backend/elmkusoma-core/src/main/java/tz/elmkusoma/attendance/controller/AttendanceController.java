@@ -39,7 +39,7 @@ public class AttendanceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<AttendanceRecordResponse>> markAttendance(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID markedBy,
+            @RequestAttribute("userId") UUID markedBy,
             @Valid @RequestBody MarkAttendanceRequest request) {
         AttendanceRecordResponse response = attendanceService.markAttendance(institutionId, markedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -51,7 +51,7 @@ public class AttendanceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<Void>> bulkMarkAttendance(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID markedBy,
+            @RequestAttribute("userId") UUID markedBy,
             @Valid @RequestBody BulkMarkAttendanceRequest request) {
         attendanceService.markBulkAttendance(institutionId, markedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)

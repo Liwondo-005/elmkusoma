@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: elmkusoma-core
+  main:
+    allow-bean-definition-overriding: true
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:elmkusoma}?sslmode=disable
@@ -29,12 +31,7 @@ spring:
           batch_versioned_data: true
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 6
-    validate-on-migrate: false
-    out-of-order: true
+    enabled: false
 
   data:
     redis:
@@ -82,6 +79,15 @@ livekit:
   room:
     empty-timeout: 300
     max-participants: 10000
+  ingress:
+    enabled: ${LIVEKIT_INGRESS_ENABLED:false}
+    whip-endpoint: ${LIVEKIT_WHIP_ENDPOINT:}
+    rtmp-endpoint: ${LIVEKIT_RTMP_ENDPOINT:}
+    srt-endpoint: ${LIVEKIT_SRT_ENDPOINT:}
+  egress:
+    enabled: ${LIVEKIT_EGRESS_ENABLED:false}
+    output-bucket: ${LIVEKIT_EGRESS_BUCKET:}
+    output-path: ${LIVEKIT_EGRESS_PATH:recordings/}
 
 services:
   media:

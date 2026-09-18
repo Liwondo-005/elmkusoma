@@ -48,6 +48,12 @@ export default function DashboardPage() {
       router.replace("/dashboard/admin")
     } else if (!authLoading && user?.role === "Other Learner") {
       router.replace("/dashboard/learner")
+    } else if (!authLoading && user?.role === "National Admin") {
+      router.replace("/dashboard/national")
+    } else if (!authLoading && user?.role === "Regional Admin") {
+      router.replace("/dashboard/regional")
+    } else if (!authLoading && user?.role === "District Admin") {
+      router.replace("/dashboard/district")
     }
   }, [user, authLoading, router])
 
@@ -131,7 +137,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (authLoading || loading || user?.role === "Parent" || user?.role === "Teacher" || user?.role === "Admin" || user?.role === "Institution Admin") {
+  if (authLoading || loading || user?.role === "Parent" || user?.role === "Teacher" || user?.role === "Admin" || user?.role === "Institution Admin" || user?.role === "National Admin" || user?.role === "Regional Admin" || user?.role === "District Admin") {
     return <LoadingState />
   }
 

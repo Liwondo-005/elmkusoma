@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -20,4 +21,7 @@ public class AnswerResponse {
     private String textAnswer;
     private Boolean isCorrect;
     private Integer marksObtained;
+    private String feedback;
+    private UUID gradedBy;
+    private LocalDateTime gradedAt;
 }

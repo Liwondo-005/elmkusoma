@@ -124,7 +124,6 @@ export interface LiveClass {
   scheduledAt: string
   durationMinutes: number
   status: string
-  meetingUrl: string | null
   maxParticipants: number | null
   teacherId: string
   subjectId: string | null

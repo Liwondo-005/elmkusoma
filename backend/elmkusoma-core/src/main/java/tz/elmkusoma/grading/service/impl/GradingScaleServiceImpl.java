@@ -97,8 +97,11 @@ public class GradingScaleServiceImpl implements GradingScaleService {
                         .gradingScaleId(gb.getGradingScaleId())
                         .gradeLabel(gb.getGradeLabel())
                         .gradeName(gb.getGradeName())
+                        .grade(gb.getGradeLabel())
                         .minPercentage(gb.getMinPercentage())
                         .maxPercentage(gb.getMaxPercentage())
+                        .minMark(gb.getMinPercentage())
+                        .maxMark(gb.getMaxPercentage())
                         .gpaPoints(gb.getGpaPoints())
                         .sortOrder(gb.getSortOrder())
                         .build())
@@ -106,6 +109,23 @@ public class GradingScaleServiceImpl implements GradingScaleService {
     }
 
     private GradingScaleResponse mapToResponse(GradingScale scale) {
+        List<GradeBoundaryResponse> boundaries = gradeBoundaryRepository
+                .findByGradingScaleIdAndIsDeletedFalse(scale.getId())
+                .stream()
+                .map(gb -> GradeBoundaryResponse.builder()
+                        .id(gb.getId())
+                        .gradingScaleId(gb.getGradingScaleId())
+                        .gradeLabel(gb.getGradeLabel())
+                        .gradeName(gb.getGradeName())
+                        .grade(gb.getGradeLabel())
+                        .minPercentage(gb.getMinPercentage())
+                        .maxPercentage(gb.getMaxPercentage())
+                        .minMark(gb.getMinPercentage())
+                        .maxMark(gb.getMaxPercentage())
+                        .gpaPoints(gb.getGpaPoints())
+                        .sortOrder(gb.getSortOrder())
+                        .build())
+                .toList();
         return GradingScaleResponse.builder()
                 .id(scale.getId())
                 .institutionId(scale.getInstitutionId())
@@ -114,8 +134,11 @@ public class GradingScaleServiceImpl implements GradingScaleService {
                 .scaleType(scale.getScaleType().name())
                 .minValue(scale.getMinValue())
                 .maxValue(scale.getMaxValue())
+                .minMark(scale.getMinValue())
+                .maxMark(scale.getMaxValue())
                 .isDefault(scale.getIsDefault())
                 .isActive(scale.getIsActive())
+                .gradeBoundaries(boundaries)
                 .createdAt(scale.getCreatedAt())
                 .updatedAt(scale.getUpdatedAt())
                 .build();

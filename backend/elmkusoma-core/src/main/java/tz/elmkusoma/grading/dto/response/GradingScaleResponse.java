@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -21,8 +22,11 @@ public class GradingScaleResponse {
     private String scaleType;
     private BigDecimal minValue;
     private BigDecimal maxValue;
+    private BigDecimal minMark;
+    private BigDecimal maxMark;
     private Boolean isDefault;
     private Boolean isActive;
+    private List<GradeBoundaryResponse> gradeBoundaries;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

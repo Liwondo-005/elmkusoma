@@ -18,8 +18,12 @@ public class ReportCardResponse {
     private UUID id;
     private UUID studentId;
     private String studentName;
+    private String admissionNumber;
+    private String className;
     private UUID academicYearId;
+    private String academicYear;
     private UUID termId;
+    private String term;
     private String termName;
     private UUID gradingScaleId;
     private BigDecimal totalMarks;

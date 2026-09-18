@@ -25,5 +25,7 @@ public class AssignmentResponse {
     private String assignmentType;
     private String instructions;
     private String status;
+    private Integer submissionCount;
+    private Integer totalStudents;
     private LocalDateTime createdAt;
 }

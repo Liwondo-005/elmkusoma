@@ -1,5 +1,6 @@
 package tz.elmkusoma.attendance.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -16,7 +17,13 @@ public class MarkAttendanceRequest {
     private UUID classGroupId;
 
     @NotNull(message = "Attendance date is required")
+    @JsonProperty("attendanceDate")
     private LocalDate attendanceDate;
+
+    @JsonProperty("date")
+    public void setDate(LocalDate date) {
+        this.attendanceDate = date;
+    }
 
     @NotBlank(message = "Status is required")
     private String status;

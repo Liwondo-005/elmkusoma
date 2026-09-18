@@ -120,6 +120,8 @@ export interface UserInfo {
   institutionId: string
   classGroupId: string | null
   learningLevel?: string | null
+  regionId?: string | null
+  districtId?: string | null
 }
 
 export interface AuthResponse {
@@ -1293,7 +1295,6 @@ export interface LiveClass {
   scheduledAt: string
   durationMinutes: number
   status: string
-  meetingUrl: string
   maxParticipants: number
   recordingUrl: string
   createdAt: string

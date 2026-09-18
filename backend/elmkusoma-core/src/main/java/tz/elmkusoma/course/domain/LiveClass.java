@@ -38,16 +38,17 @@ public class LiveClass extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private String status = "SCHEDULED";
 
-    @Column(name = "meeting_url", length = 500)
-    private String meetingUrl;
-
     @Column(name = "max_participants")
     private Integer maxParticipants;
+
+    @Column(name = "class_group_id")
+    private UUID classGroupId;
 
     @Column(name = "recording_url", length = 500)
     private String recordingUrl;
 
     public enum LiveClassStatus {
-        SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+        SCHEDULED, STARTING, IN_PROGRESS, LIVE, ENDING, COMPLETED, ENDED, CANCELLED,
+        SERVICE_DEGRADED, SERVICE_UNAVAILABLE, RECOVERING
     }
 }

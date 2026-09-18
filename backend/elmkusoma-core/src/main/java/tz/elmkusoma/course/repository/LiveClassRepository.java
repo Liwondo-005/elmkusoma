@@ -38,4 +38,7 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
 
     @Query("SELECT lc FROM LiveClass lc WHERE lc.isDeleted = false AND lc.id <> :excludeId AND ((lc.subjectId IS NOT NULL AND lc.subjectId = :subjectId) OR LOWER(lc.title) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY lc.scheduledAt DESC")
     List<LiveClass> findRelatedLiveClasses(@Param("excludeId") UUID excludeId, @Param("subjectId") UUID subjectId, @Param("query") String query);
+
+    @Query("SELECT lc FROM LiveClass lc WHERE lc.teacherId = :teacherId AND lc.isDeleted = false AND lc.status NOT IN ('CANCELLED', 'COMPLETED', 'ENDED') AND lc.scheduledAt < :endTime AND lc.scheduledAt > :fromTime ORDER BY lc.scheduledAt")
+    List<LiveClass> findOverlappingForTeacher(@Param("teacherId") UUID teacherId, @Param("fromTime") LocalDateTime fromTime, @Param("endTime") LocalDateTime endTime);
 }

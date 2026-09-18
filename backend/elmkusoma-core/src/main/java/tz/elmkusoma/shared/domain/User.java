@@ -49,6 +49,12 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private LearningLevel learningLevel;
 
+    @Column(name = "region_id")
+    private java.util.UUID regionId;
+
+    @Column(name = "district_id")
+    private java.util.UUID districtId;
+
     public enum Role {
         STUDENT,
         TEACHER,
@@ -58,7 +64,10 @@ public class User extends BaseEntity {
         PROVIDER_ADMIN,
         PROVIDER_STAFF,
         ADMIN,
-        INSTITUTION_ADMIN
+        INSTITUTION_ADMIN,
+        NATIONAL_ADMIN,
+        REGIONAL_ADMIN,
+        DISTRICT_ADMIN
     }
 
     public enum LearningLevel {

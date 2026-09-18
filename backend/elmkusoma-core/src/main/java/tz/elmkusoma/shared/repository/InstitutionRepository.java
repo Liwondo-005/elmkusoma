@@ -22,4 +22,14 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID> 
     Page<Institution> findByIsDeletedFalse(Pageable pageable);
 
     Page<Institution> findByIsActiveTrueAndIsDeletedFalse(Pageable pageable);
+
+    long countByIsDeletedFalse();
+
+    long countByRegionIdAndIsDeletedFalse(UUID regionId);
+
+    long countByDistrictIdAndIsDeletedFalse(UUID districtId);
+
+    List<Institution> findByRegionIdAndIsDeletedFalse(UUID regionId);
+
+    List<Institution> findByDistrictIdAndIsDeletedFalse(UUID districtId);
 }

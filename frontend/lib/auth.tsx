@@ -14,6 +14,8 @@ export interface AuthUser {
   institutionId?: string
   classGroupId?: string
   learningLevel?: string | null
+  regionId?: string | null
+  districtId?: string | null
 }
 
 interface AuthContextValue {
@@ -102,6 +104,8 @@ function mapUserInfo(info: UserInfo): AuthUser {
     institutionId: info.institutionId,
     classGroupId: info.classGroupId || undefined,
     learningLevel: info.learningLevel || null,
+    regionId: info.regionId || null,
+    districtId: info.districtId || null,
   }
 }
 
@@ -113,6 +117,9 @@ function mapRoleToFrontend(backendRole: string): string {
     OTHER_LEARNER: "Other Learner",
     ADMIN: "Admin",
     INSTITUTION_ADMIN: "Institution Admin",
+    NATIONAL_ADMIN: "National Admin",
+    REGIONAL_ADMIN: "Regional Admin",
+    DISTRICT_ADMIN: "District Admin",
   }
   return roleMap[backendRole] || backendRole
 }

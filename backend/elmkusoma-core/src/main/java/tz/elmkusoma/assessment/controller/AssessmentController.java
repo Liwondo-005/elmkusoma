@@ -79,7 +79,7 @@ public class AssessmentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<AttemptResponse>> startAttempt(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") UUID studentId,
+            @RequestAttribute("userId") UUID studentId,
             @RequestHeader("X-Institution-Id") UUID institutionId) {
         AttemptResponse response = assessmentService.startAttempt(id, studentId, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -91,7 +91,7 @@ public class AssessmentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<AttemptResponse>> submitAttempt(
             @PathVariable UUID attemptId,
-            @RequestHeader("X-User-Id") UUID studentId,
+            @RequestAttribute("userId") UUID studentId,
             @Valid @RequestBody SubmitAssessmentRequest request) {
         AttemptResponse response = assessmentService.submitAttempt(attemptId, studentId, request);
         return ResponseEntity.ok(ApiResponse.success("Assessment submitted", response));
@@ -111,6 +111,26 @@ public class AssessmentController {
     public ResponseEntity<ApiResponse<AssessmentResultResponse>> getResult(
             @PathVariable UUID id, @PathVariable UUID studentId) {
         AssessmentResultResponse response = assessmentService.getResult(id, studentId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PutMapping("/answers/{answerId}/grade")
+    @Operation(summary = "Grade a SHORT_ANSWER or ESSAY answer manually")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<AnswerResponse>> gradeEssay(
+            @PathVariable UUID answerId,
+            @RequestParam int marksObtained,
+            @RequestParam(required = false) String feedback,
+            @RequestAttribute("userId") UUID gradedBy) {
+        AnswerResponse response = assessmentService.gradeEssay(answerId, marksObtained, feedback, gradedBy);
+        return ResponseEntity.ok(ApiResponse.success("Answer graded", response));
+    }
+
+    @GetMapping("/{id}/submissions")
+    @Operation(summary = "Get all submissions for an assessment with student info")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(@PathVariable UUID id) {
+        List<SubmissionResponse> response = assessmentService.getSubmissions(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

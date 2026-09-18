@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Video, Plus, Clock, Users, ExternalLink, Pencil, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2 } from "lucide-react"
+import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap, CheckCircle2, Circle } from "lucide-react"
 import { appFetch } from "@/lib/fetch"
 
 interface LiveClass {
@@ -12,9 +12,12 @@ interface LiveClass {
   description: string
   scheduledAt: string
   durationMinutes: number
-  meetingUrl: string
   maxParticipants: number
   status: string
+  subjectName: string | null
+  teacherName: string | null
+  classGroupId: string | null
+  subjectId: string | null
   createdAt: string
 }
 
@@ -24,11 +27,24 @@ interface ClassOption {
   subjectName: string
 }
 
+interface SubjectOption {
+  id: string
+  name: string
+  code: string
+}
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   SCHEDULED: { label: "Scheduled", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  IN_PROGRESS: { label: "In Progress", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  STARTING: { label: "Starting", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  IN_PROGRESS: { label: "Live", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  LIVE: { label: "Live", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  ENDING: { label: "Ending", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
   COMPLETED: { label: "Completed", className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
+  ENDED: { label: "Ended", className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
   CANCELLED: { label: "Cancelled", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  SERVICE_DEGRADED: { label: "Degraded", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  SERVICE_UNAVAILABLE: { label: "Unavailable", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  RECOVERING: { label: "Recovering", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
 }
 
 const initialForm = {
@@ -36,14 +52,17 @@ const initialForm = {
   description: "",
   scheduledAt: "",
   durationMinutes: 60,
-  meetingUrl: "",
   maxParticipants: 50,
+  classGroupId: "",
+  subjectId: "",
+  enableRecording: false,
 }
 
 export default function TeacherLiveClassesPage() {
   const { user } = useAuth()
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [classes, setClasses] = useState<ClassOption[]>([])
+  const [subjects, setSubjects] = useState<SubjectOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -51,6 +70,7 @@ export default function TeacherLiveClassesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
+  const [reviewMode, setReviewMode] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -72,6 +92,17 @@ export default function TeacherLiveClassesPage() {
       }
       if (classesData.status === "fulfilled") {
         setClasses(classesData.value)
+        const uniqueSubjects = new Map<string, SubjectOption>()
+        classesData.value.forEach((c) => {
+          if (c.subjectName && c.classGroupId) {
+            uniqueSubjects.set(c.subjectName, {
+              id: c.classGroupId,
+              name: c.subjectName,
+              code: c.subjectName,
+            })
+          }
+        })
+        setSubjects(Array.from(uniqueSubjects.values()))
       }
     } catch {
       setError("Failed to load data")
@@ -84,37 +115,52 @@ export default function TeacherLiveClassesPage() {
     setForm(initialForm)
     setEditingId(null)
     setShowForm(false)
+    setReviewMode(false)
   }
 
   function startEdit(lc: LiveClass) {
     setForm({
       title: lc.title,
-      description: lc.description,
+      description: lc.description || "",
       scheduledAt: lc.scheduledAt ? new Date(lc.scheduledAt).toISOString().slice(0, 16) : "",
       durationMinutes: lc.durationMinutes,
-      meetingUrl: lc.meetingUrl,
-      maxParticipants: lc.maxParticipants,
+      maxParticipants: lc.maxParticipants || 50,
+      classGroupId: lc.classGroupId || "",
+      subjectId: lc.subjectId || "",
+      enableRecording: false,
     })
     setEditingId(lc.id)
     setShowForm(true)
   }
 
-  async function handleSubmit() {
+  function handleProceedToReview() {
     if (!form.title.trim() || !form.scheduledAt) {
       setError("Title and scheduled date/time are required")
       return
     }
+    const scheduledDate = new Date(form.scheduledAt)
+    if (scheduledDate < new Date()) {
+      setError("Scheduled time must be in the future")
+      return
+    }
+    setError(null)
+    setReviewMode(true)
+  }
+
+  async function handleSubmit() {
     try {
       setSubmitting(true)
       setError(null)
-      const payload = {
+      const scheduledDate = new Date(form.scheduledAt)
+      const payload: Record<string, unknown> = {
         title: form.title.trim(),
         description: form.description.trim(),
-        scheduledAt: new Date(form.scheduledAt).toISOString(),
+        scheduledAt: scheduledDate.toISOString(),
         durationMinutes: Number(form.durationMinutes) || 60,
-        meetingUrl: form.meetingUrl.trim(),
         maxParticipants: Number(form.maxParticipants) || 50,
       }
+      if (form.classGroupId) payload.classGroupId = form.classGroupId
+      if (form.subjectId) payload.subjectId = form.subjectId
 
       if (editingId) {
         await appFetch(`/v1/teachers/me/live-classes/${editingId}`, {
@@ -152,6 +198,31 @@ export default function TeacherLiveClassesPage() {
     }
   }
 
+  async function handleStartLive(id: string) {
+    try {
+      setError(null)
+      await appFetch(`/v1/teachers/me/live-classes/${id}/start`, { method: "POST" })
+      setSuccess("Live class started!")
+      loadData()
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start live class")
+    }
+  }
+
+  async function handleEndLive(id: string) {
+    if (!confirm("End this live class? Students will no longer be able to join.")) return
+    try {
+      setError(null)
+      await appFetch(`/v1/teachers/me/live-classes/${id}/end`, { method: "POST" })
+      setSuccess("Live class ended")
+      loadData()
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to end live class")
+    }
+  }
+
   function formatDate(iso: string) {
     if (!iso) return "—"
     return new Date(iso).toLocaleString(undefined, {
@@ -162,6 +233,12 @@ export default function TeacherLiveClassesPage() {
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  function getClassName(classGroupId: string | null) {
+    if (!classGroupId) return null
+    const found = classes.find((c) => c.classGroupId === classGroupId)
+    return found?.className || null
   }
 
   const sortedClasses = [...liveClasses].sort((a, b) => {
@@ -220,6 +297,7 @@ export default function TeacherLiveClassesPage() {
           <h2 className="text-base font-semibold text-foreground">
             {editingId ? "Edit Live Class" : "Schedule New Live Class"}
           </h2>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Title *</label>
@@ -227,20 +305,60 @@ export default function TeacherLiveClassesPage() {
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Live class title"
+                placeholder="e.g. Algebra — Introduction to Linear Equations"
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <GraduationCap className="mr-1 inline size-3" />
+                Class / Group
+              </label>
+              <select
+                value={form.classGroupId}
+                onChange={(e) => setForm({ ...form, classGroupId: e.target.value })}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              >
+                <option value="">Select class (optional)</option>
+                {classes.map((c) => (
+                  <option key={c.classGroupId} value={c.classGroupId}>
+                    {c.className} {c.subjectName ? `— ${c.subjectName}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <BookOpen className="mr-1 inline size-3" />
+                Subject
+              </label>
+              <select
+                value={form.subjectId}
+                onChange={(e) => setForm({ ...form, subjectId: e.target.value })}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              >
+                <option value="">Select subject (optional)</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Brief description of the class..."
+                placeholder="What will be covered in this session..."
                 rows={3}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
               />
             </div>
+
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Date & Time *</label>
               <input
@@ -257,16 +375,7 @@ export default function TeacherLiveClassesPage() {
                 value={form.durationMinutes}
                 onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}
                 min={1}
-                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Meeting URL</label>
-              <input
-                type="url"
-                value={form.meetingUrl}
-                onChange={(e) => setForm({ ...form, meetingUrl: e.target.value })}
-                placeholder="https://meet.google.com/..."
+                max={480}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
@@ -281,10 +390,93 @@ export default function TeacherLiveClassesPage() {
               />
             </div>
           </div>
+
+          <div className="flex items-center gap-4 rounded-lg border border-border bg-background p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.enableRecording}
+                onChange={(e) => setForm({ ...form, enableRecording: e.target.checked })}
+                className="size-4 rounded border-border"
+              />
+              <span className="text-sm text-foreground">Enable recording</span>
+            </label>
+            <span className="text-xs text-muted-foreground">Record this session for replay</span>
+          </div>
+
+          <div className="rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+            Timezone: Africa/Dar_es_Salaam (UTC+03:00)
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={resetForm}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={submitting || !form.title.trim() || !form.scheduledAt}>
-              {submitting ? "Saving..." : editingId ? "Update Class" : "Schedule Class"}
+            {editingId ? (
+              <Button onClick={handleSubmit} disabled={submitting || !form.title.trim() || !form.scheduledAt}>
+                {submitting ? "Saving..." : "Update Class"}
+              </Button>
+            ) : (
+              <Button onClick={handleProceedToReview} disabled={!form.title.trim() || !form.scheduledAt}>
+                Review & Schedule
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {reviewMode && !editingId && (
+        <div className="rounded-2xl border border-primary/30 bg-card p-5 shadow-xs space-y-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="size-5 text-primary" />
+            <h2 className="text-base font-semibold text-foreground">Review Live Class</h2>
+          </div>
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Title</span>
+              <p className="text-foreground">{form.title}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Date & Time</span>
+              <p className="text-foreground">{form.scheduledAt ? new Date(form.scheduledAt).toLocaleString() : "—"}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Duration</span>
+              <p className="text-foreground">{form.durationMinutes} minutes</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Max Participants</span>
+              <p className="text-foreground">{form.maxParticipants}</p>
+            </div>
+            {form.classGroupId && (
+              <div>
+                <span className="text-xs font-medium text-muted-foreground">Class</span>
+                <p className="text-foreground">{getClassName(form.classGroupId) || form.classGroupId}</p>
+              </div>
+            )}
+            {form.subjectId && (
+              <div>
+                <span className="text-xs font-medium text-muted-foreground">Subject</span>
+                <p className="text-foreground">{subjects.find((s) => s.id === form.subjectId)?.name || form.subjectId}</p>
+              </div>
+            )}
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Recording</span>
+              <p className="text-foreground">{form.enableRecording ? "Enabled" : "Disabled"}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Timezone</span>
+              <p className="text-foreground">Africa/Dar_es_Salaam (UTC+03:00)</p>
+            </div>
+          </div>
+          {form.description && (
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Description</span>
+              <p className="mt-1 text-sm text-foreground whitespace-pre-line">{form.description}</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setReviewMode(false)}>Back to Edit</Button>
+            <Button onClick={handleSubmit} disabled={submitting} className="gap-1 bg-green-600 hover:bg-green-700 text-white">
+              {submitting ? "Scheduling..." : "Confirm & Schedule"}
             </Button>
           </div>
         </div>
@@ -302,6 +494,7 @@ export default function TeacherLiveClassesPage() {
         <div className="space-y-3">
           {sortedClasses.map((lc) => {
             const status = statusConfig[lc.status] || statusConfig.SCHEDULED
+            const className = getClassName(lc.classGroupId)
             return (
               <div key={lc.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:shadow-sm">
                 <div className="flex items-start gap-4">
@@ -314,6 +507,20 @@ export default function TeacherLiveClassesPage() {
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.className}`}>
                         {status.label}
                       </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                      {lc.subjectName && (
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="size-3" />
+                          {lc.subjectName}
+                        </span>
+                      )}
+                      {className && (
+                        <span className="flex items-center gap-1">
+                          <GraduationCap className="size-3" />
+                          {className}
+                        </span>
+                      )}
                     </div>
                     {lc.description && (
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{lc.description}</p>
@@ -331,37 +538,78 @@ export default function TeacherLiveClassesPage() {
                         <Users className="size-3" />
                         {lc.maxParticipants} max
                       </span>
-                      {lc.meetingUrl && (
-                        <a
-                          href={lc.meetingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline"
-                        >
-                          <ExternalLink className="size-3" />
-                          Join
-                        </a>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => startEdit(lc)}
-                      title="Edit"
-                    >
-                      <Edit className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleCancel(lc.id)}
-                      title="Cancel"
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    {lc.status === "SCHEDULED" && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => window.open(`/dashboard/teacher/live-classes/${lc.id}/prepare`, "_blank")}
+                        >
+                          Prepare
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => handleStartLive(lc.id)}
+                        >
+                          <Play className="size-3" />
+                          Start Live
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => startEdit(lc)}
+                          title="Edit"
+                        >
+                          <Edit className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleCancel(lc.id)}
+                          title="Cancel"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </>
+                    )}
+                    {(lc.status === "IN_PROGRESS" || lc.status === "LIVE") && (
+                      <>
+                        <Button
+                          size="sm"
+                          className="gap-1"
+                          onClick={() => window.open(`/live-classes/${lc.id}`, "_blank")}
+                        >
+                          <ExternalLink className="size-3" />
+                          Open Classroom
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="gap-1"
+                          onClick={() => handleEndLive(lc.id)}
+                        >
+                          <Square className="size-3" />
+                          End
+                        </Button>
+                      </>
+                    )}
+                    {(lc.status === "COMPLETED" || lc.status === "ENDED" || lc.status === "CANCELLED") && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleCancel(lc.id)}
+                        title="Delete"
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

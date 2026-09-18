@@ -134,22 +134,20 @@ public class AuthServiceImpl implements AuthService {
         log.info("User registered successfully: {}", user.getEmail());
 
         UUID instId = user.getInstitutionId();
-        if (instId != null) {
-            if (role == User.Role.PARENT) {
-                var parent = tz.elmkusoma.parent.domain.Parent.builder()
-                        .userId(user.getId())
-                        .relationshipType(tz.elmkusoma.parent.domain.Parent.RelationshipType.GUARDIAN)
-                        .build();
-                parent.setInstitutionId(instId);
-                parentRepository.save(parent);
-            } else if (role == User.Role.TEACHER) {
-                var teacher = tz.elmkusoma.teacher.domain.Teacher.builder()
-                        .userId(user.getId())
-                        .status(tz.elmkusoma.teacher.domain.TeacherStatus.ACTIVE)
-                        .build();
-                teacher.setInstitutionId(instId);
-                teacherRepository.save(teacher);
-            }
+        if (role == User.Role.PARENT && instId != null) {
+            var parent = tz.elmkusoma.parent.domain.Parent.builder()
+                    .userId(user.getId())
+                    .relationshipType(tz.elmkusoma.parent.domain.Parent.RelationshipType.GUARDIAN)
+                    .build();
+            parent.setInstitutionId(instId);
+            parentRepository.save(parent);
+        } else if (role == User.Role.TEACHER && instId != null) {
+            var teacher = tz.elmkusoma.teacher.domain.Teacher.builder()
+                    .userId(user.getId())
+                    .status(tz.elmkusoma.teacher.domain.TeacherStatus.ACTIVE)
+                    .build();
+            teacher.setInstitutionId(instId);
+            teacherRepository.save(teacher);
         }
 
         String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
@@ -348,6 +346,8 @@ public class AuthServiceImpl implements AuthService {
                 .institutionId(institutionId)
                 .classGroupId(classGroupId)
                 .learningLevel(user.getLearningLevel() != null ? user.getLearningLevel().name() : null)
+                .regionId(user.getRegionId() != null ? user.getRegionId().toString() : null)
+                .districtId(user.getDistrictId() != null ? user.getDistrictId().toString() : null)
                 .build();
     }
 }

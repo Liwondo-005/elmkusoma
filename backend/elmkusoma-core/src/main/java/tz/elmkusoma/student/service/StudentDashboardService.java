@@ -249,7 +249,6 @@ public class StudentDashboardService {
             item.put("scheduledAt", lc.getScheduledAt());
             item.put("durationMinutes", lc.getDurationMinutes());
             item.put("status", lc.getStatus());
-            item.put("meetingUrl", lc.getMeetingUrl());
             item.put("maxParticipants", lc.getMaxParticipants());
             return item;
         }).collect(Collectors.toList());

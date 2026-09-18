@@ -145,7 +145,13 @@ export default function LearnerLiveClassesPage() {
                 {liveNowClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-green-500/30 bg-card p-5 shadow-xs">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-sm font-semibold text-foreground">{cls.title}</h3>
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">{cls.title}</h3>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                          {cls.subjectName && <span>{cls.subjectName}</span>}
+                          {cls.teacherName && <span>• {cls.teacherName}</span>}
+                        </div>
+                      </div>
                       <div className="flex items-center gap-1.5">
                         <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
                           LIVE
@@ -176,15 +182,13 @@ export default function LearnerLiveClassesPage() {
                         {cls.durationMinutes} minutes
                       </div>
                     </div>
-                    {cls.meetingUrl && (
+                    {(cls.status === "IN_PROGRESS" || cls.status === "LIVE") && (
                       <a
-                        href={cls.meetingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={`/live-classes/${cls.id}`}
                         className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
                       >
-                        <ExternalLink className="size-4" />
-                        Join Now
+                        <Video className="size-4" />
+                        Join Live Class
                       </a>
                     )}
                     <a
@@ -207,7 +211,13 @@ export default function LearnerLiveClassesPage() {
                 {upcomingClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-sm font-semibold text-foreground">{cls.title}</h3>
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground">{cls.title}</h3>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                          {cls.subjectName && <span>{cls.subjectName}</span>}
+                          {cls.teacherName && <span>• {cls.teacherName}</span>}
+                        </div>
+                      </div>
                       <div className="flex items-center gap-1.5">
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusBadge(cls.status)}`}>
                           {getStatusLabel(cls.status)}
@@ -244,19 +254,8 @@ export default function LearnerLiveClassesPage() {
                         </div>
                       )}
                     </div>
-                    {cls.meetingUrl && (
-                      <a
-                        href={cls.meetingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-                      >
-                        <ExternalLink className="size-4" />
-                        Join Link
-                      </a>
-                    )}
                     <a
-                      href={`/live-classes/${cls.id}`}
+                      href={`/dashboard/learner/live-classes/${cls.id}`}
                       className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                     >
                       <MessageSquare className="size-4" />

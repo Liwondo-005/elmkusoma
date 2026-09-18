@@ -12,16 +12,20 @@ import {
   Send,
   Users,
   Clock,
-  ExternalLink,
   Wifi,
   WifiOff,
   Hand,
   XCircle,
+  Flag,
+  Circle,
+  Paperclip,
+  FileText,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
+import { Room, RoomEvent, Track, Participant as LKParticipant, TrackPublication } from "livekit-client"
 
 interface Participant {
   userId: string
@@ -56,16 +60,35 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null)
   const [serviceMode, setServiceMode] = useState<"full" | "chat-only" | "unknown">("unknown")
+  const [liveKitToken, setLiveKitToken] = useState<string | null>(null)
+  const [liveKitUrl, setLiveKitUrl] = useState<string | null>(null)
+  const [roomName, setRoomName] = useState<string | null>(null)
+  const [remoteParticipants, setRemoteParticipants] = useState<Map<string, LKParticipant>>(new Map())
+  const [remoteVideoTrack, setRemoteVideoTrack] = useState<TrackPublication | null>(null)
+  const [remoteAudioTrack, setRemoteAudioTrack] = useState<TrackPublication | null>(null)
+  const [showIssueModal, setShowIssueModal] = useState(false)
+  const [issueType, setIssueType] = useState("CONNECTION_PROBLEM")
+  const [issueDescription, setIssueDescription] = useState("")
+  const [issueSubmitting, setIssueSubmitting] = useState(false)
+  const [issueSent, setIssueSent] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingEgressId, setRecordingEgressId] = useState<string | null>(null)
+  const [showMaterialInput, setShowMaterialInput] = useState(false)
+  const [materialName, setMaterialName] = useState("")
+  const [materialUrl, setMaterialUrl] = useState("")
+  const [attachedMaterials, setAttachedMaterials] = useState<Array<{name: string; url: string}>>([])
+  const roomRef = useRef<Room | null>(null)
+  const remoteVideoRef = useRef<HTMLVideoElement>(null)
+  const remoteAudioRef = useRef<HTMLAudioElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const startTimeRef = useRef<Date | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const retryCountRef = useRef(0)
-  const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const screenVideoRef = useRef<HTMLVideoElement>(null)
 
-  const isInProgress = liveClass.status === "IN_PROGRESS"
+  const isInProgress = liveClass.status === "IN_PROGRESS" || liveClass.status === "LIVE"
   const myUserId = user?.id || ""
 
   const getElapsed = useCallback(() => {
@@ -89,16 +112,64 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   }, [chat])
 
   useEffect(() => {
-    if (!isInProgress) return
-    heartbeatRef.current = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "HEARTBEAT" }))
+    if (!isInProgress || !liveKitToken || !liveKitUrl || serviceMode !== "full") return
+
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast: true,
+    })
+    roomRef.current = room
+
+    room.on(RoomEvent.Connected, () => {
+      setConnected(true)
+      setReconnecting(false)
+      retryCountRef.current = 0
+    })
+
+    room.on(RoomEvent.Disconnected, () => {
+      if (isInProgress && retryCountRef.current < 10) {
+        setReconnecting(true)
+        const delay = Math.min(3000 * Math.pow(1.5, retryCountRef.current), 30000)
+        retryCountRef.current++
+        setTimeout(() => {
+          if (roomRef.current && liveKitToken && liveKitUrl) {
+            roomRef.current.connect(liveKitUrl, liveKitToken).catch(() => {})
+          }
+        }, delay)
       }
-    }, 30000)
+    })
+
+    room.on(RoomEvent.ParticipantConnected, (participant: LKParticipant) => {
+      setRemoteParticipants(prev => new Map(prev).set(participant.identity, participant))
+      participant.on(RoomEvent.TrackSubscribed, (track: any, publication: any) => {
+        if (publication.kind === Track.Kind.Video) setRemoteVideoTrack(publication)
+        if (publication.kind === Track.Kind.Audio) setRemoteAudioTrack(publication)
+      })
+    })
+
+    room.on(RoomEvent.ParticipantDisconnected, (participant: LKParticipant) => {
+      setRemoteParticipants(prev => {
+        const next = new Map(prev)
+        next.delete(participant.identity)
+        return next
+      })
+    })
+
+    room.on(RoomEvent.TrackSubscribed, (track: any, publication: any, participant: any) => {
+      if (publication.kind === Track.Kind.Video) setRemoteVideoTrack(publication)
+      if (publication.kind === Track.Kind.Audio) setRemoteAudioTrack(publication)
+    })
+
+    room.connect(liveKitUrl, liveKitToken).catch(err => {
+      console.error("LiveKit connection failed:", err)
+      setServiceMode("chat-only")
+    })
+
     return () => {
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+      room.disconnect()
+      roomRef.current = null
     }
-  }, [isInProgress])
+  }, [isInProgress, liveKitToken, liveKitUrl, serviceMode])
 
   useEffect(() => {
     if (!isInProgress || !token || !user) return
@@ -129,6 +200,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         }).then(r => r.json()).then(data => {
           if (data?.data?.liveKitAvailable) {
             setServiceMode("full")
+            setLiveKitToken(data.data.liveKitToken)
+            setLiveKitUrl(data.data.liveKitUrl)
+            setRoomName(data.data.roomName)
           } else {
             setServiceMode("chat-only")
           }
@@ -220,6 +294,41 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               system: true,
             }])
             break
+          case "PARTICIPANT_MUTED":
+            if (data.targetUserId === myUserId) {
+              setMicEnabled(false)
+              setCameraEnabled(false)
+              setJoinError("You have been muted by the teacher.")
+            } else {
+              setChat((prev) => [...prev, {
+                userId: "system",
+                userName: "System",
+                message: `A participant was muted by the teacher`,
+                timestamp: data.timestamp,
+                system: true,
+              }])
+            }
+            break
+          case "PARTICIPANT_UNMUTED":
+            if (data.targetUserId === myUserId) {
+              setJoinError("")
+            }
+            break
+          case "KICKED":
+            setJoinError(data.message || "You have been removed from the class.")
+            retryCountRef.current = 10
+            if (wsRef.current) wsRef.current.close()
+            break
+          case "PARTICIPANT_KICKED":
+            setParticipants((prev) => prev.filter((p) => p.userId !== data.targetUserId))
+            setChat((prev) => [...prev, {
+              userId: "system",
+              userName: "System",
+              message: `A participant was removed from the class`,
+              timestamp: data.timestamp,
+              system: true,
+            }])
+            break
           case "ERROR":
             setJoinError(data.error)
             break
@@ -246,7 +355,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     return () => {
       retryCountRef.current = 10
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+      if (roomRef.current) {
+        roomRef.current.disconnect()
+        roomRef.current = null
+      }
       if (wsRef.current) {
         if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
           wsRef.current.send(JSON.stringify({ type: "LEAVE" }))
@@ -352,6 +464,22 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     setHandRaised(!handRaised)
   }
 
+  function muteParticipant(targetUserId: string) {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ type: "MUTE_PARTICIPANT", userId: targetUserId }))
+  }
+
+  function unmuteParticipant(targetUserId: string) {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ type: "UNMUTE_PARTICIPANT", userId: targetUserId }))
+  }
+
+  function kickParticipant(targetUserId: string) {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    if (!confirm("Remove this participant from the class?")) return
+    wsRef.current.send(JSON.stringify({ type: "KICK_PARTICIPANT", userId: targetUserId }))
+  }
+
   function sendChatMessage(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = message.trim()
@@ -367,10 +495,57 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     }
   }
 
+  async function toggleRecording() {
+    if (!liveClass?.id) return
+    try {
+      const token = localStorage.getItem("elmkusoma_access_token")
+      const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+      if (isRecording && recordingEgressId) {
+        const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/stop`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          setIsRecording(false)
+          setRecordingEgressId(null)
+          setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Recording stopped", timestamp: new Date().toISOString(), system: true }])
+        }
+      } else {
+        const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/start`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const egressId = data?.data?.egressId
+          setIsRecording(true)
+          setRecordingEgressId(egressId || null)
+          setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Recording started", timestamp: new Date().toISOString(), system: true }])
+        }
+      }
+    } catch {
+      setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Failed to toggle recording", timestamp: new Date().toISOString(), system: true }])
+    }
+  }
+
+  function handleAttachMaterial() {
+    if (!materialName.trim() || !materialUrl.trim()) return
+    setAttachedMaterials((prev) => [...prev, { name: materialName.trim(), url: materialUrl.trim() }])
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "CHAT", message: `📎 Material shared: ${materialName.trim()} - ${materialUrl.trim()}` }))
+    }
+    setMaterialName("")
+    setMaterialUrl("")
+    setShowMaterialInput(false)
+  }
+
   function handleLeave() {
     retryCountRef.current = 10
     if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
-    if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+    if (roomRef.current) {
+      roomRef.current.disconnect()
+      roomRef.current = null
+    }
     if (localStream) {
       localStream.getTracks().forEach((t) => t.stop())
       setLocalStream(null)
@@ -402,17 +577,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           </Link>
         </div>
         <div className="flex items-center gap-2">
-          {liveClass.meetingUrl && (
-            <a
-              href={liveClass.meetingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <ExternalLink className="size-3" />
-              External Tool
-            </a>
-          )}
           <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={handleLeave}>
             Leave
           </Button>
@@ -423,11 +587,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         <span className={cn(
           "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold",
           isInProgress ? "bg-teal text-teal-foreground" :
-          liveClass.status === "COMPLETED" ? "bg-gray-100 text-gray-600" :
+          liveClass.status === "SERVICE_DEGRADED" || liveClass.status === "SERVICE_UNAVAILABLE" ? "bg-amber-100 text-amber-700" :
+          liveClass.status === "RECOVERING" ? "bg-blue-100 text-blue-700" :
+          liveClass.status === "COMPLETED" || liveClass.status === "ENDED" ? "bg-gray-100 text-gray-600" :
           "bg-blue-100 text-blue-700"
         )}>
-          {isInProgress && <span className="size-1.5 animate-pulse rounded-full bg-white" />}
-          {liveClass.status}
+          {(isInProgress || liveClass.status === "LIVE") && <span className="size-1.5 animate-pulse rounded-full bg-white" />}
+          {liveClass.status === "IN_PROGRESS" ? "LIVE" : liveClass.status.replace(/_/g, " ")}
         </span>
         <div>
           <h1 className="text-base font-bold text-foreground">{liveClass.title}</h1>
@@ -463,8 +629,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
       {serviceMode === "chat-only" && isInProgress && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700">
-          <p className="font-medium">Video service unavailable</p>
-          <p className="mt-0.5 text-amber-600">Live video is temporarily unavailable. You can still participate via chat. The teacher has been notified.</p>
+          <p className="font-medium">Live service degraded</p>
+          <p className="mt-0.5 text-amber-600">ELMKUSOMA Live is experiencing a temporary technical issue with the real-time media service. You can still participate via chat. We are working to restore full service.</p>
         </div>
       )}
 
@@ -474,7 +640,18 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             <div className="relative aspect-video bg-slate-900 flex items-center justify-center">
               {isInProgress ? (
                 <>
-                  {screenStream ? (
+                  {remoteVideoTrack ? (
+                    <video
+                      ref={el => {
+                        if (el && remoteVideoTrack.videoTrack) {
+                          el.srcObject = new MediaStream([remoteVideoTrack.videoTrack.mediaStreamTrack!])
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-contain"
+                    />
+                  ) : screenStream ? (
                     <video
                       ref={screenVideoRef}
                       autoPlay
@@ -495,6 +672,17 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       <Video className="mx-auto size-10 mb-2 opacity-40" />
                       <p className="text-xs opacity-60">Camera off</p>
                     </div>
+                  )}
+
+                  {remoteAudioTrack && (
+                    <audio
+                      ref={el => {
+                        if (el && remoteAudioTrack.audioTrack) {
+                          el.srcObject = new MediaStream([remoteAudioTrack.audioTrack.mediaStreamTrack!])
+                        }
+                      }}
+                      autoPlay
+                    />
                   )}
 
                   {screenStream && localStream && cameraEnabled && (
@@ -519,12 +707,46 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     <ControlButton active={screenSharing} onClick={toggleScreenShare} label={screenSharing ? "Stop sharing" : "Share screen"}>
                       <MonitorUp className="size-4" />
                     </ControlButton>
+                    <ControlButton active={isRecording} onClick={toggleRecording} label={isRecording ? "Stop recording" : "Start recording"}>
+                      <Circle className={cn("size-4", isRecording && "fill-red-500 text-red-500 animate-pulse")} />
+                    </ControlButton>
+                    <ControlButton active={showMaterialInput} onClick={() => setShowMaterialInput(!showMaterialInput)} label="Attach material">
+                      <Paperclip className="size-4" />
+                    </ControlButton>
                     <ControlButton active={handRaised} onClick={toggleHand} label={handRaised ? "Lower hand" : "Raise hand"}>
                       <Hand className="size-4" />
                     </ControlButton>
+                    <button
+                      type="button"
+                      onClick={() => setShowIssueModal(true)}
+                      aria-label="Report issue"
+                      className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-red-500/20 text-white hover:bg-red-500/30 transition-colors"
+                      title="Report an issue"
+                    >
+                      <Flag className="size-4" />
+                    </button>
                   </div>
+                  {showMaterialInput && (
+                    <div className="absolute inset-x-0 bottom-16 flex items-center gap-2 bg-black/80 p-3 rounded-lg mx-3">
+                      <input
+                        type="text"
+                        value={materialName}
+                        onChange={(e) => setMaterialName(e.target.value)}
+                        placeholder="Material name"
+                        className="h-8 flex-1 rounded border border-white/20 bg-white/10 px-2 text-xs text-white placeholder:text-white/50 outline-none"
+                      />
+                      <input
+                        type="url"
+                        value={materialUrl}
+                        onChange={(e) => setMaterialUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="h-8 flex-1 rounded border border-white/20 bg-white/10 px-2 text-xs text-white placeholder:text-white/50 outline-none"
+                      />
+                      <Button size="sm" className="h-8 text-xs" onClick={handleAttachMaterial}>Share</Button>
+                    </div>
+                  )}
                 </>
-              ) : liveClass.status === "COMPLETED" ? (
+              ) : liveClass.status === "COMPLETED" || liveClass.status === "ENDED" || liveClass.status === "CANCELLED" ? (
                 <div className="text-center text-white">
                   <p className="text-sm opacity-75">This session has ended</p>
                 </div>
@@ -546,6 +768,19 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               {liveClass.description && <p className="whitespace-pre-line line-clamp-3">{liveClass.description}</p>}
             </div>
           </div>
+          {attachedMaterials.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <h2 className="text-xs font-semibold text-foreground mb-2">Attached Materials</h2>
+              <div className="space-y-1.5">
+                {attachedMaterials.map((m, i) => (
+                  <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline">
+                    <FileText className="size-3 shrink-0" />
+                    {m.name}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">
@@ -558,19 +793,32 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 <p className="text-[10px] text-muted-foreground">No participants yet</p>
               ) : (
                 participants.map((p) => (
-                  <div key={p.userId} className="flex items-center gap-2">
+                  <div key={p.userId} className="flex items-center gap-2 group">
                     <span className={cn(
                       "flex size-6 items-center justify-center rounded-full text-[10px] font-semibold",
                       p.userId === myUserId ? "bg-primary text-primary-foreground" : "bg-accent text-primary"
                     )}>
                       {p.userName?.charAt(0) || "?"}
                     </span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-medium text-foreground truncate">
                         {p.userName}
                         {p.userId === myUserId && <span className="text-muted-foreground"> (you)</span>}
                       </p>
                     </div>
+                    {p.userId !== myUserId && (user?.role === "Teacher" || user?.role === "Admin") && (
+                      <div className="hidden group-hover:flex items-center gap-0.5">
+                        <button onClick={() => muteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title="Mute">
+                          <MicOff className="size-3" />
+                        </button>
+                        <button onClick={() => unmuteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title="Unmute">
+                          <Mic className="size-3" />
+                        </button>
+                        <button onClick={() => kickParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Remove">
+                          <XCircle className="size-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -633,6 +881,88 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           </div>
         </div>
       </div>
+      {showIssueModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowIssueModal(false)}>
+          <div className="w-full max-w-md rounded-xl bg-card p-5 shadow-xl border border-border" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Flag className="size-4 text-destructive" /> Report an Issue
+              </h3>
+              <button onClick={() => setShowIssueModal(false)} className="text-muted-foreground hover:text-foreground">
+                <XCircle className="size-4" />
+              </button>
+            </div>
+            {issueSent ? (
+              <div className="py-4 text-center">
+                <p className="text-sm text-teal font-medium">Issue reported successfully</p>
+                <p className="text-xs text-muted-foreground mt-1">Thank you for your report. Our team will investigate.</p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={() => { setShowIssueModal(false); setIssueSent(false); setIssueDescription("") }}>
+                  Close
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-foreground">Issue Type</label>
+                  <select
+                    value={issueType}
+                    onChange={e => setIssueType(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-border bg-muted/60 px-3 py-2 text-xs outline-none"
+                  >
+                    <option value="CONNECTION_PROBLEM">Connection Problem</option>
+                    <option value="AUDIO_PROBLEM">Audio Problem</option>
+                    <option value="VIDEO_PROBLEM">Video Problem</option>
+                    <option value="CHAT_PROBLEM">Chat Problem</option>
+                    <option value="PARTICIPANT_ISSUE">Participant Issue</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground">Description (optional)</label>
+                  <textarea
+                    value={issueDescription}
+                    onChange={e => setIssueDescription(e.target.value)}
+                    rows={3}
+                    placeholder="Describe the issue..."
+                    className="mt-1 w-full rounded-lg border border-border bg-muted/60 px-3 py-2 text-xs outline-none resize-none"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button variant="outline" size="sm" onClick={() => setShowIssueModal(false)}>Cancel</Button>
+                  <Button
+                    size="sm"
+                    disabled={issueSubmitting}
+                    onClick={async () => {
+                      setIssueSubmitting(true)
+                      try {
+                        const res = await fetch(`/v1/live-session/issues`, {
+                          method: "POST",
+                          headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "X-Institution-Id": user?.institutionId || "",
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            classId: liveClass.id,
+                            issueType,
+                            description: issueDescription || undefined,
+                          }),
+                        })
+                        if (res.ok) setIssueSent(true)
+                      } catch {
+                      } finally {
+                        setIssueSubmitting(false)
+                      }
+                    }}
+                  >
+                    {issueSubmitting ? "Sending..." : "Submit Report"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

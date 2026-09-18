@@ -6,6 +6,9 @@ const adminRoutes = ["/dashboard/admin", "/dashboard/audit"]
 const learnerRoutes = ["/dashboard/learner"]
 const studentRoutes = ["/dashboard/courses", "/dashboard/lessons", "/dashboard/assignments", "/dashboard/assessments", "/dashboard/results", "/dashboard/attendance", "/dashboard/progress", "/dashboard/messages", "/dashboard/profile", "/dashboard/settings", "/dashboard/bookmarks"]
 const parentRoutes = ["/dashboard/parent"]
+const nationalRoutes = ["/dashboard/national"]
+const regionalRoutes = ["/dashboard/regional"]
+const districtRoutes = ["/dashboard/district"]
 
 export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("elmkusoma_access_token")
@@ -29,6 +32,9 @@ export function middleware(request: NextRequest) {
         const isLearnerRoute = learnerRoutes.some((r) => pathname.startsWith(r))
         const isStudentRoute = studentRoutes.some((r) => pathname.startsWith(r))
         const isParentRoute = parentRoutes.some((r) => pathname.startsWith(r))
+        const isNationalRoute = nationalRoutes.some((r) => pathname.startsWith(r))
+        const isRegionalRoute = regionalRoutes.some((r) => pathname.startsWith(r))
+        const isDistrictRoute = districtRoutes.some((r) => pathname.startsWith(r))
 
         if (isTeacherRoute && role !== "Teacher" && role !== "Instructor") {
           return NextResponse.redirect(new URL("/dashboard", request.url))
@@ -46,6 +52,15 @@ export function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
         if (isParentRoute && role !== "Parent") {
+          return NextResponse.redirect(new URL("/dashboard", request.url))
+        }
+        if (isNationalRoute && role !== "National Admin") {
+          return NextResponse.redirect(new URL("/dashboard", request.url))
+        }
+        if (isRegionalRoute && role !== "Regional Admin") {
+          return NextResponse.redirect(new URL("/dashboard", request.url))
+        }
+        if (isDistrictRoute && role !== "District Admin") {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
       } catch {

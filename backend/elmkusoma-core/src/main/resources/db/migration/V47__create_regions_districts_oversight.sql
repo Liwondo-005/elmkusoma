@@ -1,0 +1,86 @@
+CREATE TABLE regions (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by UUID,
+    updated_by UUID,
+    CONSTRAINT uk_region_code UNIQUE (code),
+    CONSTRAINT uk_region_name UNIQUE (name)
+);
+
+CREATE TABLE districts (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    region_id UUID NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by UUID,
+    updated_by UUID,
+    CONSTRAINT uk_district_code UNIQUE (code),
+    CONSTRAINT fk_district_region FOREIGN KEY (region_id) REFERENCES regions(id)
+);
+
+ALTER TABLE users ADD COLUMN region_id UUID;
+ALTER TABLE users ADD COLUMN district_id UUID;
+
+ALTER TABLE institutions ADD COLUMN region_id UUID;
+ALTER TABLE institutions ADD COLUMN district_id UUID;
+
+CREATE INDEX idx_districts_region ON districts(region_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_users_region ON users(region_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_users_district ON users(district_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_institutions_region ON institutions(region_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_institutions_district ON institutions(district_id) WHERE is_deleted = FALSE;
+
+-- Seed regions (Tanzania)
+INSERT INTO regions (id, name, code, is_active, created_at, updated_at, is_deleted) VALUES
+('11111111-1111-1111-1111-111111111101', 'Arusha', 'ARU', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111102', 'Dar es Salaam', 'DAR', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111103', 'Dodoma', 'DOD', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111104', 'Geita', 'GEI', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111105', 'Iringa', 'IRI', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111106', 'Katavi', 'KAT', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111107', 'Kigoma', 'KIG', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111108', 'Kilimanjaro', 'KIL', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111109', 'Lindi', 'LIN', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111110', 'Manyara', 'MAN', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111111', 'Mara', 'MAR', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111112', 'Mbeya', 'MBE', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111113', 'Morogoro', 'MOR', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111114', 'Mtwara', 'MTW', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111115', 'Mwanza', 'MWZ', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111116', 'Njombe', 'NJO', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111117', 'Pwani', 'PWA', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111118', 'Rukwa', 'RUK', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111119', 'Ruvuma', 'RUV', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111120', 'Shinyanga', 'SHI', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111121', 'Simiyu', 'SIM', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111122', 'Singida', 'SIN', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111123', 'Songwe', 'SON', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111124', 'Tabora', 'TAB', TRUE, NOW(), NOW(), FALSE),
+('11111111-1111-1111-1111-111111111125', 'Tanga', 'TAN', TRUE, NOW(), NOW(), FALSE);
+
+-- Seed districts (Dar es Salaam)
+INSERT INTO districts (id, name, code, region_id, is_active, created_at, updated_at, is_deleted) VALUES
+('22222222-2222-2222-2222-222222222201', 'Ilala', 'ILA', '11111111-1111-1111-1111-111111111102', TRUE, NOW(), NOW(), FALSE),
+('22222222-2222-2222-2222-222222222202', 'Kinondoni', 'KIN', '11111111-1111-1111-1111-111111111102', TRUE, NOW(), NOW(), FALSE),
+('22222222-2222-2222-2222-222222222203', 'Temeke', 'TEM', '11111111-1111-1111-1111-111111111102', TRUE, NOW(), NOW(), FALSE),
+('22222222-2222-2222-2222-222222222204', 'Kigamboni', 'KIG', '11111111-1111-1111-1111-111111111102', TRUE, NOW(), NOW(), FALSE);
+
+-- Seed districts (Arusha)
+INSERT INTO districts (id, name, code, region_id, is_active, created_at, updated_at, is_deleted) VALUES
+('22222222-2222-2222-2222-222222222205', 'Arusha City', 'ARC', '11111111-1111-1111-1111-111111111101', TRUE, NOW(), NOW(), FALSE),
+('22222222-2222-2222-2222-222222222206', 'Arusha Rural', 'ARR', '11111111-1111-1111-1111-111111111101', TRUE, NOW(), NOW(), FALSE),
+('22222222-2222-2222-2222-222222222207', 'Meru', 'MER', '11111111-1111-1111-1111-111111111101', TRUE, NOW(), NOW(), FALSE);
+
+-- Seed districts (Dodoma)
+INSERT INTO districts (id, name, code, region_id, is_active, created_at, updated_at, is_deleted) VALUES
+('22222222-2222-2222-2222-222222222208', 'Dodoma City', 'DOC', '11111111-1111-1111-1111-111111111103', TRUE, NOW(), NOW(), FALSE),
+('22222222-2222-2222-2222-222222222209', 'Dodoma Rural', 'DOR', '11111111-1111-1111-1111-111111111103', TRUE, NOW(), NOW(), FALSE);

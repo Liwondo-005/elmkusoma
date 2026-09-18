@@ -18,4 +18,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT u FROM User u JOIN InstitutionMembership m ON u.id = m.userId WHERE m.institutionId = :institutionId AND m.isActive = true AND u.isDeleted = false")
     java.util.List<User> findAllByInstitutionId(@Param("institutionId") UUID institutionId);
+
+    long countByIsDeletedFalse();
 }

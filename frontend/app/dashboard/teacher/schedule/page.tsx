@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { teacherApi, type TeacherClassGroup } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, BookOpen, Users, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { Calendar, Clock, BookOpen, Users, AlertCircle, ChevronLeft, ChevronRight, Info } from "lucide-react"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -40,15 +40,8 @@ function isToday(d: Date): boolean {
   return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
 }
 
-function distributeClassesToDays(classes: TeacherClassGroup[]): Map<number, TeacherClassGroup[]> {
-  const map = new Map<number, TeacherClassGroup[]>()
-  classes.forEach((cls, i) => {
-    const dayIndex = i % 5
-    const existing = map.get(dayIndex) || []
-    existing.push(cls)
-    map.set(dayIndex, existing)
-  })
-  return map
+function isWeekday(dayIndex: number): boolean {
+  return dayIndex >= 0 && dayIndex <= 4
 }
 
 export default function TeacherSchedulePage() {
@@ -59,7 +52,6 @@ export default function TeacherSchedulePage() {
   const [weekOffset, setWeekOffset] = useState(0)
 
   const weekDates = getWeekDates(weekOffset)
-  const scheduleMap = distributeClassesToDays(classes)
 
   useEffect(() => {
     if (!user) return
@@ -82,6 +74,9 @@ export default function TeacherSchedulePage() {
   const totalStudents = classes.reduce((sum, c) => sum + c.enrolledStudents, 0)
   const totalLessons = classes.reduce((sum, c) => sum + c.totalLessons, 0)
   const totalAssignments = classes.reduce((sum, c) => sum + c.totalAssignments, 0)
+
+  const todayDayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
+  const todayClasses = isWeekday(todayDayIndex) ? classes : []
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -148,6 +143,24 @@ export default function TeacherSchedulePage() {
         </div>
       </div>
 
+      {todayClasses.length > 0 && weekOffset === 0 && (
+        <section className="rounded-2xl border border-primary/20 bg-primary/5 p-5 shadow-xs">
+          <h2 className="text-base font-semibold text-foreground">Today&apos;s Classes</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {todayClasses.map((cls, i) => (
+              <div key={cls.classGroupId} className={`rounded-xl border border-border p-4 ${COLORS[i % COLORS.length]}`}>
+                <p className="text-sm font-semibold truncate">{cls.className}</p>
+                <p className="mt-1 text-xs opacity-70 truncate">{cls.subjectName}</p>
+                <div className="mt-2 flex items-center gap-2 text-[10px] opacity-70">
+                  <span className="flex items-center gap-0.5"><Users className="size-2.5" /> {cls.enrolledStudents}</span>
+                  <span className="flex items-center gap-0.5"><BookOpen className="size-2.5" /> {cls.totalLessons} lessons</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -160,10 +173,14 @@ export default function TeacherSchedulePage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-4">
+            <Info className="size-4 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">Showing your assigned classes on weekdays. Exact class times are not yet configured.</p>
+          </div>
           <div className="grid gap-4 lg:grid-cols-7">
             {DAYS.map((day, dayIndex) => {
               const date = weekDates[dayIndex]
-              const dayClasses = scheduleMap.get(dayIndex) || []
+              const dayClasses = isWeekday(dayIndex) ? classes : []
               const today = isToday(date)
 
               return (
@@ -175,24 +192,16 @@ export default function TeacherSchedulePage() {
                   <div className="space-y-2 min-h-[120px]">
                     {dayClasses.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-border p-3 text-center">
-                        <p className="text-xs text-muted-foreground">No classes</p>
+                        <p className="text-xs text-muted-foreground">{isWeekday(dayIndex) ? "No classes" : "Weekend"}</p>
                       </div>
                     ) : (
                       dayClasses.map((cls, i) => (
                         <div
                           key={cls.classGroupId}
-                          className={`rounded-xl border border-border p-3 transition-all hover:-translate-y-0.5 hover:shadow-sm ${COLORS[i % COLORS.length]}`}
+                          className={`rounded-xl border border-border p-2 transition-all hover:-translate-y-0.5 hover:shadow-sm ${COLORS[i % COLORS.length]}`}
                         >
-                          <p className="text-xs font-semibold truncate">{cls.className}</p>
-                          <p className="mt-1 text-[10px] opacity-70 truncate">{cls.subjectName}</p>
-                          <div className="mt-2 flex items-center gap-2 text-[10px] opacity-70">
-                            <span className="flex items-center gap-0.5">
-                              <Users className="size-2.5" /> {cls.enrolledStudents}
-                            </span>
-                            <span className="flex items-center gap-0.5">
-                              <BookOpen className="size-2.5" /> {cls.totalLessons}
-                            </span>
-                          </div>
+                          <p className="text-[10px] font-semibold truncate">{cls.className}</p>
+                          <p className="mt-0.5 text-[9px] opacity-70 truncate">{cls.subjectName}</p>
                         </div>
                       ))
                     )}

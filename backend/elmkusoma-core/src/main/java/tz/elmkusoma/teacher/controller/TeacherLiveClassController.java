@@ -38,6 +38,7 @@ public class TeacherLiveClassController {
     private final TeacherRepository teacherRepository;
     private final NotificationService notificationService;
     private final LiveClassParticipantRepository participantRepository;
+    private final tz.elmkusoma.shared.repository.UserRepository userRepository;
 
     @GetMapping
     @Operation(summary = "List my live classes")
@@ -135,7 +136,7 @@ public class TeacherLiveClassController {
             @PathVariable UUID id) {
         Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
-        LiveClassResponse ended = liveClassService.endSession(teacher.getId(), id);
+        LiveClassResponse ended = liveClassService.endSession(teacher.getId(), id, userId);
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
         if (liveClass != null) {
@@ -168,14 +169,27 @@ public class TeacherLiveClassController {
 
     @GetMapping("/{id}/participants")
     @Operation(summary = "Get participants for a live class")
-    public ResponseEntity<ApiResponse<List<LiveClassParticipant>>> getParticipants(
+    public ResponseEntity<ApiResponse<List<tz.elmkusoma.liveclass.dto.ParticipantInfo>>> getParticipants(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
         Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
         List<LiveClassParticipant> participants = participantRepository.findByLiveClassIdAndIsDeletedFalse(id);
-        return ResponseEntity.ok(ApiResponse.success(participants));
+
+        List<tz.elmkusoma.liveclass.dto.ParticipantInfo> info = participants.stream().map(p -> {
+            tz.elmkusoma.shared.domain.User pUser = userRepository.findById(p.getUserId()).orElse(null);
+            return tz.elmkusoma.liveclass.dto.ParticipantInfo.builder()
+                    .userId(p.getUserId().toString())
+                    .userName(pUser != null ? pUser.getFullName() : "Unknown")
+                    .role(p.getRole())
+                    .joinedAt(p.getJoinedAt())
+                    .leftAt(p.getLeftAt())
+                    .durationSeconds(p.getDurationSeconds())
+                    .online(p.getLeftAt() == null)
+                    .build();
+        }).toList();
+        return ResponseEntity.ok(ApiResponse.success(info));
     }
 
     @GetMapping("/{id}/stats")

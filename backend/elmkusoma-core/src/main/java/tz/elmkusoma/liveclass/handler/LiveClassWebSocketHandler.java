@@ -25,9 +25,6 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class LiveClassWebSocketHandler extends TextWebSocketHandler {
@@ -51,7 +48,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Boolean> sessionHandRaised = new ConcurrentHashMap<>();
     private final Map<String, Boolean> sessionScreenSharing = new ConcurrentHashMap<>();
 
-    private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor();
+    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
 
     public LiveClassWebSocketHandler(LiveClassRepository liveClassRepository,
                                       LiveClassParticipantRepository participantRepository,
@@ -61,7 +58,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                                       InstitutionMembershipRepository membershipRepository,
                                       ObjectMapper objectMapper,
                                       CorePresenceService corePresenceService,
-                                      EventPublisherService eventPublisherService) {
+                                      EventPublisherService eventPublisherService,
+                                      tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository) {
         this.liveClassRepository = liveClassRepository;
         this.participantRepository = participantRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -71,6 +69,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         this.objectMapper = objectMapper;
         this.corePresenceService = corePresenceService;
         this.eventPublisherService = eventPublisherService;
+        this.teacherRepository = teacherRepository;
     }
 
     @Override
@@ -92,8 +91,6 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         sessions.put(session.getId(), session);
         sessionClassMap.put(session.getId(), classId);
 
-        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
-
         log.info("WebSocket connected: session={}, classId={}, userId={}", session.getId(), classId, userId);
     }
 
@@ -108,8 +105,6 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
-
         switch (type) {
             case "JOIN" -> handleJoin(session, classId, payload);
             case "CHAT" -> handleChat(session, classId, payload);
@@ -118,7 +113,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             case "LOWER_HAND" -> handleLowerHand(session, classId);
             case "SCREEN_SHARE_START" -> handleScreenShareStart(session, classId);
             case "SCREEN_SHARE_STOP" -> handleScreenShareStop(session, classId);
-            case "HEARTBEAT" -> handleHeartbeat(session);
+            case "MUTE_PARTICIPANT" -> handleMuteParticipant(session, classId, payload);
+            case "UNMUTE_PARTICIPANT" -> handleUnmuteParticipant(session, classId, payload);
+            case "KICK_PARTICIPANT" -> handleKickParticipant(session, classId, payload);
             default -> sendError(session, "Unknown message type: " + type);
         }
     }
@@ -146,7 +143,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if (!"IN_PROGRESS".equals(liveClass.getStatus())) {
+        if (!"IN_PROGRESS".equals(liveClass.getStatus()) && !"LIVE".equals(liveClass.getStatus())) {
             sendError(session, "This live class is not currently in session");
             return;
         }
@@ -165,6 +162,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        boolean isTeacher = teacherRepository.findByUserIdAndInstitutionId(userId, classInstitutionId).isPresent();
+        String participantRole = isTeacher ? "TEACHER" : "LEARNER";
+
         Optional<LiveClassParticipant> existing = participantRepository
                 .findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId);
 
@@ -173,8 +173,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             participant = existing.get();
             participant.setLeftAt(null);
             participant.setConnectionId(session.getId());
+            participant.setRole(participantRole);
         } else {
-            if (liveClass.getMaxParticipants() != null) {
+            if (!isTeacher && liveClass.getMaxParticipants() != null) {
                 long currentCount = participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId);
                 if (currentCount >= liveClass.getMaxParticipants()) {
                     sendError(session, "This live class is full");
@@ -186,7 +187,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                     .liveClassId(classId)
                     .userId(userId)
                     .institutionId(classInstitutionId)
-                    .role("LEARNER")
+                    .role(participantRole)
                     .joinedAt(LocalDateTime.now())
                     .connectionId(session.getId())
                     .build();
@@ -375,8 +376,85 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         broadcastToClass(classId, event, null);
     }
 
-    private void handleHeartbeat(WebSocketSession session) {
-        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
+    private void handleMuteParticipant(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+        UUID teacherId = (UUID) session.getAttributes().get("userId");
+        if (!isTeacher(teacherId, classId)) {
+            sendError(session, "Only teachers can mute participants");
+            return;
+        }
+        String targetUserId = (String) payload.get("userId");
+        if (targetUserId == null) {
+            sendError(session, "Target userId required");
+            return;
+        }
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "PARTICIPANT_MUTED");
+        event.put("targetUserId", targetUserId);
+        event.put("mutedBy", teacherId.toString());
+        event.put("timestamp", LocalDateTime.now().toString());
+        broadcastToClass(classId, event, null);
+    }
+
+    private void handleUnmuteParticipant(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+        UUID teacherId = (UUID) session.getAttributes().get("userId");
+        if (!isTeacher(teacherId, classId)) {
+            sendError(session, "Only teachers can unmute participants");
+            return;
+        }
+        String targetUserId = (String) payload.get("userId");
+        if (targetUserId == null) {
+            sendError(session, "Target userId required");
+            return;
+        }
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "PARTICIPANT_UNMUTED");
+        event.put("targetUserId", targetUserId);
+        event.put("unmutedBy", teacherId.toString());
+        event.put("timestamp", LocalDateTime.now().toString());
+        broadcastToClass(classId, event, null);
+    }
+
+    private void handleKickParticipant(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+        UUID teacherId = (UUID) session.getAttributes().get("userId");
+        if (!isTeacher(teacherId, classId)) {
+            sendError(session, "Only teachers can kick participants");
+            return;
+        }
+        String targetUserId = (String) payload.get("userId");
+        if (targetUserId == null) {
+            sendError(session, "Target userId required");
+            return;
+        }
+        UUID targetId = UUID.fromString(targetUserId);
+        for (Map.Entry<String, UUID> entry : sessionUserMap.entrySet()) {
+            if (entry.getValue().equals(targetId)) {
+                WebSocketSession targetSession = sessions.get(entry.getKey());
+                if (targetSession != null && targetSession.isOpen()) {
+                    Map<String, Object> kickEvent = new HashMap<>();
+                    kickEvent.put("type", "KICKED");
+                    kickEvent.put("message", "You have been removed from the class by the teacher.");
+                    kickEvent.put("timestamp", LocalDateTime.now().toString());
+                    targetSession.sendMessage(new TextMessage(objectMapper.writeValueAsString(kickEvent)));
+                    targetSession.close();
+                }
+                break;
+            }
+        }
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "PARTICIPANT_KICKED");
+        event.put("targetUserId", targetUserId);
+        event.put("kickedBy", teacherId.toString());
+        event.put("timestamp", LocalDateTime.now().toString());
+        broadcastToClass(classId, event, null);
+    }
+
+    private boolean isTeacher(UUID userId, UUID classId) {
+        if (userId == null) return false;
+        LiveClass liveClass = liveClassRepository.findById(classId).orElse(null);
+        if (liveClass == null) return false;
+        if (userId.equals(liveClass.getTeacherId())) return true;
+        User user = userRepository.findById(userId).orElse(null);
+        return user != null && (user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.INSTITUTION_ADMIN);
     }
 
     @Override
