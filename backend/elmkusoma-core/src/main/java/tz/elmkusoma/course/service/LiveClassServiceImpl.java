@@ -299,7 +299,8 @@ public class LiveClassServiceImpl implements LiveClassService {
             return LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         } catch (Exception e) {
             try {
-                return LocalDateTime.parse(dateTimeStr);
+                String cleaned = dateTimeStr.replaceAll("\\.[0-9]{3}Z?$", "").replace("Z", "").trim();
+                return LocalDateTime.parse(cleaned, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             } catch (Exception ex) {
                 throw new IllegalArgumentException("Invalid date/time format: " + dateTimeStr
                         + ". Expected format: yyyy-MM-ddTHH:mm:ss");

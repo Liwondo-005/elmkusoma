@@ -424,7 +424,8 @@ public class EventServiceImpl implements EventService {
     private LocalDateTime parseDateTime(String dateTimeStr) {
         try {
             if (dateTimeStr.contains("T")) {
-                return LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                String cleaned = dateTimeStr.replaceAll("\\.[0-9]{3}Z?$", "").replace("Z", "").trim();
+                return LocalDateTime.parse(cleaned, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             }
             return LocalDateTime.parse(dateTimeStr + "T00:00:00", DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         } catch (Exception e) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { BookOpen, Plus, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, Eye, EyeOff, GripVertical, X } from "lucide-react"
-import { teacherFetch, type ClassGroupInfo } from "@/lib/teacher-api"
+import { teacherFetch } from "@/lib/teacher-api"
 
 interface Lesson {
   id: string
@@ -60,23 +60,15 @@ export default function TeacherLessonsPage() {
     try {
       setLoading(true)
       setError(null)
-      const profileRes = await teacherFetch<{ content: { id: string; email: string }[] }>("/v1/teachers?page=0&size=50")
-      const teacher = profileRes.content?.find((t) => t.email === user?.email)
-      if (teacher) {
-        const assigns = await teacherFetch<{ classGroupId: string; subjectId: string }[]>(`/v1/teachers/${teacher.id}/assignments`).catch(() => [])
-        const allClasses = await teacherFetch<ClassGroupInfo[]>("/v1/academic/class-groups").catch(() => [])
-        const classOptions: ClassOption[] = assigns.map((a) => {
-          const cg = allClasses.find((c) => c.id === a.classGroupId)
-          return {
-            classGroupId: a.classGroupId,
-            className: cg?.name || "Unknown Class",
-            subjectName: cg?.gradeName || "General",
-            subjectId: a.subjectId,
-          }
-        })
-        const unique = classOptions.filter((c, i, arr) => arr.findIndex((x) => x.classGroupId === c.classGroupId) === i)
-        setClasses(unique.length > 0 ? unique : allClasses.slice(0, 5).map((c) => ({ classGroupId: c.id, className: c.name, subjectName: c.gradeName || "", subjectId: "" })))
-      }
+      const classesRes = await teacherFetch<{ classGroupId: string; className: string; subjectName: string; subjectId: string }[]>("/v1/teachers/me/classes").catch(() => [])
+      const classOptions: ClassOption[] = classesRes.map((c) => ({
+        classGroupId: c.classGroupId,
+        className: c.className,
+        subjectName: c.subjectName,
+        subjectId: c.subjectId || "",
+      }))
+      const unique = classOptions.filter((c, i, arr) => arr.findIndex((x) => x.classGroupId === c.classGroupId) === i)
+      setClasses(unique)
       await loadLessons()
     } catch {
       setError("Failed to load data")

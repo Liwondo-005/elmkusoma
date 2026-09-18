@@ -203,7 +203,7 @@ export default function TeacherAssignmentsPage() {
         assignmentType: form.assignmentType,
         classGroupId: form.classGroupId,
         subjectId: form.subjectId,
-        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
+        dueDate: form.dueDate ? new Date(form.dueDate).toISOString().slice(0, 19) : undefined,
         totalMarks: Number(form.totalMarks) || 100,
         status: form.status,
         attachments: form.attachments.trim(),

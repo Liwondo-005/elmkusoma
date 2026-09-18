@@ -41,7 +41,16 @@ export function getRefreshToken(): string | null {
 
 export function getInstitutionId(): string | null {
   if (typeof window === "undefined") return null
-  return localStorage.getItem("elmkusoma_institution_id")
+  const stored = localStorage.getItem("elmkusoma_institution_id")
+  if (stored) return stored
+  try {
+    const raw = localStorage.getItem("elmkusoma_current_user")
+    if (raw) {
+      const user = JSON.parse(raw)
+      if (user?.institutionId) return user.institutionId
+    }
+  } catch {}
+  return null
 }
 
 export function setInstitutionId(id: string) {

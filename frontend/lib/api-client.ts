@@ -29,7 +29,16 @@ function getHeaders(): Record<string, string> {
     if (token) {
       headers["Authorization"] = `Bearer ${token}`
     }
-    const institutionId = localStorage.getItem("elmkusoma_institution_id")
+    let institutionId = localStorage.getItem("elmkusoma_institution_id")
+    if (!institutionId) {
+      try {
+        const raw = localStorage.getItem("elmkusoma_current_user")
+        if (raw) {
+          const user = JSON.parse(raw)
+          if (user?.institutionId) institutionId = user.institutionId
+        }
+      } catch {}
+    }
     if (institutionId) {
       headers["X-Institution-Id"] = institutionId
     }

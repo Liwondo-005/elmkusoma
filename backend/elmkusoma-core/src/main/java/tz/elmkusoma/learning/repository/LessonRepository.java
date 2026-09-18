@@ -23,18 +23,7 @@ public interface LessonRepository extends JpaRepository<Lesson, UUID> {
     long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 
     @Query("SELECT COUNT(l) FROM Lesson l WHERE l.institutionId IN :institutionIds AND l.isPublished = true AND l.isDeleted = false")
-    long countByInstitutionIdsAndPublishedAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds, @Param("published") boolean published);
-
-    @Query("SELECT COUNT(l) FROM Lesson l WHERE l.institutionId IN :institutionIds AND l.termId = :termId AND l.isDeleted = false")
-    long countByInstitutionIdsAndTermIdAndIsDeletedFalse(
-            @Param("institutionIds") List<UUID> institutionIds,
-            @Param("termId") UUID termId);
-
-    @Query("SELECT COUNT(l) FROM Lesson l WHERE l.institutionId IN :institutionIds AND l.termId = :termId AND l.isPublished = true AND l.isDeleted = false")
-    long countByInstitutionIdsAndTermIdAndPublishedAndIsDeletedFalse(
-            @Param("institutionIds") List<UUID> institutionIds,
-            @Param("termId") UUID termId,
-            @Param("published") boolean published);
+    long countByInstitutionIdsAndPublishedAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 
     @Query("SELECT COUNT(l) FROM Lesson l WHERE l.institutionId IN :institutionIds AND l.subjectId = :subjectId AND l.isDeleted = false")
     long countByInstitutionIdsAndSubjectIdAndIsDeletedFalse(

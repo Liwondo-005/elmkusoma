@@ -35,10 +35,4 @@ public interface ReportCardRepository extends JpaRepository<ReportCard, UUID> {
             @Param("institutionIds") List<UUID> institutionIds,
             @Param("termId") UUID termId,
             @Param("threshold") double threshold);
-
-    @Query("SELECT rc FROM ReportCard rc WHERE rc.subjectId = :subjectId AND rc.institutionId IN :institutionIds AND rc.termId = :termId AND rc.isDeleted = false")
-    List<ReportCard> findBySubjectIdAndInstitutionIdsAndTermIdAndIsDeletedFalse(
-            @Param("subjectId") UUID subjectId,
-            @Param("institutionIds") List<UUID> institutionIds,
-            @Param("termId") UUID termId);
 }

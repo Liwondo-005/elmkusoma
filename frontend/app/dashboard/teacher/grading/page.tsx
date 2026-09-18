@@ -37,15 +37,14 @@ export default function TeacherGradingPage() {
       try {
         setLoading(true)
         const { teacherApi } = await import("@/lib/teacher-api")
-        const profileRes = await teacherApi.listTeachers(0, 50)
-        const teacher = profileRes.content?.find((t) => t.email === user?.email)
-        if (teacher) {
-          const assigns = await teacherApi.getAssignments(teacher.id).catch(() => [])
-          const assignedClassIds = [...new Set(assigns.map((a) => a.classGroupId))]
-          const allClasses = await teacherApi.getClassGroups().catch(() => [])
-          const filtered = allClasses.filter((c) => assignedClassIds.includes(c.id))
-          setClasses(filtered.length > 0 ? filtered : allClasses.slice(0, 10))
-        }
+        const myClasses = await teacherApi.getClasses().catch(() => [])
+        setClasses(myClasses.map((c) => ({
+          id: c.classGroupId,
+          name: c.className,
+          gradeName: c.subjectName,
+          studentCount: c.enrolledStudents,
+          educationLevel: null,
+        })))
         const gradingScales = await teacherApi.getGradingScales().catch(() => [])
         setScales(gradingScales)
       } catch { /* empty */ }

@@ -2,7 +2,17 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
 
 export async function teacherFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
-  const institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001" : "00000000-0000-0000-0000-000000000001"
+  let institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") : null
+  if (!institutionId && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("elmkusoma_current_user")
+      if (raw) {
+        const user = JSON.parse(raw)
+        if (user?.institutionId) institutionId = user.institutionId
+      }
+    } catch {}
+  }
+  if (!institutionId) institutionId = "00000000-0000-0000-0000-000000000001"
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -195,6 +205,8 @@ export interface TeacherScheduleItem {
 }
 
 export const teacherApi = {
+  getClasses: () => teacherFetch<{ classGroupId: string; className: string; classSection: string; subjectId: string; subjectName: string; academicYear: string; enrolledStudents: number; totalAssignments: number; totalLessons: number }[]>("/v1/teachers/me/classes"),
+  getStudents: () => teacherFetch<StudentInClass[]>("/v1/teachers/me/students"),
   getProfile: (id: string) => teacherFetch<TeacherProfile>(`/v1/teachers/${id}`),
   listTeachers: (page = 0, size = 50) => teacherFetch<{ content: TeacherProfile[]; totalElements: number }>(`/v1/teachers?page=${page}&size=${size}`),
 

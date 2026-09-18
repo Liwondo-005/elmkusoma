@@ -159,7 +159,7 @@ export default function TeacherLiveClassesPage() {
       const payload: Record<string, unknown> = {
         title: form.title.trim(),
         description: form.description.trim(),
-        scheduledAt: scheduledDate.toISOString(),
+        scheduledAt: scheduledDate.toISOString().slice(0, 19),
         durationMinutes: Number(form.durationMinutes) || 60,
         maxParticipants: Number(form.maxParticipants) || 50,
         recordingEnabled: form.enableRecording,
