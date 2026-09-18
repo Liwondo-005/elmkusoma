@@ -1,6 +1,8 @@
 package tz.elmkusoma.parent.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tz.elmkusoma.parent.domain.Message;
 
@@ -14,7 +16,8 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     List<Message> findByRecipientIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID recipientId);
 
-    List<Message> findBySenderIdOrRecipientIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID senderId, UUID recipientId);
+    @Query("SELECT m FROM Message m WHERE (m.senderId = :senderId AND m.isDeleted = false) OR (m.recipientId = :recipientId AND m.isDeleted = false) ORDER BY m.createdAt DESC")
+    List<Message> findBySenderIdOrRecipientIdAndIsDeletedFalseOrderByCreatedAtDesc(@Param("senderId") UUID senderId, @Param("recipientId") UUID recipientId);
 
     long countByRecipientIdAndIsDeletedFalseAndIsReadFalse(UUID recipientId);
 
