@@ -119,6 +119,10 @@ export class ApiRequestError extends Error {
   }
 }
 
+async function fetchJSON<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return request<T>(path, options)
+}
+
 export interface UserInfo {
   id: string
   email: string
@@ -1422,6 +1426,32 @@ export const gradingApi = {
     request<unknown[]>(`/v1/grading/report-cards/student/${studentId}`),
 }
 
+// ---------------------------------------------------------------------------
+// Media API
+// ---------------------------------------------------------------------------
+
+export const mediaApi = {
+  upload: async (file: File) => {
+    const token = localStorage.getItem("elmkusoma_access_token")
+    const instId = localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
+    const formData = new FormData()
+    formData.append("file", file)
+    const res = await fetch("/api/v1/media/upload", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "X-Institution-Id": instId },
+      body: formData,
+    })
+    if (!res.ok) throw new Error("Upload failed")
+    return res.json()
+  },
+  list: (institutionId?: string) => {
+    const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
+    return request<any[]>(`/api/v1/media?institutionId=${instId}`)
+  },
+  getDownloadUrl: (mediaId: string) => request<any>(`/api/v1/media/${mediaId}/download-url`),
+  delete: (mediaId: string) => request<void>(`/api/v1/media/${mediaId}`, { method: "DELETE" }),
+}
+
 // ── Student Dashboard API ────────────────────────────────────────────────────
 
 export interface DashboardSummary {
@@ -1512,4 +1542,268 @@ export const dashboardApi = {
 
   getLiveClasses: () =>
     request<unknown[]>("/v1/student/dashboard/live-classes"),
+}
+
+// ── Primary Student API ──────────────────────────────────────────────────────
+
+export interface TeacherInfo {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  subjectName: string
+  specialization: string
+  profileImageUrl?: string
+}
+
+export interface PortfolioItem {
+  id: string
+  title: string
+  description?: string
+  fileUrl?: string
+  thumbnailUrl?: string
+  portfolioType: "DRAWING" | "STORY" | "PROJECT" | "PHOTO" | "VOICE_RECORDING" | "ESSAY"
+  subjectName?: string
+  isFeatured: boolean
+  createdAt: string
+}
+
+export interface StudentBadge {
+  id: string
+  badgeName: string
+  badgeType: string
+  description: string
+  iconUrl?: string
+  points: number
+  awardedAt: string
+}
+
+export interface StreakInfo {
+  currentStreak: number
+  longestStreak: number
+  totalPoints: number
+  lastActivityDate?: string
+}
+
+export interface CurriculumTopic {
+  id: string
+  topicName: string
+  description: string
+  sortOrder: number
+  totalLessons: number
+}
+
+export interface StudentNotification {
+  id: string
+  title: string
+  message: string
+  notificationType: string
+  isRead: boolean
+  createdAt: string
+}
+
+export interface LearningProfile {
+  id?: string
+  learningStyle: string
+  strengths: string
+  interests: string
+  goals: string
+  totalPoints: number
+  level: number
+}
+
+export interface DiscoveryEntry {
+  id: string
+  title: string
+  question: string
+  discoveryType: "WONDER" | "EXPERIMENT" | "OBSERVATION" | "RESEARCH"
+  subjectName?: string
+  result?: string
+  isResolved: boolean
+  evidence?: string
+  createdAt: string
+}
+
+export interface ReadingAdventure {
+  id: string
+  title: string
+  content: string
+  subjectName?: string
+  readingLevel: string
+  wordCount: number
+  readTimeMinutes: number
+  timesRead: number
+  isFavorite: boolean
+  coverColor: string
+}
+
+export interface LearningEvidence {
+  id: string
+  title: string
+  evidenceType: string
+  description: string
+  evidenceUrl?: string
+  subjectName?: string
+  points: number
+  createdAt: string
+}
+
+export interface LearningPassport {
+  id?: string
+  stampsEarned: number
+  totalStamps: number
+  currentCountry: string
+  lastActivity?: string
+}
+
+export interface QuestChallenge {
+  id: string
+  title: string
+  description: string
+  questType: string
+  difficulty: string
+  subjectName?: string
+  isCompleted: boolean
+  score: number
+  totalPoints: number
+  completedAt?: string
+}
+
+export interface MistakeLabEntry {
+  id: string
+  question: string
+  wrongAnswer: string
+  correctAnswer: string
+  explanation: string
+  subjectName?: string
+  isReviewed: boolean
+}
+
+export interface LiveClassActivityResponse {
+  id: string
+  userId: string
+  activityId: string
+  answer: string
+  isCorrect: boolean | null
+  score: number | null
+  submittedAt: string
+}
+
+export interface LiveClassActivityStats {
+  activityId: string
+  totalResponses: number
+  correctCount: number
+  responses: Array<{
+    userId: string
+    userName: string
+    answer: string
+    isCorrect: boolean | null
+    score: number | null
+    submittedAt: string
+  }>
+  optionCounts: Record<string, number>
+}
+
+export const primaryApi = {
+  async getTeachers(): Promise<TeacherInfo[]> {
+    return fetchJSON<TeacherInfo[]>("/v1/primary/me/teachers")
+  },
+  async getPortfolio(): Promise<PortfolioItem[]> {
+    return fetchJSON<PortfolioItem[]>("/v1/primary/me/portfolio")
+  },
+  async addPortfolioItem(data: { title: string; description?: string; fileUrl?: string; portfolioType: string; subjectName?: string }): Promise<PortfolioItem> {
+    return fetchJSON<PortfolioItem>("/v1/primary/me/portfolio", { method: "POST", body: JSON.stringify(data) })
+  },
+  async deletePortfolioItem(itemId: string): Promise<void> {
+    await fetchJSON(`/v1/primary/me/portfolio/${itemId}`, { method: "DELETE" })
+  },
+  async getBadges(): Promise<StudentBadge[]> {
+    return fetchJSON<StudentBadge[]>("/v1/primary/me/badges")
+  },
+  async getStreak(): Promise<StreakInfo> {
+    return fetchJSON<StreakInfo>("/v1/primary/me/streak")
+  },
+  async getCurriculumTopics(subjectId: string): Promise<CurriculumTopic[]> {
+    return fetchJSON<CurriculumTopic[]>(`/v1/primary/curriculum/subject/${subjectId}/topics`)
+  },
+  async getNotifications(): Promise<StudentNotification[]> {
+    return fetchJSON<StudentNotification[]>("/v1/primary/me/notifications")
+  },
+  async getLiveClassActivities(liveClassId: string): Promise<LiveClassActivity[]> {
+    return fetchJSON<LiveClassActivity[]>(`/v1/primary/live-classes/${liveClassId}/activities`)
+  },
+  async createLiveClassActivity(liveClassId: string, data: {
+    activityType: string
+    title: string
+    question: string
+    options?: string[]
+    correctAnswer?: string
+    orderIndex?: number
+    timerSeconds?: number
+  }): Promise<LiveClassActivity> {
+    return fetchJSON<LiveClassActivity>(`/v1/primary/live-classes/${liveClassId}/activities`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+  async submitActivityAnswer(activityId: string, data: {
+    answer: string
+    drawingData?: string
+  }): Promise<LiveClassActivityResponse> {
+    return fetchJSON<LiveClassActivityResponse>(`/v1/primary/live-classes/activities/${activityId}/submit`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  },
+  async getActivityStats(activityId: string): Promise<LiveClassActivityStats> {
+    return fetchJSON<LiveClassActivityStats>(`/v1/primary/live-classes/activities/${activityId}/stats`)
+  },
+  async getLearningProfile(): Promise<LearningProfile> {
+    return fetchJSON<LearningProfile>("/v1/primary/me/learning-profile")
+  },
+  async updateLearningProfile(data: { learningStyle: string; strengths: string; interests: string; goals: string }): Promise<LearningProfile> {
+    return fetchJSON<LearningProfile>("/v1/primary/me/learning-profile", { method: "PUT", body: JSON.stringify(data) })
+  },
+  async getDiscoveryEntries(): Promise<DiscoveryEntry[]> {
+    return fetchJSON<DiscoveryEntry[]>("/v1/primary/me/discovery")
+  },
+  async addDiscoveryEntry(data: { title: string; question: string; discoveryType: string; subjectName?: string }): Promise<DiscoveryEntry> {
+    return fetchJSON<DiscoveryEntry>("/v1/primary/me/discovery", { method: "POST", body: JSON.stringify(data) })
+  },
+  async resolveDiscoveryEntry(id: string): Promise<DiscoveryEntry> {
+    return fetchJSON<DiscoveryEntry>(`/v1/primary/me/discovery/${id}/resolve`, { method: "POST" })
+  },
+  async getReadingAdventures(): Promise<ReadingAdventure[]> {
+    return fetchJSON<ReadingAdventure[]>("/v1/primary/me/reading-adventures")
+  },
+  async markReadingComplete(id: string): Promise<ReadingAdventure> {
+    return fetchJSON<ReadingAdventure>(`/v1/primary/me/reading-adventures/${id}/complete`, { method: "POST" })
+  },
+  async toggleFavoriteReading(id: string): Promise<ReadingAdventure> {
+    return fetchJSON<ReadingAdventure>(`/v1/primary/me/reading-adventures/${id}/favorite`, { method: "POST" })
+  },
+  async getLearningEvidence(): Promise<LearningEvidence[]> {
+    return fetchJSON<LearningEvidence[]>("/v1/primary/me/evidence")
+  },
+  async addLearningEvidence(data: { title: string; evidenceType: string; description: string; subjectName?: string }): Promise<LearningEvidence> {
+    return fetchJSON<LearningEvidence>("/v1/primary/me/evidence", { method: "POST", body: JSON.stringify(data) })
+  },
+  async getLearningPassport(): Promise<LearningPassport> {
+    return fetchJSON<LearningPassport>("/v1/primary/me/passport")
+  },
+  async getQuestChallenges(): Promise<QuestChallenge[]> {
+    return fetchJSON<QuestChallenge[]>("/v1/primary/me/quests")
+  },
+  async completeQuest(questId: string, score: number): Promise<QuestChallenge> {
+    return fetchJSON<QuestChallenge>(`/v1/primary/me/quests/${questId}/complete`, { method: "POST", body: JSON.stringify({ score }) })
+  },
+  async getMistakeLabEntries(): Promise<MistakeLabEntry[]> {
+    return fetchJSON<MistakeLabEntry[]>("/v1/primary/me/mistake-lab")
+  },
+  async addMistakeLabEntry(data: { question: string; wrongAnswer: string; correctAnswer: string; explanation: string; subjectName?: string }): Promise<MistakeLabEntry> {
+    return fetchJSON<MistakeLabEntry>("/v1/primary/me/mistake-lab", { method: "POST", body: JSON.stringify(data) })
+  },
+  async reviewMistake(id: string): Promise<MistakeLabEntry> {
+    return fetchJSON<MistakeLabEntry>(`/v1/primary/me/mistake-lab/${id}/review`, { method: "POST" })
+  },
 }

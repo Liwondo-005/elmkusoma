@@ -315,12 +315,21 @@ export interface EntitlementItem {
   expiresAt: string | null
 }
 
+export interface LiveClassData {
+  liveClasses: LiveClassItem[]
+}
+
 export interface LiveClassItem {
   id: string
   title: string
+  description?: string
   status: string
   scheduledAt: string
   durationMinutes: number
+  teacherName?: string
+  subjectName?: string
+  participantCount?: number
+  maxParticipants?: number
 }
 
 export interface AssessmentItem {
@@ -408,6 +417,13 @@ export interface ParentLearningProgress {
   courses: CourseProgressItem[]
 }
 
+export interface LearningProgressData {
+  overallProgress: number
+  completedCourses: number
+  totalCourses: number
+  courses: CourseProgressItem[]
+}
+
 export interface ParentNotificationItem {
   id: string
   title: string
@@ -425,6 +441,19 @@ export interface ParentNotifications {
   unreadCount: number
 }
 
+export interface MessageData {
+  id: string
+  senderId: string
+  senderName?: string
+  recipientId: string
+  recipientName?: string
+  subject: string
+  body: string
+  messageType: string
+  isRead: boolean
+  createdAt: string
+}
+
 export const parentApi = {
   getOverview: () => parentFetch<FamilyOverview>("/v1/my/overview"),
   getChildren: () => parentFetch<ChildOverview[]>("/v1/my/children"),
@@ -438,12 +467,13 @@ export const parentApi = {
   getChildAchievements: (id: string) => parentFetch<ParentAchievements>(`/v1/my/children/${id}/achievements`),
   getChildGoals: (id: string) => parentFetch<ParentGoals>(`/v1/my/children/${id}/goals`),
   getChildEntitlements: (id: string) => parentFetch<EntitlementItem[]>(`/v1/my/children/${id}/entitlements`),
-  getChildLiveClasses: (id: string) => parentFetch<LiveClassItem[]>(`/v1/my/children/${id}/live-classes`),
+  getChildLiveClasses: (id: string) => 
+parentFetch<LiveClassData>(`/v1/my/children/${id}/live-classes`),
   getChildAssessments: (id: string) => parentFetch<ParentAssessments>(`/v1/my/children/${id}/assessments`),
   getChildActivity: (id: string) => parentFetch<ParentActivity>(`/v1/my/children/${id}/activity`),
   getChildTeachers: (id: string) => parentFetch<ParentTeachers>(`/v1/my/children/${id}/teachers`),
   getChildSubjectPerformance: (id: string) => parentFetch<ParentSubjectPerformance>(`/v1/my/children/${id}/subject-performance`),
-  getChildLearningProgress: (id: string) => parentFetch<ParentLearningProgress>(`/v1/my/children/${id}/learning-progress`),
+  getChildLearningProgress: (id: string) => parentFetch<LearningProgressData>(`/v1/my/children/${id}/learning-progress`),
 
   getPayments: () => parentFetch<ParentPayments>("/v1/my/payments"),
   getChildPayments: (id: string) => parentFetch<PaymentItem[]>(`/v1/my/children/${id}/payments`),
@@ -452,6 +482,20 @@ export const parentApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  getMessages: () => parentFetch<MessageData[]>("/v1/my/messages"),
+  getSentMessages: () => parentFetch<MessageData[]>("/v1/my/messages/sent"),
+  sendMessage: (data: { recipientId: string; subject: string; body: string; messageType?: string }) =>
+    parentFetch<MessageData>("/v1/my/messages", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  markMessageRead: (id: string) =>
+    parentFetch<void>(`/v1/my/messages/${id}/read`, { method: "PUT" }),
+  deleteMessage: (id: string) =>
+    parentFetch<void>(`/v1/my/messages/${id}`, { method: "DELETE" }),
+
+  getTickets: () => parentFetch<ParentSupport>("/v1/my/support/tickets"),
 
   getLibrary: () => parentFetch<ParentLibrary>("/v1/my/library"),
 

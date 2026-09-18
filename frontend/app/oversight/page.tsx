@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { Building2, Users, GraduationCap, MapPin, Activity, TrendingUp, AlertTriangle, Clock, Target } from "lucide-react"
+import { Building2, Users, GraduationCap, MapPin, Activity, TrendingUp, AlertTriangle, Clock, Target, Video, BookOpen, FileBarChart } from "lucide-react"
 
 interface OversightDashboardStats {
   totalInstitutions: number

@@ -2,17 +2,289 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
 import { assessmentApi, type Assessment, type Question, type Attempt, type AssessmentResult } from "@/lib/api"
+import { type LearningLevel } from "@/lib/learner-config"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Clock, CheckCircle, XCircle, Trophy, ArrowRight } from "lucide-react"
+import { ArrowLeft, Clock, CheckCircle, XCircle, Trophy, ArrowRight, Compass, Star, Play } from "lucide-react"
 
 type QuizState = "loading" | "ready" | "in_progress" | "submitting" | "results"
+
+const optionLetters = ["A", "B", "C", "D"]
+const optionColors = [
+  "from-blue-400 to-blue-600",
+  "from-emerald-400 to-emerald-600",
+  "from-amber-400 to-amber-600",
+  "from-rose-400 to-rose-600",
+]
+
+function PrimaryQuizView({
+  state,
+  assessment,
+  questions,
+  currentQ,
+  answers,
+  timeLeft,
+  attempt,
+  onSelectOption,
+  onPrev,
+  onNext,
+  onSubmit,
+  onStart,
+  formatTime,
+}: {
+  state: QuizState
+  assessment: Assessment | null
+  questions: Question[]
+  currentQ: number
+  answers: Record<string, { selectedOptionId?: string; textAnswer?: string }>
+  timeLeft: number
+  attempt: Attempt | null
+  onSelectOption: (qId: string, optId: string) => void
+  onPrev: () => void
+  onNext: () => void
+  onSubmit: () => void
+  onStart: () => void
+  formatTime: (s: number) => string
+}) {
+  if (state === "ready" && assessment) {
+    return (
+      <div className="mx-auto max-w-lg space-y-6">
+        <Link
+          href="/dashboard/assessments"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-4" /> Back to Quizzes
+        </Link>
+
+        <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 text-center shadow-xs">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-primary/15">
+            <Compass className="size-8 text-primary" />
+          </div>
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground">{assessment.title}</h1>
+          {assessment.description && (
+            <p className="mt-3 text-lg text-muted-foreground">{assessment.description}</p>
+          )}
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Questions</p>
+              <p className="mt-1 text-2xl font-bold text-foreground">{questions.length}</p>
+            </div>
+            <div className="rounded-xl bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Total Marks</p>
+              <p className="mt-1 text-2xl font-bold text-foreground">{assessment.totalMarks}</p>
+            </div>
+            {assessment.timeLimitMinutes && (
+              <div className="col-span-2 rounded-xl bg-muted/50 p-4">
+                <p className="text-sm text-muted-foreground">Time Limit</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">{assessment.timeLimitMinutes} minutes</p>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={onStart}
+            className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-primary px-8 py-4 text-lg font-bold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl active:scale-95"
+          >
+            <Play className="size-6" /> Start Quiz
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (state === "results" && attempt?.result) {
+    const result = attempt.result
+    const percentage = assessment ? Math.round((result.totalScore / assessment.totalMarks) * 100) : 0
+    const stars = percentage >= 90 ? 3 : percentage >= 60 ? 2 : percentage >= 30 ? 1 : 0
+
+    return (
+      <div className="mx-auto max-w-lg space-y-6">
+        <Link
+          href="/dashboard/assessments"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-4" /> Back to Quizzes
+        </Link>
+
+        <div className="rounded-2xl border-2 border-border bg-gradient-to-br from-amber-50 via-card to-orange-50 p-8 text-center shadow-xs">
+          <div className={`mx-auto flex size-20 items-center justify-center rounded-full ${result.isPassed ? "bg-amber-400/15" : "bg-muted"}`}>
+            {result.isPassed ? (
+              <Trophy className="size-10 text-amber-600" />
+            ) : (
+              <XCircle className="size-10 text-muted-foreground" />
+            )}
+          </div>
+
+          <h1 className="mt-4 text-3xl font-bold text-foreground">
+            {result.isPassed ? "Great effort!" : "Keep trying!"}
+          </h1>
+          <p className="mt-2 text-lg text-muted-foreground">
+            {result.isPassed
+              ? "You did an amazing job! Keep it up!"
+              : "Practice makes perfect. You will get better!"}
+          </p>
+
+          <div className="mt-6 flex justify-center gap-2">
+            {[1, 2, 3].map((i) => (
+              <Star
+                key={i}
+                className={`size-10 ${i <= stars ? "fill-amber-400 text-amber-400" : "fill-muted text-muted"}`}
+              />
+            ))}
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <div className="flex items-center justify-between rounded-xl bg-white/60 px-5 py-3">
+              <span className="text-base text-muted-foreground">Your Score</span>
+              <span className="text-xl font-bold text-foreground">{result.totalScore} / {assessment?.totalMarks}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-white/60 px-5 py-3">
+              <span className="text-base text-muted-foreground">Percentage</span>
+              <span className="text-xl font-bold text-foreground">{percentage}%</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-white/60 px-5 py-3">
+              <span className="text-base text-muted-foreground">Status</span>
+              <span className={`text-xl font-bold ${result.isPassed ? "text-emerald-600" : "text-rose-600"}`}>
+                {result.isPassed ? "PASSED" : "NOT PASSED"}
+              </span>
+            </div>
+          </div>
+
+          {result.feedback && (
+            <div className="mt-4 rounded-xl bg-white/60 p-4 text-left">
+              <p className="text-sm font-semibold text-foreground">Teacher says:</p>
+              <p className="mt-1 text-base text-muted-foreground">{result.feedback}</p>
+            </div>
+          )}
+
+          <Link
+            href="/dashboard/assessments"
+            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-8 py-3.5 text-base font-bold text-primary-foreground transition-all hover:bg-primary/90"
+          >
+            Back to Quizzes
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (state === "in_progress" && questions.length > 0) {
+    const question = questions[currentQ]
+    if (!question) return null
+
+    return (
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div className="flex items-center justify-between">
+          <Link
+            href="/dashboard/assessments"
+            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-4" /> Exit
+          </Link>
+          {assessment?.timeLimitMinutes && (
+            <div className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-lg font-mono font-bold ${timeLeft < 60 ? "bg-rose-100 text-rose-700" : "bg-primary/10 text-primary"}`}>
+              <Clock className="size-5" />
+              {formatTime(timeLeft)}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-base font-semibold text-muted-foreground">
+              Question {currentQ + 1} of {questions.length}
+            </span>
+            <span className="text-sm text-muted-foreground">{question.marks} mark{question.marks !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="mt-3 h-2.5 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500"
+              style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }}
+            />
+          </div>
+
+          <h2 className="mt-5 text-2xl font-bold text-foreground leading-relaxed">{question.questionText}</h2>
+
+          {(question.questionType === "MCQ" || question.questionType === "TRUE_FALSE") && question.options.length > 0 ? (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {question.options.map((opt, i) => {
+                const isSelected = answers[question.id]?.selectedOptionId === opt.id
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => onSelectOption(question.id, opt.id)}
+                    className={`relative flex items-center gap-4 rounded-2xl border-2 p-5 text-left transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary/5 shadow-md scale-[1.02]"
+                        : "border-border hover:border-primary/30 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className={`flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-lg font-bold text-white ${optionColors[i % 4]}`}>
+                      {optionLetters[i]}
+                    </div>
+                    <span className="text-lg font-medium text-foreground">{opt.optionText}</span>
+                    {isSelected && (
+                      <div className="absolute right-3 top-3">
+                        <CheckCircle className="size-5 text-primary" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="mt-6">
+              <textarea
+                rows={4}
+                placeholder="Write your answer here..."
+                value={answers[question.id]?.textAnswer || ""}
+                onChange={(e) => {}}
+                className="w-full rounded-2xl border-2 border-border bg-muted/40 px-5 py-4 text-lg text-foreground outline-none focus:border-primary focus:bg-background resize-none transition-colors"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onPrev}
+            disabled={currentQ === 0}
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-base font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ArrowLeft className="size-4" /> Previous
+          </button>
+          {currentQ < questions.length - 1 ? (
+            <button
+              onClick={onNext}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Next <ArrowRight className="size-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onSubmit}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-base font-bold text-white transition-colors hover:bg-emerald-700"
+            >
+              <CheckCircle className="size-4" /> Submit Quiz
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
 
 export default function AssessmentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useRequireAuth()
+  const level = user?.learningLevel as LearningLevel | null
+  const isPrimary = level?.toUpperCase() === "PRIMARY"
 
   const [state, setState] = useState<QuizState>("loading")
   const [assessment, setAssessment] = useState<Assessment | null>(null)
@@ -41,7 +313,6 @@ export default function AssessmentDetailPage() {
         return
       }
       setAssessment(found)
-
       const qs = await assessmentApi.getQuestions(params.id as string)
       setQuestions(qs)
       setState("ready")
@@ -91,6 +362,16 @@ export default function AssessmentDetailPage() {
     }
   }, [attempt, answers, user])
 
+  const autoSubmit = useCallback(() => {
+    submitQuiz()
+  }, [submitQuiz])
+
+  useEffect(() => {
+    if (state === "in_progress" && timeLeft === 0 && assessment?.timeLimitMinutes) {
+      autoSubmit()
+    }
+  }, [state, timeLeft, assessment, autoSubmit])
+
   function selectOption(questionId: string, optionId: string) {
     setAnswers((prev) => ({
       ...prev,
@@ -130,6 +411,26 @@ export default function AssessmentDetailPage() {
           <h3 className="mt-4 text-lg font-semibold text-foreground">Assessment Not Found</h3>
         </div>
       </div>
+    )
+  }
+
+  if (isPrimary) {
+    return (
+      <PrimaryQuizView
+        state={state}
+        assessment={assessment}
+        questions={questions}
+        currentQ={currentQ}
+        answers={answers}
+        timeLeft={timeLeft}
+        attempt={attempt}
+        onSelectOption={selectOption}
+        onPrev={() => setCurrentQ((c) => c - 1)}
+        onNext={() => setCurrentQ((c) => c + 1)}
+        onSubmit={submitQuiz}
+        onStart={startQuiz}
+        formatTime={formatTime}
+      />
     )
   }
 

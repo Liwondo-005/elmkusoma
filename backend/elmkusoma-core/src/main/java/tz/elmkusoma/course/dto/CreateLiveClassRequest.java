@@ -30,4 +30,6 @@ public class CreateLiveClassRequest {
     private Integer maxParticipants;
 
     private Boolean recordingEnabled;
+
+    private String sessionType;
 }

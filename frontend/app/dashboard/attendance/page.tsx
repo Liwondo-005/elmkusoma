@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { dashboardApi, type AttendanceSummary } from "@/lib/api"
-import { BarChart3, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react"
+import { type LearningLevel } from "@/lib/learner-config"
+import { BarChart3, CheckCircle, XCircle, Clock, AlertTriangle, Calendar, Star, TrendingUp } from "lucide-react"
 
 export default function AttendancePage() {
   const { user } = useRequireAuth()
   const [summary, setSummary] = useState<AttendanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const level = user?.learningLevel as LearningLevel | null
+  const isPrimary = level?.toUpperCase() === "PRIMARY"
 
   useEffect(() => {
     if (!user) return
@@ -36,10 +39,10 @@ export default function AttendancePage() {
   }
 
   const stats = [
-    { label: "Present", value: summary?.present ?? 0, icon: CheckCircle, color: "bg-green-500/10 text-green-600" },
-    { label: "Absent", value: summary?.absent ?? 0, icon: XCircle, color: "bg-red-500/10 text-red-600" },
-    { label: "Late", value: summary?.late ?? 0, icon: Clock, color: "bg-yellow-500/10 text-yellow-600" },
-    { label: "Excused", value: summary?.excused ?? 0, icon: AlertTriangle, color: "bg-blue-500/10 text-blue-600" },
+    { label: "Present", value: summary?.present ?? 0, icon: CheckCircle, color: "bg-green-500/10 text-green-600", ringColor: "text-green-500" },
+    { label: "Absent", value: summary?.absent ?? 0, icon: XCircle, color: "bg-red-500/10 text-red-600", ringColor: "text-red-500" },
+    { label: "Late", value: summary?.late ?? 0, icon: Clock, color: "bg-yellow-500/10 text-yellow-600", ringColor: "text-yellow-500" },
+    { label: "Excused", value: summary?.excused ?? 0, icon: AlertTriangle, color: "bg-blue-500/10 text-blue-600", ringColor: "text-blue-500" },
   ]
 
   function getStatusStyle(status: string) {
@@ -52,6 +55,147 @@ export default function AttendancePage() {
     }
   }
 
+  function getStatusEmoji(status: string) {
+    switch (status) {
+      case "PRESENT": return "✓"
+      case "ABSENT": return "✗"
+      case "LATE": return "⏰"
+      case "EXCUSED": return "📋"
+      return "?"
+    }
+  }
+
+  const attendanceRate = summary?.attendanceRate ?? 0
+
+  if (isPrimary) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        {/* Header */}
+        <div className="rounded-2xl border border-border bg-gradient-to-br from-green-50 via-card to-teal/5 p-6 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-green-500/10">
+              <Calendar className="size-6 text-green-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">My Attendance</h1>
+              <p className="text-sm text-muted-foreground">Keep coming to school every day!</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Attendance Rate Visual */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+          <div className="flex items-center gap-6">
+            <div className="relative size-24">
+              <svg className="size-24 -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted" />
+                <circle
+                  cx="50" cy="50" r="40" fill="none" strokeWidth="8"
+                  className={attendanceRate >= 90 ? "text-green-500" : attendanceRate >= 75 ? "text-amber-500" : "text-red-500"}
+                  strokeDasharray={`${2 * Math.PI * 40}`}
+                  strokeDashoffset={`${2 * Math.PI * 40 * (1 - attendanceRate / 100)}`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xl font-bold text-foreground">{attendanceRate}%</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-foreground">
+                {attendanceRate >= 90 ? "Excellent!" : attendanceRate >= 75 ? "Good job!" : "Let's improve!"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {attendanceRate >= 90
+                  ? "You are attending school very regularly. Keep it up!"
+                  : attendanceRate >= 75
+                    ? "You are doing well. Try to attend every day!"
+                    : "Coming to school every day helps you learn more. Let's work on it!"}
+              </p>
+              <div className="mt-2 flex items-center gap-1.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`size-5 ${
+                      i < Math.floor(attendanceRate / 20)
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-muted"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-2xl border border-border bg-card p-4 shadow-xs text-center">
+              <div className={`mx-auto flex size-10 items-center justify-center rounded-xl ${s.color}`}>
+                <s.icon className="size-5" />
+              </div>
+              <p className="mt-2 text-2xl font-extrabold text-foreground">{s.value}</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Attendance Records */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+          <h2 className="text-lg font-semibold text-foreground mb-4">My School Days</h2>
+          {!summary?.records || summary.records.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
+                <Calendar className="size-6 text-muted-foreground" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-foreground">No attendance records yet</p>
+              <p className="text-xs text-muted-foreground">Your attendance will appear here.</p>
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {summary.records.map((record) => (
+                <div
+                  key={record.id}
+                  className={`flex items-center gap-3 rounded-xl border p-3 ${
+                    record.status === "PRESENT"
+                      ? "border-green-200 bg-green-50/50"
+                      : record.status === "ABSENT"
+                        ? "border-red-200 bg-red-50/50"
+                        : record.status === "LATE"
+                          ? "border-yellow-200 bg-yellow-50/50"
+                          : "border-border bg-muted/50"
+                  }`}
+                >
+                  <div className={`flex size-8 items-center justify-center rounded-full ${
+                    record.status === "PRESENT" ? "bg-green-100" :
+                    record.status === "ABSENT" ? "bg-red-100" :
+                    record.status === "LATE" ? "bg-yellow-100" : "bg-gray-100"
+                  }`}>
+                    <span className="text-sm">
+                      {record.status === "PRESENT" ? "✓" : record.status === "ABSENT" ? "✗" : record.status === "LATE" ? "⏰" : "📋"}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {record.date ? new Date(record.date).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      }) : "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{record.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  /* Non-Primary: Original attendance page */
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
@@ -66,7 +210,7 @@ export default function AttendancePage() {
               <BarChart3 className="size-5 text-teal" />
             </div>
             <div>
-              <p className="text-2xl font-extrabold text-foreground">{summary?.attendanceRate ?? 0}%</p>
+              <p className="text-2xl font-extrabold text-foreground">{attendanceRate}%</p>
               <p className="text-xs text-muted-foreground">Attendance Rate</p>
             </div>
           </div>

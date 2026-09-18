@@ -61,7 +61,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
       show-details: when-authorized
@@ -88,6 +88,14 @@ livekit:
     enabled: ${LIVEKIT_EGRESS_ENABLED:false}
     output-bucket: ${LIVEKIT_EGRESS_BUCKET:}
     output-path: ${LIVEKIT_EGRESS_PATH:recordings/}
+
+services:
+  media:
+    url: ${MEDIA_SERVICE_URL:http://localhost:8083}
+  realtime:
+    url: ${REALTIME_SERVICE_URL:http://localhost:8081}
+  workers:
+    url: ${WORKERS_SERVICE_URL:http://localhost:8082}
 
 logging:
   level:

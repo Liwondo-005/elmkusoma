@@ -7,6 +7,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.util.UriComponentsBuilder;
+import tz.elmkusoma.config.CorePresenceService;
+import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
@@ -38,6 +40,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private final InstitutionMembershipRepository membershipRepository;
     private final TeacherRepository teacherRepository;
     private final ObjectMapper objectMapper;
+    private final CorePresenceService corePresenceService;
+    private final EventPublisherService eventPublisherService;
 
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, UUID> sessionUserMap = new ConcurrentHashMap<>();
@@ -53,6 +57,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                                       UserRepository userRepository,
                                       InstitutionMembershipRepository membershipRepository,
                                       ObjectMapper objectMapper,
+                                      CorePresenceService corePresenceService,
+                                      EventPublisherService eventPublisherService,
                                       TeacherRepository teacherRepository) {
         this.liveClassRepository = liveClassRepository;
         this.participantRepository = participantRepository;
@@ -61,6 +67,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         this.userRepository = userRepository;
         this.membershipRepository = membershipRepository;
         this.objectMapper = objectMapper;
+        this.corePresenceService = corePresenceService;
+        this.eventPublisherService = eventPublisherService;
         this.teacherRepository = teacherRepository;
     }
 
@@ -223,6 +231,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         sessionUserMap.put(session.getId(), userId);
         session.getAttributes().put("participantRole", participantRole);
         classSessions.computeIfAbsent(classId, k -> ConcurrentHashMap.newKeySet()).add(session.getId());
+
+        corePresenceService.userOnline(userId, classInstitutionId);
+        eventPublisherService.publishPresenceEvent(userId, classInstitutionId, "ONLINE");
 
         String displayName = user.getFullName();
         session.getAttributes().put("userName", displayName);
@@ -518,6 +529,10 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         sessions.remove(session.getId());
         sessionHandRaised.remove(session.getId());
         sessionScreenSharing.remove(session.getId());
+
+        if (userId != null) {
+            corePresenceService.userOffline(userId);
+        }
 
         if (classId != null) {
             Set<String> classSessionSet = classSessions.get(classId);

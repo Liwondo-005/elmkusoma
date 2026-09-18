@@ -9,7 +9,7 @@
 backend/.env
 
 # Build artifacts
-backend/elmkusoma-core/target/
+backend/*/target/
 backend/*.log
 frontend/.next/
 frontend/node_modules/

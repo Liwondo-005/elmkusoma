@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'elmkusoma-core'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['elmkusoma-core:8080']
+        labels:
+          service: 'core'
+
+  - job_name: 'elmkusoma-realtime'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['elmkusoma-realtime:8081']
+        labels:
+          service: 'realtime'
+
+  - job_name: 'elmkusoma-workers'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['elmkusoma-workers:8082']
+        labels:
+          service: 'workers'
+
+  - job_name: 'elmkusoma-media'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['elmkusoma-media:8083']
+        labels:
+          service: 'media'

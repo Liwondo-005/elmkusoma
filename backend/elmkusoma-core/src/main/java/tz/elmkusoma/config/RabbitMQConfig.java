@@ -14,8 +14,12 @@ public class RabbitMQConfig {
     public static final String EXCHANGE_NAME = "elmkusoma.exchange";
     public static final String NOTIFICATION_QUEUE = "elmkusoma.notification.queue";
     public static final String REPORT_QUEUE = "elmkusoma.report.queue";
+    public static final String CERTIFICATE_QUEUE = "elmkusoma.certificate.queue";
+    public static final String EMAIL_QUEUE = "elmkusoma.email.queue";
     public static final String NOTIFICATION_ROUTING_KEY = "elmkusoma.notification";
     public static final String REPORT_ROUTING_KEY = "elmkusoma.report";
+    public static final String CERTIFICATE_ROUTING_KEY = "elmkusoma.certificate";
+    public static final String EMAIL_ROUTING_KEY = "elmkusoma.email";
 
     @Bean
     public TopicExchange elmkusomaExchange() {
@@ -33,6 +37,16 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue certificateQueue() {
+        return new Queue(CERTIFICATE_QUEUE, true);
+    }
+
+    @Bean
+    public Queue emailQueue() {
+        return new Queue(EMAIL_QUEUE, true);
+    }
+
+    @Bean
     public Binding notificationBinding(Queue notificationQueue, TopicExchange elmkusomaExchange) {
         return BindingBuilder.bind(notificationQueue).to(elmkusomaExchange).with(NOTIFICATION_ROUTING_KEY);
     }
@@ -40,6 +54,16 @@ public class RabbitMQConfig {
     @Bean
     public Binding reportBinding(Queue reportQueue, TopicExchange elmkusomaExchange) {
         return BindingBuilder.bind(reportQueue).to(elmkusomaExchange).with(REPORT_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding certificateBinding(Queue certificateQueue, TopicExchange elmkusomaExchange) {
+        return BindingBuilder.bind(certificateQueue).to(elmkusomaExchange).with(CERTIFICATE_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding emailBinding(Queue emailQueue, TopicExchange elmkusomaExchange) {
+        return BindingBuilder.bind(emailQueue).to(elmkusomaExchange).with(EMAIL_ROUTING_KEY);
     }
 
     @Bean

@@ -155,7 +155,7 @@ export default function OversightSchoolDetailPage() {
   )
 }
 
-function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | string; color: string }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
       <div className="flex items-center gap-3">

@@ -64,12 +64,12 @@ export default function ParentMessagesPage() {
   const filteredInbox = messages.filter(
     (m) =>
       m.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.senderName.toLowerCase().includes(searchQuery.toLowerCase())
+      m.senderName?.toLowerCase().includes(searchQuery.toLowerCase())
   )
   const filteredSent = sentMessages.filter(
     (m) =>
       m.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.recipientName.toLowerCase().includes(searchQuery.toLowerCase())
+      m.recipientName?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const displayMessages = activeTab === "inbox" ? filteredInbox : filteredSent

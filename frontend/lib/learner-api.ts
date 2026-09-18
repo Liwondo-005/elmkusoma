@@ -275,6 +275,16 @@ export interface ProfileUpdate {
   avatarUrl?: string
 }
 
+export interface SearchFilters {
+  dateFrom?: string
+  dateTo?: string
+  resourceType?: string
+  level?: string
+  category?: string
+  provider?: string
+  sort?: string
+}
+
 export const learnerApi = {
   getProfile: () => learnerFetch<LearnerProfile>("/v1/learner/me/profile"),
   updateProfile: (data: ProfileUpdate) =>
@@ -333,17 +343,15 @@ export const learnerApi = {
     const searchParams = new URLSearchParams()
     searchParams.set("q", q)
     if (type) searchParams.set("type", type)
-    if (filters?.category) searchParams.set("category", filters.category)
+    if (filters?.dateFrom) searchParams.set("dateFrom", filters.dateFrom)
+    if (filters?.dateTo) searchParams.set("dateTo", filters.dateTo)
+    if (filters?.resourceType) searchParams.set("resourceType", filters.resourceType)
     if (filters?.level) searchParams.set("level", filters.level)
-    if (filters?.sortBy) searchParams.set("sortBy", filters.sortBy)
+    if (filters?.category) searchParams.set("category", filters.category)
+    if (filters?.provider) searchParams.set("provider", filters.provider)
+    if (filters?.sort) searchParams.set("sort", filters.sort)
     return learnerFetch<SearchResult>(`/v1/learner/search?${searchParams.toString()}`)
   },
-  getRelatedCourses: (id: string) =>
-    learnerFetch<any[]>(`/v1/learner/courses/${id}/related`),
-  getResource: (id: string) =>
-    learnerFetch<any>(`/v1/learner/resources/${id}`),
-  getRelatedResources: (id: string) =>
-    learnerFetch<any[]>(`/v1/learner/resources/${id}/related`),
   getEvents: (params?: { eventType?: string; category?: string; search?: string }) => {
     const searchParams = new URLSearchParams()
     if (params?.eventType) searchParams.set("eventType", params.eventType)
@@ -371,4 +379,9 @@ export const learnerApi = {
     learnerFetch<Resource[]>("/v1/learner/resources").then((resources) =>
       resources.filter((r) => r.resourceType === "VIDEO")
     ),
+  getRelatedCourses: (courseId: string) =>
+    learnerFetch<CourseSummary[]>(`/v1/learner/courses/${courseId}/related`),
+  getResource: (id: string) => learnerFetch<Resource>(`/v1/learner/resources/${id}`),
+  getRelatedResources: (resourceId: string) =>
+    learnerFetch<Resource[]>(`/v1/learner/resources/${resourceId}/related`),
 }
