@@ -210,3 +210,90 @@ export interface PracticalDemonstration {
   createdAt: string
   updatedAt?: string
 }
+
+// Research types
+export type ResearchStatus = "IDEA" | "QUESTION" | "LITERATURE" | "PROPOSAL" | "METHODOLOGY" | "DATA_COLLECTION" | "ANALYSIS" | "WRITING" | "REVIEW" | "REVISION" | "DEFENSE" | "COMPLETED"
+export type ThesisStatus = "NOT_STARTED" | "PROPOSAL" | "IN_PROGRESS" | "REVIEW" | "REVISION" | "DEFENSE_SCHEDULED" | "DEFENSE_COMPLETE" | "COMPLETED"
+export type ResourceType = "ARTICLE" | "BOOK" | "THESIS" | "WEBSITE" | "DATASET" | "CODE" | "OTHER"
+
+export interface ResearchProject {
+  id: string
+  institutionId: string
+  studentId: string
+  title: string
+  researchQuestion?: string
+  objectives?: string
+  supervisorId?: string
+  status: ResearchStatus
+  programmeId?: string
+  subjectId?: string
+  methodology?: string
+  startDate?: string
+  dueDate?: string
+  completedDate?: string
+  abstractText?: string
+  keywords?: string
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface ResearchMilestone {
+  id: string
+  researchProjectId: string
+  title: string
+  description?: string
+  dueDate?: string
+  isCompleted: boolean
+  completedDate?: string
+  sortOrder?: number
+}
+
+export interface ResearchResource {
+  id: string
+  researchProjectId: string
+  title: string
+  description?: string
+  resourceType: ResourceType
+  fileUrl?: string
+  citation?: string
+  sortOrder?: number
+}
+
+export interface Thesis {
+  id: string
+  institutionId: string
+  studentId: string
+  title: string
+  researchProjectId?: string
+  supervisorId?: string
+  status: ThesisStatus
+  programmeId?: string
+  submissionDate?: string
+  defenseDate?: string
+  finalGrade?: string
+  abstractText?: string
+  wordCount?: number
+  createdAt: string
+}
+
+// Study Planner types
+export type StudyTaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+export type StudyTaskType = "STUDY" | "REVISION" | "ASSIGNMENT" | "PROJECT" | "RESEARCH" | "EXAM_PREP" | "REPLAY" | "OTHER"
+
+export interface StudyTask {
+  id: string
+  institutionId: string
+  studentId: string
+  title: string
+  description?: string
+  taskType: StudyTaskType
+  priority: StudyTaskPriority
+  subjectId?: string
+  scheduledDate?: string
+  scheduledTime?: string
+  durationMinutes?: number
+  isCompleted: boolean
+  completedDate?: string
+  notes?: string
+  createdAt: string
+}

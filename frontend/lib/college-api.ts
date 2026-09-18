@@ -6,6 +6,7 @@ import type {
   Competency, CompetencyRecord, CompetencySummary,
   Project, ProjectMilestone, ProjectSubmission,
   FieldworkPlacement, LogbookEntry,
+  ResearchProject, ResearchMilestone, ResearchResource, Thesis, StudyTask,
 } from "./types/college"
 
 export const collegeApi = {
@@ -81,4 +82,32 @@ export const collegeApi = {
   submitDemonstration: (id: string) => api.post<any>(`/api/v1/education/demonstrations/${id}/submit`),
   reviewDemonstration: (id: string, data: any) => api.put<any>(`/api/v1/education/demonstrations/${id}/review`, data),
   getStudentDemonstrations: (studentId: string) => api.get<any[]>(`/api/v1/education/demonstrations/student/${studentId}`),
+
+  // Research
+  listResearch: () => api.get<ResearchProject[]>("/api/v1/education/research"),
+  getResearch: (id: string) => api.get<ResearchProject>(`/api/v1/education/research/${id}`),
+  createResearch: (data: Partial<ResearchProject>) => api.post<ResearchProject>("/api/v1/education/research", data),
+  updateResearch: (id: string, data: Partial<ResearchProject>) => api.put<ResearchProject>(`/api/v1/education/research/${id}`, data),
+  deleteResearch: (id: string) => api.delete<void>(`/api/v1/education/research/${id}`),
+  getStudentResearch: (studentId: string) => api.get<ResearchProject[]>(`/api/v1/education/research/student/${studentId}`),
+  addResearchMilestone: (researchId: string, data: Partial<ResearchMilestone>) => api.post<ResearchMilestone>(`/api/v1/education/research/${researchId}/milestones`, data),
+  addResearchResource: (researchId: string, data: Partial<ResearchResource>) => api.post<ResearchResource>(`/api/v1/education/research/${researchId}/resources`, data),
+
+  // Theses
+  listTheses: () => api.get<Thesis[]>("/api/v1/education/theses"),
+  getThesis: (id: string) => api.get<Thesis>(`/api/v1/education/theses/${id}`),
+  createThesis: (data: Partial<Thesis>) => api.post<Thesis>("/api/v1/education/theses", data),
+  updateThesis: (id: string, data: Partial<Thesis>) => api.put<Thesis>(`/api/v1/education/theses/${id}`, data),
+  getStudentTheses: (studentId: string) => api.get<Thesis[]>(`/api/v1/education/theses/student/${studentId}`),
+
+  // Study Tasks
+  listStudyTasks: () => api.get<StudyTask[]>("/api/v1/education/study-tasks"),
+  getStudyTask: (id: string) => api.get<StudyTask>(`/api/v1/education/study-tasks/${id}`),
+  createStudyTask: (data: Partial<StudyTask>) => api.post<StudyTask>("/api/v1/education/study-tasks", data),
+  updateStudyTask: (id: string, data: Partial<StudyTask>) => api.put<StudyTask>(`/api/v1/education/study-tasks/${id}`, data),
+  deleteStudyTask: (id: string) => api.delete<void>(`/api/v1/education/study-tasks/${id}`),
+  getStudentTasks: (studentId: string) => api.get<StudyTask[]>(`/api/v1/education/study-tasks/student/${studentId}`),
+  getTodayTasks: (studentId: string) => api.get<StudyTask[]>(`/api/v1/education/study-tasks/student/${studentId}/today`),
+  getWeekTasks: (studentId: string) => api.get<StudyTask[]>(`/api/v1/education/study-tasks/student/${studentId}/week`),
+  completeStudyTask: (id: string) => api.put<StudyTask>(`/api/v1/education/study-tasks/${id}/complete`),
 }
