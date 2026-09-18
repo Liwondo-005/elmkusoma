@@ -3,293 +3,335 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type DashboardData, type CourseSummary } from "@/lib/learner-api"
-import { LearnerHeader, ContinueLearningCard, EmptyState, LoadingState } from "@/components/learner/shared"
-import { BookOpen, Library, Video, Award, ArrowRight, Clock, Loader2, AlertCircle, CalendarDays } from "lucide-react"
-import { type EventItem } from "@/lib/learner-api"
+import { collegeApi } from "@/lib/college-api"
+import type { HigherEducationDashboard } from "@/lib/types/college"
+import { LearnerHeader, LoadingState } from "@/components/learner/shared"
+import {
+  Sparkles, Clock, Play, Video, BookOpen, BarChart3, FolderOpen,
+  FlaskConical, Award, Briefcase, CalendarDays, ClipboardList,
+  ChevronRight, CheckCircle2, AlertCircle, TrendingUp, Target
+} from "lucide-react"
 
-export default function LearnerDashboardPage() {
+export default function HigherEducationDashboardPage() {
   const { user, loading: authLoading } = useAuth()
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null)
+  const [dashboard, setDashboard] = useState<HigherEducationDashboard | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [upcomingEvents, setUpcomingEvents] = useState<EventItem[]>([])
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user) return
     loadDashboard()
   }, [user])
 
   async function loadDashboard() {
     try {
       setLoading(true)
-      setError(null)
-      const [data, events] = await Promise.all([
-        learnerApi.getDashboard(),
-        learnerApi.getUpcomingEvents().catch(() => []),
-      ])
-      setDashboard(data)
-      setUpcomingEvents(events.slice(0, 3))
+      const studentId = user?.id || ""
+      const level = (user?.learningLevel || "COLLEGE").toUpperCase()
+      const res = await collegeApi.getHEDashboard(studentId, level)
+      setDashboard(res.data || null)
     } catch {
-      setError("Failed to load dashboard data")
+      // silent
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading || user?.role !== "Other Learner") {
-    return <LoadingState />
-  }
+  if (authLoading || loading) return <LoadingState />
+  if (!dashboard) return <LoadingState />
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Student"
+  const ctx = dashboard.academicContext || "COLLEGE"
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Welcome to your learning dashboard." />
+    <div className="mx-auto max-w-7xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={`My Academic & Professional World — ${ctx}`} />
 
-      {error && (
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
-          <div className="flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="size-4" />
-            {error}
-          </div>
-        </div>
-      )}
-
+      {/* Row 1: Academic Context + What's Next + Today */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Academic Context */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Enrolled Courses</p>
-          <p className="mt-1 text-2xl font-extrabold text-foreground">{dashboard?.enrolledCourses ?? 0}</p>
+          <p className="text-xs font-medium text-muted-foreground">Academic Context</p>
+          <p className="mt-1 text-lg font-bold text-foreground">{ctx}</p>
+          {dashboard.academicYear && <p className="text-xs text-muted-foreground">{dashboard.academicYear} — {dashboard.semester}</p>}
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Completed Courses</p>
-          <p className="mt-1 text-2xl font-extrabold text-foreground">{dashboard?.completedCourses ?? 0}</p>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Overall Progress</p>
-          <p className="mt-1 text-2xl font-extrabold text-foreground">{dashboard?.overallProgress ?? 0}%</p>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-teal transition-all" style={{ width: `${dashboard?.overallProgress ?? 0}%` }} />
-          </div>
-        </div>
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          {dashboard?.continueLearning && dashboard.continueLearning.length > 0 ? (
-            <div className="space-y-3">
-              <h2 className="text-base font-semibold text-foreground">Continue Learning</h2>
-              {dashboard.continueLearning.map((item) => (
-                <Link
-                  key={item.courseId}
-                  href={`/dashboard/learner/courses/${item.courseId}`}
-                  className="flex items-center gap-4 rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
-                >
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
-                    <Clock className="size-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{item.courseTitle}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.progressPercentage}% complete
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${item.progressPercentage}%` }} />
-                    </div>
-                  </div>
-                </Link>
-              ))}
+        {/* What's Next */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="size-4 text-primary" />
+            <p className="text-xs font-medium text-muted-foreground">What's Next?</p>
+          </div>
+          {dashboard.whatsNext && dashboard.whatsNext.type !== "NONE" ? (
+            <div>
+              <p className="font-semibold text-foreground line-clamp-1">{dashboard.whatsNext.title}</p>
+              <p className="text-xs text-muted-foreground line-clamp-1">{dashboard.whatsNext.description}</p>
+              {dashboard.whatsNext.deadline && (
+                <p className="mt-1 text-xs text-amber-600">Due {new Date(dashboard.whatsNext.deadline).toLocaleDateString()}</p>
+              )}
             </div>
           ) : (
-            <ContinueLearningCard title={undefined} onResume={() => {}} />
+            <p className="text-sm text-muted-foreground">You&apos;re all caught up!</p>
           )}
         </div>
 
+        {/* Today */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Quick Links</h2>
-          <div className="mt-4 space-y-2">
-            <Link
-              href="/dashboard/learner/courses"
-              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <BookOpen className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Explore Courses</span>
-              <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
-            </Link>
-            <Link
-              href="/dashboard/learner/resources"
-              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <Library className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Resources</span>
-              <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
-            </Link>
-            <Link
-              href="/dashboard/learner/live-classes"
-              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <Video className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Live Classes</span>
-              <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
-            </Link>
-            <Link
-              href="/dashboard/learner/events"
-              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Events &amp; Workshops</span>
-              <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
-            </Link>
-            <Link
-              href="/dashboard/learner/video-library"
-              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <Video className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Video Library</span>
-              <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
-            </Link>
-            <Link
-              href="/dashboard/learner/certificates"
-              className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              <Award className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Certificates</span>
-              <ArrowRight className="size-3 shrink-0 text-muted-foreground" />
-            </Link>
+          <div className="flex items-center gap-2 mb-2">
+            <CalendarDays className="size-4 text-blue-600" />
+            <p className="text-xs font-medium text-muted-foreground">Today</p>
           </div>
+          {dashboard.today && dashboard.today.totalTasks > 0 ? (
+            <div>
+              <p className="text-2xl font-extrabold text-foreground">{dashboard.today.pendingTasks}</p>
+              <p className="text-xs text-muted-foreground">tasks pending, {dashboard.today.completedTasks} done</p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No tasks for today</p>
+          )}
         </div>
       </div>
 
-      {upcomingEvents.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Upcoming Events</h2>
-            <Link href="/dashboard/learner/events" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              View All <ArrowRight className="size-3" />
+      {/* Row 2: Continue Learning + Live Campus + Academic Load */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Continue Learning */}
+        {dashboard.continueLearning && (
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <Play className="size-4 text-emerald-600" />
+              <p className="text-xs font-medium text-muted-foreground">Continue Learning</p>
+            </div>
+            <p className="font-semibold text-foreground line-clamp-1">{dashboard.continueLearning.lastCourse}</p>
+            {dashboard.continueLearning.lastModule && (
+              <p className="text-xs text-muted-foreground line-clamp-1">{dashboard.continueLearning.lastModule}</p>
+            )}
+            <Link href="/dashboard/learner/study-planner" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              Resume <ChevronRight className="size-3" />
             </Link>
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {upcomingEvents.map((event) => (
-              <Link
-                key={event.id}
-                href={`/dashboard/learner/events/${event.id}`}
-                className="rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                    {event.eventType}
-                  </span>
-                  {event.isFree && (
-                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                      Free
-                    </span>
-                  )}
-                </div>
-                <h3 className="text-sm font-semibold text-foreground truncate">{event.title}</h3>
-                <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                  <CalendarDays className="size-3" />
-                  {new Date(event.startsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  {" at "}
-                  {new Date(event.startsAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-                {event.location && (
-                  <p className="mt-1 text-xs text-muted-foreground truncate">{event.location}</p>
-                )}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+        )}
 
-      {dashboard?.recommended && dashboard.recommended.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Recommended Courses</h2>
-            <Link href="/dashboard/learner/courses" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              View All <ArrowRight className="size-3" />
-            </Link>
+        {/* Live Campus */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <Video className="size-4 text-red-600" />
+            <p className="text-xs font-medium text-muted-foreground">Live Campus</p>
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {dashboard.recommended.slice(0, 3).map((course) => (
-              <Link
-                key={course.id}
-                href={`/dashboard/learner/courses/${course.id}`}
-                className="rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
-              >
-                {course.thumbnailUrl ? (
-                  <div className="mb-3 h-32 overflow-hidden rounded-lg bg-muted">
-                    <img src={course.thumbnailUrl} alt={course.title} className="h-full w-full object-cover" />
-                  </div>
-                ) : (
-                  <div className="mb-3 flex h-32 items-center justify-center rounded-lg bg-primary/10">
-                    <BookOpen className="size-8 text-primary/40" />
-                  </div>
-                )}
-                <h3 className="text-sm font-semibold text-foreground truncate">{course.title}</h3>
-                <div className="mt-2 flex items-center gap-2">
-                  {course.level && (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                      {course.level}
-                    </span>
-                  )}
-                  {course.category && (
-                    <span className="text-[10px] text-muted-foreground">{course.category}</span>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+          <p className="text-2xl font-extrabold text-foreground">{dashboard.liveCampus?.liveNow || 0}</p>
+          <p className="text-xs text-muted-foreground">live sessions now</p>
+          <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            View All <ChevronRight className="size-3" />
+          </Link>
+        </div>
 
-      {dashboard?.recentEnrollments && dashboard.recentEnrollments.length > 0 && (
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Recent Enrollments</h2>
-            <Link href="/dashboard/learner/my-learning" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              View All <ArrowRight className="size-3" />
+        {/* Academic Load */}
+        {dashboard.academicLoad && (
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="size-4 text-violet-600" />
+              <p className="text-xs font-medium text-muted-foreground">Academic Load</p>
+            </div>
+            <p className="text-2xl font-extrabold text-foreground">{dashboard.academicLoad.enrolledCourses}</p>
+            <p className="text-xs text-muted-foreground">active courses, {dashboard.academicLoad.totalCreditHours} credits</p>
+            {dashboard.academicLoad.cumulativeGpa != null && (
+              <p className="mt-1 text-xs font-medium text-foreground">GPA: {dashboard.academicLoad.cumulativeGpa.toFixed(2)}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Row 3: My Courses / Modules */}
+      {dashboard.myCourses.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="size-4 text-primary" />
+              <h3 className="font-semibold text-foreground">My Courses</h3>
+            </div>
+            <Link href="/dashboard/learner/my-learning" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+              View All <ChevronRight className="size-3" />
             </Link>
           </div>
-          <div className="mt-4 space-y-3">
-            {dashboard.recentEnrollments.slice(0, 5).map((enrollment) => (
-              <div key={enrollment.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                  <BookOpen className="size-4 text-primary" />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {dashboard.myCourses.slice(0, 4).map((c) => (
+              <div key={c.id} className="rounded-xl border border-border bg-muted/30 p-3">
+                <p className="font-medium text-foreground text-sm line-clamp-1">{c.title}</p>
+                <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${c.progressPercent}%` }} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{enrollment.courseTitle}</p>
-                  <p className="text-xs text-muted-foreground">{enrollment.progressPercentage}% complete</p>
-                </div>
-                <Link
-                  href={`/dashboard/learner/courses/${enrollment.courseId}`}
-                  className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                  Continue
-                </Link>
+                <p className="mt-1 text-[10px] text-muted-foreground">{c.progressPercent}% complete</p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
       )}
 
-      {(!dashboard?.enrolledCourses || dashboard.enrolledCourses === 0) &&
-        (!dashboard?.recommended || dashboard.recommended.length === 0) && (
-          <EmptyState
-            icon={<BookOpen className="size-8" />}
-            title="Your learning journey starts here"
-            description="Explore courses and begin your learning adventure."
-            action={
-              <Link
-                href="/dashboard/learner/courses"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Explore Courses <ArrowRight className="size-4" />
-              </Link>
-            }
-          />
+      {/* Row 4: Projects + Research + My Progress */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Projects */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="size-4 text-amber-600" />
+            <p className="text-xs font-medium text-muted-foreground">Projects</p>
+          </div>
+          <p className="text-2xl font-extrabold text-foreground">{dashboard.projects.length}</p>
+          <p className="text-xs text-muted-foreground">total projects</p>
+          <Link href="/dashboard/learner/projects" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            View All <ChevronRight className="size-3" />
+          </Link>
+        </div>
+
+        {/* Research */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <FlaskConical className="size-4 text-indigo-600" />
+            <p className="text-xs font-medium text-muted-foreground">Research</p>
+          </div>
+          <p className="text-2xl font-extrabold text-foreground">{dashboard.research.length}</p>
+          <p className="text-xs text-muted-foreground">research projects</p>
+          <Link href="/dashboard/learner/research" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            View All <ChevronRight className="size-3" />
+          </Link>
+        </div>
+
+        {/* My Progress */}
+        {dashboard.myProgress && (
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="size-4 text-emerald-600" />
+              <p className="text-xs font-medium text-muted-foreground">My Progress</p>
+            </div>
+            <div className="space-y-1.5">
+              {dashboard.myProgress.cumulativeGpa != null && (
+                <p className="text-sm"><span className="text-muted-foreground">GPA:</span> <span className="font-bold text-foreground">{dashboard.myProgress.cumulativeGpa.toFixed(2)}</span></p>
+              )}
+              <p className="text-sm"><span className="text-muted-foreground">Competencies:</span> <span className="font-bold text-foreground">{dashboard.myProgress.competenciesCompleted}/{dashboard.myProgress.competenciesTotal}</span></p>
+              <p className="text-sm"><span className="text-muted-foreground">Projects:</span> <span className="font-bold text-foreground">{dashboard.myProgress.projectsCompleted}/{dashboard.myProgress.projectsTotal}</span></p>
+              {dashboard.myProgress.academicStanding && (
+                <p className="text-sm"><span className="text-muted-foreground">Standing:</span> <span className="font-bold text-foreground">{dashboard.myProgress.academicStanding}</span></p>
+              )}
+            </div>
+          </div>
         )}
+      </div>
+
+      {/* Row 5: My Evidence + Career World + Study Planner */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* My Evidence */}
+        {dashboard.myEvidence && (
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <Award className="size-4 text-rose-600" />
+              <p className="text-xs font-medium text-muted-foreground">My Evidence</p>
+            </div>
+            <div className="space-y-1.5 text-sm">
+              <p><span className="text-muted-foreground">Portfolio items:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.portfolioItems}</span></p>
+              <p><span className="text-muted-foreground">Demonstrations:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.demonstrations}</span></p>
+              <p><span className="text-muted-foreground">Project submissions:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.projectSubmissions}</span></p>
+              <p><span className="text-muted-foreground">Logbook entries:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.logbookEntries}</span></p>
+              <p><span className="text-muted-foreground">Competencies recorded:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.competenciesRecorded}</span></p>
+            </div>
+            <Link href="/dashboard/learner/portfolio" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              View Portfolio <ChevronRight className="size-3" />
+            </Link>
+          </div>
+        )}
+
+        {/* Career World */}
+        {dashboard.careerWorld && (
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <Briefcase className="size-4 text-teal-600" />
+              <p className="text-xs font-medium text-muted-foreground">Career & Professional World</p>
+            </div>
+            {dashboard.careerWorld.hasProfile ? (
+              <div className="space-y-1.5 text-sm">
+                {dashboard.careerWorld.targetRole && <p><span className="text-muted-foreground">Target:</span> <span className="font-bold text-foreground">{dashboard.careerWorld.targetRole}</span></p>}
+                {dashboard.careerWorld.targetIndustry && <p><span className="text-muted-foreground">Industry:</span> <span className="font-bold text-foreground">{dashboard.careerWorld.targetIndustry}</span></p>}
+                <p><span className="text-muted-foreground">Skills:</span> <span className="font-bold text-foreground">{dashboard.careerWorld.skillsCount}</span></p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Set up your career profile to get started.</p>
+            )}
+            <Link href="/dashboard/learner/career" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              {dashboard.careerWorld.hasProfile ? "View Profile" : "Create Profile"} <ChevronRight className="size-3" />
+            </Link>
+          </div>
+        )}
+
+        {/* Study Planner */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <ClipboardList className="size-4 text-orange-600" />
+            <p className="text-xs font-medium text-muted-foreground">Study Planner</p>
+          </div>
+          {dashboard.studyPlannerTasks.length > 0 ? (
+            <div className="space-y-1.5">
+              {dashboard.studyPlannerTasks.slice(0, 3).map((t) => (
+                <div key={t.id} className="flex items-center gap-2 text-sm">
+                  {t.isCompleted ? (
+                    <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                  ) : (
+                    <AlertCircle className="size-3.5 text-amber-500 shrink-0" />
+                  )}
+                  <span className={`line-clamp-1 ${t.isCompleted ? "text-muted-foreground line-through" : "text-foreground"}`}>{t.title}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No tasks scheduled</p>
+          )}
+          <Link href="/dashboard/learner/study-planner" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            Open Planner <ChevronRight className="size-3" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Row 6: My Day / My Week */}
+      {dashboard.dayWeekView && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Today */}
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="size-4 text-primary" />
+              <h3 className="font-semibold text-foreground">My Day</h3>
+            </div>
+            {dashboard.dayWeekView.todayItems.length > 0 ? (
+              <div className="space-y-2">
+                {dashboard.dayWeekView.todayItems.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="text-xs text-muted-foreground w-12 shrink-0">{item.time || "--:--"}</span>
+                    <span className={`flex-1 line-clamp-1 ${item.status === "DONE" ? "text-muted-foreground line-through" : "text-foreground"}`}>{item.title}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{item.type}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nothing scheduled for today</p>
+            )}
+          </div>
+
+          {/* Week */}
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarDays className="size-4 text-blue-600" />
+              <h3 className="font-semibold text-foreground">My Week</h3>
+            </div>
+            {dashboard.dayWeekView.weekItems.length > 0 ? (
+              <div className="space-y-2">
+                {dashboard.dayWeekView.weekItems.slice(0, 5).map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="text-xs text-muted-foreground w-16 shrink-0">{item.date ? new Date(item.date).toLocaleDateString("en-US", { weekday: "short" }) : ""}</span>
+                    <span className={`flex-1 line-clamp-1 ${item.status === "DONE" ? "text-muted-foreground line-through" : "text-foreground"}`}>{item.title}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{item.type}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nothing scheduled this week</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

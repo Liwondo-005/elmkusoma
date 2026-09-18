@@ -8,6 +8,7 @@ import type {
   FieldworkPlacement, LogbookEntry,
   ResearchProject, ResearchMilestone, ResearchResource, Thesis, StudyTask,
 } from "./types/college"
+import type { HigherEducationDashboard, StudentCourseEnrollment, AcademicRecord, CareerProfile } from "./types/college"
 
 export const collegeApi = {
   // Programmes
@@ -110,4 +111,23 @@ export const collegeApi = {
   getTodayTasks: (studentId: string) => api.get<StudyTask[]>(`/api/v1/education/study-tasks/student/${studentId}/today`),
   getWeekTasks: (studentId: string) => api.get<StudyTask[]>(`/api/v1/education/study-tasks/student/${studentId}/week`),
   completeStudyTask: (id: string) => api.put<StudyTask>(`/api/v1/education/study-tasks/${id}/complete`),
+
+  // Higher Education Dashboard
+  getHEDashboard: (studentId: string, learningLevel: string = "COLLEGE") =>
+    api.get<HigherEducationDashboard>(`/api/v1/education/higher-education/dashboard/${studentId}?learningLevel=${learningLevel}`),
+
+  // Enrollments
+  getStudentEnrollments: (studentId: string) => api.get<StudentCourseEnrollment[]>(`/api/v1/education/higher-education/enrollments/${studentId}`),
+  createEnrollment: (data: Partial<StudentCourseEnrollment>) => api.post<StudentCourseEnrollment>("/api/v1/education/higher-education/enrollments", data),
+  updateEnrollment: (id: string, data: Partial<StudentCourseEnrollment>) => api.put<StudentCourseEnrollment>(`/api/v1/education/higher-education/enrollments/${id}`, data),
+
+  // Academic Records
+  getAcademicRecord: (studentId: string) => api.get<AcademicRecord>(`/api/v1/education/higher-education/academic-record/${studentId}`),
+  getAcademicRecordHistory: (studentId: string) => api.get<AcademicRecord[]>(`/api/v1/education/higher-education/academic-record/${studentId}/history`),
+  createAcademicRecord: (data: Partial<AcademicRecord>) => api.post<AcademicRecord>("/api/v1/education/higher-education/academic-record", data),
+  updateAcademicRecord: (id: string, data: Partial<AcademicRecord>) => api.put<AcademicRecord>(`/api/v1/education/higher-education/academic-record/${id}`, data),
+
+  // Career Profile
+  getCareerProfile: (studentId: string) => api.get<CareerProfile>(`/api/v1/education/higher-education/career-profile/${studentId}`),
+  upsertCareerProfile: (studentId: string, data: Partial<CareerProfile>) => api.post<CareerProfile>(`/api/v1/education/higher-education/career-profile/${studentId}`, data),
 }
