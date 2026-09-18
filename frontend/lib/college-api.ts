@@ -60,4 +60,25 @@ export const collegeApi = {
     api.post<LogbookEntry>(`/api/v1/education/fieldwork/${placementId}/logbook`, data),
   approveLogbookEntry: (entryId: string) =>
     api.put<LogbookEntry>(`/api/v1/education/fieldwork/logbook/${entryId}/approve`),
+
+  // Portfolios
+  listPortfolios: () => api.get<any[]>("/api/v1/education/portfolios"),
+  getPortfolio: (id: string) => api.get<any>(`/api/v1/education/portfolios/${id}`),
+  getStudentPortfolio: (studentId: string) => api.get<any>(`/api/v1/education/portfolios/student/${studentId}`),
+  createPortfolio: (data: any) => api.post<any>("/api/v1/education/portfolios", data),
+  updatePortfolio: (id: string, data: any) => api.put<any>(`/api/v1/education/portfolios/${id}`, data),
+  deletePortfolio: (id: string) => api.delete<void>(`/api/v1/education/portfolios/${id}`),
+  addPortfolioItem: (portfolioId: string, data: any) => api.post<any>(`/api/v1/education/portfolios/${portfolioId}/items`, data),
+  updatePortfolioItem: (itemId: string, data: any) => api.put<any>(`/api/v1/education/portfolios/items/${itemId}`, data),
+  deletePortfolioItem: (itemId: string) => api.delete<void>(`/api/v1/education/portfolios/items/${itemId}`),
+
+  // Demonstrations
+  listDemonstrations: () => api.get<any[]>("/api/v1/education/demonstrations"),
+  getDemonstration: (id: string) => api.get<any>(`/api/v1/education/demonstrations/${id}`),
+  createDemonstration: (data: any) => api.post<any>("/api/v1/education/demonstrations", data),
+  updateDemonstration: (id: string, data: any) => api.put<any>(`/api/v1/education/demonstrations/${id}`, data),
+  deleteDemonstration: (id: string) => api.delete<void>(`/api/v1/education/demonstrations/${id}`),
+  submitDemonstration: (id: string) => api.post<any>(`/api/v1/education/demonstrations/${id}/submit`),
+  reviewDemonstration: (id: string, data: any) => api.put<any>(`/api/v1/education/demonstrations/${id}/review`, data),
+  getStudentDemonstrations: (studentId: string) => api.get<any[]>(`/api/v1/education/demonstrations/student/${studentId}`),
 }

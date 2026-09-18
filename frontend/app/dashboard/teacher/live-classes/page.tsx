@@ -22,6 +22,7 @@ interface LiveClass {
   createdAt: string
   recordingEnabled: boolean | null
   currentParticipants: number | null
+  sessionType: string | null
 }
 
 interface ClassOption {
@@ -60,6 +61,7 @@ const initialForm = {
   classGroupId: "",
   subjectId: "",
   enableRecording: false,
+  sessionType: "LECTURE",
 }
 
 export default function TeacherLiveClassesPage() {
@@ -133,6 +135,7 @@ export default function TeacherLiveClassesPage() {
       classGroupId: lc.classGroupId || "",
       subjectId: lc.subjectId || "",
       enableRecording: lc.recordingEnabled || false,
+      sessionType: lc.sessionType || "LECTURE",
     })
     setEditingId(lc.id)
     setShowForm(true)
@@ -165,8 +168,9 @@ export default function TeacherLiveClassesPage() {
         maxParticipants: Number(form.maxParticipants) || 50,
         recordingEnabled: form.enableRecording,
       }
-      if (form.classGroupId) payload.classGroupId = form.classGroupId
-      if (form.subjectId) payload.subjectId = form.subjectId
+        if (form.classGroupId) payload.classGroupId = form.classGroupId
+        if (form.subjectId) payload.subjectId = form.subjectId
+        if (form.sessionType) payload.sessionType = form.sessionType
 
       if (editingId) {
         await appFetch(`/v1/teachers/me/live-classes/${editingId}`, {
@@ -307,6 +311,30 @@ export default function TeacherLiveClassesPage() {
           </h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Session Type</label>
+              <select
+                value={form.sessionType}
+                onChange={(e) => setForm({ ...form, sessionType: e.target.value })}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              >
+                <option value="LECTURE">Lecture</option>
+                <option value="TUTORIAL">Tutorial</option>
+                <option value="WORKSHOP">Workshop</option>
+                <option value="SEMINAR">Seminar</option>
+                <option value="LAB_DEMO">Lab Demonstration</option>
+                <option value="COMPETENCY_ASSESSMENT">Competency Assessment</option>
+                <option value="WEBINAR">Webinar</option>
+                <option value="GUEST_SPEAKER">Guest Speaker</option>
+                <option value="RESEARCH_PRESENTATION">Research Presentation</option>
+                <option value="PROJECT_DEFENSE">Project Defense</option>
+                <option value="CONFERENCE">Conference</option>
+                <option value="PROFESSIONAL_TRAINING">Professional Training</option>
+                <option value="CAREER_EVENT">Career Event</option>
+                <option value="INSTITUTION_EVENT">Institution Event</option>
+              </select>
+            </div>
+
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Title *</label>
               <input
@@ -515,6 +543,11 @@ export default function TeacherLiveClassesPage() {
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.className}`}>
                         {status.label}
                       </span>
+                      {lc.sessionType && lc.sessionType !== "LECTURE" && (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          {lc.sessionType.replace(/_/g, " ")}
+                        </span>
+                      )}
                     </div>
                     <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       {lc.subjectName && (

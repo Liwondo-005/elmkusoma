@@ -29,4 +29,5 @@ public class LiveClassResponse {
     private Boolean canJoin;
     private String createdAt;
     private Boolean recordingEnabled;
+    private String sessionType;
 }

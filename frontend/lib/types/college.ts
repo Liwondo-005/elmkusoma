@@ -157,3 +157,56 @@ export interface LogbookEntry {
   approvedAt?: string
   createdAt: string
 }
+
+// Portfolio types
+export type PortfolioItemType = "DOCUMENT" | "CERTIFICATE" | "PROJECT_EVIDENCE" | "MEDIA" | "ACHIEVEMENT" | "WORK_SAMPLE" | "REFERENCE" | "OTHER"
+export type Visibility = "PRIVATE" | "INSTITUTION" | "PUBLIC"
+
+export interface Portfolio {
+  id: string
+  institutionId: string
+  studentId: string
+  title: string
+  visibility: Visibility
+  isActive: boolean
+  items?: PortfolioItem[]
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface PortfolioItem {
+  id: string
+  portfolioId: string
+  title: string
+  description?: string
+  itemType: PortfolioItemType
+  fileUrl?: string
+  competencyId?: string
+  projectId?: string
+  dateObtained?: string
+  sortOrder?: number
+  isVisible: boolean
+  createdAt: string
+}
+
+// Practical Demonstration types
+export type DemonstrationStatus = "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "NEEDS_REVISION" | "REJECTED"
+
+export interface PracticalDemonstration {
+  id: string
+  institutionId: string
+  studentId: string
+  competencyId?: string
+  projectId?: string
+  title: string
+  description?: string
+  mediaUrls?: string
+  status: DemonstrationStatus
+  reviewerId?: string
+  reviewNotes?: string
+  score?: number
+  reviewedAt?: string
+  submittedAt?: string
+  createdAt: string
+  updatedAt?: string
+}
