@@ -56,6 +56,8 @@ export default function DashboardPage() {
       router.replace("/dashboard/district")
     } else if (!authLoading && user?.role === "Student" && (user?.learningLevel || "").toUpperCase() === "NURSERY") {
       router.replace("/dashboard/nursery")
+    } else if (!authLoading && user?.role === "Student" && (user?.learningLevel || "").toUpperCase() === "SECONDARY") {
+      router.replace("/dashboard/secondary")
     }
   }, [user, authLoading, router])
 

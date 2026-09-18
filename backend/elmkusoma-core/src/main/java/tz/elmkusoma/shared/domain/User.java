@@ -49,6 +49,14 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private LearningLevel learningLevel;
 
+    @Column(name = "secondary_stage")
+    @Enumerated(EnumType.STRING)
+    private SecondaryStage secondaryStage;
+
+    @Column(name = "form")
+    @Enumerated(EnumType.STRING)
+    private Form form;
+
     @Column(name = "region_id")
     private java.util.UUID regionId;
 
@@ -77,6 +85,20 @@ public class User extends BaseEntity {
         SECONDARY,
         COLLEGE,
         UNIVERSITY
+    }
+
+    public enum SecondaryStage {
+        O_LEVEL,
+        A_LEVEL
+    }
+
+    public enum Form {
+        FORM_1,
+        FORM_2,
+        FORM_3,
+        FORM_4,
+        FORM_5,
+        FORM_6
     }
 
     public String getFullName() {

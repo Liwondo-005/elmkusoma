@@ -37,19 +37,17 @@ const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
 ]
 
 const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
-  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
-  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
-  { label: "Results", href: "/dashboard/results", icon: Award },
-  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
-  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
-  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "My Academic World", href: "/dashboard/secondary", icon: LayoutDashboard },
+  { label: "Learn", href: "/dashboard/secondary/learn", icon: BookOpen },
+  { label: "Practice", href: "/dashboard/secondary/practice", icon: PenTool },
+  { label: "Assess", href: "/dashboard/secondary/assess", icon: Award },
+  { label: "Revision", href: "/dashboard/secondary/revision", icon: TrendingUp },
+  { label: "Live", href: "/dashboard/secondary/live", icon: Video },
+  { label: "Projects", href: "/dashboard/secondary/projects", icon: FileText },
+  { label: "Progress", href: "/dashboard/secondary/progress", icon: BarChart3 },
+  { label: "Future World", href: "/dashboard/secondary/future", icon: Target },
+  { label: "My Teachers", href: "/dashboard/secondary/teachers", icon: Users },
+  { label: "Notifications", href: "/dashboard/secondary/notifications", icon: Bell },
 ]
 
 const collegeNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [

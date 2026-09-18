@@ -194,6 +194,17 @@
   }
 }
 
+/* Secondary World - Academic design tokens */
+.secondary-world {
+  --secondary-bg: #f8fafc;
+  --secondary-primary: #4f46e5;
+  --secondary-accent: #0ea5e9;
+  --secondary-success: #22c55e;
+  --secondary-warning: #f59e0b;
+  background: var(--secondary-bg);
+  min-height: 100vh;
+}
+
 /* Nursery World - Child-safe design tokens */
 .nursery-world {
   --nursery-bg: #fef7f0;

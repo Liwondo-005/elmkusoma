@@ -129,6 +129,8 @@ export interface UserInfo {
   institutionId: string
   classGroupId: string | null
   learningLevel?: string | null
+  secondaryStage?: string | null
+  form?: string | null
   regionId?: string | null
   districtId?: string | null
 }
@@ -150,6 +152,8 @@ export interface RegisterPayload {
   phone?: string
   role: string
   learningLevel?: string
+  secondaryStage?: string
+  form?: string
 }
 
 export interface LoginPayload {

@@ -31,6 +31,8 @@ public class AuthResponse {
         private String institutionId;
         private String classGroupId;
         private String learningLevel;
+        private String secondaryStage;
+        private String form;
         private String regionId;
         private String districtId;
     }

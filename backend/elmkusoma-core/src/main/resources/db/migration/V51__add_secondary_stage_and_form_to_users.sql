@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN secondary_stage VARCHAR(20);
+ALTER TABLE users ADD COLUMN form VARCHAR(20);

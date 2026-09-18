@@ -91,7 +91,17 @@ const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
   SECONDARY: {
     greeting: "Stay focused on your goals.",
     subtitle: "Keep up with your assignments and upcoming assessments.",
-    navItems: baseNav.SECONDARY,
+    navItems: [
+      { label: "My Academic World", href: "/dashboard/secondary", icon: Home },
+      { label: "Learn", href: "/dashboard/secondary/learn", icon: BookOpen },
+      { label: "Practice", href: "/dashboard/secondary/practice", icon: ClipboardList },
+      { label: "Assess", href: "/dashboard/secondary/assess", icon: Award },
+      { label: "Revision", href: "/dashboard/secondary/revision", icon: BarChart3 },
+      { label: "Live", href: "/dashboard/secondary/live", icon: GraduationCap },
+      { label: "Projects", href: "/dashboard/secondary/projects", icon: FileText },
+      { label: "Progress", href: "/dashboard/secondary/progress", icon: BarChart3 },
+      { label: "Future World", href: "/dashboard/secondary/future", icon: GraduationCap },
+    ],
     sections: ["continue", "assessments", "assignments", "subjects", "performance", "recent", "notifications"],
     emptyStateTitle: "No items yet",
     emptyStateDescription: "Your assignments, assessments, and results will appear here.",
