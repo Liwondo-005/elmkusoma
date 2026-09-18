@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Menu, X, Bell, Search } from "lucide-react"
+import { Menu, X, Bell, Search, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { useAuth } from "@/lib/auth"
@@ -17,6 +17,17 @@ export function DashboardTopbar() {
     logout()
     router.push("/login")
   }
+
+  function toggleLocale() {
+    const current = document.cookie.split('; ').find(c => c.startsWith('NEXT_LOCALE='))?.split('=')[1] || 'en'
+    const next = current === 'en' ? 'sw' : 'en'
+    document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000`
+    window.location.reload()
+  }
+
+  const locale = typeof document !== 'undefined'
+    ? (document.cookie.split('; ').find(c => c.startsWith('NEXT_LOCALE='))?.split('=')[1] || 'en')
+    : 'en'
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -45,6 +56,15 @@ export function DashboardTopbar() {
         </label>
 
         <div className="ml-auto flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleLocale}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Switch language"
+          >
+            <Globe className="size-3.5" />
+            {locale === 'en' ? 'SW' : 'EN'}
+          </button>
           <button
             type="button"
             className="relative flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
