@@ -80,12 +80,13 @@ public class ParentSupportService {
     }
 
     @Transactional
-    public void resolveTicket(UUID ticketId) {
+    public SupportTicketItem resolveTicket(UUID ticketId) {
         SupportTicket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found"));
         ticket.setStatus("RESOLVED");
         ticket.setResolvedAt(java.time.LocalDateTime.now());
         ticketRepository.save(ticket);
+        return toTicketItem(ticket);
     }
 
     private SupportTicketItem toTicketItem(SupportTicket t) {

@@ -3,12 +3,14 @@ package tz.elmkusoma.parent.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.repository.LiveClassRepository;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.learning.domain.LessonProgress;
 import tz.elmkusoma.learning.domain.Resource;
 import tz.elmkusoma.learning.repository.LessonProgressRepository;
@@ -30,7 +32,12 @@ import tz.elmkusoma.parent.dto.ParentPaymentResponse;
 import tz.elmkusoma.parent.dto.ParentSubjectPerformanceResponse;
 import tz.elmkusoma.parent.dto.ParentSupportResponse;
 import tz.elmkusoma.parent.dto.ParentTeacherDirectoryResponse;
+import tz.elmkusoma.parent.dto.request.CreateSupportTicketRequest;
+import tz.elmkusoma.parent.dto.request.InitiatePaymentRequest;
+import tz.elmkusoma.parent.dto.request.SendMessageRequest;
+import tz.elmkusoma.parent.dto.request.UpdateProfileRequest;
 import tz.elmkusoma.parent.dto.response.ChildOverviewResponse;
+import tz.elmkusoma.parent.dto.response.MessageResponse;
 import tz.elmkusoma.parent.dto.response.FamilyOverviewResponse;
 import tz.elmkusoma.parent.dto.response.ParentAttendanceResponse;
 import tz.elmkusoma.parent.dto.response.ParentAssignmentResponse;
@@ -80,6 +87,8 @@ public class ParentSelfController {
     private final ParentCalendarService calendarService;
     private final ParentLibraryService libraryService;
     private final ParentSupportService supportService;
+    private final MessageService messageService;
+    private final ParentAuthorizationService authorizationService;
     private final AchievementRepository achievementRepository;
     private final LearningGoalRepository learningGoalRepository;
     private final EntitlementRepository entitlementRepository;
@@ -181,6 +190,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<ParentIntelligenceResponse>> getChildIntelligence(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         UUID institutionId = getCurrentInstitutionId(request);
         ParentIntelligenceResponse intelligence = intelligenceService.getIntelligence(studentId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(intelligence));
@@ -194,6 +205,8 @@ public class ParentSelfController {
             @PathVariable UUID studentId,
             @RequestParam(defaultValue = "30") int daysAhead,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         UUID institutionId = getCurrentInstitutionId(request);
         ParentCalendarResponse calendar = calendarService.getCalendar(studentId, institutionId, daysAhead);
         return ResponseEntity.ok(ApiResponse.success(calendar));
@@ -215,6 +228,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<List<ParentPaymentResponse.PaymentItem>>> getChildPayments(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         List<ParentPaymentResponse.PaymentItem> payments = paymentService.getPaymentsByStudent(studentId);
         return ResponseEntity.ok(ApiResponse.success(payments));
     }
@@ -222,37 +237,19 @@ public class ParentSelfController {
     @PostMapping("/payments/initiate")
     @Operation(summary = "Initiate a payment for a service")
     public ResponseEntity<ApiResponse<Map<String, Object>>> initiatePayment(
-            @RequestBody Map<String, Object> body,
+            @Valid @RequestBody InitiatePaymentRequest body,
             HttpServletRequest request) {
         UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, body.getStudentId());
         UUID institutionId = getCurrentInstitutionId(request);
 
-        UUID studentId = UUID.fromString((String) body.get("studentId"));
-        java.math.BigDecimal amount = new java.math.BigDecimal(body.get("amount").toString());
-        String serviceType = (String) body.get("serviceType");
-        UUID serviceId = body.get("serviceId") != null ? UUID.fromString((String) body.get("serviceId")) : null;
-        String description = (String) body.getOrDefault("description", "");
-
-        var payment = paymentService.initiatePayment(userId, studentId, institutionId,
-                amount, serviceType, serviceId, description);
+        var payment = paymentService.initiatePayment(userId, body.getStudentId(), institutionId,
+                body.getAmount(), body.getServiceType(), body.getServiceId(), body.getDescription());
 
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "paymentId", payment.getId().toString(),
                 "status", payment.getStatus(),
                 "amount", payment.getAmount()
-        )));
-    }
-
-    @PostMapping("/payments/{paymentId}/verify")
-    @Operation(summary = "Verify a payment (admin/backend only)")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyPayment(
-            @PathVariable UUID paymentId,
-            @RequestBody Map<String, String> body) {
-        String providerReference = body.getOrDefault("providerReference", "manual");
-        var payment = paymentService.verifyPayment(paymentId, providerReference);
-        return ResponseEntity.ok(ApiResponse.success(Map.of(
-                "paymentId", payment.getId().toString(),
-                "status", payment.getStatus()
         )));
     }
 
@@ -263,6 +260,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<ParentAchievementResponse>> getChildAchievements(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         List<Achievement> achievements = achievementRepository
                 .findByStudentIdAndIsDeletedFalseOrderByAchievedAtDesc(studentId);
 
@@ -293,6 +292,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<ParentGoalResponse>> getChildGoals(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         List<LearningGoal> goals = learningGoalRepository
                 .findByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId);
 
@@ -339,6 +340,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getChildEntitlements(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         var entitlements = entitlementRepository.findByStudentIdAndIsDeletedFalse(studentId);
         List<Map<String, Object>> items = entitlements.stream()
                 .map(e -> Map.<String, Object>of(
@@ -367,17 +370,17 @@ public class ParentSelfController {
     @PostMapping("/support/tickets")
     @Operation(summary = "Create a support ticket")
     public ResponseEntity<ApiResponse<ParentSupportResponse.SupportTicketItem>> createTicket(
-            @RequestBody Map<String, String> body,
+            @Valid @RequestBody CreateSupportTicketRequest body,
             HttpServletRequest request) {
         UUID userId = getCurrentUserId(request);
         UUID institutionId = getCurrentInstitutionId(request);
 
         ParentSupportResponse.SupportTicketItem ticket = supportService.createTicket(
                 userId, institutionId,
-                body.get("subject"),
-                body.get("description"),
-                body.get("category"),
-                body.get("priority"));
+                body.getSubject(),
+                body.getDescription(),
+                body.getCategory(),
+                body.getPriority());
 
         return ResponseEntity.ok(ApiResponse.success(ticket));
     }
@@ -385,7 +388,15 @@ public class ParentSelfController {
     @GetMapping("/support/tickets/{ticketId}/messages")
     @Operation(summary = "Get messages for a support ticket")
     public ResponseEntity<ApiResponse<List<SupportTicketMessage>>> getTicketMessages(
-            @PathVariable UUID ticketId) {
+            @PathVariable UUID ticketId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        ParentSupportResponse userTickets = supportService.getTickets(userId);
+        boolean ownsTicket = userTickets.getTickets().stream()
+                .anyMatch(t -> t.getId().equals(ticketId.toString()));
+        if (!ownsTicket) {
+            throw new ForbiddenException("Not authorized to access this ticket");
+        }
         List<SupportTicketMessage> messages = supportService.getMessages(ticketId);
         return ResponseEntity.ok(ApiResponse.success(messages));
     }
@@ -397,8 +408,30 @@ public class ParentSelfController {
             @RequestBody Map<String, String> body,
             HttpServletRequest request) {
         UUID userId = getCurrentUserId(request);
+        ParentSupportResponse userTickets = supportService.getTickets(userId);
+        boolean ownsTicket = userTickets.getTickets().stream()
+                .anyMatch(t -> t.getId().equals(ticketId.toString()));
+        if (!ownsTicket) {
+            throw new ForbiddenException("Not authorized to access this ticket");
+        }
         SupportTicketMessage message = supportService.addMessage(ticketId, userId, body.get("message"));
         return ResponseEntity.ok(ApiResponse.success(message));
+    }
+
+    @PutMapping("/support/tickets/{ticketId}/resolve")
+    @Operation(summary = "Mark a support ticket as resolved")
+    public ResponseEntity<ApiResponse<ParentSupportResponse.SupportTicketItem>> resolveTicket(
+            @PathVariable UUID ticketId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        ParentSupportResponse userTickets = supportService.getTickets(userId);
+        boolean ownsTicket = userTickets.getTickets().stream()
+                .anyMatch(t -> t.getId().equals(ticketId.toString()));
+        if (!ownsTicket) {
+            throw new ForbiddenException("Not authorized to access this ticket");
+        }
+        var resolved = supportService.resolveTicket(ticketId);
+        return ResponseEntity.ok(ApiResponse.success(resolved));
     }
 
     // ── Live Classes ──────────────────────────────────────────────────
@@ -408,6 +441,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getChildLiveClasses(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         UUID institutionId = getCurrentInstitutionId(request);
         if (institutionId == null) {
             return ResponseEntity.ok(ApiResponse.success(List.of()));
@@ -436,6 +471,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<ParentAssessmentResponse>> getChildAssessments(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         Student student = studentRepository.findById(studentId).orElse(null);
         User user = student != null ? userRepository.findById(student.getUserId()).orElse(null) : null;
         String studentName = user != null ? user.getFullName() : "";
@@ -489,6 +526,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<ParentActivityResponse>> getChildActivity(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         List<ParentActivityResponse.ActivityItem> activities = new java.util.ArrayList<>();
 
         List<LessonProgress> progressList = lessonProgressRepository.findByStudentIdAndIsDeletedFalse(studentId);
@@ -550,6 +589,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<ParentTeacherDirectoryResponse>> getChildTeachers(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         Student student = studentRepository.findById(studentId).orElse(null);
         UUID institutionId = getCurrentInstitutionId(request);
 
@@ -605,6 +646,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<ParentSubjectPerformanceResponse>> getChildSubjectPerformance(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         List<ReportCard> reportCards = reportCardRepository.findByStudentIdAndIsDeletedFalse(studentId);
         java.util.Map<String, ParentSubjectPerformanceResponse.SubjectItem> subjectMap = new java.util.LinkedHashMap<>();
 
@@ -664,6 +707,8 @@ public class ParentSelfController {
     public ResponseEntity<ApiResponse<ParentLearningProgressResponse>> getChildLearningProgress(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        authorizationService.requireChildAccess(userId, studentId);
         List<LessonProgress> allProgress = lessonProgressRepository.findByStudentIdAndIsDeletedFalse(studentId);
         java.util.Map<String, ParentLearningProgressResponse.CourseProgress> courseMap = new java.util.LinkedHashMap<>();
 
@@ -745,12 +790,77 @@ public class ParentSelfController {
     @PutMapping("/notifications/{notificationId}/read")
     @Operation(summary = "Mark a notification as read")
     public ResponseEntity<ApiResponse<String>> markNotificationRead(
-            @PathVariable UUID notificationId) {
+            @PathVariable UUID notificationId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
         learnerNotificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setIsRead(true);
-            learnerNotificationRepository.save(n);
+            if (userId.equals(n.getUserId())) {
+                n.setIsRead(true);
+                learnerNotificationRepository.save(n);
+            }
         });
         return ResponseEntity.ok(ApiResponse.success("Marked as read", null));
+    }
+
+    // ── Messaging ─────────────────────────────────────────────────────
+
+    @GetMapping("/messages")
+    @Operation(summary = "Get inbox messages for the parent")
+    public ResponseEntity<ApiResponse<List<MessageResponse>>> getMessages(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        List<MessageResponse> messages = messageService.getInboxMessages(userId);
+        return ResponseEntity.ok(ApiResponse.success(messages));
+    }
+
+    @GetMapping("/messages/sent")
+    @Operation(summary = "Get sent messages")
+    public ResponseEntity<ApiResponse<List<MessageResponse>>> getSentMessages(
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        List<MessageResponse> messages = messageService.getSentMessages(userId);
+        return ResponseEntity.ok(ApiResponse.success(messages));
+    }
+
+    @GetMapping("/messages/unread-count")
+    @Operation(summary = "Get unread message count")
+    public ResponseEntity<ApiResponse<Long>> getUnreadMessageCount(
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        long count = messageService.getUnreadCount(userId);
+        return ResponseEntity.ok(ApiResponse.success(count));
+    }
+
+    @PostMapping("/messages")
+    @Operation(summary = "Send a message")
+    public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
+            @Valid @RequestBody SendMessageRequest body,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        MessageResponse message = messageService.sendMessage(userId, body);
+        return ResponseEntity.ok(ApiResponse.success(message));
+    }
+
+    @PutMapping("/messages/{messageId}/read")
+    @Operation(summary = "Mark a message as read")
+    public ResponseEntity<ApiResponse<String>> markMessageRead(
+            @PathVariable UUID messageId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        messageService.markAsRead(userId, messageId);
+        return ResponseEntity.ok(ApiResponse.success("Marked as read", null));
+    }
+
+    @DeleteMapping("/messages/{messageId}")
+    @Operation(summary = "Delete a message")
+    public ResponseEntity<ApiResponse<String>> deleteMessage(
+            @PathVariable UUID messageId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        messageService.deleteMessage(userId, messageId);
+        return ResponseEntity.ok(ApiResponse.success("Message deleted", null));
     }
 
     // ── Parent Profile Update ──────────────────────────────────────
@@ -758,7 +868,7 @@ public class ParentSelfController {
     @PutMapping("/profile")
     @Operation(summary = "Update parent profile")
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateProfile(
-            @RequestBody Map<String, Object> body,
+            @Valid @RequestBody UpdateProfileRequest body,
             HttpServletRequest request) {
         UUID userId = getCurrentUserId(request);
         User user = userRepository.findById(userId).orElse(null);
@@ -766,9 +876,9 @@ public class ParentSelfController {
             return ResponseEntity.badRequest().body(ApiResponse.error("User not found"));
         }
 
-        if (body.containsKey("firstName")) user.setFirstName((String) body.get("firstName"));
-        if (body.containsKey("lastName")) user.setLastName((String) body.get("lastName"));
-        if (body.containsKey("phone")) user.setPhone((String) body.get("phone"));
+        if (body.getFirstName() != null) user.setFirstName(body.getFirstName());
+        if (body.getLastName() != null) user.setLastName(body.getLastName());
+        if (body.getPhone() != null) user.setPhone(body.getPhone());
         userRepository.save(user);
 
         return ResponseEntity.ok(ApiResponse.success(Map.of(
