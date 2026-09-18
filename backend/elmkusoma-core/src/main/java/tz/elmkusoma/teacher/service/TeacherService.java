@@ -1,6 +1,7 @@
 package tz.elmkusoma.teacher.service;
 
 import tz.elmkusoma.common.PageResponse;
+import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.dto.request.TeacherAssignmentRequest;
 import tz.elmkusoma.teacher.dto.request.TeacherQualificationRequest;
 import tz.elmkusoma.teacher.dto.request.TeacherRequest;
@@ -32,6 +33,8 @@ public interface TeacherService {
     List<TeacherQualificationResponse> getQualifications(UUID institutionId, UUID teacherId);
 
     void removeQualification(UUID institutionId, UUID qualificationId);
+
+    Teacher getOrCreateTeacherByUserId(UUID userId, UUID institutionId);
 
     TeacherResponse getTeacherByUserId(UUID userId, UUID institutionId);
 

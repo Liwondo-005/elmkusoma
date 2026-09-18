@@ -225,10 +225,26 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
+    @Transactional
+    public Teacher getOrCreateTeacherByUserId(UUID userId, UUID institutionId) {
+        return teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .filter(u -> !Boolean.TRUE.equals(u.getIsDeleted()))
+                            .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+                    Teacher teacher = Teacher.builder()
+                            .userId(userId)
+                            .status(TeacherStatus.ACTIVE)
+                            .build();
+                    teacher.setInstitutionId(institutionId);
+                    return teacherRepository.save(teacher);
+                });
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public TeacherResponse getTeacherByUserId(UUID userId, UUID institutionId) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = getOrCreateTeacherByUserId(userId, institutionId);
         User user = userRepository.findById(teacher.getUserId()).orElse(null);
         return mapToResponse(teacher, user);
     }
@@ -236,8 +252,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public List<TeacherClassResponse> getTeacherClasses(UUID userId, UUID institutionId) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = getOrCreateTeacherByUserId(userId, institutionId);
 
         List<TeacherAssignment> assignments = assignmentRepository.findAllByTeacherId(teacher.getId());
 
@@ -270,8 +285,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public List<TeacherStudentResponse> getTeacherStudents(UUID userId, UUID institutionId) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = getOrCreateTeacherByUserId(userId, institutionId);
 
         List<TeacherAssignment> assignments = assignmentRepository.findAllByTeacherId(teacher.getId());
         Set<UUID> classGroupIds = assignments.stream()
@@ -317,8 +331,7 @@ public class TeacherServiceImpl implements TeacherService {
     @Override
     @Transactional(readOnly = true)
     public TeacherDashboardResponse getTeacherDashboard(UUID userId, UUID institutionId) {
-        Teacher teacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Teacher profile", "userId", userId));
+        Teacher teacher = getOrCreateTeacherByUserId(userId, institutionId);
 
         List<TeacherAssignment> assignments = assignmentRepository.findAllByTeacherId(teacher.getId());
         Set<UUID> classGroupIds = assignments.stream()

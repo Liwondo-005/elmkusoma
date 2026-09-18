@@ -82,7 +82,7 @@ export interface Bookmark {
   targetType: string
   targetId: string
   targetTitle: string
-  targetAvailable?: boolean
+  targetAvailable: boolean
   createdAt: string
 }
 
@@ -231,11 +231,21 @@ export interface EventMaterial {
   isPublic: boolean
 }
 
+export interface SearchFilters {
+  category?: string
+  level?: string
+  provider?: string
+  dateFrom?: string
+  dateTo?: string
+  sort?: string
+  sortBy?: string
+}
+
 export interface SearchResult {
   courses: CourseSummary[]
   resources: Resource[]
   liveClasses: LiveClass[]
-  announcements?: Announcement[]
+  announcements: any[]
 }
 
 export interface CourseProgress {

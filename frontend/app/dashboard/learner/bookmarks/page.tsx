@@ -109,38 +109,25 @@ export default function LearnerBookmarksPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  {bookmark.targetAvailable ? (
-                    <Link href={getLink(bookmark)} className="text-sm font-medium text-foreground hover:text-primary truncate">
+                  <Link href={getLink(bookmark)} className="text-sm font-medium text-foreground hover:text-primary truncate">
                       {bookmark.targetTitle || "Untitled"}
                     </Link>
-                  ) : (
-                    <span className="text-sm font-medium text-muted-foreground truncate line-through">
-                      {bookmark.targetTitle || "Deleted content"}
-                    </span>
-                  )}
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getTypeBadge(bookmark.targetType)}`}>
                     {bookmark.targetType}
                   </span>
-                  {!bookmark.targetAvailable && (
-                    <span className="shrink-0 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-500">
-                      Unavailable
-                    </span>
-                  )}
                 </div>
                 <p className="mt-1 text-[10px] text-muted-foreground">
                   Saved {new Date(bookmark.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {bookmark.targetAvailable && (
-                  <Link
+                <Link
                     href={getLink(bookmark)}
                     className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                   >
                     <ExternalLink className="size-3" />
                     View
                   </Link>
-                )}
                 <button
                   onClick={() => removeBookmark(bookmark.id)}
                   disabled={removing === bookmark.id}

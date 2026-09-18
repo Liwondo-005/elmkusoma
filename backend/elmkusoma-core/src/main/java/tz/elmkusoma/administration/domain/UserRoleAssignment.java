@@ -2,6 +2,7 @@ package tz.elmkusoma.administration.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.time.LocalDateTime;
@@ -13,7 +14,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class UserRoleAssignment extends BaseEntity {
 
     @Column(name = "user_id", nullable = false)
@@ -33,4 +34,15 @@ public class UserRoleAssignment extends BaseEntity {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    public static UserRoleAssignment of(UUID userId, UUID roleId, UUID assignedBy,
+                                        LocalDateTime expiresAt, UUID institutionId) {
+        UserRoleAssignment ura = new UserRoleAssignment();
+        ura.setUserId(userId);
+        ura.setRoleId(roleId);
+        ura.setAssignedBy(assignedBy);
+        ura.setExpiresAt(expiresAt);
+        ura.setInstitutionId(institutionId);
+        return ura;
+    }
 }

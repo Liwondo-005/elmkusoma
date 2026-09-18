@@ -64,4 +64,21 @@ public class DataImportJob extends BaseEntity {
         COMPLETED,
         FAILED
     }
+
+    public static DataImportJob of(UUID importedBy, String importType, String fileName,
+                                   String fileUrl, UUID institutionId) {
+        return DataImportJob.builder()
+                .importedBy(importedBy)
+                .importType(importType)
+                .fileName(fileName)
+                .fileUrl(fileUrl)
+                .institutionId(institutionId)
+                .status(ImportStatus.PENDING)
+                .totalRows(0)
+                .processedRows(0)
+                .successfulRows(0)
+                .failedRows(0)
+                .startedAt(LocalDateTime.now())
+                .build();
+    }
 }

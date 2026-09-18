@@ -20,6 +20,7 @@ import tz.elmkusoma.liveclass.repository.LiveClassSessionEventRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -37,6 +38,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private final LiveClassSessionEventRepository sessionEventRepository;
     private final UserRepository userRepository;
     private final InstitutionMembershipRepository membershipRepository;
+    private final TeacherRepository teacherRepository;
     private final ObjectMapper objectMapper;
     private final CorePresenceService corePresenceService;
     private final EventPublisherService eventPublisherService;
@@ -48,8 +50,6 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private final Map<String, Boolean> sessionHandRaised = new ConcurrentHashMap<>();
     private final Map<String, Boolean> sessionScreenSharing = new ConcurrentHashMap<>();
 
-    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
-
     public LiveClassWebSocketHandler(LiveClassRepository liveClassRepository,
                                       LiveClassParticipantRepository participantRepository,
                                       LiveClassChatMessageRepository chatMessageRepository,
@@ -59,7 +59,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                                       ObjectMapper objectMapper,
                                       CorePresenceService corePresenceService,
                                       EventPublisherService eventPublisherService,
-                                      tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository) {
+                                      TeacherRepository teacherRepository) {
         this.liveClassRepository = liveClassRepository;
         this.participantRepository = participantRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -91,6 +91,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         sessions.put(session.getId(), session);
         sessionClassMap.put(session.getId(), classId);
 
+        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
+
         log.info("WebSocket connected: session={}, classId={}, userId={}", session.getId(), classId, userId);
     }
 
@@ -105,8 +107,11 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
+
         switch (type) {
-            case "JOIN" -> handleJoin(session, classId, payload);
+            case "JOIN" -> handleJoin(session, classId, payload, "LEARNER");
+            case "OBSERVER_JOIN" -> handleJoin(session, classId, payload, "OBSERVER");
             case "CHAT" -> handleChat(session, classId, payload);
             case "LEAVE" -> handleLeave(session, classId);
             case "RAISE_HAND" -> handleRaiseHand(session, classId, payload);
@@ -116,11 +121,12 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             case "MUTE_PARTICIPANT" -> handleMuteParticipant(session, classId, payload);
             case "UNMUTE_PARTICIPANT" -> handleUnmuteParticipant(session, classId, payload);
             case "KICK_PARTICIPANT" -> handleKickParticipant(session, classId, payload);
+            case "HEARTBEAT" -> handleHeartbeat(session);
             default -> sendError(session, "Unknown message type: " + type);
         }
     }
 
-    private void handleJoin(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+    private void handleJoin(WebSocketSession session, UUID classId, Map<String, Object> payload, String role) throws IOException {
         UUID userId = (UUID) session.getAttributes().get("userId");
         UUID institutionId = (UUID) session.getAttributes().get("institutionId");
 
@@ -156,14 +162,41 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        boolean isMember = membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, classInstitutionId);
-        if (!isMember) {
-            sendError(session, "You are not a member of this institution");
-            return;
+        // Observer-specific checks
+        boolean isObserver = "OBSERVER".equals(role);
+        if (isObserver) {
+            // Verify observer has authority role
+            String userRole = (String) session.getAttributes().get("userRole");
+            if (!isAuthorityRole(userRole)) {
+                sendError(session, "Only education authority users can observe live classes");
+                return;
+            }
+            // Verify jurisdiction - observer's institution must match class institution
+            if (!verifyObserverJurisdiction(userId, classInstitutionId)) {
+                sendError(session, "You are not authorized to observe this class");
+                return;
+            }
+            // Check if observer already joined
+            if (participantRepository.findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId).isPresent()) {
+                // Update existing participant to observer role
+                participantRepository.findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId)
+                        .ifPresent(p -> {
+                            p.setRole(LiveClassParticipant.ROLE_OBSERVER);
+                            p.setConnectionId(session.getId());
+                            participantRepository.save(p);
+                        });
+            }
+        } else {
+            // Regular learner/teacher membership check
+            boolean isMember = membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, classInstitutionId);
+            if (!isMember) {
+                sendError(session, "You are not a member of this institution");
+                return;
+            }
         }
 
         boolean isTeacher = teacherRepository.findByUserIdAndInstitutionId(userId, classInstitutionId).isPresent();
-        String participantRole = isTeacher ? "TEACHER" : "LEARNER";
+        String participantRole = isTeacher ? "TEACHER" : (isObserver ? "OBSERVER" : "LEARNER");
 
         Optional<LiveClassParticipant> existing = participantRepository
                 .findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId);
@@ -175,7 +208,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             participant.setConnectionId(session.getId());
             participant.setRole(participantRole);
         } else {
-            if (!isTeacher && liveClass.getMaxParticipants() != null) {
+            // Observers don't count towards max participants
+            if (!isObserver && liveClass.getMaxParticipants() != null) {
                 long currentCount = participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId);
                 if (currentCount >= liveClass.getMaxParticipants()) {
                     sendError(session, "This live class is full");
@@ -195,6 +229,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         participantRepository.save(participant);
 
         sessionUserMap.put(session.getId(), userId);
+        session.getAttributes().put("participantRole", participantRole);
         classSessions.computeIfAbsent(classId, k -> ConcurrentHashMap.newKeySet()).add(session.getId());
 
         corePresenceService.userOnline(userId, classInstitutionId);
@@ -209,6 +244,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         joinEvent.put("type", "USER_JOINED");
         joinEvent.put("userId", userId.toString());
         joinEvent.put("userName", displayName);
+        joinEvent.put("role", participantRole);
         joinEvent.put("timestamp", LocalDateTime.now().toString());
         joinEvent.put("participantCount", (int) participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId));
 
@@ -254,6 +290,13 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         UUID userId = sessionUserMap.get(session.getId());
         if (userId == null) {
             sendError(session, "You must join the session first");
+            return;
+        }
+
+        // Observers cannot send chat messages
+        String participantRole = (String) session.getAttributes().get("participantRole");
+        if (LiveClassParticipant.ROLE_OBSERVER.equals(participantRole)) {
+            sendError(session, "Observers cannot send chat messages (read-only mode)");
             return;
         }
 
@@ -306,6 +349,12 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        String participantRole = (String) session.getAttributes().get("participantRole");
+        if (LiveClassParticipant.ROLE_OBSERVER.equals(participantRole)) {
+            sendError(session, "Observers cannot raise hand (read-only mode)");
+            return;
+        }
+
         sessionHandRaised.put(session.getId(), true);
 
         User user = userRepository.findById(userId).orElse(null);
@@ -343,6 +392,12 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         UUID userId = sessionUserMap.get(session.getId());
         if (userId == null) return;
 
+        String participantRole = (String) session.getAttributes().get("participantRole");
+        if (LiveClassParticipant.ROLE_OBSERVER.equals(participantRole)) {
+            sendError(session, "Observers cannot start screen sharing (read-only mode)");
+            return;
+        }
+
         sessionScreenSharing.put(session.getId(), true);
 
         User user = userRepository.findById(userId).orElse(null);
@@ -361,6 +416,12 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private void handleScreenShareStop(WebSocketSession session, UUID classId) throws IOException {
         UUID userId = sessionUserMap.get(session.getId());
         if (userId == null) return;
+
+        String participantRole = (String) session.getAttributes().get("participantRole");
+        if (LiveClassParticipant.ROLE_OBSERVER.equals(participantRole)) {
+            sendError(session, "Observers cannot stop screen sharing (read-only mode)");
+            return;
+        }
 
         sessionScreenSharing.put(session.getId(), false);
 
@@ -455,6 +516,10 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         if (userId.equals(liveClass.getTeacherId())) return true;
         User user = userRepository.findById(userId).orElse(null);
         return user != null && (user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.INSTITUTION_ADMIN);
+    }
+
+    private void handleHeartbeat(WebSocketSession session) {
+        session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
     }
 
     @Override
@@ -574,5 +639,16 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.error("Failed to send error to session {}", session.getId(), e);
         }
+    }
+
+    private boolean isAuthorityRole(String userRole) {
+        return "NATIONAL_ADMIN".equals(userRole) ||
+                "REGIONAL_ADMIN".equals(userRole) ||
+                "DISTRICT_ADMIN".equals(userRole);
+    }
+
+    private boolean verifyObserverJurisdiction(UUID userId, UUID institutionId) {
+        // Check if user has membership in the institution
+        return membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, institutionId);
     }
 }

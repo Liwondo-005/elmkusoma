@@ -28,4 +28,6 @@ public class CreateLiveClassRequest {
     @Min(value = 1, message = "Max participants must be at least 1")
     @Max(value = 10000, message = "Max participants must not exceed 10000")
     private Integer maxParticipants;
+
+    private Boolean recordingEnabled;
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -89,6 +89,7 @@ const learnerNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
   { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
   { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
+  { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film },
   { label: "Events & Workshops", href: "/dashboard/learner/events", icon: Calendar },
   { label: "My Registrations", href: "/dashboard/learner/events/registered", icon: ClipboardList },
   { label: "Video Library", href: "/dashboard/learner/video-library", icon: Video },
@@ -140,6 +141,7 @@ const teacherNavSections: TeacherNavSection[] = [
     group: "COMMUNICATION",
     items: [
       { label: "Live Classes", href: "/dashboard/teacher/live-classes", icon: Video },
+      { label: "Media Library", href: "/dashboard/teacher/media-library", icon: Film },
       { label: "Messages", href: "/dashboard/teacher/messages", icon: MessageSquare },
       { label: "Announcements", href: "/dashboard/teacher/announcements", icon: Bell },
       { label: "Notifications", href: "/dashboard/teacher/notifications", icon: Bell },
@@ -160,13 +162,22 @@ const teacherNavSections: TeacherNavSection[] = [
 
 const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
-  { label: "My Children", href: "/dashboard/parent/children", icon: Users },
+  { label: "Learning", href: "/dashboard/parent/learning", icon: BookOpen },
+  { label: "Progress", href: "/dashboard/parent/reports", icon: BarChart3 },
+  { label: "Assessments", href: "/dashboard/parent/assessments", icon: PenTool },
+  { label: "Activity", href: "/dashboard/parent/activity", icon: Clock },
   { label: "Attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
   { label: "Assignments", href: "/dashboard/parent/assignments", icon: FileText },
-  { label: "Results", href: "/dashboard/parent/results", icon: BarChart3 },
-  { label: "Calendar", href: "/dashboard/parent/calendar", icon: Clock },
-  { label: "Live Classes", href: "/live-classes", icon: Video },
-  { label: "Messages", href: "/dashboard/parent/messages", icon: MessageSquare },
+  { label: "Results", href: "/dashboard/parent/results", icon: Award },
+  { label: "Achievements", href: "/dashboard/parent/achievements", icon: Trophy },
+  { label: "Goals", href: "/dashboard/parent/goals", icon: Target },
+  { label: "Teachers", href: "/dashboard/parent/teachers", icon: Users },
+  { label: "Calendar", href: "/dashboard/parent/calendar", icon: Calendar },
+  { label: "Live Classes", href: "/dashboard/parent/live-classes", icon: Video },
+  { label: "Library", href: "/dashboard/parent/library", icon: Library },
+  { label: "Payments", href: "/dashboard/parent/payments", icon: FileText },
+  { label: "Services", href: "/dashboard/parent/services", icon: School },
+  { label: "Support", href: "/dashboard/parent/support", icon: HeartPulse },
   { label: "Notifications", href: "/dashboard/parent/notifications", icon: Bell },
   { label: "Settings", href: "/dashboard/parent/settings", icon: Settings },
 ]

@@ -13,61 +13,60 @@ import java.util.UUID;
 public class AdministrationMapper {
 
     public SettingResponse toSettingResponse(SystemSetting setting) {
-        return SettingResponse.builder()
-                .id(setting.getId())
-                .institutionId(setting.getInstitutionId())
-                .settingKey(setting.getSettingKey())
-                .settingValue(setting.getSettingValue())
-                .settingType(setting.getSettingType())
-                .description(setting.getDescription())
-                .isPublic(setting.getIsPublic())
-                .createdAt(setting.getCreatedAt())
-                .updatedAt(setting.getUpdatedAt())
-                .build();
+        return SettingResponse.of(
+                setting.getId(),
+                setting.getInstitutionId(),
+                setting.getSettingKey(),
+                setting.getSettingValue(),
+                setting.getSettingType(),
+                setting.getDescription(),
+                setting.getIsPublic(),
+                setting.getCreatedAt(),
+                setting.getUpdatedAt()
+        );
     }
 
     public SystemSetting toSettingEntity(SettingRequest request, UUID institutionId) {
-        SystemSetting setting = SystemSetting.builder()
-                .settingKey(request.getSettingKey())
-                .settingValue(request.getSettingValue())
-                .settingType(request.getSettingType() != null ? request.getSettingType() : "STRING")
-                .description(request.getDescription())
-                .isPublic(request.getIsPublic() != null ? request.getIsPublic() : false)
-                .build();
-        setting.setInstitutionId(institutionId);
-        return setting;
+        return SystemSetting.of(
+                request.getSettingKey(),
+                request.getSettingValue(),
+                request.getSettingType() != null ? request.getSettingType() : "STRING",
+                request.getDescription(),
+                request.getIsPublic() != null ? request.getIsPublic() : false,
+                institutionId
+        );
     }
 
     public RoleResponse toRoleResponse(CustomRole role, List<String> permissions) {
-        return RoleResponse.builder()
-                .id(role.getId())
-                .institutionId(role.getInstitutionId())
-                .name(role.getName())
-                .displayName(role.getDisplayName())
-                .description(role.getDescription())
-                .isSystemRole(role.getIsSystemRole())
-                .isActive(role.getIsActive())
-                .permissions(permissions)
-                .createdAt(role.getCreatedAt())
-                .build();
+        return RoleResponse.of(
+                role.getId(),
+                role.getInstitutionId(),
+                role.getName(),
+                role.getDisplayName(),
+                role.getDescription(),
+                role.getIsSystemRole(),
+                role.getIsActive(),
+                permissions,
+                role.getCreatedAt()
+        );
     }
 
     public ImportJobResponse toImportJobResponse(DataImportJob job) {
-        return ImportJobResponse.builder()
-                .id(job.getId())
-                .institutionId(job.getInstitutionId())
-                .importedBy(job.getImportedBy())
-                .importType(job.getImportType())
-                .fileName(job.getFileName())
-                .status(job.getStatus().name())
-                .totalRows(job.getTotalRows())
-                .processedRows(job.getProcessedRows())
-                .successfulRows(job.getSuccessfulRows())
-                .failedRows(job.getFailedRows())
-                .errorLog(job.getErrorLog())
-                .startedAt(job.getStartedAt())
-                .completedAt(job.getCompletedAt())
-                .createdAt(job.getCreatedAt())
-                .build();
+        return ImportJobResponse.of(
+                job.getId(),
+                job.getInstitutionId(),
+                job.getImportedBy(),
+                job.getImportType(),
+                job.getFileName(),
+                job.getStatus().name(),
+                job.getTotalRows(),
+                job.getProcessedRows(),
+                job.getSuccessfulRows(),
+                job.getFailedRows(),
+                job.getErrorLog(),
+                job.getStartedAt(),
+                job.getCompletedAt(),
+                job.getCreatedAt()
+        );
     }
 }

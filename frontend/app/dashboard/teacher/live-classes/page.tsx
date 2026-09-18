@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap, CheckCircle2, Circle } from "lucide-react"
@@ -19,12 +20,15 @@ interface LiveClass {
   classGroupId: string | null
   subjectId: string | null
   createdAt: string
+  recordingEnabled: boolean | null
+  currentParticipants: number | null
 }
 
 interface ClassOption {
   classGroupId: string
   className: string
   subjectName: string
+  subjectId?: string
 }
 
 interface SubjectOption {
@@ -60,6 +64,7 @@ const initialForm = {
 
 export default function TeacherLiveClassesPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [subjects, setSubjects] = useState<SubjectOption[]>([])
@@ -94,9 +99,9 @@ export default function TeacherLiveClassesPage() {
         setClasses(classesData.value)
         const uniqueSubjects = new Map<string, SubjectOption>()
         classesData.value.forEach((c) => {
-          if (c.subjectName && c.classGroupId) {
-            uniqueSubjects.set(c.subjectName, {
-              id: c.classGroupId,
+          if (c.subjectId && c.subjectName) {
+            uniqueSubjects.set(c.subjectId, {
+              id: c.subjectId,
               name: c.subjectName,
               code: c.subjectName,
             })
@@ -127,7 +132,7 @@ export default function TeacherLiveClassesPage() {
       maxParticipants: lc.maxParticipants || 50,
       classGroupId: lc.classGroupId || "",
       subjectId: lc.subjectId || "",
-      enableRecording: false,
+      enableRecording: lc.recordingEnabled || false,
     })
     setEditingId(lc.id)
     setShowForm(true)
@@ -158,6 +163,7 @@ export default function TeacherLiveClassesPage() {
         scheduledAt: scheduledDate.toISOString(),
         durationMinutes: Number(form.durationMinutes) || 60,
         maxParticipants: Number(form.maxParticipants) || 50,
+        recordingEnabled: form.enableRecording,
       }
       if (form.classGroupId) payload.classGroupId = form.classGroupId
       if (form.subjectId) payload.subjectId = form.subjectId
@@ -168,16 +174,18 @@ export default function TeacherLiveClassesPage() {
           body: JSON.stringify(payload),
         })
         setSuccess("Live class updated successfully")
+        resetForm()
+        loadData()
+        setTimeout(() => setSuccess(null), 3000)
       } else {
-        await appFetch("/v1/teachers/me/live-classes", {
+        const result = await appFetch<{ id: string }>("/v1/teachers/me/live-classes", {
           method: "POST",
           body: JSON.stringify(payload),
         })
-        setSuccess("Live class scheduled successfully")
+        resetForm()
+        loadData()
+        router.push(`/dashboard/teacher/live-classes/${result.id}`)
       }
-      resetForm()
-      loadData()
-      setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save live class")
     } finally {
@@ -536,7 +544,7 @@ export default function TeacherLiveClassesPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="size-3" />
-                        {lc.maxParticipants} max
+                        {lc.currentParticipants != null ? `${lc.currentParticipants}/` : ""}{lc.maxParticipants} max
                       </span>
                     </div>
                   </div>

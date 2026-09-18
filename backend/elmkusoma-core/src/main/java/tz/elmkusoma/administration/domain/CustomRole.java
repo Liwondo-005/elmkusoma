@@ -5,6 +5,8 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "custom_roles")
 @Getter
@@ -28,4 +30,17 @@ public class CustomRole extends BaseEntity {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    public static CustomRole of(String name, String displayName,
+                                String description, UUID institutionId) {
+        CustomRole role = CustomRole.builder()
+                .name(name)
+                .displayName(displayName)
+                .description(description)
+                .institutionId(institutionId)
+                .isSystemRole(false)
+                .isActive(true)
+                .build();
+        return role;
+    }
 }

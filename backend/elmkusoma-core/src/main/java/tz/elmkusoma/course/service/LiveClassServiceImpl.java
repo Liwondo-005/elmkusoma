@@ -102,6 +102,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .subjectId(request.getSubjectId())
                 .maxParticipants(request.getMaxParticipants())
                 .classGroupId(request.getClassGroupId())
+                .recordingEnabled(Boolean.TRUE.equals(request.getRecordingEnabled()))
                 .build();
         liveClass.setInstitutionId(institutionId);
 
@@ -114,6 +115,13 @@ public class LiveClassServiceImpl implements LiveClassService {
         LiveClass liveClass = liveClassRepository.findById(liveClassId)
                 .filter(lc -> lc.getTeacherId().equals(teacherId) && !lc.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
+
+        String currentStatus = liveClass.getStatus();
+        if (LiveClassStatus.IN_PROGRESS.name().equals(currentStatus)
+                || LiveClassStatus.LIVE.name().equals(currentStatus)
+                || LiveClassStatus.COMPLETED.name().equals(currentStatus)) {
+            throw new IllegalArgumentException("Cannot edit a " + currentStatus.toLowerCase().replace('_', ' ') + " class");
+        }
 
         if (request.getTitle() != null) liveClass.setTitle(request.getTitle());
         if (request.getDescription() != null) liveClass.setDescription(request.getDescription());
@@ -128,6 +136,20 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (request.getSubjectId() != null) liveClass.setSubjectId(request.getSubjectId());
         if (request.getClassGroupId() != null) liveClass.setClassGroupId(request.getClassGroupId());
         if (request.getMaxParticipants() != null) liveClass.setMaxParticipants(request.getMaxParticipants());
+        if (request.getRecordingEnabled() != null) liveClass.setRecordingEnabled(request.getRecordingEnabled());
+
+        if (liveClass.getScheduledAt() != null) {
+            int dur = liveClass.getDurationMinutes() != null ? liveClass.getDurationMinutes() : 60;
+            LocalDateTime endTime = liveClass.getScheduledAt().plusMinutes(dur);
+            List<LiveClass> overlaps = liveClassRepository.findOverlappingForTeacher(
+                    teacherId, liveClass.getScheduledAt().minusMinutes(1), endTime.plusMinutes(1));
+            overlaps.removeIf(lc -> lc.getId().equals(liveClassId));
+            if (!overlaps.isEmpty()) {
+                LiveClass conflict = overlaps.get(0);
+                throw new IllegalArgumentException("Schedule conflict: you already have \"" + conflict.getTitle()
+                        + "\" scheduled at " + conflict.getScheduledAt());
+            }
+        }
 
         LiveClass saved = liveClassRepository.save(liveClass);
         return mapToResponse(saved);
@@ -245,6 +267,9 @@ public class LiveClassServiceImpl implements LiveClassService {
             }
         }
 
+        long currentParticipants = participantRepository
+                .countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(liveClass.getId());
+
         return LiveClassResponse.builder()
                 .id(liveClass.getId())
                 .title(liveClass.getTitle())
@@ -259,7 +284,10 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .subjectId(liveClass.getSubjectId())
                 .classGroupId(liveClass.getClassGroupId())
                 .recordingUrl(liveClass.getRecordingUrl())
+                .recordingEnabled(Boolean.TRUE.equals(liveClass.getRecordingEnabled()))
+                .currentParticipants((int) currentParticipants)
                 .canJoin("IN_PROGRESS".equals(liveClass.getStatus()) || "LIVE".equals(liveClass.getStatus()))
+                .createdAt(liveClass.getCreatedAt() != null ? liveClass.getCreatedAt().toString() : null)
                 .build();
     }
 

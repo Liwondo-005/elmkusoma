@@ -27,4 +27,6 @@ public class LiveClassResponse {
     private String recordingUrl;
     private Integer currentParticipants;
     private Boolean canJoin;
+    private String createdAt;
+    private Boolean recordingEnabled;
 }

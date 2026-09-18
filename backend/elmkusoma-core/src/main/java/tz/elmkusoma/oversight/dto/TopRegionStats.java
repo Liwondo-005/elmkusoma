@@ -12,4 +12,6 @@ public class TopRegionStats {
     private Long institutionCount;
     private Long teacherCount;
     private Long studentCount;
+    private Double attendanceRate;
+    private Double averagePerformance;
 }

@@ -55,6 +55,10 @@ public class User extends BaseEntity {
     @Column(name = "district_id")
     private java.util.UUID districtId;
 
+    public Role getRole() {
+        return role;
+    }
+
     public enum Role {
         STUDENT,
         TEACHER,

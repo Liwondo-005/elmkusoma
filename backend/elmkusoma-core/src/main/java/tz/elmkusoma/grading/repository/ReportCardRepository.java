@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tz.elmkusoma.grading.domain.ReportCard;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,4 +24,21 @@ public interface ReportCardRepository extends JpaRepository<ReportCard, UUID> {
 
     @Query("SELECT rc FROM ReportCard rc WHERE rc.termId = :termId AND rc.isDeleted = false ORDER BY rc.classRank ASC")
     List<ReportCard> findRankedByTermId(@Param("termId") UUID termId);
+
+    @Query("SELECT rc FROM ReportCard rc WHERE rc.institutionId IN :institutionIds AND rc.termId = :termId AND rc.isDeleted = false")
+    List<ReportCard> findByInstitutionIdsAndTermIdAndIsDeletedFalse(
+            @Param("institutionIds") List<UUID> institutionIds,
+            @Param("termId") UUID termId);
+
+    @Query("SELECT rc FROM ReportCard rc WHERE rc.institutionId IN :institutionIds AND rc.termId = :termId AND rc.averageMark < :threshold AND rc.isDeleted = false")
+    List<ReportCard> findByInstitutionIdsAndTermIdAndAverageMarkBelow(
+            @Param("institutionIds") List<UUID> institutionIds,
+            @Param("termId") UUID termId,
+            @Param("threshold") double threshold);
+
+    @Query("SELECT rc FROM ReportCard rc WHERE rc.subjectId = :subjectId AND rc.institutionId IN :institutionIds AND rc.termId = :termId AND rc.isDeleted = false")
+    List<ReportCard> findBySubjectIdAndInstitutionIdsAndTermIdAndIsDeletedFalse(
+            @Param("subjectId") UUID subjectId,
+            @Param("institutionIds") List<UUID> institutionIds,
+            @Param("termId") UUID termId);
 }

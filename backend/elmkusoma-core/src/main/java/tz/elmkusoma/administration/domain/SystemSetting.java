@@ -8,6 +8,7 @@ import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Entity
 @Table(name = "system_settings")
@@ -33,4 +34,17 @@ public class SystemSetting extends BaseEntity {
 
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic = false;
+
+    public static SystemSetting of(String settingKey, Map<String, Object> settingValue,
+                                   String settingType, String description, Boolean isPublic,
+                                   UUID institutionId) {
+        return SystemSetting.builder()
+                .settingKey(settingKey)
+                .settingValue(settingValue)
+                .settingType(settingType)
+                .description(description)
+                .isPublic(isPublic)
+                .institutionId(institutionId)
+                .build();
+    }
 }
