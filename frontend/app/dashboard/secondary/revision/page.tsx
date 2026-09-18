@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, TrendingUp, BookOpen, FileText, AlertCircle, Calendar } from "lucide-react"
+import { ArrowLeft, TrendingUp, BookOpen, FileText, AlertCircle, Calendar, Lightbulb, Brain, RefreshCw, Clock, FlaskConical, Search } from "lucide-react"
 import Link from "next/link"
 
 const QUICK_ACTIONS = [
@@ -9,6 +9,10 @@ const QUICK_ACTIONS = [
   { icon: TrendingUp, title: "Practice Sets", desc: "Strengthen weak areas", color: "bg-green-50 text-green-600", href: "/dashboard/secondary/practice" },
   { icon: AlertCircle, title: "Exam Prep", desc: "Prepare for upcoming exams", color: "bg-orange-50 text-orange-600", href: "/dashboard/secondary/revision/exam-prep" },
   { icon: Calendar, title: "Study Planner", desc: "Plan your study sessions", color: "bg-indigo-50 text-indigo-600", href: "/dashboard/secondary/revision/study-planner" },
+  { icon: Lightbulb, title: "Concept Explorer", desc: "Break down complex ideas", color: "bg-yellow-50 text-yellow-600", href: "/dashboard/secondary/learn/concept-explorer" },
+  { icon: Brain, title: "Problem Solving", desc: "Practice solving problems", color: "bg-purple-50 text-purple-600", href: "/dashboard/secondary/learn/problem-solving" },
+  { icon: RefreshCw, title: "Error Analysis", desc: "Learn from common mistakes", color: "bg-red-50 text-red-600", href: "/dashboard/secondary/learn/error-analysis" },
+  { icon: Clock, title: "Exam Mode", desc: "Timed practice exam", color: "bg-rose-50 text-rose-600", href: "/dashboard/secondary/learn/exam-mode" },
 ]
 
 export default function SecondaryRevisionPage() {
@@ -20,11 +24,11 @@ export default function SecondaryRevisionPage() {
         </Link>
         <div>
           <h1 className="text-xl font-bold text-gray-900">Revision Center</h1>
-          <p className="text-sm text-gray-500">Review and prepare for assessments</p>
+          <p className="text-sm text-gray-500">Review, practice, and prepare</p>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {QUICK_ACTIONS.map(item => (
           <Link
             key={item.title}
@@ -40,14 +44,6 @@ export default function SecondaryRevisionPage() {
             </div>
           </Link>
         ))}
-      </div>
-
-      <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
-        <TrendingUp className="mx-auto size-12 text-gray-300" />
-        <h3 className="mt-3 text-lg font-bold text-gray-800">Build your revision plan</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Use the sections above to review topics, practice problems, and prepare for upcoming assessments.
-        </p>
       </div>
     </div>
   )

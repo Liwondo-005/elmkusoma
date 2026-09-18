@@ -1,6 +1,6 @@
 import {
   BookOpen, FileText, PenTool, BarChart3, Clock, Calendar,
-  GraduationCap, Award, Users, Home, ClipboardList, Library, Bookmark
+  GraduationCap, Award, Users, Home, ClipboardList, Library, Bookmark, Activity
 } from "lucide-react"
 import type { ComponentType } from "react"
 
@@ -30,6 +30,18 @@ const baseNav: Record<LearningLevel, NavItem[]> = {
     { label: "Stories", href: "/dashboard/nursery/stories", icon: BookOpen },
     { label: "Discovery", href: "/dashboard/nursery/discovery", icon: BarChart3 },
     { label: "Create Studio", href: "/dashboard/nursery/create", icon: PenTool },
+    { label: "Music & Movement", href: "/dashboard/nursery/music", icon: Activity },
+    { label: "Speak & Listen", href: "/dashboard/nursery/speak-listen", icon: Users },
+    { label: "My Teacher", href: "/dashboard/nursery/my-teacher", icon: Users },
+    { label: "Daily Quest", href: "/dashboard/nursery/daily-quest", icon: Award },
+    { label: "Feelings", href: "/dashboard/nursery/feelings", icon: ClipboardList },
+    { label: "Movement Breaks", href: "/dashboard/nursery/movement", icon: Activity },
+    { label: "Tanzania", href: "/dashboard/nursery/tanzania", icon: BookOpen },
+    { label: "Evidence", href: "/dashboard/nursery/evidence", icon: Award },
+    { label: "Portfolio", href: "/dashboard/nursery/portfolio", icon: FileText },
+    { label: "Learn Together", href: "/dashboard/nursery/learn-together", icon: Users },
+    { label: "Missions", href: "/dashboard/nursery/missions", icon: Award },
+    { label: "Family Learning", href: "/dashboard/nursery/family-learning", icon: Users },
     { label: "My Progress", href: "/dashboard/nursery/progress", icon: BarChart3 },
     { label: "Backpack", href: "/dashboard/nursery/backpack", icon: Award },
   ],

@@ -342,10 +342,10 @@ export default function SecondaryHomePage() {
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Quick Learn</h2>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {[
-                { label: "Learn", href: "/dashboard/courses", color: "bg-blue-50 text-blue-600" },
-                { label: "Practice", href: "/dashboard/assessments", color: "bg-green-50 text-green-600" },
-                { label: "Revise", href: "/dashboard/progress", color: "bg-purple-50 text-purple-600" },
-                { label: "Live", href: "/dashboard/live-classes", color: "bg-red-50 text-red-600" },
+                { label: "Learn", href: "/dashboard/secondary/learn", color: "bg-blue-50 text-blue-600" },
+                { label: "Practice", href: "/dashboard/secondary/practice", color: "bg-green-50 text-green-600" },
+                { label: "Revise", href: "/dashboard/secondary/revision", color: "bg-purple-50 text-purple-600" },
+                { label: "Live", href: "/dashboard/secondary/live", color: "bg-red-50 text-red-600" },
               ].map(action => (
                 <Link
                   key={action.label}
@@ -365,7 +365,7 @@ export default function SecondaryHomePage() {
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">My Subjects</h2>
-            <Link href="/dashboard/courses" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+            <Link href="/dashboard/secondary/learn" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
               View All
             </Link>
           </div>

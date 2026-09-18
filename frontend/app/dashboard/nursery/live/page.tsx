@@ -23,7 +23,7 @@ export default function NurseryLivePage() {
 
   useEffect(() => {
     if (!user) return
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/v1/teachers/me/live-classes`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/v1/student/dashboard/live-classes`, {
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("elmkusoma_access_token")}`,
         "X-Institution-Id": localStorage.getItem("elmkusoma_institution_id") || "",

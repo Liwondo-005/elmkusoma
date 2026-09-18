@@ -14,20 +14,28 @@ interface StudySession {
   status: "planned" | "done"
 }
 
-const SAMPLE_SESSIONS: StudySession[] = [
-  { id: "1", subject: "Mathematics", topic: "Quadratic Equations", date: "2026-09-20", time: "16:00", duration: 60, status: "planned" },
-  { id: "2", subject: "English", topic: "Essay Writing", date: "2026-09-21", time: "15:00", duration: 45, status: "planned" },
-  { id: "3", subject: "Physics", topic: "Newton's Laws", date: "2026-09-19", time: "14:00", duration: 30, status: "done" },
-]
-
 export default function StudyPlannerPage() {
-  const [sessions, setSessions] = useState<SampleSession[]>(SAMPLE_SESSIONS)
+  const [sessions, setSessions] = useState<StudySession[]>([])
   const [showForm, setShowForm] = useState(false)
-
-  type SampleSession = typeof SAMPLE_SESSIONS[number]
+  const [form, setForm] = useState({ subject: "", topic: "", date: "", time: "", duration: 30 })
 
   const planned = sessions.filter(s => s.status === "planned")
   const done = sessions.filter(s => s.status === "done")
+
+  function addSession() {
+    if (!form.subject || !form.topic || !form.date) return
+    setSessions(prev => [...prev, {
+      id: Date.now().toString(),
+      subject: form.subject,
+      topic: form.topic,
+      date: form.date,
+      time: form.time || "00:00",
+      duration: form.duration,
+      status: "planned",
+    }])
+    setForm({ subject: "", topic: "", date: "", time: "", duration: 30 })
+    setShowForm(false)
+  }
 
   function toggleDone(id: string) {
     setSessions(prev => prev.map(s =>
@@ -76,6 +84,23 @@ export default function StudyPlannerPage() {
         </div>
       </div>
 
+      {/* Add Form */}
+      {showForm && (
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5">
+          <h3 className="mb-3 font-semibold text-gray-900">New Study Session</h3>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <input type="text" placeholder="Subject" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm" />
+            <input type="text" placeholder="Topic" value={form.topic} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm" />
+            <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm" />
+            <input type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm" />
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button onClick={addSession} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Save Session</button>
+            <button onClick={() => setShowForm(false)} className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200">Cancel</button>
+          </div>
+        </div>
+      )}
+
       {/* Planned Sessions */}
       {planned.length > 0 && (
         <section>
@@ -92,15 +117,8 @@ export default function StudyPlannerPage() {
                     {s.subject} · {new Date(s.date).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} · {s.time} · {s.duration} min
                   </p>
                 </div>
-                <button
-                  onClick={() => toggleDone(s.id)}
-                  className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100"
-                >
-                  Done
-                </button>
-                <button onClick={() => removeSession(s.id)} className="text-gray-300 hover:text-red-500">
-                  <Trash2 className="size-4" />
-                </button>
+                <button onClick={() => toggleDone(s.id)} className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-100">Done</button>
+                <button onClick={() => removeSession(s.id)} className="text-gray-300 hover:text-red-500"><Trash2 className="size-4" /></button>
               </div>
             ))}
           </div>
@@ -121,47 +139,14 @@ export default function StudyPlannerPage() {
                   <p className="font-medium text-gray-600 line-through">{s.topic}</p>
                   <p className="text-xs text-gray-400">{s.subject} · {s.duration} min</p>
                 </div>
-                <button
-                  onClick={() => toggleDone(s.id)}
-                  className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-200"
-                >
-                  Undo
-                </button>
+                <button onClick={() => toggleDone(s.id)} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-200">Undo</button>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Add Form Placeholder */}
-      {showForm && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5">
-          <h3 className="mb-3 font-semibold text-gray-900">New Study Session</h3>
-          <p className="text-sm text-gray-500">Fill in the details below. This is a planning interface — your actual study happens in the Learn section.</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <input type="text" placeholder="Subject" className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm" />
-            <input type="text" placeholder="Topic" className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm" />
-            <input type="date" className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm" />
-            <input type="time" className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm" />
-          </div>
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={() => setShowForm(false)}
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              Save Session
-            </button>
-            <button
-              onClick={() => setShowForm(false)}
-              className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {sessions.length === 0 && (
+      {sessions.length === 0 && !showForm && (
         <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
           <Calendar className="mx-auto size-12 text-gray-300" />
           <h3 className="mt-3 text-lg font-bold text-gray-800">No sessions planned</h3>

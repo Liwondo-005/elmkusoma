@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Home } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Home, Globe } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -14,6 +14,18 @@ const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Stories", href: "/dashboard/nursery/stories", icon: BookOpen },
   { label: "Discovery", href: "/dashboard/nursery/discovery", icon: TrendingUp },
   { label: "Create Studio", href: "/dashboard/nursery/create", icon: PenTool },
+  { label: "Music & Movement", href: "/dashboard/nursery/music", icon: Activity },
+  { label: "Speak & Listen", href: "/dashboard/nursery/speak-listen", icon: MessageSquare },
+  { label: "My Teacher", href: "/dashboard/nursery/my-teacher", icon: User },
+  { label: "Daily Quest", href: "/dashboard/nursery/daily-quest", icon: Trophy },
+  { label: "Feelings", href: "/dashboard/nursery/feelings", icon: HeartPulse },
+  { label: "Movement Breaks", href: "/dashboard/nursery/movement", icon: Activity },
+  { label: "Tanzania", href: "/dashboard/nursery/tanzania", icon: Globe },
+  { label: "Evidence", href: "/dashboard/nursery/evidence", icon: Award },
+  { label: "Portfolio", href: "/dashboard/nursery/portfolio", icon: FileText },
+  { label: "Learn Together", href: "/dashboard/nursery/learn-together", icon: Users },
+  { label: "Missions", href: "/dashboard/nursery/missions", icon: Target },
+  { label: "Family Learning", href: "/dashboard/nursery/family-learning", icon: Users },
   { label: "My Progress", href: "/dashboard/nursery/progress", icon: BarChart3 },
   { label: "Backpack", href: "/dashboard/nursery/backpack", icon: Award },
   { label: "Live Class", href: "/dashboard/nursery/live", icon: Video },
@@ -44,6 +56,9 @@ const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDash
   { label: "Revision", href: "/dashboard/secondary/revision", icon: TrendingUp },
   { label: "Live", href: "/dashboard/secondary/live", icon: Video },
   { label: "Projects", href: "/dashboard/secondary/projects", icon: FileText },
+  { label: "Research", href: "/dashboard/secondary/learn/research", icon: BookOpen },
+  { label: "Science Lab", href: "/dashboard/secondary/learn/science-lab", icon: Library },
+  { label: "Portfolio", href: "/dashboard/secondary/portfolio", icon: FileBarChart },
   { label: "Progress", href: "/dashboard/secondary/progress", icon: BarChart3 },
   { label: "Future World", href: "/dashboard/secondary/future", icon: Target },
   { label: "My Teachers", href: "/dashboard/secondary/teachers", icon: Users },
