@@ -38,7 +38,7 @@ export default function ExamModePage() {
   }
 
   function getScore() {
-    return answers.reduce((score, ans, i) => score + (ans === EXAM_QUESTIONS[i].correct ? 1 : 0), 0)
+    return answers.reduce((score: number, ans, i) => score + (ans === EXAM_QUESTIONS[i].correct ? 1 : 0), 0)
   }
 
   if (!started) {

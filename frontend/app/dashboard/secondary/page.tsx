@@ -402,7 +402,7 @@ export default function SecondaryHomePage() {
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Live Learning</h2>
-            <Link href="/dashboard/live-classes" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+            <Link href="/dashboard/secondary/live" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
               View All
             </Link>
           </div>
@@ -432,6 +432,92 @@ export default function SecondaryHomePage() {
           </div>
         </section>
       )}
+
+      {/* Teacher Feedback */}
+      {subjects.some(s => s.hasTeacherFeedback) && (
+        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Teacher Feedback</h2>
+            <Link href="/dashboard/secondary/teachers" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+              View All
+            </Link>
+          </div>
+          <div className="mt-3 space-y-2">
+            {subjects.filter(s => s.hasTeacherFeedback).slice(0, 3).map(s => (
+              <Link
+                key={s.id}
+                href={`/dashboard/secondary/subjects/${s.id}`}
+                className="flex items-center gap-3 rounded-xl bg-green-50 p-3 transition-all hover:bg-green-100"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green-100">
+                  <Star className="size-4 text-green-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{s.name}</p>
+                  <p className="text-xs text-green-600">New feedback available</p>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-gray-300" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Learning Journey */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Learning Journey</h2>
+          <Link href="/dashboard/secondary/progress" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+            View Progress
+          </Link>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          <div className="rounded-xl bg-indigo-50 p-3 text-center">
+            <p className="text-xl font-bold text-indigo-600">{subjects.length}</p>
+            <p className="text-[10px] font-medium text-indigo-700">Subjects</p>
+          </div>
+          <div className="rounded-xl bg-green-50 p-3 text-center">
+            <p className="text-xl font-bold text-green-600">{subjects.reduce((sum, s) => sum + (s.completedLessons || 0), 0)}</p>
+            <p className="text-[10px] font-medium text-green-700">Completed</p>
+          </div>
+          <div className="rounded-xl bg-amber-50 p-3 text-center">
+            <p className="text-xl font-bold text-amber-600">{subjects.reduce((sum, s) => sum + ((s.totalLessons || 0) - (s.completedLessons || 0)), 0)}</p>
+            <p className="text-[10px] font-medium text-amber-700">Remaining</p>
+          </div>
+        </div>
+      </section>
+
+      {/* My Learning Evidence */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">My Learning Evidence</h2>
+          <Link href="/dashboard/secondary/projects/passport" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+            View Passport
+          </Link>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-blue-50 p-3 text-center">
+            <p className="text-xl font-bold text-blue-600">{attendance?.present || 0}</p>
+            <p className="text-[10px] font-medium text-blue-700">Days Present</p>
+          </div>
+          <div className="rounded-xl bg-purple-50 p-3 text-center">
+            <p className="text-xl font-bold text-purple-600">{subjects.reduce((sum, s) => sum + (s.completedLessons || 0), 0)}</p>
+            <p className="text-[10px] font-medium text-purple-700">Lessons Done</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Future World */}
+      <Link href="/dashboard/secondary/future" className="block rounded-2xl border border-gray-100 bg-gradient-to-r from-indigo-500 to-purple-500 p-5 text-white transition-all hover:shadow-md">
+        <div className="flex items-center gap-3">
+          <Target className="size-8" />
+          <div>
+            <h2 className="text-lg font-bold">Future World</h2>
+            <p className="text-sm text-white/70">Explore careers, universities, and what comes after secondary school</p>
+          </div>
+          <ChevronRight className="size-5 shrink-0 text-white/50" />
+        </div>
+      </Link>
     </div>
   )
 }

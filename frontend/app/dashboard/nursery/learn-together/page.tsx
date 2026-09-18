@@ -1,9 +1,26 @@
 "use client"
 
-import { ArrowLeft, Users, BookOpen, HandHelping } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ArrowLeft, Users, BookOpen, HandHelping, User } from "lucide-react"
 import Link from "next/link"
+import { useRequireAuth } from "@/lib/auth"
+import { teacherApi, type StudentInClass } from "@/lib/teacher-api"
+import { LoadingState } from "@/components/learner/shared"
 
 export default function LearnTogetherPage() {
+  const { user } = useRequireAuth()
+  const [classmates, setClassmates] = useState<StudentInClass[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    teacherApi.getStudents()
+      .then(students => setClassmates(students.slice(0, 8)))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <LoadingState />
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
       <div className="flex items-center gap-3">
@@ -26,6 +43,24 @@ export default function LearnTogetherPage() {
         </div>
       </div>
 
+      {classmates.length > 0 && (
+        <div className="nursery-card rounded-2xl bg-white p-5">
+          <h3 className="font-bold text-gray-800 mb-3">My Classmates</h3>
+          <div className="grid grid-cols-4 gap-3">
+            {classmates.map(student => (
+              <div key={student.id} className="flex flex-col items-center gap-1">
+                <div className="flex size-12 items-center justify-center rounded-full bg-indigo-100">
+                  <User className="size-6 text-indigo-500" />
+                </div>
+                <p className="text-xs font-medium text-gray-700 text-center truncate w-full">
+                  {student.firstName || "Friend"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
         {[
           { icon: BookOpen, title: "Story Circle", desc: "Listen and share stories together", color: "bg-blue-100 text-blue-500" },
@@ -42,12 +77,6 @@ export default function LearnTogetherPage() {
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="nursery-card rounded-2xl bg-white p-8 text-center">
-        <Users className="mx-auto size-12 text-gray-300" />
-        <h3 className="mt-3 text-lg font-bold text-gray-800">Group activities coming soon</h3>
-        <p className="mt-1 text-sm text-gray-500">Your teacher will set up group activities for you and your classmates.</p>
       </div>
     </div>
   )

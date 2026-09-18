@@ -106,7 +106,7 @@ function SubjectBar({ item }: { item: SubjectPerformanceItem }) {
             <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">{item.grade}</span>
           )}
           {trend && (
-            <trend className={`size-4 ${item.trend === "DOWN" ? "text-red-500" : item.trend === "UP" ? "text-green-500" : "text-muted-foreground"}`} />
+            (() => { const TrendIcon = trend; return <TrendIcon className={`size-4 ${item.trend === "DOWN" ? "text-red-500" : item.trend === "UP" ? "text-green-500" : "text-muted-foreground"}`} /> })()
           )}
         </div>
       </div>

@@ -15,7 +15,7 @@ export default function SpeakListenPage() {
   useEffect(() => {
     if (!user?.classGroupId) { setLoading(false); return }
     nurseryApi.getActivities(user.classGroupId)
-      .then(data => setActivities((data || []).filter(a => a.type === "STORY" || a.type === "EDUCATIONAL")))
+      .then(data => setActivities((data || []).filter(a => a.activityType === "STORY" || a.activityType === "EDUCATIONAL")))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [user])
@@ -54,7 +54,7 @@ export default function SpeakListenPage() {
                   <Headphones className="size-6 text-blue-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-gray-800">{a.title}</p>
+                  <p className="font-bold text-gray-800">{a.activityName}</p>
                   {a.description && <p className="text-xs text-gray-500">{a.description}</p>}
                 </div>
                 <Volume2 className="size-5 text-gray-400" />

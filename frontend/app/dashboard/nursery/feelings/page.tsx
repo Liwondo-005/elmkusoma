@@ -64,7 +64,7 @@ export default function FeelingsCheckinPage() {
       ) : (
         <div className="nursery-card rounded-2xl bg-gradient-to-r from-pink-400 to-purple-400 p-8 text-center text-white">
           <p className="text-5xl">{FEELINGS.find(f => f.label === selected)?.emoji}</p>
-          <p className="mt-4 text-xl font-bold">You feel {selected.toLowerCase()}</p>
+          <p className="mt-4 text-xl font-bold">You feel {selected?.toLowerCase()}</p>
           <p className="mt-2 text-sm text-white/70">
             Thank you for sharing! All feelings are okay. Your teacher cares about how you feel.
           </p>

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { secondaryApi, type SubjectSummary } from "@/lib/secondary-api"
+import { secondaryApi, type SubjectSummary, type LiveClassSummary } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
-import { ArrowLeft, BookOpen, ChevronRight, PenTool, Award, Calendar, Video, FileText, MessageSquare } from "lucide-react"
+import { ArrowLeft, BookOpen, ChevronRight, PenTool, Award, Calendar, Video, FileText, MessageSquare, Library, BarChart3, Clock, CheckCircle, Play } from "lucide-react"
 import Link from "next/link"
 
 interface Lesson {
@@ -39,7 +39,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [assessments, setAssessments] = useState<Assessment[]>([])
-  const [activeTab, setActiveTab] = useState<"topics" | "practice" | "assessments" | "feedback">("topics")
+  const [liveClasses, setLiveClasses] = useState<LiveClassSummary[]>([])
+  const [activeTab, setActiveTab] = useState<"overview" | "topics" | "practice" | "assessments" | "resources" | "live" | "replays" | "progress" | "feedback">("overview")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -49,12 +50,14 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
       secondaryApi.getLessonsBySubject(params.id, user.classGroupId).catch(() => []),
       secondaryApi.getAssignments(user.classGroupId).catch(() => []),
       secondaryApi.getAssessments(user.classGroupId).catch(() => []),
+      secondaryApi.getLiveClasses().catch(() => []),
     ])
-      .then(([s, l, a, as]) => {
+      .then(([s, l, a, as, lc]) => {
         setSubject(s)
         setLessons(l || [])
         setAssignments((a || []).filter(x => x.subjectName === s?.name))
         setAssessments((as || []).filter(x => x.subjectName === s?.name))
+        setLiveClasses((lc || []).filter(x => x.subjectName === s?.name))
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -63,9 +66,14 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
   if (loading) return <LoadingState />
 
   const tabs = [
+    { id: "overview" as const, label: "Overview", icon: BookOpen },
     { id: "topics" as const, label: "Topics", icon: BookOpen },
     { id: "practice" as const, label: "Practice", icon: PenTool },
     { id: "assessments" as const, label: "Assessments", icon: Award },
+    { id: "resources" as const, label: "Resources", icon: Library },
+    { id: "live" as const, label: "Live", icon: Video },
+    { id: "replays" as const, label: "Replays", icon: Play },
+    { id: "progress" as const, label: "Progress", icon: BarChart3 },
     { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
   ]
 
@@ -196,6 +204,138 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           <MessageSquare className="mx-auto size-12 text-gray-300" />
           <h3 className="mt-3 text-lg font-bold text-gray-800">Teacher Feedback</h3>
           <p className="mt-1 text-sm text-gray-500">Feedback from your teacher on this subject will appear here.</p>
+        </div>
+      )}
+
+      {activeTab === "overview" && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5">
+            <h3 className="font-semibold text-gray-900">{subject?.name}</h3>
+            <p className="mt-1 text-sm text-gray-500">{subject?.description || "No description available."}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
+              <p className="text-2xl font-bold text-indigo-600">{lessons.length}</p>
+              <p className="text-xs text-gray-500">Topics</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
+              <p className="text-2xl font-bold text-green-600">{assignments.length}</p>
+              <p className="text-xs text-gray-500">Assignments</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
+              <p className="text-2xl font-bold text-amber-600">{assessments.length}</p>
+              <p className="text-xs text-gray-500">Assessments</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
+              <p className="text-2xl font-bold text-red-600">{liveClasses.length}</p>
+              <p className="text-xs text-gray-500">Live Classes</p>
+            </div>
+          </div>
+          {subject?.averageScore !== undefined && (
+            <div className="rounded-2xl border border-gray-100 bg-white p-5">
+              <h3 className="font-semibold text-gray-900">Your Performance</h3>
+              <div className="mt-3 flex items-center gap-4">
+                <div className="text-3xl font-bold text-indigo-600">{subject.averageScore}%</div>
+                <div className="flex-1">
+                  <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${subject.averageScore}%` }} />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">Average score across all assessments</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "resources" && (
+        <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+          <Library className="mx-auto size-12 text-gray-300" />
+          <h3 className="mt-3 text-lg font-bold text-gray-800">Subject Resources</h3>
+          <p className="mt-1 text-sm text-gray-500">Study materials, textbooks, and reference documents will appear here.</p>
+        </div>
+      )}
+
+      {activeTab === "live" && (
+        <div className="space-y-2">
+          {liveClasses.length === 0 ? (
+            <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+              <Video className="mx-auto size-12 text-gray-300" />
+              <h3 className="mt-3 text-lg font-bold text-gray-800">No live classes scheduled</h3>
+              <p className="mt-1 text-sm text-gray-500">Live classes for this subject will appear here.</p>
+            </div>
+          ) : (
+            liveClasses.map(lc => (
+              <div key={lc.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4">
+                <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
+                  lc.status === "LIVE" || lc.status === "IN_PROGRESS" ? "bg-red-100" : "bg-blue-50"
+                }`}>
+                  <Video className={`size-5 ${lc.status === "LIVE" || lc.status === "IN_PROGRESS" ? "text-red-600" : "text-blue-600"}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900">{lc.title}</p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(lc.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                {(lc.status === "LIVE" || lc.status === "IN_PROGRESS") && (
+                  <span className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-bold text-red-600">
+                    <span className="size-1.5 animate-pulse rounded-full bg-red-500" /> LIVE
+                  </span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === "replays" && (
+        <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+          <Play className="mx-auto size-12 text-gray-300" />
+          <h3 className="mt-3 text-lg font-bold text-gray-800">Class Replays</h3>
+          <p className="mt-1 text-sm text-gray-500">Recordings of past live classes will appear here.</p>
+        </div>
+      )}
+
+      {activeTab === "progress" && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5">
+            <h3 className="font-semibold text-gray-900">Topic Progress</h3>
+            <div className="mt-3 space-y-3">
+              {lessons.length === 0 ? (
+                <p className="text-sm text-gray-500">No topics yet.</p>
+              ) : (
+                lessons.map((lesson, idx) => (
+                  <div key={lesson.id} className="flex items-center gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xs font-bold text-gray-500">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{lesson.title}</p>
+                    </div>
+                    <CheckCircle className="size-4 text-gray-300" />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5">
+            <h3 className="font-semibold text-gray-900">Assessment Scores</h3>
+            <div className="mt-3">
+              {assessments.length === 0 ? (
+                <p className="text-sm text-gray-500">No assessment scores yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {assessments.map(a => (
+                    <div key={a.id} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
+                      <span className="text-sm font-medium text-gray-900">{a.title}</span>
+                      <span className="text-sm font-bold text-indigo-600">{a.totalMarks} marks</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

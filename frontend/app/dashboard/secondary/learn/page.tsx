@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { secondaryApi, type SubjectSummary } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
-import { BookOpen, ArrowLeft, ChevronRight, FileText, Video, Award, TrendingUp } from "lucide-react"
+import { BookOpen, ArrowLeft, ChevronRight, FileText, Video, Award, TrendingUp, FlaskConical, Brain, MessageSquare, Wrench } from "lucide-react"
 import Link from "next/link"
 
 export default function SecondaryLearnPage() {
@@ -66,6 +66,36 @@ export default function SecondaryLearnPage() {
           ))}
         </div>
       )}
+
+      {/* Learning Skills */}
+      <div className="mt-8">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Learning Skills</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {[
+            { label: "Concept Explorer", desc: "Deep dive into key concepts", href: "/dashboard/secondary/learn/concept-explorer", icon: Brain, color: "bg-purple-50 text-purple-600" },
+            { label: "Problem Solving", desc: "Practice solving problems step by step", href: "/dashboard/secondary/learn/problem-solving", icon: Wrench, color: "bg-blue-50 text-blue-600" },
+            { label: "Critical Thinking", desc: "Analyze and evaluate arguments", href: "/dashboard/secondary/learn/critical-thinking", icon: Brain, color: "bg-indigo-50 text-indigo-600" },
+            { label: "Communication", desc: "Writing, speaking, and debate", href: "/dashboard/secondary/learn/communication", icon: MessageSquare, color: "bg-green-50 text-green-600" },
+            { label: "Practical Learning", desc: "Hands-on experiments and lab work", href: "/dashboard/secondary/learn/practical-learning", icon: FlaskConical, color: "bg-amber-50 text-amber-600" },
+            { label: "Exam Mode", desc: "Timed practice under exam conditions", href: "/dashboard/secondary/learn/exam-mode", icon: Award, color: "bg-red-50 text-red-600" },
+          ].map(skill => (
+            <Link
+              key={skill.label}
+              href={skill.href}
+              className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-sm"
+            >
+              <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${skill.color}`}>
+                <skill.icon className="size-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{skill.label}</p>
+                <p className="text-xs text-gray-400">{skill.desc}</p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-gray-300" />
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

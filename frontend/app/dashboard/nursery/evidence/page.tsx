@@ -50,7 +50,7 @@ export default function EvidenceOfLearningPage() {
                 </div>
                 <div>
                   <p className="font-bold text-gray-800">{m.description || m.category}</p>
-                  <p className="text-xs text-gray-500">{m.category} · {new Date(m.achievedAt || m.createdAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-gray-500">{m.category} · {m.achievedDate ? new Date(m.achievedDate).toLocaleDateString() : "Pending"}</p>
                 </div>
               </div>
             </div>

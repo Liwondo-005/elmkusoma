@@ -234,6 +234,7 @@ export interface Lesson {
   sortOrder: number
   isPublished: boolean
   createdAt: string
+  subjectName?: string
 }
 
 export interface LessonProgress {
