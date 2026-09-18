@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.learner.domain.LearnerNotification;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
@@ -20,6 +21,7 @@ public class NotificationService {
 
     private final LearnerNotificationRepository notificationRepository;
     private final InstitutionMembershipRepository membershipRepository;
+    private final EventPublisherService eventPublisherService;
 
     @Transactional
     public void notifyUser(UUID userId, String title, String message,
@@ -33,6 +35,21 @@ public class NotificationService {
                 .targetId(targetId)
                 .build();
         notificationRepository.save(notification);
+
+        try {
+            UUID institutionId = membershipRepository
+                    .findByUserIdAndIsActiveTrue(userId)
+                    .stream()
+                    .findFirst()
+                    .map(InstitutionMembership::getInstitutionId)
+                    .orElse(null);
+            if (institutionId != null) {
+                eventPublisherService.publishNotificationEvent(userId, title, message,
+                        notificationType, targetType, targetId, institutionId);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to publish notification event for user {}: {}", userId, e.getMessage());
+        }
     }
 
     @Transactional
@@ -61,6 +78,15 @@ public class NotificationService {
 
         if (!notifications.isEmpty()) {
             notificationRepository.saveAll(notifications);
+
+            for (LearnerNotification n : notifications) {
+                try {
+                    eventPublisherService.publishNotificationEvent(n.getUserId(), title, message,
+                            notificationType, targetType, targetId, institutionId);
+                } catch (Exception e) {
+                    log.warn("Failed to publish notification event for user {}: {}", n.getUserId(), e.getMessage());
+                }
+            }
         }
 
         log.info("Sent {} notifications to {}/{} members of institution {}",

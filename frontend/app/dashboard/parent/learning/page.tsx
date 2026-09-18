@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { BookOpen, Loader2, ChevronRight, Video, Clock } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { parentApi, type ChildOverview, type ParentIntelligence } from "@/lib/parent-api"
+import { parentApi, type ChildOverview, type ParentIntelligence, type LiveClassData } from "@/lib/parent-api"
 
 export default function ParentLearningPage() {
   const { user } = useAuth()
@@ -30,11 +30,11 @@ export default function ParentLearningPage() {
     if (!selectedChildId) return
     Promise.all([
       parentApi.getChildIntelligence(selectedChildId).catch(() => null),
-      parentApi.getChildLiveClasses(selectedChildId).catch(() => []),
+      parentApi.getChildLiveClasses(selectedChildId).catch(() => ({ liveClasses: [] })),
       parentApi.getLibrary().catch(() => null),
     ]).then(([intel, lc, lib]) => {
       setIntelligence(intel)
-      setLiveClasses(lc)
+      setLiveClasses(Array.isArray(lc) ? lc : (lc?.liveClasses || []))
       setLibrary(lib)
     })
   }, [selectedChildId])

@@ -97,11 +97,11 @@ export default function ChildDetailPage() {
             <span className="text-sm font-bold text-primary">{progress.overallProgress}%</span>
           </div>
           <div className="mt-4 space-y-3">
-            {progress.courses.map((course) => (
-              <div key={course.subjectId} className="rounded-xl border border-border p-3">
+            {progress.courses.map((course: any) => (
+              <div key={course.courseId || course.subjectId} className="rounded-xl border border-border p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-foreground">{course.subjectName}</p>
+                    <p className="text-sm font-medium text-foreground">{course.courseName || course.subjectName}</p>
                     <p className="text-xs text-muted-foreground">
                       {course.completedLessons}/{course.totalLessons} lessons
                     </p>

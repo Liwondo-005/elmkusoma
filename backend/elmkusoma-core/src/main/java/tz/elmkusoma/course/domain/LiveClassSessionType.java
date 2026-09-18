@@ -1,0 +1,18 @@
+package tz.elmkusoma.course.domain;
+
+public enum LiveClassSessionType {
+    LECTURE,
+    TUTORIAL,
+    WORKSHOP,
+    SEMINAR,
+    LAB_DEMO,
+    COMPETENCY_ASSESSMENT,
+    WEBINAR,
+    GUEST_SPEAKER,
+    RESEARCH_PRESENTATION,
+    PROJECT_DEFENSE,
+    CONFERENCE,
+    PROFESSIONAL_TRAINING,
+    CAREER_EVENT,
+    INSTITUTION_EVENT
+}

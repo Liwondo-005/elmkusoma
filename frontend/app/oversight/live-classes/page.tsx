@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, Video, Play, Clock, AlertTriangle, Eye, Monitor } from "lucide-react"
+import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, Video, Play, Clock, AlertTriangle, Eye, Monitor, X, HelpCircle, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 
 interface LiveClassMetrics {
@@ -75,7 +75,7 @@ export default function OversightLiveClassesPage() {
     switch (status) {
       case "IN_PROGRESS": return { color: "bg-red-100 text-red-700", icon: <Play className="size-3" />, label: "LIVE NOW" }
       case "SCHEDULED": return { color: "bg-blue-100 text-blue-700", icon: <Clock className="size-3" />, label: "SCHEDULED" }
-      case "COMPLETED": return { color: "bg-green-100 text-green-700", icon: <CheckCircle className="size-3" />, label: "COMPLETED" }
+      case "COMPLETED": return { color: "bg-green-100 text-green-700", icon: <CheckCircle2 className="size-3" />, label: "COMPLETED" }
       case "CANCELLED": return { color: "bg-gray-100 text-gray-700", icon: <X className="size-3" />, label: "CANCELLED" }
       default: return { color: "bg-gray-100 text-gray-700", icon: <HelpCircle className="size-3" />, label: status }
     }
@@ -110,7 +110,7 @@ export default function OversightLiveClassesPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={<Video className="size-5" />} label="Live Now" value={metrics.liveNow} color="bg-red-500/10 text-red-600" />
         <StatCard icon={<Clock className="size-5" />} label="Scheduled Today" value={metrics.scheduledToday} color="bg-blue-500/10 text-blue-600" />
-        <StatCard icon={<CheckCircle className="size-5" />} label="Completed Today" value={metrics.completedToday} color="bg-green-500/10 text-green-600" />
+        <StatCard icon={<CheckCircle2 className="size-5" />} label="Completed Today" value={metrics.completedToday} color="bg-green-500/10 text-green-600" />
         <StatCard icon={<Video className="size-5" />} label="This Week" value={metrics.totalThisWeek} color="bg-purple-500/10 text-purple-600" />
       </div>
 
@@ -122,7 +122,7 @@ export default function OversightLiveClassesPage() {
           </h2>
           <div className="space-y-3">
             {metrics.liveClasses.filter(c => c.status === "IN_PROGRESS").map((cls) => (
-              <LiveClassCard key={cls.id} className={cls} isLive={true} />
+              <LiveClassCard key={cls.id} class={cls} isLive={true} />
             ))}
           </div>
         </div>
@@ -237,7 +237,7 @@ function getStatusConfig(status: string) {
   switch (status) {
     case "IN_PROGRESS": return { color: "bg-red-100 text-red-700", icon: <Play className="size-3" />, label: "LIVE NOW" }
     case "SCHEDULED": return { color: "bg-blue-100 text-blue-700", icon: <Clock className="size-3" />, label: "SCHEDULED" }
-    case "COMPLETED": return { color: "bg-green-100 text-green-700", icon: <CheckCircle className="size-3" />, label: "COMPLETED" }
+    case "COMPLETED": return { color: "bg-green-100 text-green-700", icon: <CheckCircle2 className="size-3" />, label: "COMPLETED" }
     case "CANCELLED": return { color: "bg-gray-100 text-gray-700", icon: <X className="size-3" />, label: "CANCELLED" }
     default: return { color: "bg-gray-100 text-gray-700", icon: <HelpCircle className="size-3" />, label: status }
   }

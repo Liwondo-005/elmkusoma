@@ -50,6 +50,10 @@ public class LiveClass extends BaseEntity {
     @Column(name = "recording_enabled")
     private Boolean recordingEnabled = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "session_type", length = 40)
+    private LiveClassSessionType sessionType = LiveClassSessionType.LECTURE;
+
     public enum LiveClassStatus {
         SCHEDULED, STARTING, IN_PROGRESS, LIVE, ENDING, COMPLETED, ENDED, CANCELLED,
         SERVICE_DEGRADED, SERVICE_UNAVAILABLE, RECOVERING

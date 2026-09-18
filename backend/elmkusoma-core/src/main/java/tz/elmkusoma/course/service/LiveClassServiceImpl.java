@@ -10,6 +10,7 @@ import tz.elmkusoma.attendance.domain.AttendanceRecord;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.domain.LiveClass.LiveClassStatus;
+import tz.elmkusoma.course.domain.LiveClassSessionType;
 import tz.elmkusoma.course.dto.CreateLiveClassRequest;
 import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.course.repository.LiveClassRepository;
@@ -103,6 +104,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .maxParticipants(request.getMaxParticipants())
                 .classGroupId(request.getClassGroupId())
                 .recordingEnabled(Boolean.TRUE.equals(request.getRecordingEnabled()))
+                .sessionType(request.getSessionType() != null ? LiveClassSessionType.valueOf(request.getSessionType()) : LiveClassSessionType.LECTURE)
                 .build();
         liveClass.setInstitutionId(institutionId);
 
@@ -137,6 +139,9 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (request.getClassGroupId() != null) liveClass.setClassGroupId(request.getClassGroupId());
         if (request.getMaxParticipants() != null) liveClass.setMaxParticipants(request.getMaxParticipants());
         if (request.getRecordingEnabled() != null) liveClass.setRecordingEnabled(request.getRecordingEnabled());
+        if (request.getSessionType() != null) {
+            liveClass.setSessionType(LiveClassSessionType.valueOf(request.getSessionType()));
+        }
 
         if (liveClass.getScheduledAt() != null) {
             int dur = liveClass.getDurationMinutes() != null ? liveClass.getDurationMinutes() : 60;
@@ -285,6 +290,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .classGroupId(liveClass.getClassGroupId())
                 .recordingUrl(liveClass.getRecordingUrl())
                 .recordingEnabled(Boolean.TRUE.equals(liveClass.getRecordingEnabled()))
+                .sessionType(liveClass.getSessionType() != null ? liveClass.getSessionType().name() : "LECTURE")
                 .currentParticipants((int) currentParticipants)
                 .canJoin("IN_PROGRESS".equals(liveClass.getStatus()) || "LIVE".equals(liveClass.getStatus()))
                 .createdAt(liveClass.getCreatedAt() != null ? liveClass.getCreatedAt().toString() : null)

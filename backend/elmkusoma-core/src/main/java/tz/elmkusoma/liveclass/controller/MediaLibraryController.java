@@ -7,13 +7,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.dto.MediaAssetResponse;
 import tz.elmkusoma.liveclass.dto.MediaAssetRequest;
 import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
+import tz.elmkusoma.liveclass.service.MediaProxyService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +27,7 @@ import java.util.stream.Collectors;
 public class MediaLibraryController {
 
     private final MediaAssetRepository mediaAssetRepository;
+    private final MediaProxyService mediaProxyService;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','INSTITUTION_ADMIN')")
@@ -216,5 +220,35 @@ public class MediaLibraryController {
                 .tags(asset.getTags())
                 .createdAt(asset.getCreatedAt())
                 .build();
+    }
+
+    @PostMapping("/upload")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN')")
+    @Operation(summary = "Upload a media file via the media service")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> uploadMedia(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam("file") MultipartFile file) {
+        Map<String, Object> result = mediaProxyService.uploadFile(file, institutionId, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("File uploaded successfully", result));
+    }
+
+    @PostMapping("/presigned-upload")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN')")
+    @Operation(summary = "Get a presigned URL for direct upload to object storage")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getPresignedUploadUrl(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestBody Map<String, String> request) {
+        Map<String, Object> result = mediaProxyService.getPresignedUploadUrl(
+            request.get("fileName"), request.get("contentType"), institutionId);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/{id}/download-url")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','INSTITUTION_ADMIN')")
+    @Operation(summary = "Get a presigned download URL for a media asset")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDownloadUrl(@PathVariable UUID id) {
+        Map<String, Object> result = mediaProxyService.getDownloadUrl(id.toString());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }
