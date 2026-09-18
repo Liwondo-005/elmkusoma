@@ -37,9 +37,8 @@ public interface AttendanceSummaryRepository extends JpaRepository<AttendanceSum
             @Param("termId") UUID termId,
             @Param("threshold") double threshold);
 
-    @Query("SELECT COUNT(asum) FROM AttendanceSummary asum WHERE asum.institutionId IN :institutionIds AND asum.termId = :termId AND asum.status = :status AND asum.isDeleted = false")
-    long countByInstitutionIdsAndTermIdAndStatus(
+    @Query("SELECT COUNT(asum) FROM AttendanceSummary asum WHERE asum.institutionId IN :institutionIds AND asum.termId = :termId AND asum.daysLate > 0 AND asum.isDeleted = false")
+    long countByInstitutionIdsAndTermIdAndLate(
             @Param("institutionIds") List<UUID> institutionIds,
-            @Param("termId") UUID termId,
-            @Param("status") String status);
+            @Param("termId") UUID termId);
 }

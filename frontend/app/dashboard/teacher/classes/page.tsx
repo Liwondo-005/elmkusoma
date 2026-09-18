@@ -17,18 +17,23 @@ export default function TeacherClassesPage() {
     async function load() {
       try {
         const { teacherApi } = await import("@/lib/teacher-api")
-        const profileRes = await teacherApi.listTeachers(0, 50)
-        const teacher = profileRes.content?.find((t) => t.email === user?.email)
-        if (teacher) {
-          const [assigns, allClasses] = await Promise.all([
-            teacherApi.getAssignments(teacher.id).catch(() => []),
-            teacherApi.getClassGroups().catch(() => []),
-          ])
-          setAssignments(assigns)
-          const assignedClassIds = [...new Set(assigns.map((a) => a.classGroupId))]
-          const filtered = allClasses.filter((c) => assignedClassIds.includes(c.id))
-          setClasses(filtered.length > 0 ? filtered : allClasses.slice(0, 10))
-        }
+        const myClasses = await teacherApi.getClasses()
+        setClasses(myClasses.map((c) => ({
+          id: c.classGroupId,
+          name: c.className,
+          gradeName: c.subjectName,
+          studentCount: c.enrolledStudents,
+          educationLevel: null,
+        })))
+        setAssignments(myClasses.map((c) => ({
+          id: c.classGroupId,
+          classGroupId: c.classGroupId,
+          classGroupName: c.className,
+          subjectId: c.subjectId || "",
+          subjectName: c.subjectName,
+          academicYearId: null,
+          academicYearName: c.academicYear || null,
+        })))
       } catch {
         setError("Failed to load classes")
       }

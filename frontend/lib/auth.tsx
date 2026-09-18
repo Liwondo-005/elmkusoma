@@ -14,6 +14,8 @@ export interface AuthUser {
   institutionId?: string
   classGroupId?: string
   learningLevel?: string | null
+  secondaryStage?: string | null
+  form?: string | null
   regionId?: string | null
   districtId?: string | null
 }
@@ -31,6 +33,8 @@ interface AuthContextValue {
     phone?: string
     role: string
     learningLevel?: string
+    secondaryStage?: string
+    form?: string
   }) => Promise<{ error?: string }>
   logout: () => Promise<void>
   token: string | null
@@ -104,6 +108,8 @@ function mapUserInfo(info: UserInfo): AuthUser {
     institutionId: info.institutionId,
     classGroupId: info.classGroupId || undefined,
     learningLevel: info.learningLevel || null,
+    secondaryStage: info.secondaryStage || null,
+    form: info.form || null,
     regionId: info.regionId || null,
     districtId: info.districtId || null,
   }
@@ -210,6 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phone?: string
     role: string
     learningLevel?: string
+    secondaryStage?: string
+    form?: string
   }) => {
     try {
       const backendRole = mapRoleToBackend(data.role)
@@ -222,6 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: data.phone,
         role: backendRole,
         learningLevel: data.learningLevel,
+        secondaryStage: data.secondaryStage,
+        form: data.form,
       })
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)

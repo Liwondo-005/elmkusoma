@@ -2,7 +2,17 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
 
 async function learnerFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
-  const institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001" : "00000000-0000-0000-0000-000000000001"
+  let institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") : null
+  if (!institutionId && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("elmkusoma_current_user")
+      if (raw) {
+        const user = JSON.parse(raw)
+        if (user?.institutionId) institutionId = user.institutionId
+      }
+    } catch {}
+  }
+  if (!institutionId) institutionId = "00000000-0000-0000-0000-000000000001"
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {

@@ -2,6 +2,7 @@ package tz.elmkusoma.parent.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -10,12 +11,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
+import tz.elmkusoma.exception.ForbiddenException;
+import tz.elmkusoma.parent.domain.Parent;
 import tz.elmkusoma.parent.dto.request.LinkStudentRequest;
 import tz.elmkusoma.parent.dto.request.ParentNotificationPreferenceRequest;
 import tz.elmkusoma.parent.dto.request.ParentRequest;
 import tz.elmkusoma.parent.dto.response.ParentNotificationPreferenceResponse;
 import tz.elmkusoma.parent.dto.response.ParentResponse;
 import tz.elmkusoma.parent.dto.response.ParentStudentResponse;
+import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.service.ParentService;
 
 import java.util.List;
@@ -29,6 +33,7 @@ import java.util.UUID;
 public class ParentController {
 
     private final ParentService parentService;
+    private final ParentRepository parentRepository;
 
     @PostMapping
     @Operation(summary = "Create a new parent profile")
@@ -100,7 +105,15 @@ public class ParentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PARENT')")
     public ResponseEntity<ApiResponse<List<ParentStudentResponse>>> getChildren(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            HttpServletRequest request) {
+        if (request.isUserInRole("PARENT")) {
+            UUID authenticatedUserId = (UUID) request.getAttribute("userId");
+            Parent authenticatedParent = parentRepository.findByUserIdAndIsDeletedFalse(authenticatedUserId).orElse(null);
+            if (authenticatedParent == null || !authenticatedParent.getId().equals(id)) {
+                throw new ForbiddenException("Not authorized to access another parent's data");
+            }
+        }
         List<ParentStudentResponse> children = parentService.getChildren(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(children));
     }
@@ -120,7 +133,15 @@ public class ParentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PARENT')")
     public ResponseEntity<ApiResponse<ParentNotificationPreferenceResponse>> getNotificationPreferences(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            HttpServletRequest request) {
+        if (request.isUserInRole("PARENT")) {
+            UUID authenticatedUserId = (UUID) request.getAttribute("userId");
+            Parent authenticatedParent = parentRepository.findByUserIdAndIsDeletedFalse(authenticatedUserId).orElse(null);
+            if (authenticatedParent == null || !authenticatedParent.getId().equals(id)) {
+                throw new ForbiddenException("Not authorized to access another parent's data");
+            }
+        }
         ParentNotificationPreferenceResponse prefs = parentService.getNotificationPreferences(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(prefs));
     }
@@ -131,7 +152,15 @@ public class ParentController {
     public ResponseEntity<ApiResponse<ParentNotificationPreferenceResponse>> updateNotificationPreferences(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
-            @Valid @RequestBody ParentNotificationPreferenceRequest request) {
+            @Valid @RequestBody ParentNotificationPreferenceRequest request,
+            HttpServletRequest httpRequest) {
+        if (httpRequest.isUserInRole("PARENT")) {
+            UUID authenticatedUserId = (UUID) httpRequest.getAttribute("userId");
+            Parent authenticatedParent = parentRepository.findByUserIdAndIsDeletedFalse(authenticatedUserId).orElse(null);
+            if (authenticatedParent == null || !authenticatedParent.getId().equals(id)) {
+                throw new ForbiddenException("Not authorized to access another parent's data");
+            }
+        }
         ParentNotificationPreferenceResponse prefs = parentService.updateNotificationPreferences(institutionId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Notification preferences updated successfully", prefs));
     }

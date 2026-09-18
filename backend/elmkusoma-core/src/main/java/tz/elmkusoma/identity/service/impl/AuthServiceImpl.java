@@ -130,6 +130,22 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        if (role == User.Role.STUDENT && request.getSecondaryStage() != null && !request.getSecondaryStage().isBlank()) {
+            try {
+                user.setSecondaryStage(User.SecondaryStage.valueOf(request.getSecondaryStage().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid secondary stage: {}, skipping", request.getSecondaryStage());
+            }
+        }
+
+        if (role == User.Role.STUDENT && request.getForm() != null && !request.getForm().isBlank()) {
+            try {
+                user.setForm(User.Form.valueOf(request.getForm().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid form: {}, skipping", request.getForm());
+            }
+        }
+
         user = userRepository.save(user);
         log.info("User registered successfully: {}", user.getEmail());
 
@@ -346,6 +362,8 @@ public class AuthServiceImpl implements AuthService {
                 .institutionId(institutionId)
                 .classGroupId(classGroupId)
                 .learningLevel(user.getLearningLevel() != null ? user.getLearningLevel().name() : null)
+                .secondaryStage(user.getSecondaryStage() != null ? user.getSecondaryStage().name() : null)
+                .form(user.getForm() != null ? user.getForm().name() : null)
                 .regionId(user.getRegionId() != null ? user.getRegionId().toString() : null)
                 .districtId(user.getDistrictId() != null ? user.getDistrictId().toString() : null)
                 .build();

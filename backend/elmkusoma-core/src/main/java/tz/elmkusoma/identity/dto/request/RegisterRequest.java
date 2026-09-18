@@ -34,4 +34,8 @@ public class RegisterRequest {
     private String role;
 
     private String learningLevel;
+
+    private String secondaryStage;
+
+    private String form;
 }

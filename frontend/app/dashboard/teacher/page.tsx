@@ -142,72 +142,66 @@ export default function TeacherDashboardPage() {
       setAssessments(assessmentsData.status === "fulfilled" ? assessmentsData.value : [])
 
       try {
-        const profileRes = await teacherApi.listTeachers(0, 50)
-        const teacher = profileRes.content?.find((t) => t.email === user?.email)
-        if (teacher) {
-          const [teacherAssignments] = await Promise.all([
-            teacherApi.getAssignments(teacher.id).catch(() => []),
-          ])
-          const classIds = [...new Set(teacherAssignments.map((a) => a.classGroupId))]
-          const uniqueSubjects = [
-            ...new Set(teacherAssignments.map((a) => a.subjectName).filter(Boolean)),
-          ]
+        const myClasses = await teacherApi.getClasses().catch(() => [])
+        const classIds = [...new Set(myClasses.map((c) => c.classGroupId))]
+        const uniqueSubjects = [
+          ...new Set(myClasses.map((c) => c.subjectName).filter(Boolean)),
+        ]
 
-          let totalStudents = 0
-          for (const cid of classIds.slice(0, 5)) {
-            try {
-              const students = await teacherApi.getStudentsByClass(cid)
-              totalStudents += students.length
-            } catch {
-              /* skip */
-            }
-          }
-
-          setStats({
-            totalStudents,
-            totalClasses: classIds.length,
-            totalSubjects: uniqueSubjects.length,
-            pendingGrading:
-              dashboardData.status === "fulfilled"
-                ? dashboardData.value?.pendingGrading ?? 0
-                : 0,
-            todayAttendance: 0,
-            attendanceRate:
-              analyticsData.status === "fulfilled"
-                ? analyticsData.value?.averageAttendance ?? 0
-                : 0,
-          })
-
-          if (
-            dashboardData.status === "fulfilled" &&
-            dashboardData.value?.classes
-          ) {
-            setTodayClasses(
-              dashboardData.value.classes.map((c) => ({
-                className: c.className,
-                subjectName: c.subjectName,
-                classGroupId: c.classGroupId,
-              }))
-            )
-          }
-          if (
-            dashboardData.status === "fulfilled" &&
-            dashboardData.value?.recentActivity
-          ) {
-            setRecentActivity(dashboardData.value.recentActivity)
-          }
-
+        let totalStudents = 0
+        for (const cid of classIds.slice(0, 5)) {
           try {
-            const liveClasses = await teacherFetch<
-              { title: string; scheduledAt: string; status: string }[]
-            >("/v1/teachers/me/live-classes").catch(() => [])
-            const today = new Date().toISOString().split("T")[0]
-            setTodayLiveClasses(
-              liveClasses.filter((lc) => lc.scheduledAt?.startsWith(today))
-            )
+            const students = await teacherApi.getStudentsByClass(cid)
+            totalStudents += students.length
           } catch {
             /* skip */
           }
+        }
+
+        setStats({
+          totalStudents,
+          totalClasses: classIds.length,
+          totalSubjects: uniqueSubjects.length,
+          pendingGrading:
+            dashboardData.status === "fulfilled"
+              ? dashboardData.value?.pendingGrading ?? 0
+              : 0,
+          todayAttendance: 0,
+          attendanceRate:
+            analyticsData.status === "fulfilled"
+              ? analyticsData.value?.averageAttendance ?? 0
+              : 0,
+        })
+
+        if (
+          dashboardData.status === "fulfilled" &&
+          dashboardData.value?.classes
+        ) {
+          setTodayClasses(
+            dashboardData.value.classes.map((c) => ({
+              className: c.className,
+              subjectName: c.subjectName,
+              classGroupId: c.classGroupId,
+            }))
+          )
+        }
+        if (
+          dashboardData.status === "fulfilled" &&
+          dashboardData.value?.recentActivity
+        ) {
+          setRecentActivity(dashboardData.value.recentActivity)
+        }
+
+        try {
+          const liveClasses = await teacherFetch<
+            { title: string; scheduledAt: string; status: string }[]
+          >("/v1/teachers/me/live-classes").catch(() => [])
+          const today = new Date().toISOString().split("T")[0]
+          setTodayLiveClasses(
+            liveClasses.filter((lc) => lc.scheduledAt?.startsWith(today))
+          )
+        } catch {
+          /* skip */
         }
       } catch {
         /* dashboard loads with zero stats */

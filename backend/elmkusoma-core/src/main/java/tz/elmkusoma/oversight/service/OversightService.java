@@ -193,7 +193,7 @@ public class OversightService {
         if (institutionIds.isEmpty()) return 0.0;
 
         long totalLessons = lessonRepository.countByInstitutionIdsAndIsDeletedFalse(institutionIds);
-        long completedLessons = lessonRepository.countByInstitutionIdsAndPublishedAndIsDeletedFalse(institutionIds, true);
+        long completedLessons = lessonRepository.countByInstitutionIdsAndPublishedAndIsDeletedFalse(institutionIds);
 
         if (totalLessons == 0) return 0.0;
         return Math.round((double) completedLessons / totalLessons * 1000.0) / 10.0;
@@ -486,7 +486,7 @@ public class OversightService {
                     Double rate = currentTermId != null ? calculateAttendanceRate(ids) : 0.0;
                     Long students = membershipRepository.countByInstitutionIdsAndRoleAndIsDeletedFalse(ids, InstitutionMembership.Role.STUDENT);
                     Long absent = attendanceSummaryRepository.countByInstitutionIdsAndTermIdAndAttendanceBelow(ids, currentTermId, 75.0);
-                    Long late = attendanceSummaryRepository.countByInstitutionIdsAndTermIdAndStatus(ids, currentTermId, "LATE");
+                    Long late = attendanceSummaryRepository.countByInstitutionIdsAndTermIdAndLate(ids, currentTermId);
                     String name = institutionRepository.findById(instId).map(i -> i.getName()).orElse("Unknown");
                     String code = institutionRepository.findById(instId).map(i -> i.getCode()).orElse("");
 
@@ -534,7 +534,7 @@ public class OversightService {
         UUID currentTermId = getCurrentTermId();
 
         Long totalLessons = lessonRepository.countByInstitutionIdsAndIsDeletedFalse(institutionIds);
-        Long completedLessons = lessonRepository.countByInstitutionIdsAndPublishedAndIsDeletedFalse(institutionIds, true);
+        Long completedLessons = lessonRepository.countByInstitutionIdsAndPublishedAndIsDeletedFalse(institutionIds);
 
         Double overallProgress = totalLessons > 0 ? Math.round((double) completedLessons / totalLessons * 1000.0) / 10.0 : 0.0;
 
@@ -542,7 +542,7 @@ public class OversightService {
                 .map(instId -> {
                     List<UUID> ids = List.of(instId);
                     Long total = lessonRepository.countByInstitutionIdsAndIsDeletedFalse(ids);
-                    Long completed = lessonRepository.countByInstitutionIdsAndPublishedAndIsDeletedFalse(ids, true);
+                    Long completed = lessonRepository.countByInstitutionIdsAndPublishedAndIsDeletedFalse(ids);
                     Double progress = total > 0 ? Math.round((double) completed / total * 1000.0) / 10.0 : 0.0;
                     String status = progress >= 80 ? "ON_TRACK" : progress >= 50 ? "BEHIND" : "AT_RISK";
                     String name = institutionRepository.findById(instId).map(i -> i.getName()).orElse("Unknown");
@@ -623,7 +623,8 @@ public class OversightService {
                 })
                 .collect(Collectors.toList());
 
-        List<RecentAssessment> recentAssessments = assessmentRepository.findRecentByInstitutionIds(institutionIds, 10).stream()
+        List<RecentAssessment> recentAssessments = assessmentRepository.findRecentByInstitutionIds(institutionIds).stream()
+                .limit(10)
                 .map(a -> {
                     String instName = a.getInstitutionId() != null ? institutionRepository.findById(a.getInstitutionId()).map(Institution::getName).orElse("Unknown") : "Unknown";
                     String subjName = a.getSubjectId() != null ? subjectRepository.findById(a.getSubjectId()).map(Subject::getName).orElse("Unknown") : "Unknown";
@@ -806,7 +807,7 @@ public class OversightService {
     }
 
     private Double calculateSubjectPassRate(UUID subjectId, List<UUID> institutionIds, UUID termId) {
-        List<ReportCard> reportCards = reportCardRepository.findBySubjectIdAndInstitutionIdsAndTermIdAndIsDeletedFalse(subjectId, institutionIds, termId);
+        List<ReportCard> reportCards = reportCardRepository.findByInstitutionIdsAndTermIdAndIsDeletedFalse(institutionIds, termId);
         if (reportCards.isEmpty()) return 0.0;
         long passed = reportCards.stream().filter(rc -> rc.getAverageMark() != null && rc.getAverageMark().doubleValue() >= 50.0).count();
         return Math.round((double) passed / reportCards.size() * 1000.0) / 10.0;

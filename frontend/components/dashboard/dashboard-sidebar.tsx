@@ -2,22 +2,23 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Home } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 
 const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "My Activities", href: "/dashboard/courses", icon: BookOpen },
-  { label: "Fun Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "My Drawings", href: "/dashboard/progress", icon: BarChart3 },
-  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
-  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "My World", href: "/dashboard/nursery", icon: Home },
+  { label: "Learning Journey", href: "/dashboard/nursery/learning-journey", icon: GraduationCap },
+  { label: "Play & Learn", href: "/dashboard/nursery/play", icon: Activity },
+  { label: "Stories", href: "/dashboard/nursery/stories", icon: BookOpen },
+  { label: "Discovery", href: "/dashboard/nursery/discovery", icon: TrendingUp },
+  { label: "Create Studio", href: "/dashboard/nursery/create", icon: PenTool },
+  { label: "My Progress", href: "/dashboard/nursery/progress", icon: BarChart3 },
+  { label: "Backpack", href: "/dashboard/nursery/backpack", icon: Award },
+  { label: "Live Class", href: "/dashboard/nursery/live", icon: Video },
+  { label: "Notifications", href: "/dashboard/nursery/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/nursery/profile", icon: User },
 ]
 
 const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
@@ -36,19 +37,17 @@ const primaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
 ]
 
 const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "My Courses", href: "/dashboard/courses", icon: BookOpen },
-  { label: "Lessons", href: "/dashboard/lessons", icon: GraduationCap },
-  { label: "Assignments", href: "/dashboard/assignments", icon: FileText },
-  { label: "Assessments", href: "/dashboard/assessments", icon: PenTool },
-  { label: "Results", href: "/dashboard/results", icon: Award },
-  { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardList },
-  { label: "Live Classes", href: "/dashboard/live-classes", icon: Video },
-  { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "My Academic World", href: "/dashboard/secondary", icon: LayoutDashboard },
+  { label: "Learn", href: "/dashboard/secondary/learn", icon: BookOpen },
+  { label: "Practice", href: "/dashboard/secondary/practice", icon: PenTool },
+  { label: "Assess", href: "/dashboard/secondary/assess", icon: Award },
+  { label: "Revision", href: "/dashboard/secondary/revision", icon: TrendingUp },
+  { label: "Live", href: "/dashboard/secondary/live", icon: Video },
+  { label: "Projects", href: "/dashboard/secondary/projects", icon: FileText },
+  { label: "Progress", href: "/dashboard/secondary/progress", icon: BarChart3 },
+  { label: "Future World", href: "/dashboard/secondary/future", icon: Target },
+  { label: "My Teachers", href: "/dashboard/secondary/teachers", icon: Users },
+  { label: "Notifications", href: "/dashboard/secondary/notifications", icon: Bell },
 ]
 
 const collegeNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [

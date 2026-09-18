@@ -24,10 +24,14 @@ export interface DashboardConfig {
 
 const baseNav: Record<LearningLevel, NavItem[]> = {
   NURSERY: [
-    { label: "Home", href: "/dashboard", icon: Home },
-    { label: "Subjects", href: "/dashboard/lessons", icon: BookOpen },
-    { label: "Activities", href: "/dashboard/assignments", icon: ClipboardList },
-    { label: "Progress", href: "/dashboard/progress", icon: BarChart3 },
+    { label: "My World", href: "/dashboard/nursery", icon: Home },
+    { label: "Learning Journey", href: "/dashboard/nursery/learning-journey", icon: GraduationCap },
+    { label: "Play & Learn", href: "/dashboard/nursery/play", icon: ClipboardList },
+    { label: "Stories", href: "/dashboard/nursery/stories", icon: BookOpen },
+    { label: "Discovery", href: "/dashboard/nursery/discovery", icon: BarChart3 },
+    { label: "Create Studio", href: "/dashboard/nursery/create", icon: PenTool },
+    { label: "My Progress", href: "/dashboard/nursery/progress", icon: BarChart3 },
+    { label: "Backpack", href: "/dashboard/nursery/backpack", icon: Award },
   ],
   PRIMARY: [
     { label: "Home", href: "/dashboard", icon: Home },
@@ -67,12 +71,12 @@ const baseNav: Record<LearningLevel, NavItem[]> = {
 
 const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
   NURSERY: {
-    greeting: "Welcome to your fun learning space!",
-    subtitle: "Let's explore and learn together today.",
+    greeting: "Welcome to your fun learning world!",
+    subtitle: "Let's explore, play, and learn together today.",
     navItems: baseNav.NURSERY,
     sections: ["continue", "today", "activities", "progress", "recent"],
     emptyStateTitle: "Your adventure begins here!",
-    emptyStateDescription: "Fun activities and lessons will appear here.",
+    emptyStateDescription: "Fun activities, stories, and games will appear here.",
     cardStyle: "colorful",
   },
   PRIMARY: {
@@ -87,7 +91,17 @@ const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
   SECONDARY: {
     greeting: "Stay focused on your goals.",
     subtitle: "Keep up with your assignments and upcoming assessments.",
-    navItems: baseNav.SECONDARY,
+    navItems: [
+      { label: "My Academic World", href: "/dashboard/secondary", icon: Home },
+      { label: "Learn", href: "/dashboard/secondary/learn", icon: BookOpen },
+      { label: "Practice", href: "/dashboard/secondary/practice", icon: ClipboardList },
+      { label: "Assess", href: "/dashboard/secondary/assess", icon: Award },
+      { label: "Revision", href: "/dashboard/secondary/revision", icon: BarChart3 },
+      { label: "Live", href: "/dashboard/secondary/live", icon: GraduationCap },
+      { label: "Projects", href: "/dashboard/secondary/projects", icon: FileText },
+      { label: "Progress", href: "/dashboard/secondary/progress", icon: BarChart3 },
+      { label: "Future World", href: "/dashboard/secondary/future", icon: GraduationCap },
+    ],
     sections: ["continue", "assessments", "assignments", "subjects", "performance", "recent", "notifications"],
     emptyStateTitle: "No items yet",
     emptyStateDescription: "Your assignments, assessments, and results will appear here.",
