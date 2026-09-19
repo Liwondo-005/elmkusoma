@@ -30,6 +30,7 @@ interface LiveInteractivePanelProps {
 
 const ACTIVITY_ICONS: Record<string, typeof Sparkles> = {
   POLL: BarChart3,
+  MCQ: CheckCircle,
   QUIZ: Brain,
   TRUE_FALSE: CheckCircle,
   MATCHING: Zap,
@@ -41,6 +42,7 @@ const ACTIVITY_ICONS: Record<string, typeof Sparkles> = {
 
 const ACTIVITY_COLORS: Record<string, string> = {
   POLL: "bg-blue-500",
+  MCQ: "bg-indigo-500",
   QUIZ: "bg-purple-500",
   TRUE_FALSE: "bg-green-500",
   MATCHING: "bg-orange-500",
@@ -879,6 +881,8 @@ export function LiveInteractivePanel({
     switch (currentActivity.activityType) {
       case "POLL":
         return <PollActivity {...props} onSubmitted={fetchActivities} />
+      case "MCQ":
+        return <QuizActivity {...props} onSubmitted={fetchActivities} />
       case "QUIZ":
         return <QuizActivity {...props} onSubmitted={fetchActivities} />
       case "TRUE_FALSE":

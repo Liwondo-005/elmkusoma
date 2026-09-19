@@ -371,6 +371,20 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   {"handRaised" in p && (p as any).handRaised && (
                     <span className="absolute -top-1 -right-1 text-sm" title="Hand raised">✋</span>
                   )}
+                  {isTeacher && p.userId !== myUserId && p.role !== "TEACHER" && (
+                    <button
+                      onClick={() => {
+                        const ws = wsRef.current
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                          ws.send(JSON.stringify({ type: "KICK_PARTICIPANT", targetUserId: p.userId }))
+                        }
+                      }}
+                      className="absolute -bottom-1 -right-1 size-5 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/80"
+                      title={`Remove ${p.userName}`}
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -408,10 +422,24 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             />
           ) : (
             <>
-              <div className="border-b border-border px-4 py-3">
+              <div className="border-b border-border px-4 py-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">
                   Chat
                 </h3>
+                {isTeacher && (
+                  <button
+                    onClick={() => {
+                      const ws = wsRef.current
+                      if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: "CLEAR_CHAT" }))
+                      }
+                      setChat([])
+                    }}
+                    className="text-[10px] font-medium text-destructive hover:text-destructive/80"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-2">
                 {chat.length === 0 ? (

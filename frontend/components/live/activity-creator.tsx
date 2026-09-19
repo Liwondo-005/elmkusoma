@@ -24,7 +24,8 @@ interface ActivityCreatorProps {
 
 const ACTIVITY_TYPES = [
   { value: "POLL", label: "Poll", icon: BarChart3, color: "bg-blue-500" },
-  { value: "QUIZ", label: "Quiz", icon: Brain, color: "bg-purple-500" },
+  { value: "MCQ", label: "MCQ", icon: CheckCircle, color: "bg-indigo-500" },
+  { value: "QUIZ", label: "Quick Quiz", icon: Brain, color: "bg-purple-500" },
   { value: "TRUE_FALSE", label: "True / False", icon: CheckCircle, color: "bg-green-500" },
   { value: "MATCHING", label: "Matching", icon: Zap, color: "bg-orange-500" },
   { value: "DRAWING", label: "Drawing", icon: Palette, color: "bg-pink-500" },
@@ -45,8 +46,8 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [error, setError] = useState("")
 
-  const needsOptions = ["POLL", "QUIZ", "TRUE_FALSE", "MATCHING", "PREDICTION"].includes(activityType)
-  const needsTimer = ["QUIZ", "CHALLENGE"].includes(activityType)
+  const needsOptions = ["POLL", "MCQ", "QUIZ", "TRUE_FALSE", "MATCHING", "PREDICTION"].includes(activityType)
+  const needsTimer = ["MCQ", "QUIZ", "CHALLENGE"].includes(activityType)
 
   const addOption = () => {
     if (options.length < 8) setOptions([...options, ""])

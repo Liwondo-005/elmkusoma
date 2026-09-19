@@ -5,12 +5,12 @@ import { useRequireAuth } from "@/lib/auth"
 import { Palette, PenTool, BookOpen, Mic, Image, Film, ArrowRight } from "lucide-react"
 
 const creationTypes = [
-  { label: "Drawing", description: "Express yourself with art and drawings", icon: Palette, color: "bg-pink-500", href: "/dashboard/create/drawing" },
-  { label: "Writing", description: "Write stories, essays, and more", icon: PenTool, color: "bg-purple-500", href: "/dashboard/create/writing" },
-  { label: "Reading", description: "Read and share book reviews", icon: BookOpen, color: "bg-blue-500", href: "/dashboard/create/reading" },
-  { label: "Voice", description: "Record and share voice notes", icon: Mic, color: "bg-green-500", href: "/dashboard/create/voice" },
-  { label: "Photo", description: "Capture and share photos", icon: Image, color: "bg-orange-500", href: "/dashboard/create/photo" },
-  { label: "Video", description: "Create and share videos", icon: Film, color: "bg-red-500", href: "/dashboard/create/video" },
+  { label: "Drawing", description: "Express yourself with art and drawings", icon: Palette, color: "bg-pink-500", href: "/dashboard/portfolio?type=DRAWING" },
+  { label: "Writing", description: "Write stories, essays, and more", icon: PenTool, color: "bg-purple-500", href: "/dashboard/portfolio?type=STORY" },
+  { label: "Reading", description: "Read and share book reviews", icon: BookOpen, color: "bg-blue-500", href: "/dashboard/portfolio?type=ESSAY" },
+  { label: "Voice", description: "Record and share voice notes", icon: Mic, color: "bg-green-500", href: "/dashboard/portfolio?type=VOICE_RECORDING" },
+  { label: "Photo", description: "Capture and share photos", icon: Image, color: "bg-orange-500", href: "/dashboard/portfolio?type=PHOTO" },
+  { label: "Video", description: "Create and share videos", icon: Film, color: "bg-red-500", href: "/dashboard/portfolio?type=PROJECT" },
 ]
 
 export default function CreatePage() {
