@@ -70,6 +70,7 @@ const primaryNavSections: PrimaryNavSection[] = [
       { label: "Quests", href: "/dashboard/quests", icon: Swords, dotColor: "bg-red-500" },
       { label: "Challenge Zone", href: "/dashboard/challenge-zone", icon: Zap, dotColor: "bg-orange-500" },
       { label: "Mistake Lab", href: "/dashboard/mistake-lab", icon: AlertCircle, dotColor: "bg-amber-600" },
+      { label: "AI Guide", href: "/dashboard/ai-guide", icon: Target, dotColor: "bg-purple-500" },
     ],
   },
   {
@@ -85,6 +86,7 @@ const primaryNavSections: PrimaryNavSection[] = [
       { label: "Live Learning", href: "/dashboard/live-classes", icon: Video, dotColor: "bg-red-500" },
       { label: "Progress", href: "/dashboard/progress", icon: BarChart3, dotColor: "bg-cyan-500" },
       { label: "Evidence", href: "/dashboard/evidence", icon: Award, dotColor: "bg-green-500" },
+      { label: "Passport", href: "/dashboard/passport", icon: Map, dotColor: "bg-amber-500" },
       { label: "Attendance", href: "/dashboard/attendance", icon: ClipboardCheck, dotColor: "bg-emerald-600" },
     ],
   },
@@ -95,6 +97,7 @@ const primaryNavSections: PrimaryNavSection[] = [
       { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, dotColor: "bg-blue-600" },
       { label: "Notifications", href: "/dashboard/notifications", icon: Bell, dotColor: "bg-orange-500" },
       { label: "Portfolio", href: "/dashboard/portfolio", icon: Backpack, dotColor: "bg-violet-500" },
+      { label: "Learning Profile", href: "/dashboard/learning-profile", icon: User, dotColor: "bg-indigo-500" },
       { label: "Profile", href: "/dashboard/profile", icon: User, dotColor: "bg-slate-500" },
       { label: "Settings", href: "/dashboard/settings", icon: Settings, dotColor: "bg-gray-500" },
     ],
@@ -358,7 +361,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Logo />
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Main navigation" role="navigation">
         {isTeacher ? (
           teacherNavSections.map((section, si) => (
             <div key={section.group}>

@@ -1705,6 +1705,52 @@ export interface LiveClassActivityStats {
   optionCounts: Record<string, number>
 }
 
+export interface ELmkusomaLab {
+  id: string
+  labTitle: string
+  labType: string
+  hypothesis: string
+  materialsList: string[]
+  steps: string[]
+  expectedResult: string
+  studentNotes: string
+  isAttempted: boolean
+  score: number
+}
+
+export interface SpeakingActivity {
+  id: string
+  activityType: string
+  title: string
+  description: string
+  audioUrl?: string
+  imageUrl?: string
+  subjectName?: string
+  isCompleted: boolean
+  durationSeconds: number
+}
+
+export interface LearningCollaboration {
+  id: string
+  collaborationType: string
+  partnerName: string
+  activity: string
+  subjectName?: string
+  isCompleted: boolean
+}
+
+export interface RealWorldMission {
+  id: string
+  missionTitle: string
+  missionType: string
+  description: string
+  location: string
+  instructions: string
+  evidence: string
+  isCompleted: boolean
+  points: number
+}
+
 export const primaryApi = {
   async getTeachers(): Promise<TeacherInfo[]> {
     return fetchJSON<TeacherInfo[]>("/v1/primary/me/teachers")
@@ -1806,5 +1852,29 @@ export const primaryApi = {
   },
   async reviewMistake(id: string): Promise<MistakeLabEntry> {
     return fetchJSON<MistakeLabEntry>(`/v1/primary/me/mistake-lab/${id}/review`, { method: "POST" })
+  },
+  async getLabs(): Promise<ELmkusomaLab[]> {
+    return fetchJSON<ELmkusomaLab[]>("/v1/primary/me/labs")
+  },
+  async attemptLab(labId: string, data: { studentNotes: string; score: number }): Promise<ELmkusomaLab> {
+    return fetchJSON<ELmkusomaLab>(`/v1/primary/me/labs/${labId}/attempt`, { method: "POST", body: JSON.stringify(data) })
+  },
+  async getSpeakingActivities(): Promise<SpeakingActivity[]> {
+    return fetchJSON<SpeakingActivity[]>("/v1/primary/me/speaking")
+  },
+  async addSpeakingActivity(data: { activityType: string; title: string; description?: string; subjectName?: string }): Promise<SpeakingActivity> {
+    return fetchJSON<SpeakingActivity>("/v1/primary/me/speaking", { method: "POST", body: JSON.stringify(data) })
+  },
+  async completeSpeakingActivity(activityId: string): Promise<SpeakingActivity> {
+    return fetchJSON<SpeakingActivity>(`/v1/primary/me/speaking/${activityId}/complete`, { method: "POST" })
+  },
+  async getCollaborations(): Promise<LearningCollaboration[]> {
+    return fetchJSON<LearningCollaboration[]>("/v1/primary/me/collaborations")
+  },
+  async getRealWorldMissions(): Promise<RealWorldMission[]> {
+    return fetchJSON<RealWorldMission[]>("/v1/primary/me/missions")
+  },
+  async completeMission(missionId: string, evidence: string): Promise<RealWorldMission> {
+    return fetchJSON<RealWorldMission>(`/v1/primary/me/missions/${missionId}/complete`, { method: "POST", body: JSON.stringify({ evidence }) })
   },
 }

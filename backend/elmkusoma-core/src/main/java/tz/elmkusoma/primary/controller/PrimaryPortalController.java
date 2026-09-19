@@ -296,4 +296,78 @@ public class PrimaryPortalController {
         List<LearningCollaboration> collaborations = primaryPortalService.getCollaborations(userId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(collaborations));
     }
+
+    @GetMapping("/me/labs")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Get ELMKUSOMA labs for the student")
+    public ResponseEntity<ApiResponse<List<ELmkusomaLabResponse>>> getLabs(
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
+        List<ELmkusomaLabResponse> labs = primaryPortalService.getLabs(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(labs));
+    }
+
+    @PostMapping("/me/labs/{labId}/attempt")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Attempt an ELMKUSOMA lab")
+    public ResponseEntity<ApiResponse<ELmkusomaLabResponse>> attemptLab(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID labId,
+            @Valid @RequestBody ELmkusomaLabAttemptRequest request) {
+        ELmkusomaLabResponse lab = primaryPortalService.attemptLab(userId, labId, request);
+        return ResponseEntity.ok(ApiResponse.success("Lab attempted", lab));
+    }
+
+    @GetMapping("/me/speaking")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Get speaking activities")
+    public ResponseEntity<ApiResponse<List<SpeakingActivityResponse>>> getSpeakingActivities(
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
+        List<SpeakingActivityResponse> activities = primaryPortalService.getSpeakingActivities(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(activities));
+    }
+
+    @PostMapping("/me/speaking")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Add a speaking activity")
+    public ResponseEntity<ApiResponse<SpeakingActivityResponse>> addSpeakingActivity(
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
+            @Valid @RequestBody SpeakingActivityRequest request) {
+        SpeakingActivityResponse activity = primaryPortalService.addSpeakingActivity(userId, institutionId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Speaking activity added", activity));
+    }
+
+    @PostMapping("/me/speaking/{activityId}/complete")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Complete a speaking activity")
+    public ResponseEntity<ApiResponse<SpeakingActivityResponse>> completeSpeakingActivity(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID activityId) {
+        SpeakingActivityResponse activity = primaryPortalService.completeSpeakingActivity(userId, activityId);
+        return ResponseEntity.ok(ApiResponse.success("Speaking activity completed", activity));
+    }
+
+    @GetMapping("/me/missions")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Get real world missions")
+    public ResponseEntity<ApiResponse<List<RealWorldMissionResponse>>> getRealWorldMissions(
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
+        List<RealWorldMissionResponse> missions = primaryPortalService.getRealWorldMissions(userId, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(missions));
+    }
+
+    @PostMapping("/me/missions/{missionId}/complete")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Complete a real world mission")
+    public ResponseEntity<ApiResponse<RealWorldMissionResponse>> completeMission(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID missionId,
+            @RequestParam String evidence) {
+        RealWorldMissionResponse mission = primaryPortalService.completeMission(userId, missionId, evidence);
+        return ResponseEntity.ok(ApiResponse.success("Mission completed", mission));
+    }
 }

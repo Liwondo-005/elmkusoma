@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useRequireAuth } from "@/lib/auth"
-import { dashboardApi, type DashboardSummary, type ContinueLearningItem, type RecentActivity } from "@/lib/api"
-import { BookOpen, FileText, Loader2, PenTool, BarChart3, ArrowRight, Award, Users, TrendingUp, Clock, CheckCircle, Compass, Play, Star, Calendar, Video, ChevronRight, Sparkles, Lightbulb, Target, Map } from "lucide-react"
+import { dashboardApi, primaryApi, type DashboardSummary, type ContinueLearningItem, type RecentActivity } from "@/lib/api"
+import { BookOpen, FileText, Loader2, PenTool, BarChart3, ArrowRight, Award, Users, TrendingUp, Clock, CheckCircle, Compass, Play, Star, Calendar, Video, ChevronRight, Sparkles, Lightbulb, Target, Map, GraduationCap } from "lucide-react"
 import { getDashboardConfig, getLevelLabel, type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { LearnerHeader, ContinueLearningCard, LearningItemCard, AssignmentCard, ProgressCard, EmptyState, LoadingState } from "@/components/learner/shared"
 import { GamificationBar } from "@/components/primary/gamification-bar"
@@ -44,6 +44,7 @@ export default function DashboardPage() {
     liveClasses: [],
     subjects: [],
   })
+  const [gamification, setGamification] = useState({ streak: 0, points: 0, badgeCount: 0, loading: true })
 
   useEffect(() => {
     if (!authLoading && user?.role === "Parent") {
@@ -152,6 +153,22 @@ export default function DashboardPage() {
           subjects: [],
         })
       } catch { /* loads with zero data */ }
+
+      // Fetch gamification data for primary students
+      try {
+        const [badges, streak] = await Promise.all([
+          primaryApi.getBadges().catch(() => []),
+          primaryApi.getStreak().catch(() => ({ currentStreak: 0, longestStreak: 0, totalPoints: 0 })),
+        ])
+        setGamification({
+          streak: streak.currentStreak || 0,
+          points: streak.totalPoints || 0,
+          badgeCount: Array.isArray(badges) ? badges.length : 0,
+          loading: false,
+        })
+      } catch {
+        setGamification((prev) => ({ ...prev, loading: false }))
+      }
     } catch {
       // Dashboard data unavailable
     } finally {
@@ -166,7 +183,7 @@ export default function DashboardPage() {
   const levelLabel = getLevelLabel(level)
 
   if (isPrimary) {
-    return <PrimaryDashboard firstName={firstName} config={config} summary={summary} continueItems={continueItems} activities={activities} data={data} />
+    return <PrimaryDashboard firstName={firstName} config={config} summary={summary} continueItems={continueItems} activities={activities} data={data} gamification={gamification} />
   }
 
   return (
@@ -325,6 +342,7 @@ function PrimaryDashboard({
   continueItems,
   activities,
   data,
+  gamification,
 }: {
   firstName: string
   config: ReturnType<typeof getDashboardConfig>
@@ -332,15 +350,42 @@ function PrimaryDashboard({
   continueItems: ContinueLearningItem[]
   activities: RecentActivity[]
   data: DashboardData
+  gamification: { streak: number; points: number; badgeCount: number; loading: boolean }
 }) {
   const router = useRouter()
   const hour = new Date().getHours()
   const greetingTime = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+  const [teacherInfo, setTeacherInfo] = useState<{ count: number; firstName: string } | null>(null)
+
+  useEffect(() => {
+    primaryApi.getTeachers().then((teachers) => {
+      if (teachers && teachers.length > 0) {
+        setTeacherInfo({ count: teachers.length, firstName: teachers[0].firstName })
+      }
+    }).catch(() => {})
+  }, [])
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6" role="main" aria-label="My Learning World">
       {/* Gamification Bar */}
-      <GamificationBar streak={0} points={0} badgeCount={0} loading={false} />
+      <GamificationBar streak={gamification.streak} points={gamification.points} badgeCount={gamification.badgeCount} loading={gamification.loading} />
+
+      {/* Teacher Info */}
+      {teacherInfo && (
+        <Link
+          href="/dashboard/my-teacher"
+          className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:shadow-md hover:border-primary/30"
+        >
+          <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50">
+            <GraduationCap className="size-5 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">Your Teacher: {teacherInfo.firstName}</p>
+            <p className="text-xs text-muted-foreground">{teacherInfo.count} {teacherInfo.count === 1 ? "teacher" : "teachers"} assigned</p>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+        </Link>
+      )}
 
       {/* Primary Welcome */}
       <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-teal/5 p-6 shadow-xs">

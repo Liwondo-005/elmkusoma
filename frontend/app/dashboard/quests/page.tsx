@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { primaryApi, type QuestChallenge } from "@/lib/api"
+import { primaryApi, type QuestChallenge, type RealWorldMission } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
-import { Swords, Calculator, FlaskConical, Brain, Compass, Trophy, Star, CheckCircle } from "lucide-react"
+import { Swords, Calculator, FlaskConical, Brain, Compass, Trophy, Star, CheckCircle, Globe, MapPin, Target, X, BookOpen } from "lucide-react"
 
 const questCategories = [
   { type: "MATH", name: "Math Quests", icon: Calculator, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
@@ -19,12 +19,24 @@ const difficultyColors: Record<string, string> = {
   Hard: "bg-red-100 text-red-700",
 }
 
+const missionTypeConfig: Record<string, { icon: typeof Compass; color: string; bg: string }> = {
+  TANZANIA: { icon: Compass, color: "text-teal-600", bg: "bg-teal-50" },
+  WORLD: { icon: Globe, color: "text-blue-600", bg: "bg-blue-50" },
+  SCIENCE: { icon: FlaskConical, color: "text-green-600", bg: "bg-green-50" },
+  MATH: { icon: Calculator, color: "text-purple-600", bg: "bg-purple-50" },
+  LANGUAGE: { icon: BookOpen, color: "text-amber-600", bg: "bg-amber-50" },
+}
+
 export default function QuestsPage() {
   const { user } = useRequireAuth()
   const [quests, setQuests] = useState<QuestChallenge[]>([])
+  const [missions, setMissions] = useState<RealWorldMission[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedQuest, setSelectedQuest] = useState<QuestChallenge | null>(null)
+  const [selectedMission, setSelectedMission] = useState<RealWorldMission | null>(null)
+  const [evidence, setEvidence] = useState("")
+  const [submittingMission, setSubmittingMission] = useState(false)
   const level = user?.learningLevel as LearningLevel | null
   const isPrimary = level?.toUpperCase() === "PRIMARY"
 
@@ -36,10 +48,15 @@ export default function QuestsPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const data = await primaryApi.getQuestChallenges().catch(() => [])
-      setQuests(data)
+      const [qData, mData] = await Promise.all([
+        primaryApi.getQuestChallenges().catch(() => []),
+        primaryApi.getRealWorldMissions().catch(() => []),
+      ])
+      setQuests(qData)
+      setMissions(mData)
     } catch {
       setQuests([])
+      setMissions([])
     } finally {
       setLoading(false)
     }
@@ -53,6 +70,21 @@ export default function QuestsPage() {
       setSelectedQuest(null)
     } catch {
       // handle silently
+    }
+  }
+
+  async function handleCompleteMission(missionId: string) {
+    if (!evidence.trim()) return
+    try {
+      setSubmittingMission(true)
+      const updated = await primaryApi.completeMission(missionId, evidence)
+      setMissions((prev) => prev.map((m) => (m.id === missionId ? updated : m)))
+      setSelectedMission(null)
+      setEvidence("")
+    } catch {
+      // handle silently
+    } finally {
+      setSubmittingMission(false)
     }
   }
 
@@ -271,6 +303,121 @@ export default function QuestsPage() {
                     <Star className="size-3" /> {quest.totalPoints} pts
                   </span>
                   {quest.isCompleted && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                      <CheckCircle className="size-3" /> Done
+                    </span>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {selectedMission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-foreground">{selectedMission.missionTitle}</h2>
+              <button onClick={() => { setSelectedMission(null); setEvidence("") }} className="text-muted-foreground hover:text-foreground">
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">{selectedMission.description}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Location: {selectedMission.location}</p>
+              </div>
+              <div className="rounded-xl bg-muted/30 p-4">
+                <p className="text-sm font-medium text-foreground">Instructions</p>
+                <p className="mt-1 text-sm text-muted-foreground">{selectedMission.instructions}</p>
+              </div>
+              {selectedMission.isCompleted ? (
+                <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+                  <CheckCircle className="mx-auto size-8 text-green-500" />
+                  <p className="mt-2 text-sm font-bold text-green-800">Mission Completed!</p>
+                  {selectedMission.evidence && (
+                    <p className="mt-1 text-xs text-green-700">Evidence: {selectedMission.evidence}</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Submit Evidence</label>
+                    <textarea
+                      value={evidence}
+                      onChange={(e) => setEvidence(e.target.value)}
+                      placeholder="Describe what you did for this mission..."
+                      rows={3}
+                      className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
+                    />
+                  </div>
+                  <button
+                    onClick={() => handleCompleteMission(selectedMission.id)}
+                    disabled={submittingMission || !evidence.trim()}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {submittingMission ? (
+                      <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                    ) : (
+                      "Complete Mission"
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-500/5 via-card to-orange-500/5 p-6 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/10">
+            <MapPin className="size-6 text-amber-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">Real World Missions</h2>
+            <p className="text-sm text-muted-foreground">Apply what you learn in the real world!</p>
+          </div>
+        </div>
+      </div>
+
+      {missions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-12 text-center">
+          <MapPin className="size-10 text-muted-foreground/30" />
+          <h3 className="mt-3 text-sm font-semibold text-foreground">No missions yet</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Your teacher will create real world missions for you.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {missions.map((mission) => {
+            const mConfig = missionTypeConfig[mission.missionType] || missionTypeConfig.TANZANIA
+            const MIcon = mConfig.icon
+            return (
+              <button
+                key={mission.id}
+                onClick={() => { setSelectedMission(mission); setEvidence("") }}
+                className="rounded-2xl border border-border bg-card p-5 text-left shadow-xs transition-all hover:shadow-md hover:border-primary/30"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${mConfig.bg}`}>
+                    <MIcon className={`size-5 ${mConfig.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-foreground line-clamp-1">{mission.missionTitle}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{mission.description}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    <MapPin className="size-3" /> {mission.location}
+                  </span>
+                  <span className="flex items-center gap-1 text-[10px] text-amber-600">
+                    <Star className="size-3" /> {mission.points} pts
+                  </span>
+                  {mission.isCompleted && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
                       <CheckCircle className="size-3" /> Done
                     </span>

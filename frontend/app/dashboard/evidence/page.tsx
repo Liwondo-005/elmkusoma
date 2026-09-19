@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { primaryApi, type StudentBadge, type PortfolioItem } from "@/lib/api"
+import { primaryApi, type StudentBadge, type PortfolioItem, type LearningEvidence } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
-import { Award, Plus, BookOpen, Trophy, Star, Clock, CheckCircle, FileText, Palette, Wrench, Camera, Mic, GraduationCap, Send, Filter, ChevronDown, X } from "lucide-react"
+import { Award, Plus, BookOpen, Trophy, Star, Clock, CheckCircle, FileText, Palette, Wrench, Camera, Mic, GraduationCap, Send, Filter, ChevronDown, X, Loader2 } from "lucide-react"
 
 interface EvidenceItem {
   id: string
@@ -32,10 +32,14 @@ export default function EvidencePage() {
   const { user } = useRequireAuth()
   const [badges, setBadges] = useState<StudentBadge[]>([])
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
+  const [evidenceRecords, setEvidenceRecords] = useState<LearningEvidence[]>([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState("All")
   const [subjectFilter, setSubjectFilter] = useState("All")
   const [showFilters, setShowFilters] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newEvidence, setNewEvidence] = useState({ title: "", evidenceType: "LESSON_COMPLETE", description: "", subjectName: "" })
+  const [submitting, setSubmitting] = useState(false)
   const level = user?.learningLevel as LearningLevel | null
 
   useEffect(() => {
@@ -46,21 +50,34 @@ export default function EvidencePage() {
   async function loadData() {
     try {
       setLoading(true)
-      const [badgeData, portfolioData] = await Promise.all([
+      const [badgeData, portfolioData, evidenceData] = await Promise.all([
         primaryApi.getBadges().catch(() => []),
         primaryApi.getPortfolio().catch(() => []),
+        primaryApi.getLearningEvidence().catch(() => []),
       ])
       setBadges(badgeData)
       setPortfolioItems(portfolioData)
+      setEvidenceRecords(evidenceData)
     } catch {
       setBadges([])
       setPortfolioItems([])
+      setEvidenceRecords([])
     } finally {
       setLoading(false)
     }
   }
 
   const evidenceItems: EvidenceItem[] = [
+    ...evidenceRecords.map((record) => ({
+      id: record.id,
+      type: record.evidenceType || "LESSON_COMPLETE",
+      title: record.title,
+      description: record.description || "",
+      subject: record.subjectName || "General",
+      points: 20,
+      date: record.createdAt || new Date().toISOString(),
+      importance: "medium" as const,
+    })),
     ...badges.map((badge) => ({
       id: badge.id,
       type: "LESSON_COMPLETE",
@@ -93,6 +110,26 @@ export default function EvidencePage() {
 
   const uniqueSubjects = ["All", ...new Set(evidenceItems.map((item) => item.subject).filter(Boolean))]
 
+  async function handleAddEvidence() {
+    if (!newEvidence.title.trim()) return
+    setSubmitting(true)
+    try {
+      await primaryApi.addLearningEvidence({
+        title: newEvidence.title,
+        evidenceType: newEvidence.evidenceType,
+        description: newEvidence.description,
+        subjectName: newEvidence.subjectName || undefined,
+      })
+      setShowAddForm(false)
+      setNewEvidence({ title: "", evidenceType: "LESSON_COMPLETE", description: "", subjectName: "" })
+      loadData()
+    } catch {
+      // Failed to add evidence
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -122,6 +159,14 @@ export default function EvidencePage() {
         >
           <Filter className="size-4" />
           Filters
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="size-4" />
+          Add Evidence
         </button>
       </div>
 
@@ -171,6 +216,87 @@ export default function EvidencePage() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddForm && (
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">Add Learning Evidence</h3>
+            <button type="button" onClick={() => setShowAddForm(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="size-5" />
+            </button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Title *</label>
+              <input
+                type="text"
+                value={newEvidence.title}
+                onChange={(e) => setNewEvidence((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder="What did you learn or create?"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Evidence Type</label>
+                <select
+                  value={newEvidence.evidenceType}
+                  onChange={(e) => setNewEvidence((prev) => ({ ...prev, evidenceType: e.target.value }))}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                >
+                  <option value="LESSON_COMPLETE">Lesson Complete</option>
+                  <option value="PROJECT">Project</option>
+                  <option value="QUIZ_SCORE">Quiz Score</option>
+                  <option value="PORTFOLIO">Portfolio</option>
+                  <option value="TEACHER_NOTE">Teacher Note</option>
+                  <option value="ATTENDANCE">Attendance</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Subject</label>
+                <select
+                  value={newEvidence.subjectName}
+                  onChange={(e) => setNewEvidence((prev) => ({ ...prev, subjectName: e.target.value }))}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                >
+                  <option value="">General</option>
+                  {primarySubjects.map((s) => (
+                    <option key={s.name} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Description</label>
+              <textarea
+                value={newEvidence.description}
+                onChange={(e) => setNewEvidence((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe what you did or learned..."
+                rows={3}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddEvidence}
+                disabled={!newEvidence.title.trim() || submitting}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                Submit Evidence
+              </button>
             </div>
           </div>
         </div>

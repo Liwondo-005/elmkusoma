@@ -1,52 +1,46 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { type LearningLevel } from "@/lib/learner-config"
-import { Users, BookOpen, Swords, Share2, UserPlus, ArrowRight } from "lucide-react"
-import Link from "next/link"
-
-const activities = [
-  { title: "Study Groups", description: "Create or join a study group with classmates", icon: Users, color: "bg-blue-50 text-blue-600", border: "border-blue-200", href: "/dashboard/lessons" },
-  { title: "Partner Reading", description: "Read together with a friend", icon: BookOpen, color: "bg-green-50 text-green-600", border: "border-green-200", href: "/dashboard/reading" },
-  { title: "Team Challenges", description: "Solve problems as a team", icon: Swords, color: "bg-purple-50 text-purple-600", border: "border-purple-200", href: "/dashboard/quests" },
-  { title: "Share My Work", description: "Show your creations to friends", icon: Share2, color: "bg-pink-50 text-pink-600", border: "border-pink-200", href: "/dashboard/portfolio" },
-]
+import { primaryApi, type LearningCollaboration } from "@/lib/api"
+import { Users, BookOpen, Trophy, Share2, MessageSquare } from "lucide-react"
 
 export default function LearnTogetherPage() {
   const { user } = useRequireAuth()
-  const level = user?.learningLevel as LearningLevel | null
-  const isPrimary = level?.toUpperCase() === "PRIMARY"
+  const [collaborations, setCollaborations] = useState<LearningCollaboration[]>([])
+  const [loading, setLoading] = useState(true)
 
-  if (!isPrimary) {
-    return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-blue-500/10">
-            <Users className="size-5 text-blue-500" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Learn Together</h1>
-            <p className="text-sm text-muted-foreground">Learning is more fun with friends!</p>
-          </div>
-        </div>
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
-          <Users className="size-12 text-muted-foreground/30" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Learn Together is for Primary learners</h3>
-          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Switch to a primary learner account to collaborate with friends.
-          </p>
-        </div>
-      </div>
-    )
+  useEffect(() => {
+    if (!user) return
+    loadData()
+  }, [user])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+      const data = await primaryApi.getCollaborations().catch(() => [])
+      setCollaborations(data.filter(c => c.collaborationType === "LEARN_TOGETHER"))
+    } catch {} finally {
+      setLoading(false)
+    }
+  }
+
+  const activities = [
+    { title: "Study Groups", description: "Find study partners", icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { title: "Partner Reading", description: "Read together", icon: BookOpen, color: "text-green-500", bg: "bg-green-500/10" },
+    { title: "Team Challenges", description: "Compete as a team", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
+    { title: "Share My Work", description: "Show your creations", icon: Share2, color: "text-purple-500", bg: "bg-purple-500/10" },
+  ]
+
+  if (loading) {
+    return <div className="flex min-h-[50vh] items-center justify-center"><div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
   }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="rounded-2xl border border-border bg-gradient-to-br from-blue-500/5 via-card to-green-500/5 p-6 shadow-xs">
+      <div className="rounded-2xl border border-border bg-gradient-to-br from-blue-50/50 via-card to-purple-50/50 p-6 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10">
-            <Users className="size-6 text-blue-500" />
-          </div>
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10"><Users className="size-6 text-blue-600" /></div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Learn Together</h1>
             <p className="text-sm text-muted-foreground">Learning is more fun with friends!</p>
@@ -54,42 +48,39 @@ export default function LearnTogetherPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {activities.map((activity) => {
-          const Icon = activity.icon
-          return (
-            <Link
-              key={activity.title}
-              href={activity.href}
-              className={`rounded-2xl border ${activity.border} ${activity.color} p-6 shadow-xs transition-all hover:shadow-md`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-white/50">
-                  <Icon className="size-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-bold">{activity.title}</h3>
-                  <p className="text-xs opacity-80">{activity.description}</p>
-                </div>
-                <ArrowRight className="size-4 opacity-60" />
-              </div>
-            </Link>
-          )
-        })}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {activities.map(a => (
+          <div key={a.title} className="rounded-2xl border border-border bg-card p-5 shadow-xs text-center transition-all hover:shadow-md hover:border-primary/30 cursor-pointer">
+            <div className={`mx-auto flex size-12 items-center justify-center rounded-2xl ${a.bg}`}><a.icon className={`size-6 ${a.color}`} /></div>
+            <h3 className="mt-3 text-sm font-semibold text-foreground">{a.title}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">{a.description}</p>
+          </div>
+        ))}
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <UserPlus className="size-5 text-primary" />
-          My Collaborations
-        </h2>
-        <div className="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-12 text-center">
-          <Users className="size-10 text-muted-foreground/30" />
-          <h3 className="mt-3 text-sm font-semibold text-foreground">Invite a friend to learn together!</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Learning with friends makes everything more fun. Choose an activity above to get started.
-          </p>
-        </div>
+        <h2 className="text-lg font-semibold text-foreground mb-4">My Collaborations</h2>
+        {collaborations.length === 0 ? (
+          <div className="py-8 text-center">
+            <Users className="mx-auto size-12 text-muted-foreground/50" />
+            <p className="mt-3 text-sm font-medium text-foreground">No collaborations yet</p>
+            <p className="text-xs text-muted-foreground">Invite a friend to learn together!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {collaborations.map(c => (
+              <div key={c.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10"><Users className="size-4 text-blue-500" /></div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{c.activity}</p>
+                  <p className="text-xs text-muted-foreground">with {c.partnerName}</p>
+                </div>
+                {c.isCompleted && <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Done</span>}
+                {!c.isCompleted && <MessageSquare className="size-4 text-muted-foreground" />}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -12,6 +12,11 @@ import {
   LogOut,
   MessageCircle,
   Sparkles,
+  Hand,
+  Download,
+  FileText,
+  CheckCircle,
+  Clock,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
 import { useAuth } from "@/lib/auth"
@@ -51,6 +56,9 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const teacherName = liveClass.teacherName || "Your Teacher"
   const isInProgress = liveClass.status === "IN_PROGRESS" || liveClass.status === "LIVE"
   const [showActivities, setShowActivities] = useState(false)
+  const [handRaised, setHandRaised] = useState(false)
+  const [showMaterials, setShowMaterials] = useState(false)
+  const [materials, setMaterials] = useState<Array<{ name: string; url: string }>>([])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -206,6 +214,23 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     setHasJoined(true)
   }, [])
 
+  const toggleRaiseHand = useCallback(() => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(
+      JSON.stringify({
+        type: handRaised ? "LOWER_HAND" : "RAISE_HAND",
+      })
+    )
+    setHandRaised((prev) => !prev)
+  }, [handRaised])
+
+  const getEligibilityStatus = () => {
+    if (isInProgress) return { label: "You're eligible to join", icon: CheckCircle, color: "text-green-600" }
+    return { label: "Waiting for teacher to start", icon: Clock, color: "text-amber-600" }
+  }
+
+  const eligibility = getEligibilityStatus()
+
   if (!hasJoined) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center px-4">
@@ -289,12 +314,31 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             <Sparkles className="size-4" />
             Activities
           </button>
-          <button
+              <button
             onClick={handleLeave}
             className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-2 text-sm font-bold text-destructive transition-colors hover:bg-destructive/20"
           >
             <LogOut className="size-4" />
             Leave Class
+          </button>
+          <button
+            onClick={() => {
+              const ws = wsRef.current
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                const isRaised = handRaised
+                ws.send(JSON.stringify({ type: isRaised ? "LOWER_HAND" : "RAISE_HAND" }))
+                setHandRaised(!isRaised)
+              }
+            }}
+            className={cn(
+              "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-colors",
+              handRaised
+                ? "bg-amber-500 text-white"
+                : "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+            )}
+          >
+            <Hand className="size-4" />
+            {handRaised ? "Lower Hand" : "Raise Hand"}
           </button>
         </div>
       </div>
@@ -323,6 +367,9 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     <span className="mt-0.5 text-[10px] font-semibold text-yellow-600">
                       Teacher
                     </span>
+                  )}
+                  {"handRaised" in p && (p as any).handRaised && (
+                    <span className="absolute -top-1 -right-1 text-sm" title="Hand raised">✋</span>
                   )}
                 </div>
               ))}

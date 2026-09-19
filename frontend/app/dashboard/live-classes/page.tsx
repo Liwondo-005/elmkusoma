@@ -143,9 +143,12 @@ export default function LiveClassesPage() {
                           </span>
                         )}
                       </div>
+                      <p className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1">
+                        <CheckCircle className="size-3" /> You are eligible to join
+                      </p>
                       <Link
                         href={`/live-classes/${cls.id}`}
-                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 transition-colors"
                       >
                         <Video className="size-4" />
                         Join Now!

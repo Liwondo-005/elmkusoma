@@ -1,40 +1,88 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { primaryApi, type ELmkusomaLab } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
-import { FlaskConical, Leaf, Droplets, Zap, Bug, ArrowLeft, Beaker, CheckCircle } from "lucide-react"
+import { FlaskConical, Leaf, Droplets, Zap, Bug, ArrowLeft, Beaker, CheckCircle, Star } from "lucide-react"
 
-const categories = [
-  { id: "nature", name: "Nature & Environment", icon: Leaf, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
-  { id: "materials", name: "Materials & Properties", icon: Droplets, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-  { id: "forces", name: "Forces & Motion", icon: Zap, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" },
-  { id: "living", name: "Living Things", icon: Bug, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
+const labTypes = [
+  { value: "All", name: "All", icon: FlaskConical, color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200" },
+  { value: "NATURE", name: "Nature", icon: Leaf, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
+  { value: "MATERIALS", name: "Materials", icon: Droplets, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
+  { value: "FORCES", name: "Forces", icon: Zap, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" },
+  { value: "LIVING_THINGS", name: "Living Things", icon: Bug, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
 ]
 
-const experiments = [
-  { id: "1", title: "Why do plants need sunlight?", category: "nature", hypothesis: "Plants need sunlight to make food through photosynthesis.", materials: ["A small plant", "A cardboard box", "A window with sunlight"], steps: ["Place the plant near a sunny window for 3 days", "Cover the plant with the cardboard box", "Wait 3 days and observe the differences", "Compare the leaves of both conditions"], result: "The plant without sunlight becomes pale and weak, while the sunlit plant stays green and healthy." },
-  { id: "2", title: "What makes ice melt?", category: "materials", hypothesis: "Heat makes ice melt faster than room temperature.", materials: ["Ice cubes", "A plate", "A hair dryer (with adult help)", "Salt"], steps: ["Place 3 ice cubes on the plate", "Leave one at room temperature", "Pour salt on one, use hair dryer on another", "Record which melts first"], result: "The hair dryer melts ice fastest, then salt, then room temperature." },
-  { id: "3", title: "How do magnets work?", category: "forces", hypothesis: "Magnets attract certain metals like iron and steel.", materials: ["A magnet", "Various objects (paperclip, coin, eraser, spoon)", "A paper"], steps: ["Test each object with the magnet", "Record which objects stick to the magnet", "Sort objects into magnetic and non-magnetic", "Draw your findings"], result: "Iron and steel objects stick to the magnet. Plastic, wood, and rubber do not." },
-  { id: "4", title: "Where do birds sleep?", category: "living", hypothesis: "Birds sleep in trees and nests at night.", materials: ["Binoculars (if available)", "A notebook", "A pencil", "A cozy spot to observe"], steps: ["Find a quiet place with trees nearby", "Observe in the early morning or evening", "Note where birds go as it gets dark", "Draw the sleeping spots you find"], result: "Many birds sleep in tree branches, some in nests, and ground birds hide in bushes." },
-  { id: "5", title: "What happens when you mix colors?", category: "materials", hypothesis: "Mixing two primary colors creates a new color.", materials: ["Red, blue, and yellow paint", "White paper", "Paint brushes", "Water cup"], steps: ["Put a small amount of red and blue paint on paper", "Mix them together slowly", "Repeat with red and yellow, then blue and yellow", "Record the new colors you created"], result: "Red + blue = purple, red + yellow = orange, blue + yellow = green." },
-  { id: "6", title: "How fast does sound travel?", category: "forces", hypothesis: "Sound travels faster through solids than air.", materials: ["A metal spoon", "A long table", "A friend to help", "A ruler"], steps: ["Place your ear on one end of the table", "Have your friend tap the spoon at the other end", "Then tap the spoon in the air near your ear", "Compare which you hear first"], result: "Sound travels much faster through the solid table than through the air." },
-]
+const typeColorMap: Record<string, string> = {
+  NATURE: "bg-green-100 text-green-700",
+  MATERIALS: "bg-blue-100 text-blue-700",
+  FORCES: "bg-orange-100 text-orange-700",
+  LIVING_THINGS: "bg-teal-100 text-teal-700",
+}
+
+const typeIconMap: Record<string, typeof FlaskConical> = {
+  NATURE: Leaf,
+  MATERIALS: Droplets,
+  FORCES: Zap,
+  LIVING_THINGS: Bug,
+}
 
 export default function LabsPage() {
   const { user } = useRequireAuth()
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [selectedExperiment, setSelectedExperiment] = useState<typeof experiments[0] | null>(null)
-  const [attempted, setAttempted] = useState<Set<string>>(new Set())
-  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [labs, setLabs] = useState<ELmkusomaLab[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedType, setSelectedType] = useState<string>("All")
+  const [selectedLab, setSelectedLab] = useState<ELmkusomaLab | null>(null)
+  const [notes, setNotes] = useState("")
+  const [submitting, setSubmitting] = useState(false)
   const level = user?.learningLevel as LearningLevel | null
   const isPrimary = level?.toUpperCase() === "PRIMARY"
 
-  const filteredExperiments = selectedCategory
-    ? experiments.filter((e) => e.category === selectedCategory)
-    : experiments
+  useEffect(() => {
+    if (!user) return
+    loadLabs()
+  }, [user])
 
-  const categoryCount = (catId: string) => experiments.filter((e) => e.category === catId).length
+  async function loadLabs() {
+    try {
+      setLoading(true)
+      const data = await primaryApi.getLabs().catch(() => [])
+      setLabs(data)
+    } catch {
+      setLabs([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleAttemptLab(labId: string) {
+    try {
+      setSubmitting(true)
+      const score = Math.floor(Math.random() * 30) + 70
+      const updated = await primaryApi.attemptLab(labId, { studentNotes: notes, score })
+      setLabs((prev) => prev.map((l) => (l.id === labId ? updated : l)))
+      setSelectedLab(updated)
+    } catch {
+      // handle silently
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const filtered = selectedType === "All" ? labs : labs.filter((l) => l.labType === selectedType)
+  const completedCount = labs.filter((l) => l.isAttempted).length
+  const avgScore = labs.length > 0 && completedCount > 0
+    ? Math.round(labs.filter((l) => l.isAttempted).reduce((sum, l) => sum + l.score, 0) / completedCount)
+    : 0
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    )
+  }
 
   if (!isPrimary) {
     return (
@@ -59,13 +107,12 @@ export default function LabsPage() {
     )
   }
 
-  if (selectedExperiment) {
-    const cat = categories.find((c) => c.id === selectedExperiment.category)
-    const CatIcon = cat?.icon || FlaskConical
+  if (selectedLab) {
+    const TypeIcon = typeIconMap[selectedLab.labType] || FlaskConical
     return (
       <div className="mx-auto max-w-4xl space-y-6">
         <button
-          onClick={() => setSelectedExperiment(null)}
+          onClick={() => { setSelectedLab(null); setNotes("") }}
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-4" />
@@ -74,19 +121,21 @@ export default function LabsPage() {
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className={`flex size-12 items-center justify-center rounded-2xl ${cat?.bg || "bg-muted"}`}>
-              <CatIcon className={`size-6 ${cat?.color || "text-muted-foreground"}`} />
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-teal-500/10">
+              <TypeIcon className="size-6 text-teal-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{selectedExperiment.title}</h1>
-              {cat && <p className="text-sm text-muted-foreground">{cat.name}</p>}
+              <h1 className="text-2xl font-bold text-foreground">{selectedLab.labTitle}</h1>
+              <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${typeColorMap[selectedLab.labType] || "bg-muted text-muted-foreground"}`}>
+                {selectedLab.labType.replace("_", " ")}
+              </span>
             </div>
           </div>
 
           <div className="mt-6 space-y-6">
             <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
               <h3 className="text-sm font-bold text-amber-800">Hypothesis</h3>
-              <p className="mt-1 text-sm text-amber-700">{selectedExperiment.hypothesis}</p>
+              <p className="mt-1 text-sm text-amber-700">{selectedLab.hypothesis}</p>
             </div>
 
             <div>
@@ -94,7 +143,7 @@ export default function LabsPage() {
                 <Beaker className="size-4" /> Materials Needed
               </h3>
               <ul className="mt-2 space-y-1">
-                {selectedExperiment.materials.map((m, i) => (
+                {(selectedLab.materialsList || []).map((m, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="size-1.5 rounded-full bg-primary" />
                     {m}
@@ -106,7 +155,7 @@ export default function LabsPage() {
             <div>
               <h3 className="text-sm font-bold text-foreground">Steps</h3>
               <ol className="mt-2 space-y-2">
-                {selectedExperiment.steps.map((s, i) => (
+                {(selectedLab.steps || []).map((s, i) => (
                   <li key={i} className="flex gap-3 text-sm text-muted-foreground">
                     <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                       {i + 1}
@@ -119,35 +168,44 @@ export default function LabsPage() {
 
             <div className="rounded-xl bg-green-50 border border-green-200 p-4">
               <h3 className="text-sm font-bold text-green-800">Expected Result</h3>
-              <p className="mt-1 text-sm text-green-700">{selectedExperiment.result}</p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setAttempted((prev) => new Set(prev).add(selectedExperiment.id))}
-                className={`inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors ${
-                  attempted.has(selectedExperiment.id)
-                    ? "bg-green-100 text-green-700"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
-                }`}
-              >
-                {attempted.has(selectedExperiment.id) ? (
-                  <><CheckCircle className="size-4" /> Attempted</>
-                ) : (
-                  "Try It!"
-                )}
-              </button>
+              <p className="mt-1 text-sm text-green-700">{selectedLab.expectedResult}</p>
             </div>
 
             <div>
               <label className="text-sm font-bold text-foreground">What I Learned</label>
               <textarea
-                value={notes[selectedExperiment.id] || ""}
-                onChange={(e) => setNotes((prev) => ({ ...prev, [selectedExperiment.id]: e.target.value }))}
+                value={selectedLab.isAttempted ? selectedLab.studentNotes : notes}
+                onChange={(e) => setNotes(e.target.value)}
                 placeholder="Write down what you discovered..."
                 rows={4}
-                className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
+                disabled={selectedLab.isAttempted}
+                className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none disabled:opacity-60"
               />
+            </div>
+
+            <div className="flex items-center gap-4">
+              {selectedLab.isAttempted ? (
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-green-100 px-5 py-2.5 text-sm font-medium text-green-700">
+                    <CheckCircle className="size-4" /> Completed
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600">
+                    <Star className="size-4" /> {selectedLab.score} points
+                  </span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleAttemptLab(selectedLab.id)}
+                  disabled={submitting}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                  ) : (
+                    "Mark as Completed"
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -169,69 +227,112 @@ export default function LabsPage() {
         </div>
       </div>
 
-      {selectedCategory && (
-        <button
-          onClick={() => setSelectedCategory(null)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="size-4" />
-          All Categories
-        </button>
-      )}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-teal-50">
+              <FlaskConical className="size-5 text-teal-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold text-foreground">{labs.length}</p>
+              <p className="text-xs text-muted-foreground">Total Labs</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-green-50">
+              <CheckCircle className="size-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold text-foreground">{completedCount}</p>
+              <p className="text-xs text-muted-foreground">Completed</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-50">
+              <Star className="size-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold text-foreground">{avgScore}</p>
+              <p className="text-xs text-muted-foreground">Avg Score</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {categories.map((cat) => {
-          const Icon = cat.icon
+      <div className="flex flex-wrap gap-2">
+        {labTypes.map((type) => {
+          const Icon = type.icon
           return (
             <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-              className={`rounded-2xl border p-5 text-left transition-all hover:shadow-md ${
-                selectedCategory === cat.id
-                  ? `${cat.border} ${cat.bg} ring-2 ring-primary/20`
-                  : "border-border bg-card hover:border-primary/30"
+              key={type.value}
+              onClick={() => setSelectedType(type.value)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                selectedType === type.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
-              <div className={`flex size-10 items-center justify-center rounded-xl ${cat.bg}`}>
-                <Icon className={`size-5 ${cat.color}`} />
-              </div>
-              <h3 className="mt-3 text-sm font-bold text-foreground">{cat.name}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">{categoryCount(cat.id)} experiments</p>
+              <Icon className="size-3" />
+              {type.name}
             </button>
           )
         })}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredExperiments.map((exp) => {
-          const cat = categories.find((c) => c.id === exp.category)
-          const CatIcon = cat?.icon || FlaskConical
-          return (
-            <button
-              key={exp.id}
-              onClick={() => setSelectedExperiment(exp)}
-              className="rounded-2xl border border-border bg-card p-5 text-left shadow-xs transition-all hover:shadow-md hover:border-primary/30"
-            >
-              <div className="flex items-start gap-3">
-                <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${cat?.bg || "bg-muted"}`}>
-                  <CatIcon className={`size-5 ${cat?.color || "text-muted-foreground"}`} />
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+            <FlaskConical className="size-8 text-primary" />
+          </div>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">No labs available yet</h3>
+          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+            Check with your teacher! They will create labs for you to explore.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((lab) => {
+            const TypeIcon = typeIconMap[lab.labType] || FlaskConical
+            const typeColor = labTypes.find((t) => t.value === lab.labType)
+            return (
+              <button
+                key={lab.id}
+                onClick={() => { setSelectedLab(lab); setNotes("") }}
+                className="rounded-2xl border border-border bg-card p-5 text-left shadow-xs transition-all hover:shadow-md hover:border-primary/30"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${typeColor?.bg || "bg-muted"}`}>
+                    <TypeIcon className={`size-5 ${typeColor?.color || "text-muted-foreground"}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-foreground line-clamp-2">{lab.labTitle}</h3>
+                    <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${typeColorMap[lab.labType] || "bg-muted text-muted-foreground"}`}>
+                      {lab.labType.replace("_", " ")}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-bold text-foreground line-clamp-2">{exp.title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">{cat?.name}</p>
+                <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{lab.hypothesis}</p>
+                <div className="mt-3 flex items-center gap-2">
+                  {lab.isAttempted && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                      <CheckCircle className="size-3" /> Done
+                    </span>
+                  )}
+                  {lab.isAttempted && (
+                    <span className="flex items-center gap-1 text-[10px] text-amber-600">
+                      <Star className="size-3" /> {lab.score}
+                    </span>
+                  )}
                 </div>
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                {attempted.has(exp.id) && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                    <CheckCircle className="size-3" /> Attempted
-                  </span>
-                )}
-              </div>
-            </button>
-          )
-        })}
-      </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -44,6 +44,9 @@ public class PrimaryPortalService {
     private final QuestChallengeRepository questChallengeRepository;
     private final LearningCollaborationRepository learningCollaborationRepository;
     private final MistakeLabEntryRepository mistakeLabEntryRepository;
+    private final ELmkusomaLabRepository elmkusomaLabRepository;
+    private final SpeakingActivityRepository speakingActivityRepository;
+    private final RealWorldMissionRepository realWorldMissionRepository;
 
     public PrimaryPortalService(PrimaryPortalRepository primaryPortalRepository,
                                  PortfolioItemRepository portfolioItemRepository,
@@ -63,7 +66,10 @@ public class PrimaryPortalService {
                                  LearningPassportRepository learningPassportRepository,
                                  QuestChallengeRepository questChallengeRepository,
                                  LearningCollaborationRepository learningCollaborationRepository,
-                                 MistakeLabEntryRepository mistakeLabEntryRepository) {
+                                 MistakeLabEntryRepository mistakeLabEntryRepository,
+                                 ELmkusomaLabRepository elmkusomaLabRepository,
+                                 SpeakingActivityRepository speakingActivityRepository,
+                                 RealWorldMissionRepository realWorldMissionRepository) {
         this.primaryPortalRepository = primaryPortalRepository;
         this.portfolioItemRepository = portfolioItemRepository;
         this.studentBadgeRepository = studentBadgeRepository;
@@ -83,6 +89,9 @@ public class PrimaryPortalService {
         this.questChallengeRepository = questChallengeRepository;
         this.learningCollaborationRepository = learningCollaborationRepository;
         this.mistakeLabEntryRepository = mistakeLabEntryRepository;
+        this.elmkusomaLabRepository = elmkusomaLabRepository;
+        this.speakingActivityRepository = speakingActivityRepository;
+        this.realWorldMissionRepository = realWorldMissionRepository;
     }
 
     public List<TeacherInfoResponse> getStudentTeachers(UUID studentId, UUID institutionId) {
@@ -381,6 +390,72 @@ public class PrimaryPortalService {
                 .findByStudentIdAndInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId, institutionId);
     }
 
+    public List<ELmkusomaLabResponse> getLabs(UUID studentId, UUID institutionId) {
+        List<ELmkusomaLab> labs = elmkusomaLabRepository
+                .findByStudentIdAndInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId, institutionId);
+        return labs.stream().map(this::toELmkusomaLabResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ELmkusomaLabResponse attemptLab(UUID studentId, UUID labId, ELmkusomaLabAttemptRequest request) {
+        ELmkusomaLab lab = elmkusomaLabRepository.findByIdAndStudentIdAndIsDeletedFalse(labId, studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("ELmkusomaLab", "id", labId));
+        lab.setIsAttempted(true);
+        lab.setStudentNotes(request.getStudentNotes());
+        lab.setScore(request.getScore());
+
+        ELmkusomaLab saved = elmkusomaLabRepository.save(lab);
+        return toELmkusomaLabResponse(saved);
+    }
+
+    public List<SpeakingActivityResponse> getSpeakingActivities(UUID studentId, UUID institutionId) {
+        List<SpeakingActivity> activities = speakingActivityRepository
+                .findByStudentIdAndInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId, institutionId);
+        return activities.stream().map(this::toSpeakingActivityResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public SpeakingActivityResponse addSpeakingActivity(UUID studentId, UUID institutionId, SpeakingActivityRequest request) {
+        SpeakingActivity activity = new SpeakingActivity();
+        activity.setStudentId(studentId);
+        activity.setInstitutionId(institutionId);
+        activity.setActivityType(request.getActivityType());
+        activity.setTitle(request.getTitle());
+        activity.setDescription(request.getDescription());
+        activity.setSubjectName(request.getSubjectName());
+        activity.setIsCompleted(false);
+
+        SpeakingActivity saved = speakingActivityRepository.save(activity);
+        return toSpeakingActivityResponse(saved);
+    }
+
+    @Transactional
+    public SpeakingActivityResponse completeSpeakingActivity(UUID studentId, UUID activityId) {
+        SpeakingActivity activity = speakingActivityRepository.findByIdAndStudentIdAndIsDeletedFalse(activityId, studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("SpeakingActivity", "id", activityId));
+        activity.setIsCompleted(true);
+
+        SpeakingActivity saved = speakingActivityRepository.save(activity);
+        return toSpeakingActivityResponse(saved);
+    }
+
+    public List<RealWorldMissionResponse> getRealWorldMissions(UUID studentId, UUID institutionId) {
+        List<RealWorldMission> missions = realWorldMissionRepository
+                .findByStudentIdAndInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId, institutionId);
+        return missions.stream().map(this::toRealWorldMissionResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public RealWorldMissionResponse completeMission(UUID studentId, UUID missionId, String evidence) {
+        RealWorldMission mission = realWorldMissionRepository.findByIdAndStudentIdAndIsDeletedFalse(missionId, studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("RealWorldMission", "id", missionId));
+        mission.setIsCompleted(true);
+        mission.setEvidence(evidence);
+
+        RealWorldMission saved = realWorldMissionRepository.save(mission);
+        return toRealWorldMissionResponse(saved);
+    }
+
     private PortfolioItemResponse toPortfolioResponse(PortfolioItem item) {
         PortfolioItemResponse response = new PortfolioItemResponse();
         response.setId(item.getId());
@@ -516,6 +591,55 @@ public class PrimaryPortalService {
         response.setExplanation(entry.getExplanation());
         response.setSubjectName(entry.getSubjectName());
         response.setIsReviewed(entry.getIsReviewed());
+        return response;
+    }
+
+    private ELmkusomaLabResponse toELmkusomaLabResponse(ELmkusomaLab lab) {
+        ELmkusomaLabResponse response = new ELmkusomaLabResponse();
+        response.setId(lab.getId());
+        response.setStudentId(lab.getStudentId());
+        response.setInstitutionId(lab.getInstitutionId());
+        response.setLabTitle(lab.getLabTitle());
+        response.setLabType(lab.getLabType());
+        response.setHypothesis(lab.getHypothesis());
+        response.setMaterialsList(lab.getMaterialsList());
+        response.setSteps(lab.getSteps());
+        response.setExpectedResult(lab.getExpectedResult());
+        response.setStudentNotes(lab.getStudentNotes());
+        response.setIsAttempted(lab.getIsAttempted());
+        response.setScore(lab.getScore());
+        return response;
+    }
+
+    private SpeakingActivityResponse toSpeakingActivityResponse(SpeakingActivity activity) {
+        SpeakingActivityResponse response = new SpeakingActivityResponse();
+        response.setId(activity.getId());
+        response.setStudentId(activity.getStudentId());
+        response.setInstitutionId(activity.getInstitutionId());
+        response.setActivityType(activity.getActivityType());
+        response.setTitle(activity.getTitle());
+        response.setDescription(activity.getDescription());
+        response.setAudioUrl(activity.getAudioUrl());
+        response.setImageUrl(activity.getImageUrl());
+        response.setSubjectName(activity.getSubjectName());
+        response.setIsCompleted(activity.getIsCompleted());
+        response.setDurationSeconds(activity.getDurationSeconds());
+        return response;
+    }
+
+    private RealWorldMissionResponse toRealWorldMissionResponse(RealWorldMission mission) {
+        RealWorldMissionResponse response = new RealWorldMissionResponse();
+        response.setId(mission.getId());
+        response.setStudentId(mission.getStudentId());
+        response.setInstitutionId(mission.getInstitutionId());
+        response.setMissionTitle(mission.getMissionTitle());
+        response.setMissionType(mission.getMissionType());
+        response.setDescription(mission.getDescription());
+        response.setLocation(mission.getLocation());
+        response.setInstructions(mission.getInstructions());
+        response.setEvidence(mission.getEvidence());
+        response.setIsCompleted(mission.getIsCompleted());
+        response.setPoints(mission.getPoints());
         return response;
     }
 }

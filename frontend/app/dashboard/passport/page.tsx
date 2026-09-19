@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { primaryApi, type StudentBadge, type PortfolioItem } from "@/lib/api"
+import { primaryApi, type StudentBadge, type PortfolioItem, type LearningPassport } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Map, Globe, Plane, Rocket, Flag, Star, Trophy, Compass } from "lucide-react"
 
@@ -46,6 +46,7 @@ export default function PassportPage() {
   const { user } = useRequireAuth()
   const [badges, setBadges] = useState<StudentBadge[]>([])
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
+  const [passport, setPassport] = useState<LearningPassport | null>(null)
   const [loading, setLoading] = useState(true)
   const level = user?.learningLevel as LearningLevel | null
 
@@ -57,21 +58,24 @@ export default function PassportPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const [badgeData, portfolioData] = await Promise.all([
+      const [badgeData, portfolioData, passportData] = await Promise.all([
         primaryApi.getBadges().catch(() => []),
         primaryApi.getPortfolio().catch(() => []),
+        primaryApi.getLearningPassport().catch(() => null),
       ])
       setBadges(badgeData)
       setPortfolioItems(portfolioData)
+      setPassport(passportData)
     } catch {
       setBadges([])
       setPortfolioItems([])
+      setPassport(null)
     } finally {
       setLoading(false)
     }
   }
 
-  const totalStamps = badges.length + portfolioItems.length
+  const totalStamps = passport?.stampsEarned ?? badges.length + portfolioItems.length
 
   function getEarnedCount(): number {
     let count = 0
