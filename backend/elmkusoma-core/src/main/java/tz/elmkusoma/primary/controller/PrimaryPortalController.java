@@ -14,6 +14,7 @@ import tz.elmkusoma.primary.dto.*;
 import tz.elmkusoma.primary.service.PrimaryPortalService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -369,5 +370,16 @@ public class PrimaryPortalController {
             @RequestParam String evidence) {
         RealWorldMissionResponse mission = primaryPortalService.completeMission(userId, missionId, evidence);
         return ResponseEntity.ok(ApiResponse.success("Mission completed", mission));
+    }
+
+    @PostMapping("/me/ai-guide/ask")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Ask AI learning guide a question")
+    public ResponseEntity<ApiResponse<Map<String, String>>> askAI(
+            @RequestAttribute("userId") UUID userId,
+            @RequestBody Map<String, String> request) {
+        String question = request.getOrDefault("question", "");
+        String answer = primaryPortalService.getAIResponse(userId, question);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("answer", answer)));
     }
 }

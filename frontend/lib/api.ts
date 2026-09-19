@@ -2056,4 +2056,7 @@ export const primaryApi = {
   async completeMission(missionId: string, evidence: string): Promise<RealWorldMission> {
     return fetchJSON<RealWorldMission>(`/v1/primary/me/missions/${missionId}/complete`, { method: "POST", body: JSON.stringify({ evidence }) })
   },
+  async askAI(question: string): Promise<{ answer: string }> {
+    return fetchJSON<{ answer: string }>(`/v1/primary/me/ai-guide/ask`, { method: "POST", body: JSON.stringify({ question }) })
+  },
 }

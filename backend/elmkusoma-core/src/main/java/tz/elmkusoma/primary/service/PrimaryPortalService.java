@@ -456,6 +456,20 @@ public class PrimaryPortalService {
         return toRealWorldMissionResponse(saved);
     }
 
+    public String getAIResponse(UUID studentId, String question) {
+        String q = question.toLowerCase().trim();
+        if (q.contains("fraction")) return "Fractions represent parts of a whole! For example, 1/2 means one part out of two equal parts. Think of a pizza cut into 2 slices — if you eat 1, you ate 1/2 of the pizza. Would you like me to give you a practice problem?";
+        if (q.contains("water cycle")) return "The water cycle is how water moves around our planet! Evaporation → Condensation → Precipitation → Collection. It never stops!";
+        if (q.contains("what should i study") || q.contains("next")) return "Check your Learning Map to see what topics are next. Try a practice quiz to test yourself!";
+        if (q.contains("practice") || q.contains("quiz")) return "Great idea! Go to your Assignments or Assessments page to try a practice quiz. Learning by doing is the best way!";
+        if (q.contains("writing") || q.contains("essay")) return "Writing tips: 1) Start with a clear main idea. 2) Use describing words. 3) Read your work out loud. 4) Check your spelling.";
+        if (q.contains("today") || q.contains("learn")) return "Check your Learning Evidence page to see what you've accomplished today!";
+        if (q.contains("hello") || q.contains("hi")) return "Hello! I'm your AI Learning Guide. Ask me about any subject!";
+        if (q.contains("math")) return "Math is about patterns and problem-solving. Start with what you know and work step by step!";
+        if (q.contains("science")) return "Science is about asking questions and finding answers through experiments. What topic are you curious about?";
+        return "That's a great question! Try asking me about a specific subject like Math, Science, or English, or ask me to explain a topic or give you a practice problem.";
+    }
+
     private PortfolioItemResponse toPortfolioResponse(PortfolioItem item) {
         PortfolioItemResponse response = new PortfolioItemResponse();
         response.setId(item.getId());
