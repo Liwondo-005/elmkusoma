@@ -21,7 +21,7 @@ import java.util.UUID;
 @RequestMapping("/v1/nfe/learners")
 @RequiredArgsConstructor
 @Tag(name = "NFE Learner Management", description = "CRUD operations for NFE learners/participants")
-public class LearnerController {
+public class NfeLearnerController {
 
     private final LearnerService learnerService;
 
