@@ -454,6 +454,18 @@ export interface MessageData {
   createdAt: string
 }
 
+export interface NotificationPreferenceData {
+  id: string
+  parentId: string
+  attendanceAlerts: boolean
+  gradeAlerts: boolean
+  feeAlerts: boolean
+  generalAnnouncements: boolean
+  smsEnabled: boolean
+  emailEnabled: boolean
+  pushEnabled: boolean
+}
+
 export const parentApi = {
   getOverview: () => parentFetch<FamilyOverview>("/v1/my/overview"),
   getChildren: () => parentFetch<ChildOverview[]>("/v1/my/children"),
@@ -519,6 +531,22 @@ parentFetch<LiveClassData>(`/v1/my/children/${id}/live-classes`),
 
   updateProfile: (data: { firstName?: string; lastName?: string; phone?: string }) =>
     parentFetch<{ status: string; fullName: string }>("/v1/my/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  getNotificationPreferences: () =>
+    parentFetch<NotificationPreferenceData>("/v1/my/notification-preferences"),
+  updateNotificationPreferences: (data: {
+    attendanceAlerts?: boolean
+    gradeAlerts?: boolean
+    feeAlerts?: boolean
+    generalAnnouncements?: boolean
+    smsEnabled?: boolean
+    emailEnabled?: boolean
+    pushEnabled?: boolean
+  }) =>
+    parentFetch<NotificationPreferenceData>("/v1/my/notification-preferences", {
       method: "PUT",
       body: JSON.stringify(data),
     }),

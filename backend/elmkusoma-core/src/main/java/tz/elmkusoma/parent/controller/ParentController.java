@@ -20,9 +20,11 @@ import tz.elmkusoma.parent.dto.response.ParentNotificationPreferenceResponse;
 import tz.elmkusoma.parent.dto.response.ParentResponse;
 import tz.elmkusoma.parent.dto.response.ParentStudentResponse;
 import tz.elmkusoma.parent.repository.ParentRepository;
+import tz.elmkusoma.parent.service.ParentPaymentService;
 import tz.elmkusoma.parent.service.ParentService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -34,6 +36,7 @@ public class ParentController {
 
     private final ParentService parentService;
     private final ParentRepository parentRepository;
+    private final ParentPaymentService paymentService;
 
     @PostMapping
     @Operation(summary = "Create a new parent profile")
@@ -163,5 +166,19 @@ public class ParentController {
         }
         ParentNotificationPreferenceResponse prefs = parentService.updateNotificationPreferences(institutionId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Notification preferences updated successfully", prefs));
+    }
+
+    @PostMapping("/payments/{paymentId}/verify")
+    @Operation(summary = "Verify a payment (admin only)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyPayment(
+            @PathVariable UUID paymentId,
+            @RequestBody Map<String, String> body) {
+        String providerReference = body.getOrDefault("providerReference", "manual");
+        var payment = paymentService.verifyPayment(paymentId, providerReference);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "paymentId", payment.getId().toString(),
+                "status", payment.getStatus()
+        )));
     }
 }

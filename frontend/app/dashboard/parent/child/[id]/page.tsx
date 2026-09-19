@@ -3,23 +3,26 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Clock, FileText, BarChart3, ChevronRight, Loader2, PenTool, Video, TrendingUp, BookOpen } from "lucide-react"
-import { parentApi, type ChildOverview, type LearningProgressData } from "@/lib/parent-api"
+import { ArrowLeft, Clock, FileText, BarChart3, ChevronRight, Loader2, PenTool, Video, TrendingUp, BookOpen, Shield } from "lucide-react"
+import { parentApi, type ChildOverview, type LearningProgressData, type EntitlementItem } from "@/lib/parent-api"
 
 export default function ChildDetailPage() {
   const params = useParams()
   const studentId = params.id as string
   const [child, setChild] = useState<ChildOverview | null>(null)
   const [progress, setProgress] = useState<LearningProgressData | null>(null)
+  const [entitlements, setEntitlements] = useState<EntitlementItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       parentApi.getChild(studentId),
       parentApi.getChildLearningProgress(studentId).catch(() => null),
-    ]).then(([c, p]) => {
+      parentApi.getChildEntitlements(studentId).catch(() => []),
+    ]).then(([c, p, e]) => {
       setChild(c)
       setProgress(p)
+      setEntitlements(e)
     }).finally(() => setLoading(false))
   }, [studentId])
 
@@ -122,6 +125,26 @@ export default function ChildDetailPage() {
                     }`}
                     style={{ width: `${Math.min(course.completionPercentage, 100)}%` }}
                   />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {entitlements.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <h2 className="text-base font-semibold text-foreground">Active Entitlements</h2>
+          <div className="mt-3 space-y-2">
+            {entitlements.map((ent) => (
+              <div key={ent.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
+                <Shield className="size-4 shrink-0 text-green-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{ent.serviceType}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ent.status === "ACTIVE" ? "Active" : ent.status}
+                    {ent.expiresAt && ` · Expires ${new Date(ent.expiresAt).toLocaleDateString("en-GB")}`}
+                  </p>
                 </div>
               </div>
             ))}

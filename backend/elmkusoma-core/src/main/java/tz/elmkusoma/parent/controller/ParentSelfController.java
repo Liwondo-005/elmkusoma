@@ -28,6 +28,8 @@ import tz.elmkusoma.parent.dto.ParentLibraryResponse;
 import tz.elmkusoma.parent.dto.ParentActivityResponse;
 import tz.elmkusoma.parent.dto.ParentTeacherDirectoryResponse;
 import tz.elmkusoma.parent.dto.ParentSubjectPerformanceResponse;
+import tz.elmkusoma.parent.dto.request.ParentNotificationPreferenceRequest;
+import tz.elmkusoma.parent.dto.request.SendMessageRequest;
 import tz.elmkusoma.parent.dto.response.*;
 import tz.elmkusoma.parent.repository.AchievementRepository;
 import tz.elmkusoma.parent.repository.EntitlementRepository;
@@ -81,6 +83,7 @@ public class ParentSelfController {
     private final ParentCalendarService calendarService;
     private final ParentLibraryService libraryService;
     private final ParentSupportService supportService;
+    private final MessageService messageService;
     private final ParentRepository parentRepository;
     private final ParentStudentLinkRepository studentLinkRepository;
     private final SupportTicketRepository supportTicketRepository;
@@ -285,18 +288,7 @@ public class ParentSelfController {
         )));
     }
 
-    @PostMapping("/payments/{paymentId}/verify")
-    @Operation(summary = "Verify a payment (admin/backend only)")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyPayment(
-            @PathVariable UUID paymentId,
-            @RequestBody Map<String, String> body) {
-        String providerReference = body.getOrDefault("providerReference", "manual");
-        var payment = paymentService.verifyPayment(paymentId, providerReference);
-        return ResponseEntity.ok(ApiResponse.success(Map.of(
-                "paymentId", payment.getId().toString(),
-                "status", payment.getStatus()
-        )));
-    }
+    // NOTE: Payment verification is admin-only. Use POST /v1/parents/payments/{paymentId}/verify
 
     // ── Achievements ───────────────────────────────────────────────────
 
@@ -727,46 +719,8 @@ public class ParentSelfController {
             @PathVariable UUID studentId,
             HttpServletRequest request) {
         UUID userId = getCurrentUserId(request);
-        requireChildAccess(userId, studentId);
-        List<LessonProgress> allProgress = lessonProgressRepository.findByStudentIdAndIsDeletedFalse(studentId);
-        java.util.Map<String, ParentLearningProgressResponse.CourseProgress> courseMap = new java.util.LinkedHashMap<>();
-
-        for (LessonProgress lp : allProgress) {
-            String lessonIdStr = lp.getLessonId() != null ? lp.getLessonId().toString() : null;
-            if (lessonIdStr == null) continue;
-
-            try {
-                var lesson = tz.elmkusoma.learning.domain.Lesson.class;
-            } catch (Exception e) {
-                // skip
-            }
-
-            ParentLearningProgressResponse.CourseProgress cp = courseMap.computeIfAbsent(
-                    "default",
-                    k -> ParentLearningProgressResponse.CourseProgress.builder()
-                            .courseId("default")
-                            .courseName("Learning Progress")
-                            .totalLessons(0)
-                            .completedLessons(0)
-                            .pendingLessons(0)
-                            .build());
-
-            cp.setTotalLessons(cp.getTotalLessons() + 1);
-            if (lp.getCompletionPercentage() != null && lp.getCompletionPercentage() >= 100) {
-                cp.setCompletedLessons(cp.getCompletedLessons() + 1);
-            }
-        }
-
-        for (ParentLearningProgressResponse.CourseProgress cp : courseMap.values()) {
-            cp.setPendingLessons(cp.getTotalLessons() - cp.getCompletedLessons());
-            cp.setProgressPercentage(cp.getTotalLessons() > 0
-                    ? (double) cp.getCompletedLessons() * 100.0 / cp.getTotalLessons() : 0.0);
-            cp.setStatus(cp.getProgressPercentage() >= 100 ? "COMPLETED" : cp.getProgressPercentage() > 0 ? "IN_PROGRESS" : "NOT_STARTED");
-        }
-
-        return ResponseEntity.ok(ApiResponse.success(ParentLearningProgressResponse.builder()
-                .courses(new java.util.ArrayList<>(courseMap.values()))
-                .build()));
+        ParentLearningProgressResponse progress = dashboardService.getChildLearningProgress(userId, studentId);
+        return ResponseEntity.ok(ApiResponse.success(progress));
     }
 
     // ── Notifications ──────────────────────────────────────────────
@@ -839,5 +793,76 @@ public class ParentSelfController {
                 "status", "updated",
                 "fullName", user.getFullName()
         )));
+    }
+
+    // ── Messages ──────────────────────────────────────────────────────
+
+    @GetMapping("/messages")
+    @Operation(summary = "Get inbox messages")
+    public ResponseEntity<ApiResponse<List<MessageResponse>>> getMessages(
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        List<MessageResponse> messages = messageService.getInboxMessages(userId);
+        return ResponseEntity.ok(ApiResponse.success(messages));
+    }
+
+    @GetMapping("/messages/sent")
+    @Operation(summary = "Get sent messages")
+    public ResponseEntity<ApiResponse<List<MessageResponse>>> getSentMessages(
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        List<MessageResponse> messages = messageService.getSentMessages(userId);
+        return ResponseEntity.ok(ApiResponse.success(messages));
+    }
+
+    @PostMapping("/messages")
+    @Operation(summary = "Send a message")
+    public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
+            @RequestBody SendMessageRequest body,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        MessageResponse message = messageService.sendMessage(userId, body);
+        return ResponseEntity.ok(ApiResponse.success(message));
+    }
+
+    @PutMapping("/messages/{messageId}/read")
+    @Operation(summary = "Mark a message as read")
+    public ResponseEntity<ApiResponse<String>> markMessageRead(
+            @PathVariable UUID messageId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        messageService.markAsRead(userId, messageId);
+        return ResponseEntity.ok(ApiResponse.success("Marked as read", null));
+    }
+
+    @DeleteMapping("/messages/{messageId}")
+    @Operation(summary = "Delete a message")
+    public ResponseEntity<ApiResponse<String>> deleteMessage(
+            @PathVariable UUID messageId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        messageService.deleteMessage(userId, messageId);
+        return ResponseEntity.ok(ApiResponse.success("Message deleted", null));
+    }
+
+    // ── Notification Preferences ──────────────────────────────────────
+
+    @GetMapping("/notification-preferences")
+    @Operation(summary = "Get notification preferences")
+    public ResponseEntity<ApiResponse<ParentNotificationPreferenceResponse>> getNotificationPreferences(
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        ParentNotificationPreferenceResponse prefs = messageService.getNotificationPreferences(userId);
+        return ResponseEntity.ok(ApiResponse.success(prefs));
+    }
+
+    @PutMapping("/notification-preferences")
+    @Operation(summary = "Update notification preferences")
+    public ResponseEntity<ApiResponse<ParentNotificationPreferenceResponse>> updateNotificationPreferences(
+            @RequestBody ParentNotificationPreferenceRequest body,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        ParentNotificationPreferenceResponse prefs = messageService.updateNotificationPreferences(userId, body);
+        return ResponseEntity.ok(ApiResponse.success(prefs));
     }
 }
