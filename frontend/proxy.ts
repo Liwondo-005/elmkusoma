@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server"
 
 const teacherRoutes = ["/dashboard/teacher"]
 const adminRoutes = ["/dashboard/admin", "/dashboard/audit"]
+const platformAdminRoutes = ["/dashboard/platform-admin"]
 const learnerRoutes = ["/dashboard/learner"]
 const studentRoutes = ["/dashboard/courses", "/dashboard/lessons", "/dashboard/assignments", "/dashboard/assessments", "/dashboard/results", "/dashboard/attendance", "/dashboard/progress", "/dashboard/messages", "/dashboard/profile", "/dashboard/settings", "/dashboard/bookmarks"]
 const parentRoutes = ["/dashboard/parent"]
@@ -29,6 +30,7 @@ export function proxy(request: NextRequest) {
 
         const isTeacherRoute = teacherRoutes.some((r) => pathname.startsWith(r))
         const isAdminRoute = adminRoutes.some((r) => pathname.startsWith(r))
+        const isPlatformAdminRoute = platformAdminRoutes.some((r) => pathname.startsWith(r))
         const isLearnerRoute = learnerRoutes.some((r) => pathname.startsWith(r))
         const isStudentRoute = studentRoutes.some((r) => pathname.startsWith(r))
         const isParentRoute = parentRoutes.some((r) => pathname.startsWith(r))
@@ -40,6 +42,9 @@ export function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
         if (isAdminRoute && role !== "Admin" && role !== "Institution Admin") {
+          return NextResponse.redirect(new URL("/dashboard", request.url))
+        }
+        if (isPlatformAdminRoute && role !== "Admin") {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
         if (isLearnerRoute && role !== "Other Learner") {

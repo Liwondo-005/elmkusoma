@@ -10,6 +10,7 @@ import tz.elmkusoma.audit.domain.SecurityEvent;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -39,4 +40,12 @@ public interface SecurityEventRepository extends JpaRepository<SecurityEvent, UU
 
     @Query("SELECT s.severity, COUNT(s) FROM SecurityEvent s WHERE s.institutionId = :institutionId GROUP BY s.severity ORDER BY COUNT(s) DESC")
     List<Object[]> countBySeverityForInstitution(@Param("institutionId") UUID institutionId);
+
+    long countByIsDeletedFalse();
+
+    long countByResolvedAndIsDeletedFalse(boolean resolved);
+
+    List<SecurityEvent> findByResolvedFalseAndIsDeletedFalse();
+
+    Optional<SecurityEvent> findByIdAndIsDeletedFalse(UUID id);
 }

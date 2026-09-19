@@ -1,5 +1,7 @@
 package tz.elmkusoma.certificate.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -41,4 +43,8 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
     @Query("SELECT COUNT(c) FROM Certificate c WHERE c.institutionId = :institutionId AND c.status = :status AND c.isDeleted = false")
     long countByInstitutionIdAndStatus(@Param("institutionId") UUID institutionId,
                                         @Param("status") Certificate.CertificateStatus status);
+
+    long countByIsDeletedFalse();
+
+    Page<Certificate> findAllByIsDeletedFalse(Pageable pageable);
 }

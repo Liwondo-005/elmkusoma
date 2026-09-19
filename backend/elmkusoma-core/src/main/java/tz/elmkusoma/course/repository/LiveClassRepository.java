@@ -1,5 +1,7 @@
 package tz.elmkusoma.course.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -57,4 +59,12 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
 
     @Query("SELECT lc FROM LiveClass lc WHERE lc.teacherId = :teacherId AND lc.isDeleted = false AND lc.status NOT IN ('CANCELLED', 'COMPLETED', 'ENDED') AND lc.scheduledAt < :endTime AND lc.scheduledAt > :fromTime ORDER BY lc.scheduledAt")
     List<LiveClass> findOverlappingForTeacher(@Param("teacherId") UUID teacherId, @Param("fromTime") LocalDateTime fromTime, @Param("endTime") LocalDateTime endTime);
+
+    long countByIsDeletedFalse();
+
+    long countByStatusAndIsDeletedFalse(String status);
+
+    Page<LiveClass> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
+
+    Page<LiveClass> findAllByIsDeletedFalse(Pageable pageable);
 }

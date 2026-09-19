@@ -27,6 +27,13 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID> 
 
     long countByIsDeletedFalse();
 
+    long countByIsActiveAndIsDeletedFalse(boolean isActive);
+
+    @Query("SELECT i FROM Institution i WHERE i.isDeleted = false AND (LOWER(i.name) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(i.code) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY i.name")
+    Page<Institution> findBySearchTermAndIsDeletedFalse(@Param("query") String query, Pageable pageable);
+
+    Optional<Institution> findByIdAndIsDeletedFalse(UUID id);
+
     long countByRegionIdAndIsDeletedFalse(UUID regionId);
 
     long countByDistrictIdAndIsDeletedFalse(UUID districtId);

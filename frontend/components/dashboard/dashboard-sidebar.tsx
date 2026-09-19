@@ -267,6 +267,7 @@ const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboa
 ]
 
 const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
+  { label: "Platform Admin", href: "/dashboard/platform-admin", icon: ShieldCheck },
   { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
   { label: "Institutions", href: "/dashboard/admin/institutions", icon: School },
   { label: "Programmes", href: "/dashboard/admin/programmes", icon: GraduationCap },
