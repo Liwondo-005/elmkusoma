@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { secondaryApi, type SubjectSummary, type LiveClassSummary } from "@/lib/secondary-api"
+import { secondaryApi, type SubjectSummary, type LiveClassSummary, type TeacherFeedback } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
 import { ArrowLeft, BookOpen, ChevronRight, PenTool, Award, Calendar, Video, FileText, MessageSquare, Library, BarChart3, Clock, CheckCircle, Play } from "lucide-react"
 import Link from "next/link"
@@ -40,6 +40,7 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [liveClasses, setLiveClasses] = useState<LiveClassSummary[]>([])
+  const [feedback, setFeedback] = useState<TeacherFeedback[]>([])
   const [activeTab, setActiveTab] = useState<"overview" | "topics" | "practice" | "assessments" | "resources" | "live" | "replays" | "progress" | "feedback">("overview")
   const [loading, setLoading] = useState(true)
 
@@ -51,13 +52,15 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
       secondaryApi.getAssignments(user.classGroupId).catch(() => []),
       secondaryApi.getAssessments(user.classGroupId).catch(() => []),
       secondaryApi.getLiveClasses().catch(() => []),
+      secondaryApi.getTeacherFeedback(params.id).catch(() => []),
     ])
-      .then(([s, l, a, as, lc]) => {
+      .then(([s, l, a, as, lc, fb]) => {
         setSubject(s)
         setLessons(l || [])
         setAssignments((a || []).filter(x => x.subjectName === s?.name))
         setAssessments((as || []).filter(x => x.subjectName === s?.name))
         setLiveClasses((lc || []).filter(x => x.subjectName === s?.name))
+        setFeedback(fb || [])
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -200,10 +203,27 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
       )}
 
       {activeTab === "feedback" && (
-        <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
-          <MessageSquare className="mx-auto size-12 text-gray-300" />
-          <h3 className="mt-3 text-lg font-bold text-gray-800">Teacher Feedback</h3>
-          <p className="mt-1 text-sm text-gray-500">Feedback from your teacher on this subject will appear here.</p>
+        <div className="space-y-3">
+          {feedback.length === 0 ? (
+            <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+              <MessageSquare className="mx-auto size-12 text-gray-300" />
+              <h3 className="mt-3 text-lg font-bold text-gray-800">No feedback yet</h3>
+              <p className="mt-1 text-sm text-gray-500">Your teacher will provide feedback on your work here.</p>
+            </div>
+          ) : (
+            feedback.map(f => (
+              <div key={f.id} className="rounded-2xl border border-gray-100 bg-white p-5">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">{f.teacherName?.charAt(0) || "T"}</div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{f.teacherName}</p>
+                    <p className="text-[10px] text-gray-400">{new Date(f.createdAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-gray-600">{f.message}</p>
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -249,10 +269,25 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
       )}
 
       {activeTab === "resources" && (
-        <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
-          <Library className="mx-auto size-12 text-gray-300" />
-          <h3 className="mt-3 text-lg font-bold text-gray-800">Subject Resources</h3>
-          <p className="mt-1 text-sm text-gray-500">Study materials, textbooks, and reference documents will appear here.</p>
+        <div className="space-y-3">
+          {lessons.length === 0 ? (
+            <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+              <Library className="mx-auto size-12 text-gray-300" />
+              <h3 className="mt-3 text-lg font-bold text-gray-800">No resources yet</h3>
+              <p className="mt-1 text-sm text-gray-500">Study materials will appear here once your teacher adds them.</p>
+            </div>
+          ) : (
+            lessons.map(lesson => (
+              <div key={lesson.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50"><FileText className="size-5 text-blue-600" /></div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900">{lesson.title}</p>
+                  <p className="text-xs text-gray-400">{lesson.description || "Study material"}</p>
+                </div>
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">Topic</span>
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -290,10 +325,25 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
       )}
 
       {activeTab === "replays" && (
-        <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
-          <Play className="mx-auto size-12 text-gray-300" />
-          <h3 className="mt-3 text-lg font-bold text-gray-800">Class Replays</h3>
-          <p className="mt-1 text-sm text-gray-500">Recordings of past live classes will appear here.</p>
+        <div className="space-y-3">
+          {liveClasses.filter(lc => lc.status === "COMPLETED" || lc.status === "ENDED").length === 0 ? (
+            <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+              <Play className="mx-auto size-12 text-gray-300" />
+              <h3 className="mt-3 text-lg font-bold text-gray-800">No replays available</h3>
+              <p className="mt-1 text-sm text-gray-500">Recordings of past live classes will appear here.</p>
+            </div>
+          ) : (
+            liveClasses.filter(lc => lc.status === "COMPLETED" || lc.status === "ENDED").map(lc => (
+              <div key={lc.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-purple-50"><Play className="size-5 text-purple-600" /></div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900">{lc.title}</p>
+                  <p className="text-xs text-gray-400">{new Date(lc.scheduledAt).toLocaleDateString()}</p>
+                </div>
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">Replay</span>
+              </div>
+            ))
+          )}
         </div>
       )}
 

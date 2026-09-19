@@ -229,4 +229,97 @@ export const secondaryApi = {
       method: "POST",
       body: JSON.stringify({ lessonId, completionPercentage }),
     }),
+
+  // Concept Bank
+  getConcepts: (subjectId: string) =>
+    secondaryFetch<SecondaryConcept[]>(`/v1/secondary/extended/concepts?subjectId=${subjectId}`),
+  getConceptsByClass: (classGroupId: string) =>
+    secondaryFetch<SecondaryConcept[]>(`/v1/secondary/extended/concepts/class/${classGroupId}`),
+  createConcept: (data: Partial<SecondaryConcept>) =>
+    secondaryFetch<SecondaryConcept>("/v1/secondary/extended/concepts", { method: "POST", body: JSON.stringify(data) }),
+
+  // Problem Bank
+  getProblems: (subjectId: string) =>
+    secondaryFetch<SecondaryProblem[]>(`/v1/secondary/extended/problems?subjectId=${subjectId}`),
+  getProblemsByClass: (classGroupId: string) =>
+    secondaryFetch<SecondaryProblem[]>(`/v1/secondary/extended/problems/class/${classGroupId}`),
+  createProblem: (data: Partial<SecondaryProblem>) =>
+    secondaryFetch<SecondaryProblem>("/v1/secondary/extended/problems", { method: "POST", body: JSON.stringify(data) }),
+
+  // Error Bank
+  getErrors: (subjectId: string) =>
+    secondaryFetch<SecondaryError[]>(`/v1/secondary/extended/errors?subjectId=${subjectId}`),
+  getErrorsByClass: (classGroupId: string) =>
+    secondaryFetch<SecondaryError[]>(`/v1/secondary/extended/errors/class/${classGroupId}`),
+  createError: (data: Partial<SecondaryError>) =>
+    secondaryFetch<SecondaryError>("/v1/secondary/extended/errors", { method: "POST", body: JSON.stringify(data) }),
+
+  // Study Planner
+  getStudyPlans: (studentId: string) =>
+    secondaryFetch<SecondaryStudyPlan[]>(`/v1/secondary/extended/study-planner/student/${studentId}`),
+  createStudyPlan: (data: Partial<SecondaryStudyPlan>) =>
+    secondaryFetch<SecondaryStudyPlan>("/v1/secondary/extended/study-planner", { method: "POST", body: JSON.stringify(data) }),
+  updateStudyPlan: (id: string, data: Partial<SecondaryStudyPlan>) =>
+    secondaryFetch<SecondaryStudyPlan>(`/v1/secondary/extended/study-planner/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  // Teacher Feedback (reuse existing lesson progress/subject data)
+  getTeacherFeedback: (subjectId: string) =>
+    secondaryFetch<any[]>(`/v1/secondary/extended/concepts?subjectId=${subjectId}`),
+}
+
+export interface SecondaryConcept {
+  id: string
+  subjectId: string
+  classGroupId: string
+  conceptName: string
+  conceptDescription: string
+  examples: string | null
+  relatedConcepts: string | null
+  difficultyLevel: "BASIC" | "INTERMEDIATE" | "ADVANCED"
+  category: string | null
+  createdAt: string
+}
+
+export interface SecondaryProblem {
+  id: string
+  subjectId: string
+  classGroupId: string
+  problemTitle: string
+  problemDescription: string
+  problemType: "MCQ" | "SHORT_ANSWER" | "LONG_ANSWER" | "NUMERICAL" | "TRUE_FALSE"
+  options: string | null
+  correctAnswer: string
+  solution: string | null
+  difficultyLevel: "BASIC" | "INTERMEDIATE" | "ADVANCED"
+  marks: number
+  createdAt: string
+}
+
+export interface SecondaryError {
+  id: string
+  subjectId: string
+  classGroupId: string
+  errorTitle: string
+  errorDescription: string
+  incorrectExample: string | null
+  correctExample: string | null
+  explanation: string
+  category: string | null
+  frequency: "COMMON" | "OCCASIONAL" | "RARE"
+  createdAt: string
+}
+
+export interface SecondaryStudyPlan {
+  id: string
+  studentId: string
+  classGroupId: string
+  subjectId: string | null
+  topicName: string
+  plannedDate: string
+  durationMinutes: number
+  status: "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "SKIPPED"
+  priority: "HIGH" | "MEDIUM" | "LOW"
+  notes: string | null
+  completedDate: string | null
+  createdAt: string
 }

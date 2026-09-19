@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { secondaryApi, type SubjectSummary } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
-import { BookOpen, ArrowLeft, ChevronRight, FileText, Video, Award, TrendingUp, FlaskConical, Brain, MessageSquare, Wrench } from "lucide-react"
+import { BookOpen, ArrowLeft, ChevronRight, FileText, Video, Award, TrendingUp, FlaskConical, Brain, MessageSquare, Wrench, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 export default function SecondaryLearnPage() {
@@ -78,6 +78,7 @@ export default function SecondaryLearnPage() {
             { label: "Communication", desc: "Writing, speaking, and debate", href: "/dashboard/secondary/learn/communication", icon: MessageSquare, color: "bg-green-50 text-green-600" },
             { label: "Practical Learning", desc: "Hands-on experiments and lab work", href: "/dashboard/secondary/learn/practical-learning", icon: FlaskConical, color: "bg-amber-50 text-amber-600" },
             { label: "Exam Mode", desc: "Timed practice under exam conditions", href: "/dashboard/secondary/learn/exam-mode", icon: Award, color: "bg-red-50 text-red-600" },
+            { label: "Controlled AI", desc: "AI-guided learning with guardrails", href: "/dashboard/secondary/learn/controlled-ai", icon: Sparkles, color: "bg-violet-50 text-violet-600" },
           ].map(skill => (
             <Link
               key={skill.label}
