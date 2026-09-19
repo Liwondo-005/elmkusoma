@@ -16,6 +16,7 @@ export default function HigherEducationDashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const [dashboard, setDashboard] = useState<HigherEducationDashboard | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -30,7 +31,7 @@ export default function HigherEducationDashboardPage() {
       const res = await collegeApi.getHEDashboard(studentId, level)
       setDashboard(res.data || null)
     } catch {
-      // silent
+      setError("Failed to load dashboard data")
     } finally {
       setLoading(false)
     }
@@ -44,6 +45,14 @@ export default function HigherEducationDashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadDashboard() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      )}
+
       <LearnerHeader firstName={firstName} subtitle={`My Academic & Professional World — ${ctx}`} />
 
       {/* Row 1: Academic Context + What's Next + Today */}

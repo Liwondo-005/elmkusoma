@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Thesis } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { FileText, CheckCircle2, Clock, Calendar, User } from "lucide-react"
+import { FileText, CheckCircle2, Clock, Calendar, User, AlertCircle } from "lucide-react"
 
 function ThesisStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -29,6 +29,7 @@ export default function ThesisPage() {
   const { user, loading: authLoading } = useAuth()
   const [theses, setTheses] = useState<Thesis[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -42,7 +43,7 @@ export default function ThesisPage() {
       const res = await collegeApi.getStudentTheses(studentId)
       setTheses(res.data || [])
     } catch {
-      // silent
+      setError("Failed to load thesis data")
     } finally {
       setLoading(false)
     }
@@ -56,6 +57,14 @@ export default function ThesisPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadTheses() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      )}
+
       <LearnerHeader firstName={firstName} subtitle="Manage your thesis and dissertation." />
 
       <div className="grid gap-4 sm:grid-cols-3">

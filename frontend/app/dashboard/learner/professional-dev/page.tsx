@@ -156,6 +156,7 @@ export default function ProfessionalDevPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<ProfessionalDevGoal | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const [formTitle, setFormTitle] = useState("")
   const [formType, setFormType] = useState("SKILL_DEVELOPMENT")
@@ -172,7 +173,7 @@ export default function ProfessionalDevPage() {
       const res = await collegeApi.getLearnerProfessionalDev(studentId)
       setGoals((res.data as ProfessionalDevGoal[]) || [])
     } catch {
-      // silent
+      setError("Failed to load professional development goals")
     } finally {
       setLoading(false)
     }
@@ -225,7 +226,7 @@ export default function ProfessionalDevPage() {
       resetForm()
       await loadGoals()
     } catch {
-      // silent
+      setError("Failed to save goal")
     }
   }
 
@@ -235,7 +236,7 @@ export default function ProfessionalDevPage() {
       setDeletingId(null)
       await loadGoals()
     } catch {
-      // silent
+      setError("Failed to delete goal")
     }
   }
 
@@ -246,7 +247,7 @@ export default function ProfessionalDevPage() {
         prev.map((g) => (g.id === id ? { ...g, progressPercent: percent } : g))
       )
     } catch {
-      // silent
+      setError("Failed to update progress")
     }
   }
 
@@ -259,7 +260,7 @@ export default function ProfessionalDevPage() {
       })
       await loadGoals()
     } catch {
-      // silent
+      setError("Failed to mark goal as complete")
     }
   }
 
@@ -285,6 +286,14 @@ export default function ProfessionalDevPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadGoals() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      )}
+
       <div className="flex items-start justify-between">
         <LearnerHeader
           firstName={firstName}

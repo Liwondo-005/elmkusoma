@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Portfolio, PracticalDemonstration, Project, FieldworkPlacement, CompetencyRecord } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { Award, FolderOpen, Target, BookOpen, Bookmark, ChevronRight } from "lucide-react"
+import { Award, FolderOpen, Target, BookOpen, Bookmark, ChevronRight, AlertCircle } from "lucide-react"
 
 export default function MyEvidencePage() {
   const { user, loading: authLoading } = useAuth()
@@ -16,6 +16,7 @@ export default function MyEvidencePage() {
   const [fieldwork, setFieldwork] = useState<FieldworkPlacement[]>([])
   const [competencies, setCompetencies] = useState<CompetencyRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -39,7 +40,7 @@ export default function MyEvidencePage() {
       if (fwRes.status === "fulfilled") setFieldwork(Array.isArray(fwRes.value) ? fwRes.value as FieldworkPlacement[] : [])
       if (compRes.status === "fulfilled") setCompetencies(Array.isArray(compRes.value) ? compRes.value as CompetencyRecord[] : [])
     } catch {
-      // silent
+      setError("Failed to load evidence data")
     } finally {
       setLoading(false)
     }
@@ -52,6 +53,14 @@ export default function MyEvidencePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadEvidence() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      )}
+
       <LearnerHeader firstName={firstName} subtitle="All your learning evidence in one place." />
 
       {totalItems === 0 ? (

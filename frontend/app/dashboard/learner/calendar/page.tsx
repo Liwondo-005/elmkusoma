@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { learnerApi } from "@/lib/learner-api"
 import type { EventItem } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { Calendar, Clock, MapPin, Users, Filter } from "lucide-react"
+import { Calendar, Clock, MapPin, Users, Filter, AlertCircle } from "lucide-react"
 
 type ViewMode = "today" | "week" | "month"
 
@@ -30,6 +30,7 @@ export default function CalendarPage() {
   const { user, loading: authLoading } = useAuth()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>("today")
   const [filterType, setFilterType] = useState<string>("ALL")
 
@@ -44,7 +45,7 @@ export default function CalendarPage() {
       const res = await learnerApi.getUpcomingEvents()
       setEvents(Array.isArray(res) ? res : [])
     } catch {
-      // silent
+      setError("Failed to load events")
     } finally {
       setLoading(false)
     }
@@ -86,6 +87,14 @@ export default function CalendarPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadEvents() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      )}
+
       <LearnerHeader firstName={firstName} subtitle="View your academic schedule, deadlines, and events." />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

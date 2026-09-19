@@ -42,6 +42,7 @@ export default function StudyPlannerPage() {
   const [weekTasks, setWeekTasks] = useState<StudyTask[]>([])
   const [allTasks, setAllTasks] = useState<StudyTask[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -61,7 +62,7 @@ export default function StudyPlannerPage() {
       if (weekRes.status === "fulfilled") setWeekTasks(weekRes.value.data || [])
       if (allRes.status === "fulfilled") setAllTasks(allRes.value.data || [])
     } catch {
-      // silent
+      setError("Failed to load study tasks")
     } finally {
       setLoading(false)
     }
@@ -87,6 +88,14 @@ export default function StudyPlannerPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadTasks() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      )}
+
       <LearnerHeader firstName={firstName} subtitle="Plan your study sessions, revision, and academic tasks." />
 
       <div className="grid gap-4 sm:grid-cols-3">

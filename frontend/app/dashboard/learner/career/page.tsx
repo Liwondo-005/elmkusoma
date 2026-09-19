@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { CareerProfile } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { Briefcase, TrendingUp, Award, GraduationCap, Building2, Wrench, Star, Save } from "lucide-react"
+import { Briefcase, TrendingUp, Award, GraduationCap, Building2, Wrench, Star, Save, AlertCircle } from "lucide-react"
 
 export default function CareerPage() {
   const { user, loading: authLoading } = useAuth()
@@ -17,6 +17,7 @@ export default function CareerPage() {
   const [role, setRole] = useState("")
   const [skills, setSkills] = useState("")
   const [certs, setCerts] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -38,7 +39,7 @@ export default function CareerPage() {
         setCerts(p.certifications || "")
       }
     } catch {
-      // silent
+      setError("Failed to load career profile")
     } finally {
       setLoading(false)
     }
@@ -57,7 +58,7 @@ export default function CareerPage() {
       })
       setProfile(res.data || null)
     } catch {
-      // silent
+      setError("Failed to save career profile")
     } finally {
       setSaving(false)
     }
@@ -87,6 +88,14 @@ export default function CareerPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadProfile() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      )}
+
       <LearnerHeader firstName={firstName} subtitle="Explore career paths, professional skills, and development opportunities." />
 
       {/* Career Profile */}
