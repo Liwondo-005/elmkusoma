@@ -30,4 +30,9 @@ public class LiveClassResponse {
     private String createdAt;
     private Boolean recordingEnabled;
     private String sessionType;
+    private String timezone;
+    private Boolean isRecurring;
+    private String recurrencePattern;
+    private String recurrenceEndDate;
+    private Boolean lobbyEnabled;
 }

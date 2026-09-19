@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -189,7 +190,7 @@ class StudentServiceTest {
 
         when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
         when(assignmentRepository.findByStudentIdAndClassGroupIdAndIsActiveTrueAndIsDeletedFalse(
-                studentId, any(UUID.class))).thenReturn(Optional.empty());
+                eq(studentId), any(UUID.class))).thenReturn(Optional.empty());
 
         UUID classGroupId = UUID.randomUUID();
         UUID academicYearId = UUID.randomUUID();

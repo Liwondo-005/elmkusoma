@@ -78,10 +78,10 @@ class CertificateServiceTest {
 
         CertificateTemplate template = CertificateTemplate.builder()
                 .name("Default Template")
-                .institutionId(institutionId)
                 .isActive(true)
                 .build();
         template.setId(templateId);
+        template.setInstitutionId(institutionId);
 
         when(templateRepository.findByIdAndIsDeletedFalse(templateId)).thenReturn(Optional.of(template));
         when(certificateRepository.countByInstitutionId(institutionId)).thenReturn(0L);
@@ -155,9 +155,9 @@ class CertificateServiceTest {
 
         CertificateTemplate template = CertificateTemplate.builder()
                 .name("Default Template")
-                .institutionId(otherInstitutionId)
                 .build();
         template.setId(templateId);
+        template.setInstitutionId(otherInstitutionId);
 
         when(templateRepository.findByIdAndIsDeletedFalse(templateId)).thenReturn(Optional.of(template));
 

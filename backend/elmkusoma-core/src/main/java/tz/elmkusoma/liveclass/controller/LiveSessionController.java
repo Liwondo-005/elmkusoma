@@ -277,4 +277,89 @@ public class LiveSessionController {
         }
         return ResponseEntity.status(500).body(ApiResponse.error("Failed to stop recording"));
     }
+
+    @GetMapping("/classes/{classId}/recording/download")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @Operation(summary = "Get recording download URL")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getRecordingDownload(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID classId) {
+
+        LiveClass liveClass = liveClassRepository.findById(classId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
+        }
+
+        String recordingUrl = liveClass.getRecordingUrl();
+        if (recordingUrl == null || recordingUrl.isBlank()) {
+            return ResponseEntity.status(404).body(ApiResponse.error("No recording available for this class"));
+        }
+
+        Map<String, String> result = new HashMap<>();
+        if (recordingUrl.startsWith("egress:")) {
+            result.put("status", "PROCESSING");
+            result.put("message", "Recording is still being processed");
+        } else if (recordingUrl.startsWith("http")) {
+            result.put("status", "READY");
+            result.put("downloadUrl", recordingUrl);
+            result.put("filename", "live-class-" + classId + ".mp4");
+        } else {
+            result.put("status", "UNKNOWN");
+            result.put("message", "Recording status unknown");
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/calendar/{classId}/export")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @Operation(summary = "Export live class as .ics calendar event")
+    public ResponseEntity<String> exportCalendarEvent(@PathVariable UUID classId) {
+        LiveClass liveClass = liveClassRepository.findById(classId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(404).build();
+        }
+
+        String tz = liveClass.getTimezone() != null ? liveClass.getTimezone() : "Africa/Dar_es_Salaam";
+        java.time.LocalDateTime start = liveClass.getScheduledAt();
+        java.time.LocalDateTime end = start.plusMinutes(
+                liveClass.getDurationMinutes() != null ? liveClass.getDurationMinutes() : 60);
+
+        String ics = "BEGIN:VCALENDAR\r\n"
+                + "VERSION:2.0\r\n"
+                + "PRODID:-//ELMKUSOMA//Live Classes//EN\r\n"
+                + "BEGIN:VEVENT\r\n"
+                + "UID:" + classId + "@elmkusoma\r\n"
+                + "DTSTART:" + formatIcsDateTime(start) + "\r\n"
+                + "DTEND:" + formatIcsDateTime(end) + "\r\n"
+                + "SUMMARY:" + escapeIcs(liveClass.getTitle()) + "\r\n"
+                + (liveClass.getDescription() != null ? "DESCRIPTION:" + escapeIcs(liveClass.getDescription()) + "\r\n" : "")
+                + "LOCATION:ELMKUSOMA Live\r\n"
+                + "STATUS:CONFIRMED\r\n"
+                + "BEGIN:VALARM\r\n"
+                + "TRIGGER:-PT15M\r\n"
+                + "ACTION:DISPLAY\r\n"
+                + "DESCRIPTION:Live class starting in 15 minutes\r\n"
+                + "END:VALARM\r\n"
+                + "END:VEVENT\r\n"
+                + "END:VCALENDAR\r\n";
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/calendar; charset=utf-8")
+                .header("Content-Disposition", "attachment; filename=\"live-class-" + classId + ".ics\"")
+                .body(ics);
+    }
+
+    private String formatIcsDateTime(java.time.LocalDateTime ldt) {
+        return ldt.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"));
+    }
+
+    private String escapeIcs(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n");
+    }
 }

@@ -54,6 +54,24 @@ public class LiveClass extends BaseEntity {
     @Column(name = "session_type", length = 40)
     private LiveClassSessionType sessionType = LiveClassSessionType.LECTURE;
 
+    @Column(name = "timezone", length = 50)
+    private String timezone = "Africa/Dar_es_Salaam";
+
+    @Column(name = "is_recurring")
+    private Boolean isRecurring = false;
+
+    @Column(name = "recurrence_pattern", length = 50)
+    private String recurrencePattern;
+
+    @Column(name = "recurrence_end_date")
+    private java.time.LocalDate recurrenceEndDate;
+
+    @Column(name = "parent_recurring_id")
+    private UUID parentRecurringId;
+
+    @Column(name = "lobby_enabled")
+    private Boolean lobbyEnabled = false;
+
     public enum LiveClassStatus {
         SCHEDULED, STARTING, IN_PROGRESS, LIVE, ENDING, COMPLETED, ENDED, CANCELLED,
         SERVICE_DEGRADED, SERVICE_UNAVAILABLE, RECOVERING

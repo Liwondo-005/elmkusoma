@@ -8,6 +8,8 @@ import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.attendance.domain.AttendanceRecord;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
+import tz.elmkusoma.certificate.domain.Certificate;
+import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.domain.LiveClass.LiveClassStatus;
 import tz.elmkusoma.course.domain.LiveClassSessionType;
@@ -41,6 +43,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final SubjectRepository subjectRepository;
     private final LiveClassParticipantRepository participantRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
+    private final CertificateRepository certificateRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -105,10 +108,23 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .classGroupId(request.getClassGroupId())
                 .recordingEnabled(Boolean.TRUE.equals(request.getRecordingEnabled()))
                 .sessionType(request.getSessionType() != null ? LiveClassSessionType.valueOf(request.getSessionType()) : LiveClassSessionType.LECTURE)
+                .timezone(request.getTimezone() != null ? request.getTimezone() : "Africa/Dar_es_Salaam")
+                .isRecurring(Boolean.TRUE.equals(request.getIsRecurring()))
+                .recurrencePattern(request.getRecurrencePattern())
+                .lobbyEnabled(Boolean.TRUE.equals(request.getLobbyEnabled()))
                 .build();
         liveClass.setInstitutionId(institutionId);
 
+        if (request.getRecurrenceEndDate() != null && !request.getRecurrenceEndDate().isBlank()) {
+            try {
+                liveClass.setRecurrenceEndDate(java.time.LocalDate.parse(request.getRecurrenceEndDate()));
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Invalid recurrence end date format. Expected: yyyy-MM-dd");
+            }
+        }
+
         LiveClass saved = liveClassRepository.save(liveClass);
+        createRecurringInstances(saved, request);
         return mapToResponse(saved);
     }
 
@@ -207,6 +223,7 @@ public class LiveClassServiceImpl implements LiveClassService {
         LiveClass saved = liveClassRepository.save(liveClass);
 
         createAttendanceFromParticipants(saved, markedBy);
+        createLiveClassCertificates(saved, markedBy);
 
         return mapToResponse(saved);
     }
@@ -256,6 +273,113 @@ public class LiveClassServiceImpl implements LiveClassService {
                 participants.size(), liveClass.getId());
     }
 
+    private void createLiveClassCertificates(LiveClass liveClass, UUID markedBy) {
+        if (liveClass.getClassGroupId() == null) return;
+
+        List<LiveClassParticipant> participants = participantRepository
+                .findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(liveClass.getId());
+
+        Teacher teacher = teacherRepository.findById(liveClass.getTeacherId()).orElse(null);
+        String teacherName = "Unknown Teacher";
+        if (teacher != null) {
+            User tUser = userRepository.findById(teacher.getUserId()).orElse(null);
+            if (tUser != null) teacherName = tUser.getFullName();
+        }
+
+        String subjectName = "";
+        if (liveClass.getSubjectId() != null) {
+            subjectName = subjectRepository.findById(liveClass.getSubjectId())
+                    .map(Subject::getName).orElse("");
+        }
+        String title = subjectName.isEmpty() ? liveClass.getTitle() : subjectName + " - " + liveClass.getTitle();
+
+        for (LiveClassParticipant participant : participants) {
+            boolean hasCert = certificateRepository.findAll().stream()
+                    .anyMatch(c -> c.getStudentId().equals(participant.getUserId())
+                            && c.getTitle().equals(title)
+                            && !Boolean.TRUE.equals(c.getIsDeleted()));
+            if (hasCert) continue;
+
+            User studentUser = userRepository.findById(participant.getUserId()).orElse(null);
+            if (studentUser == null) continue;
+
+            String serial = "LIVE-" + System.currentTimeMillis() + "-" + participant.getUserId().toString().substring(0, 8);
+
+            Certificate cert = Certificate.builder()
+                    .templateId(UUID.randomUUID())
+                    .studentId(participant.getUserId())
+                    .issuedBy(markedBy)
+                    .serialNumber(serial)
+                    .certificateType(Certificate.CertificateType.PARTICIPATION)
+                    .title(title)
+                    .description("Live class participation certificate for " + title)
+                    .studentName(studentUser.getFullName())
+                    .completionDate(LocalDate.now())
+                    .issueDate(LocalDateTime.now())
+                    .status(Certificate.CertificateStatus.ISSUED)
+                    .verificationCode(UUID.randomUUID().toString().substring(0, 12).toUpperCase())
+                    .instructorName(teacherName)
+                    .build();
+            cert.setInstitutionId(liveClass.getInstitutionId());
+            certificateRepository.save(cert);
+        }
+
+        log.info("Created participation certificates for live class {}", liveClass.getId());
+    }
+
+    private void createRecurringInstances(LiveClass parent, CreateLiveClassRequest request) {
+        if (!Boolean.TRUE.equals(request.getIsRecurring()) || request.getRecurrencePattern() == null) return;
+        if (request.getRecurrenceEndDate() == null || request.getRecurrenceEndDate().isBlank()) return;
+
+        java.time.LocalDate endDate;
+        try {
+            endDate = java.time.LocalDate.parse(request.getRecurrenceEndDate());
+        } catch (Exception e) {
+            return;
+        }
+
+        java.time.LocalDateTime current = parent.getScheduledAt();
+        int maxInstances = 52;
+        int count = 0;
+
+        while (current.toLocalDate().isBefore(endDate) && count < maxInstances) {
+            count++;
+            switch (request.getRecurrencePattern()) {
+                case "DAILY" -> current = current.plusDays(1);
+                case "WEEKLY" -> current = current.plusWeeks(1);
+                case "BIWEEKLY" -> current = current.plusWeeks(2);
+                case "MONTHLY" -> current = current.plusMonths(1);
+                default -> { return; }
+            }
+
+            if (current.toLocalDate().isAfter(endDate)) break;
+
+            LiveClass recurring = LiveClass.builder()
+                    .teacherId(parent.getTeacherId())
+                    .institutionId(parent.getInstitutionId())
+                    .title(parent.getTitle())
+                    .description(parent.getDescription())
+                    .scheduledAt(current)
+                    .durationMinutes(parent.getDurationMinutes())
+                    .status(LiveClassStatus.SCHEDULED.name())
+                    .subjectId(parent.getSubjectId())
+                    .maxParticipants(parent.getMaxParticipants())
+                    .classGroupId(parent.getClassGroupId())
+                    .recordingEnabled(parent.getRecordingEnabled())
+                    .timezone(parent.getTimezone())
+                    .isRecurring(true)
+                    .recurrencePattern(parent.getRecurrencePattern())
+                    .recurrenceEndDate(parent.getRecurrenceEndDate())
+                    .parentRecurringId(parent.getId())
+                    .lobbyEnabled(parent.getLobbyEnabled())
+                    .build();
+
+            liveClassRepository.save(recurring);
+        }
+
+        log.info("Created {} recurring instances for live class {}", count, parent.getId());
+    }
+
     private LiveClassResponse mapToResponse(LiveClass liveClass) {
         String subjectName = null;
         if (liveClass.getSubjectId() != null) {
@@ -291,6 +415,11 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .recordingUrl(liveClass.getRecordingUrl())
                 .recordingEnabled(Boolean.TRUE.equals(liveClass.getRecordingEnabled()))
                 .sessionType(liveClass.getSessionType() != null ? liveClass.getSessionType().name() : "LECTURE")
+                .timezone(liveClass.getTimezone() != null ? liveClass.getTimezone() : "Africa/Dar_es_Salaam")
+                .isRecurring(Boolean.TRUE.equals(liveClass.getIsRecurring()))
+                .recurrencePattern(liveClass.getRecurrencePattern())
+                .recurrenceEndDate(liveClass.getRecurrenceEndDate() != null ? liveClass.getRecurrenceEndDate().toString() : null)
+                .lobbyEnabled(Boolean.TRUE.equals(liveClass.getLobbyEnabled()))
                 .currentParticipants((int) currentParticipants)
                 .canJoin("IN_PROGRESS".equals(liveClass.getStatus()) || "LIVE".equals(liveClass.getStatus()))
                 .createdAt(liveClass.getCreatedAt() != null ? liveClass.getCreatedAt().toString() : null)
