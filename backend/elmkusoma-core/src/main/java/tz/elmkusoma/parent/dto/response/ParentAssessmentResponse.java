@@ -27,6 +27,7 @@ public class ParentAssessmentResponse {
         private String id;
         private String title;
         private String subject;
+        private String subjectId;
         private LocalDateTime startsAt;
         private LocalDateTime endsAt;
         private Integer totalMarks;
@@ -35,5 +36,8 @@ public class ParentAssessmentResponse {
         private Integer score;
         private Boolean isPassed;
         private String feedback;
+        private Double percentage;
+        private LocalDateTime createdAt;
+        private String status;
     }
 }

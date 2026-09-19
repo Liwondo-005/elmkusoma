@@ -24,17 +24,18 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
     @Query("SELECT COUNT(a) FROM Assessment a WHERE a.institutionId IN :institutionIds AND a.status = :status AND a.isDeleted = false")
     long countByInstitutionIdsAndStatusAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds, @Param("status") String status);
 
+    @Query("SELECT COUNT(a) FROM Assessment a WHERE a.subjectId = :subjectId AND a.institutionId IN :institutionIds AND a.isDeleted = false")
+    long countBySubjectIdAndInstitutionIdsAndIsDeletedFalse(
+            @Param("subjectId") UUID subjectId,
+            @Param("institutionIds") List<UUID> institutionIds);
+
     @Query("SELECT a FROM Assessment a WHERE a.subjectId = :subjectId AND a.institutionId IN :institutionIds AND a.isDeleted = false")
     List<Assessment> findBySubjectIdAndInstitutionIdsAndIsDeletedFalse(
             @Param("subjectId") UUID subjectId,
             @Param("institutionIds") List<UUID> institutionIds);
 
-    @Query(value = "SELECT a FROM Assessment a WHERE a.institutionId IN :institutionIds AND a.isDeleted = false ORDER BY a.scheduledAt DESC")
+    @Query("SELECT a FROM Assessment a WHERE a.institutionId IN :institutionIds AND a.isDeleted = false ORDER BY a.startsAt DESC")
     List<Assessment> findRecentByInstitutionIds(
-            @Param("institutionIds") List<UUID> institutionIds);
-
-    @Query("SELECT COUNT(a) FROM Assessment a WHERE a.subjectId = :subjectId AND a.institutionId IN :institutionIds AND a.isDeleted = false")
-    long countBySubjectIdAndInstitutionIdsAndIsDeletedFalse(
-            @Param("subjectId") UUID subjectId,
-            @Param("institutionIds") List<UUID> institutionIds);
+            @Param("institutionIds") List<UUID> institutionIds,
+            @Param("limit") int limit);
 }

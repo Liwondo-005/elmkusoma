@@ -589,7 +589,7 @@ public class ParentDashboardServiceImpl implements ParentDashboardService {
 
         return ParentNotificationResponse.builder()
                 .notifications(notifications)
-                .unreadCount((int) notifications.stream().filter(n -> !Boolean.TRUE.equals(n.getIsRead())).count())
+                .unreadCount(notifications.stream().filter(n -> !Boolean.TRUE.equals(n.getIsRead())).count())
                 .build();
     }
 

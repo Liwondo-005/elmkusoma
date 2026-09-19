@@ -33,14 +33,13 @@ public class CustomRole extends BaseEntity {
 
     public static CustomRole of(String name, String displayName,
                                 String description, UUID institutionId) {
-        CustomRole role = CustomRole.builder()
-                .name(name)
-                .displayName(displayName)
-                .description(description)
-                .institutionId(institutionId)
-                .isSystemRole(false)
-                .isActive(true)
-                .build();
+        CustomRole role = new CustomRole();
+        role.setName(name);
+        role.setDisplayName(displayName);
+        role.setDescription(description);
+        role.setInstitutionId(institutionId);
+        role.setIsSystemRole(false);
+        role.setIsActive(true);
         return role;
     }
 }

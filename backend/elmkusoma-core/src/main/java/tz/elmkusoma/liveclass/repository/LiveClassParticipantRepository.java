@@ -13,6 +13,8 @@ import java.util.UUID;
 @Repository
 public interface LiveClassParticipantRepository extends JpaRepository<LiveClassParticipant, UUID> {
 
+    boolean existsByLiveClassIdAndUserIdAndIsDeletedFalse(UUID liveClassId, UUID userId);
+
     Optional<LiveClassParticipant> findByLiveClassIdAndUserIdAndIsDeletedFalse(UUID liveClassId, UUID userId);
 
     boolean existsByLiveClassIdAndUserIdAndIsDeletedFalse(UUID liveClassId, UUID userId);

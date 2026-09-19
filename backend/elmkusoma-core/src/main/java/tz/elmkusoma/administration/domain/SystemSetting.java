@@ -38,13 +38,13 @@ public class SystemSetting extends BaseEntity {
     public static SystemSetting of(String settingKey, Map<String, Object> settingValue,
                                    String settingType, String description, Boolean isPublic,
                                    UUID institutionId) {
-        return SystemSetting.builder()
-                .settingKey(settingKey)
-                .settingValue(settingValue)
-                .settingType(settingType)
-                .description(description)
-                .isPublic(isPublic)
-                .institutionId(institutionId)
-                .build();
+        SystemSetting setting = new SystemSetting();
+        setting.setSettingKey(settingKey);
+        setting.setSettingValue(settingValue);
+        setting.setSettingType(settingType);
+        setting.setDescription(description);
+        setting.setIsPublic(isPublic);
+        setting.setInstitutionId(institutionId);
+        return setting;
     }
 }
