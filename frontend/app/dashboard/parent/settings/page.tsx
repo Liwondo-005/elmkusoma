@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { User, Bell, Shield, Save, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { parentApi } from "@/lib/parent-api"
+import { parentApi, type NotificationPreferenceData } from "@/lib/parent-api"
 
 export default function ParentSettingsPage() {
   const { user } = useAuth()
@@ -13,6 +13,12 @@ export default function ParentSettingsPage() {
   const [firstName, setFirstName] = useState(user?.name?.split(" ")[0] || "")
   const [lastName, setLastName] = useState(user?.name?.split(" ").slice(1).join(" ") || "")
   const [phone, setPhone] = useState("")
+  const [prefs, setPrefs] = useState<NotificationPreferenceData | null>(null)
+  const [prefsLoading, setPrefsLoading] = useState(true)
+
+  useEffect(() => {
+    parentApi.getNotificationPreferences().then(setPrefs).catch(() => setPrefs(null)).finally(() => setPrefsLoading(false))
+  }, [])
 
   async function handleProfileSave() {
     setSaving(true)
@@ -26,9 +32,31 @@ export default function ParentSettingsPage() {
     }
   }
 
-  function handlePrefsSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  async function handlePrefsSave() {
+    if (!prefs) return
+    setSaving(true)
+    try {
+      const updated = await parentApi.updateNotificationPreferences({
+        attendanceAlerts: prefs.attendanceAlerts,
+        gradeAlerts: prefs.gradeAlerts,
+        feeAlerts: prefs.feeAlerts,
+        generalAnnouncements: prefs.generalAnnouncements,
+        smsEnabled: prefs.smsEnabled,
+        emailEnabled: prefs.emailEnabled,
+        pushEnabled: prefs.pushEnabled,
+      })
+      setPrefs(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function togglePref(key: keyof NotificationPreferenceData) {
+    if (!prefs) return
+    setPrefs({ ...prefs, [key]: !prefs[key] })
   }
 
   return (
@@ -87,26 +115,41 @@ export default function ParentSettingsPage() {
       {activeTab === "notifications" && (
         <section className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
           <h2 className="text-base font-semibold text-foreground">Notification Preferences</h2>
-          {[
-            { label: "Attendance Alerts", desc: "Get notified when your child is absent or late", default: true },
-            { label: "Assignment Reminders", desc: "Reminders for upcoming and overdue assignments", default: true },
-            { label: "Grade Published", desc: "Notification when report cards or grades are published", default: true },
-            { label: "Live Class Reminders", desc: "Reminders before live classes start", default: false },
-            { label: "School Events", desc: "Notifications about school events and meetings", default: true },
-            { label: "Fee Reminders", desc: "Payment due date reminders", default: true },
-          ].map((pref) => (
-            <label key={pref.label} className="flex items-center justify-between rounded-xl border border-border p-4">
-              <div>
-                <p className="text-sm font-medium text-foreground">{pref.label}</p>
-                <p className="text-xs text-muted-foreground">{pref.desc}</p>
-              </div>
-              <input type="checkbox" defaultChecked={pref.default} className="size-4 rounded border-border accent-primary" />
-            </label>
-          ))}
-          <button onClick={handlePrefsSave} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            <Save className="size-4" />
-            {saved ? "Saved!" : "Save Preferences"}
-          </button>
+          {prefsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : prefs ? (
+            <>
+              {([
+                { key: "attendanceAlerts" as const, label: "Attendance Alerts", desc: "Get notified when your child is absent or late" },
+                { key: "gradeAlerts" as const, label: "Grade Published", desc: "Notification when report cards or grades are published" },
+                { key: "feeAlerts" as const, label: "Fee Reminders", desc: "Payment due date reminders" },
+                { key: "generalAnnouncements" as const, label: "School Events", desc: "Notifications about school events and meetings" },
+                { key: "pushEnabled" as const, label: "Live Class Reminders", desc: "Reminders before live classes start" },
+              ]).map((pref) => (
+                <label key={pref.key} className="flex items-center justify-between rounded-xl border border-border p-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{pref.label}</p>
+                    <p className="text-xs text-muted-foreground">{pref.desc}</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!prefs[pref.key]}
+                    onChange={() => togglePref(pref.key)}
+                    className="size-4 rounded border-border accent-primary"
+                  />
+                </label>
+              ))}
+              <button onClick={handlePrefsSave} disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                {saved ? "Saved!" : saving ? "Saving..." : "Save Preferences"}
+              </button>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4">Unable to load notification preferences.</p>
+          )}
         </section>
       )}
 

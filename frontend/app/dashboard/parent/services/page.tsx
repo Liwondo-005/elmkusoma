@@ -1,9 +1,19 @@
 "use client"
 
-import { School, Bus, BookOpen, Users, Calendar, MessageSquare, ChevronRight } from "lucide-react"
+import { useEffect, useState } from "react"
+import { School, Bus, BookOpen, Users, Calendar, MessageSquare, ChevronRight, Loader2, Shield } from "lucide-react"
 import Link from "next/link"
+import { parentApi, type EntitlementItem } from "@/lib/parent-api"
 
-const SERVICES = [
+interface ServiceItem {
+  icon: typeof School
+  label: string
+  description: string
+  href: string
+  available: boolean
+}
+
+const BASE_SERVICES: ServiceItem[] = [
   { icon: Bus, label: "Transport", description: "Transport routes and schedules", href: "#", available: false },
   { icon: BookOpen, label: "Library", description: "Borrowed resources and digital library", href: "/dashboard/parent/library", available: true },
   { icon: Users, label: "Clubs & Activities", description: "Extracurricular activities and participation", href: "#", available: false },
@@ -13,6 +23,31 @@ const SERVICES = [
 ]
 
 export default function ParentServicesPage() {
+  const [entitlements, setEntitlements] = useState<EntitlementItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    parentApi.getChildren().then(async (kids) => {
+      if (kids.length === 0) return []
+      const allEnts = await Promise.all(kids.map(k => parentApi.getChildEntitlements(k.studentId).catch(() => [])))
+      return allEnts.flat()
+    }).then(setEntitlements).catch(() => setEntitlements([])).finally(() => setLoading(false))
+  }, [])
+
+  const services: ServiceItem[] = BASE_SERVICES.map(s => {
+    if (s.label === "Transport" && entitlements.some(e => e.serviceType === "TRANSPORT")) return { ...s, available: true }
+    if (s.label === "Clubs & Activities" && entitlements.some(e => e.serviceType === "CLUB")) return { ...s, available: true }
+    return s
+  })
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
@@ -21,7 +56,7 @@ export default function ParentServicesPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {SERVICES.map((service) => (
+        {services.map((service) => (
           <div key={service.label} className={`rounded-2xl border border-border bg-card p-5 shadow-xs ${!service.available ? "opacity-60" : ""}`}>
             <div className="flex items-start gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -42,6 +77,26 @@ export default function ParentServicesPage() {
           </div>
         ))}
       </div>
+
+      {entitlements.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <h2 className="text-base font-semibold text-foreground">Your Entitlements</h2>
+          <div className="mt-3 space-y-2">
+            {entitlements.map((ent) => (
+              <div key={ent.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
+                <Shield className="size-4 shrink-0 text-green-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{ent.serviceType}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ent.status === "ACTIVE" ? "Active" : ent.status}
+                    {ent.expiresAt && ` · Expires ${new Date(ent.expiresAt).toLocaleDateString("en-GB")}`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
