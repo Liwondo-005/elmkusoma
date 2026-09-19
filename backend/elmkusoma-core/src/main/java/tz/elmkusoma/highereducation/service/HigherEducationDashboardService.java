@@ -41,7 +41,7 @@ public class HigherEducationDashboardService {
                 .liveNow(0).upcomingToday(0).sessions(Collections.emptyList()).build());
 
         List<StudentCourseEnrollment> activeEnrollments = enrollmentRepository
-                .findByStudentIdAndStatusAndIsDeletedFalse(studentId, "ENROLLED");
+                .findByStudentIdAndStatusAndIsDeletedFalse(studentId, EnrollmentStatus.ENROLLED);
         dashboard.setMyCourses(activeEnrollments.stream().map(e -> HigherEducationDashboardDTO.CourseSummaryDTO.builder()
                 .id(e.getId().toString())
                 .title("Course " + e.getCourseId().toString().substring(0, Math.min(8, e.getCourseId().toString().length())))

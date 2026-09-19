@@ -20,6 +20,10 @@ import {
   Circle,
   Paperclip,
   FileText,
+  ListOrdered,
+  PlayCircle,
+  ClipboardList,
+  MessageSquare,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
 import { Button } from "@/components/ui/button"
@@ -40,6 +44,34 @@ interface ChatMessage {
   message: string
   timestamp: string
   system?: boolean
+}
+
+interface HandRaiseEntry {
+  userId: string
+  userName: string
+  position: number
+  raisedAt: string | null
+}
+
+interface Quiz {
+  id: string
+  title: string
+  status: string
+}
+
+interface QuizQuestion {
+  id: string
+  questionText: string
+  questionType: string
+  options: string
+  displayOrder: number
+}
+
+interface Poll {
+  id: string
+  question: string
+  options: string
+  status: string
 }
 
 export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
@@ -77,6 +109,20 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [materialName, setMaterialName] = useState("")
   const [materialUrl, setMaterialUrl] = useState("")
   const [attachedMaterials, setAttachedMaterials] = useState<Array<{name: string; url: string}>>([])
+  const [handRaiseQueue, setHandRaiseQueue] = useState<HandRaiseEntry[]>([])
+  const [showHandQueue, setShowHandQueue] = useState(false)
+  const [activePolls, setActivePolls] = useState<Poll[]>([])
+  const [showPollModal, setShowPollModal] = useState(false)
+  const [selectedPollOption, setSelectedPollOption] = useState<number | null>(null)
+  const [activeQuizzes, setActiveQuizzes] = useState<Quiz[]>([])
+  const [showQuizModal, setShowQuizModal] = useState(false)
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([])
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({})
+  const [quizSubmitted, setQuizSubmitted] = useState(false)
+  const [sharedMediaList, setSharedMediaList] = useState<Array<{title: string; url: string; mediaType: string}>>([])
+  const [breakoutRooms, setBreakoutRooms] = useState<Array<{id: string; name: string; maxParticipants: number; status: string}>>([])
+  const [showBreakoutModal, setShowBreakoutModal] = useState(false)
+  const [newBreakoutName, setNewBreakoutName] = useState("")
   const roomRef = useRef<Room | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
@@ -329,6 +375,39 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               system: true,
             }])
             break
+          case "HAND_RAISE_QUEUE":
+            if (data.queue) setHandRaiseQueue(data.queue)
+            break
+          case "QUIZ_STARTED":
+            setActiveQuizzes((prev) => [...prev, { id: data.quizId, title: data.title, status: "ACTIVE" }])
+            setChat((prev) => [...prev, {
+              userId: "system",
+              userName: "System",
+              message: `Quiz started: ${data.title}`,
+              timestamp: data.timestamp || new Date().toISOString(),
+              system: true,
+            }])
+            break
+          case "POLL_STARTED":
+            setActivePolls((prev) => [...prev, { id: data.pollId, question: data.question, options: data.options, status: "ACTIVE" }])
+            setChat((prev) => [...prev, {
+              userId: "system",
+              userName: "System",
+              message: `Poll: ${data.question}`,
+              timestamp: data.timestamp || new Date().toISOString(),
+              system: true,
+            }])
+            break
+          case "SHARED_MEDIA":
+            setSharedMediaList((prev) => [...prev, { title: data.title || "Shared content", url: data.url, mediaType: data.mediaType || "VIDEO" }])
+            setChat((prev) => [...prev, {
+              userId: "system",
+              userName: "System",
+              message: `Media shared: ${data.title || data.url}`,
+              timestamp: data.timestamp || new Date().toISOString(),
+              system: true,
+            }])
+            break
           case "ERROR":
             setJoinError(data.error)
             break
@@ -547,6 +626,117 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     setShowMaterialInput(false)
   }
 
+  const [newQuizTitle, setNewQuizTitle] = useState("")
+  const [quizQuestionList, setQuizQuestionList] = useState<Array<{questionText: string; options: string; correctAnswer: string}>>([])
+  const [newPollQuestion, setNewPollQuestion] = useState("")
+  const [newPollOptions, setNewPollOptions] = useState("")
+
+  async function createQuiz() {
+    if (!newQuizTitle.trim() || !liveClass?.id || quizQuestionList.length === 0) return
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+      const res = await fetch(`${apiBase}/v1/live-session/classes/${liveClass.id}/quizzes`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Institution-Id": user?.institutionId || "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title: newQuizTitle.trim(), questions: quizQuestionList }),
+      })
+      if (res.ok) {
+        setChat(prev => [...prev, { userId: "system", userName: "System", message: `Quiz "${newQuizTitle.trim()}" launched!`, timestamp: new Date().toISOString(), system: true }])
+        setNewQuizTitle("")
+        setQuizQuestionList([])
+      }
+    } catch {}
+  }
+
+  async function createPoll() {
+    if (!newPollQuestion.trim() || !liveClass?.id || !newPollOptions.trim()) return
+    const options = newPollOptions.split(",").map(o => o.trim()).filter(Boolean)
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+      const res = await fetch(`${apiBase}/v1/live-session/classes/${liveClass.id}/polls`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Institution-Id": user?.institutionId || "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ question: newPollQuestion.trim(), options: JSON.stringify(options) }),
+      })
+      if (res.ok) {
+        setChat(prev => [...prev, { userId: "system", userName: "System", message: `Poll: "${newPollQuestion.trim()}"`, timestamp: new Date().toISOString(), system: true }])
+        setNewPollQuestion("")
+        setNewPollOptions("")
+      }
+    } catch {}
+  }
+
+  async function createBreakoutRoom() {
+    if (!newBreakoutName.trim() || !liveClass?.id) return
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+      const res = await fetch(`${apiBase}/v1/live-session/classes/${liveClass.id}/breakout-rooms`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Institution-Id": user?.institutionId || "",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newBreakoutName.trim(), maxParticipants: 10 }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setBreakoutRooms(prev => [...prev, data.data])
+        setNewBreakoutName("")
+        setShowBreakoutModal(false)
+        setChat(prev => [...prev, { userId: "system", userName: "System", message: `Breakout room "${newBreakoutName.trim()}" created`, timestamp: new Date().toISOString(), system: true }])
+      }
+    } catch {}
+  }
+
+  async function startBreakoutRoom(roomId: string) {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+      await fetch(`${apiBase}/v1/live-session/breakout-rooms/${roomId}/start`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+      })
+      setBreakoutRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: "ACTIVE" } : r))
+    } catch {}
+  }
+
+  async function endBreakoutRoom(roomId: string) {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+      await fetch(`${apiBase}/v1/live-session/breakout-rooms/${roomId}/end`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+      })
+      setBreakoutRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: "ENDED" } : r))
+    } catch {}
+  }
+
+  async function assignToBreakout(roomId: string, userId: string) {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+      const endpoint = user?.role === "Teacher"
+        ? `${apiBase}/v1/live-session/breakout-rooms/${roomId}/assign`
+        : `${apiBase}/v1/live-session/breakout-rooms/${roomId}/join`
+      await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      })
+      setChat(prev => [...prev, { userId: "system", userName: "System", message: user?.role === "Teacher" ? `A participant was assigned to a breakout room` : `You joined a breakout room`, timestamp: new Date().toISOString(), system: true }])
+    } catch {}
+  }
+
   function handleLeave() {
     retryCountRef.current = 10
     if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
@@ -755,8 +945,27 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   )}
                 </>
               ) : liveClass.status === "COMPLETED" || liveClass.status === "ENDED" || liveClass.status === "CANCELLED" ? (
-                <div className="text-center text-white">
-                  <p className="text-sm opacity-75">This session has ended</p>
+                <div className="text-center text-white p-6">
+                  <p className="text-sm opacity-75 mb-4">This session has ended</p>
+                  {liveClass.recordingUrl ? (
+                    <div className="space-y-3">
+                      <p className="text-xs opacity-60">Recording is available for replay</p>
+                      {liveClass.recordingUrl.startsWith("http") ? (
+                        <a
+                          href={liveClass.recordingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm text-white hover:bg-white/30 transition-colors"
+                        >
+                          <PlayCircle className="size-4" /> Watch Recording
+                        </a>
+                      ) : (
+                        <p className="text-xs opacity-50">Recording is being processed</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs opacity-50">No recording available</p>
+                  )}
                 </div>
               ) : (
                 <div className="text-center text-white">
@@ -832,6 +1041,255 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               )}
             </div>
           </div>
+
+          {handRaiseQueue.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+                  <ListOrdered className="size-3" /> Hand Raise Queue ({handRaiseQueue.length})
+                </h2>
+              </div>
+              <div className="space-y-1.5">
+                {handRaiseQueue.map((entry, i) => (
+                  <div key={entry.userId} className="flex items-center gap-2 text-xs">
+                    <span className="flex size-5 items-center justify-center rounded-full bg-amber-200 text-[10px] font-bold text-amber-800">
+                      {entry.position}
+                    </span>
+                    <span className="text-amber-900 font-medium">{entry.userName}</span>
+                    {entry.raisedAt && (
+                      <span className="text-amber-600 text-[9px] ml-auto">
+                        {new Date(entry.raisedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activePolls.filter(p => p.status === "ACTIVE").length > 0 && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+              <h2 className="text-xs font-semibold text-blue-700 flex items-center gap-1 mb-2">
+                <ClipboardList className="size-3" /> Active Poll
+              </h2>
+              {activePolls.filter(p => p.status === "ACTIVE").slice(-1).map(poll => (
+                <div key={poll.id}>
+                  <p className="text-xs font-medium text-blue-900 mb-2">{poll.question}</p>
+                  <div className="space-y-1.5">
+                    {(() => {
+                      try {
+                        const options = JSON.parse(poll.options)
+                        return Array.isArray(options) ? options.map((opt: string, i: number) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              if (selectedPollOption === null) {
+                                setSelectedPollOption(i)
+                                fetch(`/v1/live-session/polls/${poll.id}/vote`, {
+                                  method: "POST",
+                                  headers: {
+                                    "Authorization": `Bearer ${token}`,
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({ optionIndex: i }),
+                                })
+                              }
+                            }}
+                            className={cn(
+                              "w-full text-left rounded-lg border px-3 py-1.5 text-xs transition-colors",
+                              selectedPollOption === i
+                                ? "border-blue-400 bg-blue-100 text-blue-800 font-medium"
+                                : "border-blue-200 bg-white text-blue-700 hover:bg-blue-100"
+                            )}
+                          >
+                            {opt}
+                          </button>
+                        )) : null
+                      } catch { return null }
+                    })()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {sharedMediaList.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <h2 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">
+                <PlayCircle className="size-3" /> Shared Media
+              </h2>
+              <div className="space-y-1.5">
+                {sharedMediaList.map((m, i) => (
+                  <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline">
+                    <PlayCircle className="size-3 shrink-0" />
+                    {m.title || m.url}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isInProgress && user?.role === "Teacher" && (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
+              <h2 className="text-xs font-semibold text-foreground flex items-center gap-1">
+                <Zap className="size-3" /> Launch Quiz
+              </h2>
+              <input
+                type="text"
+                value={newQuizTitle}
+                onChange={e => setNewQuizTitle(e.target.value)}
+                placeholder="Quiz title"
+                className="h-8 w-full rounded border border-border bg-muted/60 px-2 text-xs outline-none"
+              />
+              {quizQuestionList.map((q, i) => (
+                <div key={i} className="rounded border border-border p-2 text-[10px] space-y-1">
+                  <div className="font-medium text-foreground">Q{i + 1}: {q.questionText}</div>
+                  <div className="text-muted-foreground">Options: {q.options}</div>
+                  <div className="text-teal">Answer: {q.correctAnswer}</div>
+                </div>
+              ))}
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  placeholder="Question"
+                  className="h-7 flex-1 rounded border border-border bg-muted/60 px-2 text-[10px] outline-none"
+                  id="quiz-q-text"
+                />
+                <input
+                  type="text"
+                  placeholder="Options (comma-separated)"
+                  className="h-7 flex-1 rounded border border-border bg-muted/60 px-2 text-[10px] outline-none"
+                  id="quiz-q-opts"
+                />
+                <input
+                  type="text"
+                  placeholder="Correct answer"
+                  className="h-7 flex-1 rounded border border-border bg-muted/60 px-2 text-[10px] outline-none"
+                  id="quiz-q-ans"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[10px]"
+                  onClick={() => {
+                    const text = (document.getElementById("quiz-q-text") as HTMLInputElement)?.value
+                    const opts = (document.getElementById("quiz-q-opts") as HTMLInputElement)?.value
+                    const ans = (document.getElementById("quiz-q-ans") as HTMLInputElement)?.value
+                    if (text && opts && ans) {
+                      setQuizQuestionList(prev => [...prev, { questionText: text, options: opts, correctAnswer: ans }])
+                      ;(document.getElementById("quiz-q-text") as HTMLInputElement).value = ""
+                      ;(document.getElementById("quiz-q-opts") as HTMLInputElement).value = ""
+                      ;(document.getElementById("quiz-q-ans") as HTMLInputElement).value = ""
+                    }
+                  }}
+                >+</Button>
+              </div>
+              <Button
+                size="sm"
+                className="h-7 text-[10px] w-full"
+                disabled={!newQuizTitle.trim() || quizQuestionList.length === 0}
+                onClick={createQuiz}
+              >
+                Launch Quiz ({quizQuestionList.length} questions)
+              </Button>
+            </div>
+          )}
+
+          {isInProgress && user?.role === "Teacher" && (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
+              <h2 className="text-xs font-semibold text-foreground flex items-center gap-1">
+                <BarChart3 className="size-3" /> Create Poll
+              </h2>
+              <input
+                type="text"
+                value={newPollQuestion}
+                onChange={e => setNewPollQuestion(e.target.value)}
+                placeholder="Poll question"
+                className="h-8 w-full rounded border border-border bg-muted/60 px-2 text-xs outline-none"
+              />
+              <input
+                type="text"
+                value={newPollOptions}
+                onChange={e => setNewPollOptions(e.target.value)}
+                placeholder="Options (comma-separated)"
+                className="h-8 w-full rounded border border-border bg-muted/60 px-2 text-xs outline-none"
+              />
+              <Button
+                size="sm"
+                className="h-7 text-[10px] w-full"
+                disabled={!newPollQuestion.trim() || !newPollOptions.trim()}
+                onClick={createPoll}
+              >
+                Launch Poll
+              </Button>
+            </div>
+          )}
+
+          {(breakoutRooms.length > 0 || (isInProgress && user?.role === "Teacher")) && (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xs font-semibold text-foreground flex items-center gap-1">
+                  <Users className="size-3" /> Breakout Rooms
+                </h2>
+                {isInProgress && user?.role === "Teacher" && (
+                  <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setShowBreakoutModal(true)}>
+                    + Create
+                  </Button>
+                )}
+              </div>
+              {breakoutRooms.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground">No breakout rooms yet</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {breakoutRooms.map(room => (
+                    <div key={room.id} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs">
+                      <div className={cn(
+                        "size-2 rounded-full",
+                        room.status === "ACTIVE" ? "bg-teal animate-pulse" : room.status === "ENDED" ? "bg-gray-400" : "bg-amber-400"
+                      )} />
+                      <span className="font-medium text-foreground flex-1">{room.name}</span>
+                      {user?.role === "Teacher" && (
+                        <div className="flex gap-1">
+                          {room.status === "WAITING" && (
+                            <Button size="sm" variant="ghost" className="h-5 text-[10px] text-teal" onClick={() => startBreakoutRoom(room.id)}>Start</Button>
+                          )}
+                          {room.status === "ACTIVE" && (
+                            <Button size="sm" variant="ghost" className="h-5 text-[10px] text-destructive" onClick={() => endBreakoutRoom(room.id)}>End</Button>
+                          )}
+                        </div>
+                      )}
+                      {user?.role !== "Teacher" && room.status === "ACTIVE" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-5 text-[10px] text-teal"
+                          onClick={() => assignToBreakout(room.id, user?.id || "")}
+                        >Join</Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {showBreakoutModal && (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <h3 className="text-xs font-semibold text-foreground mb-2">New Breakout Room</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newBreakoutName}
+                  onChange={e => setNewBreakoutName(e.target.value)}
+                  placeholder="Room name"
+                  className="h-8 flex-1 rounded border border-border bg-muted/60 px-2 text-xs outline-none"
+                  onKeyDown={e => { if (e.key === "Enter") createBreakoutRoom() }}
+                />
+                <Button size="sm" className="h-8 text-xs" onClick={createBreakoutRoom} disabled={!newBreakoutName.trim()}>Create</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setShowBreakoutModal(false); setNewBreakoutName("") }}>Cancel</Button>
+              </div>
+            </div>
+          )}
 
           <div className="flex min-h-80 flex-col rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
@@ -943,7 +1401,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     onClick={async () => {
                       setIssueSubmitting(true)
                       try {
-                        const res = await fetch(`/v1/live-session/issues`, {
+                        const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+                        const res = await fetch(`${apiBase}/v1/live-session/report/${liveClass.id}`, {
                           method: "POST",
                           headers: {
                             "Authorization": `Bearer ${token}`,
@@ -951,13 +1410,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                             "Content-Type": "application/json",
                           },
                           body: JSON.stringify({
-                            classId: liveClass.id,
                             issueType,
                             description: issueDescription || undefined,
                           }),
                         })
                         if (res.ok) setIssueSent(true)
                       } catch {
+                        setJoinError("Failed to submit issue report")
                       } finally {
                         setIssueSubmitting(false)
                       }

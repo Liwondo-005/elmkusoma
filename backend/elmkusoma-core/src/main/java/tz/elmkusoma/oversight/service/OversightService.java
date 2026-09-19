@@ -3,7 +3,6 @@ package tz.elmkusoma.oversight.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tz.elmkusoma.academic.domain.ClassGroup;
 import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.AcademicYearRepository;
 import tz.elmkusoma.academic.repository.ClassGroupRepository;
@@ -21,17 +20,6 @@ import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.oversight.domain.District;
 import tz.elmkusoma.oversight.domain.Region;
 import tz.elmkusoma.oversight.dto.*;
-import tz.elmkusoma.oversight.dto.AlertsResponse.Alert;
-import tz.elmkusoma.oversight.dto.AlertsResponse.AlertSummary;
-import tz.elmkusoma.oversight.dto.AssessmentsResponse.RecentAssessment;
-import tz.elmkusoma.oversight.dto.AssessmentsResponse.SchoolAssessment;
-import tz.elmkusoma.oversight.dto.AttendanceResponse.LowAttendanceStudent;
-import tz.elmkusoma.oversight.dto.AttendanceResponse.SchoolAttendance;
-import tz.elmkusoma.oversight.dto.CurriculumResponse.SchoolCurriculumProgress;
-import tz.elmkusoma.oversight.dto.CurriculumResponse.SubjectProgress;
-import tz.elmkusoma.oversight.dto.LiveClassesResponse.LiveClassSummary;
-import tz.elmkusoma.oversight.dto.PerformanceResponse.SchoolPerformance;
-import tz.elmkusoma.oversight.dto.PerformanceResponse.SubjectPerformance;
 import tz.elmkusoma.oversight.repository.DistrictRepository;
 import tz.elmkusoma.oversight.repository.RegionRepository;
 import tz.elmkusoma.shared.domain.Institution;
@@ -40,9 +28,9 @@ import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
-import tz.elmkusoma.teacher.domain.Teacher;
-import tz.elmkusoma.teacher.repository.TeacherRepository;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -66,7 +54,6 @@ public class OversightService {
     private final LiveClassRepository liveClassRepository;
     private final AssessmentRepository assessmentRepository;
     private final SubjectRepository subjectRepository;
-    private final TeacherRepository teacherRepository;
 
     public OversightDashboardResponse getDashboard(UUID regionId, UUID districtId) {
         String jurisdictionType;
@@ -423,7 +410,7 @@ public class OversightService {
         // Get assessments count
         Long totalAssessments = assessmentRepository.countByInstitutionIdsAndIsDeletedFalse(institutionIds);
 
-        List<SchoolPerformance> schoolPerformance = institutionIds.stream()
+        List<PerformanceResponse.SchoolPerformance> schoolPerformance = institutionIds.stream()
                 .map(instId -> {
                     List<UUID> ids = List.of(instId);
                     Double avg = currentTermId != null ? calculateAveragePerformance(ids) : 0.0;
@@ -433,7 +420,7 @@ public class OversightService {
                     String name = institutionRepository.findById(instId).map(i -> i.getName()).orElse("Unknown");
                     String code = institutionRepository.findById(instId).map(i -> i.getCode()).orElse("");
 
-                    return SchoolPerformance.builder()
+                    return PerformanceResponse.SchoolPerformance.builder()
                             .institutionId(instId.toString())
                             .institutionName(name)
                             .institutionCode(code)
@@ -445,14 +432,13 @@ public class OversightService {
                 })
                 .collect(Collectors.toList());
 
-        List<SubjectPerformance> subjectPerformance = subjectRepository.findByInstitutionIdsAndIsDeletedFalse(institutionIds).stream()
+        List<PerformanceResponse.SubjectPerformance> subjectPerformance = subjectRepository.findByInstitutionIdsAndIsDeletedFalse(institutionIds).stream()
                 .map(subj -> {
-                    List<UUID> ids = List.of(subj.getId());
-                    long assessments = assessmentRepository.findBySubjectIdAndInstitutionIdsAndIsDeletedFalse(subj.getId(), institutionIds).size();
+                    Long assessments = assessmentRepository.countBySubjectIdAndInstitutionIdsAndIsDeletedFalse(subj.getId(), institutionIds);
                     Double avg = assessments > 0 ? calculateSubjectAverage(subj.getId(), institutionIds, currentTermId) : 0.0;
                     Double pr = assessments > 0 ? calculateSubjectPassRate(subj.getId(), institutionIds, currentTermId) : 0.0;
 
-                    return SubjectPerformance.builder()
+                    return PerformanceResponse.SubjectPerformance.builder()
                             .subjectName(subj.getName())
                             .subjectCode(subj.getCode())
                             .averageScore(avg)
@@ -480,7 +466,7 @@ public class OversightService {
         Long totalStudents = membershipRepository.countByInstitutionIdsAndRoleAndIsDeletedFalse(institutionIds, InstitutionMembership.Role.STUDENT);
         Long schoolsAtRisk = institutionRepository.countByInstitutionIdsAndAttendanceBelow(institutionIds, 75.0);
 
-        List<SchoolAttendance> schoolAttendance = institutionIds.stream()
+        List<AttendanceResponse.SchoolAttendance> schoolAttendance = institutionIds.stream()
                 .map(instId -> {
                     List<UUID> ids = List.of(instId);
                     Double rate = currentTermId != null ? calculateAttendanceRate(ids) : 0.0;
@@ -490,7 +476,7 @@ public class OversightService {
                     String name = institutionRepository.findById(instId).map(i -> i.getName()).orElse("Unknown");
                     String code = institutionRepository.findById(instId).map(i -> i.getCode()).orElse("");
 
-                    return SchoolAttendance.builder()
+                    return AttendanceResponse.SchoolAttendance.builder()
                             .institutionId(instId.toString())
                             .institutionName(name)
                             .institutionCode(code)
@@ -502,13 +488,13 @@ public class OversightService {
                 })
                 .collect(Collectors.toList());
 
-        List<LowAttendanceStudent> lowAttendanceStudents = new ArrayList<>();
+        List<AttendanceResponse.LowAttendanceStudent> lowAttendanceStudents = new ArrayList<>();
         if (currentTermId != null) {
             List<AttendanceSummary> low = attendanceSummaryRepository.findStudentsWithLowAttendance(currentTermId, 75.0);
             for (AttendanceSummary summary : low) {
                 if (institutionIds.contains(summary.getInstitutionId())) {
                     String instName = institutionRepository.findById(summary.getInstitutionId()).map(i -> i.getName()).orElse("Unknown");
-                    lowAttendanceStudents.add(LowAttendanceStudent.builder()
+                    lowAttendanceStudents.add(AttendanceResponse.LowAttendanceStudent.builder()
                             .studentId(summary.getStudentId().toString())
                             .studentName("Student " + summary.getStudentId().toString().substring(0, 8))
                             .institutionName(instName)
@@ -538,7 +524,10 @@ public class OversightService {
 
         Double overallProgress = totalLessons > 0 ? Math.round((double) completedLessons / totalLessons * 1000.0) / 10.0 : 0.0;
 
-        List<SchoolCurriculumProgress> schoolProgress = institutionIds.stream()
+        Long schoolsOnTrack = 0L;
+        Long schoolsBehind = 0L;
+
+        List<CurriculumResponse.SchoolCurriculumProgress> schoolProgress = institutionIds.stream()
                 .map(instId -> {
                     List<UUID> ids = List.of(instId);
                     Long total = lessonRepository.countByInstitutionIdsAndIsDeletedFalse(ids);
@@ -548,7 +537,7 @@ public class OversightService {
                     String name = institutionRepository.findById(instId).map(i -> i.getName()).orElse("Unknown");
                     String code = institutionRepository.findById(instId).map(i -> i.getCode()).orElse("");
 
-                    return SchoolCurriculumProgress.builder()
+                    return CurriculumResponse.SchoolCurriculumProgress.builder()
                             .institutionId(instId.toString())
                             .institutionName(name)
                             .institutionCode(code)
@@ -560,17 +549,16 @@ public class OversightService {
                 })
                 .collect(Collectors.toList());
 
-        long schoolsOnTrack = schoolProgress.stream().filter(s -> "ON_TRACK".equals(s.getStatus())).count();
-        long schoolsBehind = schoolProgress.stream().filter(s -> !"ON_TRACK".equals(s.getStatus())).count();
+        schoolsOnTrack = schoolProgress.stream().filter(s -> "ON_TRACK".equals(s.getStatus())).count();
+        schoolsBehind = schoolProgress.stream().filter(s -> !"ON_TRACK".equals(s.getStatus())).count();
 
-        List<SubjectProgress> subjectProgress = subjectRepository.findByInstitutionIdsAndIsDeletedFalse(institutionIds).stream()
+        List<CurriculumResponse.SubjectProgress> subjectProgress = subjectRepository.findByInstitutionIdsAndIsDeletedFalse(institutionIds).stream()
                 .map(subj -> {
-                    List<UUID> ids = List.of(subj.getId());
                     Long total = lessonRepository.countByInstitutionIdsAndSubjectIdAndIsDeletedFalse(institutionIds, subj.getId());
                     Long completed = lessonRepository.countByInstitutionIdsAndSubjectIdAndPublishedAndIsDeletedFalse(institutionIds, subj.getId(), true);
                     Double progress = total > 0 ? Math.round((double) completed / total * 1000.0) / 10.0 : 0.0;
 
-                    return SubjectProgress.builder()
+                    return CurriculumResponse.SubjectProgress.builder()
                             .subjectName(subj.getName())
                             .subjectCode(subj.getCode())
                             .totalLessons(total)
@@ -601,7 +589,7 @@ public class OversightService {
         Double passRate = currentTermId != null ? calculatePassRate(institutionIds, currentTermId) : 0.0;
         Long pendingGrading = assessmentRepository.countByInstitutionIdsAndStatusAndIsDeletedFalse(institutionIds, "PENDING_GRADING");
 
-        List<SchoolAssessment> schoolAssessments = institutionIds.stream()
+        List<AssessmentsResponse.SchoolAssessment> schoolAssessments = institutionIds.stream()
                 .map(instId -> {
                     List<UUID> ids = List.of(instId);
                     Long count = assessmentRepository.countByInstitutionIdsAndIsDeletedFalse(ids);
@@ -611,7 +599,7 @@ public class OversightService {
                     String name = institutionRepository.findById(instId).map(i -> i.getName()).orElse("Unknown");
                     String code = institutionRepository.findById(instId).map(i -> i.getCode()).orElse("");
 
-                    return SchoolAssessment.builder()
+                    return AssessmentsResponse.SchoolAssessment.builder()
                             .institutionId(instId.toString())
                             .institutionName(name)
                             .institutionCode(code)
@@ -623,18 +611,18 @@ public class OversightService {
                 })
                 .collect(Collectors.toList());
 
-        List<RecentAssessment> recentAssessments = assessmentRepository.findRecentByInstitutionIds(institutionIds).stream()
-                .limit(10)
+        List<AssessmentsResponse.RecentAssessment> recentAssessments = assessmentRepository.findRecentByInstitutionIds(institutionIds, 10).stream()
                 .map(a -> {
-                    String instName = a.getInstitutionId() != null ? institutionRepository.findById(a.getInstitutionId()).map(Institution::getName).orElse("Unknown") : "Unknown";
+                    UUID instId = a.getInstitutionId();
+                    String instName = instId != null ? institutionRepository.findById(instId).map(Institution::getName).orElse("Unknown") : "Unknown";
                     String subjName = a.getSubjectId() != null ? subjectRepository.findById(a.getSubjectId()).map(Subject::getName).orElse("Unknown") : "Unknown";
-                    return RecentAssessment.builder()
+                    return AssessmentsResponse.RecentAssessment.builder()
                             .id(a.getId().toString())
                             .title(a.getTitle())
                             .institutionName(instName)
                             .subjectName(subjName)
                             .scheduledDate(a.getStartsAt() != null ? a.getStartsAt().toString() : "")
-                            .status(a.getIsPublished() != null && a.getIsPublished() ? "PUBLISHED" : "DRAFT")
+                            .status(Boolean.TRUE.equals(a.getIsPublished()) ? "PUBLISHED" : "DRAFT")
                             .participantCount(0L)
                             .build();
                 })
@@ -654,25 +642,33 @@ public class OversightService {
     public LiveClassesResponse getLiveClasses(UUID regionId, UUID districtId) {
         List<UUID> institutionIds = getInstitutionIdsInJurisdiction(regionId, districtId);
 
+        LocalDate today = LocalDate.now();
+        LocalDateTime weekStart = today.with(DayOfWeek.MONDAY).atStartOfDay();
+        LocalDateTime weekEnd = weekStart.plusWeeks(1).minusNanos(1);
+
         Long liveNow = liveClassRepository.countByInstitutionIdsAndStatusAndIsDeletedFalse(institutionIds, "IN_PROGRESS");
-        Long scheduledToday = liveClassRepository.countByInstitutionIdsAndStatusAndScheduledToday(institutionIds, "SCHEDULED", java.time.LocalDate.now());
-        Long completedToday = liveClassRepository.countByInstitutionIdsAndStatusAndCompletedToday(institutionIds, "COMPLETED", java.time.LocalDate.now());
-        java.time.LocalDateTime weekStart = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY).atStartOfDay();
-        java.time.LocalDateTime weekEnd = weekStart.plusDays(7);
+        Long scheduledToday = liveClassRepository.countByInstitutionIdsAndStatusAndScheduledToday(institutionIds, "SCHEDULED", today);
+        Long completedToday = liveClassRepository.countByInstitutionIdsAndStatusAndCompletedToday(institutionIds, "COMPLETED", today);
         Long totalThisWeek = liveClassRepository.countByInstitutionIdsAndScheduledThisWeek(institutionIds, weekStart, weekEnd);
 
-        List<LiveClassSummary> liveClasses = liveClassRepository.findByInstitutionIdsAndIsDeletedFalseOrderByScheduledAt(institutionIds).stream()
+        List<LiveClassesResponse.LiveClassSummary> liveClasses = liveClassRepository.findByInstitutionIdsAndIsDeletedFalseOrderByScheduledAt(institutionIds).stream()
                 .map(lc -> {
-                    String instName = lc.getInstitutionId() != null ? institutionRepository.findById(lc.getInstitutionId()).map(i -> i.getName()).orElse("Unknown") : "Unknown";
-                    String subjName = lc.getSubjectId() != null ? subjectRepository.findById(lc.getSubjectId()).map(s -> s.getName()).orElse("Unknown") : "Unknown";
-                    String teachName = lc.getTeacherId() != null ? teacherRepository.findById(lc.getTeacherId()).map(Teacher::getFullName).orElse("Unknown") : "Unknown";
-                    return LiveClassSummary.builder()
+                    String instName = lc.getInstitutionId() != null
+                            ? institutionRepository.findById(lc.getInstitutionId()).map(Institution::getName).orElse("Unknown")
+                            : "Unknown";
+                    String subjName = lc.getSubjectId() != null
+                            ? subjectRepository.findById(lc.getSubjectId()).map(Subject::getName).orElse("Unknown")
+                            : "Unknown";
+                    String teacherName = lc.getTeacherId() != null
+                            ? userRepository.findById(lc.getTeacherId()).map(User::getFullName).orElse("Unknown")
+                            : "Unknown";
+                    return LiveClassesResponse.LiveClassSummary.builder()
                             .id(lc.getId().toString())
                             .title(lc.getTitle())
                             .institutionName(instName)
-                            .institutionId(lc.getInstitutionId() != null ? lc.getInstitutionId().toString() : "")
+                            .institutionId(lc.getInstitutionId().toString())
                             .subjectName(subjName)
-                            .teacherName(teachName)
+                            .teacherName(teacherName)
                             .scheduledAt(lc.getScheduledAt().toString())
                             .durationMinutes(lc.getDurationMinutes())
                             .status(lc.getStatus())
@@ -724,14 +720,14 @@ public class OversightService {
         List<UUID> institutionIds = getInstitutionIdsInJurisdiction(regionId, districtId);
         UUID currentTermId = getCurrentTermId();
 
-        List<Alert> alerts = new ArrayList<>();
+        List<AlertsResponse.Alert> alerts = new ArrayList<>();
 
         if (currentTermId != null) {
             List<AttendanceSummary> lowAttendance = attendanceSummaryRepository.findStudentsWithLowAttendance(currentTermId, 75.0);
             for (AttendanceSummary summary : lowAttendance) {
                 if (institutionIds.contains(summary.getInstitutionId())) {
                     String instName = institutionRepository.findById(summary.getInstitutionId()).map(i -> i.getName()).orElse("Unknown");
-                    alerts.add(Alert.builder()
+                    alerts.add(AlertsResponse.Alert.builder()
                             .id(UUID.randomUUID().toString())
                             .type("LOW_ATTENDANCE")
                             .title("Low Attendance Alert")
@@ -751,7 +747,7 @@ public class OversightService {
             List<ReportCard> lowPerformance = reportCardRepository.findByInstitutionIdsAndTermIdAndAverageMarkBelow(institutionIds, currentTermId, 40.0);
             for (ReportCard rc : lowPerformance) {
                 String instName = institutionRepository.findById(rc.getInstitutionId()).map(i -> i.getName()).orElse("Unknown");
-                alerts.add(Alert.builder()
+                alerts.add(AlertsResponse.Alert.builder()
                         .id(UUID.randomUUID().toString())
                         .type("LOW_PERFORMANCE")
                         .title("Low Performance Alert")
@@ -778,7 +774,7 @@ public class OversightService {
 
         return AlertsResponse.builder()
                 .alerts(alerts)
-                .summary(AlertSummary.builder()
+                .summary(AlertsResponse.AlertSummary.builder()
                         .total((long) alerts.size())
                         .high(high)
                         .medium(medium)
@@ -847,8 +843,12 @@ public class OversightService {
 
         String institutionName = institutionRepository.findById(institutionId)
                 .map(Institution::getName).orElse("Unknown");
-        String subjectName = liveClass.getSubjectId() != null ? subjectRepository.findById(liveClass.getSubjectId()).map(Subject::getName).orElse("Unknown") : "Unknown";
-        String teacherName = liveClass.getTeacherId() != null ? teacherRepository.findById(liveClass.getTeacherId()).map(Teacher::getFullName).orElse("Unknown") : "Unknown";
+        String subjectName = liveClass.getSubjectId() != null
+                ? subjectRepository.findById(liveClass.getSubjectId()).map(Subject::getName).orElse("Unknown")
+                : "Unknown";
+        String teacherName = liveClass.getTeacherId() != null
+                ? userRepository.findById(liveClass.getTeacherId()).map(User::getFullName).orElse("Unknown")
+                : "Unknown";
 
         return ObserverJoinResponse.builder()
                 .websocketUrl(websocketUrl)

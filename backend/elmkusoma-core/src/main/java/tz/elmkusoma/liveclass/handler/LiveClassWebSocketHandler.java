@@ -14,9 +14,13 @@ import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 import tz.elmkusoma.liveclass.domain.LiveClassChatMessage;
 import tz.elmkusoma.liveclass.domain.LiveClassSessionEvent;
+import tz.elmkusoma.liveclass.domain.LiveClassHandRaiseQueue;
+import tz.elmkusoma.liveclass.domain.LiveClassAttendanceDetail;
 import tz.elmkusoma.liveclass.repository.LiveClassChatMessageRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassSessionEventRepository;
+import tz.elmkusoma.liveclass.repository.LiveClassHandRaiseQueueRepository;
+import tz.elmkusoma.liveclass.repository.LiveClassAttendanceDetailRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -39,6 +43,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private final UserRepository userRepository;
     private final InstitutionMembershipRepository membershipRepository;
     private final TeacherRepository teacherRepository;
+    private final LiveClassHandRaiseQueueRepository handRaiseQueueRepository;
+    private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
     private final ObjectMapper objectMapper;
     private final CorePresenceService corePresenceService;
     private final EventPublisherService eventPublisherService;
@@ -59,7 +65,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                                       ObjectMapper objectMapper,
                                       CorePresenceService corePresenceService,
                                       EventPublisherService eventPublisherService,
-                                      TeacherRepository teacherRepository) {
+                                      TeacherRepository teacherRepository,
+                                      LiveClassHandRaiseQueueRepository handRaiseQueueRepository,
+                                      LiveClassAttendanceDetailRepository attendanceDetailRepository) {
         this.liveClassRepository = liveClassRepository;
         this.participantRepository = participantRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -70,6 +78,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         this.corePresenceService = corePresenceService;
         this.eventPublisherService = eventPublisherService;
         this.teacherRepository = teacherRepository;
+        this.handRaiseQueueRepository = handRaiseQueueRepository;
+        this.attendanceDetailRepository = attendanceDetailRepository;
     }
 
     @Override
@@ -357,6 +367,20 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
 
         sessionHandRaised.put(session.getId(), true);
 
+        Optional<LiveClassHandRaiseQueue> existing = handRaiseQueueRepository
+                .findByLiveClassIdAndUserIdAndIsActiveTrueAndIsDeletedFalse(classId, userId);
+        if (existing.isEmpty()) {
+            Integer maxPos = handRaiseQueueRepository.findMaxPositionByLiveClassId(classId);
+            LiveClassHandRaiseQueue queueEntry = LiveClassHandRaiseQueue.builder()
+                    .liveClassId(classId)
+                    .userId(userId)
+                    .raisedAt(LocalDateTime.now())
+                    .position(maxPos + 1)
+                    .isActive(true)
+                    .build();
+            handRaiseQueueRepository.save(queueEntry);
+        }
+
         User user = userRepository.findById(userId).orElse(null);
         String displayName = user != null ? user.getFullName() : "Unknown";
 
@@ -367,6 +391,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         event.put("timestamp", LocalDateTime.now().toString());
 
         broadcastToClass(classId, event, null);
+        broadcastHandRaiseQueue(classId);
         recordEvent(classId, userId, "HAND_RAISED", displayName);
     }
 
@@ -375,6 +400,13 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         if (userId == null) return;
 
         sessionHandRaised.put(session.getId(), false);
+
+        handRaiseQueueRepository.findByLiveClassIdAndUserIdAndIsActiveTrueAndIsDeletedFalse(classId, userId)
+                .ifPresent(entry -> {
+                    entry.setIsActive(false);
+                    entry.setLoweredAt(LocalDateTime.now());
+                    handRaiseQueueRepository.save(entry);
+                });
 
         User user = userRepository.findById(userId).orElse(null);
         String displayName = user != null ? user.getFullName() : "Unknown";
@@ -386,6 +418,29 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         event.put("timestamp", LocalDateTime.now().toString());
 
         broadcastToClass(classId, event, null);
+        broadcastHandRaiseQueue(classId);
+    }
+
+    private void broadcastHandRaiseQueue(UUID classId) {
+        List<LiveClassHandRaiseQueue> queue = handRaiseQueueRepository
+                .findByLiveClassIdAndIsActiveTrueAndIsDeletedFalseOrderByPositionAsc(classId);
+
+        List<Map<String, Object>> queueList = new ArrayList<>();
+        for (int i = 0; i < queue.size(); i++) {
+            LiveClassHandRaiseQueue entry = queue.get(i);
+            User u = userRepository.findById(entry.getUserId()).orElse(null);
+            Map<String, Object> item = new HashMap<>();
+            item.put("userId", entry.getUserId().toString());
+            item.put("userName", u != null ? u.getFullName() : "Unknown");
+            item.put("position", i + 1);
+            item.put("raisedAt", entry.getRaisedAt() != null ? entry.getRaisedAt().toString() : null);
+            queueList.add(item);
+        }
+
+        Map<String, Object> queueEvent = new HashMap<>();
+        queueEvent.put("type", "HAND_RAISE_QUEUE");
+        queueEvent.put("queue", queueList);
+        broadcastToClass(classId, queueEvent, null);
     }
 
     private void handleScreenShareStart(WebSocketSession session, UUID classId) throws IOException {
@@ -520,6 +575,35 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
 
     private void handleHeartbeat(WebSocketSession session) {
         session.getAttributes().put("lastHeartbeat", LocalDateTime.now().toString());
+
+        UUID userId = sessionUserMap.get(session.getId());
+        UUID classId = sessionClassMap.get(session.getId());
+        if (userId != null && classId != null) {
+            try {
+                attendanceDetailRepository.findByLiveClassIdAndIsDeletedFalse(classId).stream()
+                        .filter(d -> d.getUserId().equals(userId))
+                        .findFirst()
+                        .ifPresentOrElse(
+                                detail -> {
+                                    if (detail.getLeftAt() != null) {
+                                        detail.setLeftAt(null);
+                                        attendanceDetailRepository.save(detail);
+                                    }
+                                },
+                                () -> {
+                                    LiveClassAttendanceDetail detail = LiveClassAttendanceDetail.builder()
+                                            .liveClassId(classId)
+                                            .userId(userId)
+                                            .joinedAt(LocalDateTime.now())
+                                            .totalSeconds(0)
+                                            .build();
+                                    attendanceDetailRepository.save(detail);
+                                }
+                        );
+            } catch (Exception e) {
+                log.debug("Failed to update attendance detail for user {} in class {}", userId, classId);
+            }
+        }
     }
 
     @Override
@@ -563,6 +647,32 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                     }
                     participantRepository.save(participant);
                 });
+
+        try {
+            attendanceDetailRepository.findByLiveClassIdAndIsDeletedFalse(classId).stream()
+                    .filter(d -> d.getUserId().equals(userId) && d.getLeftAt() == null)
+                    .findFirst()
+                    .ifPresent(detail -> {
+                        detail.setLeftAt(LocalDateTime.now());
+                        if (detail.getJoinedAt() != null) {
+                            int total = (int) java.time.Duration.between(detail.getJoinedAt(), LocalDateTime.now()).getSeconds();
+                            detail.setTotalSeconds(total);
+
+                            LiveClass lc = liveClassRepository.findById(classId).orElse(null);
+                            if (lc != null && lc.getDurationMinutes() != null && lc.getDurationMinutes() > 0) {
+                                int sessionSeconds = lc.getDurationMinutes() * 60;
+                                java.math.BigDecimal pct = java.math.BigDecimal.valueOf(total)
+                                        .divide(java.math.BigDecimal.valueOf(sessionSeconds), 4, java.math.RoundingMode.HALF_UP)
+                                        .multiply(java.math.BigDecimal.valueOf(100))
+                                        .min(java.math.BigDecimal.valueOf(100));
+                                detail.setPercentage(pct);
+                            }
+                        }
+                        attendanceDetailRepository.save(detail);
+                    });
+        } catch (Exception e) {
+            log.debug("Failed to finalize attendance detail for user {} in class {}", userId, classId);
+        }
 
         User user = userRepository.findById(userId).orElse(null);
         String displayName = user != null ? user.getFullName() : "Unknown";

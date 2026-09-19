@@ -25,9 +25,13 @@ public class ParentLearningProgressResponse {
     public static class CourseProgress {
         private String subjectId;
         private String subjectName;
+        private String courseId;
+        private String courseName;
         private Integer totalLessons;
         private Integer completedLessons;
+        private Integer pendingLessons;
         private Double completionPercentage;
+        private Double progressPercentage;
         private String status;
     }
 }

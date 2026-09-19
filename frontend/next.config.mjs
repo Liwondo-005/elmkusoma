@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -7,26 +8,28 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
+    const apiUrl = process.env.BACKEND_URL || "http://localhost:8080"
+    const mediaUrl = process.env.MEDIA_URL || "http://localhost:8083"
+    const realtimeUrl = process.env.REALTIME_URL || "http://localhost:8081"
     return [
       {
-        source: "/api/v1/:path*",
-        destination: "http://localhost:8080/v1/:path*",
+        source: "/api/v1/media/:path*",
+        destination: `${mediaUrl}/api/v1/media/:path*`,
       },
       {
         source: "/v1/:path*",
-        destination: "http://localhost:8080/v1/:path*",
+        destination: `${apiUrl}/v1/:path*`,
       },
       {
-        source: "/api/v1/media/:path*",
-        destination: "http://localhost:8083/api/v1/media/:path*",
+        source: "/api/v1/:path*",
+        destination: `${apiUrl}/v1/:path*`,
       },
       {
         source: "/ws/:path*",
-        destination: "http://localhost:8081/ws/:path*",
+        destination: `${realtimeUrl}/ws/:path*`,
       },
     ]
   },
-  // Explicitly bind to all interfaces
   async headers() {
     return []
   },

@@ -27,13 +27,13 @@ public class StudentCourseEnrollmentService {
     }
 
     public List<StudentCourseEnrollmentDTO> getActiveEnrollments(UUID studentId) {
-        return repository.findByStudentIdAndStatusAndIsDeletedFalse(studentId, "ENROLLED").stream()
+        return repository.findByStudentIdAndStatusAndIsDeletedFalse(studentId, EnrollmentStatus.ENROLLED).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
     public long countActiveEnrollments(UUID studentId) {
-        return repository.countByStudentIdAndStatusAndIsDeletedFalse(studentId, "ENROLLED");
+        return repository.countByStudentIdAndStatusAndIsDeletedFalse(studentId, EnrollmentStatus.ENROLLED);
     }
 
     public StudentCourseEnrollmentDTO create(StudentCourseEnrollmentDTO dto) {

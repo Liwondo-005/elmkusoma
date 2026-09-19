@@ -15,7 +15,7 @@ import java.util.List;
 public class ParentNotificationResponse {
 
     private List<NotificationItem> notifications;
-    private Integer unreadCount;
+    private Long unreadCount;
 
     @Data
     @Builder
@@ -26,7 +26,11 @@ public class ParentNotificationResponse {
         private String type;
         private String title;
         private String detail;
+        private String message;
+        private String category;
         private String childName;
+        private String targetType;
+        private String targetId;
         private LocalDateTime createdAt;
         private Boolean isRead;
         private String priority;

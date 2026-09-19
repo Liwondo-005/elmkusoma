@@ -21,6 +21,7 @@ interface LiveClass {
   subjectId: string | null
   createdAt: string
   recordingEnabled: boolean | null
+  recordingUrl: string | null
   currentParticipants: number | null
   sessionType: string | null
 }
@@ -62,6 +63,11 @@ const initialForm = {
   subjectId: "",
   enableRecording: false,
   sessionType: "LECTURE",
+  timezone: "Africa/Dar_es_Salaam",
+  isRecurring: false,
+  recurrencePattern: "",
+  recurrenceEndDate: "",
+  lobbyEnabled: false,
 }
 
 export default function TeacherLiveClassesPage() {
@@ -125,7 +131,7 @@ export default function TeacherLiveClassesPage() {
     setReviewMode(false)
   }
 
-  function startEdit(lc: LiveClass) {
+  function startEdit(lc: any) {
     setForm({
       title: lc.title,
       description: lc.description || "",
@@ -136,6 +142,11 @@ export default function TeacherLiveClassesPage() {
       subjectId: lc.subjectId || "",
       enableRecording: lc.recordingEnabled || false,
       sessionType: lc.sessionType || "LECTURE",
+      timezone: lc.timezone || "Africa/Dar_es_Salaam",
+      isRecurring: lc.isRecurring || false,
+      recurrencePattern: lc.recurrencePattern || "",
+      recurrenceEndDate: lc.recurrenceEndDate || "",
+      lobbyEnabled: lc.lobbyEnabled || false,
     })
     setEditingId(lc.id)
     setShowForm(true)
@@ -167,10 +178,15 @@ export default function TeacherLiveClassesPage() {
         durationMinutes: Number(form.durationMinutes) || 60,
         maxParticipants: Number(form.maxParticipants) || 50,
         recordingEnabled: form.enableRecording,
+        timezone: form.timezone,
+        isRecurring: form.isRecurring,
+        lobbyEnabled: form.lobbyEnabled,
       }
         if (form.classGroupId) payload.classGroupId = form.classGroupId
         if (form.subjectId) payload.subjectId = form.subjectId
         if (form.sessionType) payload.sessionType = form.sessionType
+        if (form.isRecurring && form.recurrencePattern) payload.recurrencePattern = form.recurrencePattern
+        if (form.isRecurring && form.recurrenceEndDate) payload.recurrenceEndDate = form.recurrenceEndDate
 
       if (editingId) {
         await appFetch(`/v1/teachers/me/live-classes/${editingId}`, {
@@ -440,9 +456,81 @@ export default function TeacherLiveClassesPage() {
             <span className="text-xs text-muted-foreground">Record this session for replay</span>
           </div>
 
-          <div className="rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
-            Timezone: Africa/Dar_es_Salaam (UTC+03:00)
+          <div className="flex items-center gap-4 rounded-lg border border-border bg-background p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.lobbyEnabled}
+                onChange={(e) => setForm({ ...form, lobbyEnabled: e.target.checked })}
+                className="size-4 rounded border-border"
+              />
+              <span className="text-sm text-foreground">Enable pre-start lobby</span>
+            </label>
+            <span className="text-xs text-muted-foreground">Teachers can prepare before students join</span>
           </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Timezone</label>
+            <select
+              value={form.timezone}
+              onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+            >
+              <option value="Africa/Dar_es_Salaam">Africa/Dar es Salaam (UTC+03:00)</option>
+              <option value="Africa/Nairobi">Africa/Nairobi (UTC+03:00)</option>
+              <option value="Africa/Kampala">Africa/Kampala (UTC+03:00)</option>
+              <option value="Africa/Kigali">Africa/Kigali (UTC+02:00)</option>
+              <option value="Africa/Lagos">Africa/Lagos (UTC+01:00)</option>
+              <option value="Africa/Johannesburg">Africa/Johannesburg (UTC+02:00)</option>
+              <option value="Europe/London">Europe/London (UTC+00:00)</option>
+              <option value="America/New_York">America/New York (UTC-05:00)</option>
+              <option value="Asia/Dubai">Asia/Dubai (UTC+04:00)</option>
+              <option value="Asia/Kolkata">Asia/Kolkata (UTC+05:30)</option>
+              <option value="Asia/Shanghai">Asia/Shanghai (UTC+08:00)</option>
+              <option value="Asia/Tokyo">Asia/Tokyo (UTC+09:00)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-4 rounded-lg border border-border bg-background p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.isRecurring}
+                onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
+                className="size-4 rounded border-border"
+              />
+              <span className="text-sm text-foreground">Recurring class</span>
+            </label>
+            <span className="text-xs text-muted-foreground">Automatically create repeated sessions</span>
+          </div>
+
+          {form.isRecurring && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Repeat pattern</label>
+                <select
+                  value={form.recurrencePattern}
+                  onChange={(e) => setForm({ ...form, recurrencePattern: e.target.value })}
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                >
+                  <option value="">Select pattern</option>
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="BIWEEKLY">Bi-weekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Recurrence end date</label>
+                <input
+                  type="date"
+                  value={form.recurrenceEndDate}
+                  onChange={(e) => setForm({ ...form, recurrenceEndDate: e.target.value })}
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={resetForm}>Cancel</Button>
@@ -500,8 +588,18 @@ export default function TeacherLiveClassesPage() {
             </div>
             <div>
               <span className="text-xs font-medium text-muted-foreground">Timezone</span>
-              <p className="text-foreground">Africa/Dar_es_Salaam (UTC+03:00)</p>
+              <p className="text-foreground">{form.timezone}</p>
             </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Lobby</span>
+              <p className="text-foreground">{form.lobbyEnabled ? "Enabled" : "Disabled"}</p>
+            </div>
+            {form.isRecurring && (
+              <div>
+                <span className="text-xs font-medium text-muted-foreground">Recurring</span>
+                <p className="text-foreground">{form.recurrencePattern} until {form.recurrenceEndDate}</p>
+              </div>
+            )}
           </div>
           {form.description && (
             <div>
@@ -641,15 +739,28 @@ export default function TeacherLiveClassesPage() {
                       </>
                     )}
                     {(lc.status === "COMPLETED" || lc.status === "ENDED" || lc.status === "CANCELLED") && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleCancel(lc.id)}
-                        title="Delete"
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
+                      <>
+                        {lc.recordingUrl && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() => window.open(`/live-classes/${lc.id}`, "_blank")}
+                          >
+                            <ExternalLink className="size-3" />
+                            View Recording
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleCancel(lc.id)}
+                          title="Delete"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

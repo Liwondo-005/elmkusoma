@@ -163,6 +163,7 @@ class AuthServiceTest {
                 .lastName("Doe")
                 .role(User.Role.STUDENT)
                 .isActive(true)
+                .isEmailVerified(true)
                 .passwordHash("encoded_password")
                 .build();
 
@@ -240,6 +241,7 @@ class AuthServiceTest {
                 .lastName("Doe")
                 .role(User.Role.STUDENT)
                 .isActive(true)
+                .isEmailVerified(true)
                 .build();
 
         when(userRepository.findByEmailAndIsDeletedFalse("john@example.com"))

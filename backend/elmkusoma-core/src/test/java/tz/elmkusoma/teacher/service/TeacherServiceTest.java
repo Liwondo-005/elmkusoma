@@ -225,7 +225,17 @@ class TeacherServiceTest {
 
     @Test
     void addAssignment_shouldSaveAssignmentToTeacher() {
-        when(teacherRepository.existsById(teacherId)).thenReturn(true);
+        Teacher teacher = Teacher.builder()
+                .userId(userId)
+                .employeeNumber("EMP001")
+                .status(TeacherStatus.ACTIVE)
+                .specialization("Mathematics")
+                .build();
+        teacher.setId(teacherId);
+        teacher.setInstitutionId(institutionId);
+
+        when(teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
+                .thenReturn(Optional.of(teacher));
 
         UUID classGroupId = UUID.randomUUID();
         UUID subjectId = UUID.randomUUID();
@@ -258,7 +268,8 @@ class TeacherServiceTest {
     @Test
     void addAssignment_whenTeacherNotFound_shouldThrow() {
         UUID nonExistentTeacherId = UUID.randomUUID();
-        when(teacherRepository.existsById(nonExistentTeacherId)).thenReturn(false);
+        when(teacherRepository.findByIdAndInstitutionId(nonExistentTeacherId, institutionId))
+                .thenReturn(Optional.empty());
 
         TeacherAssignmentRequest request = new TeacherAssignmentRequest();
         request.setClassGroupId(UUID.randomUUID().toString());

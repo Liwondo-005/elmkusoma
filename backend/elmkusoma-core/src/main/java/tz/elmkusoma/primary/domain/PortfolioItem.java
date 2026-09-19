@@ -7,8 +7,8 @@ import tz.elmkusoma.common.BaseEntity;
 
 import java.util.UUID;
 
-@Entity
-@Table(name = "portfolio_items")
+@Entity(name = "StudentPortfolioItem")
+@Table(name = "student_portfolio_items")
 public class PortfolioItem extends BaseEntity {
 
     @Column(name = "student_id", nullable = false)

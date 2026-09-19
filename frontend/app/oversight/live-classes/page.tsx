@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, Video, Play, Clock, AlertTriangle, Eye, Monitor, X, HelpCircle, CheckCircle2 } from "lucide-react"
+import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, Video, Play, Clock, AlertTriangle, Eye, Monitor, X, CheckCircle2, HelpCircle } from "lucide-react"
 import Link from "next/link"
 
 interface LiveClassMetrics {
@@ -170,7 +170,10 @@ export default function OversightLiveClassesPage() {
                     <td className="py-3 px-4 text-right text-foreground">{cls.participantCount} / {cls.maxParticipants}</td>
                     <td className="py-3 px-4 text-center">
                       {cls.status === "IN_PROGRESS" && (
-                        <button className="text-primary hover:underline text-sm flex items-center justify-center gap-1 mx-auto">
+                        <button
+                          className="text-primary hover:underline text-sm flex items-center justify-center gap-1 mx-auto"
+                          onClick={() => window.open(`/live-classes/${cls.id}`, "_blank")}
+                        >
                           <Eye className="size-3" />
                           Observe
                         </button>
@@ -207,7 +210,10 @@ function LiveClassCard({ class: cls, isLive }: { class: any; isLive: boolean }) 
           {config.label}
         </span>
         {isLive && (
-          <button className="text-primary hover:underline text-sm flex items-center gap-1">
+          <button
+            className="text-primary hover:underline text-sm flex items-center gap-1"
+            onClick={() => window.open(`/live-classes/${cls.id}`, "_blank")}
+          >
             <Eye className="size-3" />
             Observe
           </button>

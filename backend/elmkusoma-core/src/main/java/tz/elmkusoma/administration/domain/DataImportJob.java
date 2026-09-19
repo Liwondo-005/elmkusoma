@@ -1,8 +1,9 @@
 package tz.elmkusoma.administration.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
@@ -16,8 +17,6 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@SuperBuilder
 public class DataImportJob extends BaseEntity {
 
     @Column(name = "imported_by", nullable = false)
@@ -67,18 +66,18 @@ public class DataImportJob extends BaseEntity {
 
     public static DataImportJob of(UUID importedBy, String importType, String fileName,
                                    String fileUrl, UUID institutionId) {
-        return DataImportJob.builder()
-                .importedBy(importedBy)
-                .importType(importType)
-                .fileName(fileName)
-                .fileUrl(fileUrl)
-                .institutionId(institutionId)
-                .status(ImportStatus.PENDING)
-                .totalRows(0)
-                .processedRows(0)
-                .successfulRows(0)
-                .failedRows(0)
-                .startedAt(LocalDateTime.now())
-                .build();
+        DataImportJob job = new DataImportJob();
+        job.setImportedBy(importedBy);
+        job.setImportType(importType);
+        job.setFileName(fileName);
+        job.setFileUrl(fileUrl);
+        job.setInstitutionId(institutionId);
+        job.setStatus(ImportStatus.PENDING);
+        job.setTotalRows(0);
+        job.setProcessedRows(0);
+        job.setSuccessfulRows(0);
+        job.setFailedRows(0);
+        job.setStartedAt(LocalDateTime.now());
+        return job;
     }
 }
