@@ -7,7 +7,7 @@ import tz.elmkusoma.common.BaseEntity;
 
 import java.util.UUID;
 
-@Entity
+@Entity(name = "HighEdLearningCollaboration")
 @Table(name = "learning_collaborations")
 @Getter
 @Setter

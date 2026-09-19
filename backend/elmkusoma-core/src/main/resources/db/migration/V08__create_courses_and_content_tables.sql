@@ -11,7 +11,7 @@ CREATE TABLE courses (
     category VARCHAR(100),
     is_published BOOLEAN NOT NULL DEFAULT false,
     is_featured BOOLEAN NOT NULL DEFAULT false,
-    created_by UUID REFERENCES users(id),
+    created_by VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP,
     updated_by VARCHAR(255),

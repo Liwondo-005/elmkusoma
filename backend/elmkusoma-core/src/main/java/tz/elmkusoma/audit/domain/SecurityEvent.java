@@ -58,6 +58,9 @@ public class SecurityEvent {
     @Column(name = "resolved_by")
     private UUID resolvedBy;
 
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -97,6 +100,8 @@ public class SecurityEvent {
     public void setResolvedAt(LocalDateTime resolvedAt) { this.resolvedAt = resolvedAt; }
     public UUID getResolvedBy() { return resolvedBy; }
     public void setResolvedBy(UUID resolvedBy) { this.resolvedBy = resolvedBy; }
+    public Boolean getIsDeleted() { return isDeleted; }
+    public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Boolean getIsDeleted() { return isDeleted; }
