@@ -34,6 +34,14 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/dashboard/enhanced")
+    @Operation(summary = "Get enhanced dashboard with attention items and activity feed")
+    public ResponseEntity<ApiResponse<EnhancedDashboardResponse>> getEnhancedDashboard(
+            @RequestAttribute UUID institutionId) {
+        EnhancedDashboardResponse response = administrationService.getEnhancedDashboard(institutionId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     // ── Settings ──
 
     @GetMapping("/settings")

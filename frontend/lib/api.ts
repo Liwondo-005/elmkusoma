@@ -960,6 +960,126 @@ export interface SettingRequest {
   isPublic?: boolean
 }
 
+export interface EnhancedDashboardResponse {
+  institutionId: string
+  institutionName: string
+  institutionType: string
+  totalStudents: number
+  totalTeachers: number
+  totalParents: number
+  activeStudents: number
+  certificatesIssued: number
+  pendingImportJobs: number
+  totalCourses: number
+  publishedCourses: number
+  draftCourses: number
+  totalModules: number
+  totalLessons: number
+  liveClassesScheduled: number
+  pendingInvitations: number
+  unreadNotifications: number
+  enabledServices: string[]
+  recentActivity: { type: string; title: string; description: string; timestamp: string }[]
+  attentionItems: { type: string; title: string; description: string; count: number; actionUrl: string }[]
+}
+
+export interface OrgProfileResponse {
+  id: string
+  name: string
+  code: string
+  type: string
+  description: string
+  address: string
+  city: string
+  region: string
+  regionId: string
+  districtId: string
+  country: string
+  phone: string
+  email: string
+  website: string
+  logoUrl: string
+  bannerUrl: string
+  motto: string
+  foundedYear: number
+  totalCapacity: number
+  isActive: boolean
+  approvedAt: string
+  createdAt: string
+  enabledServices: string[]
+  peopleSummary: {
+    totalUsers: number
+    totalTeachers: number
+    totalStudents: number
+    totalParents: number
+    activeUsers: number
+    pendingInvitations: number
+  }
+  activitySummary: {
+    unreadNotifications: number
+    recentActivity: { id: string; actorName: string; activityType: string; title: string; description: string; createdAt: string }[]
+  }
+}
+
+export interface UpdateOrgProfileRequest {
+  name?: string
+  description?: string
+  address?: string
+  city?: string
+  region?: string
+  phone?: string
+  email?: string
+  website?: string
+  logoUrl?: string
+  bannerUrl?: string
+  motto?: string
+  foundedYear?: number
+  totalCapacity?: number
+}
+
+export interface PeopleMemberResponse {
+  userId: string
+  email: string
+  firstName: string
+  middleName: string
+  lastName: string
+  fullName: string
+  phone: string
+  membershipRole: string
+  isActive: boolean
+  isEmailVerified: boolean
+  profileImageUrl: string
+  memberSince: string
+}
+
+export interface InviteUserRequest {
+  email: string
+  role: string
+  firstName?: string
+  lastName?: string
+}
+
+export interface InvitationResponse {
+  id: string
+  email: string
+  role: string
+  status: string
+  expiresAt: string
+  createdAt: string
+}
+
+export interface InstitutionAuditLogResponse {
+  id: string
+  actorEmail: string
+  actorRole: string
+  action: string
+  targetType: string
+  targetId: string
+  details: string
+  ipAddress: string
+  createdAt: string
+}
+
 export const adminApi = {
   getDashboard: (institutionId: string) =>
     request<DashboardResponse>(`/v1/admin/dashboard?institutionId=${institutionId}`),
@@ -1003,6 +1123,65 @@ export const adminApi = {
 
   getImportJob: (institutionId: string, jobId: string) =>
     request<ImportJobResponse>(`/v1/admin/users/import/${jobId}?institutionId=${institutionId}`),
+
+  getEnhancedDashboard: (institutionId: string) =>
+    request<EnhancedDashboardResponse>(`/v1/admin/dashboard/enhanced?institutionId=${institutionId}`),
+
+  getOrgProfile: (institutionId: string) =>
+    request<OrgProfileResponse>(`/v1/admin/org/profile?institutionId=${institutionId}`),
+
+  updateOrgProfile: (institutionId: string, data: UpdateOrgProfileRequest) =>
+    request<OrgProfileResponse>(`/v1/admin/org/profile?institutionId=${institutionId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  getEnabledServices: (institutionId: string) =>
+    request<string[]>(`/v1/admin/org/enabled-services?institutionId=${institutionId}`),
+
+  updateEnabledServices: (institutionId: string, services: string[]) =>
+    request<void>(`/v1/admin/org/enabled-services?institutionId=${institutionId}`, {
+      method: "PUT",
+      body: JSON.stringify(services),
+    }),
+
+  getAuditLog: (institutionId: string, page = 0, size = 50) =>
+    request<InstitutionAuditLogResponse[]>(`/v1/admin/org/audit-log?institutionId=${institutionId}&page=${page}&size=${size}`),
+
+  listPeople: (institutionId: string, page = 0, size = 50) =>
+    request<PeopleMemberResponse[]>(`/v1/admin/people?institutionId=${institutionId}&page=${page}&size=${size}`),
+
+  getMember: (institutionId: string, userId: string) =>
+    request<PeopleMemberResponse>(`/v1/admin/people/${userId}?institutionId=${institutionId}`),
+
+  updateMemberRole: (institutionId: string, userId: string, newRole: string) =>
+    request<PeopleMemberResponse>(`/v1/admin/people/${userId}/role?institutionId=${institutionId}&newRole=${newRole}`, {
+      method: "PUT",
+    }),
+
+  deactivateMember: (institutionId: string, userId: string) =>
+    request<void>(`/v1/admin/people/${userId}/deactivate?institutionId=${institutionId}`, {
+      method: "PUT",
+    }),
+
+  activateMember: (institutionId: string, userId: string) =>
+    request<void>(`/v1/admin/people/${userId}/activate?institutionId=${institutionId}`, {
+      method: "PUT",
+    }),
+
+  inviteUser: (institutionId: string, data: InviteUserRequest) =>
+    request<InvitationResponse>(`/v1/admin/people/invite?institutionId=${institutionId}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  listInvitations: (institutionId: string) =>
+    request<InvitationResponse[]>(`/v1/admin/people/invitations?institutionId=${institutionId}`),
+
+  cancelInvitation: (institutionId: string, invitationId: string) =>
+    request<void>(`/v1/admin/people/invitations/${invitationId}?institutionId=${institutionId}`, {
+      method: "DELETE",
+    }),
 }
 
 // ---------------------------------------------------------------------------

@@ -66,6 +66,24 @@ public class Institution {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "banner_url")
+    private String bannerUrl;
+
+    @Column(name = "motto")
+    private String motto;
+
+    @Column(name = "founded_year")
+    private Integer foundedYear;
+
+    @Column(name = "total_capacity")
+    private Integer totalCapacity;
+
+    @Column(name = "enabled_services")
+    private String enabledServices;
+
+    @Column(name = "metadata_json")
+    private String metadataJson;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
@@ -86,12 +104,27 @@ public class Institution {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
 
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "approved_by")
+    private String approvedBy;
+
     public enum InstitutionType {
         NURSERY,
         PRIMARY,
         SECONDARY,
         COLLEGE,
         VOCATIONAL,
-        UNIVERSITY
+        UNIVERSITY,
+        TRAINING_PROVIDER,
+        PROFESSIONAL_BODY,
+        COMPANY,
+        NGO,
+        GOVERNMENT,
+        CONTENT_PROVIDER,
+        EVENT_PROVIDER,
+        COMMUNITY_SCHOOL,
+        ADULT_EDUCATION
     }
 }

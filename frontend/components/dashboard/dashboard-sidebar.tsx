@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -268,13 +268,16 @@ const parentNav: Array<{ label: string; href: string; icon: typeof LayoutDashboa
 const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Platform Admin", href: "/dashboard/platform-admin", icon: ShieldCheck },
   { label: "Administration", href: "/dashboard/admin", icon: ShieldCheck },
+  { label: "People", href: "/dashboard/admin/people", icon: Users },
+  { label: "Organization", href: "/dashboard/admin/profile", icon: School },
   { label: "Institutions", href: "/dashboard/admin/institutions", icon: School },
   { label: "Programmes", href: "/dashboard/admin/programmes", icon: GraduationCap },
   { label: "Departments", href: "/dashboard/admin/departments", icon: Users },
   { label: "Competencies", href: "/dashboard/admin/competencies", icon: Target },
   { label: "Roles", href: "/dashboard/admin/roles", icon: Shield },
+  { label: "Audit Log", href: "/dashboard/admin/audit", icon: Eye },
   { label: "Data Import", href: "/dashboard/admin/import", icon: FileText },
-  { label: "Audit", href: "/dashboard/audit", icon: Shield },
+  { label: "Settings", href: "/dashboard/admin/settings", icon: Settings },
 ]
 
 function getStudentNav(user: { learningLevel?: string | null } | null) {

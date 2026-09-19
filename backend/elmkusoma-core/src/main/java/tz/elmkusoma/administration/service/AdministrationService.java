@@ -15,7 +15,9 @@ import tz.elmkusoma.course.repository.CourseModuleRepository;
 import tz.elmkusoma.course.repository.CourseRepository;
 import tz.elmkusoma.course.repository.CourseLessonRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.time.LocalDateTime;
@@ -39,6 +41,9 @@ public class AdministrationService {
     private final CourseRepository courseRepository;
     private final CourseModuleRepository courseModuleRepository;
     private final CourseLessonRepository courseLessonRepository;
+    private final InstitutionRepository institutionRepository;
+    private final InstitutionScopeService scopeService;
+    private final InstitutionAuditService auditService2;
 
     // ── System Settings ──
 
@@ -297,5 +302,76 @@ public class AdministrationService {
         }
 
         return administrationMapper.toImportJobResponse(job);
+    }
+
+    // ── Enhanced Dashboard ──
+
+    @Transactional(readOnly = true)
+    public EnhancedDashboardResponse getEnhancedDashboard(UUID institutionId) {
+        DashboardResponse base = getDashboard(institutionId);
+
+        Institution inst = institutionRepository.findById(institutionId).orElse(null);
+        String institutionName = inst != null ? inst.getName() : "";
+        String institutionType = inst != null ? inst.getType().name() : "";
+
+        List<String> enabledServices = (inst != null && inst.getEnabledServices() != null)
+                ? List.of(inst.getEnabledServices().split(","))
+                : List.of();
+
+        long pendingInvitations = auditService2.countPendingInvitations(institutionId);
+        long unreadNotifications = auditService2.countUnreadNotifications(institutionId);
+
+        var recentActivity = auditService2.getRecentActivity(institutionId, 5).stream()
+                .map(a -> EnhancedDashboardResponse.RecentActivityItem.builder()
+                        .type(a.getActivityType())
+                        .title(a.getTitle())
+                        .description(a.getDescription())
+                        .timestamp(a.getCreatedAt())
+                        .build())
+                .toList();
+
+        var attentionItems = new ArrayList<EnhancedDashboardResponse.AttentionItem>();
+        if (pendingInvitations > 0) {
+            attentionItems.add(EnhancedDashboardResponse.AttentionItem.builder()
+                    .type("INVITATIONS").title("Pending Invitations")
+                    .description(pendingInvitations + " invitation(s) awaiting response")
+                    .count((int) pendingInvitations).actionUrl("/dashboard/admin/people").build());
+        }
+        if (unreadNotifications > 0) {
+            attentionItems.add(EnhancedDashboardResponse.AttentionItem.builder()
+                    .type("NOTIFICATIONS").title("Unread Notifications")
+                    .description(unreadNotifications + " unread notification(s)")
+                    .count((int) unreadNotifications).actionUrl("/dashboard/admin").build());
+        }
+        long pendingJobs = importJobRepository.countProcessingByInstitutionId(institutionId);
+        if (pendingJobs > 0) {
+            attentionItems.add(EnhancedDashboardResponse.AttentionItem.builder()
+                    .type("IMPORTS").title("Pending Imports")
+                    .description(pendingJobs + " import job(s) in progress")
+                    .count((int) pendingJobs).actionUrl("/dashboard/admin/import").build());
+        }
+
+        return EnhancedDashboardResponse.builder()
+                .institutionId(institutionId)
+                .institutionName(institutionName)
+                .institutionType(institutionType)
+                .totalStudents(base.getTotalStudents())
+                .totalTeachers(base.getTotalTeachers())
+                .totalParents(base.getTotalParents())
+                .activeStudents(base.getActiveStudents())
+                .certificatesIssued(base.getCertificatesIssued())
+                .pendingImportJobs(base.getPendingImportJobs())
+                .totalCourses(base.getTotalCourses())
+                .publishedCourses(base.getPublishedCourses())
+                .draftCourses(base.getDraftCourses())
+                .totalModules(base.getTotalModules())
+                .totalLessons(base.getTotalLessons())
+                .liveClassesScheduled(base.getLiveClassesScheduled())
+                .pendingInvitations(pendingInvitations)
+                .unreadNotifications(unreadNotifications)
+                .enabledServices(enabledServices)
+                .recentActivity(recentActivity)
+                .attentionItems(attentionItems)
+                .build();
     }
 }
