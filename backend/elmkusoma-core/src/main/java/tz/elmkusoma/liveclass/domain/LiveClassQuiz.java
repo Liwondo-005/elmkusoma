@@ -19,7 +19,7 @@ public class LiveClassQuiz extends BaseEntity {
     @Column(name = "live_class_id", nullable = false)
     private UUID liveClassId;
 
-    @Column(name = "created_by", nullable = false)
+    @Column(name = "teacher_id", nullable = false)
     private UUID teacherId;
 
     @Column(name = "title", nullable = false, length = 300)

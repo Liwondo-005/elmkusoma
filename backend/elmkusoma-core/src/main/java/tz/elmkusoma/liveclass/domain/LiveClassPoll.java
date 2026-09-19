@@ -20,7 +20,7 @@ public class LiveClassPoll extends BaseEntity {
     @Column(name = "live_class_id", nullable = false)
     private UUID liveClassId;
 
-    @Column(name = "created_by", nullable = false)
+    @Column(name = "teacher_id", nullable = false)
     private UUID teacherId;
 
     @Column(name = "question", nullable = false, columnDefinition = "TEXT")

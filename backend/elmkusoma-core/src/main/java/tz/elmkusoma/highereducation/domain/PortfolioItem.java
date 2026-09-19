@@ -8,7 +8,7 @@ import tz.elmkusoma.common.BaseEntity;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Entity
+@Entity(name = "HighEdPortfolioItem")
 @Table(name = "portfolio_items")
 @Getter
 @Setter

@@ -7,7 +7,7 @@ import tz.elmkusoma.common.BaseEntity;
 
 import java.util.UUID;
 
-@Entity
+@Entity(name = "StudentPortfolioItem")
 @Table(name = "student_portfolio_items")
 public class PortfolioItem extends BaseEntity {
 
