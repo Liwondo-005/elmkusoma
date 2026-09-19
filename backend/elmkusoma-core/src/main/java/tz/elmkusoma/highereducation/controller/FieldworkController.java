@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.highereducation.domain.PlacementStatus;
@@ -24,6 +25,7 @@ public class FieldworkController {
     // ── Placement Endpoints ──────────────────────────────────────
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<FieldworkPlacementDTO>>> listPlacements(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(required = false) PlacementStatus status) {
@@ -34,12 +36,14 @@ public class FieldworkController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<FieldworkPlacementDTO>> getPlacement(@PathVariable UUID id) {
         FieldworkPlacementDTO placement = fieldworkService.getPlacement(id);
         return ResponseEntity.ok(ApiResponse.success(placement));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<FieldworkPlacementDTO>> createPlacement(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody FieldworkPlacementDTO dto) {
@@ -50,6 +54,7 @@ public class FieldworkController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<FieldworkPlacementDTO>> updatePlacement(
             @PathVariable UUID id,
             @Valid @RequestBody FieldworkPlacementDTO dto) {
@@ -58,12 +63,14 @@ public class FieldworkController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deletePlacement(@PathVariable UUID id) {
         fieldworkService.deletePlacement(id);
         return ResponseEntity.ok(ApiResponse.success("Placement deleted", null));
     }
 
     @GetMapping("/student/{studentId}")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<FieldworkPlacementDTO>>> getStudentPlacements(
             @PathVariable UUID studentId,
             @RequestHeader("X-Institution-Id") UUID institutionId) {
@@ -72,6 +79,7 @@ public class FieldworkController {
     }
 
     @GetMapping("/instructor/{instructorId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<List<FieldworkPlacementDTO>>> getInstructorPlacements(
             @PathVariable UUID instructorId) {
         List<FieldworkPlacementDTO> placements = fieldworkService.getPlacementsByInstructor(instructorId);
@@ -79,6 +87,7 @@ public class FieldworkController {
     }
 
     @PutMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<FieldworkPlacementDTO>> completePlacement(@PathVariable UUID id) {
         FieldworkPlacementDTO completed = fieldworkService.completePlacement(id);
         return ResponseEntity.ok(ApiResponse.success("Placement completed", completed));
@@ -87,6 +96,7 @@ public class FieldworkController {
     // ── Logbook Endpoints ────────────────────────────────────────
 
     @PostMapping("/{id}/logbook")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<LogbookEntryDTO>> addLogbookEntry(
             @PathVariable UUID id,
             @Valid @RequestBody LogbookEntryDTO dto) {
@@ -96,6 +106,7 @@ public class FieldworkController {
     }
 
     @GetMapping("/{id}/logbook")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<LogbookEntryDTO>>> getLogbookEntries(
             @PathVariable UUID id) {
         List<LogbookEntryDTO> entries = fieldworkService.getLogbookEntries(id);
@@ -103,6 +114,7 @@ public class FieldworkController {
     }
 
     @GetMapping("/{id}/logbook/pending")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<List<LogbookEntryDTO>>> getPendingLogbookEntries(
             @PathVariable UUID id) {
         List<LogbookEntryDTO> entries = fieldworkService.getPendingLogbookEntries(id);
@@ -110,6 +122,7 @@ public class FieldworkController {
     }
 
     @PutMapping("/logbook/{entryId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<LogbookEntryDTO>> updateLogbookEntry(
             @PathVariable UUID entryId,
             @Valid @RequestBody LogbookEntryDTO dto) {
@@ -118,6 +131,7 @@ public class FieldworkController {
     }
 
     @PutMapping("/logbook/{entryId}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<LogbookEntryDTO>> approveLogbookEntry(
             @PathVariable UUID entryId,
             @RequestAttribute(value = "userId", required = false) UUID approvedBy) {

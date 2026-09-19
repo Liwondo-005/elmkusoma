@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.highereducation.dto.StudyTaskDTO;
@@ -20,6 +21,7 @@ public class StudyTaskController {
     private final StudyTaskService studyTaskService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<StudyTaskDTO>>> listStudyTasks(
             @RequestHeader("X-Institution-Id") UUID institutionId) {
         List<StudyTaskDTO> tasks = studyTaskService.getStudyTasks(institutionId);
@@ -27,12 +29,14 @@ public class StudyTaskController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<StudyTaskDTO>> getStudyTask(@PathVariable UUID id) {
         StudyTaskDTO task = studyTaskService.getStudyTask(id);
         return ResponseEntity.ok(ApiResponse.success(task));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudyTaskDTO>> createStudyTask(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody StudyTaskDTO dto) {
@@ -43,6 +47,7 @@ public class StudyTaskController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudyTaskDTO>> updateStudyTask(
             @PathVariable UUID id,
             @Valid @RequestBody StudyTaskDTO dto) {
@@ -51,12 +56,14 @@ public class StudyTaskController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteStudyTask(@PathVariable UUID id) {
         studyTaskService.deleteStudyTask(id);
         return ResponseEntity.ok(ApiResponse.success("Study task deleted", null));
     }
 
     @GetMapping("/student/{studentId}")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<StudyTaskDTO>>> getStudentTasks(
             @PathVariable UUID studentId,
             @RequestHeader("X-Institution-Id") UUID institutionId) {
@@ -65,18 +72,21 @@ public class StudyTaskController {
     }
 
     @GetMapping("/student/{studentId}/today")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<StudyTaskDTO>>> getTodayTasks(@PathVariable UUID studentId) {
         List<StudyTaskDTO> tasks = studyTaskService.getTodayTasks(studentId);
         return ResponseEntity.ok(ApiResponse.success(tasks));
     }
 
     @GetMapping("/student/{studentId}/week")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<StudyTaskDTO>>> getWeekTasks(@PathVariable UUID studentId) {
         List<StudyTaskDTO> tasks = studyTaskService.getWeekTasks(studentId);
         return ResponseEntity.ok(ApiResponse.success(tasks));
     }
 
     @PutMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudyTaskDTO>> completeStudyTask(@PathVariable UUID id) {
         StudyTaskDTO completed = studyTaskService.completeStudyTask(id);
         return ResponseEntity.ok(ApiResponse.success("Study task completed", completed));

@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Portfolio, PortfolioItem } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { Briefcase, Award, FileText, Image, Star, Eye, EyeOff } from "lucide-react"
+import { Briefcase, Award, FileText, Image, Star, Eye, EyeOff, AlertCircle } from "lucide-react"
 
 function ItemTypeBadge({ type }: { type: string }) {
   const colors: Record<string, string> = {
@@ -30,6 +30,7 @@ export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
   const [items, setItems] = useState<PortfolioItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -46,10 +47,23 @@ export default function PortfolioPage() {
         setPortfolio(data)
         setItems(data.items || [])
       }
-    } catch { /* silent */ } finally { setLoading(false) }
+    } catch { setError("Failed to load portfolio") } finally { setLoading(false) }
   }
 
   if (authLoading || loading) return <LoadingState />
+
+  if (error && !portfolio) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Curate and showcase your achievements, certificates, and work samples." />
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadPortfolio() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      </div>
+    )
+  }
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
   const certificates = items.filter(i => i.itemType === "CERTIFICATE").length

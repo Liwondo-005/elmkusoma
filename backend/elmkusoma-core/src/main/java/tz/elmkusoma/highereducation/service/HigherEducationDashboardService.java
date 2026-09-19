@@ -2,11 +2,15 @@ package tz.elmkusoma.highereducation.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tz.elmkusoma.course.domain.LiveClass;
+import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.highereducation.domain.*;
 import tz.elmkusoma.highereducation.dto.*;
 import tz.elmkusoma.highereducation.repository.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +31,7 @@ public class HigherEducationDashboardService {
     private final AcademicRecordRepository academicRecordRepository;
     private final ProjectSubmissionRepository projectSubmissionRepository;
     private final CareerProfileRepository careerProfileRepository;
+    private final LiveClassRepository liveClassRepository;
 
     public HigherEducationDashboardDTO getDashboard(UUID studentId, UUID institutionId, String learningLevel) {
         HigherEducationDashboardDTO dashboard = new HigherEducationDashboardDTO();
@@ -37,8 +42,7 @@ public class HigherEducationDashboardService {
         dashboard.setWhatsNext(computeWhatsNext(studentId));
         dashboard.setToday(computeToday(studentId, today));
         dashboard.setContinueLearning(computeContinueLearning(studentId));
-        dashboard.setLiveCampus(HigherEducationDashboardDTO.LiveCampusDTO.builder()
-                .liveNow(0).upcomingToday(0).sessions(Collections.emptyList()).build());
+        dashboard.setLiveCampus(computeLiveCampus(institutionId, today));
 
         List<StudentCourseEnrollment> activeEnrollments = enrollmentRepository
                 .findByStudentIdAndStatusAndIsDeletedFalse(studentId, EnrollmentStatus.ENROLLED);
@@ -125,6 +129,45 @@ public class HigherEducationDashboardService {
                     .progressPercent(0).courseId(task.getId().toString()).build();
         }
         return null;
+    }
+
+    private HigherEducationDashboardDTO.LiveCampusDTO computeLiveCampus(UUID institutionId, LocalDate today) {
+        if (institutionId == null) {
+            return HigherEducationDashboardDTO.LiveCampusDTO.builder()
+                    .liveNow(0).upcomingToday(0).sessions(Collections.emptyList()).build();
+        }
+
+        List<LiveClass> todaySessions = liveClassRepository
+                .findByInstitutionIdAndScheduledAtBetween(
+                        institutionId,
+                        today.atStartOfDay(),
+                        today.atTime(LocalTime.MAX));
+
+        long liveNow = todaySessions.stream()
+                .filter(lc -> "IN_PROGRESS".equals(lc.getStatus()) || "LIVE".equals(lc.getStatus())
+                        || "STARTING".equals(lc.getStatus()))
+                .count();
+
+        long upcomingToday = todaySessions.stream()
+                .filter(lc -> "SCHEDULED".equals(lc.getStatus()))
+                .count();
+
+        List<HigherEducationDashboardDTO.LiveSessionSummaryDTO> sessions = todaySessions.stream()
+                .limit(10)
+                .map(lc -> HigherEducationDashboardDTO.LiveSessionSummaryDTO.builder()
+                        .id(lc.getId().toString())
+                        .title(lc.getTitle())
+                        .sessionType(lc.getSessionType() != null ? lc.getSessionType().name() : "LECTURE")
+                        .startTime(lc.getScheduledAt() != null ? lc.getScheduledAt().toString() : null)
+                        .status(lc.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+
+        return HigherEducationDashboardDTO.LiveCampusDTO.builder()
+                .liveNow((int) liveNow)
+                .upcomingToday((int) upcomingToday)
+                .sessions(sessions)
+                .build();
     }
 
     private HigherEducationDashboardDTO.AcademicLoadDTO computeAcademicLoad(UUID studentId) {

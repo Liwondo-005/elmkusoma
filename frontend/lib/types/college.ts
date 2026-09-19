@@ -474,3 +474,34 @@ export interface HigherEducationDashboard {
   dayWeekView?: DayWeekView
   studyPlannerTasks: StudyTask[]
 }
+
+export interface DeepContent {
+  id: string
+  studentId: string
+  courseId?: string
+  moduleId?: string
+  title: string
+  contentType: string
+  contentText?: string
+  fileUrl?: string
+  difficultyLevel?: string
+  tags?: string
+  isCompleted?: boolean
+  timeSpentMinutes?: number
+  notes?: string
+}
+
+export interface DeepContentDto {
+  studentId: string
+  courseId?: string
+  moduleId?: string
+  title: string
+  contentType: string
+  contentText?: string
+  fileUrl?: string
+  difficultyLevel?: string
+  tags?: string
+  isCompleted?: boolean
+  timeSpentMinutes?: number
+  notes?: string
+}

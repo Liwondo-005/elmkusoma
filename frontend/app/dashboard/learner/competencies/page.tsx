@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Competency, CompetencyRecord, CompetencySummary } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { Target, CheckCircle2, Clock, AlertTriangle, Search, Filter } from "lucide-react"
+import { Target, CheckCircle2, Clock, AlertTriangle, Search, Filter, AlertCircle } from "lucide-react"
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -30,6 +30,7 @@ export default function CompetenciesPage() {
   const [records, setRecords] = useState<CompetencyRecord[]>([])
   const [summary, setSummary] = useState<CompetencySummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
 
@@ -51,7 +52,7 @@ export default function CompetenciesPage() {
       setRecords((studentRecords.data as CompetencyRecord[] | undefined) || [])
       setSummary((summaryData.data as CompetencySummary | undefined) || null)
     } catch {
-      // silent
+      setError("Failed to load competencies")
     } finally {
       setLoading(false)
     }
@@ -68,6 +69,19 @@ export default function CompetenciesPage() {
   })
 
   if (authLoading || loading) return <LoadingState />
+
+  if (error && competencies.length === 0) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Track your competency progress across all skills and knowledge areas." />
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadData() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      </div>
+    )
+  }
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
 

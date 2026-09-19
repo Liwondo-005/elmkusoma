@@ -27,6 +27,7 @@ export default function DemonstrationsPage() {
   const { user, loading: authLoading } = useAuth()
   const [demos, setDemos] = useState<PracticalDemonstration[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -39,10 +40,23 @@ export default function DemonstrationsPage() {
       const studentId = user?.id || ""
       const res = await collegeApi.getStudentDemonstrations(studentId)
       setDemos((res.data as PracticalDemonstration[] | undefined) || [])
-    } catch { /* silent */ } finally { setLoading(false) }
+    } catch { setError("Failed to load demonstrations") } finally { setLoading(false) }
   }
 
   if (authLoading || loading) return <LoadingState />
+
+  if (error && demos.length === 0) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Demonstrate your skills through practical submissions and earn competency recognition." />
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadDemos() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      </div>
+    )
+  }
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
   const drafts = demos.filter(d => d.status === "DRAFT").length

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.highereducation.domain.ResearchStatus;
@@ -23,6 +24,7 @@ public class ResearchController {
     private final ResearchService researchService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ResearchProjectDTO>>> listResearchProjects(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(required = false) ResearchStatus status) {
@@ -33,12 +35,14 @@ public class ResearchController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<ResearchProjectDTO>> getResearchProject(@PathVariable UUID id) {
         ResearchProjectDTO project = researchService.getResearchProject(id);
         return ResponseEntity.ok(ApiResponse.success(project));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ResearchProjectDTO>> createResearchProject(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody ResearchProjectDTO dto) {
@@ -49,6 +53,7 @@ public class ResearchController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ResearchProjectDTO>> updateResearchProject(
             @PathVariable UUID id,
             @Valid @RequestBody ResearchProjectDTO dto) {
@@ -57,12 +62,14 @@ public class ResearchController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteResearchProject(@PathVariable UUID id) {
         researchService.deleteResearchProject(id);
         return ResponseEntity.ok(ApiResponse.success("Research project deleted", null));
     }
 
     @GetMapping("/student/{studentId}")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<ResearchProjectDTO>>> getStudentResearchProjects(
             @PathVariable UUID studentId,
             @RequestHeader("X-Institution-Id") UUID institutionId) {
@@ -71,6 +78,7 @@ public class ResearchController {
     }
 
     @GetMapping("/supervisor/{supervisorId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<List<ResearchProjectDTO>>> getSupervisorResearchProjects(
             @PathVariable UUID supervisorId) {
         List<ResearchProjectDTO> projects = researchService.getResearchProjectsBySupervisor(supervisorId);
@@ -80,6 +88,7 @@ public class ResearchController {
     // ── Milestones ───────────────────────────────────────────────
 
     @PostMapping("/{id}/milestones")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ResearchMilestoneDTO>> addMilestone(
             @PathVariable UUID id,
             @Valid @RequestBody ResearchMilestoneDTO dto) {
@@ -89,12 +98,14 @@ public class ResearchController {
     }
 
     @GetMapping("/{id}/milestones")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ResearchMilestoneDTO>>> getMilestones(@PathVariable UUID id) {
         List<ResearchMilestoneDTO> milestones = researchService.getMilestones(id);
         return ResponseEntity.ok(ApiResponse.success(milestones));
     }
 
     @PutMapping("/milestones/{milestoneId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ResearchMilestoneDTO>> updateMilestone(
             @PathVariable UUID milestoneId,
             @Valid @RequestBody ResearchMilestoneDTO dto) {
@@ -103,6 +114,7 @@ public class ResearchController {
     }
 
     @PutMapping("/milestones/{milestoneId}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> completeMilestone(@PathVariable UUID milestoneId) {
         researchService.completeMilestone(milestoneId);
         return ResponseEntity.ok(ApiResponse.success("Milestone completed", null));
@@ -111,6 +123,7 @@ public class ResearchController {
     // ── Resources ────────────────────────────────────────────────
 
     @PostMapping("/{id}/resources")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ResearchResourceDTO>> addResource(
             @PathVariable UUID id,
             @Valid @RequestBody ResearchResourceDTO dto) {
@@ -120,12 +133,14 @@ public class ResearchController {
     }
 
     @GetMapping("/{id}/resources")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ResearchResourceDTO>>> getResources(@PathVariable UUID id) {
         List<ResearchResourceDTO> resources = researchService.getResources(id);
         return ResponseEntity.ok(ApiResponse.success(resources));
     }
 
     @PutMapping("/resources/{resourceId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ResearchResourceDTO>> updateResource(
             @PathVariable UUID resourceId,
             @Valid @RequestBody ResearchResourceDTO dto) {
@@ -134,6 +149,7 @@ public class ResearchController {
     }
 
     @DeleteMapping("/resources/{resourceId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteResource(@PathVariable UUID resourceId) {
         researchService.deleteResource(resourceId);
         return ResponseEntity.ok(ApiResponse.success("Resource deleted", null));

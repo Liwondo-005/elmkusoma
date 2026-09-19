@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.highereducation.domain.PortfolioItemType;
@@ -22,6 +23,7 @@ public class PortfolioController {
     private final PortfolioService portfolioService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<PortfolioDTO>>> listPortfolios(
             @RequestHeader("X-Institution-Id") UUID institutionId) {
         List<PortfolioDTO> portfolios = portfolioService.getPortfolios(institutionId);
@@ -29,24 +31,28 @@ public class PortfolioController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<PortfolioDTO>> getPortfolio(@PathVariable UUID id) {
         PortfolioDTO portfolio = portfolioService.getPortfolio(id);
         return ResponseEntity.ok(ApiResponse.success(portfolio));
     }
 
     @GetMapping("/student/{studentId}")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<PortfolioDTO>> getStudentPortfolio(@PathVariable UUID studentId) {
         PortfolioDTO portfolio = portfolioService.getStudentPortfolio(studentId);
         return ResponseEntity.ok(ApiResponse.success(portfolio));
     }
 
     @GetMapping("/student/{studentId}/public")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<PortfolioDTO>> getPublicPortfolio(@PathVariable UUID studentId) {
         PortfolioDTO portfolio = portfolioService.getPublicPortfolio(studentId);
         return ResponseEntity.ok(ApiResponse.success(portfolio));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<PortfolioDTO>> createPortfolio(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody PortfolioDTO dto) {
@@ -57,6 +63,7 @@ public class PortfolioController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<PortfolioDTO>> updatePortfolio(
             @PathVariable UUID id,
             @Valid @RequestBody PortfolioDTO dto) {
@@ -65,6 +72,7 @@ public class PortfolioController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deletePortfolio(@PathVariable UUID id) {
         portfolioService.deletePortfolio(id);
         return ResponseEntity.ok(ApiResponse.success("Portfolio deleted", null));
@@ -73,6 +81,7 @@ public class PortfolioController {
     // ── Portfolio Items ──────────────────────────────────────────
 
     @PostMapping("/{id}/items")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<PortfolioItemDTO>> addItem(
             @PathVariable UUID id,
             @RequestHeader("X-Institution-Id") UUID institutionId,
@@ -85,6 +94,7 @@ public class PortfolioController {
     }
 
     @GetMapping("/{id}/items")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<PortfolioItemDTO>>> getItems(
             @PathVariable UUID id,
             @RequestParam(required = false) PortfolioItemType itemType) {
@@ -95,6 +105,7 @@ public class PortfolioController {
     }
 
     @PutMapping("/items/{itemId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<PortfolioItemDTO>> updateItem(
             @PathVariable UUID itemId,
             @Valid @RequestBody PortfolioItemDTO dto) {
@@ -103,6 +114,7 @@ public class PortfolioController {
     }
 
     @DeleteMapping("/items/{itemId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteItem(@PathVariable UUID itemId) {
         portfolioService.deleteItem(itemId);
         return ResponseEntity.ok(ApiResponse.success("Portfolio item deleted", null));

@@ -7,6 +7,7 @@ import type {
   Project, ProjectMilestone, ProjectSubmission,
   FieldworkPlacement, LogbookEntry,
   ResearchProject, ResearchMilestone, ResearchResource, Thesis, StudyTask,
+  DeepContent, DeepContentDto,
 } from "./types/college"
 import type { HigherEducationDashboard, StudentCourseEnrollment, AcademicRecord, CareerProfile } from "./types/college"
 
@@ -130,4 +131,34 @@ export const collegeApi = {
   // Career Profile
   getCareerProfile: (studentId: string) => api.get<CareerProfile>(`/api/v1/education/higher-education/career-profile/${studentId}`),
   upsertCareerProfile: (studentId: string, data: Partial<CareerProfile>) => api.post<CareerProfile>(`/api/v1/education/higher-education/career-profile/${studentId}`, data),
+
+  // Professional Development
+  getLearnerProfessionalDev: (studentId: string) => api.get<any[]>(`/api/v1/education/professional-dev/student/${studentId}`),
+  createProfessionalDev: (data: any) => api.post<any>("/api/v1/education/professional-dev", data),
+  updateProfessionalDev: (id: string, data: any) => api.put<any>(`/api/v1/education/professional-dev/${id}`, data),
+  deleteProfessionalDev: (id: string) => api.delete<void>(`/api/v1/education/professional-dev/${id}`),
+
+  // Deep Learning Content
+  getLearnerDeepContent: (studentId: string) => api.get<DeepContent[]>(`/api/v1/education/deep-learning/student/${studentId}`),
+  createDeepContent: (data: DeepContentDto) => api.post<DeepContent>("/api/v1/education/deep-learning", data),
+  updateDeepContent: (id: string, data: Partial<DeepContentDto>) => api.put<DeepContent>(`/api/v1/education/deep-learning/${id}`, data),
+  deleteDeepContent: (id: string) => api.delete<void>(`/api/v1/education/deep-learning/${id}`),
+
+  // Learning Modules
+  getLearnerModules: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/modules/student/${studentId}`),
+  createModule: (data: any) => api.post<any>("/api/v1/college/learner/modules", data),
+  updateModule: (id: string, data: any) => api.put<any>(`/api/v1/college/learner/modules/${id}`, data),
+  deleteModule: (id: string) => api.delete<void>(`/api/v1/college/learner/modules/${id}`),
+
+  // Collaborations
+  getLearnerCollaborations: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/collaborations/student/${studentId}`),
+  createCollaboration: (data: any) => api.post<any>("/api/v1/college/learner/collaborations", data),
+  updateCollaboration: (id: string, data: any) => api.put<any>(`/api/v1/college/learner/collaborations/${id}`, data),
+  deleteCollaboration: (id: string) => api.delete<void>(`/api/v1/college/learner/collaborations/${id}`),
+
+  // Workshops
+  getLearnerWorkshops: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/workshops/student/${studentId}`),
+  createWorkshop: (data: any) => api.post<any>("/api/v1/college/learner/workshops", data),
+  updateWorkshop: (id: string, data: any) => api.put<any>(`/api/v1/college/learner/workshops/${id}`, data),
+  deleteWorkshop: (id: string) => api.delete<void>(`/api/v1/college/learner/workshops/${id}`),
 }

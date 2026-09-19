@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.highereducation.domain.ThesisStatus;
@@ -21,6 +22,7 @@ public class ThesisController {
     private final ThesisService thesisService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ThesisDTO>>> listTheses(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(required = false) ThesisStatus status) {
@@ -31,12 +33,14 @@ public class ThesisController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<ThesisDTO>> getThesis(@PathVariable UUID id) {
         ThesisDTO thesis = thesisService.getThesis(id);
         return ResponseEntity.ok(ApiResponse.success(thesis));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ThesisDTO>> createThesis(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody ThesisDTO dto) {
@@ -47,6 +51,7 @@ public class ThesisController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ThesisDTO>> updateThesis(
             @PathVariable UUID id,
             @Valid @RequestBody ThesisDTO dto) {
@@ -55,12 +60,14 @@ public class ThesisController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteThesis(@PathVariable UUID id) {
         thesisService.deleteThesis(id);
         return ResponseEntity.ok(ApiResponse.success("Thesis deleted", null));
     }
 
     @GetMapping("/student/{studentId}")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<ThesisDTO>>> getStudentTheses(
             @PathVariable UUID studentId,
             @RequestHeader("X-Institution-Id") UUID institutionId) {
@@ -69,6 +76,7 @@ public class ThesisController {
     }
 
     @GetMapping("/supervisor/{supervisorId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<List<ThesisDTO>>> getSupervisorTheses(
             @PathVariable UUID supervisorId) {
         List<ThesisDTO> theses = thesisService.getThesesBySupervisor(supervisorId);

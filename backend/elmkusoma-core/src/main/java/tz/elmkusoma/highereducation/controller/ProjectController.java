@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.highereducation.domain.ProjectStatus;
@@ -23,6 +24,7 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ProjectDTO>>> listProjects(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(required = false) ProjectStatus status) {
@@ -33,12 +35,14 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<ProjectDTO>> getProject(@PathVariable UUID id) {
         ProjectDTO project = projectService.getProject(id);
         return ResponseEntity.ok(ApiResponse.success(project));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ProjectDTO>> createProject(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody ProjectDTO dto) {
@@ -49,6 +53,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ProjectDTO>> updateProject(
             @PathVariable UUID id,
             @Valid @RequestBody ProjectDTO dto) {
@@ -57,12 +62,14 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProject(@PathVariable UUID id) {
         projectService.deleteProject(id);
         return ResponseEntity.ok(ApiResponse.success("Project deleted", null));
     }
 
     @GetMapping("/student/{studentId}")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<ProjectDTO>>> getStudentProjects(
             @PathVariable UUID studentId,
             @RequestHeader("X-Institution-Id") UUID institutionId) {
@@ -71,6 +78,7 @@ public class ProjectController {
     }
 
     @GetMapping("/instructor/{instructorId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<List<ProjectDTO>>> getInstructorProjects(
             @PathVariable UUID instructorId) {
         List<ProjectDTO> projects = projectService.getProjectsByInstructor(instructorId);
@@ -80,6 +88,7 @@ public class ProjectController {
     // ── Milestones ───────────────────────────────────────────────
 
     @PostMapping("/{id}/milestones")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ProjectMilestoneDTO>> addMilestone(
             @PathVariable UUID id,
             @Valid @RequestBody ProjectMilestoneDTO dto) {
@@ -89,6 +98,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}/milestones")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ProjectMilestoneDTO>>> getMilestones(
             @PathVariable UUID id) {
         List<ProjectMilestoneDTO> milestones = projectService.getMilestones(id);
@@ -96,6 +106,7 @@ public class ProjectController {
     }
 
     @PutMapping("/milestones/{milestoneId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ProjectMilestoneDTO>> updateMilestone(
             @PathVariable UUID milestoneId,
             @Valid @RequestBody ProjectMilestoneDTO dto) {
@@ -104,6 +115,7 @@ public class ProjectController {
     }
 
     @PutMapping("/milestones/{milestoneId}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> completeMilestone(@PathVariable UUID milestoneId) {
         projectService.completeMilestone(milestoneId);
         return ResponseEntity.ok(ApiResponse.success("Milestone completed", null));
@@ -112,6 +124,7 @@ public class ProjectController {
     // ── Submissions ──────────────────────────────────────────────
 
     @PostMapping("/{id}/submissions")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<ProjectSubmissionDTO>> addSubmission(
             @PathVariable UUID id,
             @Valid @RequestBody ProjectSubmissionDTO dto) {
@@ -121,6 +134,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}/submissions")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ProjectSubmissionDTO>>> getSubmissions(
             @PathVariable UUID id) {
         List<ProjectSubmissionDTO> submissions = projectService.getSubmissions(id);
@@ -128,6 +142,7 @@ public class ProjectController {
     }
 
     @GetMapping("/milestones/{milestoneId}/submissions")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ProjectSubmissionDTO>>> getMilestoneSubmissions(
             @PathVariable UUID milestoneId) {
         List<ProjectSubmissionDTO> submissions = projectService.getMilestoneSubmissions(milestoneId);
@@ -135,6 +150,7 @@ public class ProjectController {
     }
 
     @PutMapping("/submissions/{submissionId}/grade")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<ProjectSubmissionDTO>> gradeSubmission(
             @PathVariable UUID submissionId,
             @RequestParam(required = false) String feedback,

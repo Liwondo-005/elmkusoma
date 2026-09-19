@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Project } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { FolderKanban, CheckCircle2, Clock, Calendar } from "lucide-react"
+import { FolderKanban, CheckCircle2, Clock, Calendar, AlertCircle } from "lucide-react"
 
 function ProjectStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -27,6 +27,7 @@ export default function ProjectsPage() {
   const { user, loading: authLoading } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -40,13 +41,26 @@ export default function ProjectsPage() {
       const res = await collegeApi.getStudentProjects(studentId)
       setProjects(res.data || [])
     } catch {
-      // silent
+      setError("Failed to load projects")
     } finally {
       setLoading(false)
     }
   }
 
   if (authLoading || loading) return <LoadingState />
+
+  if (error && projects.length === 0) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Manage your projects, track milestones, and showcase your work." />
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadProjects() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      </div>
+    )
+  }
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
   const inProgress = projects.filter(p => p.status === "IN_PROGRESS" || p.status === "PLANNING").length

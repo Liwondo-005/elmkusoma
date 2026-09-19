@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { ResearchProject } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { FlaskConical, CheckCircle2, Clock, Calendar, User } from "lucide-react"
+import { FlaskConical, CheckCircle2, Clock, Calendar, User, AlertCircle } from "lucide-react"
 
 function ResearchStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -33,6 +33,7 @@ export default function ResearchPage() {
   const { user, loading: authLoading } = useAuth()
   const [projects, setProjects] = useState<ResearchProject[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -46,13 +47,26 @@ export default function ResearchPage() {
       const res = await collegeApi.getStudentResearch(studentId)
       setProjects(res.data || [])
     } catch {
-      // silent
+      setError("Failed to load research projects")
     } finally {
       setLoading(false)
     }
   }
 
   if (authLoading || loading) return <LoadingState />
+
+  if (error && projects.length === 0) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Manage your research projects, literature, and thesis." />
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => { setError(null); loadProjects() }} className="ml-auto text-xs underline">Retry</button>
+        </div>
+      </div>
+    )
+  }
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
   const active = projects.filter(p => p.status !== "COMPLETED").length
