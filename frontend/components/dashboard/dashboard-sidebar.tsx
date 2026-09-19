@@ -18,6 +18,7 @@ const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Speak & Listen", href: "/dashboard/nursery/speak-listen", icon: MessageSquare },
   { label: "My Teacher", href: "/dashboard/nursery/my-teacher", icon: User },
   { label: "Daily Quest", href: "/dashboard/nursery/daily-quest", icon: Trophy },
+  { label: "Milestones", href: "/dashboard/nursery/milestones", icon: Award },
   { label: "Feelings", href: "/dashboard/nursery/feelings", icon: HeartPulse },
   { label: "Movement Breaks", href: "/dashboard/nursery/movement", icon: Activity },
   { label: "Tanzania", href: "/dashboard/nursery/tanzania", icon: Globe },

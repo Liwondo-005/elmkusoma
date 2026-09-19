@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { secondaryApi, type SubjectSummary, type LiveClassSummary, type TeacherFeedback } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
-import { ArrowLeft, BookOpen, ChevronRight, PenTool, Award, Calendar, Video, FileText, MessageSquare, Library, BarChart3, Clock, CheckCircle, Play } from "lucide-react"
+import { ArrowLeft, BookOpen, ChevronRight, PenTool, Award, Calendar, Video, FileText, MessageSquare, Library, BarChart3, Clock, CheckCircle, Play, ClipboardList } from "lucide-react"
 import Link from "next/link"
 
 interface Lesson {
@@ -41,7 +41,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [liveClasses, setLiveClasses] = useState<LiveClassSummary[]>([])
   const [feedback, setFeedback] = useState<TeacherFeedback[]>([])
-  const [activeTab, setActiveTab] = useState<"overview" | "topics" | "practice" | "assessments" | "resources" | "live" | "replays" | "progress" | "feedback">("overview")
+  const [lessonProgress, setLessonProgress] = useState<Record<string, number>>({})
+  const [activeTab, setActiveTab] = useState<"overview" | "topics" | "lessons" | "practice" | "assignments" | "assessments" | "resources" | "live" | "replays" | "progress" | "feedback">("overview")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -53,14 +54,20 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
       secondaryApi.getAssessments(user.classGroupId).catch(() => []),
       secondaryApi.getLiveClasses().catch(() => []),
       secondaryApi.getTeacherFeedback(params.id).catch(() => []),
+      secondaryApi.getLessonProgress(user.id).catch(() => []),
     ])
-      .then(([s, l, a, as, lc, fb]) => {
+      .then(([s, l, a, as, lc, fb, lp]) => {
         setSubject(s)
         setLessons(l || [])
         setAssignments((a || []).filter(x => x.subjectName === s?.name))
         setAssessments((as || []).filter(x => x.subjectName === s?.name))
         setLiveClasses((lc || []).filter(x => x.subjectName === s?.name))
         setFeedback(fb || [])
+        const progressMap: Record<string, number> = {}
+        ;(lp || []).forEach((p: any) => {
+          if (p.lessonId) progressMap[p.lessonId] = p.completionPercentage || 0
+        })
+        setLessonProgress(progressMap)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -71,7 +78,9 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
   const tabs = [
     { id: "overview" as const, label: "Overview", icon: BookOpen },
     { id: "topics" as const, label: "Topics", icon: BookOpen },
+    { id: "lessons" as const, label: "Lessons", icon: FileText },
     { id: "practice" as const, label: "Practice", icon: PenTool },
+    { id: "assignments" as const, label: "Assignments", icon: ClipboardList },
     { id: "assessments" as const, label: "Assessments", icon: Award },
     { id: "resources" as const, label: "Resources", icon: Library },
     { id: "live" as const, label: "Live", icon: Video },
@@ -143,6 +152,40 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
         </div>
       )}
 
+      {activeTab === "lessons" && (
+        <div className="space-y-2">
+          {lessons.length === 0 ? (
+            <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+              <FileText className="mx-auto size-12 text-gray-300" />
+              <h3 className="mt-3 text-lg font-bold text-gray-800">No lessons yet</h3>
+              <p className="mt-1 text-sm text-gray-500">Your teacher will add lessons soon.</p>
+            </div>
+          ) : (
+            lessons.map((lesson, idx) => (
+              <Link
+                key={lesson.id}
+                href={`/dashboard/secondary/subjects/${params.id}/topics/${lesson.id}`}
+                className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-sm"
+              >
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-sm font-bold text-blue-600">
+                  {idx + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900">{lesson.title}</p>
+                  {lesson.description && (
+                    <p className="mt-0.5 text-xs text-gray-400 line-clamp-1">{lesson.description}</p>
+                  )}
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${lesson.isPublished ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}>
+                  {lesson.isPublished ? "Published" : "Draft"}
+                </span>
+                <ChevronRight className="size-5 shrink-0 text-gray-300" />
+              </Link>
+            ))
+          )}
+        </div>
+      )}
+
       {activeTab === "practice" && (
         <div className="space-y-2">
           {assignments.length === 0 ? (
@@ -165,6 +208,34 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                   </p>
                 </div>
                 <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-700">{a.status}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === "assignments" && (
+        <div className="space-y-2">
+          {assignments.length === 0 ? (
+            <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
+              <ClipboardList className="mx-auto size-12 text-gray-300" />
+              <h3 className="mt-3 text-lg font-bold text-gray-800">No assignments</h3>
+              <p className="mt-1 text-sm text-gray-500">Your teacher will assign work soon.</p>
+            </div>
+          ) : (
+            assignments.map(a => (
+              <div key={a.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-50">
+                  <ClipboardList className="size-5 text-orange-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900">{a.title}</p>
+                  <p className="text-xs text-gray-400">
+                    {a.dueDate && `Due ${new Date(a.dueDate).toLocaleDateString()}`}
+                    {` · ${a.totalMarks} marks`}
+                  </p>
+                </div>
+                <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-bold text-orange-700">{a.status}</span>
               </div>
             ))
           )}
@@ -355,17 +426,29 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
               {lessons.length === 0 ? (
                 <p className="text-sm text-gray-500">No topics yet.</p>
               ) : (
-                lessons.map((lesson, idx) => (
-                  <div key={lesson.id} className="flex items-center gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xs font-bold text-gray-500">
-                      {idx + 1}
+                lessons.map((lesson, idx) => {
+                  const pct = lessonProgress[lesson.id] || 0
+                  const isComplete = pct >= 100
+                  return (
+                    <div key={lesson.id} className="flex items-center gap-3">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xs font-bold text-gray-500">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{lesson.title}</p>
+                        {pct > 0 && (
+                          <div className="mt-1 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                              <div className={`h-full rounded-full ${isComplete ? "bg-green-500" : "bg-indigo-500"}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                            </div>
+                            <span className="text-[10px] text-gray-400">{Math.round(pct)}%</span>
+                          </div>
+                        )}
+                      </div>
+                      <CheckCircle className={`size-4 ${isComplete ? "text-green-500" : pct > 0 ? "text-indigo-400" : "text-gray-300"}`} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{lesson.title}</p>
-                    </div>
-                    <CheckCircle className="size-4 text-gray-300" />
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           </div>
