@@ -10,7 +10,7 @@ const nationalRoutes = ["/dashboard/national"]
 const regionalRoutes = ["/dashboard/regional"]
 const districtRoutes = ["/dashboard/district"]
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get("elmkusoma_access_token")
   const currentUser = request.cookies.get("elmkusoma_current_user")
   const pathname = request.nextUrl.pathname
