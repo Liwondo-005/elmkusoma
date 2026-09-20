@@ -24,6 +24,10 @@ import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
+import tz.elmkusoma.parent.repository.PaymentRepository;
+import tz.elmkusoma.student.repository.StudentRepository;
+import tz.elmkusoma.teacher.repository.TeacherRepository;
+
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,6 +44,9 @@ public class PlatformAdminService {
     private final CertificateRepository certificateRepository;
     private final SecurityEventRepository securityEventRepository;
     private final AuditLogRepository auditLogRepository;
+    private final PaymentRepository paymentRepository;
+    private final StudentRepository studentRepository;
+    private final TeacherRepository teacherRepository;
 
     // ── Command Center ──
 
@@ -63,7 +70,7 @@ public class PlatformAdminService {
                 .totalInstitutions(totalInstitutions)
                 .totalLiveClasses(totalLiveClasses)
                 .activeLiveClasses(activeLiveClasses)
-                .totalPayments(0L)
+                .totalPayments(paymentRepository.countByIsDeletedFalse())
                 .totalCertificates(totalCertificates)
                 .unresolvedSecurityEvents(unresolvedSecurityEvents)
                 .build();
@@ -193,6 +200,8 @@ public class PlatformAdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", institutionId));
 
         long totalUsers = userRepository.findAllByInstitutionId(institutionId).size();
+        long totalStudents = studentRepository.countByInstitutionId(institutionId);
+        long totalTeachers = teacherRepository.findAllByInstitutionId(institutionId).size();
 
         return InstitutionDetailResponse.builder()
                 .id(inst.getId())
@@ -207,8 +216,8 @@ public class PlatformAdminService {
                 .email(inst.getEmail())
                 .isActive(inst.getIsActive())
                 .totalUsers(totalUsers)
-                .totalStudents(0)
-                .totalTeachers(0)
+                .totalStudents(totalStudents)
+                .totalTeachers(totalTeachers)
                 .createdAt(inst.getCreatedAt())
                 .build();
     }
@@ -249,11 +258,31 @@ public class PlatformAdminService {
         return new PageResponse<>(content, classes.getNumber(), classes.getSize(), classes.getTotalElements(), classes.getTotalPages(), classes.isFirst(), classes.isLast());
     }
 
-    // ── Payments (stub) ──
+    // ── Payments ──
 
     @Transactional(readOnly = true)
     public PageResponse<PaymentSummaryResponse> listPayments(int page, int size, String status, UUID institutionId) {
-        return new PageResponse<>(Collections.emptyList(), 0, size, 0, 0, true, true);
+        Page<tz.elmkusoma.parent.domain.Payment> payments;
+        if (status != null && !status.isBlank()) {
+            payments = paymentRepository.findByStatusAndIsDeletedFalse(status.toUpperCase(), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        } else {
+            payments = paymentRepository.findAllByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        }
+
+        List<PaymentSummaryResponse> content = payments.getContent().stream()
+                .map(p -> PaymentSummaryResponse.builder()
+                        .id(p.getId())
+                        .parentId(p.getParentId())
+                        .studentId(p.getStudentId())
+                        .amount(p.getAmount())
+                        .currency(p.getCurrency())
+                        .status(p.getStatus())
+                        .serviceType(p.getServiceType())
+                        .createdAt(p.getCreatedAt())
+                        .build())
+                .toList();
+
+        return new PageResponse<>(content, payments.getNumber(), payments.getSize(), payments.getTotalElements(), payments.getTotalPages(), payments.isFirst(), payments.isLast());
     }
 
     // ── Certificates ──

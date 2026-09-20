@@ -9,7 +9,8 @@ import {
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { platformAdminApi, type PlatformHealth } from "@/lib/platform-admin-api"
 
 interface NavItem {
   label: string
@@ -77,6 +78,11 @@ export function PlatformAdminSidebar() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(NAV_SECTIONS.map(s => s.title))
   )
+  const [health, setHealth] = useState<PlatformHealth | null>(null)
+
+  useEffect(() => {
+    platformAdminApi.getHealth().then(setHealth).catch(() => {})
+  }, [])
 
   function toggleSection(title: string) {
     setExpandedSections(prev => {
@@ -150,7 +156,13 @@ export function PlatformAdminSidebar() {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-foreground">Platform Status</p>
-              <p className="text-[10px] text-green-600 font-medium">All Systems Operational</p>
+              {health ? (
+                <p className={`text-[10px] font-medium ${health.databaseStatus === "Operational" ? "text-green-600" : "text-amber-600"}`}>
+                  DB: {health.databaseStatus} | API: {health.apiStatus}
+                </p>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">Checking...</p>
+              )}
             </div>
           </div>
         </div>

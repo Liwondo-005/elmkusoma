@@ -32,8 +32,8 @@ function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
   }, [query])
 
   function navigateTo(type: string, id: string) {
-    if (type === "USER") router.push("/dashboard/platform-admin/users")
-    else if (type === "INSTITUTION") router.push("/dashboard/platform-admin/institutions")
+    if (type === "USER") router.push(`/dashboard/platform-admin/users/${id}`)
+    else if (type === "INSTITUTION") router.push(`/dashboard/platform-admin/institutions/${id}`)
     onClose()
   }
 
