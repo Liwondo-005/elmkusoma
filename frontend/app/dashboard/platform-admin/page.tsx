@@ -1,9 +1,9 @@
 ﻿"use client"
 
 import { useEffect, useState } from "react"
-import { Users, School, Video, Award, Shield, Activity, ArrowRight, Loader2, RefreshCw } from "lucide-react"
+import { Users, School, Video, Award, Shield, Activity, ArrowRight, Loader2, RefreshCw, AlertTriangle, Package, Bell } from "lucide-react"
 import Link from "next/link"
-import { platformAdminApi, type PlatformDashboard, type AttentionItem, type ActivityFeed, type PlatformHealth } from "@/lib/platform-admin-api"
+import { platformAdminApi, type PlatformDashboard, type AttentionItem, type ActivityFeed, type PlatformHealth, type EnhancedDashboard } from "@/lib/platform-admin-api"
 
 function StatCard({ icon: Icon, label, value, href, color }: { icon: any; label: string; value: number; href: string; color: string }) {
   return (
@@ -57,7 +57,7 @@ function HealthBar({ label, status }: { label: string; status: string }) {
 }
 
 export default function PlatformAdminDashboard() {
-  const [dash, setDash] = useState<PlatformDashboard | null>(null)
+  const [dash, setDash] = useState<EnhancedDashboard | null>(null)
   const [attention, setAttention] = useState<AttentionItem[]>([])
   const [activity, setActivity] = useState<ActivityFeed[]>([])
   const [health, setHealth] = useState<PlatformHealth | null>(null)
@@ -67,7 +67,7 @@ export default function PlatformAdminDashboard() {
     setLoading(true)
     try {
       const [d, a, act, h] = await Promise.allSettled([
-        platformAdminApi.getDashboard(), platformAdminApi.getAttention(),
+        platformAdminApi.getEnhancedDashboard(), platformAdminApi.getAttention(),
         platformAdminApi.getActivity(0, 10), platformAdminApi.getHealth(),
       ])
       if (d.status === "fulfilled") setDash(d.value)
@@ -112,6 +112,15 @@ export default function PlatformAdminDashboard() {
           <StatCard icon={Users} label="Teachers" value={dash.totalTeachers} href="/dashboard/platform-admin/users?role=TEACHER" color="bg-indigo-100 text-indigo-700" />
           <StatCard icon={Users} label="Parents" value={dash.totalParents} href="/dashboard/platform-admin/users?role=PARENT" color="bg-pink-100 text-pink-700" />
           <StatCard icon={Video} label="Active Live" value={dash.activeLiveClasses} href="/dashboard/platform-admin/live-classes?status=LIVE" color="bg-red-100 text-red-700" />
+        </div>
+      )}
+
+      {dash && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard icon={AlertTriangle} label="Open Incidents" value={dash.openIncidents || 0} href="/dashboard/platform-admin/incidents" color="bg-red-100 text-red-700" />
+          <StatCard icon={Package} label="Active Services" value={dash.activeServices || 0} href="/dashboard/platform-admin/services" color="bg-teal-100 text-teal-700" />
+          <StatCard icon={Bell} label="Notifications" value={dash.totalNotifications || 0} href="/dashboard/platform-admin/communications" color="bg-violet-100 text-violet-700" />
+          <StatCard icon={Shield} label="Pending Verifications" value={dash.pendingVerifications || 0} href="/dashboard/platform-admin/verifications" color="bg-amber-100 text-amber-700" />
         </div>
       )}
 
@@ -169,6 +178,8 @@ export default function PlatformAdminDashboard() {
               {[
                 { label: "Manage Users", href: "/dashboard/platform-admin/users", icon: Users },
                 { label: "Review Institutions", href: "/dashboard/platform-admin/institutions", icon: School },
+                { label: "Service Catalogue", href: "/dashboard/platform-admin/services", icon: Package },
+                { label: "Pending Verifications", href: "/dashboard/platform-admin/verifications", icon: Shield },
                 { label: "Security Center", href: "/dashboard/platform-admin/security", icon: Shield },
                 { label: "Audit Logs", href: "/dashboard/platform-admin/audit", icon: Activity },
               ].map((action) => (

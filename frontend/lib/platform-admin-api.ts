@@ -177,6 +177,51 @@ export interface PageResponse<T> {
   last: boolean
 }
 
+export interface ServiceSummary {
+  id: string; name: string; code: string; description: string; category: string
+  isActive: boolean; requiresVerification: boolean; maxSeats: number | null
+  monthlyPrice: number | null; currency: string; createdAt: string
+}
+
+export interface IncidentSummary {
+  id: string; title: string; description: string; category: string
+  severity: string; status: string; affectedService: string | null
+  assignedTo: string | null; detectedAt: string; resolvedAt: string | null; createdAt: string
+}
+
+export interface PlatformConfigItem {
+  id: string; configKey: string; configValue: string; configType: string
+  description: string; category: string; isSensitive: boolean; isPublic: boolean
+  lastModifiedBy: string | null; updatedAt: string | null
+}
+
+export interface NotificationSummary {
+  id: string; title: string; message: string; notificationType: string
+  priority: string; targetAudience: string | null; targetRole: string | null
+  sentBy: string | null; sentAt: string; readCount: number
+}
+
+export interface DelegationSummary {
+  id: string; delegatorId: string; delegateId: string; permissions: string
+  scope: string; status: string; startsAt: string; expiresAt: string | null; createdAt: string
+}
+
+export interface VerificationSummary {
+  id: string; entityType: string; entityId: string; verificationType: string
+  status: string; submittedBy: string | null; reviewedBy: string | null
+  submittedAt: string; reviewedAt: string | null; createdAt: string
+}
+
+export interface EntitlementSummary {
+  id: string; userId: string; studentId: string; serviceType: string
+  serviceId: string; status: string; startsAt: string; expiresAt: string | null; createdAt: string
+}
+
+export interface EnhancedDashboard extends PlatformDashboard {
+  openIncidents: number; pendingVerifications: number; activeServices: number
+  totalNotifications: number; activeDelegations: number
+}
+
 export const platformAdminApi = {
   getDashboard: () => platformFetch<PlatformDashboard>("/v1/platform-admin/dashboard"),
   getAttention: () => platformFetch<AttentionItem[]>("/v1/platform-admin/attention"),
@@ -228,5 +273,64 @@ export const platformAdminApi = {
     const params = new URLSearchParams({ q, limit: "20" })
     if (type) params.set("type", type)
     return platformFetch<GlobalSearchResult[]>(`/v1/platform-admin/search?${params}`)
+  },
+
+  getEnhancedDashboard: () => platformFetch<EnhancedDashboard>("/v1/platform-admin/dashboard/enhanced"),
+
+  listServices: (page = 0, size = 50, category?: string) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (category) params.set("category", category)
+    return platformFetch<PageResponse<ServiceSummary>>(`/v1/platform-admin/services?${params}`)
+  },
+  createService: (data: { name: string; code: string; description?: string; category: string }) =>
+    platformFetch<ServiceSummary>("/v1/platform-admin/services", { method: "POST", body: JSON.stringify(data) }),
+  updateService: (id: string, data: Record<string, unknown>) =>
+    platformFetch<ServiceSummary>(`/v1/platform-admin/services/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  listIncidents: (page = 0, size = 20, status?: string, severity?: string) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (status) params.set("status", status)
+    if (severity) params.set("severity", severity)
+    return platformFetch<PageResponse<IncidentSummary>>(`/v1/platform-admin/incidents?${params}`)
+  },
+  createIncident: (data: { title: string; description?: string; category: string; severity?: string }) =>
+    platformFetch<IncidentSummary>("/v1/platform-admin/incidents", { method: "POST", body: JSON.stringify(data) }),
+  updateIncidentStatus: (id: string, status: string, notes?: string) => {
+    const params = new URLSearchParams({ status })
+    if (notes) params.set("notes", notes)
+    return platformFetch<IncidentSummary>(`/v1/platform-admin/incidents/${id}/status?${params}`, { method: "PUT" })
+  },
+
+  listConfig: (category?: string) => {
+    const params = category ? `?category=${category}` : ""
+    return platformFetch<PlatformConfigItem[]>(`/v1/platform-admin/config${params}`)
+  },
+  updateConfig: (key: string, value: string) =>
+    platformFetch<PlatformConfigItem>(`/v1/platform-admin/config/${key}`, { method: "PUT", body: JSON.stringify({ value }) }),
+
+  listNotifications: (page = 0, size = 20) =>
+    platformFetch<PageResponse<NotificationSummary>>(`/v1/platform-admin/notifications?page=${page}&size=${size}`),
+  sendNotification: (data: { title: string; message: string; notificationType: string; priority?: string; targetAudience?: string }) =>
+    platformFetch<NotificationSummary>("/v1/platform-admin/notifications", { method: "POST", body: JSON.stringify(data) }),
+
+  listDelegations: () => platformFetch<DelegationSummary[]>("/v1/platform-admin/delegations"),
+  createDelegation: (data: { delegatorId: string; delegateId: string; permissions: string; scope?: string }) =>
+    platformFetch<DelegationSummary>("/v1/platform-admin/delegations", { method: "POST", body: JSON.stringify(data) }),
+  revokeDelegation: (id: string, reason?: string) => {
+    const params = reason ? `?reason=${encodeURIComponent(reason)}` : ""
+    return platformFetch<string>(`/v1/platform-admin/delegations/${id}/revoke${params}`, { method: "PUT" })
+  },
+
+  listPendingVerifications: () => platformFetch<VerificationSummary[]>("/v1/platform-admin/verifications/pending"),
+  reviewVerification: (id: string, status: string, notes?: string) => {
+    const params = new URLSearchParams({ status })
+    if (notes) params.set("notes", notes)
+    return platformFetch<VerificationSummary>(`/v1/platform-admin/verifications/${id}/review?${params}`, { method: "PUT" })
+  },
+
+  listEntitlements: (page = 0, size = 20, status?: string) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (status) params.set("status", status)
+    return platformFetch<PageResponse<EntitlementSummary>>(`/v1/platform-admin/entitlements?${params}`)
   },
 }

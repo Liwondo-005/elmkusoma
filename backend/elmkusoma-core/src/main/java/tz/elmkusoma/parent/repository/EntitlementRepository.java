@@ -1,5 +1,7 @@
 package tz.elmkusoma.parent.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import tz.elmkusoma.parent.domain.Entitlement;
@@ -16,4 +18,7 @@ public interface EntitlementRepository extends JpaRepository<Entitlement, UUID> 
     boolean existsByStudentIdAndServiceTypeAndServiceIdAndStatusAndIsDeletedFalse(UUID studentId, String serviceType, UUID serviceId, String status);
     List<Entitlement> findByStudentIdAndServiceTypeAndIsDeletedFalse(UUID studentId, String serviceType);
     long countByStudentIdAndStatusAndIsDeletedFalse(UUID studentId, String status);
+    Page<Entitlement> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
+    Page<Entitlement> findAllByIsDeletedFalse(Pageable pageable);
+    long countByIsDeletedFalse();
 }

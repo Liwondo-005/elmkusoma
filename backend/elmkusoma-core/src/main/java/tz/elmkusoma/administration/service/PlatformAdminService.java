@@ -7,7 +7,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.administration.domain.*;
 import tz.elmkusoma.administration.dto.*;
+import tz.elmkusoma.administration.repository.*;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.domain.SecurityEvent;
 import tz.elmkusoma.audit.dto.ActivityFeedResponse;
@@ -25,6 +27,7 @@ import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
 import tz.elmkusoma.parent.repository.PaymentRepository;
+import tz.elmkusoma.parent.repository.EntitlementRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
@@ -45,8 +48,15 @@ public class PlatformAdminService {
     private final SecurityEventRepository securityEventRepository;
     private final AuditLogRepository auditLogRepository;
     private final PaymentRepository paymentRepository;
+    private final EntitlementRepository entitlementRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
+    private final PlatformServiceRepository platformServiceRepository;
+    private final PlatformIncidentRepository incidentRepository;
+    private final PlatformConfigRepository configRepository;
+    private final PlatformNotificationRepository notificationRepository;
+    private final AdminDelegationRepository delegationRepository;
+    private final VerificationRecordRepository verificationRepository;
 
     // ── Command Center ──
 
@@ -400,6 +410,271 @@ public class PlatformAdminService {
         return results.stream().limit(limit).toList();
     }
 
+    // ── Services ──
+
+    @Transactional(readOnly = true)
+    public PageResponse<ServiceSummaryResponse> listServices(int page, int size, String category) {
+        Page<PlatformService> services;
+        if (category != null && !category.isBlank()) {
+            services = platformServiceRepository.findByCategoryAndIsDeletedFalse(category.toUpperCase(), PageRequest.of(page, size, Sort.by("name")));
+        } else {
+            services = platformServiceRepository.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by("name")));
+        }
+        List<ServiceSummaryResponse> content = services.getContent().stream().map(s -> ServiceSummaryResponse.builder()
+                .id(s.getId()).name(s.getName()).code(s.getCode()).description(s.getDescription())
+                .category(s.getCategory()).isActive(s.getIsActive()).requiresVerification(s.getRequiresVerification())
+                .maxSeats(s.getMaxSeats()).monthlyPrice(s.getMonthlyPrice()).currency(s.getCurrency())
+                .createdAt(s.getCreatedAt()).build()).toList();
+        return new PageResponse<>(content, services.getNumber(), services.getSize(), services.getTotalElements(), services.getTotalPages(), services.isFirst(), services.isLast());
+    }
+
+    public ServiceSummaryResponse createService(ServiceCreateRequest req) {
+        PlatformService svc = PlatformService.builder()
+                .name(req.getName()).code(req.getCode()).description(req.getDescription())
+                .category(req.getCategory()).isActive(true).requiresVerification(req.getRequiresVerification() != null && req.getRequiresVerification())
+                .maxSeats(req.getMaxSeats()).monthlyPrice(req.getMonthlyPrice()).currency(req.getCurrency() != null ? req.getCurrency() : "TZS")
+                .build();
+        platformServiceRepository.save(svc);
+        log.info("Platform service created: {}", svc.getCode());
+        return toServiceSummary(svc);
+    }
+
+    public ServiceSummaryResponse updateService(UUID id, ServiceCreateRequest req) {
+        PlatformService svc = platformServiceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("PlatformService", "id", id));
+        if (req.getName() != null) svc.setName(req.getName());
+        if (req.getDescription() != null) svc.setDescription(req.getDescription());
+        if (req.getCategory() != null) svc.setCategory(req.getCategory());
+        if (req.getIsActive() != null) svc.setIsActive(req.getIsActive());
+        if (req.getRequiresVerification() != null) svc.setRequiresVerification(req.getRequiresVerification());
+        if (req.getMaxSeats() != null) svc.setMaxSeats(req.getMaxSeats());
+        if (req.getMonthlyPrice() != null) svc.setMonthlyPrice(req.getMonthlyPrice());
+        platformServiceRepository.save(svc);
+        return toServiceSummary(svc);
+    }
+
+    // ── Incidents ──
+
+    @Transactional(readOnly = true)
+    public PageResponse<IncidentSummaryResponse> listIncidents(int page, int size, String status, String severity) {
+        Page<PlatformIncident> incidents;
+        if (status != null && !status.isBlank()) {
+            incidents = incidentRepository.findByStatusAndIsDeletedFalseOrderByDetectedAtDesc(status.toUpperCase(), PageRequest.of(page, size));
+        } else if (severity != null && !severity.isBlank()) {
+            incidents = incidentRepository.findBySeverityAndIsDeletedFalseOrderByDetectedAtDesc(severity.toUpperCase(), PageRequest.of(page, size));
+        } else {
+            incidents = incidentRepository.findByIsDeletedFalseOrderByDetectedAtDesc(PageRequest.of(page, size));
+        }
+        List<IncidentSummaryResponse> content = incidents.getContent().stream().map(i -> IncidentSummaryResponse.builder()
+                .id(i.getId()).title(i.getTitle()).description(i.getDescription()).category(i.getCategory())
+                .severity(i.getSeverity()).status(i.getStatus()).affectedService(i.getAffectedService())
+                .assignedTo(i.getAssignedTo()).detectedAt(i.getDetectedAt()).resolvedAt(i.getResolvedAt())
+                .createdAt(i.getCreatedAt()).build()).toList();
+        return new PageResponse<>(content, incidents.getNumber(), incidents.getSize(), incidents.getTotalElements(), incidents.getTotalPages(), incidents.isFirst(), incidents.isLast());
+    }
+
+    public IncidentSummaryResponse createIncident(IncidentCreateRequest req) {
+        PlatformIncident inc = PlatformIncident.builder()
+                .title(req.getTitle()).description(req.getDescription()).category(req.getCategory())
+                .severity(req.getSeverity() != null ? req.getSeverity() : "MEDIUM")
+                .status("DETECTED").affectedService(req.getAffectedService())
+                .detectedAt(LocalDateTime.now()).build();
+        incidentRepository.save(inc);
+        log.info("Incident created: {}", inc.getId());
+        return toIncidentSummary(inc);
+    }
+
+    public IncidentSummaryResponse updateIncidentStatus(UUID id, String newStatus, String notes) {
+        PlatformIncident inc = incidentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("PlatformIncident", "id", id));
+        inc.setStatus(newStatus.toUpperCase());
+        LocalDateTime now = LocalDateTime.now();
+        switch (newStatus.toUpperCase()) {
+            case "ACKNOWLEDGED" -> inc.setAcknowledgedAt(now);
+            case "CONTAINED" -> inc.setContainedAt(now);
+            case "RESOLVED" -> { inc.setResolvedAt(now); if (notes != null) inc.setResolutionNotes(notes); }
+            case "REVIEWED" -> inc.setReviewedAt(now);
+        }
+        if (notes != null) inc.setResolutionNotes(notes);
+        incidentRepository.save(inc);
+        return toIncidentSummary(inc);
+    }
+
+    // ── Platform Config ──
+
+    @Transactional(readOnly = true)
+    public List<PlatformConfigResponse> listConfig(String category) {
+        List<PlatformConfigEntry> entries;
+        if (category != null && !category.isBlank()) {
+            entries = configRepository.findByCategoryAndIsDeletedFalse(category);
+        } else {
+            entries = configRepository.findByIsDeletedFalse();
+        }
+        return entries.stream().map(c -> PlatformConfigResponse.builder()
+                .id(c.getId()).configKey(c.getConfigKey()).configValue(c.getIsSensitive() ? "****" : c.getConfigValue())
+                .configType(c.getConfigType()).description(c.getDescription()).category(c.getCategory())
+                .isSensitive(c.getIsSensitive()).isPublic(c.getIsPublic())
+                .lastModifiedBy(c.getLastModifiedBy()).updatedAt(c.getUpdatedAt()).build()).toList();
+    }
+
+    public PlatformConfigResponse updateConfig(String key, String value, String modifiedBy) {
+        PlatformConfigEntry entry = configRepository.findByConfigKeyAndIsDeletedFalse(key)
+                .orElseThrow(() -> new ResourceNotFoundException("PlatformConfig", "key", key));
+        entry.setConfigValue(value);
+        entry.setLastModifiedBy(modifiedBy);
+        configRepository.save(entry);
+        return PlatformConfigResponse.builder()
+                .id(entry.getId()).configKey(entry.getConfigKey())
+                .configValue(entry.getIsSensitive() ? "****" : entry.getConfigValue())
+                .configType(entry.getConfigType()).description(entry.getDescription())
+                .category(entry.getCategory()).isSensitive(entry.getIsSensitive())
+                .isPublic(entry.getIsPublic()).lastModifiedBy(entry.getLastModifiedBy())
+                .updatedAt(entry.getUpdatedAt()).build();
+    }
+
+    // ── Notifications ──
+
+    @Transactional(readOnly = true)
+    public PageResponse<NotificationSummaryResponse> listNotifications(int page, int size) {
+        Page<PlatformNotification> notifs = notificationRepository.findByIsDeletedFalseOrderBySentAtDesc(PageRequest.of(page, size));
+        List<NotificationSummaryResponse> content = notifs.getContent().stream().map(n -> NotificationSummaryResponse.builder()
+                .id(n.getId()).title(n.getTitle()).message(n.getMessage()).notificationType(n.getNotificationType())
+                .priority(n.getPriority()).targetAudience(n.getTargetAudience()).targetRole(n.getTargetRole())
+                .sentBy(n.getSentBy()).sentAt(n.getSentAt()).readCount(n.getReadCount()).build()).toList();
+        return new PageResponse<>(content, notifs.getNumber(), notifs.getSize(), notifs.getTotalElements(), notifs.getTotalPages(), notifs.isFirst(), notifs.isLast());
+    }
+
+    public NotificationSummaryResponse sendNotification(NotificationCreateRequest req, String sentBy) {
+        PlatformNotification notif = PlatformNotification.builder()
+                .title(req.getTitle()).message(req.getMessage()).notificationType(req.getNotificationType())
+                .priority(req.getPriority() != null ? req.getPriority() : "NORMAL")
+                .targetAudience(req.getTargetAudience()).targetRole(req.getTargetRole())
+                .sentBy(sentBy).sentAt(LocalDateTime.now()).build();
+        notificationRepository.save(notif);
+        log.info("Platform notification sent: {} by {}", notif.getTitle(), sentBy);
+        return NotificationSummaryResponse.builder()
+                .id(notif.getId()).title(notif.getTitle()).message(notif.getMessage())
+                .notificationType(notif.getNotificationType()).priority(notif.getPriority())
+                .targetAudience(notif.getTargetAudience()).sentBy(notif.getSentBy())
+                .sentAt(notif.getSentAt()).readCount(0).build();
+    }
+
+    // ── Delegations ──
+
+    @Transactional(readOnly = true)
+    public List<DelegationSummaryResponse> listDelegations() {
+        return delegationRepository.findAll().stream()
+                .filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
+                .map(d -> DelegationSummaryResponse.builder()
+                        .id(d.getId()).delegatorId(d.getDelegatorId()).delegateId(d.getDelegateId())
+                        .permissions(d.getPermissions()).scope(d.getScope()).status(d.getStatus())
+                        .startsAt(d.getStartsAt()).expiresAt(d.getExpiresAt())
+                        .createdAt(d.getCreatedAt()).build())
+                .toList();
+    }
+
+    public DelegationSummaryResponse createDelegation(DelegationCreateRequest req) {
+        AdminDelegation del = AdminDelegation.builder()
+                .delegatorId(req.getDelegatorId()).delegateId(req.getDelegateId())
+                .permissions(req.getPermissions()).scope(req.getScope() != null ? req.getScope() : "PLATFORM")
+                .status("ACTIVE").startsAt(LocalDateTime.now()).expiresAt(req.getExpiresAt()).build();
+        delegationRepository.save(del);
+        log.info("Admin delegation created: {} -> {}", del.getDelegatorId(), del.getDelegateId());
+        return DelegationSummaryResponse.builder()
+                .id(del.getId()).delegatorId(del.getDelegatorId()).delegateId(del.getDelegateId())
+                .permissions(del.getPermissions()).scope(del.getScope()).status(del.getStatus())
+                .startsAt(del.getStartsAt()).expiresAt(del.getExpiresAt())
+                .createdAt(del.getCreatedAt()).build();
+    }
+
+    public void revokeDelegation(UUID id, UUID revokedBy, String reason) {
+        AdminDelegation del = delegationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("AdminDelegation", "id", id));
+        del.setStatus("REVOKED");
+        del.setRevokedAt(LocalDateTime.now());
+        del.setRevokedBy(revokedBy);
+        del.setRevocationReason(reason);
+        delegationRepository.save(del);
+        log.info("Admin delegation revoked: {}", id);
+    }
+
+    // ── Verifications ──
+
+    @Transactional(readOnly = true)
+    public List<VerificationSummaryResponse> listPendingVerifications() {
+        return verificationRepository.findByStatusAndIsDeletedFalse("PENDING").stream()
+                .map(v -> VerificationSummaryResponse.builder()
+                        .id(v.getId()).entityType(v.getEntityType()).entityId(v.getEntityId())
+                        .verificationType(v.getVerificationType()).status(v.getStatus())
+                        .submittedBy(v.getSubmittedBy()).submittedAt(v.getSubmittedAt())
+                        .createdAt(v.getCreatedAt()).build())
+                .toList();
+    }
+
+    public VerificationSummaryResponse reviewVerification(UUID id, UUID reviewedBy, String status, String notes) {
+        VerificationRecord rec = verificationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("VerificationRecord", "id", id));
+        rec.setStatus(status.toUpperCase());
+        rec.setReviewedBy(reviewedBy);
+        rec.setReviewedAt(LocalDateTime.now());
+        if (notes != null) rec.setNotes(notes);
+        verificationRepository.save(rec);
+        return VerificationSummaryResponse.builder()
+                .id(rec.getId()).entityType(rec.getEntityType()).entityId(rec.getEntityId())
+                .verificationType(rec.getVerificationType()).status(rec.getStatus())
+                .submittedBy(rec.getSubmittedBy()).reviewedBy(rec.getReviewedBy())
+                .submittedAt(rec.getSubmittedAt()).reviewedAt(rec.getReviewedAt())
+                .createdAt(rec.getCreatedAt()).build();
+    }
+
+    // ── Entitlements ──
+
+    @Transactional(readOnly = true)
+    public PageResponse<EntitlementSummaryResponse> listEntitlements(int page, int size, String status) {
+        Page<tz.elmkusoma.parent.domain.Entitlement> entPage;
+        if (status != null && !status.isBlank()) {
+            entPage = entitlementRepository.findByStatusAndIsDeletedFalse(status.toUpperCase(), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        } else {
+            entPage = entitlementRepository.findAllByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        }
+        List<EntitlementSummaryResponse> content = entPage.getContent().stream().map(e -> EntitlementSummaryResponse.builder()
+                .id(e.getId()).userId(e.getUserId()).studentId(e.getStudentId())
+                .serviceType(e.getServiceType()).serviceId(e.getServiceId())
+                .status(e.getStatus()).startsAt(e.getStartsAt()).expiresAt(e.getExpiresAt())
+                .createdAt(e.getCreatedAt()).build()).toList();
+        return new PageResponse<>(content, entPage.getNumber(), entPage.getSize(), entPage.getTotalElements(), entPage.getTotalPages(), entPage.isFirst(), entPage.isLast());
+    }
+
+    // ── Enhanced Dashboard ──
+
+    @Transactional(readOnly = true)
+    public EnhancedPlatformDashboardResponse getEnhancedDashboard() {
+        PlatformDashboardResponse base = getPlatformDashboard();
+        long openIncidents = incidentRepository.countByStatusAndIsDeletedFalse("DETECTED") + incidentRepository.countByStatusAndIsDeletedFalse("INVESTIGATING");
+        long pendingVerifications = verificationRepository.countByStatusAndIsDeletedFalse("PENDING");
+        long activeServices = platformServiceRepository.countByIsActiveAndIsDeletedFalse(true);
+        long totalNotifications = notificationRepository.countByIsDeletedFalse();
+        long activeDelegations = delegationRepository.countByStatusAndIsDeletedFalse("ACTIVE");
+
+        return EnhancedPlatformDashboardResponse.builder()
+                .totalUsers(base.getTotalUsers())
+                .totalStudents(base.getTotalStudents())
+                .totalTeachers(base.getTotalTeachers())
+                .totalParents(base.getTotalParents())
+                .totalInstitutions(base.getTotalInstitutions())
+                .totalLiveClasses(base.getTotalLiveClasses())
+                .activeLiveClasses(base.getActiveLiveClasses())
+                .totalPayments(base.getTotalPayments())
+                .totalCertificates(base.getTotalCertificates())
+                .unresolvedSecurityEvents(base.getUnresolvedSecurityEvents())
+                .openIncidents(openIncidents)
+                .pendingVerifications(pendingVerifications)
+                .activeServices(activeServices)
+                .totalNotifications(totalNotifications)
+                .activeDelegations(activeDelegations)
+                .build();
+    }
+
     // ── Mappers ──
 
     private UserSummaryResponse toUserSummary(User user) {
@@ -426,5 +701,21 @@ public class PlatformAdminService {
                 .isActive(inst.getIsActive())
                 .createdAt(inst.getCreatedAt())
                 .build();
+    }
+
+    private ServiceSummaryResponse toServiceSummary(PlatformService s) {
+        return ServiceSummaryResponse.builder()
+                .id(s.getId()).name(s.getName()).code(s.getCode()).description(s.getDescription())
+                .category(s.getCategory()).isActive(s.getIsActive()).requiresVerification(s.getRequiresVerification())
+                .maxSeats(s.getMaxSeats()).monthlyPrice(s.getMonthlyPrice()).currency(s.getCurrency())
+                .createdAt(s.getCreatedAt()).build();
+    }
+
+    private IncidentSummaryResponse toIncidentSummary(PlatformIncident i) {
+        return IncidentSummaryResponse.builder()
+                .id(i.getId()).title(i.getTitle()).description(i.getDescription()).category(i.getCategory())
+                .severity(i.getSeverity()).status(i.getStatus()).affectedService(i.getAffectedService())
+                .assignedTo(i.getAssignedTo()).detectedAt(i.getDetectedAt()).resolvedAt(i.getResolvedAt())
+                .createdAt(i.getCreatedAt()).build();
     }
 }

@@ -2,6 +2,7 @@ package tz.elmkusoma.administration.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -192,5 +193,156 @@ public class PlatformAdminController {
             @RequestParam(defaultValue = "20") int limit) {
         List<GlobalSearchResult> response = platformAdminService.globalSearch(q, type, limit);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // ── Enhanced Dashboard ──
+
+    @GetMapping("/dashboard/enhanced")
+    @Operation(summary = "Get enhanced platform dashboard with all KPIs")
+    public ResponseEntity<ApiResponse<EnhancedPlatformDashboardResponse>> getEnhancedDashboard() {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.getEnhancedDashboard()));
+    }
+
+    // ── Services ──
+
+    @GetMapping("/services")
+    @Operation(summary = "List platform services")
+    public ResponseEntity<ApiResponse<PageResponse<ServiceSummaryResponse>>> listServices(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String category) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listServices(page, size, category)));
+    }
+
+    @PostMapping("/services")
+    @Operation(summary = "Create a platform service")
+    public ResponseEntity<ApiResponse<ServiceSummaryResponse>> createService(@RequestBody ServiceCreateRequest req) {
+        return ResponseEntity.ok(ApiResponse.success("Service created", platformAdminService.createService(req)));
+    }
+
+    @PutMapping("/services/{serviceId}")
+    @Operation(summary = "Update a platform service")
+    public ResponseEntity<ApiResponse<ServiceSummaryResponse>> updateService(
+            @PathVariable UUID serviceId, @RequestBody ServiceCreateRequest req) {
+        return ResponseEntity.ok(ApiResponse.success("Service updated", platformAdminService.updateService(serviceId, req)));
+    }
+
+    // ── Incidents ──
+
+    @GetMapping("/incidents")
+    @Operation(summary = "List platform incidents")
+    public ResponseEntity<ApiResponse<PageResponse<IncidentSummaryResponse>>> listIncidents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String severity) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listIncidents(page, size, status, severity)));
+    }
+
+    @PostMapping("/incidents")
+    @Operation(summary = "Create a platform incident")
+    public ResponseEntity<ApiResponse<IncidentSummaryResponse>> createIncident(@RequestBody IncidentCreateRequest req) {
+        return ResponseEntity.ok(ApiResponse.success("Incident created", platformAdminService.createIncident(req)));
+    }
+
+    @PutMapping("/incidents/{incidentId}/status")
+    @Operation(summary = "Update incident status")
+    public ResponseEntity<ApiResponse<IncidentSummaryResponse>> updateIncidentStatus(
+            @PathVariable UUID incidentId,
+            @RequestParam String status,
+            @RequestParam(required = false) String notes) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.updateIncidentStatus(incidentId, status, notes)));
+    }
+
+    // ── Platform Config ──
+
+    @GetMapping("/config")
+    @Operation(summary = "List platform configuration")
+    public ResponseEntity<ApiResponse<List<PlatformConfigResponse>>> listConfig(
+            @RequestParam(required = false) String category) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listConfig(category)));
+    }
+
+    @PutMapping("/config/{key}")
+    @Operation(summary = "Update platform configuration")
+    public ResponseEntity<ApiResponse<PlatformConfigResponse>> updateConfig(
+            @PathVariable String key,
+            @RequestBody java.util.Map<String, String> body,
+            HttpServletRequest request) {
+        String actor = request.getAttribute("userEmail") != null ? request.getAttribute("userEmail").toString() : "admin";
+        return ResponseEntity.ok(ApiResponse.success("Config updated", platformAdminService.updateConfig(key, body.get("value"), actor)));
+    }
+
+    // ── Notifications ──
+
+    @GetMapping("/notifications")
+    @Operation(summary = "List platform notifications")
+    public ResponseEntity<ApiResponse<PageResponse<NotificationSummaryResponse>>> listNotifications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listNotifications(page, size)));
+    }
+
+    @PostMapping("/notifications")
+    @Operation(summary = "Send a platform notification")
+    public ResponseEntity<ApiResponse<NotificationSummaryResponse>> sendNotification(
+            @RequestBody NotificationCreateRequest req, HttpServletRequest request) {
+        String actor = request.getAttribute("userEmail") != null ? request.getAttribute("userEmail").toString() : "admin";
+        return ResponseEntity.ok(ApiResponse.success("Notification sent", platformAdminService.sendNotification(req, actor)));
+    }
+
+    // ── Delegations ──
+
+    @GetMapping("/delegations")
+    @Operation(summary = "List admin delegations")
+    public ResponseEntity<ApiResponse<List<DelegationSummaryResponse>>> listDelegations() {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listDelegations()));
+    }
+
+    @PostMapping("/delegations")
+    @Operation(summary = "Create an admin delegation")
+    public ResponseEntity<ApiResponse<DelegationSummaryResponse>> createDelegation(@RequestBody DelegationCreateRequest req) {
+        return ResponseEntity.ok(ApiResponse.success("Delegation created", platformAdminService.createDelegation(req)));
+    }
+
+    @PutMapping("/delegations/{delegationId}/revoke")
+    @Operation(summary = "Revoke an admin delegation")
+    public ResponseEntity<ApiResponse<String>> revokeDelegation(
+            @PathVariable UUID delegationId,
+            @RequestParam(required = false) String reason,
+            HttpServletRequest request) {
+        UUID actorId = request.getAttribute("userId") != null ? UUID.fromString(request.getAttribute("userId").toString()) : null;
+        platformAdminService.revokeDelegation(delegationId, actorId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Delegation revoked", null));
+    }
+
+    // ── Verifications ──
+
+    @GetMapping("/verifications/pending")
+    @Operation(summary = "List pending verification records")
+    public ResponseEntity<ApiResponse<List<VerificationSummaryResponse>>> listPendingVerifications() {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPendingVerifications()));
+    }
+
+    @PutMapping("/verifications/{verificationId}/review")
+    @Operation(summary = "Review a verification record")
+    public ResponseEntity<ApiResponse<VerificationSummaryResponse>> reviewVerification(
+            @PathVariable UUID verificationId,
+            @RequestParam String status,
+            @RequestParam(required = false) String notes,
+            HttpServletRequest request) {
+        UUID actorId = request.getAttribute("userId") != null ? UUID.fromString(request.getAttribute("userId").toString()) : null;
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.reviewVerification(verificationId, actorId, status, notes)));
+    }
+
+    // ── Entitlements ──
+
+    @GetMapping("/entitlements")
+    @Operation(summary = "List platform entitlements")
+    public ResponseEntity<ApiResponse<PageResponse<EntitlementSummaryResponse>>> listEntitlements(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listEntitlements(page, size, status)));
     }
 }

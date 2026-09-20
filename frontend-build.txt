@@ -1,0 +1,244 @@
+﻿Γû▓ Next.js 16.3.3 (Turbopack)
+Γ£ô Running next.config.mjs took 293ms
+
+node.exe : ΓÜá The "middleware" file convention is deprecated. Please use "proxy" instead.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá The "middle...proxy" instead.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+  To migrate automatically, run:
+  npx @next/codemod@canary middleware-to-proxy .
+
+  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 2.0min
+  Skipping validation of types
+  Finished TypeScript config validation in 893ms ...
+  Collecting page data using 3 workers ...
+Γ£ô Finished writing to filesystem cache in 34.3s
+  Generating static pages using 3 workers (0/600) ...
+  Generating static pages using 3 workers (150/600) 
+  Generating static pages using 3 workers (300/600) 
+  Generating static pages using 3 workers (450/600) 
+Γ£ô Generating static pages using 3 workers (600/600) in 2.2min
+  Finalizing page optimization ...
+
+Route (app)
+Γöî Γùï /
+Γö£ Γùï /_not-found
+Γö£ Γùï /about
+Γö£ Γùï /certificates/verify
+Γö£ Γùï /contact
+Γö£ Γùï /courses
+Γö£   /courses/[level]
+Γöé Γö£ ΓùÅ /courses/nursery
+Γöé Γö£ ΓùÅ /courses/primary
+Γöé Γö£ ΓùÅ /courses/lower-secondary
+Γöé Γöö ΓùÅ /courses/advanced-secondary
+Γö£   /courses/[level]/[className]
+Γöé Γö£ ΓùÅ /courses/nursery/baby
+Γöé Γö£ ΓùÅ /courses/nursery/middle
+Γöé Γö£ ΓùÅ /courses/nursery/top
+Γöé Γöö ΓùÅ [+12 more paths]
+Γö£   /courses/[level]/[className]/[id]
+Γöé Γö£ ΓùÅ /courses/nursery/baby/nursery-baby1-reading
+Γöé Γö£ ΓùÅ /courses/nursery/baby/nursery-baby1-writing
+Γöé Γö£ ΓùÅ /courses/nursery/baby/nursery-baby1-counting
+Γöé Γöö ΓùÅ [+172 more paths]
+Γö£ Γùï /courses/colleges-universities
+Γö£   /courses/colleges-universities/[college]
+Γöé Γö£ ΓùÅ /courses/colleges-universities/university-of-dar-es-salaam
+Γöé Γö£ ΓùÅ /courses/colleges-universities/sokoine-university-of-agriculture
+Γöé Γöö ΓùÅ /courses/colleges-universities/arusha-technical-college
+Γö£   /courses/colleges-universities/[college]/[faculty]
+Γöé Γö£ ΓùÅ /courses/colleges-universities/university-of-dar-es-salaam/college-of-humanities-and-social-sciences
+Γöé Γö£ ΓùÅ /courses/colleges-universities/university-of-dar-es-salaam/college-of-natural-and-applied-sciences
+Γöé Γö£ ΓùÅ /courses/colleges-universities/university-of-dar-es-salaam/college-of-engineering-and-technology
+Γöé Γöö ΓùÅ [+6 more paths]
+Γö£   /courses/colleges-universities/[college]/[faculty]/[programme]
+Γöé Γö£ ΓùÅ /courses/colleges-universities/university-of-dar-es-salaam/college-of-humanities-and-social-sciences/bachelor-of-arts-in-english
+Γöé Γö£ ΓùÅ /courses/colleges-universities/university-of-dar-es-salaam/college-of-humanities-and-social-sciences/bachelor-of-arts-in-history
+Γöé Γö£ ΓùÅ /courses/colleges-universities/university-of-dar-es-salaam/college-of-humanities-and-social-sciences/bachelor-of-social-sciences
+Γöé Γöö ΓùÅ [+24 more paths]
+Γö£ Γùï /courses/veta
+Γö£   /courses/veta/[trade]
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation
+Γöé Γö£ ΓùÅ /courses/veta/motor-vehicle-mechanics
+Γöé Γö£ ΓùÅ /courses/veta/plumbing
+Γöé Γöö ΓùÅ [+5 more paths]
+Γö£   /courses/veta/[trade]/[level]
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-1
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-2
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-3
+Γöé Γöö ΓùÅ [+21 more paths]
+Γö£   /courses/veta/[trade]/[level]/[module]
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-1/electrical-safety
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-1/workshop-practice
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-1/basic-electrical-installation
+Γöé Γöö ΓùÅ [+42 more paths]
+Γö£   /courses/veta/[trade]/[level]/[module]/[lesson]
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-1/electrical-safety/lesson-1
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-1/electrical-safety/lesson-2
+Γöé Γö£ ΓùÅ /courses/veta/electrical-installation/level-1/electrical-safety/lesson-3
+Γöé Γöö ΓùÅ [+138 more paths]
+Γö£ Γùï /dashboard
+Γö£ Γùï /dashboard/academic
+Γö£ Γùï /dashboard/admin
+Γö£ Γùï /dashboard/admin/courses
+Γö£ Γùï /dashboard/admin/import
+Γö£ Γùï /dashboard/admin/institutions
+Γö£ Γùï /dashboard/admin/roles
+Γö£ Γùï /dashboard/admin/settings
+Γö£ Γùï /dashboard/assessments
+Γö£ ╞Æ /dashboard/assessments/[id]
+Γö£ Γùï /dashboard/assignments
+Γö£ Γùï /dashboard/attendance
+Γö£ Γùï /dashboard/audit
+Γö£ Γùï /dashboard/bookmarks
+Γö£ Γùï /dashboard/certificates
+Γö£ Γùï /dashboard/certificates/generate
+Γö£ Γùï /dashboard/certificates/templates
+Γö£ Γùï /dashboard/certificates/transcripts
+Γö£ Γùï /dashboard/courses
+Γö£ Γùï /dashboard/district
+Γö£ Γùï /dashboard/enrollment
+Γö£ Γùï /dashboard/learner
+Γö£ Γùï /dashboard/learner/bookmarks
+Γö£ Γùï /dashboard/learner/certificates
+Γö£ Γùï /dashboard/learner/courses
+Γö£ ╞Æ /dashboard/learner/courses/[id]
+Γö£ Γùï /dashboard/learner/events
+Γö£ ╞Æ /dashboard/learner/events/[id]
+Γö£ Γùï /dashboard/learner/events/registered
+Γö£ Γùï /dashboard/learner/history
+Γö£ Γùï /dashboard/learner/live-classes
+Γö£ Γùï /dashboard/learner/my-learning
+Γö£ Γùï /dashboard/learner/notifications
+Γö£ Γùï /dashboard/learner/profile
+Γö£ Γùï /dashboard/learner/resources
+Γö£ ╞Æ /dashboard/learner/resources/[id]
+Γö£ Γùï /dashboard/learner/search
+Γö£ Γùï /dashboard/learner/settings
+Γö£ Γùï /dashboard/learner/video-library
+Γö£ Γùï /dashboard/lessons
+Γö£ ╞Æ /dashboard/lessons/[id]
+Γö£ Γùï /dashboard/live-classes
+Γö£ Γùï /dashboard/messages
+Γö£ Γùï /dashboard/national
+Γö£ Γùï /dashboard/notifications
+Γö£ Γùï /dashboard/parent
+Γö£ Γùï /dashboard/parent/achievements
+Γö£ Γùï /dashboard/parent/activity
+Γö£ Γùï /dashboard/parent/assessments
+Γö£ Γùï /dashboard/parent/assignments
+Γö£ Γùï /dashboard/parent/attendance
+Γö£ Γùï /dashboard/parent/calendar
+Γö£ ╞Æ /dashboard/parent/child/[id]
+Γö£ Γùï /dashboard/parent/children
+Γö£ Γùï /dashboard/parent/goals
+Γö£ Γùï /dashboard/parent/learning
+Γö£ Γùï /dashboard/parent/library
+Γö£ Γùï /dashboard/parent/live-classes
+Γö£ Γùï /dashboard/parent/messages
+Γö£ Γùï /dashboard/parent/notifications
+Γö£ Γùï /dashboard/parent/payments
+Γö£ Γùï /dashboard/parent/reports
+Γö£ Γùï /dashboard/parent/results
+Γö£ Γùï /dashboard/parent/services
+Γö£ Γùï /dashboard/parent/settings
+Γö£ Γùï /dashboard/parent/support
+Γö£ Γùï /dashboard/parent/teachers
+Γö£ Γùï /dashboard/profile
+Γö£ Γùï /dashboard/progress
+Γö£ Γùï /dashboard/regional
+Γö£ Γùï /dashboard/results
+Γö£ Γùï /dashboard/settings
+Γö£ Γùï /dashboard/students
+Γö£ Γùï /dashboard/subscription
+Γö£ Γùï /dashboard/teacher
+Γö£ Γùï /dashboard/teacher/analytics
+Γö£ Γùï /dashboard/teacher/announcements
+Γö£ Γùï /dashboard/teacher/assessments
+Γö£ Γùï /dashboard/teacher/assignments
+Γö£ Γùï /dashboard/teacher/attendance
+Γö£ Γùï /dashboard/teacher/classes
+Γö£ ╞Æ /dashboard/teacher/classes/[id]
+Γö£ Γùï /dashboard/teacher/courses
+Γö£ Γùï /dashboard/teacher/gradebook
+Γö£ Γùï /dashboard/teacher/grading
+Γö£ Γùï /dashboard/teacher/learner-support
+Γö£ Γùï /dashboard/teacher/lessons
+Γö£ Γùï /dashboard/teacher/live-classes
+Γö£ ╞Æ /dashboard/teacher/live-classes/[id]/prepare
+Γö£ Γùï /dashboard/teacher/messages
+Γö£ Γùï /dashboard/teacher/notifications
+Γö£ Γùï /dashboard/teacher/reports
+Γö£ Γùï /dashboard/teacher/schedule
+Γö£ Γùï /dashboard/teacher/settings
+Γö£ Γùï /dashboard/teacher/students
+Γö£ Γùï /forgot-password
+Γö£ Γùï /live-classes
+Γö£ ╞Æ /live-classes/[id]
+Γö£ Γùï /login
+Γö£ Γùï /notes-library
+Γö£ Γùï /oversight
+Γö£ Γùï /oversight/alerts
+Γö£ Γùï /oversight/assessments
+Γö£ Γùï /oversight/attendance
+Γö£ Γùï /oversight/curriculum
+Γö£ Γùï /oversight/live-classes
+Γö£ Γùï /oversight/performance
+Γö£ Γùï /oversight/reports
+Γö£ Γùï /oversight/schools
+Γö£ ╞Æ /oversight/schools/[id]
+Γö£ Γùï /privacy
+Γö£ Γùï /register
+Γö£ Γùï /schools/colleges
+Γö£   /schools/colleges/[id]
+Γöé Γö£ ΓùÅ /schools/colleges/dit
+Γöé Γö£ ΓùÅ /schools/colleges/cbe
+Γöé Γö£ ΓùÅ /schools/colleges/ifm
+Γöé Γöö ΓùÅ [+2 more paths]
+Γö£ Γùï /schools/nursery
+Γö£   /schools/nursery/[id]
+Γöé Γö£ ΓùÅ /schools/nursery/fortune
+Γöé Γö£ ΓùÅ /schools/nursery/maxmillian
+Γöé Γö£ ΓùÅ /schools/nursery/abc-capital
+Γöé Γöö ΓùÅ [+2 more paths]
+Γö£ Γùï /schools/primary
+Γö£   /schools/primary/[id]
+Γöé Γö£ ΓùÅ /schools/primary/bunge
+Γöé Γö£ ΓùÅ /schools/primary/osterbay
+Γöé Γö£ ΓùÅ /schools/primary/mlimani-primary
+Γöé Γöö ΓùÅ [+2 more paths]
+Γö£ Γùï /schools/secondary
+Γö£   /schools/secondary/[id]
+Γöé Γö£ ΓùÅ /schools/secondary/kemebos
+Γöé Γö£ ΓùÅ /schools/secondary/josiah-girls
+Γöé Γö£ ΓùÅ /schools/secondary/ihungo
+Γöé Γöö ΓùÅ [+2 more paths]
+Γö£ Γùï /schools/universities
+Γö£   /schools/universities/[id]
+Γöé Γö£ ΓùÅ /schools/universities/udsm
+Γöé Γö£ ΓùÅ /schools/universities/udom
+Γöé Γö£ ΓùÅ /schools/universities/muhas
+Γöé Γöö ΓùÅ [+2 more paths]
+Γö£ Γùï /schools/vocational
+Γö£   /schools/vocational/[id]
+Γöé Γö£ ΓùÅ /schools/vocational/dar-rvtsc
+Γöé Γö£ ΓùÅ /schools/vocational/kipawa-ict
+Γöé Γö£ ΓùÅ /schools/vocational/arusha-vtc
+Γöé Γöö ΓùÅ [+2 more paths]
+Γö£ Γùï /support
+Γöö Γùï /terms
+
+
+╞Æ Proxy (Middleware)
+
+Γùï  (Static)   prerendered as static content
+ΓùÅ  (SSG)      prerendered as static HTML (uses generateStaticParams)
+╞Æ  (Dynamic)  server-rendered on demand
+

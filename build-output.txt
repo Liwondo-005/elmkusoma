@@ -1,0 +1,317 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< tz.elmkusoma:elmkusoma-core >---------------------
+[INFO] Building ELMKUSOMA Core 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.4.0:clean (default-clean) @ elmkusoma-core ---
+[INFO] Deleting C:\Users\manyusi\Desktop\Elmukusoma\backend\elmkusoma-core\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ elmkusoma-core ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 38 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ elmkusoma-core ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 453 source files with javac [debug parameters release 17] to target\classes
+[INFO] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/service/LiveKitService.java: C:\Users\manyusi\Desktop\Elmukusoma\backend\elmkusoma-core\src\main\java\tz\elmkusoma\liveclass\service\LiveKitService.java uses or overrides a deprecated API.
+[INFO] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/service/LiveKitService.java: Recompile with -Xlint:deprecation for details.
+[INFO] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/handler/LiveClassWebSocketHandler.java: Some input files use unchecked or unsafe operations.
+[INFO] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/handler/LiveClassWebSocketHandler.java: Recompile with -Xlint:unchecked for details.
+[INFO] -------------------------------------------------------------
+[WARNING] COMPILATION WARNING : 
+[INFO] -------------------------------------------------------------
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/academic/domain/Grade.java:[28,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/academic/domain/Grade.java:[31,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/shared/domain/User.java:[40,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/shared/domain/User.java:[43,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/course/domain/Announcement.java:[35,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/nursery/domain/NurseryActivity.java:[59,28] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/course/domain/CourseModule.java:[29,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/Entitlement.java:[36,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/certificate/domain/CertificateTemplate.java:[45,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/teacher/domain/Teacher.java:[28,27] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/SupportTicket.java:[33,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/SupportTicket.java:[36,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/assessment/domain/Option.java:[26,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/Message.java:[32,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/Message.java:[35,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/Message.java:[38,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/Parent.java:[27,30] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/academic/domain/ClassGroup.java:[41,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/EventRegistration.java:[29,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/EventRegistration.java:[41,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/academic/domain/Term.java:[36,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/Event.java:[47,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/Event.java:[53,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/Event.java:[62,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/Event.java:[65,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/CustomRole.java:[29,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/CustomRole.java:[32,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/certificate/domain/Transcript.java:[40,30] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/nursery/domain/NurseryMilestone.java:[44,29] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/domain/LiveClassParticipant.java:[29,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/UserRoleAssignment.java:[30,27] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/UserRoleAssignment.java:[36,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/LearningGoal.java:[43,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/LearningGoal.java:[46,24] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/shared/domain/Institution.java:[55,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/shared/domain/Institution.java:[70,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/shared/domain/Institution.java:[87,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/learning/domain/Assignment.java:[48,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/assessment/domain/Attempt.java:[33,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/shared/domain/InstitutionMembership.java:[36,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/attendance/domain/AttendanceSummary.java:[36,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/attendance/domain/AttendanceSummary.java:[39,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/attendance/domain/AttendanceSummary.java:[42,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/attendance/domain/AttendanceSummary.java:[45,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/attendance/domain/AttendanceSummary.java:[48,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/grading/domain/RubricCriteria.java:[32,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/course/domain/CourseLesson.java:[35,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/course/domain/CourseLesson.java:[38,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/learning/domain/Lesson.java:[44,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/course/domain/LiveClass.java:[36,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/course/domain/LiveClass.java:[39,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/attendance/domain/BulkAttendanceSession.java:[32,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/attendance/domain/BulkAttendanceSession.java:[36,27] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/EventMaterial.java:[41,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/EventMaterial.java:[44,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/academic/domain/AcademicYear.java:[33,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/academic/domain/AcademicYear.java:[36,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/academic/domain/Subject.java:[31,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentNotificationPreference.java:[22,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentNotificationPreference.java:[25,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentNotificationPreference.java:[28,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentNotificationPreference.java:[31,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentNotificationPreference.java:[34,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentNotificationPreference.java:[37,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentNotificationPreference.java:[40,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/Payment.java:[31,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/Payment.java:[47,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/grading/domain/ReportCard.java:[56,30] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentStudentLink.java:[26,37] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/ParentStudentLink.java:[29,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/parent/domain/SupportTicketMessage.java:[29,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/identity/domain/PasswordResetToken.java:[35,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/domain/District.java:[27,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/domain/Region.java:[24,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/assessment/domain/Assessment.java:[42,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/certificate/domain/Certificate.java:[66,31] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/grading/domain/GradingScale.java:[40,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/grading/domain/GradingScale.java:[43,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/learning/domain/LessonProgress.java:[27,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/student/domain/Student.java:[28,27] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/student/domain/Student.java:[64,23] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/grading/domain/GradeBoundary.java:[42,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/student/domain/StudentClassAssignment.java:[33,27] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/student/domain/StudentClassAssignment.java:[36,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/course/domain/Course.java:[39,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/course/domain/Course.java:[42,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/grading/domain/GradingRubric.java:[32,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/nursery/domain/NurseryReportCard.java:[60,30] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/SystemSetting.java:[30,20] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/SystemSetting.java:[36,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/DataImportJob.java:[37,26] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/DataImportJob.java:[40,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/DataImportJob.java:[43,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/DataImportJob.java:[46,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/administration/domain/DataImportJob.java:[49,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/identity/domain/EmailVerificationToken.java:[34,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[INFO] 96 warnings 
+[INFO] -------------------------------------------------------------
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/handler/LiveClassWebSocketHandler.java:[172,38] cannot find symbol
+  symbol:   method existsByLiveClassIdAndUserIdAndIsDeletedFalse(java.util.UUID,java.util.UUID)
+  location: variable participantRepository of type tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[413,33] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[421,40] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[437,55] cannot find symbol
+  symbol:   variable subjectRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[440,40] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[470,51] method countByInstitutionIdsAndAttendanceBelow in interface tz.elmkusoma.shared.repository.InstitutionRepository cannot be applied to given types;
+  required: java.util.List<java.util.UUID>,double
+  found:    java.util.List<java.util.UUID>,java.util.UUID,double
+  reason: actual and formal argument lists differ in length
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[556,49] cannot find symbol
+  symbol:   variable subjectRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[588,33] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[589,37] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[592,31] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[597,34] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[598,38] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[616,52] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[643,50] method countByInstitutionIdsAndStatusAndScheduledToday in interface tz.elmkusoma.course.repository.LiveClassRepository cannot be applied to given types;
+  required: java.util.List<java.util.UUID>,java.lang.String,java.time.LocalDate
+  found:    java.util.List<java.util.UUID>
+  reason: actual and formal argument lists differ in length
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[644,50] method countByInstitutionIdsAndStatusAndCompletedToday in interface tz.elmkusoma.course.repository.LiveClassRepository cannot be applied to given types;
+  required: java.util.List<java.util.UUID>,java.lang.String,java.time.LocalDate
+  found:    java.util.List<java.util.UUID>
+  reason: actual and formal argument lists differ in length
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[645,49] method countByInstitutionIdsAndScheduledThisWeek in interface tz.elmkusoma.course.repository.LiveClassRepository cannot be applied to given types;
+  required: java.util.List<java.util.UUID>,java.time.LocalDateTime,java.time.LocalDateTime
+  found:    java.util.List<java.util.UUID>
+  reason: actual and formal argument lists differ in length
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[651,44] cannot find symbol
+  symbol:   method getInstitution()
+  location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[651,74] cannot find symbol
+  symbol:   method getInstitution()
+  location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[653,40] cannot find symbol
+  symbol:   method getSubject()
+  location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[653,66] cannot find symbol
+  symbol:   method getSubject()
+  location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[654,40] cannot find symbol
+  symbol:   method getTeacher()
+  location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[654,66] cannot find symbol
+  symbol:   method getTeacher()
+  location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[658,45] cannot find symbol
+  symbol:   method getParticipantCount()
+  location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[658,80] cannot find symbol
+  symbol:   method getParticipantCount()
+  location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[779,14] cannot find symbol
+  symbol:   class Assessment
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[779,40] cannot find symbol
+  symbol:   variable assessmentRepository
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[804,9] cannot find symbol
+  symbol:   class LiveClass
+  location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[827,22] cannot find symbol
+  symbol:   variable Institution
+  location: class tz.elmkusoma.oversight.service.OversightService
+[INFO] 28 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  07:21 min
+[INFO] Finished at: 2026-09-17T21:00:30+03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project elmkusoma-core: Compilation failure: Compilation failure: 
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/handler/LiveClassWebSocketHandler.java:[172,38] cannot find symbol
+[ERROR]   symbol:   method existsByLiveClassIdAndUserIdAndIsDeletedFalse(java.util.UUID,java.util.UUID)
+[ERROR]   location: variable participantRepository of type tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[413,33] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[421,40] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[437,55] cannot find symbol
+[ERROR]   symbol:   variable subjectRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[440,40] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[470,51] method countByInstitutionIdsAndAttendanceBelow in interface tz.elmkusoma.shared.repository.InstitutionRepository cannot be applied to given types;
+[ERROR]   required: java.util.List<java.util.UUID>,double
+[ERROR]   found:    java.util.List<java.util.UUID>,java.util.UUID,double
+[ERROR]   reason: actual and formal argument lists differ in length
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[556,49] cannot find symbol
+[ERROR]   symbol:   variable subjectRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[588,33] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[589,37] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[592,31] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[597,34] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[598,38] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[616,52] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[643,50] method countByInstitutionIdsAndStatusAndScheduledToday in interface tz.elmkusoma.course.repository.LiveClassRepository cannot be applied to given types;
+[ERROR]   required: java.util.List<java.util.UUID>,java.lang.String,java.time.LocalDate
+[ERROR]   found:    java.util.List<java.util.UUID>
+[ERROR]   reason: actual and formal argument lists differ in length
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[644,50] method countByInstitutionIdsAndStatusAndCompletedToday in interface tz.elmkusoma.course.repository.LiveClassRepository cannot be applied to given types;
+[ERROR]   required: java.util.List<java.util.UUID>,java.lang.String,java.time.LocalDate
+[ERROR]   found:    java.util.List<java.util.UUID>
+[ERROR]   reason: actual and formal argument lists differ in length
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[645,49] method countByInstitutionIdsAndScheduledThisWeek in interface tz.elmkusoma.course.repository.LiveClassRepository cannot be applied to given types;
+[ERROR]   required: java.util.List<java.util.UUID>,java.time.LocalDateTime,java.time.LocalDateTime
+[ERROR]   found:    java.util.List<java.util.UUID>
+[ERROR]   reason: actual and formal argument lists differ in length
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[651,44] cannot find symbol
+[ERROR]   symbol:   method getInstitution()
+[ERROR]   location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[651,74] cannot find symbol
+[ERROR]   symbol:   method getInstitution()
+[ERROR]   location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[653,40] cannot find symbol
+[ERROR]   symbol:   method getSubject()
+[ERROR]   location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[653,66] cannot find symbol
+[ERROR]   symbol:   method getSubject()
+[ERROR]   location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[654,40] cannot find symbol
+[ERROR]   symbol:   method getTeacher()
+[ERROR]   location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[654,66] cannot find symbol
+[ERROR]   symbol:   method getTeacher()
+[ERROR]   location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[658,45] cannot find symbol
+[ERROR]   symbol:   method getParticipantCount()
+[ERROR]   location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[658,80] cannot find symbol
+[ERROR]   symbol:   method getParticipantCount()
+[ERROR]   location: variable lc of type tz.elmkusoma.course.domain.LiveClass
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[779,14] cannot find symbol
+[ERROR]   symbol:   class Assessment
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[779,40] cannot find symbol
+[ERROR]   symbol:   variable assessmentRepository
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[804,9] cannot find symbol
+[ERROR]   symbol:   class LiveClass
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] /C:/Users/manyusi/Desktop/Elmukusoma/backend/elmkusoma-core/src/main/java/tz/elmkusoma/oversight/service/OversightService.java:[827,22] cannot find symbol
+[ERROR]   symbol:   variable Institution
+[ERROR]   location: class tz.elmkusoma.oversight.service.OversightService
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

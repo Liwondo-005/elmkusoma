@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, Users, School, Video, CreditCard, Award,
   Shield, Activity, Settings, Search, Bell, ChevronDown, ChevronRight,
-  AlertTriangle, BarChart3, Database, Globe, Zap
+  AlertTriangle, BarChart3, Database, Globe, Zap, Package, Radio,
+  MessageSquare, ShieldCheck, Key, Entitlement
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
@@ -36,6 +37,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Users", href: "/dashboard/platform-admin/users", icon: Users },
       { label: "Admins", href: "/dashboard/platform-admin/admins", icon: Shield },
+      { label: "Delegations", href: "/dashboard/platform-admin/delegations", icon: Key },
     ],
   },
   {
@@ -43,6 +45,8 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Institutions", href: "/dashboard/platform-admin/institutions", icon: School },
       { label: "Providers", href: "/dashboard/platform-admin/providers", icon: Globe },
+      { label: "Services", href: "/dashboard/platform-admin/services", icon: Package },
+      { label: "Verifications", href: "/dashboard/platform-admin/verifications", icon: ShieldCheck },
     ],
   },
   {
@@ -50,6 +54,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Live Classes", href: "/dashboard/platform-admin/live-classes", icon: Video },
       { label: "Certificates", href: "/dashboard/platform-admin/certificates", icon: Award },
+      { label: "Entitlements", href: "/dashboard/platform-admin/entitlements", icon: Award },
     ],
   },
   {
@@ -59,15 +64,23 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "COMMUNICATION",
+    items: [
+      { label: "Notifications", href: "/dashboard/platform-admin/communications", icon: MessageSquare },
+    ],
+  },
+  {
     title: "TRUST & SAFETY",
     items: [
       { label: "Security", href: "/dashboard/platform-admin/security", icon: Shield },
+      { label: "Incidents", href: "/dashboard/platform-admin/incidents", icon: AlertTriangle },
       { label: "Audit Logs", href: "/dashboard/platform-admin/audit", icon: Activity },
     ],
   },
   {
     title: "PLATFORM",
     items: [
+      { label: "Configuration", href: "/dashboard/platform-admin/config", icon: Settings },
       { label: "Settings", href: "/dashboard/platform-admin/settings", icon: Settings },
     ],
   },

@@ -1,0 +1,14 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------< tz.elmkusoma:elmkusoma-core >---------------------
+[INFO] Building ELMKUSOMA Core 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ elmkusoma-core ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 39 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ elmkusoma-core ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 457 source files with javac [debug parameters release 17] to target\classes
