@@ -3,6 +3,7 @@ package tz.elmkusoma.administration.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -216,14 +217,14 @@ public class PlatformAdminController {
 
     @PostMapping("/services")
     @Operation(summary = "Create a platform service")
-    public ResponseEntity<ApiResponse<ServiceSummaryResponse>> createService(@RequestBody ServiceCreateRequest req) {
+    public ResponseEntity<ApiResponse<ServiceSummaryResponse>> createService(@Valid @RequestBody ServiceCreateRequest req) {
         return ResponseEntity.ok(ApiResponse.success("Service created", platformAdminService.createService(req)));
     }
 
     @PutMapping("/services/{serviceId}")
     @Operation(summary = "Update a platform service")
     public ResponseEntity<ApiResponse<ServiceSummaryResponse>> updateService(
-            @PathVariable UUID serviceId, @RequestBody ServiceCreateRequest req) {
+            @PathVariable UUID serviceId, @Valid @RequestBody ServiceCreateRequest req) {
         return ResponseEntity.ok(ApiResponse.success("Service updated", platformAdminService.updateService(serviceId, req)));
     }
 

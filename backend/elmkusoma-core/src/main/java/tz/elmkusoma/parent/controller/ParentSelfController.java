@@ -3,6 +3,7 @@ package tz.elmkusoma.parent.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +30,7 @@ import tz.elmkusoma.parent.dto.ParentActivityResponse;
 import tz.elmkusoma.parent.dto.ParentTeacherDirectoryResponse;
 import tz.elmkusoma.parent.dto.ParentSubjectPerformanceResponse;
 import tz.elmkusoma.parent.dto.request.ParentNotificationPreferenceRequest;
+import tz.elmkusoma.parent.dto.request.InitiatePaymentRequest;
 import tz.elmkusoma.parent.dto.request.SendMessageRequest;
 import tz.elmkusoma.parent.dto.response.*;
 import tz.elmkusoma.parent.repository.AchievementRepository;
@@ -267,19 +269,15 @@ public class ParentSelfController {
     @PostMapping("/payments/initiate")
     @Operation(summary = "Initiate a payment for a service")
     public ResponseEntity<ApiResponse<Map<String, Object>>> initiatePayment(
-            @RequestBody Map<String, Object> body,
+            @Valid @RequestBody InitiatePaymentRequest req,
             HttpServletRequest request) {
         UUID userId = getCurrentUserId(request);
         UUID institutionId = getCurrentInstitutionId(request);
 
-        UUID studentId = UUID.fromString((String) body.get("studentId"));
-        java.math.BigDecimal amount = new java.math.BigDecimal(body.get("amount").toString());
-        String serviceType = (String) body.get("serviceType");
-        UUID serviceId = body.get("serviceId") != null ? UUID.fromString((String) body.get("serviceId")) : null;
-        String description = (String) body.getOrDefault("description", "");
+        requireChildAccess(userId, req.getStudentId());
 
-        var payment = paymentService.initiatePayment(userId, studentId, institutionId,
-                amount, serviceType, serviceId, description);
+        var payment = paymentService.initiatePayment(userId, req.getStudentId(), institutionId,
+                req.getAmount(), req.getServiceType(), req.getServiceId(), req.getDescription());
 
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "paymentId", payment.getId().toString(),

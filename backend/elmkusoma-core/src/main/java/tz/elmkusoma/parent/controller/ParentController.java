@@ -20,6 +20,7 @@ import tz.elmkusoma.parent.dto.response.ParentNotificationPreferenceResponse;
 import tz.elmkusoma.parent.dto.response.ParentResponse;
 import tz.elmkusoma.parent.dto.response.ParentStudentResponse;
 import tz.elmkusoma.parent.repository.ParentRepository;
+import tz.elmkusoma.parent.repository.PaymentRepository;
 import tz.elmkusoma.parent.service.ParentPaymentService;
 import tz.elmkusoma.parent.service.ParentService;
 
@@ -37,6 +38,7 @@ public class ParentController {
     private final ParentService parentService;
     private final ParentRepository parentRepository;
     private final ParentPaymentService paymentService;
+    private final PaymentRepository paymentRepository;
 
     @PostMapping
     @Operation(summary = "Create a new parent profile")
@@ -173,9 +175,21 @@ public class ParentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> verifyPayment(
             @PathVariable UUID paymentId,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        UUID verifiedBy = (UUID) httpRequest.getAttribute("userId");
+
+        if (httpRequest.isUserInRole("INSTITUTION_ADMIN")) {
+            UUID adminInstitutionId = (UUID) httpRequest.getAttribute("institutionId");
+            tz.elmkusoma.parent.domain.Payment paymentForCheck = paymentRepository.findById(paymentId)
+                    .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("Payment", "id", paymentId));
+            if (adminInstitutionId == null || !adminInstitutionId.equals(paymentForCheck.getInstitutionId())) {
+                throw new tz.elmkusoma.exception.ForbiddenException("verify", "payment from another institution");
+            }
+        }
+
         String providerReference = body.getOrDefault("providerReference", "manual");
-        var payment = paymentService.verifyPayment(paymentId, providerReference);
+        var payment = paymentService.verifyPayment(paymentId, providerReference, verifiedBy);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "paymentId", payment.getId().toString(),
                 "status", payment.getStatus()

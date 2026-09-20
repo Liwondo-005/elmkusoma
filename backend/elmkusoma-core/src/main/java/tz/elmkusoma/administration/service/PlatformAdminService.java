@@ -587,6 +587,7 @@ public class PlatformAdminService {
     public List<DelegationSummaryResponse> listDelegations() {
         return delegationRepository.findAll().stream()
                 .filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
+                .filter(d -> !"EXPIRED".equals(d.getStatus()) || d.getExpiresAt() == null || d.getExpiresAt().isAfter(LocalDateTime.now()))
                 .map(d -> DelegationSummaryResponse.builder()
                         .id(d.getId()).delegatorId(d.getDelegatorId()).delegateId(d.getDelegateId())
                         .permissions(d.getPermissions()).scope(d.getScope()).status(d.getStatus())
@@ -641,12 +642,60 @@ public class PlatformAdminService {
         rec.setReviewedAt(LocalDateTime.now());
         if (notes != null) rec.setNotes(notes);
         verificationRepository.save(rec);
+
+        if ("APPROVED".equals(status.toUpperCase())) {
+            applyVerificationSideEffects(rec);
+        }
+
+        AuditLog auditLog = new AuditLog();
+        auditLog.setEntityType("VerificationRecord");
+        auditLog.setEntityId(id);
+        auditLog.setEntityName("Verification Review");
+        auditLog.setAction(AuditLog.AuditAction.UPDATE);
+        auditLog.setUserId(reviewedBy);
+        auditLog.setOldValues(Map.of("status", "PENDING"));
+        auditLog.setNewValues(Map.of("status", status.toUpperCase()));
+        auditLogRepository.save(auditLog);
+
+        log.info("Verification {} reviewed: {} by {}", id, status, reviewedBy);
+
         return VerificationSummaryResponse.builder()
                 .id(rec.getId()).entityType(rec.getEntityType()).entityId(rec.getEntityId())
                 .verificationType(rec.getVerificationType()).status(rec.getStatus())
                 .submittedBy(rec.getSubmittedBy()).reviewedBy(rec.getReviewedBy())
                 .submittedAt(rec.getSubmittedAt()).reviewedAt(rec.getReviewedAt())
                 .createdAt(rec.getCreatedAt()).build();
+    }
+
+    private void applyVerificationSideEffects(VerificationRecord rec) {
+        try {
+            switch (rec.getEntityType().toUpperCase()) {
+                case "INSTITUTION" -> {
+                    institutionRepository.findById(rec.getEntityId()).ifPresent(inst -> {
+                        inst.setIsActive(true);
+                        institutionRepository.save(inst);
+                        log.info("Activated institution {} after verification approval", rec.getEntityId());
+                    });
+                }
+                case "PROVIDER" -> {
+                    userRepository.findById(rec.getEntityId()).ifPresent(user -> {
+                        user.setIsActive(true);
+                        userRepository.save(user);
+                        log.info("Activated provider {} after verification approval", rec.getEntityId());
+                    });
+                }
+                case "SERVICE" -> {
+                    platformServiceRepository.findById(rec.getEntityId()).ifPresent(svc -> {
+                        svc.setIsActive(true);
+                        platformServiceRepository.save(svc);
+                        log.info("Activated service {} after verification approval", rec.getEntityId());
+                    });
+                }
+                default -> log.debug("No side effects defined for entity type: {}", rec.getEntityType());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to apply verification side effects for {}: {}", rec.getId(), e.getMessage());
+        }
     }
 
     // ── Entitlements ──

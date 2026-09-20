@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.audit.domain.AuditLog;
+import tz.elmkusoma.audit.repository.AuditLogRepository;
 import tz.elmkusoma.parent.domain.Entitlement;
 import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.dto.ParentPaymentResponse;
@@ -14,6 +16,7 @@ import tz.elmkusoma.parent.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +27,7 @@ public class ParentPaymentService {
 
     private final PaymentRepository paymentRepository;
     private final EntitlementRepository entitlementRepository;
+    private final AuditLogRepository auditLogRepository;
 
     public ParentPaymentResponse getPayments(UUID parentId) {
         List<Payment> allPayments = paymentRepository.findByParentIdAndIsDeletedFalseOrderByCreatedAtDesc(parentId);
@@ -74,9 +78,11 @@ public class ParentPaymentService {
     }
 
     @Transactional
-    public Payment verifyPayment(UUID paymentId, String providerReference) {
+    public Payment verifyPayment(UUID paymentId, String providerReference, UUID verifiedBy) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+        String oldStatus = payment.getStatus();
 
         if ("COMPLETED".equals(payment.getStatus())) {
             log.warn("Duplicate callback for payment {}", paymentId);
@@ -90,7 +96,19 @@ public class ParentPaymentService {
         payment = paymentRepository.save(payment);
 
         grantEntitlement(payment);
-        log.info("Payment verified and entitlement granted: {}", paymentId);
+
+        AuditLog auditLog = new AuditLog();
+        auditLog.setInstitutionId(payment.getInstitutionId());
+        auditLog.setUserId(verifiedBy);
+        auditLog.setEntityType("Payment");
+        auditLog.setEntityId(paymentId);
+        auditLog.setEntityName("Payment Verification");
+        auditLog.setAction(AuditLog.AuditAction.UPDATE);
+        auditLog.setOldValues(Map.of("status", oldStatus, "providerReference", providerReference != null ? providerReference : "manual"));
+        auditLog.setNewValues(Map.of("status", "COMPLETED", "paidAt", payment.getPaidAt().toString()));
+        auditLogRepository.save(auditLog);
+
+        log.info("Payment verified and entitlement granted: {} by {}", paymentId, verifiedBy);
         return payment;
     }
 

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import tz.elmkusoma.audit.repository.AuditLogRepository;
 import tz.elmkusoma.parent.domain.Entitlement;
 import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.dto.ParentPaymentResponse;
@@ -26,6 +27,7 @@ class ParentPaymentServiceTest {
 
     @Mock private PaymentRepository paymentRepository;
     @Mock private EntitlementRepository entitlementRepository;
+    @Mock private AuditLogRepository auditLogRepository;
 
     @InjectMocks
     private ParentPaymentService paymentService;
@@ -101,7 +103,7 @@ class ParentPaymentServiceTest {
                 STUDENT_ID, "TUITION", null)).thenReturn(Optional.empty());
         when(entitlementRepository.save(any(Entitlement.class))).thenAnswer(i -> i.getArgument(0));
 
-        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-123");
+        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-123", UUID.randomUUID());
 
         assertEquals("COMPLETED", result.getStatus());
         assertEquals("ref-123", result.getProviderReference());
@@ -114,7 +116,7 @@ class ParentPaymentServiceTest {
         Payment completed = buildPayment("COMPLETED", new BigDecimal("100000"));
         when(paymentRepository.findById(PAYMENT_ID)).thenReturn(Optional.of(completed));
 
-        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-456");
+        Payment result = paymentService.verifyPayment(PAYMENT_ID, "ref-456", UUID.randomUUID());
 
         assertEquals("COMPLETED", result.getStatus());
         verify(paymentRepository, never()).save(any());

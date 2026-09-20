@@ -7,11 +7,18 @@ import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.learner.domain.LearnerNotification;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
+import tz.elmkusoma.parent.domain.Parent;
+import tz.elmkusoma.parent.domain.ParentNotificationPreference;
+import tz.elmkusoma.parent.repository.ParentNotificationPreferenceRepository;
+import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
+import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
+import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -22,10 +29,18 @@ public class NotificationService {
     private final LearnerNotificationRepository notificationRepository;
     private final InstitutionMembershipRepository membershipRepository;
     private final EventPublisherService eventPublisherService;
+    private final UserRepository userRepository;
+    private final ParentRepository parentRepository;
+    private final ParentNotificationPreferenceRepository notificationPreferenceRepository;
 
     @Transactional
     public void notifyUser(UUID userId, String title, String message,
                            String notificationType, String targetType, UUID targetId) {
+        if (!isNotificationAllowed(userId, notificationType)) {
+            log.debug("Notification to user {} skipped: preference disabled for type {}", userId, notificationType);
+            return;
+        }
+
         LearnerNotification notification = LearnerNotification.builder()
                 .userId(userId)
                 .title(title)
@@ -64,6 +79,10 @@ public class NotificationService {
         for (InstitutionMembership member : members) {
             if (!member.getUserId().equals(excludeUserId)
                     && member.getRole() == InstitutionMembership.Role.STUDENT) {
+                if (!isNotificationAllowed(member.getUserId(), notificationType)) {
+                    log.debug("Notification to student {} skipped: preference disabled for type {}", member.getUserId(), notificationType);
+                    continue;
+                }
                 LearnerNotification notification = LearnerNotification.builder()
                         .userId(member.getUserId())
                         .title(title)
@@ -91,6 +110,32 @@ public class NotificationService {
 
         log.info("Sent {} notifications to {}/{} members of institution {}",
                 notificationType, notifications.size(), members.size(), institutionId);
+    }
+
+    private boolean isNotificationAllowed(UUID userId, String notificationType) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty() || userOpt.get().getRole() != User.Role.PARENT) {
+            return true;
+        }
+
+        Optional<Parent> parentOpt = parentRepository.findByUserIdAndIsDeletedFalse(userId);
+        if (parentOpt.isEmpty()) return true;
+
+        Optional<ParentNotificationPreference> prefsOpt =
+                notificationPreferenceRepository.findByParentId(parentOpt.get().getId());
+        if (prefsOpt.isEmpty()) return true;
+
+        ParentNotificationPreference prefs = prefsOpt.get();
+        if (notificationType == null) return true;
+
+        String type = notificationType.toUpperCase();
+        return switch (type) {
+            case "ATTENDANCE" -> Boolean.TRUE.equals(prefs.getAttendanceAlerts());
+            case "GRADE", "GRADES", "REPORT" -> Boolean.TRUE.equals(prefs.getGradeAlerts());
+            case "FEE", "FEES", "PAYMENT", "PAYMENTS" -> Boolean.TRUE.equals(prefs.getFeeAlerts());
+            case "ANNOUNCEMENT", "GENERAL" -> Boolean.TRUE.equals(prefs.getGeneralAnnouncements());
+            default -> true;
+        };
     }
 
     @Transactional
