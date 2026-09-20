@@ -37,7 +37,7 @@ function getLocalResponse(message: string): string {
 }
 
 export default function AIGuidePage() {
-  const { user } = useRequireAuth()
+  const { user, loading: authLoading } = useRequireAuth()
   const firstName = user?.name?.split(" ")[0] || "Student"
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -81,6 +81,14 @@ export default function AIGuidePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (

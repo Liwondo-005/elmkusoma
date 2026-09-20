@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
-import { Palette, PenTool, BookOpen, Mic, Image, Film, ArrowRight } from "lucide-react"
+import { Palette, PenTool, BookOpen, Mic, Image, Film, ArrowRight, Loader2 } from "lucide-react"
 
 const creationTypes = [
   { label: "Drawing", description: "Express yourself with art and drawings", icon: Palette, color: "bg-pink-500", href: "/dashboard/portfolio?type=DRAWING" },
@@ -14,7 +14,15 @@ const creationTypes = [
 ]
 
 export default function CreatePage() {
-  const { user } = useRequireAuth()
+  const { user, loading } = useRequireAuth()
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -35,7 +43,7 @@ export default function CreatePage() {
           <Link
             key={type.label}
             href={type.href}
-            className="group rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md"
+            className="group rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md hover:border-primary/30"
           >
             <div className={`flex size-10 items-center justify-center rounded-xl ${type.color} text-white mb-3`}>
               <type.icon className="size-5" />

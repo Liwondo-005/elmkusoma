@@ -20,7 +20,7 @@ export default function LearnTogetherPage() {
       setLoading(true)
       const data = await primaryApi.getCollaborations().catch(() => [])
       setCollaborations(data.filter(c => c.collaborationType === "LEARN_TOGETHER"))
-    } catch {} finally {
+    } catch (e) { console.error("Failed to load collaborations:", e) } finally {
       setLoading(false)
     }
   }

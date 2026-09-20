@@ -21,7 +21,7 @@ export default function FamilyPage() {
       setLoading(true)
       const data = await primaryApi.getCollaborations().catch(() => [])
       setActivities(data.filter(c => c.collaborationType === "FAMILY"))
-    } catch {} finally {
+    } catch (e) { console.error("Failed to load family activities:", e) } finally {
       setLoading(false)
     }
   }

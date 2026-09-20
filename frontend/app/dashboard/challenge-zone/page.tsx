@@ -26,7 +26,7 @@ export default function ChallengeZonePage() {
       setLoading(true)
       const data = await primaryApi.getQuestChallenges().catch(() => [])
       setChallenges(data.filter(q => q.questType === "CHALLENGE" || q.difficulty))
-    } catch {} finally {
+    } catch (e) { console.error("Failed to load challenges:", e) } finally {
       setLoading(false)
     }
   }
@@ -39,7 +39,7 @@ export default function ChallengeZonePage() {
       setChallenges(prev => prev.map(c => c.id === selected.id ? { ...c, isCompleted: true, score: answer.length > 10 ? 100 : 50 } : c))
       setSelected(null)
       setAnswer("")
-    } catch {} finally {
+    } catch (e) { console.error("Failed to submit challenge:", e) } finally {
       setSubmitting(false)
     }
   }
