@@ -52,7 +52,7 @@ public class ProfessionalDevelopmentGoalService {
     }
 
     public List<ProfessionalDevelopmentGoalDTO> getStudentGoalsByStatus(UUID studentId, String status) {
-        return goalRepository.findByStudentIdAndStatus(studentId, status)
+        DevGoalStatus enumStatus = DevGoalStatus.valueOf(status); return goalRepository.findByStudentIdAndStatus(studentId, enumStatus)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 

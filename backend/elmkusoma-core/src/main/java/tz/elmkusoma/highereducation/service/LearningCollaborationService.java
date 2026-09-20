@@ -48,7 +48,7 @@ public class LearningCollaborationService {
     }
 
     public List<LearningCollaborationDTO> getStudentActiveCollaborations(UUID studentId) {
-        return collaborationRepository.findByStudentIdAndStatus(studentId, "ACTIVE")
+        return collaborationRepository.findByStudentIdAndStatus(studentId, CollaborationStatus.ACTIVE)
                 .stream().map(this::toDTO).collect(Collectors.toList());
     }
 

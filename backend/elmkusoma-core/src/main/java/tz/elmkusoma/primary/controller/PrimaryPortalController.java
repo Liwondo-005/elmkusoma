@@ -9,7 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.primary.domain.CurriculumTopic;
-import tz.elmkusoma.primary.domain.LearningCollaboration;
+import tz.elmkusoma.primary.domain.PrimaryLearningCollaboration;
 import tz.elmkusoma.primary.dto.*;
 import tz.elmkusoma.primary.service.PrimaryPortalService;
 
@@ -291,10 +291,10 @@ public class PrimaryPortalController {
     @GetMapping("/me/collaborations")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get learning collaborations")
-    public ResponseEntity<ApiResponse<List<LearningCollaboration>>> getCollaborations(
+    public ResponseEntity<ApiResponse<List<PrimaryLearningCollaboration>>> getCollaborations(
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
-        List<LearningCollaboration> collaborations = primaryPortalService.getCollaborations(userId, institutionId);
+        List<PrimaryLearningCollaboration> collaborations = primaryPortalService.getCollaborations(userId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(collaborations));
     }
 

@@ -8,8 +8,8 @@ import tz.elmkusoma.common.BaseEntity;
 import java.util.UUID;
 
 @Entity
-@Table(name = "learning_collaborations")
-public class LearningCollaboration extends BaseEntity {
+@Table(name = "primary_learning_collaborations")
+public class PrimaryLearningCollaboration extends BaseEntity {
 
     @Column(name = "student_id", nullable = false)
     private UUID studentId;
@@ -32,7 +32,7 @@ public class LearningCollaboration extends BaseEntity {
     @Column(name = "is_completed", nullable = false)
     private Boolean isCompleted = false;
 
-    public LearningCollaboration() {
+    public PrimaryLearningCollaboration() {
     }
 
     public UUID getStudentId() {

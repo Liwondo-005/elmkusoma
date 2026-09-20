@@ -42,7 +42,7 @@ public class PrimaryPortalService {
     private final LearningEvidenceRepository learningEvidenceRepository;
     private final LearningPassportRepository learningPassportRepository;
     private final QuestChallengeRepository questChallengeRepository;
-    private final LearningCollaborationRepository learningCollaborationRepository;
+    private final PrimaryLearningCollaborationRepository learningCollaborationRepository;
     private final MistakeLabEntryRepository mistakeLabEntryRepository;
     private final ELmkusomaLabRepository elmkusomaLabRepository;
     private final SpeakingActivityRepository speakingActivityRepository;
@@ -65,7 +65,7 @@ public class PrimaryPortalService {
                                  LearningEvidenceRepository learningEvidenceRepository,
                                  LearningPassportRepository learningPassportRepository,
                                  QuestChallengeRepository questChallengeRepository,
-                                 LearningCollaborationRepository learningCollaborationRepository,
+                                 PrimaryLearningCollaborationRepository learningCollaborationRepository,
                                  MistakeLabEntryRepository mistakeLabEntryRepository,
                                  ELmkusomaLabRepository elmkusomaLabRepository,
                                  SpeakingActivityRepository speakingActivityRepository,
@@ -385,7 +385,7 @@ public class PrimaryPortalService {
         return toMistakeLabEntryResponse(saved);
     }
 
-    public List<LearningCollaboration> getCollaborations(UUID studentId, UUID institutionId) {
+    public List<PrimaryLearningCollaboration> getCollaborations(UUID studentId, UUID institutionId) {
         return learningCollaborationRepository
                 .findByStudentIdAndInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId, institutionId);
     }
