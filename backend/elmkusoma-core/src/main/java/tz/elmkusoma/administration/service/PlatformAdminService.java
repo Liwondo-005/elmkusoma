@@ -101,6 +101,28 @@ public class PlatformAdminService {
                     .build());
         }
 
+        long openIncidents = incidentRepository.countByStatusAndIsDeletedFalse("DETECTED") + incidentRepository.countByStatusAndIsDeletedFalse("INVESTIGATING");
+        if (openIncidents > 0) {
+            items.add(AttentionItemResponse.builder()
+                    .severity("HIGH")
+                    .title("Open Incidents")
+                    .description(openIncidents + " incident(s) under investigation")
+                    .category("INCIDENT")
+                    .actionUrl("/dashboard/platform-admin/incidents")
+                    .build());
+        }
+
+        long pendingVerifications = verificationRepository.countByStatusAndIsDeletedFalse("PENDING");
+        if (pendingVerifications > 0) {
+            items.add(AttentionItemResponse.builder()
+                    .severity("MEDIUM")
+                    .title("Pending Verifications")
+                    .description(pendingVerifications + " verification request(s) awaiting review")
+                    .category("VERIFICATION")
+                    .actionUrl("/dashboard/platform-admin/verifications")
+                    .build());
+        }
+
         long activeLiveClasses = liveClassRepository.countByStatusAndIsDeletedFalse("LIVE");
         if (activeLiveClasses > 0) {
             items.add(AttentionItemResponse.builder()

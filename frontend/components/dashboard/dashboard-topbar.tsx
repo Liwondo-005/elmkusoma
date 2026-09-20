@@ -34,10 +34,19 @@ function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
   function navigateTo(type: string, id: string) {
     if (type === "USER") router.push(`/dashboard/platform-admin/users/${id}`)
     else if (type === "INSTITUTION") router.push(`/dashboard/platform-admin/institutions/${id}`)
+    else if (type === "LIVE_CLASS") router.push(`/dashboard/platform-admin/live-classes`)
+    else if (type === "PAYMENT") router.push(`/dashboard/platform-admin/payments`)
+    else if (type === "CERTIFICATE") router.push(`/dashboard/platform-admin/certificates`)
+    else if (type === "SERVICE") router.push(`/dashboard/platform-admin/services`)
+    else router.push(`/dashboard/platform-admin/users?search=${encodeURIComponent(id)}`)
     onClose()
   }
 
-  const typeColors: Record<string, string> = { USER: "bg-blue-100 text-blue-700", INSTITUTION: "bg-emerald-100 text-emerald-700" }
+  const typeColors: Record<string, string> = {
+    USER: "bg-blue-100 text-blue-700", INSTITUTION: "bg-emerald-100 text-emerald-700",
+    LIVE_CLASS: "bg-purple-100 text-purple-700", PAYMENT: "bg-amber-100 text-amber-700",
+    CERTIFICATE: "bg-cyan-100 text-cyan-700", SERVICE: "bg-teal-100 text-teal-700",
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
@@ -45,7 +54,7 @@ function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
       <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-xl">
         <div className="flex items-center gap-3 border-b border-border px-4">
           <Search className="size-4 text-muted-foreground" />
-          <input ref={inputRef} type="text" placeholder="Search users, institutions..."
+          <input ref={inputRef} type="text" placeholder="Search users, institutions, live classes, payments..."
             value={query} onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-muted-foreground" />
           <kbd className="hidden rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">ESC</kbd>
