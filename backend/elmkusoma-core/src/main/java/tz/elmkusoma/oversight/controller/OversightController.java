@@ -4,9 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.oversight.dto.*;
 import tz.elmkusoma.oversight.service.OversightService;
+import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.util.List;
@@ -19,6 +22,7 @@ public class OversightController {
 
     private final OversightService oversightService;
     private final UserRepository userRepository;
+    private final InstitutionRepository institutionRepository;
 
     private UUID getUserRegionId(UUID userId) {
         return userRepository.findById(userId)
@@ -36,6 +40,26 @@ public class OversightController {
         return userRepository.findById(userId)
                 .map(u -> u.getRole().name())
                 .orElse(null);
+    }
+
+    private void verifyInstitutionJurisdiction(UUID userId, UUID institutionId) {
+        String role = getUserRole(userId);
+        if ("NATIONAL_ADMIN".equals(role)) return;
+
+        Institution institution = institutionRepository.findById(institutionId)
+                .orElseThrow(() -> new RuntimeException("Institution not found"));
+
+        if ("REGIONAL_ADMIN".equals(role)) {
+            UUID userRegionId = getUserRegionId(userId);
+            if (userRegionId == null || !userRegionId.equals(institution.getRegionId())) {
+                throw new ForbiddenException("access", "institution outside your region");
+            }
+        } else if ("DISTRICT_ADMIN".equals(role)) {
+            UUID userDistrictId = getUserDistrictId(userId);
+            if (userDistrictId == null || !userDistrictId.equals(institution.getDistrictId())) {
+                throw new ForbiddenException("access", "institution outside your district");
+            }
+        }
     }
 
     @GetMapping("/dashboard")
@@ -87,17 +111,7 @@ public class OversightController {
     public ResponseEntity<InstitutionDetailResponse> getInstitutionDetail(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID institutionId) {
-        String role = getUserRole(userId);
-        UUID userRegionId = getUserRegionId(userId);
-        UUID userDistrictId = getUserDistrictId(userId);
-
-        if ("REGIONAL_ADMIN".equals(role) && userRegionId != null) {
-            // Verify institution is in user's region
-            // TODO: add service method to verify
-        } else if ("DISTRICT_ADMIN".equals(role) && userDistrictId != null) {
-            // Verify institution is in user's district
-        }
-
+        verifyInstitutionJurisdiction(userId, institutionId);
         return ResponseEntity.ok(oversightService.getInstitutionDetail(institutionId));
     }
 
