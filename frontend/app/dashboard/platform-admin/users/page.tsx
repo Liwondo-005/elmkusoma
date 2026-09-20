@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Users, Loader2, Search, UserCheck, UserX } from "lucide-react"
 import { platformAdminApi, type UserSummary, type PageResponse } from "@/lib/platform-admin-api"
 
@@ -8,6 +9,7 @@ const ROLES = ["", "STUDENT", "TEACHER", "PARENT", "OTHER_LEARNER", "ADMIN", "IN
 const PAGE_SIZE = 20
 
 export default function PlatformUsersPage() {
+  const router = useRouter()
   const [data, setData] = useState<PageResponse<UserSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -124,7 +126,11 @@ export default function PlatformUsersPage() {
               <tbody>
                 {data.content.map((user) => (
                   <tr key={user.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-foreground">{user.firstName} {user.lastName}</td>
+                    <td className="px-5 py-3.5 font-medium text-foreground">
+                      <button onClick={() => router.push(`/dashboard/platform-admin/users/${user.id}`)} className="hover:underline text-left">
+                        {user.firstName} {user.lastName}
+                      </button>
+                    </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{user.email}</td>
                     <td className="px-5 py-3.5">
                       <span className="inline-block rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
