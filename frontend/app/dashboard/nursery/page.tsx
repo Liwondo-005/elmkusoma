@@ -7,7 +7,7 @@ import { useRequireAuth } from "@/lib/auth"
 import { nurseryApi, type NurseryActivity, type NurseryMilestone, type NurseryStory } from "@/lib/nursery-api"
 import { LoadingState } from "@/components/learner/shared"
 import {
-  Sparkles, BookOpen, Palette, Puzzle, Music, Star,
+  Sparkles, BookOpen, Palette, Puzzle, Music,
   Trophy, Heart, ArrowRight, Sun, Moon, CloudSun,
   Play, Headphones, Eye, Compass
 } from "lucide-react"
