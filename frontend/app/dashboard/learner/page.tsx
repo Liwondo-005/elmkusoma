@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type Enrollment, type CourseSummary, type LiveClass, type EventItem, type Announcement, type Bookmark } from "@/lib/learner-api"
+import { learnerApi, type Enrollment, type CourseSummary, type LiveClass, type EventItem, type Announcement, type Bookmark as BookmarkType } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   Sparkles, Clock, Play, Video, BookOpen, BarChart3, FolderOpen,
@@ -18,7 +18,7 @@ export default function LearnerDashboardPage() {
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [events, setEvents] = useState<EventItem[]>([])
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
+  const [bookmarks, setBookmarks] = useState<BookmarkType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
