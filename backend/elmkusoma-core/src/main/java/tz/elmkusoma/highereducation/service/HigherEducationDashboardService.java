@@ -32,6 +32,7 @@ public class HigherEducationDashboardService {
     private final ProjectSubmissionRepository projectSubmissionRepository;
     private final CareerProfileRepository careerProfileRepository;
     private final LiveClassRepository liveClassRepository;
+    private final GpaCalculationService gpaCalculationService;
 
     public HigherEducationDashboardDTO getDashboard(UUID studentId, UUID institutionId, String learningLevel) {
         HigherEducationDashboardDTO dashboard = new HigherEducationDashboardDTO();
@@ -46,10 +47,13 @@ public class HigherEducationDashboardService {
 
         List<StudentCourseEnrollment> activeEnrollments = enrollmentRepository
                 .findByStudentIdAndStatusAndIsDeletedFalse(studentId, EnrollmentStatus.ENROLLED);
-        dashboard.setMyCourses(activeEnrollments.stream().map(e -> HigherEducationDashboardDTO.CourseSummaryDTO.builder()
-                .id(e.getId().toString())
-                .title("Course " + e.getCourseId().toString().substring(0, Math.min(8, e.getCourseId().toString().length())))
-                .progressPercent(0).totalModules(0).completedModules(0).build()).collect(Collectors.toList()));
+        dashboard.setMyCourses(activeEnrollments.stream().map(e -> {
+            int progress = computeEnrollmentProgressPercent(e);
+            return HigherEducationDashboardDTO.CourseSummaryDTO.builder()
+                    .id(e.getId().toString())
+                    .title("Course " + e.getCourseId().toString().substring(0, Math.min(8, e.getCourseId().toString().length())))
+                    .progressPercent(progress).totalModules(0).completedModules(0).build();
+        }).collect(Collectors.toList()));
 
         dashboard.setAcademicLoad(computeAcademicLoad(studentId));
         dashboard.setProjects(computeProjects(studentId));
@@ -61,6 +65,11 @@ public class HigherEducationDashboardService {
 
         List<StudyTask> allTasks = studyTaskRepository.findByStudentIdAndIsDeletedFalse(studentId);
         dashboard.setStudyPlannerTasks(allTasks.stream().limit(10).map(this::toStudyTaskDTO).collect(Collectors.toList()));
+
+        Double computedSemesterGpa = gpaCalculationService.computeSemesterGpa(studentId, dashboard.getAcademicLoad().getCurrentSemesterCourses() > 0 ? "CURRENT" : null, null);
+        Double computedCumulativeGpa = gpaCalculationService.computeCumulativeGpa(studentId);
+        if (computedSemesterGpa != null) dashboard.getAcademicLoad().setCurrentSemesterGpa(computedSemesterGpa);
+        if (computedCumulativeGpa != null) dashboard.getAcademicLoad().setCumulativeGpa(computedCumulativeGpa);
 
         return dashboard;
     }
@@ -126,7 +135,7 @@ public class HigherEducationDashboardService {
             StudyTask task = recentTasks.get(0);
             return HigherEducationDashboardDTO.ContinueLearningDTO.builder()
                     .lastCourse(task.getTitle()).lastModule(task.getDescription())
-                    .progressPercent(0).courseId(task.getId().toString()).build();
+                    .progressPercent(computeTaskProgressPercent(studentId)).courseId(task.getId().toString()).build();
         }
         return null;
     }
@@ -294,6 +303,23 @@ public class HigherEducationDashboardService {
 
         return HigherEducationDashboardDTO.DayWeekViewDTO.builder()
                 .todayItems(todayItems).weekItems(weekItems).build();
+    }
+
+    private int computeTaskProgressPercent(UUID studentId) {
+        List<StudyTask> tasks = studyTaskRepository.findByStudentIdAndIsDeletedFalse(studentId);
+        if (tasks.isEmpty()) return 0;
+        long completed = tasks.stream().filter(t -> Boolean.TRUE.equals(t.getIsCompleted())).count();
+        return (int) Math.round((completed * 100.0) / tasks.size());
+    }
+
+    private int computeEnrollmentProgressPercent(StudentCourseEnrollment enrollment) {
+        if (enrollment.getStatus() == EnrollmentStatus.COMPLETED) return 100;
+        if (enrollment.getStatus() == EnrollmentStatus.ENROLLED) {
+            if (enrollment.getGradePoints() != null && enrollment.getGradePoints() > 0) return 75;
+            return 10;
+        }
+        if (enrollment.getGrade() != null && !enrollment.getGrade().isEmpty()) return 80;
+        return 0;
     }
 
     private StudyTaskDTO toStudyTaskDTO(StudyTask t) {
