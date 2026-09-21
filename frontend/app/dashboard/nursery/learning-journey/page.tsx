@@ -6,6 +6,7 @@ import { nurseryApi, type NurseryMilestone } from "@/lib/nursery-api"
 import { LoadingState } from "@/components/learner/shared"
 import { Star, CheckCircle, Clock, Trophy, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 const CATEGORIES = [
   { key: "PHYSICAL", label: "Physical", icon: "🏃", color: "bg-red-50 border-red-200 text-red-700" },
@@ -17,20 +18,32 @@ const CATEGORIES = [
 ]
 
 export default function LearningJourneyPage() {
+  const t = useTranslations("nursery")
   const { user } = useRequireAuth()
   const [milestones, setMilestones] = useState<NurseryMilestone[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.id) return
     nurseryApi.getMilestones(user.id)
       .then(setMilestones)
-      .catch(() => {})
+      .catch(() => setError("Failed to load learning journey"))
       .finally(() => setLoading(false))
   }, [user])
 
   if (loading) return <LoadingState />
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
+        <div className="nursery-card rounded-2xl bg-white p-8 text-center">
+          <p className="text-sm text-red-500">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   const filtered = activeFilter
     ? milestones.filter(m => m.category === activeFilter)
@@ -41,14 +54,14 @@ export default function LearningJourneyPage() {
   const progress = total > 0 ? Math.round((achieved / total) * 100) : 0
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100">
+        <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label="Back to nursery dashboard">
           <ArrowLeft className="size-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">My Learning Journey</h1>
-          <p className="text-sm text-gray-500">Track how you grow and learn</p>
+          <h1 className="text-xl font-bold text-gray-800">{t("learningJourney")}</h1>
+          <p className="text-sm text-gray-500">{t("subtitle.journey")}</p>
         </div>
       </div>
 
@@ -56,12 +69,12 @@ export default function LearningJourneyPage() {
       <div className="nursery-card rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 p-5 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-white/80">Overall Progress</p>
+            <p className="text-sm text-white/80">{t("progress.overall")}</p>
             <p className="text-3xl font-bold">{progress}%</p>
           </div>
           <Trophy className="size-10 text-white/80" />
         </div>
-        <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/20">
+        <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/20" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={`${t("progress.overall")}: ${progress}%`}>
           <div className="h-full rounded-full bg-white transition-all" style={{ width: `${progress}%` }} />
         </div>
         <p className="mt-2 text-xs text-white/70">{achieved} of {total} milestones achieved</p>
@@ -71,16 +84,20 @@ export default function LearningJourneyPage() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveFilter(null)}
+          aria-pressed={!activeFilter}
+          aria-label={t("filters.all")}
           className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
             !activeFilter ? "bg-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
           }`}
         >
-          All
+          {t("filters.all")}
         </button>
         {CATEGORIES.map(cat => (
           <button
             key={cat.key}
             onClick={() => setActiveFilter(activeFilter === cat.key ? null : cat.key)}
+            aria-pressed={activeFilter === cat.key}
+            aria-label={`${t("filters.all")} ${cat.label}`}
             className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
               activeFilter === cat.key ? "bg-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
@@ -95,8 +112,8 @@ export default function LearningJourneyPage() {
         {filtered.length === 0 ? (
           <div className="nursery-card rounded-2xl bg-white p-8 text-center">
             <Star className="mx-auto size-12 text-yellow-400" />
-            <h3 className="mt-3 text-lg font-bold text-gray-800">No milestones yet!</h3>
-            <p className="mt-1 text-sm text-gray-500">Your teacher will add milestones as you learn and grow.</p>
+            <h3 className="mt-3 text-lg font-bold text-gray-800">{t("empty.noMilestones")}</h3>
+            <p className="mt-1 text-sm text-gray-500">{t("empty.teacherWillAdd")}</p>
           </div>
         ) : (
           filtered.map((milestone) => {
@@ -122,17 +139,17 @@ export default function LearningJourneyPage() {
                   {isAchieved ? (
                     <>
                       <CheckCircle className="size-6 text-green-500" />
-                      <span className="text-[10px] font-bold text-green-600">Achieved!</span>
+                      <span className="text-[10px] font-bold text-green-600">{t("stats.achieved")}</span>
                     </>
                   ) : milestone.status === "IN_PROGRESS" ? (
                     <>
                       <Clock className="size-6 text-yellow-500" />
-                      <span className="text-[10px] font-bold text-yellow-600">Working on it</span>
+                      <span className="text-[10px] font-bold text-yellow-600">{t("filters.inProgress")}</span>
                     </>
                   ) : (
                     <>
                       <Star className="size-6 text-gray-300" />
-                      <span className="text-[10px] font-bold text-gray-400">Upcoming</span>
+                      <span className="text-[10px] font-bold text-gray-400">{t("filters.upcoming")}</span>
                     </>
                   )}
                 </div>

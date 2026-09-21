@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, Star, Sun, CloudRain, TreePine, Dog, Cat, Fish, Bird, Bug, Flower2 } from "lucide-react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 const DISCOVERY_CARDS = [
   {
@@ -11,7 +12,7 @@ const DISCOVERY_CARDS = [
     category: "Nature",
     icon: Sun,
     color: "from-yellow-400 to-orange-500",
-    emoji: "☀️",
+    emoji: "\u2600\uFE0F",
     facts: [
       "The sun is a big ball of hot gas",
       "It gives us light so we can see",
@@ -26,7 +27,7 @@ const DISCOVERY_CARDS = [
     category: "Weather",
     icon: CloudRain,
     color: "from-blue-400 to-cyan-500",
-    emoji: "🌧️",
+    emoji: "\u{1F327}\uFE0F",
     facts: [
       "Rain is water falling from clouds",
       "Plants need rain to grow",
@@ -41,7 +42,7 @@ const DISCOVERY_CARDS = [
     category: "Nature",
     icon: TreePine,
     color: "from-green-400 to-emerald-500",
-    emoji: "🌳",
+    emoji: "\u{1F333}",
     facts: [
       "Trees give us oxygen to breathe",
       "Birds live in trees",
@@ -56,7 +57,7 @@ const DISCOVERY_CARDS = [
     category: "Animals",
     icon: Dog,
     color: "from-amber-400 to-brown-500",
-    emoji: "🐕",
+    emoji: "\u{1F415}",
     facts: [
       "Dogs are our best friends",
       "They can learn tricks",
@@ -71,7 +72,7 @@ const DISCOVERY_CARDS = [
     category: "Animals",
     icon: Cat,
     color: "from-purple-400 to-pink-500",
-    emoji: "🐱",
+    emoji: "\u{1F431}",
     facts: [
       "Cats love to nap",
       "They purr when they are happy",
@@ -86,7 +87,7 @@ const DISCOVERY_CARDS = [
     category: "Animals",
     icon: Fish,
     color: "from-cyan-400 to-blue-500",
-    emoji: "🐟",
+    emoji: "\u{1F41F}",
     facts: [
       "Fish live in water",
       "They breathe through gills",
@@ -101,7 +102,7 @@ const DISCOVERY_CARDS = [
     category: "Animals",
     icon: Bird,
     color: "from-sky-400 to-indigo-500",
-    emoji: "🐦",
+    emoji: "\u{1F426}",
     facts: [
       "Birds can fly in the sky",
       "They build nests in trees",
@@ -116,7 +117,7 @@ const DISCOVERY_CARDS = [
     category: "Animals",
     icon: Bug,
     color: "from-lime-400 to-green-500",
-    emoji: "🐛",
+    emoji: "\u{1F41B}",
     facts: [
       "Bugs are tiny creatures",
       "Bees make honey for us",
@@ -131,7 +132,7 @@ const DISCOVERY_CARDS = [
     category: "Nature",
     icon: Flower2,
     color: "from-pink-400 to-rose-500",
-    emoji: "🌸",
+    emoji: "\u{1F338}",
     facts: [
       "Flowers are beautiful and colorful",
       "Bees visit flowers for nectar",
@@ -143,12 +144,16 @@ const DISCOVERY_CARDS = [
 ]
 
 export default function DiscoveryPage() {
+  const t = useTranslations("nursery")
+  const tc = useTranslations("common")
   const [selectedCard, setSelectedCard] = useState<typeof DISCOVERY_CARDS[0] | null>(null)
   const [currentFact, setCurrentFact] = useState(0)
+  const [cardOpen, setCardOpen] = useState(false)
 
   function openCard(card: typeof DISCOVERY_CARDS[0]) {
     setSelectedCard(card)
     setCurrentFact(0)
+    setCardOpen(true)
   }
 
   function nextFact() {
@@ -156,21 +161,30 @@ export default function DiscoveryPage() {
       setCurrentFact(currentFact + 1)
     } else {
       setSelectedCard(null)
+      setCardOpen(false)
     }
   }
 
+  useEffect(() => {
+    if (!cardOpen) return
+    function handleKey(e: KeyboardEvent) { if (e.key === "Escape") { setSelectedCard(null); setCardOpen(false) } }
+    document.addEventListener("keydown", handleKey)
+    return () => document.removeEventListener("keydown", handleKey)
+  }, [cardOpen])
+
   if (selectedCard) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-indigo-900 to-purple-900">
+      <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-indigo-900 to-purple-900" role="dialog" aria-modal="true" aria-label={selectedCard.title}>
         <div className="flex items-center justify-between p-4">
           <button
-            onClick={() => setSelectedCard(null)}
+            onClick={() => { setSelectedCard(null); setCardOpen(false) }}
             className="flex size-10 items-center justify-center rounded-full bg-white/20 text-white"
+            aria-label={tc("close")}
           >
-            ✕
+            &#x2715;
           </button>
           <p className="text-sm text-white/70">
-            Fact {currentFact + 1} of {selectedCard.facts.length}
+            {t("factOf", { n: currentFact + 1, m: selectedCard.facts.length })}
           </p>
           <div />
         </div>
@@ -197,10 +211,11 @@ export default function DiscoveryPage() {
             onClick={() => setCurrentFact(Math.max(0, currentFact - 1))}
             disabled={currentFact === 0}
             className="rounded-full bg-white/20 px-6 py-3 text-sm font-bold text-white disabled:opacity-40"
+            aria-label={t("backToList")}
           >
-            Back
+            {t("backToList")}
           </button>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5" role="progressbar" aria-valuenow={currentFact + 1} aria-valuemin={1} aria-valuemax={selectedCard.facts.length}>
             {selectedCard.facts.map((_, i) => (
               <div
                 key={i}
@@ -211,8 +226,9 @@ export default function DiscoveryPage() {
           <button
             onClick={nextFact}
             className="rounded-full bg-white px-6 py-3 text-sm font-bold text-purple-900"
+            aria-label={currentFact === selectedCard.facts.length - 1 ? t("done") : tc("next")}
           >
-            {currentFact === selectedCard.facts.length - 1 ? "Done!" : "Next"}
+            {currentFact === selectedCard.facts.length - 1 ? t("done") : tc("next")}
           </button>
         </div>
       </div>
@@ -220,14 +236,14 @@ export default function DiscoveryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100">
+        <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToList")}>
           <ArrowLeft className="size-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Discovery</h1>
-          <p className="text-sm text-gray-500">Explore the amazing world around you</p>
+          <h1 className="text-xl font-bold text-gray-800">{t("discoveryLab")}</h1>
+          <p className="text-sm text-gray-500">{t("subtitle.discovery")}</p>
         </div>
       </div>
 
@@ -236,6 +252,7 @@ export default function DiscoveryPage() {
           <button
             key={card.id}
             onClick={() => openCard(card)}
+            aria-label={`${card.title} - ${card.category}`}
             className="nursery-card flex flex-col items-center gap-3 rounded-2xl bg-white p-5 text-center transition-all hover:shadow-lg hover:scale-105"
           >
             <div className={`flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br ${card.color} text-3xl`}>

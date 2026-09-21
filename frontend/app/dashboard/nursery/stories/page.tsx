@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { ArrowLeft, BookOpen, Volume2, VolumeX } from "lucide-react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { nurseryApi, type NurseryStory } from "@/lib/nursery-api"
 
@@ -86,18 +87,31 @@ const STORY_EMOJIS = ["📖", "📚", "🌟", "🎯", "💡", "🔬"]
 
 export default function StoriesPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("nursery")
+  const tc = useTranslations("common")
   const [apiStories, setApiStories] = useState<NurseryStory[]>([])
   const [selectedStory, setSelectedStory] = useState<LocalStory | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [muted, setMuted] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [storyOpen, setStoryOpen] = useState(false)
 
   useEffect(() => {
     if (user?.classGroupId) {
       nurseryApi.getStories(user.classGroupId)
         .then(setApiStories)
-        .catch(() => {})
+        .catch(() => setError(tc("error")))
     }
   }, [user])
+
+  useEffect(() => {
+    if (!storyOpen) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { setStoryOpen(false); setSelectedStory(null) }
+    }
+    document.addEventListener("keydown", handleKey)
+    return () => document.removeEventListener("keydown", handleKey)
+  }, [storyOpen])
 
   const allStories: LocalStory[] = [
     ...BUILTIN_STORIES,
@@ -111,21 +125,26 @@ export default function StoriesPage() {
     })),
   ]
 
-  function openStory(story: LocalStory) { setSelectedStory(story); setCurrentPage(0) }
+  function openStory(story: LocalStory) { setSelectedStory(story); setCurrentPage(0); setStoryOpen(true) }
   function nextPage() {
     if (selectedStory && currentPage < selectedStory.pages.length - 1) setCurrentPage(currentPage + 1)
-    else setSelectedStory(null)
+    else { setSelectedStory(null); setStoryOpen(false) }
   }
   function prevPage() { if (currentPage > 0) setCurrentPage(currentPage - 1) }
 
   if (selectedStory) {
     const page = selectedStory.pages[currentPage]
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-indigo-900 to-purple-900">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={selectedStory.title}
+        className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-indigo-900 to-purple-900"
+      >
         <div className="flex items-center justify-between p-4">
-          <button onClick={() => setSelectedStory(null)} className="flex size-10 items-center justify-center rounded-full bg-white/20 text-white">✕</button>
-          <p className="text-sm text-white/70">Page {currentPage + 1} of {selectedStory.pages.length}</p>
-          <button onClick={() => setMuted(!muted)} className="flex size-10 items-center justify-center rounded-full bg-white/20 text-white">
+          <button onClick={() => { setSelectedStory(null); setStoryOpen(false) }} aria-label={tc("close")} className="flex size-10 items-center justify-center rounded-full bg-white/20 text-white">✕</button>
+          <p className="text-sm text-white/70">Page {currentPage + 1} {tc("of")} {selectedStory.pages.length}</p>
+          <button onClick={() => setMuted(!muted)} aria-label={muted ? "Unmute" : "Mute"} className="flex size-10 items-center justify-center rounded-full bg-white/20 text-white">
             {muted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
           </button>
         </div>
@@ -134,28 +153,45 @@ export default function StoriesPage() {
           <p className="max-w-md text-center text-xl font-medium leading-relaxed text-white">{page.text}</p>
         </div>
         <div className="flex items-center justify-between p-6">
-          <button onClick={prevPage} disabled={currentPage === 0} className="rounded-full bg-white/20 px-6 py-3 text-sm font-bold text-white disabled:opacity-40">Back</button>
+          <button onClick={prevPage} disabled={currentPage === 0} aria-label={tc("previous")} className="rounded-full bg-white/20 px-6 py-3 text-sm font-bold text-white disabled:opacity-40">{tc("previous")}</button>
           <div className="flex gap-1.5">{selectedStory.pages.map((_, i) => <div key={i} className={`size-2 rounded-full ${i === currentPage ? "bg-white" : "bg-white/30"}`} />)}</div>
-          <button onClick={nextPage} className="rounded-full bg-white px-6 py-3 text-sm font-bold text-purple-900">
-            {currentPage === selectedStory.pages.length - 1 ? "Done!" : "Next"}
+          <button onClick={nextPage} aria-label={currentPage === selectedStory.pages.length - 1 ? t("done") : tc("next")} className="rounded-full bg-white px-6 py-3 text-sm font-bold text-purple-900">
+            {currentPage === selectedStory.pages.length - 1 ? t("done") : tc("next")}
           </button>
         </div>
       </div>
     )
   }
 
+  if (error) {
+    return (
+      <main role="main" className="mx-auto flex min-h-[50vh] max-w-4xl flex-col items-center justify-center p-4 text-center">
+        <h2 className="text-lg font-bold text-gray-800">{tc("error")}</h2>
+        <p className="mt-1 text-sm text-gray-500">{t("empty.noStories")}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          aria-label={tc("retry")}
+          className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary/90"
+        >
+          {tc("retry")}
+        </button>
+      </main>
+    )
+  }
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
+    <main role="main" className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100"><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <Link href="/dashboard/nursery" aria-label={tc("back")} className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100"><ArrowLeft className="size-5 text-gray-600" /></Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Stories</h1>
-          <p className="text-sm text-gray-500">Read magical tales together</p>
+          <h1 className="text-xl font-bold text-gray-800">{t("storyWorld")}</h1>
+          <p className="text-sm text-gray-500">{t("subtitle.stories")}</p>
         </div>
       </div>
       <div className="space-y-3">
         {allStories.map((story) => (
-          <button key={story.id} onClick={() => openStory(story)} className="nursery-card flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left transition-all hover:shadow-lg">
+          <button key={story.id} onClick={() => openStory(story)} aria-label={`${story.title} - ${story.category} ${tc("of")} ${story.pages.length} pages`} className="nursery-card flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left transition-all hover:shadow-lg">
             <div className={`flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br ${story.color} text-3xl`}>{story.emoji}</div>
             <div className="flex-1">
               <p className="font-bold text-gray-800">{story.title}</p>
@@ -165,6 +201,6 @@ export default function StoriesPage() {
           </button>
         ))}
       </div>
-    </div>
+    </main>
   )
 }
