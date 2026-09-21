@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { learnerApi, type LearnerNotification } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   Bell,
@@ -22,6 +24,7 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Loader2,
 } from "lucide-react"
 
 type Notification = {
@@ -33,9 +36,6 @@ type Notification = {
   createdAt: string
   link?: string
 }
-
-const STORAGE_KEY = "elmku_notifications_center_read_state"
-const DELETED_KEY = "elmku_notifications_center_deleted"
 
 const NOTIFICATION_CONFIG: Record<
   string,
@@ -53,149 +53,6 @@ const NOTIFICATION_CONFIG: Record<
 
 const CATEGORIES = ["ALL", "LIVE", "COURSE", "ASSESSMENT", "RESEARCH", "PROJECT", "ACADEMIC", "CAREER"] as const
 type CategoryFilter = (typeof CATEGORIES)[number]
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: "n1",
-    title: "Live Session Starting Soon",
-    message: "Advanced Machine Learning — live lecture with Dr. Mensah begins in 15 minutes. Join now to participate in the Q&A segment.",
-    type: "LIVE",
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    link: "/dashboard/learner/live-classes",
-  },
-  {
-    id: "n2",
-    title: "New Course Material Available",
-    message: "Module 6: Neural Network Architectures — lecture slides, code notebooks, and supplementary readings have been uploaded.",
-    type: "COURSE",
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    link: "/dashboard/learner/courses",
-  },
-  {
-    id: "n3",
-    title: "Assignment Due Tomorrow",
-    message: "Research Methodology — Literature Review Report is due tomorrow at 23:59 EAT. You have 8 references completed out of 12.",
-    type: "ASSESSMENT",
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    link: "/dashboard/learner/modules",
-  },
-  {
-    id: "n4",
-    title: "Supervisor Feedback Received",
-    message: "Prof. Ndungu has reviewed your thesis proposal draft and left detailed feedback on your methodology section. 3 comments to address.",
-    type: "RESEARCH",
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
-    link: "/dashboard/learner/research",
-  },
-  {
-    id: "n5",
-    title: "Project Milestone Approaching",
-    message: "Capstone Project — Sprint 3 demo is scheduled for Friday. Your team has completed 70% of the deliverables. 2 tasks remaining.",
-    type: "PROJECT",
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-    link: "/dashboard/learner/projects",
-  },
-  {
-    id: "n6",
-    title: "Timetable Update",
-    message: "Your Semester 2 examination timetable has been published. Final exams start on December 8th. Please review your schedule.",
-    type: "ACADEMIC",
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    link: "/dashboard/learner/calendar",
-  },
-  {
-    id: "n7",
-    title: "Recording Available",
-    message: "Last week's Data Structures & Algorithms live session recording is now available. Duration: 1h 42m. Chapters: Arrays, Trees, Graphs.",
-    type: "REPLAY",
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-    link: "/dashboard/learner/media-library",
-  },
-  {
-    id: "n8",
-    title: "Career Workshop: Technical Interviews",
-    message: "Register for the upcoming workshop on preparing for software engineering technical interviews. Spaces are limited — 25 spots remaining.",
-    type: "CAREER",
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
-    link: "/dashboard/learner/professional-dev",
-  },
-  {
-    id: "n9",
-    title: "Grade Posted",
-    message: "Your midterm examination for Database Systems has been graded. You scored 78/100. View detailed breakdown in your results.",
-    type: "ASSESSMENT",
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    link: "/dashboard/learner/modules",
-  },
-  {
-    id: "n10",
-    title: "Course Announcement",
-    message: "Software Engineering II — Prof. Achieng has extended the group project proposal deadline to next Monday. Updated rubric attached.",
-    type: "COURSE",
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(),
-    link: "/dashboard/learner/courses",
-  },
-  {
-    id: "n11",
-    title: "Live Session Recording Available",
-    message: "Introduction to Artificial Intelligence — Dr. Wanjiku's recorded session on Reinforcement Learning is ready for viewing.",
-    type: "LIVE",
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-    link: "/dashboard/learner/media-library",
-  },
-  {
-    id: "n12",
-    title: "Industry Partner Visit",
-    message: "Safaricom PLC will be conducting a campus recruitment session next week. Prepare your portfolio and resume.",
-    type: "CAREER",
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
-    link: "/dashboard/learner/professional-dev",
-  },
-]
-
-function getReadState(): Record<string, boolean> {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveReadState(state: Record<string, boolean>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  } catch {}
-}
-
-function getDeletedState(): string[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem(DELETED_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveDeletedState(ids: string[]) {
-  try {
-    localStorage.setItem(DELETED_KEY, JSON.stringify(ids))
-  } catch {}
-}
 
 function getTimeAgo(dateStr: string): string {
   const now = Date.now()
@@ -217,22 +74,64 @@ function getCategoryConfig(type: string) {
   return NOTIFICATION_CONFIG[type] || NOTIFICATION_CONFIG.COURSE
 }
 
+function mapNotification(n: LearnerNotification): Notification {
+  const typeMap: Record<string, string> = {
+    LIVE_SESSION: "LIVE",
+    LIVE: "LIVE",
+    COURSE: "COURSE",
+    ASSESSMENT: "ASSESSMENT",
+    RESEARCH: "RESEARCH",
+    PROJECT: "PROJECT",
+    ACADEMIC: "ACADEMIC",
+    REPLAY: "REPLAY",
+    CAREER: "CAREER",
+  }
+  return {
+    id: n.id,
+    title: n.title,
+    message: n.message,
+    type: typeMap[n.notificationType] || "COURSE",
+    read: n.isRead,
+    createdAt: n.createdAt,
+    link: n.targetId
+      ? n.targetType === "COURSE"
+        ? "/dashboard/learner/courses"
+        : n.targetType === "LIVE_CLASS"
+        ? "/dashboard/learner/live-classes"
+        : undefined
+      : undefined,
+  }
+}
+
 export default function NotificationsCenterPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const tc = useTranslations("common")
 
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [readState, setReadState] = useState<Record<string, boolean>>({})
-  const [deletedIds, setDeletedIds] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>("ALL")
-  const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
-    setReadState(getReadState())
-    setDeletedIds(getDeletedState())
-    setInitialized(true)
-  }, [])
+    if (!user) return
+    loadData()
+  }, [user])
 
-  const notifications = MOCK_NOTIFICATIONS.filter((n) => !deletedIds.includes(n.id))
+  async function loadData() {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await learnerApi.getNotifications()
+      setNotifications(data.map(mapNotification))
+    } catch {
+      setError(tc("error"))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const notificationsWithRead = notifications.map((n) => ({
     ...n,
     read: readState[n.id] !== undefined ? readState[n.id] : n.read,
@@ -249,11 +148,14 @@ export default function NotificationsCenterPage() {
     (id: string) => {
       setReadState((prev) => {
         const next = { ...prev, [id]: !prev[id] }
-        saveReadState(next)
         return next
       })
+      const isCurrentlyRead = readState[id] !== undefined ? readState[id] : notifications.find((n) => n.id === id)?.read
+      if (!isCurrentlyRead) {
+        learnerApi.markNotificationRead(id).catch(() => {})
+      }
     },
-    []
+    [readState, notifications]
   )
 
   const markAllRead = useCallback(() => {
@@ -262,29 +164,54 @@ export default function NotificationsCenterPage() {
       next[n.id] = true
     })
     setReadState(next)
-    saveReadState(next)
+    learnerApi.markAllRead().catch(() => {})
   }, [notificationsWithRead])
 
   const deleteNotification = useCallback(
     (id: string) => {
-      setDeletedIds((prev) => {
-        const next = [...prev, id]
-        saveDeletedState(next)
-        return next
-      })
+      setNotifications((prev) => prev.filter((n) => n.id !== id))
     },
     []
   )
 
-  if (authLoading || (!user) || (user.role !== "Other Learner" && user.role !== "Student")) {
+  if (authLoading || !loading && (!user || (user.role !== "Other Learner" && user.role !== "Student"))) {
     return <LoadingState />
   }
 
-  if (!initialized) {
-    return <LoadingState />
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 pb-12">
+        <LearnerHeader firstName={user?.firstName || "Student"} subtitle="Stay updated with your academic notifications" />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">{tc("loading")}</span>
+        </div>
+      </div>
+    )
   }
 
-  const firstName = user.firstName || user.name?.split(" ")[0] || "Student"
+  if (error) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 pb-12">
+        <LearnerHeader firstName={user?.firstName || "Student"} subtitle="Stay updated with your academic notifications" />
+        <EmptyState
+          icon={<AlertCircle className="size-8" />}
+          title={tc("error")}
+          description={error}
+        />
+        <div className="flex justify-center">
+          <button
+            onClick={loadData}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Student"
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-12">
