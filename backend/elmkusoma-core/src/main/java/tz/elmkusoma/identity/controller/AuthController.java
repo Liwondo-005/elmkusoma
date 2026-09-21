@@ -74,4 +74,16 @@ public class AuthController {
         authService.logout(request.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success("Logged out successfully", null));
     }
+
+    @PostMapping("/send-code")
+    public ResponseEntity<ApiResponse<Void>> sendVerificationCode(@Valid @RequestBody SendVerificationCodeRequest request) {
+        authService.sendVerificationCode(request);
+        return ResponseEntity.ok(ApiResponse.success("A 5-digit verification code has been sent to your email", null));
+    }
+
+    @PostMapping("/verify-code")
+    public ResponseEntity<ApiResponse<Void>> verifyCode(@Valid @RequestBody VerifyCodeRequest request) {
+        authService.verifyCode(request);
+        return ResponseEntity.ok(ApiResponse.success("Verification successful", null));
+    }
 }
