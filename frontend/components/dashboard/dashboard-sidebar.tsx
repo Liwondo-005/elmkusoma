@@ -437,6 +437,7 @@ const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboar
   { label: "Competencies", href: "/dashboard/admin/competencies", icon: Target },
   { label: "Roles", href: "/dashboard/admin/roles", icon: Shield },
   { label: "Audit Log", href: "/dashboard/admin/audit", icon: Eye },
+  { label: "Events", href: "/dashboard/admin/events", icon: Calendar },
   { label: "Data Import", href: "/dashboard/admin/import", icon: FileText },
   { label: "Settings", href: "/dashboard/admin/settings", icon: Settings },
 ]

@@ -980,6 +980,156 @@
       "registerFailed": "Registration failed",
       "cancelFailed": "Cancellation failed",
       "retry": "Try Again"
+    },
+    "admin": {
+      "title": "Event Management",
+      "subtitle": "Create, manage, and track your institution's events",
+      "createEvent": "Create Event",
+      "searchPlaceholder": "Search events...",
+      "filterByStatus": "Filter by status",
+      "filterByType": "Filter by type",
+      "filterByDate": "Filter by date",
+      "allStatuses": "All Statuses",
+      "allTypes": "All Types",
+      "columns": {
+        "title": "Title",
+        "type": "Type",
+        "status": "Status",
+        "date": "Date",
+        "registrations": "Registrations",
+        "recording": "Recording",
+        "actions": "Actions"
+      },
+      "status": {
+        "DRAFT": "Draft",
+        "PUBLISHED": "Published",
+        "LIVE": "Live",
+        "ENDED": "Ended",
+        "CANCELLED": "Cancelled"
+      },
+      "actions": {
+        "edit": "Edit",
+        "publish": "Publish",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "view": "View",
+        "startLive": "Start Live",
+        "endLive": "End Live",
+        "viewRecording": "View Recording",
+        "viewSummary": "View Summary"
+      },
+      "bulkActions": {
+        "publishSelected": "Publish Selected",
+        "cancelSelected": "Cancel Selected"
+      },
+      "empty": {
+        "noEvents": "No events yet",
+        "noEventsDesc": "Create your first event to get started."
+      },
+      "confirm": {
+        "deleteTitle": "Delete Event",
+        "deleteMessage": "Are you sure you want to delete this event? This action cannot be undone.",
+        "cancelTitle": "Cancel Event",
+        "cancelMessage": "Are you sure you want to cancel this event?",
+        "publishTitle": "Publish Event",
+        "publishMessage": "Are you sure you want to publish this event?"
+      },
+      "pagination": {
+        "showing": "Showing",
+        "of": "of",
+        "events": "events",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "form": {
+        "createTitle": "Create Event",
+        "editTitle": "Edit Event",
+        "titleLabel": "Event Title",
+        "titlePlaceholder": "Enter event title",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Describe the event",
+        "typeLabel": "Event Type",
+        "typePlaceholder": "Select event type",
+        "categoryLabel": "Category",
+        "categoryPlaceholder": "Select category",
+        "dateLabel": "Start Date & Time",
+        "durationLabel": "Duration (minutes)",
+        "durationPlaceholder": "e.g. 60",
+        "timezoneLabel": "Timezone",
+        "capacityLabel": "Max Capacity",
+        "capacityPlaceholder": "e.g. 100",
+        "accessLevelLabel": "Access Level",
+        "accessLevelPlaceholder": "Select access level",
+        "presenterLabel": "Presenter Name",
+        "presenterPlaceholder": "Enter presenter name",
+        "courseLabel": "Related Course (optional)",
+        "coursePlaceholder": "Search for a course",
+        "moduleLabel": "Related Module (optional)",
+        "modulePlaceholder": "Search for a module",
+        "lessonLabel": "Related Lesson (optional)",
+        "lessonPlaceholder": "Search for a lesson",
+        "recordingLabel": "Enable Recording",
+        "saveDraft": "Save as Draft",
+        "publish": "Publish",
+        "saving": "Saving...",
+        "required": "Required"
+      },
+      "types": {
+        "LECTURE": "Lecture",
+        "SEMINAR": "Seminar",
+        "WEBINAR": "Webinar",
+        "WORKSHOP": "Workshop",
+        "TUTORIAL": "Tutorial",
+        "PRACTICAL_DEMONSTRATION": "Practical Demonstration",
+        "GUEST_SESSION": "Guest Session",
+        "ACADEMIC_TALK": "Academic Talk",
+        "PROFESSIONAL_TRAINING": "Professional Training",
+        "EDUCATIONAL_BROADCAST": "Educational Broadcast",
+        "CONFERENCE_SESSION": "Conference Session",
+        "OTHER": "Other"
+      },
+      "categories": {
+        "ACADEMIC": "Academic",
+        "PROFESSIONAL": "Professional",
+        "COMMUNITY": "Community",
+        "OTHER": "Other"
+      },
+      "accessLevels": {
+        "PUBLIC": "Public",
+        "AUTHENTICATED": "Authenticated",
+        "REGISTERED": "Registered",
+        "ENROLLED": "Enrolled",
+        "INSTITUTION": "Institution Only",
+        "INVITED": "Invited",
+        "RESTRICTED": "Restricted"
+      },
+      "summary": {
+        "title": "Event Summary",
+        "backToEvents": "Back to Events",
+        "sessionInfo": "Session Information",
+        "statsGrid": {
+          "registered": "Registered",
+          "joined": "Joined",
+          "attendanceRate": "Attendance Rate",
+          "participation": "Participation"
+        },
+        "recordingStatus": "Recording Status",
+        "recordingAvailable": "Recording Available",
+        "recordingNotAvailable": "No Recording",
+        "replayAvailable": "Replay Available",
+        "replayNotAvailable": "Replay Not Available",
+        "attendanceBreakdown": "Attendance Breakdown",
+        "materialsUploaded": "Materials Uploaded",
+        "analytics": "Event Analytics",
+        "exportAttendance": "Export Attendance",
+        "noMaterials": "No materials uploaded",
+        "noAnalytics": "No analytics data available",
+        "joinTime": "Join Time",
+        "leaveTime": "Leave Time",
+        "duration": "Duration",
+        "attendeeName": "Name",
+        "attendeeEmail": "Email"
+      }
     }
   },
   "highered": {

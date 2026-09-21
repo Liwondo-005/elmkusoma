@@ -1195,6 +1195,53 @@ export const adminApi = {
     request<void>(`/v1/admin/people/invitations/${invitationId}?institutionId=${institutionId}`, {
       method: "DELETE",
     }),
+
+  // Events
+  getEvents: (institutionId: string) =>
+    request<any[]>(`/v1/events?institutionId=${institutionId}`),
+
+  getEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}`),
+
+  createEvent: (data: Record<string, unknown>) =>
+    request<any>(`/v1/events`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateEvent: (eventId: string, data: Record<string, unknown>) =>
+    request<any>(`/v1/events/${eventId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteEvent: (eventId: string) =>
+    request<void>(`/v1/events/${eventId}`, {
+      method: "DELETE",
+    }),
+
+  publishEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/publish`, {
+      method: "POST",
+    }),
+
+  cancelEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/cancel`, {
+      method: "POST",
+    }),
+
+  startLiveEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/start-live`, {
+      method: "POST",
+    }),
+
+  endLiveEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/end-live`, {
+      method: "POST",
+    }),
+
+  getEventSummary: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/summary`),
 }
 
 // ---------------------------------------------------------------------------
