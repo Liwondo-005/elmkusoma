@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type Enrollment } from "@/lib/learner-api"
+import { learnerApi, type Enrollment, getLastAccessedLesson } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { BookOpen, ArrowRight, Loader2, AlertCircle, CheckCircle, Clock, Search } from "lucide-react"
 
@@ -176,7 +176,14 @@ export default function MyLearningPage() {
                 </div>
               </div>
               <Link
-                href={`/dashboard/learner/courses/${enrollment.courseId}`}
+                href={(() => {
+                  if (enrollment.completedAt) return `/dashboard/learner/courses/${enrollment.courseId}`
+                  const last = getLastAccessedLesson()
+                  if (last && last.courseId === enrollment.courseId) {
+                    return `/dashboard/learner/courses/${enrollment.courseId}/lessons/${last.lessonId}`
+                  }
+                  return `/dashboard/learner/courses/${enrollment.courseId}`
+                })()}
                 className="shrink-0 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
               >
                 {enrollment.completedAt ? "Review" : "Continue"}

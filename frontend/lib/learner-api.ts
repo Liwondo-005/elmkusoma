@@ -69,9 +69,12 @@ export interface CourseModuleSummary {
 export interface CourseLesson {
   id: string
   title: string
-  content: string | null
+  contentType: string
+  contentUrl: string | null
+  durationMinutes: number | null
   sortOrder: number
   moduleId: string
+  isFree: boolean
 }
 
 export interface Enrollment {
@@ -275,14 +278,29 @@ export interface ProfileUpdate {
   avatarUrl?: string
 }
 
-export interface SearchFilters {
-  dateFrom?: string
-  dateTo?: string
-  resourceType?: string
-  level?: string
-  category?: string
-  provider?: string
-  sort?: string
+export interface ContinueLearningState {
+  courseId: string
+  courseTitle: string
+  moduleId: string
+  moduleTitle: string
+  lessonId: string
+  lessonTitle: string
+  lastAccessedAt: string
+}
+
+export function getLastAccessedLesson(): ContinueLearningState | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = localStorage.getItem("elmkusoma_continue_learning")
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+export function setLastAccessedLesson(state: ContinueLearningState): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem("elmkusoma_continue_learning", JSON.stringify(state))
 }
 
 export const learnerApi = {
