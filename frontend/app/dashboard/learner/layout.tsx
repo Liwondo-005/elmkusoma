@@ -8,13 +8,14 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-20" role="status" aria-label="Loading">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <span className="sr-only">Loading...</span>
       </div>
     )
   }
 
-  if (!user || user.role !== "Other Learner") {
+  if (!user) {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Access denied</p>
@@ -22,5 +23,29 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
     )
   }
 
-  return <>{children}</>
+  const isOtherLearner = user.role === "Other Learner"
+  const level = (user.learningLevel || "").toUpperCase()
+  const isCollegeStudent = user.role === "Student" && (level === "COLLEGE" || level === "UNIVERSITY" || level === "VETA")
+
+  if (!isOtherLearner && !isCollegeStudent) {
+    return (
+      <div className="flex items-center justify-center py-20" role="alert">
+        <p className="text-muted-foreground">Access denied</p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-4 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
+      <main id="main-content" role="main">
+        {children}
+      </main>
+    </>
+  )
 }

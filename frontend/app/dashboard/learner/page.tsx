@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type Enrollment, type CourseSummary, type LiveClass, type EventItem, type Announcement, type Bookmark } from "@/lib/learner-api"
+import { learnerApi, type Enrollment, type CourseSummary, type LiveClass, type EventItem, type Announcement, type Bookmark as BookmarkType } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   Sparkles, Clock, Play, Video, BookOpen, BarChart3, FolderOpen,
   Award, CalendarDays, ChevronRight, CheckCircle2, AlertCircle,
-  TrendingUp, Library, Bookmark, Film, Search, Bell, ExternalLink
+  TrendingUp, Library, Bookmark as BookmarkIcon, Film, Search, Bell, ExternalLink, FlaskConical,
+  Trophy, Rss
 } from "lucide-react"
 
 export default function LearnerDashboardPage() {
@@ -18,7 +19,7 @@ export default function LearnerDashboardPage() {
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [events, setEvents] = useState<EventItem[]>([])
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
+  const [bookmarks, setBookmarks] = useState<BookmarkType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -92,6 +93,19 @@ export default function LearnerDashboardPage() {
               <CheckCircle2 className="size-3" /> {completed.length} completed
             </span>
           )}
+        </div>
+      </div>
+
+      {/* Signature tagline */}
+      <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-teal/5 p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-lg font-bold tracking-tight text-foreground">Learn. Practice. Build. Prove.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Your journey from knowledge to professional capability.</p>
+          </div>
+          <Link href="/dashboard/learner/modules" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+            Continue Learning <ChevronRight className="size-3.5" />
+          </Link>
         </div>
       </div>
 
@@ -246,6 +260,37 @@ export default function LearnerDashboardPage() {
         </div>
       )}
 
+      {/* Practical Learning */}
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <FlaskConical className="size-4 text-teal-600" />
+            <h3 className="font-semibold text-foreground">Practical Learning</h3>
+          </div>
+          <Link href="/dashboard/learner/workshops" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+            Open Practical World <ChevronRight className="size-3" />
+          </Link>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Enrolled Courses</p>
+            <p className="text-lg font-bold text-foreground">{enrollments.length}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">In Progress</p>
+            <p className="text-lg font-bold text-foreground">{inProgress.length}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Live Sessions</p>
+            <p className="text-lg font-bold text-foreground">{liveNow.length}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Completed</p>
+            <p className="text-lg font-bold text-foreground">{completed.length}</p>
+          </div>
+        </div>
+      </div>
+
       {/* My Courses + Browse Courses */}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Enrolled Courses List */}
@@ -391,7 +436,7 @@ export default function LearnerDashboardPage() {
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Bookmark className="size-4 text-rose-600" />
+              <BookmarkIcon className="size-4 text-rose-600" />
               <p className="text-xs font-medium text-muted-foreground">Saved</p>
             </div>
             {bookmarks.length > 0 && (
@@ -443,6 +488,137 @@ export default function LearnerDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Achievements (completed courses as real achievements) */}
+      {completed.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="size-4 text-amber-500" />
+              <h3 className="font-semibold text-foreground">Achievements</h3>
+            </div>
+            <Link href="/dashboard/learner/certificates" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+              View All <ChevronRight className="size-3" />
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {completed.slice(0, 4).map((e) => (
+              <div key={e.id} className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+                  <Award className="size-5 text-amber-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{e.courseTitle}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Completed {new Date(e.completedAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recently Accessed (from enrollments with recent activity) */}
+      {inProgress.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="size-4 text-blue-600" />
+              <h3 className="font-semibold text-foreground">Recently Accessed</h3>
+            </div>
+            <Link href="/dashboard/learner/history" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+              View History <ChevronRight className="size-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {inProgress.slice(0, 4).map((e) => (
+              <Link
+                key={e.id}
+                href={`/dashboard/learner/courses/${e.courseId}`}
+                className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50"
+              >
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                  <BookOpen className="size-5 text-blue-500/40" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{e.courseTitle}</p>
+                  <p className="text-xs text-muted-foreground">Last accessed recently</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs font-semibold text-primary">{e.progressPercentage}%</p>
+                  <div className="mt-1 h-1 w-16 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${e.progressPercentage}%` }} />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Learning Feed (unified feed of announcements + events + new courses) */}
+      {(announcements.length > 0 || events.length > 0 || recommended.length > 0) && (
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-3">
+            <Rss className="size-4 text-indigo-600" />
+            <h3 className="font-semibold text-foreground">Learning Feed</h3>
+          </div>
+          <div className="space-y-2">
+            {announcements.slice(0, 2).map((a) => (
+              <div key={`ann-${a.id}`} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+                  <Bell className="size-4 text-violet-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground line-clamp-1">{a.title}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1">{a.content}</p>
+                </div>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
+                  {new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+              </div>
+            ))}
+            {events.slice(0, 2).map((ev) => (
+              <Link
+                key={`evt-${ev.id}`}
+                href={`/dashboard/learner/events/${ev.id}`}
+                className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50"
+              >
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                  <CalendarDays className="size-4 text-blue-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground line-clamp-1">{ev.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(ev.startsAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    {ev.location ? ` · ${ev.location}` : ""}
+                  </p>
+                </div>
+                {ev.isRegistered && (
+                  <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">Registered</span>
+                )}
+              </Link>
+            ))}
+            {recommended.slice(0, 2).map((c) => (
+              <Link
+                key={`crs-${c.id}`}
+                href={`/dashboard/learner/courses/${c.id}`}
+                className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50"
+              >
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+                  <BookOpen className="size-4 text-emerald-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground line-clamp-1">{c.title}</p>
+                  <p className="text-xs text-muted-foreground">{c.level}{c.category ? ` · ${c.category}` : ""}</p>
+                </div>
+                <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Empty State for New Learners */}
       {enrollments.length === 0 && courses.length === 0 && (

@@ -1,8 +1,9 @@
 "use client"
 
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -121,52 +122,173 @@ const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDash
   { label: "Notifications", href: "/dashboard/secondary/notifications", icon: Bell },
 ]
 
-const collegeNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard },
-  { label: "Module Workspace", href: "/dashboard/learner/module-workspace", icon: BookOpen },
-  { label: "Competencies", href: "/dashboard/learner/competencies", icon: Target },
-  { label: "Projects", href: "/dashboard/learner/projects", icon: Activity },
-  { label: "Fieldwork", href: "/dashboard/learner/fieldwork", icon: Bookmark },
-  { label: "Portfolio", href: "/dashboard/learner/portfolio", icon: Award },
-  { label: "Show What I Can Do", href: "/dashboard/learner/demonstrations", icon: Trophy },
-  { label: "My Evidence", href: "/dashboard/learner/evidence", icon: ClipboardList },
-  { label: "Collaborations", href: "/dashboard/learner/collaborations", icon: Users },
-  { label: "Workshops & Labs", href: "/dashboard/learner/workshops", icon: FlaskConical },
-  { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: TrendingUp },
-  { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Clock },
-  { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio },
-  { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search },
-  { label: "Career World", href: "/dashboard/learner/career", icon: Target },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+type CollegeNavSection = {
+  group: string
+  items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; dotColor?: string; badge?: number }>
+}
+
+const collegeNavSections: CollegeNavSection[] = [
+  {
+    group: "OVERVIEW",
+    items: [
+      { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard, dotColor: "bg-blue-500" },
+    ],
+  },
+  {
+    group: "MY COLLEGE",
+    items: [
+      { label: "My Learning", href: "/dashboard/learner/my-learning", icon: BookOpen, dotColor: "bg-teal-500" },
+      { label: "Module Workspace", href: "/dashboard/learner/module-workspace", icon: BookOpen, dotColor: "bg-indigo-500" },
+      { label: "Competencies", href: "/dashboard/learner/competencies", icon: Target, dotColor: "bg-violet-500" },
+    ],
+  },
+  {
+    group: "LIVE & MEDIA",
+    items: [
+      { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio, dotColor: "bg-red-500" },
+      { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film, dotColor: "bg-pink-500" },
+      { label: "Resources", href: "/dashboard/learner/resources", icon: Library, dotColor: "bg-amber-500" },
+    ],
+  },
+  {
+    group: "BUILD & DISCOVER",
+    items: [
+      { label: "Projects", href: "/dashboard/learner/projects", icon: Activity, dotColor: "bg-emerald-500" },
+      { label: "Collaborations", href: "/dashboard/learner/collaborations", icon: Users, dotColor: "bg-blue-600" },
+    ],
+  },
+  {
+    group: "PRACTICAL",
+    items: [
+      { label: "Practical Lab", href: "/dashboard/learner/practical-lab", icon: FlaskConical, dotColor: "bg-green-500" },
+      { label: "Workshops & Labs", href: "/dashboard/learner/workshops", icon: FlaskConical, dotColor: "bg-teal-600" },
+      { label: "Software & Tools", href: "/dashboard/learner/software-tools", icon: Zap, dotColor: "bg-yellow-500" },
+      { label: "Assessments", href: "/dashboard/learner/assessments", icon: ClipboardList, dotColor: "bg-rose-500" },
+      { label: "Fieldwork", href: "/dashboard/learner/fieldwork", icon: Bookmark, dotColor: "bg-teal-500" },
+    ],
+  },
+  {
+    group: "ACADEMICS",
+    items: [
+      { label: "Academic Progress", href: "/dashboard/learner/academic-progress", icon: BarChart3, dotColor: "bg-blue-500" },
+      { label: "Academic Record", href: "/dashboard/learner/academic-record", icon: FileBarChart, dotColor: "bg-indigo-500" },
+      { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Clock, dotColor: "bg-violet-500" },
+    ],
+  },
+  {
+    group: "MY WORLD",
+    items: [
+      { label: "Portfolio", href: "/dashboard/learner/portfolio", icon: Award, dotColor: "bg-amber-500" },
+      { label: "My Evidence", href: "/dashboard/learner/evidence", icon: ClipboardList, dotColor: "bg-green-500" },
+      { label: "Show What I Can Do", href: "/dashboard/learner/demonstrations", icon: Trophy, dotColor: "bg-orange-500" },
+      { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: TrendingUp, dotColor: "bg-blue-600" },
+      { label: "Career World", href: "/dashboard/learner/career", icon: Target, dotColor: "bg-indigo-600" },
+    ],
+  },
+  {
+    group: "CONNECT",
+    items: [
+      { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search, dotColor: "bg-slate-500" },
+      { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, dotColor: "bg-blue-500" },
+      { label: "Notifications", href: "/dashboard/notifications", icon: Bell, dotColor: "bg-orange-500" },
+    ],
+  },
+  {
+    group: "ACCOUNT",
+    items: [
+      { label: "My Learning Kit", href: "/dashboard/learner/my-learning-kit", icon: Backpack, dotColor: "bg-amber-500" },
+      { label: "Profile", href: "/dashboard/profile", icon: User, dotColor: "bg-slate-500" },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings, dotColor: "bg-gray-500" },
+    ],
+  },
 ]
 
-const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard },
-  { label: "Course Workspace", href: "/dashboard/learner/course-workspace", icon: BookOpen },
-  { label: "Research", href: "/dashboard/learner/research", icon: Target },
-  { label: "Thesis", href: "/dashboard/learner/thesis", icon: FileText },
-  { label: "Deep Learning", href: "/dashboard/learner/deep-learning", icon: GraduationCap },
-  { label: "Projects", href: "/dashboard/learner/projects", icon: Activity },
-  { label: "Collaborations", href: "/dashboard/learner/collaborations", icon: Users },
-  { label: "Portfolio", href: "/dashboard/learner/portfolio", icon: Award },
-  { label: "Fieldwork", href: "/dashboard/learner/fieldwork", icon: Bookmark },
-  { label: "Show What I Can Do", href: "/dashboard/learner/demonstrations", icon: Trophy },
-  { label: "My Evidence", href: "/dashboard/learner/evidence", icon: ClipboardList },
-  { label: "Workshops & Labs", href: "/dashboard/learner/workshops", icon: FlaskConical },
-  { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: TrendingUp },
-  { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Clock },
-  { label: "Calendar", href: "/dashboard/learner/calendar", icon: Calendar },
-  { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio },
-  { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search },
-  { label: "Knowledge Discovery", href: "/dashboard/learner/knowledge-discovery", icon: Brain },
-  { label: "Career World", href: "/dashboard/learner/career", icon: TrendingUp },
-  { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell },
-  { label: "Profile", href: "/dashboard/profile", icon: User },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+type UniversityNavSection = {
+  group: string
+  items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; dotColor?: string; badge?: number }>
+}
+
+const universityNavSections: UniversityNavSection[] = [
+  {
+    group: "OVERVIEW",
+    items: [
+      { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard, dotColor: "bg-blue-500" },
+    ],
+  },
+  {
+    group: "MY UNIVERSITY",
+    items: [
+      { label: "My Learning", href: "/dashboard/learner/my-learning", icon: BookOpen, dotColor: "bg-teal-500" },
+      { label: "My Courses", href: "/dashboard/learner/courses", icon: GraduationCap, dotColor: "bg-indigo-500" },
+      { label: "Course Workspace", href: "/dashboard/learner/course-workspace", icon: BookOpen, dotColor: "bg-violet-500" },
+      { label: "Deep Learning", href: "/dashboard/learner/deep-learning", icon: Brain, dotColor: "bg-purple-500" },
+    ],
+  },
+  {
+    group: "LIVE & MEDIA",
+    items: [
+      { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio, dotColor: "bg-red-500" },
+      { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film, dotColor: "bg-pink-500" },
+      { label: "Resources", href: "/dashboard/learner/resources", icon: Library, dotColor: "bg-amber-500" },
+    ],
+  },
+  {
+    group: "BUILD & DISCOVER",
+    items: [
+      { label: "Projects", href: "/dashboard/learner/projects", icon: Activity, dotColor: "bg-emerald-500" },
+      { label: "Research", href: "/dashboard/learner/research", icon: Target, dotColor: "bg-cyan-500" },
+      { label: "Thesis", href: "/dashboard/learner/thesis", icon: FileText, dotColor: "bg-orange-500" },
+      { label: "Collaborations", href: "/dashboard/learner/collaborations", icon: Users, dotColor: "bg-blue-600" },
+    ],
+  },
+  {
+    group: "PRACTICAL",
+    items: [
+      { label: "Practical Lab", href: "/dashboard/learner/practical-lab", icon: FlaskConical, dotColor: "bg-green-500" },
+      { label: "Workshops & Labs", href: "/dashboard/learner/workshops", icon: FlaskConical, dotColor: "bg-teal-600" },
+      { label: "Software & Tools", href: "/dashboard/learner/software-tools", icon: Zap, dotColor: "bg-yellow-500" },
+      { label: "Assessments", href: "/dashboard/learner/assessments", icon: ClipboardList, dotColor: "bg-rose-500" },
+    ],
+  },
+  {
+    group: "ACADEMICS",
+    items: [
+      { label: "Academic Progress", href: "/dashboard/learner/academic-progress", icon: BarChart3, dotColor: "bg-blue-500" },
+      { label: "Academic Record", href: "/dashboard/learner/academic-record", icon: FileBarChart, dotColor: "bg-indigo-500" },
+      { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Clock, dotColor: "bg-violet-500" },
+      { label: "Calendar", href: "/dashboard/learner/calendar", icon: Calendar, dotColor: "bg-purple-500" },
+      { label: "Competencies", href: "/dashboard/learner/competencies", icon: Target, dotColor: "bg-cyan-500" },
+    ],
+  },
+  {
+    group: "MY WORLD",
+    items: [
+      { label: "Portfolio", href: "/dashboard/learner/portfolio", icon: Award, dotColor: "bg-amber-500" },
+      { label: "My Evidence", href: "/dashboard/learner/evidence", icon: ClipboardList, dotColor: "bg-green-500" },
+      { label: "Show What I Can Do", href: "/dashboard/learner/demonstrations", icon: Trophy, dotColor: "bg-orange-500" },
+      { label: "Fieldwork", href: "/dashboard/learner/fieldwork", icon: Bookmark, dotColor: "bg-teal-500" },
+      { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: TrendingUp, dotColor: "bg-blue-600" },
+      { label: "Career World", href: "/dashboard/learner/career", icon: Target, dotColor: "bg-indigo-600" },
+    ],
+  },
+  {
+    group: "CONNECT",
+    items: [
+      { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search, dotColor: "bg-slate-500" },
+      { label: "Knowledge Discovery", href: "/dashboard/learner/knowledge-discovery", icon: Brain, dotColor: "bg-purple-500" },
+      { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, dotColor: "bg-blue-500" },
+      { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell, dotColor: "bg-orange-500" },
+    ],
+  },
+  {
+    group: "ACCOUNT",
+    items: [
+      { label: "My Learning Kit", href: "/dashboard/learner/my-learning-kit", icon: Backpack, dotColor: "bg-amber-500" },
+      { label: "Academic Assistant", href: "/dashboard/learner/academic-assistant", icon: Brain, dotColor: "bg-violet-500" },
+      { label: "Profile", href: "/dashboard/profile", icon: User, dotColor: "bg-slate-500" },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings, dotColor: "bg-gray-500" },
+    ],
+  },
 ]
 
 type LearnerNavSection = {
@@ -313,13 +435,21 @@ const adminNav: Array<{ label: string; href: string; icon: typeof LayoutDashboar
   { label: "Settings", href: "/dashboard/admin/settings", icon: Settings },
 ]
 
-function getStudentNav(user: { learningLevel?: string | null } | null) {
+function getStudentNavSections(user: { learningLevel?: string | null } | null) {
+  const level = (user?.learningLevel || "").toUpperCase()
+  if (level === "NURSERY") return null
+  if (level === "PRIMARY") return null
+  if (level === "COLLEGE" || level === "VETA") return collegeNavSections
+  if (level === "UNIVERSITY") return universityNavSections
+  return null
+}
+
+function getStudentNavFlat(user: { learningLevel?: string | null } | null) {
   const level = (user?.learningLevel || "").toUpperCase()
   if (level === "NURSERY") return nurseryNav
   if (level === "PRIMARY") return primaryNavSections.flatMap(s => s.items)
-  if (level === "COLLEGE") return collegeNav
-  if (level === "UNIVERSITY") return universityNav
-  return secondaryNav
+  if (level === "SECONDARY" || !level) return secondaryNav
+  return []
 }
 
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -338,18 +468,44 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isLearner = user?.role === "Other Learner"
   const isPrimary = (user?.learningLevel || "").toUpperCase() === "PRIMARY"
 
-  const activeNav = isParent ? parentNav : getStudentNav(user)
+  const [collapsed, setCollapsed] = useState(false)
+  const [badges, setBadges] = useState<Record<string, number>>({})
+
+  const fetchBadges = useCallback(async () => {
+    if (!user?.id) return
+    const newBadges: Record<string, number> = {}
+    try {
+      const countRes = await fetch(`/api/v1/notifications/${user.id}/unread-count`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("elmkusoma_access_token") || ""}` }
+      })
+      if (countRes.ok) {
+        const countData = await countRes.json()
+        if (countData?.data?.count) newBadges["/dashboard/learner/notifications-center"] = countData.data.count
+        if (countData?.data?.count) newBadges["/dashboard/notifications"] = countData.data.count
+      }
+    } catch {}
+    setBadges(newBadges)
+  }, [user?.id])
+
+  useEffect(() => { fetchBadges() }, [fetchBadges])
+
+  const universitySections = !isTeacher && !isLearner && !isParent ? getStudentNavSections(user) : null
+  const universityFlat = !isTeacher && !isLearner && !isParent ? getStudentNavFlat(user) : null
 
   function renderNavItems(items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number; dotColor?: string }>) {
     return items.map((item) => {
       const active = pathname === item.href || (item.href !== "/dashboard" && item.href !== "/dashboard/teacher" && pathname.startsWith(item.href))
+      const realBadge = badges[item.href] || item.badge || 0
+      const isLive = item.href === "/dashboard/learner/live-campus" || item.href === "/dashboard/learner/live-classes"
       return (
         <Link
           key={item.href}
           href={item.href}
           onClick={onNavigate}
+          title={collapsed ? item.label : undefined}
           className={cn(
             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+            collapsed && "justify-center px-2",
             active
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -359,17 +515,20 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className={`size-1.5 shrink-0 rounded-full ${item.dotColor}`} />
           )}
           {(!isPrimary || active) && <item.icon className="size-4 shrink-0" />}
-          <span className="flex-1">{item.label}</span>
-          {item.badge ? (
+          {!collapsed && <span className="flex-1">{item.label}</span>}
+          {!collapsed && realBadge > 0 && (
             <span
               className={cn(
                 "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
                 active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
               )}
             >
-              {item.badge}
+              {realBadge}
             </span>
-          ) : null}
+          )}
+          {collapsed && realBadge > 0 && (
+            <span className="absolute right-1 top-1 size-2 rounded-full bg-red-500" />
+          )}
         </Link>
       )
     })
@@ -390,7 +549,16 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-card">
       <div className="flex h-16 items-center border-b border-border px-5">
-        <Logo />
+        {!collapsed && <Logo />}
+        {collapsed && <span className="mx-auto text-lg font-bold text-primary">E</span>}
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground lg:flex hidden"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <ChevronLeft className={cn("size-4 transition-transform", collapsed && "rotate-180")} />
+        </button>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Main navigation" role="navigation">
@@ -416,9 +584,19 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           ))
         ) : isPrimary && !isParent ? (
           renderPrimarySections(primaryNavSections)
+        ) : universitySections ? (
+          universitySections.map((section, si) => (
+            <div key={section.group}>
+              {si > 0 && <div className="my-2 border-t border-border" />}
+              <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.group}
+              </p>
+              {renderNavItems(section.items)}
+            </div>
+          ))
         ) : (
           <>
-            {renderNavItems(activeNav)}
+            {universityFlat && renderNavItems(universityFlat)}
             {isAdmin && (
               <>
                 <div className="my-2 border-t border-border" />

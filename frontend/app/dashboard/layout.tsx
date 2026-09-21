@@ -1,4 +1,7 @@
+"use client"
+
 import type { ReactNode } from "react"
+import { useState, useEffect } from "react"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar"
 import { AuthGuard } from "@/components/auth/auth-guard"
