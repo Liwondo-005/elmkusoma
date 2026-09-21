@@ -11,6 +11,7 @@ export interface AuthUser {
   role: string
   firstName?: string
   lastName?: string
+  phone?: string
   institutionId?: string
   classGroupId?: string
   learningLevel?: string | null
@@ -105,6 +106,7 @@ function mapUserInfo(info: UserInfo): AuthUser {
     role: info.role,
     firstName: info.firstName,
     lastName: info.lastName,
+    phone: info.phone,
     institutionId: info.institutionId,
     classGroupId: info.classGroupId || undefined,
     learningLevel: info.learningLevel || null,
