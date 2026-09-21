@@ -262,6 +262,38 @@ export interface SearchResult {
   announcements: any[]
 }
 
+export interface ReplayItem {
+  id: string
+  eventId: string
+  eventTitle: string
+  title: string
+  presenterName: string | null
+  thumbnailUrl: string | null
+  videoUrl: string
+  durationSeconds: number
+  viewCount: number
+  recordedAt: string
+  eventType: string
+  positionSeconds: number
+  completed: boolean
+  relatedCourseId: string | null
+  relatedCourseTitle: string | null
+  relatedLessonId: string | null
+  relatedLessonTitle: string | null
+}
+
+export interface ReplayDetail {
+  replay: ReplayItem
+  relatedResources: Resource[]
+  upcomingEvents: EventItem[]
+}
+
+export interface ReplayProgress {
+  positionSeconds: number
+  completed: boolean
+  lastWatchedAt: string
+}
+
 export interface CourseProgress {
   courseId: string
   completedLessons: number
@@ -403,4 +435,24 @@ export const learnerApi = {
   getResource: (id: string) => learnerFetch<Resource>(`/v1/learner/resources/${id}`),
   getRelatedResources: (resourceId: string) =>
     learnerFetch<Resource[]>(`/v1/learner/resources/${resourceId}/related`),
+
+  getReplays: (params?: { eventType?: string; search?: string; dateFrom?: string; dateTo?: string }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.eventType) searchParams.set("eventType", params.eventType)
+    if (params?.search) searchParams.set("search", params.search)
+    if (params?.dateFrom) searchParams.set("dateFrom", params.dateFrom)
+    if (params?.dateTo) searchParams.set("dateTo", params.dateTo)
+    const qs = searchParams.toString()
+    return learnerFetch<ReplayItem[]>(`/v1/learner/replays${qs ? `?${qs}` : ""}`)
+  },
+  getReplay: (id: string) => learnerFetch<ReplayDetail>(`/v1/learner/replays/${id}`),
+  getReplayProgress: (id: string) => learnerFetch<ReplayProgress>(`/v1/learner/replays/${id}/progress`),
+  updateReplayProgress: (id: string, positionSeconds: number, completed?: boolean) =>
+    learnerFetch<ReplayProgress>(`/v1/learner/replays/${id}/progress`, {
+      method: "PUT",
+      body: JSON.stringify({ positionSeconds, completed }),
+    }),
+  getLiveSessionHealth: () => learnerFetch<{ status: string }>("/v1/live-session/health"),
+  getEventSessionState: (eventId: string) =>
+    learnerFetch<{ status: string; meetingUrl?: string }>(`/v1/learner/events/${eventId}/session-state`),
 }

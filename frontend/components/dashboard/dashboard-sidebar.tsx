@@ -119,6 +119,7 @@ const secondaryNav: Array<{ label: string; href: string; icon: typeof LayoutDash
   { label: "Progress", href: "/dashboard/secondary/progress", icon: BarChart3 },
   { label: "Future World", href: "/dashboard/secondary/future", icon: Target },
   { label: "My Teachers", href: "/dashboard/secondary/teachers", icon: Users },
+  { label: "Events", href: "/dashboard/learner/events", icon: Calendar },
   { label: "Notifications", href: "/dashboard/secondary/notifications", icon: Bell },
 ]
 
@@ -148,6 +149,7 @@ const collegeNavSections: CollegeNavSection[] = [
       { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio, dotColor: "bg-red-500" },
       { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film, dotColor: "bg-pink-500" },
       { label: "Resources", href: "/dashboard/learner/resources", icon: Library, dotColor: "bg-amber-500" },
+      { label: "Events", href: "/dashboard/learner/events", icon: Calendar, dotColor: "bg-purple-500" },
     ],
   },
   {
@@ -230,6 +232,7 @@ const universityNavSections: UniversityNavSection[] = [
       { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio, dotColor: "bg-red-500" },
       { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film, dotColor: "bg-pink-500" },
       { label: "Resources", href: "/dashboard/learner/resources", icon: Library, dotColor: "bg-amber-500" },
+      { label: "Events", href: "/dashboard/learner/events", icon: Calendar, dotColor: "bg-purple-500" },
     ],
   },
   {
