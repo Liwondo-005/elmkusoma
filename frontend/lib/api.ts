@@ -1860,6 +1860,17 @@ export interface MistakeLabEntry {
   isReviewed: boolean
 }
 
+export interface LiveClassActivity {
+  id: string
+  activityType: string
+  title: string
+  question: string
+  options: string[]
+  correctAnswer?: string
+  orderIndex?: number
+  timerSeconds?: number
+}
+
 export interface LiveClassActivityResponse {
   id: string
   userId: string

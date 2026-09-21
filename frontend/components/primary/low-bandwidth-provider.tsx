@@ -8,7 +8,7 @@ interface LowBandwidthContextType {
   lazyLoadImages: boolean
 }
 
-const LowBandwidthContext = createContext<LowBandwidthContextValue>({ isLowBandwidth: false, reducedAnimations: false, lazyLoadImages: false })
+const LowBandwidthContext = createContext<LowBandwidthContextType>({ isLowBandwidth: false, reducedAnimations: false, lazyLoadImages: false })
 
 export function useLowBandwidth() {
   return useContext(LowBandwidthContext)

@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, School, Video, CreditCard, Award,
   Shield, Activity, Settings, Search, Bell, ChevronDown, ChevronRight,
   AlertTriangle, BarChart3, Database, Globe, Zap, Package, Radio,
-  MessageSquare, ShieldCheck, Key, Entitlement
+  MessageSquare, ShieldCheck, Key
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
