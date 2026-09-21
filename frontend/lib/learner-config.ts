@@ -212,14 +212,17 @@ const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
 export function getLearnerNavItems(role?: string, level?: string | null): NavItem[] {
   if (role === "Other Learner") {
     return [
-      { label: "Dashboard", href: "/dashboard/learner", icon: Home },
-      { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+      { label: "My Learning World", href: "/dashboard/learner", icon: Home },
       { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
       { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
+      { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+      { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
+      { label: "Events & Workshops", href: "/dashboard/learner/events", icon: Calendar },
       { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
       { label: "History", href: "/dashboard/learner/history", icon: Clock },
       { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
-      { label: "Profile", href: "/dashboard/learner/profile", icon: Users },
+      { label: "Notifications", href: "/dashboard/learner/notifications", icon: Bell },
+      { label: "Profile", href: "/dashboard/learner/profile", icon: User },
     ]
   }
   const key = (level?.toUpperCase() || "SECONDARY") as LearningLevel
@@ -228,18 +231,20 @@ export function getLearnerNavItems(role?: string, level?: string | null): NavIte
 
 const otherLearnerConfig: DashboardConfig = {
   greeting: "Welcome back!",
-  subtitle: "Continue exploring and expanding your knowledge.",
+  subtitle: "My Learning World — explore, enroll, and grow.",
   navItems: [
-    { label: "Dashboard", href: "/dashboard/learner", icon: Home },
-    { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+    { label: "My Learning World", href: "/dashboard/learner", icon: Home },
     { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
+    { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+    { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
     { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
+    { label: "Events & Workshops", href: "/dashboard/learner/events", icon: Calendar },
     { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
     { label: "History", href: "/dashboard/learner/history", icon: Clock },
     { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
-    { label: "Profile", href: "/dashboard/learner/profile", icon: Users },
+    { label: "Profile", href: "/dashboard/learner/profile", icon: User },
   ],
-  sections: ["continue", "enrolled", "recommended", "recent"],
+  sections: ["welcome", "whats-next", "continue", "enrolled", "live", "events", "discover", "progress"],
   emptyStateTitle: "Start your learning journey",
   emptyStateDescription: "Explore courses and begin learning at your own pace.",
   cardStyle: "professional",

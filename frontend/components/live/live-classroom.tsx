@@ -24,6 +24,8 @@ import {
   PlayCircle,
   ClipboardList,
   MessageSquare,
+  Zap,
+  BarChart3,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
 import { Button } from "@/components/ui/button"

@@ -7,7 +7,7 @@ export const defaultLocale: Locale = 'en';
 
 export default getRequestConfig(async ({ locale }) => {
   return {
-    locale,
-    messages: (await import(`./messages/${locale}.json`)).default,
+    locale: locale || defaultLocale,
+    messages: (await import(`./messages/${locale || defaultLocale}.json`)).default,
   };
 });

@@ -161,4 +161,23 @@ export const collegeApi = {
   createWorkshop: (data: any) => api.post<any>("/api/v1/college/learner/workshops", data),
   updateWorkshop: (id: string, data: any) => api.put<any>(`/api/v1/college/learner/workshops/${id}`, data),
   deleteWorkshop: (id: string) => api.delete<void>(`/api/v1/college/learner/workshops/${id}`),
+
+  // Notifications
+  getNotifications: (userId: string) => api.get<any[]>(`/api/v1/notifications/${userId}`),
+  getUnreadCount: (userId: string) => api.get<{ count: number }>(`/api/v1/notifications/${userId}/unread-count`),
+  markNotificationRead: (notificationId: string) => api.put<void>(`/api/v1/notifications/${notificationId}/read`),
+  markAllNotificationsRead: (userId: string) => api.put<void>(`/api/v1/notifications/${userId}/read-all`),
+
+  // Student Events / Calendar
+  getStudentEvents: () => api.get<any[]>("/api/v1/student/events"),
+  getStudentEvent: (id: string) => api.get<any>(`/api/v1/student/events/${id}`),
+  getRegisteredEvents: () => api.get<any[]>("/api/v1/student/events/registered"),
+  registerForEvent: (id: string) => api.post<any>(`/api/v1/student/events/${id}/register`),
+  cancelEventRegistration: (id: string) => api.post<void>(`/api/v1/student/events/${id}/cancel-registration`),
+  getEventMaterials: (id: string) => api.get<any[]>(`/api/v1/student/events/${id}/materials`),
+
+  // Student Live Classes
+  getStudentLiveClasses: (page = 0, size = 20) => api.get<any[]>(`/api/v1/student/live-classes?page=${page}&size=${size}`),
+  getLiveNow: () => api.get<any[]>("/api/v1/student/live-classes/live-now"),
+  getUpcomingLiveClasses: () => api.get<any[]>("/api/v1/student/live-classes/upcoming"),
 }

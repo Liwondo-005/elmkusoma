@@ -505,3 +505,47 @@ export interface DeepContentDto {
   timeSpentMinutes?: number
   notes?: string
 }
+
+export interface LearnerNotification {
+  id: string
+  userId: string
+  title: string
+  message: string
+  notificationType?: string
+  targetType?: string
+  targetId?: string
+  isRead?: boolean
+  createdAt?: string
+}
+
+export interface StudentEvent {
+  id: string
+  title: string
+  description?: string
+  eventType?: string
+  category?: string
+  startDateTime?: string
+  endDateTime?: string
+  location?: string
+  institutionId?: string
+  organizerId?: string
+  maxParticipants?: number
+  currentParticipants?: number
+  isRegistered?: boolean
+}
+
+export interface EventRegistration {
+  id: string
+  eventId: string
+  userId: string
+  status?: string
+  registeredAt?: string
+}
+
+export interface GpaResult {
+  semesterGpa?: number | null
+  cumulativeGpa?: number | null
+  totalCreditHours?: number
+  earnedCreditHours?: number
+  academicStanding?: string
+}
