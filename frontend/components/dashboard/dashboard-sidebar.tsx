@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -134,7 +134,8 @@ const collegeNav: Array<{ label: string; href: string; icon: typeof LayoutDashbo
   { label: "Workshops & Labs", href: "/dashboard/learner/workshops", icon: FlaskConical },
   { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: TrendingUp },
   { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Clock },
-  { label: "Live Campus", href: "/dashboard/learner/live-classes", icon: Video },
+  { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio },
+  { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search },
   { label: "Career World", href: "/dashboard/learner/career", icon: Target },
   { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
@@ -158,10 +159,12 @@ const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDas
   { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: TrendingUp },
   { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Clock },
   { label: "Calendar", href: "/dashboard/learner/calendar", icon: Calendar },
-  { label: "Live Campus", href: "/dashboard/learner/live-classes", icon: Video },
+  { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio },
+  { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search },
+  { label: "Knowledge Discovery", href: "/dashboard/learner/knowledge-discovery", icon: Brain },
   { label: "Career World", href: "/dashboard/learner/career", icon: TrendingUp },
   { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell },
   { label: "Profile", href: "/dashboard/profile", icon: User },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
