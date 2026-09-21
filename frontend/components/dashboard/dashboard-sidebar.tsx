@@ -1,8 +1,9 @@
 "use client"
 
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -466,19 +467,44 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isLearner = user?.role === "Other Learner"
   const isPrimary = (user?.learningLevel || "").toUpperCase() === "PRIMARY"
 
+  const [collapsed, setCollapsed] = useState(false)
+  const [badges, setBadges] = useState<Record<string, number>>({})
+
+  const fetchBadges = useCallback(async () => {
+    if (!user?.id) return
+    const newBadges: Record<string, number> = {}
+    try {
+      const countRes = await fetch(`/api/v1/notifications/${user.id}/unread-count`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("elmkusoma_access_token") || ""}` }
+      })
+      if (countRes.ok) {
+        const countData = await countRes.json()
+        if (countData?.data?.count) newBadges["/dashboard/learner/notifications-center"] = countData.data.count
+        if (countData?.data?.count) newBadges["/dashboard/notifications"] = countData.data.count
+      }
+    } catch {}
+    setBadges(newBadges)
+  }, [user?.id])
+
+  useEffect(() => { fetchBadges() }, [fetchBadges])
+
   const universitySections = !isTeacher && !isLearner && !isParent ? getStudentNavSections(user) : null
   const universityFlat = !isTeacher && !isLearner && !isParent ? getStudentNavFlat(user) : null
 
   function renderNavItems(items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number; dotColor?: string }>) {
     return items.map((item) => {
       const active = pathname === item.href || (item.href !== "/dashboard" && item.href !== "/dashboard/teacher" && pathname.startsWith(item.href))
+      const realBadge = badges[item.href] || item.badge || 0
+      const isLive = item.href === "/dashboard/learner/live-campus" || item.href === "/dashboard/learner/live-classes"
       return (
         <Link
           key={item.href}
           href={item.href}
           onClick={onNavigate}
+          title={collapsed ? item.label : undefined}
           className={cn(
             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+            collapsed && "justify-center px-2",
             active
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -488,17 +514,20 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className={`size-1.5 shrink-0 rounded-full ${item.dotColor}`} />
           )}
           {(!isPrimary || active) && <item.icon className="size-4 shrink-0" />}
-          <span className="flex-1">{item.label}</span>
-          {item.badge ? (
+          {!collapsed && <span className="flex-1">{item.label}</span>}
+          {!collapsed && realBadge > 0 && (
             <span
               className={cn(
                 "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
                 active ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
               )}
             >
-              {item.badge}
+              {realBadge}
             </span>
-          ) : null}
+          )}
+          {collapsed && realBadge > 0 && (
+            <span className="absolute right-1 top-1 size-2 rounded-full bg-red-500" />
+          )}
         </Link>
       )
     })
@@ -519,7 +548,16 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-card">
       <div className="flex h-16 items-center border-b border-border px-5">
-        <Logo />
+        {!collapsed && <Logo />}
+        {collapsed && <span className="mx-auto text-lg font-bold text-primary">E</span>}
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground lg:flex hidden"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <ChevronLeft className={cn("size-4 transition-transform", collapsed && "rotate-180")} />
+        </button>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Main navigation" role="navigation">
