@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { secondaryApi, type UpcomingAssessment } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
@@ -8,52 +9,73 @@ import { Award, ArrowLeft, Clock, FileText, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
 export default function SecondaryAssessPage() {
+  const t = useTranslations("secondary")
+  const tc = useTranslations("common")
   const { user } = useRequireAuth()
   const [assessments, setAssessments] = useState<UpcomingAssessment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.classGroupId) { setLoading(false); return }
     secondaryApi.getAssessments(user.classGroupId)
       .then(setAssessments)
-      .catch(() => {})
+      .catch(() => setError(t("errorLoading")))
       .finally(() => setLoading(false))
   }, [user])
 
   if (loading) return <LoadingState />
 
+  if (error) {
+    return (
+      <div className="mx-auto max-w-5xl p-4 pb-24" role="main">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={() => { setError(null); setLoading(true); }}
+            className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            aria-label={tc("retry")}
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const upcoming = assessments.filter(a => a.status === "SCHEDULED" || a.status === "PUBLISHED")
   const past = assessments.filter(a => a.status === "COMPLETED" || a.status === "ENDED")
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary" className="flex size-10 items-center justify-center rounded-xl bg-gray-100">
+        <Link href="/dashboard/secondary" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={tc("goBack")}>
           <ArrowLeft className="size-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Assess</h1>
-          <p className="text-sm text-gray-500">Tests, quizzes, and examinations</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("assess")}</h1>
+          <p className="text-sm text-gray-500">{t("assessDesc")}</p>
         </div>
       </div>
 
       {assessments.length === 0 ? (
         <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
           <Award className="mx-auto size-12 text-gray-300" />
-          <h3 className="mt-3 text-lg font-bold text-gray-800">No assessments yet</h3>
-          <p className="mt-1 text-sm text-gray-500">Your teacher will schedule assessments soon.</p>
+          <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noAssessmentsYet")}</h3>
+          <p className="mt-1 text-sm text-gray-500">{t("teacherWillSchedule")}</p>
         </div>
       ) : (
         <>
           {upcoming.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Upcoming</h2>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">{t("upcoming")}</h2>
               <div className="space-y-2">
                 {upcoming.map(a => (
                   <Link
                     key={a.id}
                     href={`/dashboard/assessments/${a.id}`}
                     className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-sm"
+                    aria-label={`${a.title} - ${t("upcoming")}`}
                   >
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-50">
                       <FileText className="size-5 text-amber-600" />
@@ -62,8 +84,8 @@ export default function SecondaryAssessPage() {
                       <p className="font-semibold text-gray-900">{a.title}</p>
                       <p className="text-xs text-gray-400">
                         {a.subjectName && `${a.subjectName} · `}
-                        {a.totalMarks} marks
-                        {a.timeLimitMinutes && ` · ${a.timeLimitMinutes} min`}
+                        {a.totalMarks} {t("marks")}
+                        {a.timeLimitMinutes && ` · ${a.timeLimitMinutes} ${t("min")}`}
                       </p>
                     </div>
                     {a.scheduledAt && (
@@ -83,7 +105,7 @@ export default function SecondaryAssessPage() {
           )}
           {past.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Completed</h2>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">{t("completed")}</h2>
               <div className="space-y-2">
                 {past.map(a => (
                   <div key={a.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 opacity-70">
@@ -92,7 +114,7 @@ export default function SecondaryAssessPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-700">{a.title}</p>
-                      <p className="text-xs text-gray-400">{a.subjectName} · {a.totalMarks} marks</p>
+                      <p className="text-xs text-gray-400">{a.subjectName} · {a.totalMarks} {t("marks")}</p>
                     </div>
                   </div>
                 ))}

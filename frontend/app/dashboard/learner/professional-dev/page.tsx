@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
@@ -129,14 +130,20 @@ function TypeBadge({ goalType }: { goalType: string }) {
   )
 }
 
-function ProgressBar({ percent }: { percent: number }) {
+function ProgressBar({ percent, label }: { percent: number; label?: string }) {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Progress</span>
+        <span className="text-muted-foreground">{label || "Progress"}</span>
         <span className="font-semibold text-foreground">{percent}%</span>
       </div>
-      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted"
+      >
         <div
           className="h-full rounded-full bg-primary transition-all"
           style={{ width: `${percent}%` }}
@@ -147,6 +154,8 @@ function ProgressBar({ percent }: { percent: number }) {
 }
 
 export default function ProfessionalDevPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [goals, setGoals] = useState<ProfessionalDevGoal[]>([])
   const [loading, setLoading] = useState(true)
@@ -173,7 +182,7 @@ export default function ProfessionalDevPage() {
       const res = await collegeApi.getLearnerProfessionalDev(studentId)
       setGoals((res.data as ProfessionalDevGoal[]) || [])
     } catch {
-      setError("Failed to load professional development goals")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -226,7 +235,7 @@ export default function ProfessionalDevPage() {
       resetForm()
       await loadGoals()
     } catch {
-      setError("Failed to save goal")
+      setError(tc("error.save"))
     }
   }
 
@@ -236,7 +245,7 @@ export default function ProfessionalDevPage() {
       setDeletingId(null)
       await loadGoals()
     } catch {
-      setError("Failed to delete goal")
+      setError(tc("error.delete"))
     }
   }
 
@@ -247,7 +256,7 @@ export default function ProfessionalDevPage() {
         prev.map((g) => (g.id === id ? { ...g, progressPercent: percent } : g))
       )
     } catch {
-      setError("Failed to update progress")
+      setError(tc("error.update"))
     }
   }
 
@@ -260,7 +269,7 @@ export default function ProfessionalDevPage() {
       })
       await loadGoals()
     } catch {
-      setError("Failed to mark goal as complete")
+      setError(tc("error.update"))
     }
   }
 
@@ -280,34 +289,32 @@ export default function ProfessionalDevPage() {
         )
       : 0
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadGoals() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadGoals() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
       <div className="flex items-start justify-between">
         <LearnerHeader
           firstName={firstName}
-          subtitle="Track and manage your professional development goals."
+          subtitle={t("professionalDev.subtitle")}
         />
         <button
-          onClick={() => {
-            resetForm()
-            setShowForm(true)
-          }}
+          onClick={() => { resetForm(); setShowForm(true) }}
+          aria-label={t("professionalDev.addGoal")}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition shrink-0"
         >
           <Plus className="size-4" />
-          Add Goal
+          {t("professionalDev.addGoal")}
         </button>
       </div>
 
@@ -318,7 +325,7 @@ export default function ProfessionalDevPage() {
               <Target className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Goals</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("professionalDev.totalGoals")}</p>
               <p className="text-2xl font-extrabold text-foreground">{totalGoals}</p>
             </div>
           </div>
@@ -329,7 +336,7 @@ export default function ProfessionalDevPage() {
               <TrendingUp className="size-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">In Progress</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("professionalDev.inProgress")}</p>
               <p className="text-2xl font-extrabold text-foreground">{inProgress}</p>
             </div>
           </div>
@@ -340,7 +347,7 @@ export default function ProfessionalDevPage() {
               <CheckCircle className="size-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Completed</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("professionalDev.completed")}</p>
               <p className="text-2xl font-extrabold text-foreground">{completed}</p>
             </div>
           </div>
@@ -351,7 +358,7 @@ export default function ProfessionalDevPage() {
               <Award className="size-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Avg Progress</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("professionalDev.avgProgress")}</p>
               <p className="text-2xl font-extrabold text-foreground">{avgProgress}%</p>
             </div>
           </div>
@@ -363,6 +370,7 @@ export default function ProfessionalDevPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label={t("professionalDev.filterStatus")}
             className="appearance-none rounded-xl border border-border bg-card py-2.5 pl-4 pr-8 text-sm outline-none focus:ring-2 focus:ring-primary/20"
           >
             {STATUS_OPTIONS.map((opt) => (
@@ -376,6 +384,7 @@ export default function ProfessionalDevPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label={t("professionalDev.filterType")}
             className="appearance-none rounded-xl border border-border bg-card py-2.5 pl-4 pr-8 text-sm outline-none focus:ring-2 focus:ring-primary/20"
           >
             {TYPE_OPTIONS.map((opt) => (
@@ -390,25 +399,27 @@ export default function ProfessionalDevPage() {
       {showForm && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <h3 className="text-lg font-bold text-foreground mb-4">
-            {editingGoal ? "Edit Goal" : "New Professional Development Goal"}
+            {editingGoal ? t("professionalDev.editGoal") : t("professionalDev.newGoal")}
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground">Title *</label>
+              <label className="text-sm font-medium text-foreground">{t("professionalDev.title")} *</label>
               <input
                 type="text"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
                 placeholder="e.g. AWS Solutions Architect Certification"
+                aria-label={t("professionalDev.title")}
                 className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-foreground">Goal Type</label>
+                <label className="text-sm font-medium text-foreground">{t("professionalDev.goalType")}</label>
                 <select
                   value={formType}
                   onChange={(e) => setFormType(e.target.value)}
+                  aria-label={t("professionalDev.goalType")}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   {GOAL_TYPE_OPTIONS.map((opt) => (
@@ -419,43 +430,47 @@ export default function ProfessionalDevPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Target Date</label>
+                <label className="text-sm font-medium text-foreground">{t("professionalDev.targetDate")}</label>
                 <input
                   type="date"
                   value={formTargetDate}
                   onChange={(e) => setFormTargetDate(e.target.value)}
+                  aria-label={t("professionalDev.targetDate")}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Description</label>
+              <label className="text-sm font-medium text-foreground">{t("professionalDev.description")}</label>
               <textarea
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 placeholder="Describe your goal..."
                 rows={3}
+                aria-label={t("professionalDev.description")}
                 className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-foreground">Category</label>
+                <label className="text-sm font-medium text-foreground">{t("professionalDev.category")}</label>
                 <input
                   type="text"
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
                   placeholder="e.g. Cloud Computing"
+                  aria-label={t("professionalDev.category")}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Notes</label>
+                <label className="text-sm font-medium text-foreground">{t("professionalDev.notes")}</label>
                 <input
                   type="text"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                   placeholder="Additional notes..."
+                  aria-label={t("professionalDev.notes")}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
@@ -464,16 +479,18 @@ export default function ProfessionalDevPage() {
               <button
                 onClick={handleSubmitForm}
                 disabled={!formTitle.trim()}
+                aria-label={editingGoal ? tc("update") : tc("create")}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition disabled:opacity-50"
               >
                 <CheckCircle className="size-4" />
-                {editingGoal ? "Update Goal" : "Create Goal"}
+                {editingGoal ? tc("update") : tc("create")}
               </button>
               <button
                 onClick={resetForm}
+                aria-label={tc("cancel")}
                 className="inline-flex items-center gap-2 rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition"
               >
-                Cancel
+                {tc("cancel")}
               </button>
             </div>
           </div>
@@ -483,18 +500,16 @@ export default function ProfessionalDevPage() {
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Target className="size-8" />}
-          title="No professional development goals found"
-          description="Start tracking your career growth by adding your first goal."
+          title={t("professionalDev.noGoals")}
+          description={t("professionalDev.noGoalsDesc")}
           action={
             <button
-              onClick={() => {
-                resetForm()
-                setShowForm(true)
-              }}
+              onClick={() => { resetForm(); setShowForm(true) }}
+              aria-label={t("professionalDev.addGoal")}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition"
             >
               <Plus className="size-4" />
-              Add Goal
+              {t("professionalDev.addGoal")}
             </button>
           }
         />
@@ -522,17 +537,17 @@ export default function ProfessionalDevPage() {
                     {goal.targetDate && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
                         <Calendar className="size-3.5" />
-                        <span>Target: {new Date(goal.targetDate).toLocaleDateString()}</span>
+                        <span>{t("professionalDev.target")}: {new Date(goal.targetDate).toLocaleDateString()}</span>
                       </div>
                     )}
 
                     <div className="max-w-md">
-                      <ProgressBar percent={goal.progressPercent || 0} />
+                      <ProgressBar percent={goal.progressPercent || 0} label={tc("progress")} />
                     </div>
 
                     {goal.category && (
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Category: <span className="font-medium text-foreground">{goal.category}</span>
+                        {t("professionalDev.categoryLabel")}: <span className="font-medium text-foreground">{goal.category}</span>
                       </p>
                     )}
 
@@ -550,21 +565,22 @@ export default function ProfessionalDevPage() {
                       max={100}
                       value={goal.progressPercent || 0}
                       onChange={(e) => handleProgressChange(goal.id, Number(e.target.value))}
+                      aria-label={`${tc("progress")}: ${goal.progressPercent || 0}%`}
                       className="w-24 accent-primary"
-                      title={`Progress: ${goal.progressPercent || 0}%`}
+                      title={`${tc("progress")}: ${goal.progressPercent || 0}%`}
                     />
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : goal.id)}
+                      aria-label={isExpanded ? tc("collapse") : tc("expand")}
                       className="rounded-lg p-2 text-muted-foreground hover:bg-muted transition"
-                      title="Expand details"
                     >
                       <Edit className="size-4" />
                     </button>
                     {goal.status !== "COMPLETED" && (
                       <button
                         onClick={() => handleMarkComplete(goal.id)}
+                        aria-label={t("professionalDev.markComplete")}
                         className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition"
-                        title="Mark as completed"
                       >
                         <CheckCircle className="size-4" />
                       </button>
@@ -572,8 +588,8 @@ export default function ProfessionalDevPage() {
                     {!isDeleting ? (
                       <button
                         onClick={() => setDeletingId(goal.id)}
+                        aria-label={tc("delete")}
                         className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                        title="Delete goal"
                       >
                         <Trash2 className="size-4" />
                       </button>
@@ -581,15 +597,17 @@ export default function ProfessionalDevPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleDelete(goal.id)}
+                          aria-label={tc("confirm")}
                           className="rounded-lg bg-red-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-600 transition"
                         >
-                          Confirm
+                          {tc("confirm")}
                         </button>
                         <button
                           onClick={() => setDeletingId(null)}
+                          aria-label={tc("cancel")}
                           className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition"
                         >
-                          Cancel
+                          {tc("cancel")}
                         </button>
                       </div>
                     )}
@@ -600,17 +618,18 @@ export default function ProfessionalDevPage() {
                   <div className="mt-4 pt-4 border-t border-border space-y-3">
                     {goal.description && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">{t("professionalDev.description")}</p>
                         <p className="text-sm text-foreground">{goal.description}</p>
                       </div>
                     )}
                     {goal.evidenceUrl && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Evidence</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">{t("professionalDev.evidence")}</p>
                         <a
                           href={goal.evidenceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          aria-label={t("professionalDev.viewEvidence")}
                           className="text-sm text-primary hover:underline break-all"
                         >
                           {goal.evidenceUrl}
@@ -619,7 +638,7 @@ export default function ProfessionalDevPage() {
                     )}
                     {goal.completedDate && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Completed Date</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">{t("professionalDev.completedDate")}</p>
                         <p className="text-sm text-foreground">
                           {new Date(goal.completedDate).toLocaleDateString()}
                         </p>
@@ -627,16 +646,17 @@ export default function ProfessionalDevPage() {
                     )}
                     {goal.notes && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Notes</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">{t("professionalDev.notes")}</p>
                         <p className="text-sm text-foreground">{goal.notes}</p>
                       </div>
                     )}
                     <button
                       onClick={() => openEditForm(goal)}
+                      aria-label={t("professionalDev.editGoal")}
                       className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition"
                     >
                       <Edit className="size-4" />
-                      Edit Goal
+                      {t("professionalDev.editGoal")}
                     </button>
                   </div>
                 )}

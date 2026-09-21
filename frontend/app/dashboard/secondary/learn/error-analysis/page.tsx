@@ -1,8 +1,9 @@
 "use client"
 
-import { ArrowLeft, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react"
+import { ArrowLeft, AlertTriangle, CheckCircle, RefreshCw, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { secondaryApi, type SecondaryError } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
@@ -15,20 +16,35 @@ const BUILTIN_ERRORS = [
 
 export default function ErrorAnalysisPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("secondary")
+  const tc = useTranslations("common")
   const [apiErrors, setApiErrors] = useState<SecondaryError[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.classGroupId) {
       secondaryApi.getErrorsByClass(user.classGroupId)
         .then(setApiErrors)
-        .catch(() => {})
+        .catch(() => setError(t("loadError")))
         .finally(() => setLoading(false))
     } else { setLoading(false) }
-  }, [user])
+  }, [user, t])
 
   if (loading) return <LoadingState />
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+          <AlertCircle className="mx-auto size-12 text-red-400" />
+          <h3 className="mt-3 text-lg font-bold text-red-800">{tc("common.error")}</h3>
+          <p className="mt-1 text-sm text-red-600">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   const allErrors = [
     ...BUILTIN_ERRORS,
@@ -38,35 +54,35 @@ export default function ErrorAnalysisPage() {
   const active = allErrors.find(e => e.id === selected)
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100"><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToLearn")}><ArrowLeft className="size-5 text-gray-600" /></Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Error Analysis</h1>
-          <p className="text-sm text-gray-500">Learn from common mistakes</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("secondary.errorAnalysis")}</h1>
+          <p className="text-sm text-gray-500">{t("secondary.learnFromCommonMistakes")}</p>
         </div>
       </div>
 
       {selected && active ? (
         <div className="space-y-4">
-          <button onClick={() => setSelected(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Back to errors</button>
+          <button onClick={() => setSelected(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.backToErrors")}>{t("secondary.backToErrors")}</button>
           <div className="rounded-2xl border border-gray-100 bg-white p-6">
             <div className="flex items-center gap-2"><AlertTriangle className="size-5 text-amber-600" /><span className="text-xs font-semibold uppercase tracking-wider text-amber-600">{active.frequency}</span></div>
             <h2 className="mt-2 text-lg font-bold text-gray-900">{active.errorTitle}</h2>
             <p className="mt-1 text-sm text-gray-600">{active.errorDescription}</p>
             {active.incorrectExample && (
-              <div className="mt-4 rounded-xl bg-red-50 p-4"><p className="text-sm font-medium text-red-800">Common Mistake</p><p className="mt-1 text-sm text-red-700 font-mono">{active.incorrectExample}</p></div>
+              <div className="mt-4 rounded-xl bg-red-50 p-4"><p className="text-sm font-medium text-red-800">{t("secondary.commonMistake")}</p><p className="mt-1 text-sm text-red-700 font-mono">{active.incorrectExample}</p></div>
             )}
             {active.correctExample && (
-              <div className="mt-3 rounded-xl bg-green-50 p-4"><p className="text-sm font-medium text-green-800">Correct Approach</p><p className="mt-1 text-sm text-green-700 font-mono">{active.correctExample}</p></div>
+              <div className="mt-3 rounded-xl bg-green-50 p-4"><p className="text-sm font-medium text-green-800">{t("secondary.correctApproach")}</p><p className="mt-1 text-sm text-green-700 font-mono">{active.correctExample}</p></div>
             )}
-            <div className="mt-3 rounded-xl bg-blue-50 p-4"><p className="text-sm font-medium text-blue-800">Why?</p><p className="mt-1 text-sm text-blue-700">{active.explanation}</p></div>
+            <div className="mt-3 rounded-xl bg-blue-50 p-4"><p className="text-sm font-medium text-blue-800">{t("secondary.why")}</p><p className="mt-1 text-sm text-blue-700">{active.explanation}</p></div>
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           {allErrors.map(err => (
-            <button key={err.id} onClick={() => setSelected(err.id)} className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 text-left transition-all hover:border-indigo-200 hover:shadow-sm">
+            <button key={err.id} onClick={() => setSelected(err.id)} className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 text-left transition-all hover:border-indigo-200 hover:shadow-sm" aria-label={`${err.errorTitle} - ${err.category} ${err.frequency}`}>
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-50"><AlertTriangle className="size-6 text-amber-600" /></div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900">{err.errorTitle}</p>

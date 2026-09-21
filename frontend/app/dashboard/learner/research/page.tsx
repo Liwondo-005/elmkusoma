@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { ResearchProject } from "@/lib/types/college"
@@ -30,6 +31,8 @@ function ResearchStatusBadge({ status }: { status: string }) {
 }
 
 export default function ResearchPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [projects, setProjects] = useState<ResearchProject[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,22 +50,22 @@ export default function ResearchPage() {
       const res = await collegeApi.getStudentResearch(studentId)
       setProjects(res.data || [])
     } catch {
-      setError("Failed to load research projects")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   if (error && projects.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Manage your research projects, literature, and thesis." />
+      <div role="main" className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle={t("research.subtitle")} />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadProjects() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadProjects() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
@@ -73,8 +76,8 @@ export default function ResearchPage() {
   const completed = projects.filter(p => p.status === "COMPLETED").length
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Manage your research projects, literature, and thesis." />
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("research.subtitle")} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -83,7 +86,7 @@ export default function ResearchPage() {
               <FlaskConical className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Projects</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("research.totalProjects")}</p>
               <p className="text-2xl font-extrabold text-foreground">{projects.length}</p>
             </div>
           </div>
@@ -94,7 +97,7 @@ export default function ResearchPage() {
               <Clock className="size-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Active</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("research.active")}</p>
               <p className="text-2xl font-extrabold text-foreground">{active}</p>
             </div>
           </div>
@@ -105,7 +108,7 @@ export default function ResearchPage() {
               <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Completed</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("research.completed")}</p>
               <p className="text-2xl font-extrabold text-foreground">{completed}</p>
             </div>
           </div>
@@ -115,8 +118,8 @@ export default function ResearchPage() {
       {projects.length === 0 ? (
         <EmptyState
           icon={<FlaskConical className="size-8" />}
-          title="No research projects yet"
-          description="Your supervisor will assign research projects or you can propose your own."
+          title={t("research.noProjects")}
+          description={t("research.noProjectsDesc")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -136,7 +139,7 @@ export default function ResearchPage() {
                 {p.supervisorId && (
                   <span className="flex items-center gap-1.5">
                     <User className="size-3" />
-                    Supervisor assigned
+                    {t("research.supervisorAssigned")}
                   </span>
                 )}
                 {p.startDate && (

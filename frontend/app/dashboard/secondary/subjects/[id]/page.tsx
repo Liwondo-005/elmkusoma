@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { secondaryApi, type SubjectSummary, type LiveClassSummary, type TeacherFeedback } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
@@ -34,6 +35,8 @@ interface Assessment {
 }
 
 export default function SubjectWorkspacePage({ params }: { params: { id: string } }) {
+  const t = useTranslations("secondary")
+  const tc = useTranslations("common")
   const { user } = useRequireAuth()
   const [subject, setSubject] = useState<SubjectSummary | null>(null)
   const [lessons, setLessons] = useState<Lesson[]>([])
@@ -44,6 +47,7 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
   const [lessonProgress, setLessonProgress] = useState<Record<string, number>>({})
   const [activeTab, setActiveTab] = useState<"overview" | "topics" | "lessons" | "practice" | "assignments" | "assessments" | "resources" | "live" | "replays" | "progress" | "feedback">("overview")
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.classGroupId) { setLoading(false); return }
@@ -69,43 +73,59 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
         })
         setLessonProgress(progressMap)
       })
-      .catch(() => {})
+      .catch(() => setError(t("errorLoading")))
       .finally(() => setLoading(false))
   }, [user, params.id])
 
   if (loading) return <LoadingState />
 
+  if (error) {
+    return (
+      <div className="mx-auto max-w-5xl p-4 pb-24" role="main">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={() => { setError(null); setLoading(true); }}
+            className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            aria-label={tc("retry")}
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const tabs = [
-    { id: "overview" as const, label: "Overview", icon: BookOpen },
-    { id: "topics" as const, label: "Topics", icon: BookOpen },
-    { id: "lessons" as const, label: "Lessons", icon: FileText },
-    { id: "practice" as const, label: "Practice", icon: PenTool },
-    { id: "assignments" as const, label: "Assignments", icon: ClipboardList },
-    { id: "assessments" as const, label: "Assessments", icon: Award },
-    { id: "resources" as const, label: "Resources", icon: Library },
-    { id: "live" as const, label: "Live", icon: Video },
-    { id: "replays" as const, label: "Replays", icon: Play },
-    { id: "progress" as const, label: "Progress", icon: BarChart3 },
-    { id: "feedback" as const, label: "Feedback", icon: MessageSquare },
+    { id: "overview" as const, label: t("overview"), icon: BookOpen },
+    { id: "topics" as const, label: t("topics"), icon: BookOpen },
+    { id: "lessons" as const, label: t("lessons"), icon: FileText },
+    { id: "practice" as const, label: t("practice"), icon: PenTool },
+    { id: "assignments" as const, label: t("assignments"), icon: ClipboardList },
+    { id: "assessments" as const, label: t("assessments"), icon: Award },
+    { id: "resources" as const, label: t("resources"), icon: Library },
+    { id: "live" as const, label: t("live"), icon: Video },
+    { id: "replays" as const, label: t("replays"), icon: Play },
+    { id: "progress" as const, label: t("progress"), icon: BarChart3 },
+    { id: "feedback" as const, label: t("feedback"), icon: MessageSquare },
   ]
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100">
+        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={tc("goBack")}>
           <ArrowLeft className="size-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{subject?.name || "Subject"}</h1>
+          <h1 className="text-xl font-bold text-gray-900">{subject?.name || t("subject")}</h1>
           <p className="text-sm text-gray-500">
-            {lessons.length} topic{lessons.length !== 1 ? "s" : ""}
-            {subject?.averageScore !== undefined && ` · Average ${subject.averageScore}%`}
+            {lessons.length} {t("topicCount", { count: lessons.length })}
+            {subject?.averageScore !== undefined && ` · ${t("average")} ${subject.averageScore}%`}
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+      <div className="flex gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label={t("subjectTabs")}>
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -113,6 +133,9 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-colors ${
               activeTab === tab.id ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-label={tab.label}
           >
             <tab.icon className="size-4" />
             {tab.label}
@@ -120,14 +143,13 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
         ))}
       </div>
 
-      {/* Tab Content */}
       {activeTab === "topics" && (
         <div className="space-y-2">
           {lessons.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <BookOpen className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No topics yet</h3>
-              <p className="mt-1 text-sm text-gray-500">Your teacher will add topics soon.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noTopicsYet")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("teacherWillAddTopics")}</p>
             </div>
           ) : (
             lessons.map((lesson, idx) => (
@@ -135,6 +157,7 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                 key={lesson.id}
                 href={`/dashboard/secondary/subjects/${params.id}/topics/${lesson.id}`}
                 className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-sm"
+                aria-label={`${lesson.title} - ${t("topic")}`}
               >
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-sm font-bold text-gray-500">
                   {idx + 1}
@@ -157,8 +180,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           {lessons.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <FileText className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No lessons yet</h3>
-              <p className="mt-1 text-sm text-gray-500">Your teacher will add lessons soon.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noLessonsYet")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("teacherWillAddLessons")}</p>
             </div>
           ) : (
             lessons.map((lesson, idx) => (
@@ -166,6 +189,7 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                 key={lesson.id}
                 href={`/dashboard/secondary/subjects/${params.id}/topics/${lesson.id}`}
                 className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-sm"
+                aria-label={`${lesson.title} - ${t("lesson")}`}
               >
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-sm font-bold text-blue-600">
                   {idx + 1}
@@ -177,7 +201,7 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                   )}
                 </div>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${lesson.isPublished ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}>
-                  {lesson.isPublished ? "Published" : "Draft"}
+                  {lesson.isPublished ? t("published") : t("draft")}
                 </span>
                 <ChevronRight className="size-5 shrink-0 text-gray-300" />
               </Link>
@@ -191,8 +215,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           {assignments.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <PenTool className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No assignments</h3>
-              <p className="mt-1 text-sm text-gray-500">Your teacher will assign practice work soon.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noAssignments")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("teacherWillAssignPractice")}</p>
             </div>
           ) : (
             assignments.map(a => (
@@ -203,8 +227,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900">{a.title}</p>
                   <p className="text-xs text-gray-400">
-                    {a.dueDate && `Due ${new Date(a.dueDate).toLocaleDateString()}`}
-                    {` · ${a.totalMarks} marks`}
+                    {a.dueDate && `${t("due")} ${new Date(a.dueDate).toLocaleDateString()}`}
+                    {` · ${a.totalMarks} ${t("marks")}`}
                   </p>
                 </div>
                 <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-700">{a.status}</span>
@@ -219,8 +243,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           {assignments.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <ClipboardList className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No assignments</h3>
-              <p className="mt-1 text-sm text-gray-500">Your teacher will assign work soon.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noAssignments")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("teacherWillAssignWork")}</p>
             </div>
           ) : (
             assignments.map(a => (
@@ -231,8 +255,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900">{a.title}</p>
                   <p className="text-xs text-gray-400">
-                    {a.dueDate && `Due ${new Date(a.dueDate).toLocaleDateString()}`}
-                    {` · ${a.totalMarks} marks`}
+                    {a.dueDate && `${t("due")} ${new Date(a.dueDate).toLocaleDateString()}`}
+                    {` · ${a.totalMarks} ${t("marks")}`}
                   </p>
                 </div>
                 <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-bold text-orange-700">{a.status}</span>
@@ -247,8 +271,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           {assessments.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <Award className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No assessments</h3>
-              <p className="mt-1 text-sm text-gray-500">Your teacher will schedule assessments soon.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noAssessments")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("teacherWillScheduleAssessments")}</p>
             </div>
           ) : (
             assessments.map(a => (
@@ -256,13 +280,14 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                 key={a.id}
                 href={`/dashboard/assessments/${a.id}`}
                 className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all hover:border-indigo-200"
+                aria-label={`${a.title} - ${t("assessment")}`}
               >
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
                   <Award className="size-5 text-indigo-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900">{a.title}</p>
-                  <p className="text-xs text-gray-400">{a.totalMarks} marks</p>
+                  <p className="text-xs text-gray-400">{a.totalMarks} {t("marks")}</p>
                 </div>
                 {a.scheduledAt && (
                   <p className="text-xs text-gray-400">{new Date(a.scheduledAt).toLocaleDateString()}</p>
@@ -278,8 +303,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           {feedback.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <MessageSquare className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No feedback yet</h3>
-              <p className="mt-1 text-sm text-gray-500">Your teacher will provide feedback on your work here.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noFeedbackYet")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("teacherWillProvideFeedback")}</p>
             </div>
           ) : (
             feedback.map(f => (
@@ -302,36 +327,42 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
         <div className="space-y-4">
           <div className="rounded-2xl border border-gray-100 bg-white p-5">
             <h3 className="font-semibold text-gray-900">{subject?.name}</h3>
-            <p className="mt-1 text-sm text-gray-500">{subject?.description || "No description available."}</p>
+            <p className="mt-1 text-sm text-gray-500">{subject?.description || t("noDescriptionAvailable")}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
               <p className="text-2xl font-bold text-indigo-600">{lessons.length}</p>
-              <p className="text-xs text-gray-500">Topics</p>
+              <p className="text-xs text-gray-500">{t("topics")}</p>
             </div>
             <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
               <p className="text-2xl font-bold text-green-600">{assignments.length}</p>
-              <p className="text-xs text-gray-500">Assignments</p>
+              <p className="text-xs text-gray-500">{t("assignments")}</p>
             </div>
             <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
               <p className="text-2xl font-bold text-amber-600">{assessments.length}</p>
-              <p className="text-xs text-gray-500">Assessments</p>
+              <p className="text-xs text-gray-500">{t("assessments")}</p>
             </div>
             <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
               <p className="text-2xl font-bold text-red-600">{liveClasses.length}</p>
-              <p className="text-xs text-gray-500">Live Classes</p>
+              <p className="text-xs text-gray-500">{t("liveClasses")}</p>
             </div>
           </div>
           {subject?.averageScore !== undefined && (
             <div className="rounded-2xl border border-gray-100 bg-white p-5">
-              <h3 className="font-semibold text-gray-900">Your Performance</h3>
+              <h3 className="font-semibold text-gray-900">{t("yourPerformance")}</h3>
               <div className="mt-3 flex items-center gap-4">
                 <div className="text-3xl font-bold text-indigo-600">{subject.averageScore}%</div>
                 <div className="flex-1">
-                  <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-3 w-full overflow-hidden rounded-full bg-gray-100"
+                    role="progressbar"
+                    aria-valuenow={subject.averageScore}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
                     <div className="h-full rounded-full bg-indigo-500" style={{ width: `${subject.averageScore}%` }} />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">Average score across all assessments</p>
+                  <p className="mt-1 text-xs text-gray-500">{t("averageScoreAcrossAssessments")}</p>
                 </div>
               </div>
             </div>
@@ -344,8 +375,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           {lessons.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <Library className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No resources yet</h3>
-              <p className="mt-1 text-sm text-gray-500">Study materials will appear here once your teacher adds them.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noResourcesYet")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("studyMaterialsWillAppear")}</p>
             </div>
           ) : (
             lessons.map(lesson => (
@@ -353,9 +384,9 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50"><FileText className="size-5 text-blue-600" /></div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900">{lesson.title}</p>
-                  <p className="text-xs text-gray-400">{lesson.description || "Study material"}</p>
+                  <p className="text-xs text-gray-400">{lesson.description || t("studyMaterial")}</p>
                 </div>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">Topic</span>
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">{t("topic")}</span>
               </div>
             ))
           )}
@@ -367,8 +398,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           {liveClasses.length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <Video className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No live classes scheduled</h3>
-              <p className="mt-1 text-sm text-gray-500">Live classes for this subject will appear here.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noLiveClassesScheduled")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("liveClassesWillAppear")}</p>
             </div>
           ) : (
             liveClasses.map(lc => (
@@ -400,8 +431,8 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
           {liveClasses.filter(lc => lc.status === "COMPLETED" || lc.status === "ENDED").length === 0 ? (
             <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
               <Play className="mx-auto size-12 text-gray-300" />
-              <h3 className="mt-3 text-lg font-bold text-gray-800">No replays available</h3>
-              <p className="mt-1 text-sm text-gray-500">Recordings of past live classes will appear here.</p>
+              <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noReplaysAvailable")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("recordingsWillAppear")}</p>
             </div>
           ) : (
             liveClasses.filter(lc => lc.status === "COMPLETED" || lc.status === "ENDED").map(lc => (
@@ -411,7 +442,7 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                   <p className="font-semibold text-gray-900">{lc.title}</p>
                   <p className="text-xs text-gray-400">{new Date(lc.scheduledAt).toLocaleDateString()}</p>
                 </div>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">Replay</span>
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">{t("replay")}</span>
               </div>
             ))
           )}
@@ -421,10 +452,10 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
       {activeTab === "progress" && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-gray-100 bg-white p-5">
-            <h3 className="font-semibold text-gray-900">Topic Progress</h3>
+            <h3 className="font-semibold text-gray-900">{t("topicProgress")}</h3>
             <div className="mt-3 space-y-3">
               {lessons.length === 0 ? (
-                <p className="text-sm text-gray-500">No topics yet.</p>
+                <p className="text-sm text-gray-500">{t("noTopicsYet")}</p>
               ) : (
                 lessons.map((lesson, idx) => {
                   const pct = lessonProgress[lesson.id] || 0
@@ -438,7 +469,13 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
                         <p className="text-sm font-medium text-gray-900">{lesson.title}</p>
                         {pct > 0 && (
                           <div className="mt-1 flex items-center gap-2">
-                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                            <div
+                              className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100"
+                              role="progressbar"
+                              aria-valuenow={pct}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                            >
                               <div className={`h-full rounded-full ${isComplete ? "bg-green-500" : "bg-indigo-500"}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                             </div>
                             <span className="text-[10px] text-gray-400">{Math.round(pct)}%</span>
@@ -453,16 +490,16 @@ export default function SubjectWorkspacePage({ params }: { params: { id: string 
             </div>
           </div>
           <div className="rounded-2xl border border-gray-100 bg-white p-5">
-            <h3 className="font-semibold text-gray-900">Assessment Scores</h3>
+            <h3 className="font-semibold text-gray-900">{t("assessmentScores")}</h3>
             <div className="mt-3">
               {assessments.length === 0 ? (
-                <p className="text-sm text-gray-500">No assessment scores yet.</p>
+                <p className="text-sm text-gray-500">{t("noAssessmentScoresYet")}</p>
               ) : (
                 <div className="space-y-2">
                   {assessments.map(a => (
                     <div key={a.id} className="flex items-center justify-between rounded-xl bg-gray-50 p-3">
                       <span className="text-sm font-medium text-gray-900">{a.title}</span>
-                      <span className="text-sm font-bold text-indigo-600">{a.totalMarks} marks</span>
+                      <span className="text-sm font-bold text-indigo-600">{a.totalMarks} {t("marks")}</span>
                     </div>
                   ))}
                 </div>

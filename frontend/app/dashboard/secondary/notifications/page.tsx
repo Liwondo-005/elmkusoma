@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { LoadingState } from "@/components/learner/shared"
 import { ArrowLeft, Bell, BookOpen, Award, Calendar } from "lucide-react"
@@ -16,9 +17,12 @@ interface Notification {
 }
 
 export default function SecondaryNotificationsPage() {
+  const t = useTranslations("secondary")
+  const tc = useTranslations("common")
   const { user } = useRequireAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -30,25 +34,42 @@ export default function SecondaryNotificationsPage() {
     })
       .then(r => r.json())
       .then(d => setNotifications(d.data || []))
-      .catch(() => {})
+      .catch(() => setError(t("errorLoading")))
       .finally(() => setLoading(false))
   }, [user])
 
   if (loading) return <LoadingState />
 
+  if (error) {
+    return (
+      <div className="mx-auto max-w-5xl p-4 pb-24" role="main">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={() => { setError(null); setLoading(true); }}
+            className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            aria-label={tc("retry")}
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const unread = notifications.filter(n => !n.isRead)
   const read = notifications.filter(n => n.isRead)
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary" className="flex size-10 items-center justify-center rounded-xl bg-gray-100">
+        <Link href="/dashboard/secondary" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={tc("goBack")}>
           <ArrowLeft className="size-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("notifications")}</h1>
           <p className="text-sm text-gray-500">
-            {unread.length > 0 ? `${unread.length} new notifications` : "All caught up"}
+            {unread.length > 0 ? `${unread.length} ${t("newNotifications")}` : t("allCaughtUp")}
           </p>
         </div>
       </div>
@@ -56,14 +77,14 @@ export default function SecondaryNotificationsPage() {
       {notifications.length === 0 ? (
         <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
           <Bell className="mx-auto size-12 text-gray-300" />
-          <h3 className="mt-3 text-lg font-bold text-gray-800">No notifications</h3>
-          <p className="mt-1 text-sm text-gray-500">Updates from your teachers will appear here.</p>
+          <h3 className="mt-3 text-lg font-bold text-gray-800">{t("noNotifications")}</h3>
+          <p className="mt-1 text-sm text-gray-500">{t("updatesFromTeachers")}</p>
         </div>
       ) : (
         <>
           {unread.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">New</h2>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">{t("new")}</h2>
               <div className="space-y-2">
                 {unread.map(n => (
                   <div key={n.id} className="flex items-start gap-3 rounded-2xl border-l-4 border-indigo-500 bg-white p-4">
@@ -82,7 +103,7 @@ export default function SecondaryNotificationsPage() {
           )}
           {read.length > 0 && (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Earlier</h2>
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">{t("earlier")}</h2>
               <div className="space-y-2">
                 {read.map(n => (
                   <div key={n.id} className="flex items-start gap-3 rounded-2xl bg-white p-4 opacity-60">

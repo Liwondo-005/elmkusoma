@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { learnerApi } from "@/lib/learner-api"
 import type { EventItem } from "@/lib/learner-api"
@@ -27,6 +28,8 @@ function EventTypeBadge({ type }: { type: string }) {
 }
 
 export default function CalendarPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,13 +48,13 @@ export default function CalendarPage() {
       const res = await learnerApi.getUpcomingEvents()
       setEvents(Array.isArray(res) ? res : [])
     } catch {
-      setError("Failed to load events")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
 
@@ -86,16 +89,16 @@ export default function CalendarPage() {
   const eventTypes = [...new Set(events.map(e => e.eventType).filter(Boolean))]
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadEvents() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadEvents() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
-      <LearnerHeader firstName={firstName} subtitle="View your academic schedule, deadlines, and events." />
+      <LearnerHeader firstName={firstName} subtitle={t("calendar.subtitle")} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-1 rounded-xl border border-border bg-card p-1 shadow-xs">
@@ -103,13 +106,14 @@ export default function CalendarPage() {
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
+              aria-label={mode === "today" ? t("calendar.today") : mode === "week" ? t("calendar.thisWeek") : t("calendar.thisMonth")}
               className={`rounded-lg px-4 py-2 text-xs font-medium transition ${
                 viewMode === mode
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
               }`}
             >
-              {mode === "today" ? "Today" : mode === "week" ? "This Week" : "This Month"}
+              {mode === "today" ? t("calendar.today") : mode === "week" ? t("calendar.thisWeek") : t("calendar.thisMonth")}
             </button>
           ))}
         </div>
@@ -119,9 +123,10 @@ export default function CalendarPage() {
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
+            aria-label={t("calendar.filterEvents")}
             className="appearance-none rounded-xl border border-border bg-card py-2.5 pl-10 pr-8 text-sm outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="ALL">All Events</option>
+            <option value="ALL">{t("calendar.allEvents")}</option>
             {eventTypes.map((type) => (
               <option key={type} value={type}>
                 {type}
@@ -134,13 +139,13 @@ export default function CalendarPage() {
       {displayed.length === 0 ? (
         <EmptyState
           icon={<Calendar className="size-8" />}
-          title="No events scheduled"
+          title={t("calendar.noEvents")}
           description={
             viewMode === "today"
-              ? "No events for today. Check other views for upcoming events."
+              ? t("calendar.noEventsToday")
               : viewMode === "week"
-                ? "No events this week."
-                : "No events this month."
+                ? t("calendar.noEventsWeek")
+                : t("calendar.noEventsMonth")
           }
         />
       ) : (
@@ -178,7 +183,7 @@ export default function CalendarPage() {
                     {event.maxParticipants && (
                       <span className="flex items-center gap-1.5">
                         <Users className="size-3.5" />
-                        {event.maxParticipants} seats
+                        {event.maxParticipants} {tc("seats")}
                       </span>
                     )}
                   </div>

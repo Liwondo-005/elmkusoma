@@ -1,8 +1,9 @@
 "use client"
 
-import { ArrowLeft, Clock, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Clock, AlertTriangle, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { secondaryApi, type SecondaryProblem } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
@@ -22,6 +23,8 @@ interface ExamQuestion {
 
 export default function ExamModePage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("secondary")
+  const tc = useTranslations("common")
   const [apiQuestions, setApiQuestions] = useState<SecondaryProblem[]>([])
   const [started, setStarted] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -30,15 +33,16 @@ export default function ExamModePage() {
   const [timeLeft, setTimeLeft] = useState(300)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.classGroupId) {
       secondaryApi.getProblemsByClass(user.classGroupId)
         .then(data => setApiQuestions(data.filter(p => p.problemType === "MCQ")))
-        .catch(() => {})
+        .catch(() => setError(t("loadError")))
         .finally(() => setLoading(false))
     } else { setLoading(false) }
-  }, [user])
+  }, [user, t])
 
   useEffect(() => {
     if (!started || submitted || timeLeft <= 0) return
@@ -51,6 +55,18 @@ export default function ExamModePage() {
   }, [timeLeft, started, submitted])
 
   if (loading) return <LoadingState />
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 p-4 pb-24" role="main">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+          <AlertCircle className="mx-auto size-12 text-red-400" />
+          <h3 className="mt-3 text-lg font-bold text-red-800">{tc("common.error")}</h3>
+          <p className="mt-1 text-sm text-red-600">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   const allQuestions: ExamQuestion[] = [
     ...BUILTIN_QUESTIONS.map(q => {
@@ -69,21 +85,21 @@ export default function ExamModePage() {
 
   if (!started) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6 p-4 pb-24">
+      <div className="mx-auto max-w-3xl space-y-6 p-4 pb-24" role="main">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/secondary/revision" className="flex size-10 items-center justify-center rounded-xl bg-gray-100"><ArrowLeft className="size-5 text-gray-600" /></Link>
-          <div><h1 className="text-xl font-bold text-gray-900">Exam Mode</h1><p className="text-sm text-gray-500">Timed practice exam</p></div>
+          <Link href="/dashboard/secondary/revision" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToRevision")}><ArrowLeft className="size-5 text-gray-600" /></Link>
+          <div><h1 className="text-xl font-bold text-gray-900">{t("secondary.examMode")}</h1><p className="text-sm text-gray-500">{t("secondary.timedPracticeExam")}</p></div>
         </div>
         <div className="rounded-2xl bg-gradient-to-r from-red-600 to-orange-500 p-6 text-white">
-          <h2 className="text-lg font-bold">Practice Exam</h2>
-          <p className="mt-1 text-sm text-white/70">{allQuestions.length} questions · 5 minutes</p>
-          <div className="mt-4 space-y-2 text-sm"><p>• No going back to previous questions</p><p>• Timer cannot be paused</p><p>• Answer all questions before time runs out</p></div>
+          <h2 className="text-lg font-bold">{t("secondary.practiceExam")}</h2>
+          <p className="mt-1 text-sm text-white/70">{allQuestions.length} {t("secondary.questions")} · 5 {t("secondary.minutes")}</p>
+          <div className="mt-4 space-y-2 text-sm"><p>• {t("secondary.noGoingBack")}</p><p>• {t("secondary.timerCannotBePaused")}</p><p>• {t("secondary.answerAllQuestionsBeforeTime")}</p></div>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-center gap-2"><AlertTriangle className="size-5 text-amber-600" /><p className="text-sm font-semibold text-amber-800">Exam Conditions</p></div>
-          <p className="mt-1 text-sm text-amber-700">Treat this like a real exam. No notes, no help.</p>
+          <div className="flex items-center gap-2"><AlertTriangle className="size-5 text-amber-600" /><p className="text-sm font-semibold text-amber-800">{t("secondary.examConditions")}</p></div>
+          <p className="mt-1 text-sm text-amber-700">{t("secondary.treatThisLikeRealExam")}</p>
         </div>
-        <button onClick={() => { setStarted(true); setAnswers(new Array(allQuestions.length).fill(null)) }} className="w-full rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700">Start Exam</button>
+        <button onClick={() => { setStarted(true); setAnswers(new Array(allQuestions.length).fill(null)) }} className="w-full rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700" aria-label={t("secondary.startExam")}>{t("secondary.startExam")}</button>
       </div>
     )
   }
@@ -92,9 +108,9 @@ export default function ExamModePage() {
   if (!q) return null
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-3xl space-y-6 p-4 pb-24" role="main">
       <div className={`flex items-center justify-between rounded-2xl p-4 ${timeLeft < 60 ? "bg-red-100" : "bg-gray-100"}`}>
-        <span className="text-sm font-medium text-gray-600">Question {current + 1}/{allQuestions.length}</span>
+        <span className="text-sm font-medium text-gray-600">{t("secondary.question")} {current + 1}/{allQuestions.length}</span>
         <div className="flex items-center gap-2"><Clock className={`size-5 ${timeLeft < 60 ? "text-red-500" : "text-gray-500"}`} /><span className={`text-lg font-bold ${timeLeft < 60 ? "text-red-600" : "text-gray-800"}`}>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}</span></div>
       </div>
 
@@ -103,6 +119,7 @@ export default function ExamModePage() {
         <div className="mt-4 space-y-2">
           {q.options.map((opt, i) => (
             <button key={i} onClick={() => handleSelect(i)} disabled={submitted}
+              aria-label={`${String.fromCharCode(65 + i)}: ${opt}`}
               className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition-all ${
                 submitted && i === q.correct ? "border-green-300 bg-green-50" :
                 submitted && i === selected ? "border-red-300 bg-red-50" :
@@ -117,14 +134,14 @@ export default function ExamModePage() {
 
       {!submitted ? (
         <div className="flex gap-3">
-          <button onClick={() => { setAnswers(a => { const n = [...a]; n[current] = selected; return n }); setSelected(null); setCurrent(c => c + 1) }} disabled={current === allQuestions.length - 1} className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50">Next</button>
-          {current === allQuestions.length - 1 && <button onClick={handleSubmit} className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700">Submit Exam</button>}
+          <button onClick={() => { setAnswers(a => { const n = [...a]; n[current] = selected; return n }); setSelected(null); setCurrent(c => c + 1) }} disabled={current === allQuestions.length - 1} className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50" aria-label={tc("common.next")}>{tc("common.next")}</button>
+          {current === allQuestions.length - 1 && <button onClick={handleSubmit} className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700" aria-label={t("secondary.submitExam")}>{t("secondary.submitExam")}</button>}
         </div>
       ) : (
         <div className="rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-500 p-6 text-center text-white">
           <p className="text-3xl font-bold">{getScore()}/{allQuestions.length}</p>
-          <p className="mt-1 text-sm text-white/70">correct answers</p>
-          <Link href="/dashboard/secondary/revision" className="mt-4 inline-block rounded-xl bg-white/20 px-6 py-2 text-sm font-medium text-white hover:bg-white/30">Back to Revision</Link>
+          <p className="mt-1 text-sm text-white/70">{t("secondary.correctAnswers")}</p>
+          <Link href="/dashboard/secondary/revision" className="mt-4 inline-block rounded-xl bg-white/20 px-6 py-2 text-sm font-medium text-white hover:bg-white/30" aria-label={t("secondary.backToRevision")}>{t("secondary.backToRevision")}</Link>
         </div>
       )}
     </div>

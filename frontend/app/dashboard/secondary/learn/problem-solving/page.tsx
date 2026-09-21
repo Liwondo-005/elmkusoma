@@ -1,8 +1,9 @@
 "use client"
 
-import { ArrowLeft, Brain, CheckCircle, XCircle } from "lucide-react"
+import { ArrowLeft, Brain, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { secondaryApi, type SecondaryProblem } from "@/lib/secondary-api"
 import { LoadingState } from "@/components/learner/shared"
@@ -15,22 +16,37 @@ const BUILTIN_PROBLEMS = [
 
 export default function ProblemSolvingPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("secondary")
+  const tc = useTranslations("common")
   const [apiProblems, setApiProblems] = useState<SecondaryProblem[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.classGroupId) {
       secondaryApi.getProblemsByClass(user.classGroupId)
         .then(setApiProblems)
-        .catch(() => {})
+        .catch(() => setError(t("loadError")))
         .finally(() => setLoading(false))
     } else { setLoading(false) }
-  }, [user])
+  }, [user, t])
 
   if (loading) return <LoadingState />
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+          <AlertCircle className="mx-auto size-12 text-red-400" />
+          <h3 className="mt-3 text-lg font-bold text-red-800">{tc("common.error")}</h3>
+          <p className="mt-1 text-sm text-red-600">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   const allProblems = [
     ...BUILTIN_PROBLEMS,
@@ -41,12 +57,12 @@ export default function ProblemSolvingPage() {
   function handleSubmit(problemId: string) { setSubmitted(prev => ({ ...prev, [problemId]: true })) }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100"><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToLearn")}><ArrowLeft className="size-5 text-gray-600" /></Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Problem Solving Engine</h1>
-          <p className="text-sm text-gray-500">Practice solving problems step by step</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("secondary.problemSolvingEngine")}</h1>
+          <p className="text-sm text-gray-500">{t("secondary.practiceSolvingProblemsStepByStep")}</p>
         </div>
       </div>
 
@@ -67,6 +83,7 @@ export default function ProblemSolvingPage() {
                 <div className="mt-4 space-y-2">
                   {options.map((opt, i) => (
                     <button key={i} onClick={() => !isSubmitted && handleAnswer(problem.id, i)} disabled={isSubmitted}
+                      aria-label={`${String.fromCharCode(65 + i)}: ${opt}`}
                       className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition-all ${
                         isSubmitted && opt === problem.correctAnswer ? "border-green-200 bg-green-50" :
                         isSubmitted && answers[problem.id] === i && opt !== problem.correctAnswer ? "border-red-200 bg-red-50" :
@@ -82,9 +99,9 @@ export default function ProblemSolvingPage() {
               )}
 
               {!isSubmitted ? (
-                <button onClick={() => handleSubmit(problem.id)} disabled={!isSelected} className="mt-4 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50">Check Answer</button>
+                <button onClick={() => handleSubmit(problem.id)} disabled={!isSelected} className="mt-4 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50" aria-label={t("secondary.checkAnswer")}>{t("secondary.checkAnswer")}</button>
               ) : (
-                <div className="mt-4 rounded-xl bg-blue-50 p-4"><p className="text-sm font-medium text-blue-800">Solution</p><p className="mt-1 text-sm text-blue-700">{problem.solution}</p></div>
+                <div className="mt-4 rounded-xl bg-blue-50 p-4"><p className="text-sm font-medium text-blue-800">{t("secondary.solution")}</p><p className="mt-1 text-sm text-blue-700">{problem.solution}</p></div>
               )}
             </div>
           )

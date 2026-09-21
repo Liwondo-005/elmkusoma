@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Project } from "@/lib/types/college"
@@ -24,6 +25,8 @@ function ProjectStatusBadge({ status }: { status: string }) {
 }
 
 export default function ProjectsPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,22 +44,22 @@ export default function ProjectsPage() {
       const res = await collegeApi.getStudentProjects(studentId)
       setProjects(res.data || [])
     } catch {
-      setError("Failed to load projects")
+      setError(tc("error"))
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   if (error && projects.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Manage your projects, track milestones, and showcase your work." />
+      <div role="main" className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle={t("subtitle.projects")} />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadProjects() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadProjects() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
@@ -67,8 +70,8 @@ export default function ProjectsPage() {
   const completed = projects.filter(p => p.status === "COMPLETED").length
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Manage your projects, track milestones, and showcase your work." />
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("subtitle.projects")} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -77,7 +80,7 @@ export default function ProjectsPage() {
               <FolderKanban className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Projects</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.total")}</p>
               <p className="text-2xl font-extrabold text-foreground">{projects.length}</p>
             </div>
           </div>
@@ -88,7 +91,7 @@ export default function ProjectsPage() {
               <Clock className="size-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">In Progress</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.inProgress")}</p>
               <p className="text-2xl font-extrabold text-foreground">{inProgress}</p>
             </div>
           </div>
@@ -99,7 +102,7 @@ export default function ProjectsPage() {
               <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Completed</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.completed")}</p>
               <p className="text-2xl font-extrabold text-foreground">{completed}</p>
             </div>
           </div>
@@ -109,8 +112,8 @@ export default function ProjectsPage() {
       {projects.length === 0 ? (
         <EmptyState
           icon={<FolderKanban className="size-8" />}
-          title="No projects yet"
-          description="Your instructor will assign projects or you can create your own."
+          title={t("empty.noProjects")}
+          description={t("empty.noProjects")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -128,7 +131,7 @@ export default function ProjectsPage() {
                     {new Date(p.startDate).toLocaleDateString()}
                   </span>
                 )}
-                {p.dueDate && <span>Due {new Date(p.dueDate).toLocaleDateString()}</span>}
+                {p.dueDate && <span>{t("deadline")} {new Date(p.dueDate).toLocaleDateString()}</span>}
               </div>
             </div>
           ))}

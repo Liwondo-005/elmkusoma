@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Competency, CompetencyRecord, CompetencySummary } from "@/lib/types/college"
@@ -25,6 +26,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function CompetenciesPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [competencies, setCompetencies] = useState<Competency[]>([])
   const [records, setRecords] = useState<CompetencyRecord[]>([])
@@ -45,14 +48,14 @@ export default function CompetenciesPage() {
       const studentId = user?.id || ""
       const [allCompetencies, studentRecords, summaryData] = await Promise.all([
         collegeApi.listCompetencies(),
-        collegeApi.getStudentCompetencies(studentId).catch(() => ({ success: true, data: [] } as const)),
-        collegeApi.getCompetencySummary(studentId).catch(() => ({ success: true, data: null } as const)),
+        collegeApi.getStudentCompetencies(studentId).catch((err) => { setError(err?.message || tc("error")); return { success: true, data: [] } as const }),
+        collegeApi.getCompetencySummary(studentId).catch((err) => { setError(err?.message || tc("error")); return { success: true, data: null } as const }),
       ])
       setCompetencies((allCompetencies.data as Competency[] | undefined) || [])
       setRecords((studentRecords.data as CompetencyRecord[] | undefined) || [])
       setSummary((summaryData.data as CompetencySummary | undefined) || null)
     } catch {
-      setError("Failed to load competencies")
+      setError(tc("error"))
     } finally {
       setLoading(false)
     }
@@ -68,16 +71,16 @@ export default function CompetenciesPage() {
     return matchSearch && matchStatus
   })
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   if (error && competencies.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Track your competency progress across all skills and knowledge areas." />
+      <div role="main" className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle={t("subtitle.competencies")} />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadData() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadData() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
@@ -86,8 +89,8 @@ export default function CompetenciesPage() {
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Track your competency progress across all skills and knowledge areas." />
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("subtitle.competencies")} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -96,7 +99,7 @@ export default function CompetenciesPage() {
               <Target className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Competencies</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.total")}</p>
               <p className="text-2xl font-extrabold text-foreground">{summary?.total ?? competencies.length}</p>
             </div>
           </div>
@@ -107,7 +110,7 @@ export default function CompetenciesPage() {
               <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Competent</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("competency")}</p>
               <p className="text-2xl font-extrabold text-foreground">{summary?.competent ?? 0}</p>
             </div>
           </div>
@@ -118,7 +121,7 @@ export default function CompetenciesPage() {
               <Clock className="size-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">In Progress</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.inProgress")}</p>
               <p className="text-2xl font-extrabold text-foreground">{(summary?.learning ?? 0) + (summary?.practicing ?? 0)}</p>
             </div>
           </div>
@@ -129,7 +132,7 @@ export default function CompetenciesPage() {
               <AlertTriangle className="size-5 text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Needs Practice</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("filters.pending")}</p>
               <p className="text-2xl font-extrabold text-foreground">{summary?.needsPractice ?? 0}</p>
             </div>
           </div>
@@ -141,9 +144,10 @@ export default function CompetenciesPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search competencies..."
+            placeholder={tc("search") + "..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label={tc("search")}
             className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -152,15 +156,16 @@ export default function CompetenciesPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label={tc("filter")}
             className="appearance-none rounded-xl border border-border bg-card py-2.5 pl-10 pr-8 text-sm outline-none focus:ring-2 focus:ring-primary/20"
           >
-            <option value="ALL">All Status</option>
-            <option value="NOT_STARTED">Not Started</option>
-            <option value="LEARNING">Learning</option>
-            <option value="PRACTICING">Practicing</option>
-            <option value="COMPETENT">Competent</option>
-            <option value="NEEDS_PRACTICE">Needs Practice</option>
-            <option value="COMPLETED">Completed</option>
+            <option value="ALL">{tc("filter")}</option>
+            <option value="NOT_STARTED">{t("filters.pending")}</option>
+            <option value="LEARNING">{t("competencyLevel")}</option>
+            <option value="PRACTICING">{t("practical")}</option>
+            <option value="COMPETENT">{t("competency")}</option>
+            <option value="NEEDS_PRACTICE">{t("filters.pending")}</option>
+            <option value="COMPLETED">{t("stats.completed")}</option>
           </select>
         </div>
       </div>
@@ -168,8 +173,8 @@ export default function CompetenciesPage() {
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Target className="size-8" />}
-          title="No competencies found"
-          description="Competencies will appear here once assigned by your instructor."
+          title={t("empty.noCompetencies")}
+          description={t("empty.noCompetencies")}
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
@@ -177,10 +182,10 @@ export default function CompetenciesPage() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Competency</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Type</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Last Updated</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("competency")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("department")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("status")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("academicYear")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

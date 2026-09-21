@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { StudyTask } from "@/lib/types/college"
@@ -8,18 +9,21 @@ import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/sh
 import { FlaskConical, CheckCircle2, Clock, Target, AlertCircle } from "lucide-react"
 
 function StatusBadge({ status }: { status: boolean }) {
+  const t = useTranslations("highered")
   return status ? (
     <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-      Submitted
+      {t("stats.completed")}
     </span>
   ) : (
     <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-      Pending
+      {t("filters.pending")}
     </span>
   )
 }
 
 export default function PracticalLabPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [tasks, setTasks] = useState<StudyTask[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,22 +45,22 @@ export default function PracticalLabPage() {
       )
       setTasks(practicalTasks)
     } catch {
-      setError("Failed to load practical exercises")
+      setError(tc("error"))
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   if (error && tasks.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Complete hands-on exercises and practical assignments." />
+      <div role="main" className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle={t("subtitle.practicalLab")} />
         <div className="rounded-2xl border border-border bg-card p-4 text-sm text-red-600 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadTasks() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadTasks() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
@@ -67,8 +71,8 @@ export default function PracticalLabPage() {
   const pending = tasks.length - completed
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Complete hands-on exercises and practical assignments." />
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("subtitle.practicalLab")} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -77,7 +81,7 @@ export default function PracticalLabPage() {
               <FlaskConical className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Exercises</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.total")}</p>
               <p className="text-2xl font-extrabold text-foreground">{tasks.length}</p>
             </div>
           </div>
@@ -88,7 +92,7 @@ export default function PracticalLabPage() {
               <Clock className="size-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Pending</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("filters.pending")}</p>
               <p className="text-2xl font-extrabold text-foreground">{pending}</p>
             </div>
           </div>
@@ -99,7 +103,7 @@ export default function PracticalLabPage() {
               <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Completed</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.completed")}</p>
               <p className="text-2xl font-extrabold text-foreground">{completed}</p>
             </div>
           </div>
@@ -109,8 +113,8 @@ export default function PracticalLabPage() {
       {tasks.length === 0 ? (
         <EmptyState
           icon={<FlaskConical className="size-8" />}
-          title="No practical exercises yet"
-          description="Your instructor will assign practical exercises and hands-on tasks."
+          title={t("empty.noModules")}
+          description={t("empty.noModules")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
