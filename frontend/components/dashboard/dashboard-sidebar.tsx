@@ -316,7 +316,7 @@ function getStudentNav(user: { learningLevel?: string | null } | null) {
   const level = (user?.learningLevel || "").toUpperCase()
   if (level === "NURSERY") return nurseryNav
   if (level === "PRIMARY") return primaryNavSections.flatMap(s => s.items)
-  if (level === "COLLEGE") return collegeNav
+  if (level === "COLLEGE" || level === "VETA") return collegeNav
   if (level === "UNIVERSITY") return universityNav
   return secondaryNav
 }
