@@ -20,11 +20,14 @@ public class PortfolioItem extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "file_url", nullable = false)
+    @Column(name = "file_url", columnDefinition = "TEXT")
     private String fileUrl;
 
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;
+
+    @Column(name = "content", columnDefinition = "TEXT")
+    private String content;
 
     @Column(name = "portfolio_type", nullable = false, length = 50)
     private String portfolioType;
@@ -95,6 +98,14 @@ public class PortfolioItem extends BaseEntity {
 
     public void setSubjectName(String subjectName) {
         this.subjectName = subjectName;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public Integer getDisplayOrder() {

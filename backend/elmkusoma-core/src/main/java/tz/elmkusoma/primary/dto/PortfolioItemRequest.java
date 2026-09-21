@@ -9,13 +9,14 @@ public class PortfolioItemRequest {
 
     private String description;
 
-    @NotBlank(message = "File URL is required")
     private String fileUrl;
 
     @NotBlank(message = "Portfolio type is required")
     private String portfolioType;
 
     private String subjectName;
+
+    private String content;
 
     public PortfolioItemRequest() {
     }
@@ -58,5 +59,13 @@ public class PortfolioItemRequest {
 
     public void setSubjectName(String subjectName) {
         this.subjectName = subjectName;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 }

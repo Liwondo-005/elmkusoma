@@ -137,6 +137,7 @@ public class PrimaryPortalService {
         item.setFileUrl(request.getFileUrl());
         item.setPortfolioType(request.getPortfolioType());
         item.setSubjectName(request.getSubjectName());
+        item.setContent(request.getContent());
         item.setDisplayOrder(0);
         item.setIsFeatured(false);
 
@@ -479,6 +480,8 @@ public class PrimaryPortalService {
         response.setThumbnailUrl(item.getThumbnailUrl());
         response.setPortfolioType(item.getPortfolioType());
         response.setSubjectName(item.getSubjectName());
+        response.setContent(item.getContent());
+        response.setIsFeatured(item.getIsFeatured());
         response.setCreatedAt(item.getCreatedAt());
         return response;
     }

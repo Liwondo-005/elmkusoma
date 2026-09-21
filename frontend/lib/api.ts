@@ -1744,6 +1744,7 @@ export interface PortfolioItem {
   thumbnailUrl?: string
   portfolioType: "DRAWING" | "STORY" | "PROJECT" | "PHOTO" | "VOICE_RECORDING" | "ESSAY"
   subjectName?: string
+  content?: string
   isFeatured: boolean
   createdAt: string
 }
@@ -1937,7 +1938,7 @@ export const primaryApi = {
   async getPortfolio(): Promise<PortfolioItem[]> {
     return fetchJSON<PortfolioItem[]>("/v1/primary/me/portfolio")
   },
-  async addPortfolioItem(data: { title: string; description?: string; fileUrl?: string; portfolioType: string; subjectName?: string }): Promise<PortfolioItem> {
+  async addPortfolioItem(data: { title: string; description?: string; fileUrl?: string; portfolioType: string; subjectName?: string; content?: string }): Promise<PortfolioItem> {
     return fetchJSON<PortfolioItem>("/v1/primary/me/portfolio", { method: "POST", body: JSON.stringify(data) })
   },
   async deletePortfolioItem(itemId: string): Promise<void> {

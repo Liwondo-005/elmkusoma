@@ -12,6 +12,8 @@ public class PortfolioItemResponse {
     private String thumbnailUrl;
     private String portfolioType;
     private String subjectName;
+    private String content;
+    private Boolean isFeatured;
     private LocalDateTime createdAt;
 
     public PortfolioItemResponse() {
@@ -71,6 +73,22 @@ public class PortfolioItemResponse {
 
     public void setSubjectName(String subjectName) {
         this.subjectName = subjectName;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public Boolean getIsFeatured() {
+        return isFeatured;
+    }
+
+    public void setIsFeatured(Boolean isFeatured) {
+        this.isFeatured = isFeatured;
     }
 
     public LocalDateTime getCreatedAt() {

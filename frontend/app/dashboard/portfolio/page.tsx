@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { primaryApi, type PortfolioItem } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
-import { Hammer, Plus, Palette, BookOpen, Wrench, Camera, Mic, FileText, Star, Trash2, X, Loader2, FolderOpen, ChevronRight, ChevronLeft, Check, Circle, Disc } from "lucide-react"
+import { Hammer, Plus, Palette, BookOpen, Wrench, Camera, Mic, FileText, Star, Trash2, X, Loader2, FolderOpen, ChevronRight, ChevronLeft, Check, Circle, Disc, Eraser, Undo2 } from "lucide-react"
 
 const typeConfig: Record<string, { icon: typeof Palette; color: string; bgColor: string; label: string }> = {
   DRAWING: { icon: Palette, color: "text-pink-600", bgColor: "bg-pink-50", label: "Drawing" },
@@ -56,6 +56,12 @@ export default function PortfolioPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTimer, setRecordingTimer] = useState(0)
 
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [drawTool, setDrawTool] = useState<"pencil" | "eraser">("pencil")
+  const [brushSize, setBrushSize] = useState(4)
+  const [drawingHistory, setDrawingHistory] = useState<ImageData[]>([])
+
   useEffect(() => {
     if (!user) return
     loadPortfolio()
@@ -72,6 +78,96 @@ export default function PortfolioPage() {
       if (interval) clearInterval(interval)
     }
   }, [isRecording])
+
+  const initCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.parentElement?.getBoundingClientRect()
+    if (!rect) return
+    canvas.width = rect.width - 16
+    canvas.height = Math.round(canvas.width * 0.6)
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    ctx.fillStyle = "#ffffff"
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+  }, [])
+
+  useEffect(() => {
+    if (wizardStep === 3 && wizardType === "DRAWING") {
+      requestAnimationFrame(() => initCanvas())
+    }
+  }, [wizardStep, wizardType, initCanvas])
+
+  function getCanvasCtx() {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    return canvas.getContext("2d")
+  }
+
+  function saveCanvasState() {
+    const ctx = getCanvasCtx()
+    const canvas = canvasRef.current
+    if (!ctx || !canvas) return
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    setDrawingHistory((prev) => [...prev.slice(-30), imageData])
+  }
+
+  function startDrawing(e: React.PointerEvent<HTMLCanvasElement>) {
+    const ctx = getCanvasCtx()
+    const canvas = canvasRef.current
+    if (!ctx || !canvas) return
+    saveCanvasState()
+    canvas.setPointerCapture(e.pointerId)
+    setIsDrawing(true)
+    ctx.beginPath()
+    const rect = canvas.getBoundingClientRect()
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top)
+  }
+
+  function draw(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawing) return
+    const ctx = getCanvasCtx()
+    const canvas = canvasRef.current
+    if (!ctx || !canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    ctx.lineWidth = drawTool === "eraser" ? brushSize * 4 : brushSize
+    ctx.strokeStyle = drawTool === "eraser" ? "#ffffff" : wizardColor
+    ctx.globalCompositeOperation = drawTool === "eraser" ? "source-over" : "source-over"
+    ctx.lineTo(x, y)
+    ctx.stroke()
+  }
+
+  function stopDrawing() {
+    setIsDrawing(false)
+  }
+
+  function undoDrawing() {
+    const ctx = getCanvasCtx()
+    const canvas = canvasRef.current
+    if (!ctx || !canvas || drawingHistory.length === 0) return
+    const last = drawingHistory[drawingHistory.length - 1]
+    ctx.putImageData(last, 0, 0)
+    setDrawingHistory((prev) => prev.slice(0, -1))
+  }
+
+  function clearCanvas() {
+    const ctx = getCanvasCtx()
+    const canvas = canvasRef.current
+    if (!ctx || !canvas) return
+    saveCanvasState()
+    ctx.fillStyle = "#ffffff"
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }
+
+  function getCanvasDataUrl(): string | undefined {
+    const canvas = canvasRef.current
+    if (!canvas) return undefined
+    return canvas.toDataURL("image/png")
+  }
 
   async function loadPortfolio() {
     try {
@@ -95,6 +191,9 @@ export default function PortfolioPage() {
     setWizardContent("")
     setIsRecording(false)
     setRecordingTimer(0)
+    setDrawTool("pencil")
+    setBrushSize(4)
+    setDrawingHistory([])
     setWizardOpen(true)
   }
 
@@ -108,16 +207,27 @@ export default function PortfolioPage() {
     if (!wizardTitle.trim()) return
     try {
       setSubmitting(true)
+      let fileUrl: string | undefined
+      let content: string | undefined
+      if (wizardType === "DRAWING") {
+        fileUrl = getCanvasDataUrl()
+      } else if (wizardContent.trim()) {
+        content = wizardContent.trim()
+      }
       const created = await primaryApi.addPortfolioItem({
         title: wizardTitle.trim(),
         description: wizardDescription.trim() || undefined,
+        fileUrl,
+        content,
         portfolioType: wizardType,
         subjectName: wizardSubject.trim() || undefined,
       })
       setItems((prev) => [created, ...prev])
       closeWizard()
-    } catch {
-      // failed to add
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error("Failed to save portfolio item:", msg)
+      alert("Failed to save: " + msg)
     } finally {
       setSubmitting(false)
     }
@@ -254,6 +364,14 @@ export default function PortfolioPage() {
                 {item.description && (
                   <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                 )}
+                {item.fileUrl && item.portfolioType === "DRAWING" && (
+                  <div className="mt-2 overflow-hidden rounded-lg border border-border">
+                    <img src={item.fileUrl} alt={item.title} className="w-full h-auto object-contain" />
+                  </div>
+                )}
+                {item.content && (
+                  <p className="mt-2 text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">{item.content}</p>
+                )}
                 <div className="mt-3 flex items-center gap-2">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${config.bgColor} ${config.color}`}>
                     {config.label}
@@ -352,23 +470,52 @@ export default function PortfolioPage() {
 
                 {wizardType === "DRAWING" && (
                   <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-1">
+                        <button type="button" onClick={() => setDrawTool("pencil")} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${drawTool === "pencil" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-background"}`}>
+                          <Palette className="size-3.5" /> Pencil
+                        </button>
+                        <button type="button" onClick={() => setDrawTool("eraser")} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${drawTool === "eraser" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-background"}`}>
+                          <Eraser className="size-3.5" /> Eraser
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-1">
+                        {[2, 4, 8, 16].map((size) => (
+                          <button key={size} type="button" onClick={() => setBrushSize(size)} className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${brushSize === size ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-background"}`}>
+                            {size}px
+                          </button>
+                        ))}
+                      </div>
+                      <button type="button" onClick={undoDrawing} disabled={drawingHistory.length === 0} className="rounded-md border border-border bg-muted p-1.5 text-muted-foreground hover:bg-background disabled:opacity-50">
+                        <Undo2 className="size-3.5" />
+                      </button>
+                      <button type="button" onClick={clearCanvas} className="rounded-md border border-border bg-muted px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-background">
+                        Clear
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
                       {drawingColors.map((c) => (
                         <button
                           key={c}
                           type="button"
-                          onClick={() => setWizardColor(c)}
-                          className={`size-8 rounded-full border-2 transition-all ${
-                            wizardColor === c ? "border-primary scale-110" : "border-border"
+                          onClick={() => { setWizardColor(c); setDrawTool("pencil") }}
+                          className={`size-7 rounded-full border-2 transition-all ${
+                            wizardColor === c && drawTool === "pencil" ? "border-primary scale-110 ring-2 ring-primary/30" : "border-border"
                           }`}
                           style={{ backgroundColor: c }}
                         />
                       ))}
                     </div>
-                    <div className="rounded-xl border border-border bg-white p-2">
-                      <div className="aspect-video rounded-lg bg-gray-50 flex items-center justify-center text-sm text-muted-foreground">
-                        Drawing area - Use the colors above to create
-                      </div>
+                    <div className="rounded-xl border border-border bg-white p-1">
+                      <canvas
+                        ref={canvasRef}
+                        onPointerDown={startDrawing}
+                        onPointerMove={draw}
+                        onPointerUp={stopDrawing}
+                        onPointerLeave={stopDrawing}
+                        className="w-full cursor-crosshair rounded-lg touch-none"
+                        style={{ height: "auto", aspectRatio: "5/3" }}
+                      />
                     </div>
                     <input
                       type="text"
