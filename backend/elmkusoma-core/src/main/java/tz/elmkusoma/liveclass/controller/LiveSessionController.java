@@ -47,7 +47,7 @@ public class LiveSessionController {
     private final InstitutionMembershipRepository membershipRepository;
 
     @PostMapping("/join/{classId}")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Join a live class session and receive LiveKit token")
     public ResponseEntity<ApiResponse<LiveSessionJoinResponse>> joinSession(
             @RequestHeader("X-Institution-Id") UUID institutionId,
@@ -65,7 +65,8 @@ public class LiveSessionController {
             return ResponseEntity.status(403).body(ApiResponse.error("Not authorized for this class"));
         }
 
-        if (!"IN_PROGRESS".equals(liveClass.getStatus())) {
+        String classStatus = liveClass.getStatus();
+        if (!"IN_PROGRESS".equals(classStatus) && !"LIVE".equals(classStatus)) {
             return ResponseEntity.status(400).body(ApiResponse.error("Live class is not currently in session"));
         }
 
@@ -107,7 +108,7 @@ public class LiveSessionController {
     }
 
     @GetMapping("/participants/{classId}")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Get live class participants")
     public ResponseEntity<ApiResponse<List<ParticipantInfo>>> getParticipants(
             @RequestAttribute("userId") UUID userId,
@@ -177,7 +178,7 @@ public class LiveSessionController {
     }
 
     @PostMapping("/report/{classId}")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Report an issue during a live class")
     public ResponseEntity<ApiResponse<String>> reportIssue(
             @RequestAttribute("userId") UUID userId,
@@ -279,7 +280,7 @@ public class LiveSessionController {
     }
 
     @GetMapping("/classes/{classId}/recording/download")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Get recording download URL")
     public ResponseEntity<ApiResponse<Map<String, String>>> getRecordingDownload(
             @RequestAttribute("userId") UUID userId,
@@ -314,7 +315,7 @@ public class LiveSessionController {
     }
 
     @GetMapping("/calendar/{classId}/export")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Export live class as .ics calendar event")
     public ResponseEntity<String> exportCalendarEvent(@PathVariable UUID classId) {
         LiveClass liveClass = liveClassRepository.findById(classId)
