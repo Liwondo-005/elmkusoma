@@ -22,6 +22,7 @@ public class LearningCollaboration extends BaseEntity {
     private UUID peerStudentId;
 
     @Column(name = "collaboration_type", length = 30, nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private CollaborationType collaborationType = CollaborationType.STUDY_GROUP;
 
@@ -35,6 +36,7 @@ public class LearningCollaboration extends BaseEntity {
     private UUID courseId;
 
     @Column(name = "status", length = 20, nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private CollaborationStatus status = CollaborationStatus.ACTIVE;
 }

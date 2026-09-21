@@ -66,7 +66,7 @@ class PlatformAdminServiceTest {
         when(liveClassRepository.countByIsDeletedFalse()).thenReturn(10L);
         when(liveClassRepository.countByStatusAndIsDeletedFalse("LIVE")).thenReturn(3L);
         when(certificateRepository.countByIsDeletedFalse()).thenReturn(200L);
-        when(securityEventRepository.countByResolvedAndIsDeletedFalse(false)).thenReturn(2L);
+        when(securityEventRepository.countByResolvedFalse()).thenReturn(2L);
 
         var result = service.getPlatformDashboard();
 
@@ -223,7 +223,7 @@ class PlatformAdminServiceTest {
 
     @Test
     void getAttention_returnsSecurityItems() {
-        when(securityEventRepository.countByResolvedAndIsDeletedFalse(false)).thenReturn(5L);
+        when(securityEventRepository.countByResolvedFalse()).thenReturn(5L);
         when(incidentRepository.countByStatusAndIsDeletedFalse("DETECTED")).thenReturn(0L);
         when(incidentRepository.countByStatusAndIsDeletedFalse("INVESTIGATING")).thenReturn(0L);
         when(verificationRepository.countByStatusAndIsDeletedFalse("PENDING")).thenReturn(0L);
