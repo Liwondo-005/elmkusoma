@@ -123,6 +123,19 @@ export default function HigherEducationDashboardPage() {
 
       <LearnerHeader firstName={firstName} subtitle={`My Academic & Professional World — ${ctx}`} />
 
+      {/* Signature tagline */}
+      <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-teal/5 p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-lg font-bold tracking-tight text-foreground">Learn. Practice. Build. Prove.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Your journey from knowledge to professional capability.</p>
+          </div>
+          <Link href="/dashboard/learner/modules" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+            Continue Learning <ChevronRight className="size-3.5" />
+          </Link>
+        </div>
+      </div>
+
       {/* Row 1: Academic Context + What's Next + Today */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Academic Context */}
@@ -287,7 +300,38 @@ export default function HigherEducationDashboardPage() {
         </div>
       )}
 
-      {/* Row 4: Projects + Research + My Progress */}
+      {/* Row 4: Practical Learning */}
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <FlaskConical className="size-4 text-teal-600" />
+            <h3 className="font-semibold text-foreground">Practical Learning</h3>
+          </div>
+          <Link href="/dashboard/learner/workshops" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+            Open Practical World <ChevronRight className="size-3" />
+          </Link>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Skills in Practice</p>
+            <p className="text-lg font-bold text-foreground">{dashboard.myProgress?.competenciesCompleted ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Practical Tasks</p>
+            <p className="text-lg font-bold text-foreground">{dashboard.projects.length}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Competency Evidence</p>
+            <p className="text-lg font-bold text-foreground">{dashboard.myEvidence?.competenciesRecorded ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Demonstrations</p>
+            <p className="text-lg font-bold text-foreground">{dashboard.myEvidence?.demonstrations ?? 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 5: Projects + Research + My Progress */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Projects */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">

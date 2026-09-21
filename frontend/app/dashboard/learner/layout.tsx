@@ -14,7 +14,19 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
     )
   }
 
-  if (!user || user.role !== "Other Learner") {
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-muted-foreground">Access denied</p>
+      </div>
+    )
+  }
+
+  const isOtherLearner = user.role === "Other Learner"
+  const level = (user.learningLevel || "").toUpperCase()
+  const isCollegeStudent = user.role === "Student" && (level === "COLLEGE" || level === "UNIVERSITY")
+
+  if (!isOtherLearner && !isCollegeStudent) {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Access denied</p>
