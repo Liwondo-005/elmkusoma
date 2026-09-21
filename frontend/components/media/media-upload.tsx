@@ -20,7 +20,7 @@ export function MediaUpload({ onUploadComplete, institutionId }: MediaUploadProp
     setError(null)
     try {
       const token = localStorage.getItem("elmkusoma_access_token")
-      const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
+      const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
 
       const formData = new FormData()
       formData.append("file", file)

@@ -1673,7 +1673,7 @@ export const gradingApi = {
 export const mediaApi = {
   upload: async (file: File) => {
     const token = localStorage.getItem("elmkusoma_access_token")
-    const instId = localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
+    const instId = localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
     const formData = new FormData()
     formData.append("file", file)
     const res = await fetch("/api/v1/media/upload", {
@@ -1685,7 +1685,7 @@ export const mediaApi = {
     return res.json()
   },
   list: (institutionId?: string) => {
-    const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
+    const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
     return request<any[]>(`/api/v1/media?institutionId=${instId}`)
   },
   getDownloadUrl: (mediaId: string) => request<any>(`/api/v1/media/${mediaId}/download-url`),
