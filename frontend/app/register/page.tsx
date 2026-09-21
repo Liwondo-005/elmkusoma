@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -9,8 +9,7 @@ import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
-import { Eye, EyeOff, CheckCircle, ShieldCheck, Mail } from "lucide-react"
-import { authApi } from "@/lib/api"
+import { Eye, EyeOff, CheckCircle, ShieldCheck, RefreshCw } from "lucide-react"
 
 const roles = [
   "Student",
@@ -54,7 +53,17 @@ const registerSchema = z
 
 type RegisterValues = z.infer<typeof registerSchema>
 
-type VerificationStep = "idle" | "sending" | "sent" | "verifying" | "verified"
+function generateCaptchaCode(): string {
+  return Math.floor(10000 + Math.random() * 90000).toString()
+}
+
+const CAPTCHA_STYLES: React.CSSProperties[] = [
+  { transform: "rotate(-3deg) skewX(-2deg)" },
+  { transform: "rotate(2deg) skewX(1deg)" },
+  { transform: "rotate(-1deg) skewX(-1deg)" },
+  { transform: "rotate(3deg) skewX(2deg)" },
+  { transform: "rotate(-2deg) skewX(1deg)" },
+]
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -64,80 +73,33 @@ export default function RegisterPage() {
   const { register: registerUser } = useAuth()
   const router = useRouter()
 
-  const [verificationStep, setVerificationStep] = useState<VerificationStep>("idle")
-  const [verificationCode, setVerificationCode] = useState("")
-  const [verificationMessage, setVerificationMessage] = useState("")
-  const [verificationError, setVerificationError] = useState("")
-  const [cooldown, setCooldown] = useState(0)
+  const [captchaKey, setCaptchaKey] = useState(0)
+  const captchaCode = useMemo(() => generateCaptchaCode(), [captchaKey])
+  const [userCaptchaInput, setUserCaptchaInput] = useState("")
+  const [captchaError, setCaptchaError] = useState("")
 
   const {
     register,
     handleSubmit,
     watch,
-    getValues,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
   })
 
   const selectedRole = watch("role")
-  const emailValue = watch("email")
 
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [cooldown])
-
-  const handleSendCode = useCallback(async () => {
-    const email = getValues("email")
-    if (!email || errors.email) {
-      setVerificationError("Please enter a valid email address first.")
-      return
-    }
-    setVerificationError("")
-    setVerificationMessage("")
-    setVerificationStep("sending")
-    try {
-      await authApi.sendVerificationCode({ email })
-      setVerificationStep("sent")
-      setVerificationMessage("A 5-digit verification code has been sent to your email.")
-      setCooldown(60)
-      setVerificationCode("")
-    } catch (err: any) {
-      setVerificationStep("idle")
-      setVerificationError(err?.message || "Failed to send verification code. Please try again.")
-    }
-  }, [getValues, errors.email])
-
-  const handleVerifyCode = useCallback(async () => {
-    if (!verificationCode || verificationCode.length !== 5) {
-      setVerificationError("Please enter the 5-digit verification code.")
-      return
-    }
-    setVerificationError("")
-    setVerificationStep("verifying")
-    try {
-      const email = getValues("email")
-      await authApi.verifyCode({ email, code: verificationCode })
-      setVerificationStep("verified")
-      setVerificationMessage("Verification successful!")
-      setVerificationError("")
-    } catch (err: any) {
-      setVerificationStep("sent")
-      setVerificationError(err?.message || "Invalid verification code. Please try again.")
-    }
-  }, [verificationCode, getValues])
-
-  const handleResendCode = useCallback(async () => {
-    if (cooldown > 0) return
-    await handleSendCode()
-  }, [cooldown, handleSendCode])
+  function refreshCaptcha() {
+    setCaptchaKey((k) => k + 1)
+    setUserCaptchaInput("")
+    setCaptchaError("")
+  }
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
-    if (verificationStep !== "verified") {
-      setServerError("Please verify you are human before registering.")
+    if (userCaptchaInput !== captchaCode) {
+      setCaptchaError("Incorrect verification code. Please try again.")
+      refreshCaptcha()
       return
     }
     const result = await registerUser({
@@ -404,89 +366,63 @@ export default function RegisterPage() {
               <div className="rounded-xl border border-border bg-muted/40 p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <ShieldCheck className="size-5 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Are you a human?</span>
+                  <span className="text-sm font-medium text-foreground">Are you a human?*</span>
                 </div>
 
-                {verificationStep === "idle" && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Please verify you are human to continue with registration.
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSendCode}
-                      className="w-full"
-                    >
-                      <Mail className="size-4 mr-2" />
-                      Send verification code
-                    </Button>
-                  </div>
-                )}
-
-                {verificationStep === "sending" && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    Sending code...
-                  </div>
-                )}
-
-                {(verificationStep === "sent" || verificationStep === "verifying") && (
-                  <div className="space-y-3">
-                    {verificationMessage && (
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400">{verificationMessage}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Enter the 5-digit code sent to your email:
-                    </p>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={5}
-                      value={verificationCode}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "").slice(0, 5)
-                        setVerificationCode(val)
-                        setVerificationError("")
-                      }}
-                      placeholder="_ _ _ _ _"
-                      className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground text-center tracking-[0.5em] font-mono outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
-                      disabled={verificationStep === "verifying"}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleVerifyCode}
-                        disabled={verificationCode.length !== 5 || verificationStep === "verifying"}
-                        className="flex-1"
-                      >
-                        {verificationStep === "verifying" ? "Verifying..." : "Verify code"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleResendCode}
-                        disabled={cooldown > 0}
-                        className="shrink-0"
-                      >
-                        {cooldown > 0 ? `Resend (${cooldown}s)` : "Resend code"}
-                      </Button>
+                <div className="flex flex-col items-center gap-3">
+                  <div
+                    className="relative flex items-center justify-center rounded-lg border border-border bg-background px-6 py-3 select-none"
+                    style={{ minWidth: 180 }}
+                  >
+                    <div className="flex items-center gap-1">
+                      {captchaCode.split("").map((digit, i) => (
+                        <span
+                          key={`${captchaKey}-${i}`}
+                          className="inline-block text-2xl font-bold tracking-wider text-foreground/80"
+                          style={{
+                            ...CAPTCHA_STYLES[i % CAPTCHA_STYLES.length],
+                            fontFamily: "monospace",
+                            textShadow: "1px 1px 0 rgba(0,0,0,0.08), -1px -1px 0 rgba(255,255,255,0.3)",
+                          }}
+                        >
+                          {digit}
+                        </span>
+                      ))}
                     </div>
+                    <div className="pointer-events-none absolute inset-0 rounded-lg opacity-[0.04]"
+                      style={{
+                        backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, currentColor 3px, currentColor 4px)",
+                      }}
+                    />
                   </div>
-                )}
 
-                {verificationStep === "verified" && (
-                  <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle className="size-5" />
-                    Verification successful!
-                  </div>
-                )}
+                  <p className="text-xs text-muted-foreground">Enter five digit code as shown above</p>
 
-                {verificationError && (
-                  <p className="mt-2 text-xs text-destructive">{verificationError}</p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={5}
+                    value={userCaptchaInput}
+                    onChange={(e) => {
+                      setUserCaptchaInput(e.target.value.replace(/\D/g, "").slice(0, 5))
+                      setCaptchaError("")
+                    }}
+                    placeholder="_ _ _ _ _"
+                    className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground text-center tracking-[0.5em] font-mono outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={refreshCaptcha}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <RefreshCw className="size-3" />
+                    Refresh verification code
+                  </button>
+                </div>
+
+                {captchaError && (
+                  <p className="mt-2 text-xs text-destructive text-center">{captchaError}</p>
                 )}
               </div>
 
