@@ -64,9 +64,6 @@ public class SecurityEvent {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted = false;
-
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
@@ -104,8 +101,6 @@ public class SecurityEvent {
     public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public Boolean getIsDeleted() { return isDeleted; }
-    public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
 
     public enum SecurityEventType {
         LOGIN_SUCCESS, LOGIN_FAILURE, LOGOUT, PASSWORD_CHANGE, PASSWORD_RESET,
