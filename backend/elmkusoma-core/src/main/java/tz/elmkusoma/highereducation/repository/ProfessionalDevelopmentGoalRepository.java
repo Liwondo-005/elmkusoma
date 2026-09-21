@@ -1,6 +1,7 @@
 package tz.elmkusoma.highereducation.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import tz.elmkusoma.highereducation.domain.DevGoalStatus;
 import tz.elmkusoma.highereducation.domain.ProfessionalDevelopmentGoal;
 
 import java.util.List;

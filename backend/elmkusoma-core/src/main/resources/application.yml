@@ -31,7 +31,9 @@ spring:
           batch_versioned_data: true
 
   flyway:
-    enabled: false
+    enabled: true
+    out-of-order: true
+    baseline-on-migrate: true
 
   data:
     redis:

@@ -70,7 +70,7 @@ public class PlatformAdminService {
         long totalLiveClasses = liveClassRepository.countByIsDeletedFalse();
         long activeLiveClasses = liveClassRepository.countByStatusAndIsDeletedFalse("LIVE");
         long totalCertificates = certificateRepository.countByIsDeletedFalse();
-        long unresolvedSecurityEvents = securityEventRepository.countByResolvedAndIsDeletedFalse(false);
+        long unresolvedSecurityEvents = securityEventRepository.countByResolvedFalse();
 
         return PlatformDashboardResponse.builder()
                 .totalUsers(totalUsers)
@@ -90,7 +90,7 @@ public class PlatformAdminService {
     public List<AttentionItemResponse> getAttentionItems() {
         List<AttentionItemResponse> items = new ArrayList<>();
 
-        long unresolvedSecurity = securityEventRepository.countByResolvedAndIsDeletedFalse(false);
+        long unresolvedSecurity = securityEventRepository.countByResolvedFalse();
         if (unresolvedSecurity > 0) {
             items.add(AttentionItemResponse.builder()
                     .severity("HIGH")
@@ -341,7 +341,7 @@ public class PlatformAdminService {
 
     @Transactional(readOnly = true)
     public List<SecurityEventResponse> getUnresolvedSecurityEvents() {
-        return securityEventRepository.findByResolvedFalseAndIsDeletedFalse().stream()
+        return securityEventRepository.findByResolvedFalse().stream()
                 .map(e -> SecurityEventResponse.builder()
                         .id(e.getId())
                         .userId(e.getUserId())
@@ -356,7 +356,7 @@ public class PlatformAdminService {
     }
 
     public SecurityEventResponse resolveSecurityEvent(UUID eventId) {
-        SecurityEvent event = securityEventRepository.findByIdAndIsDeletedFalse(eventId)
+        SecurityEvent event = securityEventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("SecurityEvent", "id", eventId));
         event.setResolved(true);
         event.setResolvedAt(LocalDateTime.now());
