@@ -15,11 +15,13 @@ import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.identity.domain.EmailVerificationToken;
 import tz.elmkusoma.identity.domain.PasswordResetToken;
+import tz.elmkusoma.identity.domain.VerificationCode;
 import tz.elmkusoma.identity.dto.request.*;
 import tz.elmkusoma.identity.dto.response.AuthResponse;
 import tz.elmkusoma.identity.repository.EmailVerificationTokenRepository;
 import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
 import tz.elmkusoma.identity.repository.RevokedTokenRepository;
+import tz.elmkusoma.identity.repository.VerificationCodeRepository;
 import tz.elmkusoma.identity.service.AuthService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -49,6 +51,7 @@ public class AuthServiceImpl implements AuthService {
     private final StudentRepository studentRepository;
     private final StudentClassAssignmentRepository studentClassAssignmentRepository;
     private final RevokedTokenRepository revokedTokenRepository;
+    private final VerificationCodeRepository verificationCodeRepository;
     private final tz.elmkusoma.parent.repository.ParentRepository parentRepository;
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
 
@@ -64,6 +67,7 @@ public class AuthServiceImpl implements AuthService {
                            StudentRepository studentRepository,
                            StudentClassAssignmentRepository studentClassAssignmentRepository,
                            RevokedTokenRepository revokedTokenRepository,
+                           VerificationCodeRepository verificationCodeRepository,
                            tz.elmkusoma.parent.repository.ParentRepository parentRepository,
                            tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository) {
         this.authenticationManager = authenticationManager;
@@ -75,6 +79,7 @@ public class AuthServiceImpl implements AuthService {
         this.studentRepository = studentRepository;
         this.studentClassAssignmentRepository = studentClassAssignmentRepository;
         this.revokedTokenRepository = revokedTokenRepository;
+        this.verificationCodeRepository = verificationCodeRepository;
         this.parentRepository = parentRepository;
         this.teacherRepository = teacherRepository;
     }
@@ -315,6 +320,59 @@ public class AuthServiceImpl implements AuthService {
             revokedTokenRepository.save(revokedToken);
         }
         log.info("Refresh token revoked successfully");
+    }
+
+    @Override
+    public void sendVerificationCode(SendVerificationCodeRequest request) {
+        String email = request.getEmail().toLowerCase().trim();
+
+        java.util.Optional<VerificationCode> existing = verificationCodeRepository
+                .findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email);
+        if (existing.isPresent()) {
+            VerificationCode last = existing.get();
+            if (last.getCreatedAt() != null && last.getCreatedAt().plusSeconds(60).isAfter(LocalDateTime.now())) {
+                throw new IllegalArgumentException("Please wait 60 seconds before requesting a new code");
+            }
+        }
+
+        String code = String.format("%05d", new java.util.Random().nextInt(100000));
+
+        VerificationCode verificationCode = VerificationCode.builder()
+                .email(email)
+                .code(code)
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .used(false)
+                .attempts(0)
+                .build();
+        verificationCodeRepository.save(verificationCode);
+
+        log.info("Verification code for {}: {}", email, code);
+    }
+
+    @Override
+    public void verifyCode(VerifyCodeRequest request) {
+        String email = request.getEmail().toLowerCase().trim();
+        String code = request.getCode().trim();
+
+        VerificationCode verificationCode = verificationCodeRepository
+                .findTopByEmailAndCodeAndUsedFalseOrderByCreatedAtDesc(email, code)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid verification code"));
+
+        if (verificationCode.isExpired()) {
+            verificationCode.setUsed(true);
+            verificationCodeRepository.save(verificationCode);
+            throw new IllegalArgumentException("Verification code has expired. Please request a new one.");
+        }
+
+        if (verificationCode.getAttempts() >= 5) {
+            verificationCode.setUsed(true);
+            verificationCodeRepository.save(verificationCode);
+            throw new IllegalArgumentException("Too many failed attempts. Please request a new code.");
+        }
+
+        verificationCode.setAttempts(verificationCode.getAttempts() + 1);
+        verificationCode.setUsed(true);
+        verificationCodeRepository.save(verificationCode);
     }
 
     private String hashToken(String token) {

@@ -207,9 +207,9 @@
 
 /* Nursery World - Child-safe design tokens */
 .nursery-world {
-  --nursery-bg: #fef7f0;
-  --nursery-primary: #6366f1;
-  --nursery-accent: #f472b6;
+  --nursery-bg: #f8fafc;
+  --nursery-primary: #2563eb;
+  --nursery-accent: #f59e0b;
   --nursery-success: #22c55e;
   --nursery-warning: #f59e0b;
   background: var(--nursery-bg);
@@ -225,7 +225,7 @@
 }
 
 .nursery-card-primary {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7);
+  background: linear-gradient(135deg, #2563eb, #0d9488);
 }
 
 /* Nursery animations */

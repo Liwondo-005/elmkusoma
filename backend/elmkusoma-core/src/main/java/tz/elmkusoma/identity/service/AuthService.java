@@ -21,4 +21,8 @@ public interface AuthService {
     void verifyEmail(VerifyEmailRequest request);
 
     void logout(String refreshToken);
+
+    void sendVerificationCode(SendVerificationCodeRequest request);
+
+    void verifyCode(VerifyCodeRequest request);
 }

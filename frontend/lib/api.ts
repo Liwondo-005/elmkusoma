@@ -191,6 +191,18 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ refreshToken }),
     }),
+
+  sendVerificationCode: (data: { email: string }) =>
+    request<void>("/v1/auth/send-code", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  verifyCode: (data: { email: string; code: string }) =>
+    request<void>("/v1/auth/verify-code", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 }
 
 // Enrollment API
