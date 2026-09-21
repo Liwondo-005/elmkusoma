@@ -38,11 +38,12 @@ export default function ModuleWorkspacePage() {
   }, [user]);
 
   async function loadModules() {
+    if (!user) return;
     try {
       setLoading(true);
       setError(null);
-      const res = await collegeApi.get(`/college/learner/modules/student/${user?.id}`);
-      setModules(res.data?.data || []);
+      const res = await collegeApi.getLearnerModules(user.id);
+      setModules(res.data || []);
     } catch (err: any) {
       console.error("Failed to load modules:", err);
       setError("Failed to load modules. Please try again.");
@@ -65,9 +66,8 @@ export default function ModuleWorkspacePage() {
   return (
     <div className="space-y-6">
       <LearnerHeader
-        title="Module Workspace"
+        firstName={user?.name || "Learner"}
         subtitle="Your enrolled modules, progress, grades, and resources"
-        icon="📚"
       />
 
       {error && (
