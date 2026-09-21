@@ -478,19 +478,38 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     if (!user?.id) return
     const newBadges: Record<string, number> = {}
     try {
-      const countRes = await fetch(`/api/v1/notifications/${user.id}/unread-count`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("elmkusoma_access_token") || ""}` }
-      })
-      if (countRes.ok) {
-        const countData = await countRes.json()
-        if (countData?.data?.count) newBadges["/dashboard/learner/notifications-center"] = countData.data.count
-        if (countData?.data?.count) newBadges["/dashboard/notifications"] = countData.data.count
+      const token = localStorage.getItem("elmkusoma_access_token") || ""
+      const headers = { Authorization: `Bearer ${token}` }
+      const [countRes, liveRes, assessRes] = await Promise.allSettled([
+        fetch(`/api/v1/notifications/${user.id}/unread-count`, { headers }),
+        fetch(`/api/v1/student/live-classes/live-now`, { headers }),
+        fetch(`/api/v1/student/events`, { headers })
+      ])
+      if (countRes.status === "fulfilled" && countRes.value.ok) {
+        const d = await countRes.value.json()
+        const count = d?.data?.count || 0
+        if (count > 0) {
+          newBadges["/dashboard/learner/notifications-center"] = count
+          newBadges["/dashboard/notifications"] = count
+        }
+      }
+      if (liveRes.status === "fulfilled" && liveRes.value.ok) {
+        const d = await liveRes.value.json()
+        const liveCount = Array.isArray(d?.data) ? d.data.length : 0
+        if (liveCount > 0) {
+          newBadges["/dashboard/learner/live-campus"] = liveCount
+          newBadges["/dashboard/learner/live-classes"] = liveCount
+        }
       }
     } catch {}
     setBadges(newBadges)
   }, [user?.id])
 
-  useEffect(() => { fetchBadges() }, [fetchBadges])
+  useEffect(() => {
+    fetchBadges()
+    const interval = setInterval(fetchBadges, 30000)
+    return () => clearInterval(interval)
+  }, [fetchBadges])
 
   const universitySections = !isTeacher && !isLearner && !isParent ? getStudentNavSections(user) : null
   const universityFlat = !isTeacher && !isLearner && !isParent ? getStudentNavFlat(user) : null
@@ -499,7 +518,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     return items.map((item) => {
       const active = pathname === item.href || (item.href !== "/dashboard" && item.href !== "/dashboard/teacher" && pathname.startsWith(item.href))
       const realBadge = badges[item.href] || item.badge || 0
-      const isLive = item.href === "/dashboard/learner/live-campus" || item.href === "/dashboard/learner/live-classes"
+      const isLive = item.href === "/dashboard/learner/live-campus" || item.href === "/dashboard/learner/live-classes" || (badges[item.href] || 0) > 0
       return (
         <Link
           key={item.href}
@@ -530,7 +549,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             </span>
           )}
           {collapsed && realBadge > 0 && (
-            <span className="absolute right-1 top-1 size-2 rounded-full bg-red-500" />
+            <span className="absolute right-1 top-1 size-2 rounded-full bg-red-500 animate-pulse" />
           )}
         </Link>
       )
