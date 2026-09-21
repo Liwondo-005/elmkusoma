@@ -65,7 +65,7 @@ export default function DashboardPage() {
       router.replace("/dashboard/nursery")
     } else if (!authLoading && user?.role === "Student" && (user?.learningLevel || "").toUpperCase() === "SECONDARY") {
       router.replace("/dashboard/secondary")
-    } else if (!authLoading && user?.role === "Student" && ((user?.learningLevel || "").toUpperCase() === "COLLEGE" || (user?.learningLevel || "").toUpperCase() === "UNIVERSITY")) {
+    } else if (!authLoading && user?.role === "Student" && ((user?.learningLevel || "").toUpperCase() === "COLLEGE" || (user?.learningLevel || "").toUpperCase() === "UNIVERSITY" || (user?.learningLevel || "").toUpperCase() === "VETA")) {
       router.replace("/dashboard/learner")
     }
   }, [user, authLoading, router])

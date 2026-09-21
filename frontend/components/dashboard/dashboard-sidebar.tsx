@@ -438,7 +438,7 @@ function getStudentNavSections(user: { learningLevel?: string | null } | null) {
   const level = (user?.learningLevel || "").toUpperCase()
   if (level === "NURSERY") return null
   if (level === "PRIMARY") return null
-  if (level === "COLLEGE") return collegeNavSections
+  if (level === "COLLEGE" || level === "VETA") return collegeNavSections
   if (level === "UNIVERSITY") return universityNavSections
   return null
 }

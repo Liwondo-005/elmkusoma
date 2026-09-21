@@ -25,7 +25,7 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
 
   const isOtherLearner = user.role === "Other Learner"
   const level = (user.learningLevel || "").toUpperCase()
-  const isCollegeStudent = user.role === "Student" && (level === "COLLEGE" || level === "UNIVERSITY")
+  const isCollegeStudent = user.role === "Student" && (level === "COLLEGE" || level === "UNIVERSITY" || level === "VETA")
 
   if (!isOtherLearner && !isCollegeStudent) {
     return (

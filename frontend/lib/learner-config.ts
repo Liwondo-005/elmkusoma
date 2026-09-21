@@ -6,7 +6,7 @@ import {
 } from "lucide-react"
 import type { ComponentType } from "react"
 
-export type LearningLevel = "NURSERY" | "PRIMARY" | "SECONDARY" | "COLLEGE" | "UNIVERSITY"
+export type LearningLevel = "NURSERY" | "PRIMARY" | "SECONDARY" | "COLLEGE" | "VETA" | "UNIVERSITY"
 
 export interface NavItem {
   label: string
@@ -145,6 +145,26 @@ const baseNav: Record<LearningLevel, NavItem[]> = {
     { label: "Profile", href: "/dashboard/profile", icon: User },
     { label: "Settings", href: "/dashboard/settings", icon: Activity },
   ],
+  VETA: [
+    { label: "Dashboard", href: "/dashboard/learner", icon: Home },
+    { label: "Module Workspace", href: "/dashboard/learner/module-workspace", icon: BookOpen },
+    { label: "Competencies", href: "/dashboard/learner/competencies", icon: Award },
+    { label: "Projects", href: "/dashboard/learner/projects", icon: FileText },
+    { label: "Fieldwork", href: "/dashboard/learner/fieldwork", icon: Compass },
+    { label: "Portfolio", href: "/dashboard/learner/portfolio", icon: Library },
+    { label: "Show What I Can Do", href: "/dashboard/learner/demonstrations", icon: Star },
+    { label: "My Evidence", href: "/dashboard/learner/evidence", icon: ClipboardList },
+    { label: "Collaborations", href: "/dashboard/learner/collaborations", icon: Users },
+    { label: "Workshops & Labs", href: "/dashboard/learner/workshops", icon: FlaskConical },
+    { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: GraduationCap },
+    { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Calendar },
+    { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Video },
+    { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: BookOpen },
+    { label: "Career World", href: "/dashboard/learner/career", icon: Compass },
+    { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell },
+    { label: "Profile", href: "/dashboard/profile", icon: User },
+    { label: "Settings", href: "/dashboard/settings", icon: Activity },
+  ],
 }
 
 const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
@@ -207,6 +227,15 @@ const dashboardConfigs: Record<LearningLevel, DashboardConfig> = {
     emptyStateDescription: "Your enrolled courses, assignments, and academic progress will appear here.",
     cardStyle: "professional",
   },
+  VETA: {
+    greeting: "Build your technical expertise.",
+    subtitle: "Track your modules, competencies, and practical training.",
+    navItems: baseNav.VETA,
+    sections: ["continue", "courses", "competencies", "projects", "progress", "recent", "resources"],
+    emptyStateTitle: "No modules enrolled",
+    emptyStateDescription: "Your enrolled modules, competencies, and training progress will appear here.",
+    cardStyle: "professional",
+  },
 }
 
 export function getLearnerNavItems(role?: string, level?: string | null): NavItem[] {
@@ -262,6 +291,7 @@ export function getLevelLabel(level?: string | null): string {
     PRIMARY: "Primary",
     SECONDARY: "Secondary",
     COLLEGE: "College",
+    VETA: "VETA",
     UNIVERSITY: "University",
   }
   return labels[level?.toUpperCase() || ""] || "Student"
