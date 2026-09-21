@@ -51,6 +51,19 @@ export default function LiveClassesPage() {
     loadData()
   }, [user])
 
+  const liveClasses = useMemo(() => classes.filter((c) => c.status === "IN_PROGRESS" || c.status === "LIVE"), [classes])
+  const scheduledClasses = useMemo(() => classes.filter((c) => c.status === "SCHEDULED"), [classes])
+  const completedClasses = useMemo(() => classes.filter((c) => c.status === "COMPLETED" || c.status === "ENDED"), [classes])
+  const todayLive = useMemo(
+    () => classes.filter((c) => (c.status === "IN_PROGRESS" || c.status === "LIVE" || c.status === "SCHEDULED") && isToday(c.scheduledAt)),
+    [classes]
+  )
+  const recentlyCompleted = useMemo(
+    () => completedClasses.filter((c) => wasRecentlyCompleted(c.scheduledAt)),
+    [completedClasses]
+  )
+  const replays = useMemo(() => completedClasses.filter((c) => c.recordingUrl && !wasRecentlyCompleted(c.scheduledAt)), [completedClasses])
+
   async function loadData() {
     try {
       setLoading(true)
@@ -70,19 +83,6 @@ export default function LiveClassesPage() {
       </div>
     )
   }
-
-  const liveClasses = classes.filter((c) => c.status === "IN_PROGRESS" || c.status === "LIVE")
-  const scheduledClasses = classes.filter((c) => c.status === "SCHEDULED")
-  const completedClasses = classes.filter((c) => c.status === "COMPLETED" || c.status === "ENDED")
-  const todayLive = useMemo(
-    () => classes.filter((c) => (c.status === "IN_PROGRESS" || c.status === "LIVE" || c.status === "SCHEDULED") && isToday(c.scheduledAt)),
-    [classes]
-  )
-  const recentlyCompleted = useMemo(
-    () => completedClasses.filter((c) => wasRecentlyCompleted(c.scheduledAt)),
-    [completedClasses]
-  )
-  const replays = completedClasses.filter((c) => c.recordingUrl && !wasRecentlyCompleted(c.scheduledAt))
 
   if (isPrimary) {
     return (

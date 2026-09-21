@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
-import type { HigherEducationDashboard } from "@/lib/types/college"
+import type { HigherEducationDashboard, StudentCourseEnrollment } from "@/lib/types/college"
 import { LearnerHeader, LoadingState } from "@/components/learner/shared"
 import {
   Sparkles, Clock, Play, Video, BookOpen, BarChart3, FolderOpen,
@@ -17,6 +17,7 @@ export default function HigherEducationDashboardPage() {
   const [dashboard, setDashboard] = useState<HigherEducationDashboard | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [enrollments, setEnrollments] = useState<StudentCourseEnrollment[]>([])
 
   useEffect(() => {
     if (!user) return
@@ -28,8 +29,12 @@ export default function HigherEducationDashboardPage() {
       setLoading(true)
       const studentId = user?.id || ""
       const level = (user?.learningLevel || "COLLEGE").toUpperCase()
-      const res = await collegeApi.getHEDashboard(studentId, level)
+      const [res, enrollRes] = await Promise.all([
+        collegeApi.getHEDashboard(studentId, level),
+        collegeApi.getStudentEnrollments(studentId).catch(() => ({ data: [] }))
+      ])
       setDashboard(res.data || null)
+      setEnrollments(enrollRes.data || [])
     } catch {
       setError("Failed to load dashboard data")
     } finally {
@@ -42,6 +47,69 @@ export default function HigherEducationDashboardPage() {
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Student"
   const ctx = dashboard.academicContext || "COLLEGE"
+
+  const typeIcon = (type: string) => {
+    switch (type?.toUpperCase()) {
+      case "STUDY":
+      case "REVISION":
+      case "EXAM_PREP":
+        return <BookOpen className="size-3 text-violet-500 shrink-0" />
+      case "ASSIGNMENT":
+        return <ClipboardList className="size-3 text-amber-500 shrink-0" />
+      case "LIVE":
+      case "LECTURE":
+      case "LIVE_SESSION":
+        return <Video className="size-3 text-red-500 shrink-0" />
+      case "PROJECT":
+        return <Target className="size-3 text-amber-500 shrink-0" />
+      default:
+        return <Clock className="size-3 text-blue-500 shrink-0" />
+    }
+  }
+
+  const enhancedWhatsNext = (() => {
+    const upcomingLive = dashboard.liveCampus?.sessions?.find(
+      (s: any) => s.status === "SCHEDULED" || s.status === "IN_PROGRESS" || s.status === "LIVE"
+    )
+    if (upcomingLive) {
+      return {
+        title: upcomingLive.title,
+        description: `${upcomingLive.sessionType || "Session"} session`,
+        type: "LIVE_SESSION",
+        deadline: upcomingLive.startTime,
+        isLive: upcomingLive.status === "IN_PROGRESS" || upcomingLive.status === "LIVE"
+      }
+    }
+    if (dashboard.whatsNext && dashboard.whatsNext.type !== "NONE") {
+      return { ...dashboard.whatsNext, isLive: false }
+    }
+    return null
+  })()
+
+  const enhancedTodayItems = (() => {
+    const items: Array<{ time?: string; title: string; type: string; status: string }> = []
+    if (dashboard.today?.items) {
+      items.push(...dashboard.today.items)
+    }
+    if (dashboard.liveCampus?.sessions) {
+      for (const s of dashboard.liveCampus.sessions) {
+        if (s.status === "SCHEDULED" || s.status === "IN_PROGRESS" || s.status === "LIVE") {
+          items.push({
+            time: s.startTime ? new Date(s.startTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : undefined,
+            title: s.title,
+            type: s.sessionType || "LIVE",
+            status: s.status === "IN_PROGRESS" || s.status === "LIVE" ? "LIVE" : "UPCOMING"
+          })
+        }
+      }
+    }
+    items.sort((a, b) => {
+      if (!a.time) return 1
+      if (!b.time) return -1
+      return a.time.localeCompare(b.time)
+    })
+    return items
+  })()
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -70,12 +138,22 @@ export default function HigherEducationDashboardPage() {
             <Sparkles className="size-4 text-primary" />
             <p className="text-xs font-medium text-muted-foreground">What's Next?</p>
           </div>
-          {dashboard.whatsNext && dashboard.whatsNext.type !== "NONE" ? (
+          {enhancedWhatsNext ? (
             <div>
-              <p className="font-semibold text-foreground line-clamp-1">{dashboard.whatsNext.title}</p>
-              <p className="text-xs text-muted-foreground line-clamp-1">{dashboard.whatsNext.description}</p>
-              {dashboard.whatsNext.deadline && (
-                <p className="mt-1 text-xs text-amber-600">Due {new Date(dashboard.whatsNext.deadline).toLocaleDateString()}</p>
+              <div className="flex items-center gap-1.5">
+                {typeIcon(enhancedWhatsNext.type)}
+                <p className="font-semibold text-foreground line-clamp-1">{enhancedWhatsNext.title}</p>
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-1">{enhancedWhatsNext.description}</p>
+              {enhancedWhatsNext.deadline && (
+                <p className="mt-1 text-xs text-amber-600">
+                  {enhancedWhatsNext.isLive ? "Live now" : `Due ${new Date(enhancedWhatsNext.deadline).toLocaleDateString()}`}
+                </p>
+              )}
+              {enhancedWhatsNext.isLive && (
+                <Link href="/dashboard/learner/live-classes" className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:underline">
+                  Join <ChevronRight className="size-3" />
+                </Link>
               )}
             </div>
           ) : (
@@ -89,10 +167,18 @@ export default function HigherEducationDashboardPage() {
             <CalendarDays className="size-4 text-blue-600" />
             <p className="text-xs font-medium text-muted-foreground">Today</p>
           </div>
-          {dashboard.today && dashboard.today.totalTasks > 0 ? (
-            <div>
-              <p className="text-2xl font-extrabold text-foreground">{dashboard.today.pendingTasks}</p>
-              <p className="text-xs text-muted-foreground">tasks pending, {dashboard.today.completedTasks} done</p>
+          {enhancedTodayItems.length > 0 ? (
+            <div className="space-y-1.5">
+              {enhancedTodayItems.slice(0, 4).map((item, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-sm">
+                  {typeIcon(item.type)}
+                  <span className="text-xs text-muted-foreground w-10 shrink-0">{item.time || "--:--"}</span>
+                  <span className={`flex-1 line-clamp-1 ${item.status === "DONE" ? "text-muted-foreground line-through" : item.status === "LIVE" ? "text-red-600 font-medium" : "text-foreground"}`}>{item.title}</span>
+                </div>
+              ))}
+              {enhancedTodayItems.length > 4 && (
+                <p className="text-[10px] text-muted-foreground">+{enhancedTodayItems.length - 4} more</p>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No tasks for today</p>
@@ -113,6 +199,11 @@ export default function HigherEducationDashboardPage() {
             {dashboard.continueLearning.lastModule && (
               <p className="text-xs text-muted-foreground line-clamp-1">{dashboard.continueLearning.lastModule}</p>
             )}
+            {dashboard.continueLearning.progressPercent > 0 && (
+              <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${dashboard.continueLearning.progressPercent}%` }} />
+              </div>
+            )}
             <Link href="/dashboard/learner/study-planner" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
               Resume <ChevronRight className="size-3" />
             </Link>
@@ -127,6 +218,20 @@ export default function HigherEducationDashboardPage() {
           </div>
           <p className="text-2xl font-extrabold text-foreground">{dashboard.liveCampus?.liveNow || 0}</p>
           <p className="text-xs text-muted-foreground">live sessions now</p>
+          {dashboard.liveCampus?.sessions && dashboard.liveCampus.sessions.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {dashboard.liveCampus.sessions.slice(0, 2).map((s) => (
+                <div key={s.id} className="flex items-center gap-1.5 text-xs">
+                  {s.status === "IN_PROGRESS" || s.status === "LIVE" ? (
+                    <span className="size-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                  ) : (
+                    <span className="size-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+                  )}
+                  <span className="line-clamp-1 text-foreground">{s.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
             View All <ChevronRight className="size-3" />
           </Link>
@@ -161,15 +266,23 @@ export default function HigherEducationDashboardPage() {
             </Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {dashboard.myCourses.slice(0, 4).map((c) => (
-              <div key={c.id} className="rounded-xl border border-border bg-muted/30 p-3">
-                <p className="font-medium text-foreground text-sm line-clamp-1">{c.title}</p>
-                <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${c.progressPercent}%` }} />
+            {dashboard.myCourses.slice(0, 4).map((c) => {
+              const enrollment = enrollments.find(e => e.id === c.id)
+              const courseLabel = enrollment ? "Enrolled Course" : c.title
+              const subtitle = enrollment
+                ? [enrollment.semester ? `Semester ${enrollment.semester}` : "", enrollment.creditHours ? `${enrollment.creditHours} credits` : "", enrollment.grade ? `Grade: ${enrollment.grade}` : ""].filter(Boolean).join(" · ")
+                : ""
+              return (
+                <div key={c.id} className="rounded-xl border border-border bg-muted/30 p-3">
+                  <p className="font-medium text-foreground text-sm line-clamp-1">{courseLabel}</p>
+                  {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
+                  <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${c.progressPercent}%` }} />
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{c.progressPercent}% complete</p>
                 </div>
-                <p className="mt-1 text-[10px] text-muted-foreground">{c.progressPercent}% complete</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
