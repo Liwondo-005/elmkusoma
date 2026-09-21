@@ -88,6 +88,7 @@ export interface Enrollment {
   enrolledAt: string
   completedAt: string | null
   progressPercentage: number
+  lastAccessedAt: string | null
 }
 
 export interface Bookmark {

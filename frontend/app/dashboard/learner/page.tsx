@@ -63,6 +63,34 @@ export default function LearnerDashboardPage() {
   const upcomingLive = liveClasses.filter((c) => c.status === "SCHEDULED")
   const continueLearning = enrollments.filter((e) => e.progressPercentage > 0 && e.progressPercentage < 100).slice(0, 3)
   const recommended = courses.filter((c) => !enrollments.some((e) => e.courseId === c.id)).slice(0, 4)
+  const recentlyAccessed = [...enrollments]
+    .filter((e) => e.lastAccessedAt && !e.completedAt)
+    .sort((a, b) => new Date(b.lastAccessedAt!).getTime() - new Date(a.lastAccessedAt!).getTime())
+    .slice(0, 4)
+
+  // Smart "What's Next" recommendation: prioritize by urgency
+  const smartNext = (() => {
+    // 1. Live class happening now — join immediately
+    if (liveNow.length > 0) return { type: "LIVE", title: liveNow[0].title, desc: "Live session in progress — join now!", link: "/dashboard/learner/live-classes", color: "text-red-600" }
+    // 2. Course closest to completion (70-99%)
+    const nearCompletion = [...enrollments].filter(e => e.progressPercentage >= 70 && e.progressPercentage < 100).sort((a, b) => b.progressPercentage - a.progressPercentage)
+    if (nearCompletion.length > 0) return { type: "NEAR_COMPLETE", title: nearCompletion[0].courseTitle, desc: `${nearCompletion[0].progressPercentage}% complete — finish it!`, link: `/dashboard/learner/courses/${nearCompletion[0].courseId}`, color: "text-emerald-600" }
+    // 3. Upcoming live class today
+    const today = new Date().toDateString()
+    const todayLive = upcomingLive.filter(c => new Date(c.scheduledAt).toDateString() === today)
+    if (todayLive.length > 0) return { type: "UPCOMING", title: todayLive[0].title, desc: `Starting ${new Date(todayLive[0].scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`, link: "/dashboard/learner/live-classes", color: "text-blue-600" }
+    // 4. Course with progress (continue from where left off)
+    if (continueLearning.length > 0) return { type: "CONTINUE", title: continueLearning[0].courseTitle, desc: `${continueLearning[0].progressPercentage}% complete`, link: `/dashboard/learner/courses/${continueLearning[0].courseId}`, color: "text-primary" }
+    // 5. Unregistered upcoming event
+    const unregistered = events.filter(e => !e.isRegistered && e.status !== "COMPLETED")
+    if (unregistered.length > 0) return { type: "EVENT", title: unregistered[0].title, desc: `Event on ${new Date(unregistered[0].startsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, link: `/dashboard/learner/events/${unregistered[0].id}`, color: "text-violet-600" }
+    // 6. Unstarted enrolled course
+    const unstarted = enrollments.filter(e => e.progressPercentage === 0 && !e.completedAt)
+    if (unstarted.length > 0) return { type: "START", title: unstarted[0].courseTitle, desc: "Ready to begin", link: `/dashboard/learner/courses/${unstarted[0].courseId}`, color: "text-amber-600" }
+    // 7. Browse new courses
+    if (recommended.length > 0) return { type: "DISCOVER", title: recommended[0].title, desc: "New course for you", link: `/dashboard/learner/courses/${recommended[0].id}`, color: "text-indigo-600" }
+    return null
+  })()
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -117,38 +145,12 @@ export default function LearnerDashboardPage() {
             <Sparkles className="size-4 text-primary" />
             <p className="text-xs font-medium text-muted-foreground">What&apos;s Next?</p>
           </div>
-          {continueLearning.length > 0 ? (
+          {smartNext ? (
             <div>
-              <p className="font-semibold text-foreground line-clamp-1">{continueLearning[0].courseTitle}</p>
-              {continueLearning[0].courseDescription && (
-                <p className="text-xs text-muted-foreground line-clamp-1">{continueLearning[0].courseDescription}</p>
-              )}
-              <div className="mt-2">
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${continueLearning[0].progressPercentage}%` }} />
-                </div>
-                <p className="mt-1 text-[10px] text-muted-foreground">{continueLearning[0].progressPercentage}% complete</p>
-              </div>
-              <Link href={`/dashboard/learner/courses/${continueLearning[0].courseId}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Resume <ChevronRight className="size-3" />
-              </Link>
-            </div>
-          ) : liveNow.length > 0 ? (
-            <div>
-              <p className="font-semibold text-foreground line-clamp-1">{liveNow[0].title}</p>
-              <p className="text-xs text-red-600 font-medium">Live now</p>
-              <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Join <ChevronRight className="size-3" />
-              </Link>
-            </div>
-          ) : upcomingLive.length > 0 ? (
-            <div>
-              <p className="font-semibold text-foreground line-clamp-1">{upcomingLive[0].title}</p>
-              <p className="text-xs text-muted-foreground">
-                {new Date(upcomingLive[0].scheduledAt).toLocaleDateString("en-US", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
-              </p>
-              <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                View <ChevronRight className="size-3" />
+              <p className={`font-semibold text-foreground line-clamp-1 ${smartNext.color}`}>{smartNext.title}</p>
+              <p className="text-xs text-muted-foreground line-clamp-1">{smartNext.desc}</p>
+              <Link href={smartNext.link} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                {smartNext.type === "LIVE" ? "Join Now" : smartNext.type === "EVENT" ? "Register" : smartNext.type === "DISCOVER" ? "Explore" : "Open"} <ChevronRight className="size-3" />
               </Link>
             </div>
           ) : (
@@ -489,8 +491,8 @@ export default function LearnerDashboardPage() {
         </div>
       </div>
 
-      {/* Achievements (completed courses as real achievements) */}
-      {completed.length > 0 && (
+      {/* Achievements (milestone badges + completed courses) */}
+      {(completed.length > 0 || enrollments.length > 0 || bookmarks.length > 0) && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -502,7 +504,62 @@ export default function LearnerDashboardPage() {
             </Link>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {completed.slice(0, 4).map((e) => (
+            {enrollments.length >= 1 && (
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
+                  <BookOpen className="size-5 text-emerald-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">First Enrollment</p>
+                  <p className="text-[10px] text-muted-foreground">Started learning</p>
+                </div>
+              </div>
+            )}
+            {completed.length >= 1 && (
+              <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+                  <Award className="size-5 text-amber-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">First Course Completed</p>
+                  <p className="text-[10px] text-muted-foreground">Earned a certificate</p>
+                </div>
+              </div>
+            )}
+            {completed.length >= 3 && (
+              <div className="flex items-center gap-3 rounded-xl border border-violet-500/20 bg-violet-500/5 p-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+                  <Trophy className="size-5 text-violet-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">Dedicated Learner</p>
+                  <p className="text-[10px] text-muted-foreground">3+ courses completed</p>
+                </div>
+              </div>
+            )}
+            {bookmarks.length >= 5 && (
+              <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
+                  <Bookmark className="size-5 text-rose-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">Curator</p>
+                  <p className="text-[10px] text-muted-foreground">5+ items saved</p>
+                </div>
+              </div>
+            )}
+            {inProgress.length >= 3 && (
+              <div className="flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                  <Sparkles className="size-5 text-blue-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">Multi-Tasker</p>
+                  <p className="text-[10px] text-muted-foreground">3+ courses in progress</p>
+                </div>
+              </div>
+            )}
+            {completed.length > 0 && completed.length < 3 && completed.slice(0, 2).map((e) => (
               <div key={e.id} className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
                   <Award className="size-5 text-amber-500" />
@@ -519,8 +576,8 @@ export default function LearnerDashboardPage() {
         </div>
       )}
 
-      {/* Recently Accessed (from enrollments with recent activity) */}
-      {inProgress.length > 0 && (
+      {/* Recently Accessed (from enrollments with lastAccessedAt) */}
+      {recentlyAccessed.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -532,7 +589,7 @@ export default function LearnerDashboardPage() {
             </Link>
           </div>
           <div className="space-y-2">
-            {inProgress.slice(0, 4).map((e) => (
+            {recentlyAccessed.map((e) => (
               <Link
                 key={e.id}
                 href={`/dashboard/learner/courses/${e.courseId}`}
@@ -543,7 +600,9 @@ export default function LearnerDashboardPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{e.courseTitle}</p>
-                  <p className="text-xs text-muted-foreground">Last accessed recently</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(e.lastAccessedAt!).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-xs font-semibold text-primary">{e.progressPercentage}%</p>
