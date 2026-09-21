@@ -324,6 +324,9 @@ const learnerNavSections: LearnerNavSection[] = [
   {
     group: "MY PROGRESS",
     items: [
+      { label: "Progress", href: "/dashboard/learner/progress", icon: BarChart3 },
+      { label: "Assessments", href: "/dashboard/learner/assessments", icon: ClipboardCheck },
+      { label: "Learning Paths", href: "/dashboard/learner/learning-paths", icon: Map },
       { label: "Goals", href: "/dashboard/learner/goals", icon: Target },
       { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
       { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
