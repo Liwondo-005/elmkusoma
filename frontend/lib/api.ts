@@ -129,6 +129,7 @@ export interface UserInfo {
   firstName: string
   lastName: string
   fullName?: string
+  phone?: string
   role: string
   institutionId: string
   classGroupId: string | null

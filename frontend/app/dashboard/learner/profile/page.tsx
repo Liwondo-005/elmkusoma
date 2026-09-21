@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type LearnerProfile, type ProfileUpdate } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
-import { User, Save, AlertCircle, CheckCircle, Loader2 } from "lucide-react"
+import { User, Save, AlertCircle, CheckCircle, Loader2, Shield, BookOpen, Lock, Eye, EyeOff } from "lucide-react"
 
 export default function LearnerProfilePage() {
   const { user, loading: authLoading } = useAuth()
@@ -18,6 +18,15 @@ export default function LearnerProfilePage() {
   const [interests, setInterests] = useState("")
   const [learningGoal, setLearningGoal] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
+
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user || user.role !== "Other Learner") return
@@ -62,6 +71,47 @@ export default function LearnerProfilePage() {
     }
   }
 
+  async function handleChangePassword() {
+    if (!newPassword || !confirmPassword) {
+      setPasswordError("Please fill in all password fields")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match")
+      return
+    }
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters")
+      return
+    }
+    try {
+      setChangingPassword(true)
+      setPasswordError(null)
+      setPasswordSuccess(null)
+      const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/v1/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || body.message || "Failed to change password")
+      }
+      setPasswordSuccess("Password changed successfully!")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (err: any) {
+      setPasswordError(err.message || "Failed to change password")
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   if (authLoading || loading || user?.role !== "Other Learner") {
     return <LoadingState />
   }
@@ -91,7 +141,12 @@ export default function LearnerProfilePage() {
         </div>
       )}
 
+      {/* Account Information */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="size-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Account Information</h2>
+        </div>
         <div className="flex items-center gap-4 mb-6">
           <div className="flex size-16 items-center justify-center rounded-full bg-primary/10">
             {avatarUrl ? (
@@ -101,29 +156,64 @@ export default function LearnerProfilePage() {
             )}
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">
+            <h3 className="text-lg font-semibold text-foreground">
               {user?.firstName} {user?.lastName}
-            </h2>
+            </h3>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              General Learner
-            </p>
-            {user?.learningLevel && (
-              <p className="text-xs text-muted-foreground">
-                Learning Level: {user.learningLevel}
-              </p>
-            )}
+            <div className="mt-1 flex items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                General Learner
+              </span>
+              {user?.learningLevel && (
+                <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  {user.learningLevel}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Full Name</label>
+            <p className="text-sm text-foreground">{user?.firstName} {user?.lastName || ""}</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
+            <p className="text-sm text-foreground">{user?.email}</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Role</label>
+            <p className="text-sm text-foreground">General Learner</p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Learning Level</label>
+            <p className="text-sm text-foreground">{user?.learningLevel || "Not set"}</p>
+          </div>
+          {user?.phone && (
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Phone</label>
+              <p className="text-sm text-foreground">{user.phone}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Learning Preferences */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+        <div className="flex items-center gap-2 mb-4">
+          <BookOpen className="size-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Learning Preferences</h2>
+        </div>
+
+        <div className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">Bio</label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us about yourself..."
-              rows={4}
+              rows={3}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
             />
           </div>
@@ -177,6 +267,107 @@ export default function LearnerProfilePage() {
                 <>
                   <Save className="size-4" />
                   Save Changes
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Change Password */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+        <div className="flex items-center gap-2 mb-4">
+          <Lock className="size-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Change Password</h2>
+        </div>
+
+        {passwordError && (
+          <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="size-4" />
+              {passwordError}
+            </div>
+          </div>
+        )}
+
+        {passwordSuccess && (
+          <div className="mb-4 rounded-lg border border-green-500/20 bg-green-500/5 p-3">
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle className="size-4" />
+              {passwordSuccess}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Current Password</label>
+            <div className="relative">
+              <input
+                type={showCurrentPassword ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 pr-10 text-sm outline-none focus:border-ring"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showCurrentPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">New Password</label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 pr-10 text-sm outline-none focus:border-ring"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Minimum 8 characters</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleChangePassword}
+              disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-6 py-2.5 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
+            >
+              {changingPassword ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Changing...
+                </>
+              ) : (
+                <>
+                  <Lock className="size-4" />
+                  Change Password
                 </>
               )}
             </button>
