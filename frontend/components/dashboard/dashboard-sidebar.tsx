@@ -169,22 +169,51 @@ const universityNav: Array<{ label: string; href: string; icon: typeof LayoutDas
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
-const learnerNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard },
-  { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
-  { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
-  { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
-  { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
-  { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film },
-  { label: "Events & Workshops", href: "/dashboard/learner/events", icon: Calendar },
-  { label: "My Registrations", href: "/dashboard/learner/events/registered", icon: ClipboardList },
-  { label: "Video Library", href: "/dashboard/learner/video-library", icon: Video },
-  { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
-  { label: "History", href: "/dashboard/learner/history", icon: Clock },
-  { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
-  { label: "Notifications", href: "/dashboard/learner/notifications", icon: Bell },
-  { label: "Profile", href: "/dashboard/learner/profile", icon: User },
-  { label: "Settings", href: "/dashboard/learner/settings", icon: Settings },
+type LearnerNavSection = {
+  group: string
+  items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; dotColor?: string }>
+}
+
+const learnerNavSections: LearnerNavSection[] = [
+  {
+    group: "OVERVIEW",
+    items: [
+      { label: "My Learning World", href: "/dashboard/learner", icon: LayoutDashboard },
+    ],
+  },
+  {
+    group: "LEARNING",
+    items: [
+      { label: "My Learning", href: "/dashboard/learner/my-learning", icon: GraduationCap },
+      { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
+      { label: "Video Library", href: "/dashboard/learner/video-library", icon: Film },
+      { label: "History", href: "/dashboard/learner/history", icon: Clock },
+    ],
+  },
+  {
+    group: "DISCOVER",
+    items: [
+      { label: "Explore Courses", href: "/dashboard/learner/courses", icon: BookOpen },
+      { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
+      { label: "Events & Workshops", href: "/dashboard/learner/events", icon: Calendar },
+      { label: "My Registrations", href: "/dashboard/learner/events/registered", icon: ClipboardList },
+    ],
+  },
+  {
+    group: "MY PROGRESS",
+    items: [
+      { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
+      { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
+    ],
+  },
+  {
+    group: "ACCOUNT",
+    items: [
+      { label: "Notifications", href: "/dashboard/learner/notifications", icon: Bell },
+      { label: "Profile", href: "/dashboard/learner/profile", icon: User },
+      { label: "Settings", href: "/dashboard/learner/settings", icon: Settings },
+    ],
+  },
 ]
 
 type TeacherNavSection = {
@@ -308,11 +337,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isLearner = user?.role === "Other Learner"
   const isPrimary = (user?.learningLevel || "").toUpperCase() === "PRIMARY"
 
-  const activeNav = isParent
-    ? parentNav
-    : isLearner
-      ? learnerNav
-      : getStudentNav(user)
+  const activeNav = isParent ? parentNav : getStudentNav(user)
 
   function renderNavItems(items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; badge?: number; dotColor?: string }>) {
     return items.map((item) => {
@@ -378,7 +403,17 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               {renderNavItems(section.items)}
             </div>
           ))
-        ) : isPrimary && !isParent && !isLearner ? (
+        ) : isLearner ? (
+          learnerNavSections.map((section, si) => (
+            <div key={section.group}>
+              {si > 0 && <div className="my-2 border-t border-border" />}
+              <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.group}
+              </p>
+              {renderNavItems(section.items)}
+            </div>
+          ))
+        ) : isPrimary && !isParent ? (
           renderPrimarySections(primaryNavSections)
         ) : (
           <>

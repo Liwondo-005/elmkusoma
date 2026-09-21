@@ -3,21 +3,24 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { collegeApi } from "@/lib/college-api"
-import type { HigherEducationDashboard, StudentCourseEnrollment } from "@/lib/types/college"
-import { LearnerHeader, LoadingState } from "@/components/learner/shared"
+import { learnerApi, type Enrollment, type CourseSummary, type LiveClass, type EventItem, type Announcement, type Bookmark } from "@/lib/learner-api"
+import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   Sparkles, Clock, Play, Video, BookOpen, BarChart3, FolderOpen,
-  FlaskConical, Award, Briefcase, CalendarDays, ClipboardList,
-  ChevronRight, CheckCircle2, AlertCircle, TrendingUp, Target
+  Award, CalendarDays, ChevronRight, CheckCircle2, AlertCircle,
+  TrendingUp, Library, Bookmark, Film, Search, Bell, ExternalLink
 } from "lucide-react"
 
-export default function HigherEducationDashboardPage() {
+export default function LearnerDashboardPage() {
   const { user, loading: authLoading } = useAuth()
-  const [dashboard, setDashboard] = useState<HigherEducationDashboard | null>(null)
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [courses, setCourses] = useState<CourseSummary[]>([])
+  const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
+  const [events, setEvents] = useState<EventItem[]>([])
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [enrollments, setEnrollments] = useState<StudentCourseEnrollment[]>([])
 
   useEffect(() => {
     if (!user) return
@@ -27,14 +30,21 @@ export default function HigherEducationDashboardPage() {
   async function loadDashboard() {
     try {
       setLoading(true)
-      const studentId = user?.id || ""
-      const level = (user?.learningLevel || "COLLEGE").toUpperCase()
-      const [res, enrollRes] = await Promise.all([
-        collegeApi.getHEDashboard(studentId, level),
-        collegeApi.getStudentEnrollments(studentId).catch(() => ({ data: [] }))
+      setError(null)
+      const [enrollRes, coursesRes, liveRes, eventsRes, announceRes, bookmarkRes] = await Promise.all([
+        learnerApi.getEnrollments().catch(() => []),
+        learnerApi.getCourses().catch(() => []),
+        learnerApi.getLiveClasses().catch(() => []),
+        learnerApi.getUpcomingEvents().catch(() => []),
+        learnerApi.getAnnouncements().catch(() => []),
+        learnerApi.getBookmarks().catch(() => []),
       ])
-      setDashboard(res.data || null)
-      setEnrollments(enrollRes.data || [])
+      setEnrollments(enrollRes)
+      setCourses(coursesRes)
+      setLiveClasses(liveRes)
+      setEvents(eventsRes)
+      setAnnouncements(announceRes)
+      setBookmarks(bookmarkRes)
     } catch {
       setError("Failed to load dashboard data")
     } finally {
@@ -43,73 +53,15 @@ export default function HigherEducationDashboardPage() {
   }
 
   if (authLoading || loading) return <LoadingState />
-  if (!dashboard) return <LoadingState />
+  if (!user) return <LoadingState />
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Student"
-  const ctx = dashboard.academicContext || "COLLEGE"
-
-  const typeIcon = (type: string) => {
-    switch (type?.toUpperCase()) {
-      case "STUDY":
-      case "REVISION":
-      case "EXAM_PREP":
-        return <BookOpen className="size-3 text-violet-500 shrink-0" />
-      case "ASSIGNMENT":
-        return <ClipboardList className="size-3 text-amber-500 shrink-0" />
-      case "LIVE":
-      case "LECTURE":
-      case "LIVE_SESSION":
-        return <Video className="size-3 text-red-500 shrink-0" />
-      case "PROJECT":
-        return <Target className="size-3 text-amber-500 shrink-0" />
-      default:
-        return <Clock className="size-3 text-blue-500 shrink-0" />
-    }
-  }
-
-  const enhancedWhatsNext = (() => {
-    const upcomingLive = dashboard.liveCampus?.sessions?.find(
-      (s: any) => s.status === "SCHEDULED" || s.status === "IN_PROGRESS" || s.status === "LIVE"
-    )
-    if (upcomingLive) {
-      return {
-        title: upcomingLive.title,
-        description: `${upcomingLive.sessionType || "Session"} session`,
-        type: "LIVE_SESSION",
-        deadline: upcomingLive.startTime,
-        isLive: upcomingLive.status === "IN_PROGRESS" || upcomingLive.status === "LIVE"
-      }
-    }
-    if (dashboard.whatsNext && dashboard.whatsNext.type !== "NONE") {
-      return { ...dashboard.whatsNext, isLive: false }
-    }
-    return null
-  })()
-
-  const enhancedTodayItems = (() => {
-    const items: Array<{ time?: string; title: string; type: string; status: string }> = []
-    if (dashboard.today?.items) {
-      items.push(...dashboard.today.items)
-    }
-    if (dashboard.liveCampus?.sessions) {
-      for (const s of dashboard.liveCampus.sessions) {
-        if (s.status === "SCHEDULED" || s.status === "IN_PROGRESS" || s.status === "LIVE") {
-          items.push({
-            time: s.startTime ? new Date(s.startTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : undefined,
-            title: s.title,
-            type: s.sessionType || "LIVE",
-            status: s.status === "IN_PROGRESS" || s.status === "LIVE" ? "LIVE" : "UPCOMING"
-          })
-        }
-      }
-    }
-    items.sort((a, b) => {
-      if (!a.time) return 1
-      if (!b.time) return -1
-      return a.time.localeCompare(b.time)
-    })
-    return items
-  })()
+  const firstName = user.firstName || user.name?.split(" ")[0] || "Learner"
+  const inProgress = enrollments.filter((e) => !e.completedAt)
+  const completed = enrollments.filter((e) => e.completedAt)
+  const liveNow = liveClasses.filter((c) => c.status === "IN_PROGRESS" || c.status === "LIVE")
+  const upcomingLive = liveClasses.filter((c) => c.status === "SCHEDULED")
+  const continueLearning = enrollments.filter((e) => e.progressPercentage > 0 && e.progressPercentage < 100).slice(0, 3)
+  const recommended = courses.filter((c) => !enrollments.some((e) => e.courseId === c.id)).slice(0, 4)
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -117,341 +69,397 @@ export default function HigherEducationDashboardPage() {
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadDashboard() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={loadDashboard} className="ml-auto text-xs underline">Retry</button>
         </div>
       )}
 
-      <LearnerHeader firstName={firstName} subtitle={`My Academic & Professional World — ${ctx}`} />
-
-      {/* Row 1: Academic Context + What's Next + Today */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Academic Context */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Academic Context</p>
-          <p className="mt-1 text-lg font-bold text-foreground">{ctx}</p>
-          {dashboard.academicYear && <p className="text-xs text-muted-foreground">{dashboard.academicYear} — {dashboard.semester}</p>}
+      {/* Welcome / Learning Context */}
+      <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs">
+        <LearnerHeader firstName={firstName} subtitle="My Learning World" />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {inProgress.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-600">
+              <BookOpen className="size-3" /> {inProgress.length} in progress
+            </span>
+          )}
+          {liveNow.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-600">
+              <span className="size-1.5 rounded-full bg-red-500 animate-pulse" /> {liveNow.length} live now
+            </span>
+          )}
+          {completed.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600">
+              <CheckCircle2 className="size-3" /> {completed.length} completed
+            </span>
+          )}
         </div>
+      </div>
 
+      {/* What's Next + Continue Learning */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* What's Next */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="size-4 text-primary" />
-            <p className="text-xs font-medium text-muted-foreground">What's Next?</p>
+            <p className="text-xs font-medium text-muted-foreground">What&apos;s Next?</p>
           </div>
-          {enhancedWhatsNext ? (
+          {continueLearning.length > 0 ? (
             <div>
-              <div className="flex items-center gap-1.5">
-                {typeIcon(enhancedWhatsNext.type)}
-                <p className="font-semibold text-foreground line-clamp-1">{enhancedWhatsNext.title}</p>
+              <p className="font-semibold text-foreground line-clamp-1">{continueLearning[0].courseTitle}</p>
+              {continueLearning[0].courseDescription && (
+                <p className="text-xs text-muted-foreground line-clamp-1">{continueLearning[0].courseDescription}</p>
+              )}
+              <div className="mt-2">
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${continueLearning[0].progressPercentage}%` }} />
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">{continueLearning[0].progressPercentage}% complete</p>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-1">{enhancedWhatsNext.description}</p>
-              {enhancedWhatsNext.deadline && (
-                <p className="mt-1 text-xs text-amber-600">
-                  {enhancedWhatsNext.isLive ? "Live now" : `Due ${new Date(enhancedWhatsNext.deadline).toLocaleDateString()}`}
-                </p>
-              )}
-              {enhancedWhatsNext.isLive && (
-                <Link href="/dashboard/learner/live-classes" className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:underline">
-                  Join <ChevronRight className="size-3" />
-                </Link>
-              )}
+              <Link href={`/dashboard/learner/courses/${continueLearning[0].courseId}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                Resume <ChevronRight className="size-3" />
+              </Link>
+            </div>
+          ) : liveNow.length > 0 ? (
+            <div>
+              <p className="font-semibold text-foreground line-clamp-1">{liveNow[0].title}</p>
+              <p className="text-xs text-red-600 font-medium">Live now</p>
+              <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                Join <ChevronRight className="size-3" />
+              </Link>
+            </div>
+          ) : upcomingLive.length > 0 ? (
+            <div>
+              <p className="font-semibold text-foreground line-clamp-1">{upcomingLive[0].title}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(upcomingLive[0].scheduledAt).toLocaleDateString("en-US", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+              </p>
+              <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                View <ChevronRight className="size-3" />
+              </Link>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">You&apos;re all caught up!</p>
           )}
         </div>
 
-        {/* Today */}
+        {/* Enrolled Courses Summary */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-2 mb-2">
-            <CalendarDays className="size-4 text-blue-600" />
-            <p className="text-xs font-medium text-muted-foreground">Today</p>
+            <FolderOpen className="size-4 text-emerald-600" />
+            <p className="text-xs font-medium text-muted-foreground">My Enrolled Courses</p>
           </div>
-          {enhancedTodayItems.length > 0 ? (
-            <div className="space-y-1.5">
-              {enhancedTodayItems.slice(0, 4).map((item, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-sm">
-                  {typeIcon(item.type)}
-                  <span className="text-xs text-muted-foreground w-10 shrink-0">{item.time || "--:--"}</span>
-                  <span className={`flex-1 line-clamp-1 ${item.status === "DONE" ? "text-muted-foreground line-through" : item.status === "LIVE" ? "text-red-600 font-medium" : "text-foreground"}`}>{item.title}</span>
-                </div>
-              ))}
-              {enhancedTodayItems.length > 4 && (
-                <p className="text-[10px] text-muted-foreground">+{enhancedTodayItems.length - 4} more</p>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No tasks for today</p>
+          <p className="text-2xl font-extrabold text-foreground">{enrollments.length}</p>
+          <p className="text-xs text-muted-foreground">{inProgress.length} in progress, {completed.length} completed</p>
+          {enrollments.length > 0 && (
+            <Link href="/dashboard/learner/my-learning" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              View All <ChevronRight className="size-3" />
+            </Link>
           )}
         </div>
-      </div>
 
-      {/* Row 2: Continue Learning + Live Campus + Academic Load */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Continue Learning */}
-        {dashboard.continueLearning && (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-2">
-              <Play className="size-4 text-emerald-600" />
-              <p className="text-xs font-medium text-muted-foreground">Continue Learning</p>
-            </div>
-            <p className="font-semibold text-foreground line-clamp-1">{dashboard.continueLearning.lastCourse}</p>
-            {dashboard.continueLearning.lastModule && (
-              <p className="text-xs text-muted-foreground line-clamp-1">{dashboard.continueLearning.lastModule}</p>
-            )}
-            {dashboard.continueLearning.progressPercent > 0 && (
-              <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${dashboard.continueLearning.progressPercent}%` }} />
-              </div>
-            )}
-            <Link href="/dashboard/learner/study-planner" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              Resume <ChevronRight className="size-3" />
-            </Link>
-          </div>
-        )}
-
-        {/* Live Campus */}
+        {/* Live Learning */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-2 mb-2">
             <Video className="size-4 text-red-600" />
-            <p className="text-xs font-medium text-muted-foreground">Live Campus</p>
+            <p className="text-xs font-medium text-muted-foreground">Live Learning</p>
           </div>
-          <p className="text-2xl font-extrabold text-foreground">{dashboard.liveCampus?.liveNow || 0}</p>
-          <p className="text-xs text-muted-foreground">live sessions now</p>
-          {dashboard.liveCampus?.sessions && dashboard.liveCampus.sessions.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {dashboard.liveCampus.sessions.slice(0, 2).map((s) => (
-                <div key={s.id} className="flex items-center gap-1.5 text-xs">
-                  {s.status === "IN_PROGRESS" || s.status === "LIVE" ? (
+          {liveNow.length > 0 ? (
+            <div>
+              <p className="text-2xl font-extrabold text-red-600">{liveNow.length}</p>
+              <p className="text-xs text-muted-foreground">sessions live now</p>
+              <div className="mt-2 space-y-1">
+                {liveNow.slice(0, 2).map((s) => (
+                  <div key={s.id} className="flex items-center gap-1.5 text-xs">
                     <span className="size-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                  ) : (
+                    <span className="line-clamp-1 text-foreground">{s.title}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                Join <ChevronRight className="size-3" />
+              </Link>
+            </div>
+          ) : upcomingLive.length > 0 ? (
+            <div>
+              <p className="text-2xl font-extrabold text-foreground">{upcomingLive.length}</p>
+              <p className="text-xs text-muted-foreground">upcoming sessions</p>
+              <div className="mt-2 space-y-1">
+                {upcomingLive.slice(0, 2).map((s) => (
+                  <div key={s.id} className="flex items-center gap-1.5 text-xs">
                     <span className="size-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                  )}
-                  <span className="line-clamp-1 text-foreground">{s.title}</span>
-                </div>
-              ))}
+                    <span className="line-clamp-1 text-foreground">{s.title}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                View All <ChevronRight className="size-3" />
+              </Link>
+            </div>
+          ) : (
+            <div>
+              <p className="text-2xl font-extrabold text-foreground">0</p>
+              <p className="text-xs text-muted-foreground">no live sessions right now</p>
+              <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                Browse Classes <ChevronRight className="size-3" />
+              </Link>
             </div>
           )}
-          <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-            View All <ChevronRight className="size-3" />
-          </Link>
         </div>
-
-        {/* Academic Load */}
-        {dashboard.academicLoad && (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-2">
-              <BookOpen className="size-4 text-violet-600" />
-              <p className="text-xs font-medium text-muted-foreground">Academic Load</p>
-            </div>
-            <p className="text-2xl font-extrabold text-foreground">{dashboard.academicLoad.enrolledCourses}</p>
-            <p className="text-xs text-muted-foreground">active courses, {dashboard.academicLoad.totalCreditHours} credits</p>
-            {dashboard.academicLoad.cumulativeGpa != null && (
-              <p className="mt-1 text-xs font-medium text-foreground">GPA: {dashboard.academicLoad.cumulativeGpa.toFixed(2)}</p>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Row 3: My Courses / Modules */}
-      {dashboard.myCourses.length > 0 && (
+      {/* Continue Learning Cards */}
+      {continueLearning.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <FolderOpen className="size-4 text-primary" />
-              <h3 className="font-semibold text-foreground">My Courses</h3>
+              <Play className="size-4 text-emerald-600" />
+              <h3 className="font-semibold text-foreground">Continue Learning</h3>
             </div>
             <Link href="/dashboard/learner/my-learning" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
               View All <ChevronRight className="size-3" />
             </Link>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {dashboard.myCourses.slice(0, 4).map((c) => {
-              const enrollment = enrollments.find(e => e.id === c.id)
-              const courseLabel = enrollment ? "Enrolled Course" : c.title
-              const subtitle = enrollment
-                ? [enrollment.semester ? `Semester ${enrollment.semester}` : "", enrollment.creditHours ? `${enrollment.creditHours} credits` : "", enrollment.grade ? `Grade: ${enrollment.grade}` : ""].filter(Boolean).join(" · ")
-                : ""
-              return (
-                <div key={c.id} className="rounded-xl border border-border bg-muted/30 p-3">
-                  <p className="font-medium text-foreground text-sm line-clamp-1">{courseLabel}</p>
-                  {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
-                  <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${c.progressPercent}%` }} />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {continueLearning.map((enrollment) => (
+              <Link
+                key={enrollment.id}
+                href={`/dashboard/learner/courses/${enrollment.courseId}`}
+                className="rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/50"
+              >
+                <p className="font-medium text-foreground text-sm line-clamp-1">{enrollment.courseTitle}</p>
+                {enrollment.courseDescription && (
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{enrollment.courseDescription}</p>
+                )}
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-semibold text-primary">{enrollment.progressPercentage}%</span>
                   </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground">{c.progressPercent}% complete</p>
+                  <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${enrollment.progressPercentage}%` }} />
+                  </div>
                 </div>
-              )
-            })}
+                <p className="mt-2 text-xs font-medium text-primary hover:underline">Resume</p>
+              </Link>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Row 4: Projects + Research + My Progress */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Projects */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="size-4 text-amber-600" />
-            <p className="text-xs font-medium text-muted-foreground">Projects</p>
-          </div>
-          <p className="text-2xl font-extrabold text-foreground">{dashboard.projects.length}</p>
-          <p className="text-xs text-muted-foreground">total projects</p>
-          <Link href="/dashboard/learner/projects" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-            View All <ChevronRight className="size-3" />
-          </Link>
-        </div>
-
-        {/* Research */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-2">
-            <FlaskConical className="size-4 text-indigo-600" />
-            <p className="text-xs font-medium text-muted-foreground">Research</p>
-          </div>
-          <p className="text-2xl font-extrabold text-foreground">{dashboard.research.length}</p>
-          <p className="text-xs text-muted-foreground">research projects</p>
-          <Link href="/dashboard/learner/research" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-            View All <ChevronRight className="size-3" />
-          </Link>
-        </div>
-
-        {/* My Progress */}
-        {dashboard.myProgress && (
+      {/* My Courses + Browse Courses */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Enrolled Courses List */}
+        {enrollments.length > 0 && (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-2">
-              <BarChart3 className="size-4 text-emerald-600" />
-              <p className="text-xs font-medium text-muted-foreground">My Progress</p>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="size-4 text-primary" />
+                <h3 className="font-semibold text-foreground">My Courses</h3>
+              </div>
+              <Link href="/dashboard/learner/courses" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                Browse More <ChevronRight className="size-3" />
+              </Link>
             </div>
-            <div className="space-y-1.5">
-              {dashboard.myProgress.cumulativeGpa != null && (
-                <p className="text-sm"><span className="text-muted-foreground">GPA:</span> <span className="font-bold text-foreground">{dashboard.myProgress.cumulativeGpa.toFixed(2)}</span></p>
-              )}
-              <p className="text-sm"><span className="text-muted-foreground">Competencies:</span> <span className="font-bold text-foreground">{dashboard.myProgress.competenciesCompleted}/{dashboard.myProgress.competenciesTotal}</span></p>
-              <p className="text-sm"><span className="text-muted-foreground">Projects:</span> <span className="font-bold text-foreground">{dashboard.myProgress.projectsCompleted}/{dashboard.myProgress.projectsTotal}</span></p>
-              {dashboard.myProgress.academicStanding && (
-                <p className="text-sm"><span className="text-muted-foreground">Standing:</span> <span className="font-bold text-foreground">{dashboard.myProgress.academicStanding}</span></p>
-              )}
+            <div className="space-y-2">
+              {enrollments.slice(0, 5).map((e) => (
+                <Link
+                  key={e.id}
+                  href={`/dashboard/learner/courses/${e.courseId}`}
+                  className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <BookOpen className="size-5 text-primary/40" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{e.courseTitle}</p>
+                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${e.progressPercentage}%` }} />
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">{e.progressPercentage}%</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Discover Courses */}
+        {recommended.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="size-4 text-amber-600" />
+                <h3 className="font-semibold text-foreground">Discover Courses</h3>
+              </div>
+              <Link href="/dashboard/learner/courses" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                View All <ChevronRight className="size-3" />
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {recommended.slice(0, 5).map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/dashboard/learner/courses/${c.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+                    <BookOpen className="size-5 text-amber-500/40" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{c.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{c.level}{c.category ? ` · ${c.category}` : ""}</p>
+                  </div>
+                  <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                </Link>
+              ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Row 5: My Evidence + Career World + Study Planner */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* My Evidence */}
-        {dashboard.myEvidence && (
+      {/* Events + Announcements */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Upcoming Events */}
+        {events.length > 0 && (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-2">
-              <Award className="size-4 text-rose-600" />
-              <p className="text-xs font-medium text-muted-foreground">My Evidence</p>
-            </div>
-            <div className="space-y-1.5 text-sm">
-              <p><span className="text-muted-foreground">Portfolio items:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.portfolioItems}</span></p>
-              <p><span className="text-muted-foreground">Demonstrations:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.demonstrations}</span></p>
-              <p><span className="text-muted-foreground">Project submissions:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.projectSubmissions}</span></p>
-              <p><span className="text-muted-foreground">Logbook entries:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.logbookEntries}</span></p>
-              <p><span className="text-muted-foreground">Competencies recorded:</span> <span className="font-bold text-foreground">{dashboard.myEvidence.competenciesRecorded}</span></p>
-            </div>
-            <Link href="/dashboard/learner/portfolio" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              View Portfolio <ChevronRight className="size-3" />
-            </Link>
-          </div>
-        )}
-
-        {/* Career World */}
-        {dashboard.careerWorld && (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-2">
-              <Briefcase className="size-4 text-teal-600" />
-              <p className="text-xs font-medium text-muted-foreground">Career & Professional World</p>
-            </div>
-            {dashboard.careerWorld.hasProfile ? (
-              <div className="space-y-1.5 text-sm">
-                {dashboard.careerWorld.targetRole && <p><span className="text-muted-foreground">Target:</span> <span className="font-bold text-foreground">{dashboard.careerWorld.targetRole}</span></p>}
-                {dashboard.careerWorld.targetIndustry && <p><span className="text-muted-foreground">Industry:</span> <span className="font-bold text-foreground">{dashboard.careerWorld.targetIndustry}</span></p>}
-                <p><span className="text-muted-foreground">Skills:</span> <span className="font-bold text-foreground">{dashboard.careerWorld.skillsCount}</span></p>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="size-4 text-blue-600" />
+                <h3 className="font-semibold text-foreground">Upcoming Events</h3>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Set up your career profile to get started.</p>
-            )}
-            <Link href="/dashboard/learner/career" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              {dashboard.careerWorld.hasProfile ? "View Profile" : "Create Profile"} <ChevronRight className="size-3" />
-            </Link>
+              <Link href="/dashboard/learner/events" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                View All <ChevronRight className="size-3" />
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {events.slice(0, 4).map((ev) => (
+                <Link
+                  key={ev.id}
+                  href={`/dashboard/learner/events/${ev.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                    <CalendarDays className="size-5 text-blue-500/40" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{ev.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(ev.startsAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                      {ev.location ? ` · ${ev.location}` : ""}
+                    </p>
+                  </div>
+                  {ev.isRegistered && (
+                    <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">Registered</span>
+                  )}
+                </Link>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Study Planner */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-2">
-            <ClipboardList className="size-4 text-orange-600" />
-            <p className="text-xs font-medium text-muted-foreground">Study Planner</p>
-          </div>
-          {dashboard.studyPlannerTasks.length > 0 ? (
-            <div className="space-y-1.5">
-              {dashboard.studyPlannerTasks.slice(0, 3).map((t) => (
-                <div key={t.id} className="flex items-center gap-2 text-sm">
-                  {t.isCompleted ? (
-                    <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-                  ) : (
-                    <AlertCircle className="size-3.5 text-amber-500 shrink-0" />
-                  )}
-                  <span className={`line-clamp-1 ${t.isCompleted ? "text-muted-foreground line-through" : "text-foreground"}`}>{t.title}</span>
+        {/* Announcements */}
+        {announcements.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="flex items-center gap-2 mb-3">
+              <Bell className="size-4 text-violet-600" />
+              <h3 className="font-semibold text-foreground">Announcements</h3>
+            </div>
+            <div className="space-y-2">
+              {announcements.slice(0, 4).map((a) => (
+                <div key={a.id} className="rounded-xl border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground line-clamp-1">{a.title}</p>
+                    {a.priority === "HIGH" && (
+                      <span className="shrink-0 rounded-full bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">High</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{a.content}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {a.authorName ? ` · ${a.authorName}` : ""}
+                  </p>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No tasks scheduled</p>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Row: Bookmarks + Progress + Certificates */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {/* Bookmarks */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Bookmark className="size-4 text-rose-600" />
+              <p className="text-xs font-medium text-muted-foreground">Saved</p>
+            </div>
+            {bookmarks.length > 0 && (
+              <Link href="/dashboard/learner/bookmarks" className="text-xs font-medium text-primary hover:underline">View All</Link>
+            )}
+          </div>
+          <p className="text-2xl font-extrabold text-foreground">{bookmarks.length}</p>
+          <p className="text-xs text-muted-foreground">{bookmarks.length === 1 ? "item saved" : "items saved"}</p>
+        </div>
+
+        {/* Progress */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="size-4 text-teal-600" />
+            <p className="text-xs font-medium text-muted-foreground">Progress</p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-sm">
+              <span className="text-muted-foreground">Enrolled: </span>
+              <span className="font-bold text-foreground">{enrollments.length}</span>
+            </p>
+            <p className="text-sm">
+              <span className="text-muted-foreground">Completed: </span>
+              <span className="font-bold text-foreground">{completed.length}</span>
+            </p>
+            {enrollments.length > 0 && (
+              <p className="text-sm">
+                <span className="text-muted-foreground">Avg: </span>
+                <span className="font-bold text-foreground">
+                  {Math.round(enrollments.reduce((sum, e) => sum + e.progressPercentage, 0) / enrollments.length)}%
+                </span>
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Certificates */}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <Award className="size-4 text-amber-600" />
+            <p className="text-xs font-medium text-muted-foreground">Certificates</p>
+          </div>
+          <p className="text-2xl font-extrabold text-foreground">{completed.length}</p>
+          <p className="text-xs text-muted-foreground">{completed.length === 1 ? "earned" : "earned to date"}</p>
+          {completed.length > 0 && (
+            <Link href="/dashboard/learner/certificates" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              View <ChevronRight className="size-3" />
+            </Link>
           )}
-          <Link href="/dashboard/learner/study-planner" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-            Open Planner <ChevronRight className="size-3" />
-          </Link>
         </div>
       </div>
 
-      {/* Row 6: My Day / My Week */}
-      {dashboard.dayWeekView && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* Today */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-3">
-              <Clock className="size-4 text-primary" />
-              <h3 className="font-semibold text-foreground">My Day</h3>
-            </div>
-            {dashboard.dayWeekView.todayItems.length > 0 ? (
-              <div className="space-y-2">
-                {dashboard.dayWeekView.todayItems.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm">
-                    <span className="text-xs text-muted-foreground w-12 shrink-0">{item.time || "--:--"}</span>
-                    <span className={`flex-1 line-clamp-1 ${item.status === "DONE" ? "text-muted-foreground line-through" : "text-foreground"}`}>{item.title}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{item.type}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nothing scheduled for today</p>
-            )}
+      {/* Empty State for New Learners */}
+      {enrollments.length === 0 && courses.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border py-16 text-center">
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
+            <BookOpen className="size-8 text-primary/40" />
           </div>
-
-          {/* Week */}
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <div className="flex items-center gap-2 mb-3">
-              <CalendarDays className="size-4 text-blue-600" />
-              <h3 className="font-semibold text-foreground">My Week</h3>
-            </div>
-            {dashboard.dayWeekView.weekItems.length > 0 ? (
-              <div className="space-y-2">
-                {dashboard.dayWeekView.weekItems.slice(0, 5).map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm">
-                    <span className="text-xs text-muted-foreground w-16 shrink-0">{item.date ? new Date(item.date).toLocaleDateString("en-US", { weekday: "short" }) : ""}</span>
-                    <span className={`flex-1 line-clamp-1 ${item.status === "DONE" ? "text-muted-foreground line-through" : "text-foreground"}`}>{item.title}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{item.type}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nothing scheduled this week</p>
-            )}
-          </div>
+          <h3 className="text-lg font-semibold text-foreground">Welcome to your learning world</h3>
+          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
+            Start exploring courses, enroll in what interests you, and begin your learning journey.
+          </p>
+          <Link
+            href="/dashboard/learner/courses"
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Explore Courses <ChevronRight className="size-4" />
+          </Link>
         </div>
       )}
     </div>

@@ -108,6 +108,11 @@ export default function LearnerProfilePage() {
             <p className="text-xs text-muted-foreground mt-1">
               General Learner
             </p>
+            {user?.learningLevel && (
+              <p className="text-xs text-muted-foreground">
+                Learning Level: {user.learningLevel}
+              </p>
+            )}
           </div>
         </div>
 
