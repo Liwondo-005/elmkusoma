@@ -4,27 +4,25 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
-import { nurseryApi, type NurseryActivity, type NurseryMilestone } from "@/lib/nursery-api"
+import { nurseryApi, type NurseryActivity, type NurseryMilestone, type NurseryStory } from "@/lib/nursery-api"
 import { LoadingState } from "@/components/learner/shared"
 import {
   Sparkles, BookOpen, Palette, Puzzle, Music, Star,
-  Trophy, Heart, ArrowRight, Sun, Moon, CloudSun
+  Trophy, Heart, ArrowRight, Sun, Moon, CloudSun,
+  Play, Headphones, Eye, Compass
 } from "lucide-react"
 
 function getGreeting() {
   const h = new Date().getHours()
-  if (h < 12) return { text: "Good Morning", icon: Sun, emoji: "sun" }
-  if (h < 17) return { text: "Good Afternoon", icon: CloudSun, emoji: "cloud" }
-  return { text: "Good Evening", icon: Moon, emoji: "moon" }
+  if (h < 12) return { text: "Good morning", icon: Sun, emoji: "\u{1F31E}" }
+  if (h < 17) return { text: "Good afternoon", icon: CloudSun, emoji: "\u{26C5}" }
+  return { text: "Good evening", icon: Moon, emoji: "\u{1F319}" }
 }
 
-const WORLDS = [
-  { label: "Learning Journey", href: "/dashboard/nursery/learning-journey", icon: Sparkles, color: "bg-purple-100 text-purple-600", desc: "Follow your path" },
-  { label: "Play & Learn", href: "/dashboard/nursery/play", icon: Puzzle, color: "bg-pink-100 text-pink-600", desc: "Fun games await" },
-  { label: "Stories", href: "/dashboard/nursery/stories", icon: BookOpen, color: "bg-blue-100 text-blue-600", desc: "Read magical tales" },
-  { label: "Discovery", href: "/dashboard/nursery/discovery", icon: Star, color: "bg-amber-100 text-amber-600", desc: "Explore the world" },
-  { label: "Create Studio", href: "/dashboard/nursery/create", icon: Palette, color: "bg-green-100 text-green-600", desc: "Draw & make music" },
-  { label: "My Progress", href: "/dashboard/nursery/progress", icon: Trophy, color: "bg-orange-100 text-orange-600", desc: "See how you grow" },
+const DISCOVERY_AREAS = [
+  { emoji: "\u{1F522}", label: "Numbers", desc: "Count & explore", href: "/dashboard/nursery/learning-journey", color: "bg-purple-50 border-purple-200 text-purple-700" },
+  { emoji: "\u{1F418}", label: "Animals", desc: "Discover creatures", href: "/dashboard/nursery/discovery", color: "bg-amber-50 border-amber-200 text-amber-700" },
+  { emoji: "\u{1F524}", label: "Letters", desc: "Listen & learn", href: "/dashboard/nursery/speak-listen", color: "bg-blue-50 border-blue-200 text-blue-700" },
 ]
 
 const ACTIVITY_ICONS: Record<string, typeof BookOpen> = {
@@ -36,13 +34,22 @@ const ACTIVITY_ICONS: Record<string, typeof BookOpen> = {
   EDUCATIONAL: Sparkles,
 }
 
-const MILESTONE_EMOJI: Record<string, string> = {
-  PHYSICAL: "🏃",
-  COGNITIVE: "🧠",
-  SOCIAL: "🤝",
-  EMOTIONAL: "❤️",
-  LANGUAGE: "💬",
-  MOTOR: "✋",
+const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+  GAME: "Fun Game",
+  SONG: "Song Time",
+  STORY: "Story",
+  CRAFT: "Creative Craft",
+  PHYSICAL: "Movement",
+  EDUCATIONAL: "Learning",
+}
+
+const MILESTONE_CATEGORY_EMOJI: Record<string, string> = {
+  PHYSICAL: "\u{1F3C3}",
+  COGNITIVE: "\u{1F9E0}",
+  SOCIAL: "\u{1F91D}",
+  EMOTIONAL: "\u{2764}\u{FE0F}",
+  LANGUAGE: "\u{1F4AC}",
+  MOTOR: "\u{270B}",
 }
 
 export default function NurseryHomePage() {
@@ -50,7 +57,10 @@ export default function NurseryHomePage() {
   const router = useRouter()
   const [activities, setActivities] = useState<NurseryActivity[]>([])
   const [milestones, setMilestones] = useState<NurseryMilestone[]>([])
+  const [stories, setStories] = useState<NurseryStory[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
   const firstName = user?.name?.split(" ")[0] || "Little Star"
   const greeting = getGreeting()
   const GreetingIcon = greeting.icon
@@ -65,18 +75,20 @@ export default function NurseryHomePage() {
     async function loadData() {
       try {
         const classGroupId = user?.classGroupId || ""
-        if (classGroupId) {
-          const acts = await nurseryApi.getActivities(classGroupId).catch(() => [])
-          setActivities(acts)
-        }
-      } catch {}
-      try {
         const studentId = user?.id || ""
-        if (studentId) {
-          const miles = await nurseryApi.getMilestones(studentId).catch(() => [])
-          setMilestones(miles)
-        }
-      } catch {}
+
+        const results = await Promise.allSettled([
+          classGroupId ? nurseryApi.getActivities(classGroupId) : Promise.resolve([]),
+          studentId ? nurseryApi.getMilestones(studentId) : Promise.resolve([]),
+          classGroupId ? nurseryApi.getStories(classGroupId) : Promise.resolve([]),
+        ])
+
+        if (results[0].status === "fulfilled") setActivities(results[0].value)
+        if (results[1].status === "fulfilled") setMilestones(results[1].value)
+        if (results[2].status === "fulfilled") setStories(results[2].value)
+      } catch {
+        setError(true)
+      }
       setLoading(false)
     }
     loadData()
@@ -84,141 +96,320 @@ export default function NurseryHomePage() {
 
   if (authLoading || loading) return <LoadingState />
 
-  const achievedMilestones = milestones.filter(m => m.status === "ACHIEVED").length
-  const totalMilestones = milestones.length
-  const completedActivities = activities.filter(a => a.status === "COMPLETED").length
-  const todayActivities = activities.filter(a => {
-    const today = new Date().toISOString().split("T")[0]
-    return a.activityDate === today
-  })
+  if (error) {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-5xl flex-col items-center justify-center p-4 text-center">
+        <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-red-50">
+          <Sparkles className="size-8 text-red-400" />
+        </div>
+        <h2 className="text-lg font-bold text-gray-800">Something went wrong</h2>
+        <p className="mt-1 text-sm text-gray-500">We couldn&apos;t load your world right now.</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary/90"
+        >
+          Try Again
+        </button>
+      </div>
+    )
+  }
+
+  const today = new Date().toISOString().split("T")[0]
+  const todayActivities = activities.filter(a => a.activityDate === today)
+  const completedCount = activities.filter(a => a.status === "COMPLETED").length
+  const achievedCount = milestones.filter(m => m.status === "ACHIEVED").length
+
+  const todaysAdventure = todayActivities.find(a => a.status === "PLANNED" || a.status === "IN_PROGRESS")
+    || todayActivities[0]
+    || activities.find(a => a.status === "IN_PROGRESS")
+    || activities.find(a => a.status === "PLANNED")
+
+  const continueLearning = activities.find(a => a.status === "IN_PROGRESS")
+    || activities.filter(a => a.status === "PLANNED" || a.status === "COMPLETED").sort((a, b) =>
+      (a.activityDate > b.activityDate ? -1 : 1)
+    )[0]
+
+  const storyOfTheDay = stories.length > 0
+    ? stories.find(s => s.isPublished !== false) || stories[0]
+    : null
+
+  const playActivity = todayActivities.find(a => a.activityType === "GAME")
+    || activities.find(a => a.activityType === "GAME" && a.status !== "COMPLETED")
+    || activities.find(a => a.activityType === "GAME")
+
+  const uniqueCategories = [...new Set(milestones.filter(m => m.status === "ACHIEVED").map(m => m.category))].slice(0, 3)
+  const dynamicDiscoveries = uniqueCategories.length >= 3
+    ? uniqueCategories.map(cat => ({
+        emoji: MILESTONE_CATEGORY_EMOJI[cat] || "\u{2B50}",
+        label: cat.charAt(0) + cat.slice(1).toLowerCase(),
+        desc: "Explore more",
+        href: "/dashboard/nursery/learning-journey",
+        color: "bg-green-50 border-green-200 text-green-700",
+      }))
+    : null
+
+  const discoveries = dynamicDiscoveries || DISCOVERY_AREAS
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24">
-      {/* Welcome Banner */}
-      <div className="nursery-card nursery-card-primary relative overflow-hidden rounded-3xl p-6 text-white">
-        <div className="absolute -right-8 -top-8 size-32 rounded-full bg-white/10" />
-        <div className="absolute -bottom-4 -left-4 size-24 rounded-full bg-white/10" />
+    <div className="mx-auto max-w-5xl space-y-5 p-4 pb-24 sm:space-y-6">
+
+      {/* ─── Section 01: Welcome ─── */}
+      <div className="nursery-card relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 p-6 text-white sm:p-8">
+        <div className="absolute -right-6 -top-6 size-28 rounded-full bg-white/10" />
+        <div className="absolute -bottom-4 -left-4 size-20 rounded-full bg-white/10" />
+        <div className="absolute right-12 bottom-2 size-10 rounded-full bg-white/5" />
         <div className="relative flex items-center gap-4">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-white/20">
-            <GreetingIcon className="size-7" />
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl sm:size-16">
+            {greeting.emoji}
           </div>
           <div>
-            <h1 className="text-2xl font-bold">{greeting.text}, {firstName}!</h1>
-            <p className="mt-1 text-sm text-white/80">Welcome to your fun learning world</p>
+            <h1 className="text-xl font-bold sm:text-2xl">
+              {greeting.text}, {firstName}!
+            </h1>
+            <p className="mt-1 text-sm text-white/80">
+              Ready for a new discovery today?
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="nursery-card rounded-2xl bg-yellow-50 p-4 text-center">
-          <div className="text-3xl font-bold text-yellow-600">{completedActivities}</div>
-          <div className="mt-1 text-xs font-medium text-yellow-700">Fun Activities Done</div>
-        </div>
-        <div className="nursery-card rounded-2xl bg-green-50 p-4 text-center">
-          <div className="text-3xl font-bold text-green-600">{achievedMilestones}</div>
-          <div className="mt-1 text-xs font-medium text-green-700">Stars Earned</div>
-        </div>
-        <div className="nursery-card rounded-2xl bg-purple-50 p-4 text-center">
-          <div className="text-3xl font-bold text-purple-600">{todayActivities.length}</div>
-          <div className="mt-1 text-xs font-medium text-purple-700">Today&apos;s Fun</div>
-        </div>
-      </div>
-
-      {/* Explore Worlds */}
+      {/* ─── Section 02: Today's Adventure ─── */}
       <section>
-        <h2 className="mb-3 text-lg font-bold text-gray-800">Explore Your World</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {WORLDS.map((world) => (
-            <Link
-              key={world.href}
-              href={world.href}
-              className="nursery-card group flex flex-col items-center gap-2 rounded-2xl border-2 border-transparent bg-white p-4 text-center transition-all hover:border-primary hover:shadow-lg"
-            >
-              <div className={`flex size-12 items-center justify-center rounded-xl ${world.color} transition-transform group-hover:scale-110`}>
-                <world.icon className="size-6" />
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-gray-800">
+          <span className="text-xl">{"\u{1F31F}"}</span> Today&apos;s Adventure
+        </h2>
+        {todaysAdventure ? (
+          <div className="nursery-card overflow-hidden rounded-2xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+            <div className="p-5 sm:p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-2xl">
+                  {todaysAdventure.activityType === "GAME" && "\u{1F3AE}"}
+                  {todaysAdventure.activityType === "SONG" && "\u{1F3B5}"}
+                  {todaysAdventure.activityType === "STORY" && "\u{1F4D6}"}
+                  {todaysAdventure.activityType === "CRAFT" && "\u{1F3A8}"}
+                  {todaysAdventure.activityType === "PHYSICAL" && "\u{1F3C3}"}
+                  {todaysAdventure.activityType === "EDUCATIONAL" && "\u{1F4D1}"}
+                  {!["GAME", "SONG", "STORY", "CRAFT", "PHYSICAL", "EDUCATIONAL"].includes(todaysAdventure.activityType) && "\u{2B50}"}
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-600">
+                    {ACTIVITY_TYPE_LABELS[todaysAdventure.activityType] || "Adventure"}
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-gray-800">
+                    {todaysAdventure.activityName}
+                  </h3>
+                  {todaysAdventure.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+                      {todaysAdventure.description}
+                    </p>
+                  )}
+                  <div className="mt-3 flex items-center gap-3">
+                    {todaysAdventure.durationMinutes && (
+                      <span className="text-xs text-gray-500">
+                        {"\u{23F1}\u{FE0F}"} {todaysAdventure.durationMinutes} min
+                      </span>
+                    )}
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      todaysAdventure.status === "IN_PROGRESS"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-blue-100 text-blue-700"
+                    }`}>
+                      {todaysAdventure.status === "IN_PROGRESS" ? "In Progress" : "Ready!"}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <span className="text-sm font-bold text-gray-800">{world.label}</span>
-              <span className="text-[11px] text-gray-500">{world.desc}</span>
+              <Link
+                href="/dashboard/nursery/play"
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-bold text-white transition-all hover:bg-amber-600 hover:shadow-md active:scale-[0.98]"
+              >
+                <Play className="size-4" />
+                Start Adventure
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="nursery-card rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 p-6 text-center">
+            <span className="text-3xl">{"\u{1F30D}"}</span>
+            <p className="mt-2 text-sm font-bold text-gray-700">No adventure scheduled today</p>
+            <p className="mt-1 text-xs text-gray-500">Explore your world and find something fun!</p>
+            <Link
+              href="/dashboard/nursery/play"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-amber-100 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-200"
+            >
+              <Compass className="size-3.5" /> Explore Activities
+            </Link>
+          </div>
+        )}
+      </section>
+
+      {/* ─── Section 03: Continue Learning ─── */}
+      <section>
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-gray-800">
+          <span className="text-xl">{"\u{25B6}\u{FE0F}"}</span> Continue Learning
+        </h2>
+        {continueLearning ? (
+          <div className="nursery-card rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${
+                continueLearning.activityType === "GAME" ? "bg-pink-100" :
+                continueLearning.activityType === "STORY" ? "bg-blue-100" :
+                continueLearning.activityType === "SONG" ? "bg-purple-100" :
+                continueLearning.activityType === "CRAFT" ? "bg-green-100" :
+                continueLearning.activityType === "PHYSICAL" ? "bg-red-100" :
+                "bg-indigo-100"
+              }`}>
+                {(() => {
+                  const Icon = ACTIVITY_ICONS[continueLearning.activityType] || Sparkles
+                  return <Icon className="size-5 text-gray-600" />
+                })()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-gray-800">{continueLearning.activityName}</p>
+                <p className="text-xs text-gray-500">
+                  {continueLearning.status === "IN_PROGRESS"
+                    ? "You were working on this"
+                    : `Scheduled for ${new Date(continueLearning.activityDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                  }
+                </p>
+              </div>
+              <Link
+                href="/dashboard/nursery/play"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-primary/90 hover:shadow-md active:scale-[0.98]"
+              >
+                {continueLearning.status === "IN_PROGRESS" ? "Continue" : "Start"}
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="nursery-card rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-5 text-center">
+            <span className="text-2xl">{"\u{1F331}"}</span>
+            <p className="mt-2 text-sm font-bold text-gray-700">Nothing to continue yet</p>
+            <p className="mt-1 text-xs text-gray-500">Start your first discovery above!</p>
+          </div>
+        )}
+      </section>
+
+      {/* ─── Section 04: Today's Discoveries ─── */}
+      <section>
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-gray-800">
+          <span className="text-xl">{"\u{2728}"}</span> Today&apos;s Discoveries
+        </h2>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {discoveries.map((d, i) => (
+            <Link
+              key={`${d.label}-${i}`}
+              href={d.href}
+              className={`nursery-card group rounded-2xl border-2 p-3 text-center transition-all hover:shadow-md active:scale-[0.97] sm:p-4 ${d.color}`}
+            >
+              <span className="text-2xl">{d.emoji}</span>
+              <p className="mt-2 text-xs font-bold sm:text-sm">{d.label}</p>
+              <p className="mt-0.5 text-[10px] opacity-70 sm:text-xs">{d.desc}</p>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* Today's Activities */}
-      {todayActivities.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-lg font-bold text-gray-800">Today&apos;s Activities</h2>
-          <div className="space-y-2">
-            {todayActivities.map((activity) => {
-              const Icon = ACTIVITY_ICONS[activity.activityType] || Sparkles
-              return (
-                <div key={activity.id} className="nursery-card flex items-center gap-3 rounded-2xl bg-white p-4">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50">
-                    <Icon className="size-5 text-blue-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-gray-800">{activity.activityName}</p>
-                    <p className="text-xs text-gray-500">
-                      {activity.activityType} • {activity.durationMinutes || 15} min
-                    </p>
-                  </div>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                    activity.status === "COMPLETED" ? "bg-green-100 text-green-700" :
-                    activity.status === "IN_PROGRESS" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-blue-100 text-blue-700"
-                  }`}>
-                    {activity.status}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      {/* ─── Section 05: Play & Learn + Story of the Day ─── */}
+      <section className="grid gap-3 sm:grid-cols-2 sm:gap-4">
 
-      {/* Recent Milestones */}
-      {milestones.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-lg font-bold text-gray-800">My Milestones</h2>
-          <div className="space-y-2">
-            {milestones.slice(0, 5).map((milestone) => (
-              <div key={milestone.id} className="nursery-card flex items-center gap-3 rounded-2xl bg-white p-4">
-                <span className="text-2xl">{MILESTONE_EMOJI[milestone.category] || "⭐"}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-gray-800">{milestone.milestoneName}</p>
-                  <p className="text-xs text-gray-500">{milestone.category}</p>
-                </div>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  milestone.status === "ACHIEVED" ? "bg-green-100 text-green-700" :
-                  milestone.status === "IN_PROGRESS" ? "bg-yellow-100 text-yellow-700" :
-                  "bg-gray-100 text-gray-500"
-                }`}>
-                  {milestone.status === "ACHIEVED" ? "Done!" : milestone.status}
-                </span>
-              </div>
-            ))}
+        {/* Play & Learn Card */}
+        <div className="nursery-card overflow-hidden rounded-2xl border border-pink-100 bg-gradient-to-br from-pink-50 to-rose-50">
+          <div className="p-4 sm:p-5">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{"\u{1F3AE}"}</span>
+              <h3 className="text-sm font-bold text-gray-800">Play &amp; Learn</h3>
+            </div>
+            {playActivity ? (
+              <>
+                <p className="mt-2 text-sm font-bold text-gray-700">{playActivity.activityName}</p>
+                {playActivity.description && (
+                  <p className="mt-1 line-clamp-2 text-xs text-gray-500">{playActivity.description}</p>
+                )}
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-gray-500">Fun games are waiting for you!</p>
+            )}
+            <Link
+              href="/dashboard/nursery/play"
+              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-pink-500 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-pink-600 active:scale-[0.98]"
+            >
+              <Play className="size-3.5" /> Play
+            </Link>
           </div>
-        </section>
-      )}
+        </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          href="/dashboard/nursery/play"
-          className="nursery-card flex items-center justify-center gap-2 rounded-2xl bg-pink-500 p-4 text-center text-white transition-all hover:bg-pink-600 hover:shadow-lg"
-        >
-          <Puzzle className="size-5" />
-          <span className="font-bold">Play Now!</span>
-        </Link>
-        <Link
-          href="/dashboard/nursery/stories"
-          className="nursery-card flex items-center justify-center gap-2 rounded-2xl bg-blue-500 p-4 text-center text-white transition-all hover:bg-blue-600 hover:shadow-lg"
-        >
-          <BookOpen className="size-5" />
-          <span className="font-bold">Read a Story</span>
-        </Link>
-      </div>
+        {/* Story of the Day Card */}
+        <div className="nursery-card overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
+          <div className="p-4 sm:p-5">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{"\u{1F4D6}"}</span>
+              <h3 className="text-sm font-bold text-gray-800">Story of the Day</h3>
+            </div>
+            {storyOfTheDay ? (
+              <>
+                <p className="mt-2 text-sm font-bold text-gray-700">{storyOfTheDay.title}</p>
+                {storyOfTheDay.storyType && (
+                  <p className="mt-1 text-xs text-gray-500">{storyOfTheDay.storyType.replace("_", " ")}</p>
+                )}
+                <div className="mt-3 flex items-center gap-2">
+                  <Link
+                    href="/dashboard/nursery/stories"
+                    className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-blue-500 px-3 py-2 text-[11px] font-bold text-white transition-all hover:bg-blue-600 active:scale-[0.98]"
+                  >
+                    <Eye className="size-3" /> Read
+                  </Link>
+                  {storyOfTheDay.audioUrl && (
+                    <Link
+                      href="/dashboard/nursery/stories"
+                      className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-indigo-500 px-3 py-2 text-[11px] font-bold text-white transition-all hover:bg-indigo-600 active:scale-[0.98]"
+                    >
+                      <Headphones className="size-3" /> Listen
+                    </Link>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-xs text-gray-500">No story today yet.</p>
+                <Link
+                  href="/dashboard/nursery/stories"
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-blue-600 active:scale-[0.98]"
+                >
+                  <BookOpen className="size-3.5" /> Browse Stories
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Quick Stats Footer ─── */}
+      {(completedCount > 0 || achievedCount > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="nursery-card flex items-center gap-3 rounded-2xl bg-green-50 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-green-100">
+              <Trophy className="size-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-green-700">{achievedCount}</p>
+              <p className="text-[11px] font-medium text-green-600">Stars Earned</p>
+            </div>
+          </div>
+          <div className="nursery-card flex items-center gap-3 rounded-2xl bg-amber-50 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100">
+              <Sparkles className="size-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-amber-700">{completedCount}</p>
+              <p className="text-[11px] font-medium text-amber-600">Activities Done</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
