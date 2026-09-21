@@ -195,4 +195,20 @@ public class ParentController {
                 "status", payment.getStatus()
         )));
     }
+
+    @PostMapping("/payments/{paymentId}/refund")
+    @Operation(summary = "Refund a completed payment (admin only)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> refundPayment(
+            @PathVariable UUID paymentId,
+            @RequestBody Map<String, String> body,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        UUID refundedBy = (UUID) httpRequest.getAttribute("userId");
+        String reason = body.getOrDefault("reason", "Refunded by admin");
+        var payment = paymentService.refundPayment(paymentId, refundedBy, reason);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "paymentId", payment.getId().toString(),
+                "status", payment.getStatus()
+        )));
+    }
 }

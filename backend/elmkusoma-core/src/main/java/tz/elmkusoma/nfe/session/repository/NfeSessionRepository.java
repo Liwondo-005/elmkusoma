@@ -27,4 +27,7 @@ public interface NfeSessionRepository extends TenantRepository<NfeSession, UUID>
 
     @Query("SELECT s FROM NfeSession s WHERE s.status = :status AND s.institutionId = :institutionId AND s.isDeleted = false")
     List<NfeSession> findByStatusAndInstitutionId(@Param("status") String status, @Param("institutionId") UUID institutionId);
+
+    @Query("SELECT COUNT(s) FROM NfeSession s WHERE s.institutionId = :institutionId AND s.isDeleted = false")
+    long countByInstitutionId(@Param("institutionId") UUID institutionId);
 }

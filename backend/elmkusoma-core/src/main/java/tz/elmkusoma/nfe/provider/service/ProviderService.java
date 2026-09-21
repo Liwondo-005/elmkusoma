@@ -3,6 +3,7 @@ package tz.elmkusoma.nfe.provider.service;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.nfe.provider.dto.ProviderRequest;
 import tz.elmkusoma.nfe.provider.dto.ProviderResponse;
+import tz.elmkusoma.nfe.provider.dto.ProviderStatsResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,4 +21,6 @@ public interface ProviderService {
     void deleteProvider(UUID institutionId, UUID providerId);
 
     List<ProviderResponse> getActiveProviders(UUID institutionId);
+
+    ProviderStatsResponse getProviderStats(UUID institutionId);
 }

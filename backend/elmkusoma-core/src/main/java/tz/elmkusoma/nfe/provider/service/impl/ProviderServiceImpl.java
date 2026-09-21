@@ -12,8 +12,13 @@ import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.nfe.provider.domain.EducationProvider;
 import tz.elmkusoma.nfe.provider.dto.ProviderRequest;
 import tz.elmkusoma.nfe.provider.dto.ProviderResponse;
+import tz.elmkusoma.nfe.provider.dto.ProviderStatsResponse;
 import tz.elmkusoma.nfe.provider.repository.EducationProviderRepository;
 import tz.elmkusoma.nfe.provider.service.ProviderService;
+import tz.elmkusoma.nfe.program.repository.NfeProgramRepository;
+import tz.elmkusoma.nfe.learner.repository.NfeLearnerRepository;
+import tz.elmkusoma.nfe.session.repository.NfeSessionRepository;
+import tz.elmkusoma.nfe.certificate.repository.NfeCertificateRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +29,10 @@ import java.util.UUID;
 public class ProviderServiceImpl implements ProviderService {
 
     private final EducationProviderRepository providerRepository;
+    private final NfeProgramRepository programRepository;
+    private final NfeLearnerRepository learnerRepository;
+    private final NfeSessionRepository sessionRepository;
+    private final NfeCertificateRepository certificateRepository;
 
     @Override
     public ProviderResponse createProvider(UUID institutionId, ProviderRequest request) {
@@ -127,6 +136,29 @@ public class ProviderServiceImpl implements ProviderService {
         return providerRepository.findActiveByInstitutionId(institutionId).stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProviderStatsResponse getProviderStats(UUID institutionId) {
+        long totalProviders = providerRepository.findAllByInstitutionId(institutionId).size();
+        long activeProviders = providerRepository.findActiveByInstitutionId(institutionId).size();
+        long totalPrograms = programRepository.countByInstitutionId(institutionId);
+        long totalLearners = learnerRepository.countByInstitutionId(institutionId);
+        long totalSessions = sessionRepository.countByInstitutionId(institutionId);
+        long totalCertificates = certificateRepository.countByInstitutionId(institutionId);
+
+        return ProviderStatsResponse.builder()
+                .totalProviders(totalProviders)
+                .activeProviders(activeProviders)
+                .totalPrograms(totalPrograms)
+                .activePrograms(totalPrograms)
+                .totalLearners(totalLearners)
+                .activeLearners(totalLearners)
+                .totalSessions(totalSessions)
+                .completedSessions(totalSessions)
+                .totalCertificates(totalCertificates)
+                .build();
     }
 
     private ProviderResponse mapToResponse(EducationProvider provider) {

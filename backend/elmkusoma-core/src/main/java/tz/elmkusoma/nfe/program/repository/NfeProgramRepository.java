@@ -24,4 +24,7 @@ public interface NfeProgramRepository extends TenantRepository<NfeProgram, UUID>
 
     @Query("SELECT p FROM NfeProgram p WHERE p.institutionId = :institutionId AND p.isPublished = true AND p.isDeleted = false")
     List<NfeProgram> findPublishedByInstitutionId(@Param("institutionId") UUID institutionId);
+
+    @Query("SELECT COUNT(p) FROM NfeProgram p WHERE p.institutionId = :institutionId AND p.isDeleted = false")
+    long countByInstitutionId(@Param("institutionId") UUID institutionId);
 }

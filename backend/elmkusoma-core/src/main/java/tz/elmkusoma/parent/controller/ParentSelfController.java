@@ -288,6 +288,19 @@ public class ParentSelfController {
 
     // NOTE: Payment verification is admin-only. Use POST /v1/parents/payments/{paymentId}/verify
 
+    @PostMapping("/payments/{paymentId}/cancel")
+    @Operation(summary = "Cancel a pending payment")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> cancelPayment(
+            @PathVariable UUID paymentId,
+            HttpServletRequest request) {
+        UUID userId = getCurrentUserId(request);
+        var payment = paymentService.cancelPayment(paymentId, userId);
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "paymentId", payment.getId().toString(),
+                "status", payment.getStatus()
+        )));
+    }
+
     // ── Achievements ───────────────────────────────────────────────────
 
     @GetMapping("/children/{studentId}/achievements")

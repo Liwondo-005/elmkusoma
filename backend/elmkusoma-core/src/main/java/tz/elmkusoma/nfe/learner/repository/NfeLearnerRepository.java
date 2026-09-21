@@ -27,4 +27,7 @@ public interface NfeLearnerRepository extends TenantRepository<NfeLearner, UUID>
 
     @Query("SELECT l FROM NfeLearner l WHERE l.institutionId = :institutionId AND l.status = :status AND l.isDeleted = false")
     List<NfeLearner> findByStatusAndInstitutionId(@Param("status") String status, @Param("institutionId") UUID institutionId);
+
+    @Query("SELECT COUNT(l) FROM NfeLearner l WHERE l.institutionId = :institutionId AND l.isDeleted = false")
+    long countByInstitutionId(@Param("institutionId") UUID institutionId);
 }

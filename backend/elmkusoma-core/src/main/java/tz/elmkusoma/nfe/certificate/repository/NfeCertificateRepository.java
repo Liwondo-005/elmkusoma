@@ -27,4 +27,7 @@ public interface NfeCertificateRepository extends TenantRepository<NfeCertificat
 
     @Query("SELECT c FROM NfeCertificate c WHERE c.id = :id AND c.institutionId = :institutionId AND c.isDeleted = false")
     Optional<NfeCertificate> findByIdAndInstitutionId(@Param("id") UUID id, @Param("institutionId") UUID institutionId);
+
+    @Query("SELECT COUNT(c) FROM NfeCertificate c WHERE c.institutionId = :institutionId AND c.isDeleted = false")
+    long countByInstitutionId(@Param("institutionId") UUID institutionId);
 }

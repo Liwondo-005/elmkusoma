@@ -145,6 +145,67 @@ public class ParentPaymentService {
                         studentId, serviceType, serviceId, "ACTIVE");
     }
 
+    @Transactional
+    public Payment cancelPayment(UUID paymentId, UUID userId) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+        if ("COMPLETED".equals(payment.getStatus())) {
+            throw new IllegalStateException("Cannot cancel a completed payment");
+        }
+        if (!"PENDING".equals(payment.getStatus())) {
+            throw new IllegalStateException("Only pending payments can be cancelled");
+        }
+        if (!payment.getParentId().equals(userId)) {
+            throw new RuntimeException("Not authorized to cancel this payment");
+        }
+
+        payment.setStatus("CANCELLED");
+        payment = paymentRepository.save(payment);
+
+        AuditLog auditLog = new AuditLog();
+        auditLog.setInstitutionId(payment.getInstitutionId());
+        auditLog.setUserId(userId);
+        auditLog.setEntityType("Payment");
+        auditLog.setEntityId(paymentId);
+        auditLog.setEntityName("Payment Cancellation");
+        auditLog.setAction(AuditLog.AuditAction.UPDATE);
+        auditLog.setOldValues(Map.of("status", "PENDING"));
+        auditLog.setNewValues(Map.of("status", "CANCELLED"));
+        auditLogRepository.save(auditLog);
+
+        log.info("Payment cancelled: {} by {}", paymentId, userId);
+        return payment;
+    }
+
+    @Transactional
+    public Payment refundPayment(UUID paymentId, UUID refundedBy, String reason) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+        if (!"COMPLETED".equals(payment.getStatus())) {
+            throw new IllegalStateException("Only completed payments can be refunded");
+        }
+
+        String oldStatus = payment.getStatus();
+        payment.setStatus("REFUNDED");
+        payment = paymentRepository.save(payment);
+
+        AuditLog auditLog = new AuditLog();
+        auditLog.setInstitutionId(payment.getInstitutionId());
+        auditLog.setUserId(refundedBy);
+        auditLog.setEntityType("Payment");
+        auditLog.setEntityId(paymentId);
+        auditLog.setEntityName("Payment Refund");
+        auditLog.setAction(AuditLog.AuditAction.UPDATE);
+        auditLog.setOldValues(Map.of("status", oldStatus, "amount", payment.getAmount().toString()));
+        auditLog.setNewValues(Map.of("status", "REFUNDED", "reason", reason != null ? reason : ""));
+        auditLogRepository.save(auditLog);
+
+        log.info("Payment refunded: {} by {} reason: {}", paymentId, refundedBy, reason);
+        return payment;
+    }
+
     private PaymentItem toPaymentItem(Payment p) {
         return PaymentItem.builder()
                 .id(p.getId().toString())

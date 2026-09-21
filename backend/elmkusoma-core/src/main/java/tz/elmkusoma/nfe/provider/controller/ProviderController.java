@@ -12,6 +12,7 @@ import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.nfe.provider.dto.ProviderRequest;
 import tz.elmkusoma.nfe.provider.dto.ProviderResponse;
+import tz.elmkusoma.nfe.provider.dto.ProviderStatsResponse;
 import tz.elmkusoma.nfe.provider.service.ProviderService;
 
 import java.util.List;
@@ -85,5 +86,13 @@ public class ProviderController {
             @PathVariable UUID id) {
         providerService.deleteProvider(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Provider deleted successfully", null));
+    }
+
+    @GetMapping("/stats")
+    @Operation(summary = "Get provider dashboard statistics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<ProviderStatsResponse>> getProviderStats(
+            @RequestHeader("X-Institution-Id") UUID institutionId) {
+        return ResponseEntity.ok(ApiResponse.success(providerService.getProviderStats(institutionId)));
     }
 }

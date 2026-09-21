@@ -146,4 +146,27 @@ public class AdministrationController {
         ImportJobResponse response = administrationService.getImportJobById(jobId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search users and entities within this institution")
+    public ResponseEntity<ApiResponse<List<GlobalSearchResult>>> orgSearch(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "all") String type,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestAttribute UUID institutionId) {
+        List<GlobalSearchResult> results = administrationService.orgSearch(institutionId, q, type, limit);
+        return ResponseEntity.ok(ApiResponse.success(results));
+    }
+
+    @GetMapping("/export")
+    @Operation(summary = "Export institution data as CSV")
+    public ResponseEntity<byte[]> exportData(
+            @RequestParam String entityType,
+            @RequestAttribute UUID institutionId) {
+        byte[] csv = administrationService.exportData(institutionId, entityType);
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/csv")
+                .header("Content-Disposition", "attachment; filename=" + entityType + "_export.csv")
+                .body(csv);
+    }
 }

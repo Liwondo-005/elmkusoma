@@ -17,8 +17,11 @@ import tz.elmkusoma.course.repository.CourseLessonRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
+import tz.elmkusoma.administration.dto.GlobalSearchResult;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -44,6 +47,7 @@ public class AdministrationService {
     private final InstitutionRepository institutionRepository;
     private final InstitutionScopeService scopeService;
     private final InstitutionAuditService auditService2;
+    private final InstitutionMembershipRepository membershipRepository;
 
     // ── System Settings ──
 
@@ -373,5 +377,64 @@ public class AdministrationService {
                 .recentActivity(recentActivity)
                 .attentionItems(attentionItems)
                 .build();
+    }
+
+    // ── Org-Scoped Search ──
+
+    @Transactional(readOnly = true)
+    public List<GlobalSearchResult> orgSearch(UUID institutionId, String query, String type, int limit) {
+        List<GlobalSearchResult> results = new ArrayList<>();
+        if (query == null || query.isBlank()) return results;
+        String q = query.toLowerCase();
+
+        if ("all".equals(type) || "users".equals(type)) {
+            userRepository.findAllByInstitutionId(institutionId).stream()
+                    .filter(u -> !Boolean.TRUE.equals(u.getIsDeleted()))
+                    .filter(u -> u.getFullName() != null && u.getFullName().toLowerCase().contains(q)
+                            || u.getEmail() != null && u.getEmail().toLowerCase().contains(q))
+                    .limit(limit)
+                    .forEach(u -> results.add(GlobalSearchResult.builder()
+                            .id(u.getId()).type("USER").title(u.getFullName())
+                            .subtitle(u.getEmail() + " — " + u.getRole())
+                            .build()));
+        }
+
+        if ("all".equals(type) || "institutions".equals(type)) {
+            institutionRepository.findById(institutionId)
+                    .filter(i -> i.getName().toLowerCase().contains(q) || i.getCode().toLowerCase().contains(q))
+                    .ifPresent(i -> results.add(GlobalSearchResult.builder()
+                            .id(i.getId()).type("INSTITUTION").title(i.getName())
+                            .subtitle(i.getCode() + " — " + i.getType())
+                            .build()));
+        }
+
+        return results.stream().limit(limit).toList();
+    }
+
+    // ── Data Export ──
+
+    @Transactional(readOnly = true)
+    public byte[] exportData(UUID institutionId, String entityType) {
+        StringBuilder csv = new StringBuilder();
+
+        switch (entityType.toLowerCase()) {
+            case "users" -> {
+                csv.append("ID,Name,Email,Role,Active,Created\n");
+                userRepository.findAllByInstitutionId(institutionId).stream()
+                        .filter(u -> !Boolean.TRUE.equals(u.getIsDeleted()))
+                        .forEach(u -> csv.append(String.format("%s,%s,%s,%s,%s,%s\n",
+                                u.getId(), u.getFullName(), u.getEmail(), u.getRole(),
+                                u.getIsActive(), u.getCreatedAt())));
+            }
+            case "memberships" -> {
+                csv.append("ID,User ID,Institution ID,Role,Active\n");
+                membershipRepository.findByInstitutionIdAndIsActiveTrue(institutionId).forEach(m ->
+                        csv.append(String.format("%s,%s,%s,%s,%s\n",
+                                m.getId(), m.getUserId(), m.getInstitutionId(), m.getRole(), m.getIsActive())));
+            }
+            default -> csv.append("Supported exports: users, memberships\n");
+        }
+
+        return csv.toString().getBytes();
     }
 }
