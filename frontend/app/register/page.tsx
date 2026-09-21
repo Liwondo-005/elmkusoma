@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -9,10 +9,8 @@ import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
-import { Eye, EyeOff, CheckCircle } from "lucide-react"
-import { Recaptcha } from "@/components/recaptcha"
-
-const RECAPTCHA_SITE_KEY = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+import { Eye, EyeOff, CheckCircle, ShieldCheck, Mail } from "lucide-react"
+import { authApi } from "@/lib/api"
 
 const roles = [
   "Student",
@@ -56,30 +54,90 @@ const registerSchema = z
 
 type RegisterValues = z.infer<typeof registerSchema>
 
+type VerificationStep = "idle" | "sending" | "sent" | "verifying" | "verified"
+
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
   const [registered, setRegistered] = useState(false)
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null)
   const { register: registerUser } = useAuth()
   const router = useRouter()
+
+  const [verificationStep, setVerificationStep] = useState<VerificationStep>("idle")
+  const [verificationCode, setVerificationCode] = useState("")
+  const [verificationMessage, setVerificationMessage] = useState("")
+  const [verificationError, setVerificationError] = useState("")
+  const [cooldown, setCooldown] = useState(0)
 
   const {
     register,
     handleSubmit,
     watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
   })
 
   const selectedRole = watch("role")
+  const emailValue = watch("email")
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
+
+  const handleSendCode = useCallback(async () => {
+    const email = getValues("email")
+    if (!email || errors.email) {
+      setVerificationError("Please enter a valid email address first.")
+      return
+    }
+    setVerificationError("")
+    setVerificationMessage("")
+    setVerificationStep("sending")
+    try {
+      await authApi.sendVerificationCode({ email })
+      setVerificationStep("sent")
+      setVerificationMessage("A 5-digit verification code has been sent to your email.")
+      setCooldown(60)
+      setVerificationCode("")
+    } catch (err: any) {
+      setVerificationStep("idle")
+      setVerificationError(err?.message || "Failed to send verification code. Please try again.")
+    }
+  }, [getValues, errors.email])
+
+  const handleVerifyCode = useCallback(async () => {
+    if (!verificationCode || verificationCode.length !== 5) {
+      setVerificationError("Please enter the 5-digit verification code.")
+      return
+    }
+    setVerificationError("")
+    setVerificationStep("verifying")
+    try {
+      const email = getValues("email")
+      await authApi.verifyCode({ email, code: verificationCode })
+      setVerificationStep("verified")
+      setVerificationMessage("Verification successful!")
+      setVerificationError("")
+    } catch (err: any) {
+      setVerificationStep("sent")
+      setVerificationError(err?.message || "Invalid verification code. Please try again.")
+    }
+  }, [verificationCode, getValues])
+
+  const handleResendCode = useCallback(async () => {
+    if (cooldown > 0) return
+    await handleSendCode()
+  }, [cooldown, handleSendCode])
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
-    if (!recaptchaToken) {
-      setServerError("Please complete the human verification.")
+    if (verificationStep !== "verified") {
+      setServerError("Please verify you are human before registering.")
       return
     }
     const result = await registerUser({
@@ -344,11 +402,92 @@ export default function RegisterPage() {
 
               {/* Human Verification */}
               <div className="rounded-xl border border-border bg-muted/40 p-4">
-                <Recaptcha
-                  siteKey={RECAPTCHA_SITE_KEY}
-                  onVerify={(token) => setRecaptchaToken(token)}
-                  onExpire={() => setRecaptchaToken(null)}
-                />
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldCheck className="size-5 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Are you a human?</span>
+                </div>
+
+                {verificationStep === "idle" && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Please verify you are human to continue with registration.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSendCode}
+                      className="w-full"
+                    >
+                      <Mail className="size-4 mr-2" />
+                      Send verification code
+                    </Button>
+                  </div>
+                )}
+
+                {verificationStep === "sending" && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Sending code...
+                  </div>
+                )}
+
+                {(verificationStep === "sent" || verificationStep === "verifying") && (
+                  <div className="space-y-3">
+                    {verificationMessage && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">{verificationMessage}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Enter the 5-digit code sent to your email:
+                    </p>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      value={verificationCode}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 5)
+                        setVerificationCode(val)
+                        setVerificationError("")
+                      }}
+                      placeholder="_ _ _ _ _"
+                      className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground text-center tracking-[0.5em] font-mono outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+                      disabled={verificationStep === "verifying"}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleVerifyCode}
+                        disabled={verificationCode.length !== 5 || verificationStep === "verifying"}
+                        className="flex-1"
+                      >
+                        {verificationStep === "verifying" ? "Verifying..." : "Verify code"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleResendCode}
+                        disabled={cooldown > 0}
+                        className="shrink-0"
+                      >
+                        {cooldown > 0 ? `Resend (${cooldown}s)` : "Resend code"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {verificationStep === "verified" && (
+                  <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle className="size-5" />
+                    Verification successful!
+                  </div>
+                )}
+
+                {verificationError && (
+                  <p className="mt-2 text-xs text-destructive">{verificationError}</p>
+                )}
               </div>
 
               <div className="space-y-4">
