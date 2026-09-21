@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth"
 import { learnerApi, type CourseDetail, type CourseModuleSummary, type CourseLesson, type Enrollment, type CourseSummary } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
 import { BookOpen, ArrowLeft, ChevronDown, ChevronRight, Loader2, AlertCircle, CheckCircle, Bookmark, BookmarkCheck } from "lucide-react"
+import { getLastAccessedLesson } from "@/lib/learner-api"
 
 export default function CourseDetailPage() {
   const { user, loading: authLoading } = useAuth()
@@ -205,7 +206,17 @@ export default function CourseDetailPage() {
                 <div className="h-full rounded-full bg-teal transition-all" style={{ width: `${enrollment.progressPercentage}%` }} />
               </div>
               <Link
-                href={`/dashboard/learner/my-learning`}
+                href={(() => {
+                  const last = getLastAccessedLesson()
+                  if (last && last.courseId === courseId) {
+                    return `/dashboard/learner/courses/${courseId}/lessons/${last.lessonId}`
+                  }
+                  if (modules && modules.length > 0) {
+                    const firstModule = modules.sort((a, b) => a.sortOrder - b.sortOrder)[0]
+                    return `/dashboard/learner/courses/${courseId}/lessons?moduleId=${firstModule.id}`
+                  }
+                  return `/dashboard/learner/my-learning`
+                })()}
                 className="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-medium text-white hover:bg-teal/90"
               >
                 Continue Learning
@@ -259,12 +270,26 @@ export default function CourseDetailPage() {
                 {expandedModules.has(module.id) && moduleLessons[module.id] && (
                   <div className="border-t border-border bg-muted/20">
                     {moduleLessons[module.id].sort((a, b) => a.sortOrder - b.sortOrder).map((lesson) => (
-                      <div key={lesson.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0">
+                      <Link
+                        key={lesson.id}
+                        href={enrollment ? `/dashboard/learner/courses/${courseId}/lessons/${lesson.id}` : "#"}
+                        className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 transition-colors ${
+                          enrollment ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"
+                        }`}
+                      >
                         <div className="flex size-6 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
                           {lesson.sortOrder}
                         </div>
                         <p className="text-sm text-foreground">{lesson.title}</p>
-                      </div>
+                        {lesson.contentType && (
+                          <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {lesson.contentType}
+                          </span>
+                        )}
+                        {enrollment && (
+                          <ChevronRight className="size-3 text-muted-foreground" />
+                        )}
+                      </Link>
                     ))}
                     {moduleLessons[module.id].length === 0 && (
                       <p className="px-4 py-3 text-sm text-muted-foreground">No lessons in this module yet.</p>

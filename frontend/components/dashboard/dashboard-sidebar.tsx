@@ -202,6 +202,7 @@ const learnerNavSections: LearnerNavSection[] = [
   {
     group: "MY PROGRESS",
     items: [
+      { label: "Goals", href: "/dashboard/learner/goals", icon: Target },
       { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
       { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
     ],
