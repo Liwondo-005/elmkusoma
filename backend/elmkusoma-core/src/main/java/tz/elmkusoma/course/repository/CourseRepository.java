@@ -63,7 +63,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
     @Query("SELECT c FROM Course c WHERE c.isDeleted = false AND c.isPublished = true AND LOWER(c.category) = LOWER(:category) ORDER BY c.createdAt DESC")
     List<Course> findAllPublishedByCategoryAndIsDeletedFalse(@Param("category") String category);
 
-    Page<Course> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
+    Page<Course> findByIsPublishedAndIsDeletedFalse(Boolean isPublished, Pageable pageable);
 
     @Query("SELECT c FROM Course c WHERE c.isDeleted = false AND c.isPublished = true AND c.institutionId = :institutionId ORDER BY c.createdAt DESC")
     Page<Course> findByInstitutionIdAndStatusAndIsDeletedFalse(@Param("institutionId") UUID institutionId, @Param("status") String status, Pageable pageable);

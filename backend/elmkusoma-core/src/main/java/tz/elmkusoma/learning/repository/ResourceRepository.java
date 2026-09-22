@@ -37,7 +37,7 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
 
     Page<Resource> findByIsDeletedFalse(Pageable pageable);
 
-    Page<Resource> findByTitleContainingIgnoreCaseOrSubjectContainingIgnoreCase(String title, String subject, Pageable pageable);
+    Page<Resource> findByTitleContainingIgnoreCase(String title, Pageable pageable);
 
     @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.institutionId = :institutionId AND (LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(r.description) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<Resource> searchByInstitutionAndQuery(@Param("institutionId") UUID institutionId, @Param("query") String query, Pageable pageable);
