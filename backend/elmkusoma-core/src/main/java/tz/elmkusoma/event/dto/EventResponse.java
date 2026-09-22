@@ -43,7 +43,7 @@ public class EventResponse {
     private String agenda;
     private LocalDateTime cancelledAt;
     private String cancellationReason;
-    private LocalDateTime rescheduledFrom;
+    private UUID rescheduledFrom;
     private String recordingUrl;
     private String recordingStatus;
     private String providerId;

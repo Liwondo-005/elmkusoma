@@ -127,7 +127,7 @@ public class Event extends BaseEntity {
     private String cancellationReason;
 
     @Column(name = "rescheduled_from")
-    private java.time.LocalDateTime rescheduledFrom;
+    private UUID rescheduledFrom;
 
     @Column(name = "access_level", length = 30)
     private String accessLevel;

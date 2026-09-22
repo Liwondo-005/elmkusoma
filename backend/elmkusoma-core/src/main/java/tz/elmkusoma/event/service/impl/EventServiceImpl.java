@@ -180,6 +180,7 @@ public class EventServiceImpl implements EventService {
         if (request.getPrerequisites() != null) event.setPrerequisites(request.getPrerequisites());
         if (request.getLearningOutcomes() != null) event.setLearningOutcomes(request.getLearningOutcomes());
         if (request.getAgenda() != null) event.setAgenda(request.getAgenda());
+        if (request.getRescheduledFrom() != null) event.setRescheduledFrom(request.getRescheduledFrom());
 
         event = eventRepository.save(event);
         log.info("Event updated: id={}, institutionId={}", event.getId(), event.getInstitutionId());

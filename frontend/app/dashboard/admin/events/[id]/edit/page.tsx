@@ -50,6 +50,7 @@ interface EventFormData {
   prerequisites: string
   learningOutcomes: string
   agenda: string
+  rescheduledFrom: string
 }
 
 interface EventDetail {
@@ -105,6 +106,7 @@ export default function EditEventPage() {
     prerequisites: "",
     learningOutcomes: "",
     agenda: "",
+    rescheduledFrom: "",
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -142,6 +144,7 @@ export default function EditEventPage() {
         prerequisites: data.prerequisites || "",
         learningOutcomes: data.learningOutcomes || "",
         agenda: data.agenda || "",
+        rescheduledFrom: data.rescheduledFrom || "",
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load event")
@@ -190,6 +193,7 @@ export default function EditEventPage() {
         prerequisites: form.prerequisites || undefined,
         learningOutcomes: form.learningOutcomes || undefined,
         agenda: form.agenda || undefined,
+        rescheduledFrom: form.rescheduledFrom || undefined,
       })
       router.push("/dashboard/admin/events")
     } catch (err) {
@@ -589,6 +593,20 @@ export default function EditEventPage() {
             className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
             aria-label={t("admin.form.agendaLabel")}
           />
+        </div>
+
+        {/* Rescheduled From */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.rescheduledFromLabel")}</label>
+          <input
+            type="text"
+            value={form.rescheduledFrom}
+            onChange={(e) => updateField("rescheduledFrom", e.target.value)}
+            placeholder={t("admin.form.rescheduledFromPlaceholder")}
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            aria-label={t("admin.form.rescheduledFromLabel")}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">Event ID this was rescheduled from</p>
         </div>
 
         {/* Recording Toggle */}

@@ -1154,7 +1154,9 @@
         "outcomesLabel": "Learning Outcomes",
         "outcomesPlaceholder": "What learners will gain from this event",
         "agendaLabel": "Agenda",
-        "agendaPlaceholder": "Event schedule or agenda items"
+        "agendaPlaceholder": "Event schedule or agenda items",
+        "rescheduledFromLabel": "Rescheduled From",
+        "rescheduledFromPlaceholder": "Enter Event ID this was rescheduled from"
       },
       "types": {
         "LECTURE": "Lecture",
