@@ -102,6 +102,33 @@ public class Event extends BaseEntity {
     @Column(name = "presenter_name", length = 200)
     private String presenterName;
 
+    @Column(name = "event_format", length = 30)
+    private String eventFormat;
+
+    @Column(name = "difficulty", length = 30)
+    private String difficulty;
+
+    @Column(name = "target_audience", length = 100)
+    private String targetAudience;
+
+    @Column(name = "prerequisites", columnDefinition = "TEXT")
+    private String prerequisites;
+
+    @Column(name = "learning_outcomes", columnDefinition = "TEXT")
+    private String learningOutcomes;
+
+    @Column(name = "agenda", columnDefinition = "TEXT")
+    private String agenda;
+
+    @Column(name = "cancelled_at")
+    private java.time.LocalDateTime cancelledAt;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "rescheduled_from")
+    private java.time.LocalDateTime rescheduledFrom;
+
     @Column(name = "access_level", length = 30)
     private String accessLevel;
 

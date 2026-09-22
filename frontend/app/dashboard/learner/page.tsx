@@ -15,6 +15,7 @@ import type {
   DayItem,
 } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
+import { useTranslations } from "next-intl"
 import {
   Sparkles, Clock, Play, Video, BookOpen, BarChart3, FolderOpen,
   Award, CalendarDays, ChevronRight, CheckCircle2, AlertCircle,
@@ -32,6 +33,8 @@ export default function LearnerDashboardPage() {
   const [continueState, setContinueState] = useState<ReturnType<typeof getLastAccessedLesson>>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const t = useTranslations("dashboard")
+  const tc = useTranslations("common")
 
   useEffect(() => {
     if (!user) return
@@ -72,7 +75,7 @@ export default function LearnerDashboardPage() {
 
   if (!isHE) {
     return (
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6" role="main" aria-label={t("myLearningWorld")}>
         {error && (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
@@ -80,14 +83,14 @@ export default function LearnerDashboardPage() {
             <button onClick={loadDashboard} className="ml-auto text-xs underline">Retry</button>
           </div>
         )}
-        <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs">
-          <LearnerHeader firstName={firstName} subtitle="My Learning World" />
+        <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
+          <LearnerHeader firstName={firstName} subtitle={t("myLearningWorld")} />
         </div>
         {continueState && (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("continueLearning")}>
             <div className="flex items-center gap-2 mb-2">
               <Play className="size-4 text-emerald-600" />
-              <p className="text-xs font-medium text-muted-foreground">Continue Learning</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("continueLearning")}</p>
             </div>
             <p className="font-semibold text-foreground text-sm line-clamp-1">{continueState.lessonTitle}</p>
             <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{continueState.courseTitle}</p>
@@ -96,11 +99,11 @@ export default function LearnerDashboardPage() {
             </Link>
           </div>
         )}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("myCourses")}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <BookOpen className="size-4 text-primary" />
-              <h3 className="font-semibold text-foreground">My Courses</h3>
+              <h3 className="font-semibold text-foreground">{t("myCourses")}</h3>
             </div>
             <Link href="/dashboard/learner/courses" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
               Browse More <ChevronRight className="size-3" />
@@ -120,7 +123,7 @@ export default function LearnerDashboardPage() {
           )}
         </div>
         {bookmarks.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label="Saved Items">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <BookmarkIcon className="size-4 text-rose-600" />
@@ -145,19 +148,19 @@ export default function LearnerDashboardPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Link href="/dashboard/learner/resources" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-xs hover:bg-muted/50">
             <Library className="size-5 text-primary" />
-            <span className="text-sm font-medium">Resources</span>
+            <span className="text-sm font-medium">{tc("resources")}</span>
           </Link>
           <Link href="/dashboard/learner/search" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-xs hover:bg-muted/50">
             <Search className="size-5 text-amber-600" />
-            <span className="text-sm font-medium">Search</span>
+            <span className="text-sm font-medium">{tc("search")}</span>
           </Link>
           <Link href="/dashboard/learner/certificates" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-xs hover:bg-muted/50">
             <Award className="size-5 text-emerald-600" />
-            <span className="text-sm font-medium">Certificates</span>
+            <span className="text-sm font-medium">{tc("certificates")}</span>
           </Link>
           <Link href="/dashboard/learner/replays" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-xs hover:bg-muted/50">
             <Film className="size-5 text-red-600" />
-            <span className="text-sm font-medium">Replays</span>
+            <span className="text-sm font-medium">{t("replays")}</span>
           </Link>
         </div>
       </div>
@@ -165,7 +168,7 @@ export default function LearnerDashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6" role="main" aria-label={t("myLearningWorld")}>
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -175,7 +178,7 @@ export default function LearnerDashboardPage() {
       )}
 
       {/* Welcome / Academic Context */}
-      <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs">
+      <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
         <LearnerHeader
           firstName={firstName}
           subtitle={dash.academicContext || "My Learning World"}
@@ -205,11 +208,11 @@ export default function LearnerDashboardPage() {
       </div>
 
       {/* What's Next */}
-      <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-teal/5 p-5 shadow-xs">
+      <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-teal/5 p-5 shadow-xs" role="region" aria-label={t("whatsNext")}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">What&apos;s Next?</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("whatsNext")}</h3>
           </div>
           {dash.whatsNext?.url && (
             <Link href={dash.whatsNext.url} className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
@@ -232,24 +235,24 @@ export default function LearnerDashboardPage() {
               )}
             </div>
             {!dash.whatsNext.url && (
-              <p className="mt-2 text-xs text-muted-foreground italic">No action required right now.</p>
+              <p className="mt-2 text-xs text-muted-foreground italic">{t("noActionRequired")}</p>
             )}
           </div>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">You&apos;re all caught up!</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("allCaughtUp")}</p>
         )}
       </div>
 
       {/* Today's Tasks */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("todaysTasks")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Clock className="size-4 text-amber-600" />
-            <h3 className="text-sm font-semibold text-foreground">Today&apos;s Tasks</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("todaysTasks")}</h3>
           </div>
           {dash.today && dash.today.totalTasks > 0 && (
             <span className="text-xs text-muted-foreground">
-              {dash.today.completedTasks}/{dash.today.totalTasks} done
+              {dash.today.completedTasks}/{dash.today.totalTasks} {t("done")}
             </span>
           )}
         </div>
@@ -261,7 +264,7 @@ export default function LearnerDashboardPage() {
           </div>
         ) : (
           <div className="py-4 text-center">
-            <p className="text-sm text-muted-foreground">No tasks for today</p>
+            <p className="text-sm text-muted-foreground">{t("noTasksForToday")}</p>
             <Link href="/dashboard/learner/courses" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
               Browse Courses <ChevronRight className="size-3" />
             </Link>
@@ -275,7 +278,7 @@ export default function LearnerDashboardPage() {
                 style={{ width: `${(dash.today.completedTasks / dash.today.totalTasks) * 100}%` }}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground">{dash.today.pendingTasks} pending</span>
+            <span className="text-[10px] text-muted-foreground">{dash.today.pendingTasks} {t("pending")}</span>
           </div>
         )}
       </div>
@@ -283,10 +286,10 @@ export default function LearnerDashboardPage() {
       {/* Continue Learning + Live Campus */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Continue Learning */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("continueLearning")}>
           <div className="flex items-center gap-2 mb-2">
             <Play className="size-4 text-emerald-600" />
-            <p className="text-xs font-medium text-muted-foreground">Continue Learning</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("continueLearning")}</p>
           </div>
           {dash.continueLearning && dash.continueLearning.lastCourse ? (
             <div>
@@ -312,7 +315,7 @@ export default function LearnerDashboardPage() {
             </div>
           ) : (
             <div>
-              <p className="text-sm text-muted-foreground">No course in progress</p>
+              <p className="text-sm text-muted-foreground">{t("noCourseInProgress")}</p>
               <Link href="/dashboard/learner/courses" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
                 Start Learning <ChevronRight className="size-3" />
               </Link>
@@ -321,15 +324,15 @@ export default function LearnerDashboardPage() {
         </div>
 
         {/* Live Campus */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("liveCampus")}>
           <div className="flex items-center gap-2 mb-2">
             <Video className="size-4 text-red-600" />
-            <p className="text-xs font-medium text-muted-foreground">Live Campus</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("liveCampus")}</p>
           </div>
           {dash.liveCampus && dash.liveCampus.liveNow > 0 ? (
             <div>
               <p className="text-2xl font-extrabold text-red-600">{dash.liveCampus.liveNow}</p>
-              <p className="text-xs text-muted-foreground">sessions live now</p>
+              <p className="text-xs text-muted-foreground">{t("sessionsLiveNow")}</p>
               <div className="mt-2 space-y-1">
                 {dash.liveCampus.sessions.filter(s => s.status === "LIVE").slice(0, 2).map((s) => (
                   <div key={s.id} className="flex items-center gap-1.5 text-xs">
@@ -345,7 +348,7 @@ export default function LearnerDashboardPage() {
           ) : dash.liveCampus && dash.liveCampus.upcomingToday > 0 ? (
             <div>
               <p className="text-2xl font-extrabold text-foreground">{dash.liveCampus.upcomingToday}</p>
-              <p className="text-xs text-muted-foreground">upcoming today</p>
+              <p className="text-xs text-muted-foreground">{t("upcomingToday")}</p>
               <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
                 View Schedule <ChevronRight className="size-3" />
               </Link>
@@ -353,7 +356,7 @@ export default function LearnerDashboardPage() {
           ) : (
             <div>
               <p className="text-2xl font-extrabold text-foreground">0</p>
-              <p className="text-xs text-muted-foreground">no live sessions right now</p>
+              <p className="text-xs text-muted-foreground">{t("noLiveSessions")}</p>
               <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
                 Browse Classes <ChevronRight className="size-3" />
               </Link>
@@ -362,31 +365,31 @@ export default function LearnerDashboardPage() {
         </div>
 
         {/* Academic Load */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("academicLoad")}>
           <div className="flex items-center gap-2 mb-2">
             <BarChart3 className="size-4 text-teal-600" />
-            <p className="text-xs font-medium text-muted-foreground">Academic Load</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("academicLoad")}</p>
           </div>
           {dash.academicLoad ? (
             <div className="space-y-1.5">
               {dash.academicLoad.cumulativeGpa != null && (
                 <p className="text-sm">
-                  <span className="text-muted-foreground">Cumulative GPA: </span>
+                  <span className="text-muted-foreground">{t("cumulativeGpa")}: </span>
                   <span className="font-bold text-foreground">{dash.academicLoad.cumulativeGpa.toFixed(2)}</span>
                 </p>
               )}
               {dash.academicLoad.currentSemesterGpa != null && (
                 <p className="text-sm">
-                  <span className="text-muted-foreground">Semester GPA: </span>
+                  <span className="text-muted-foreground">{t("semesterGpa")}: </span>
                   <span className="font-bold text-foreground">{dash.academicLoad.currentSemesterGpa.toFixed(2)}</span>
                 </p>
               )}
               <p className="text-sm">
-                <span className="text-muted-foreground">Enrolled: </span>
+                <span className="text-muted-foreground">{t("enrolled")}: </span>
                 <span className="font-bold text-foreground">{dash.academicLoad.enrolledCourses}</span>
               </p>
               <p className="text-sm">
-                <span className="text-muted-foreground">Credits: </span>
+                <span className="text-muted-foreground">{t("credits")}: </span>
                 <span className="font-bold text-foreground">{dash.academicLoad.completedCreditHours}/{dash.academicLoad.totalCreditHours}</span>
               </p>
               <Link href="/dashboard/learner/academic" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
@@ -405,11 +408,11 @@ export default function LearnerDashboardPage() {
       </div>
 
       {/* My Courses */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("myCourses")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <BookOpen className="size-4 text-primary" />
-            <h3 className="font-semibold text-foreground">My Courses</h3>
+              <h3 className="font-semibold text-foreground">{t("myCourses")}</h3>
           </div>
           <Link href="/dashboard/learner/courses" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
             Browse More <ChevronRight className="size-3" />
@@ -438,11 +441,11 @@ export default function LearnerDashboardPage() {
       {/* Research + Projects */}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Research */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("research")}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <FlaskConical className="size-4 text-violet-600" />
-              <h3 className="font-semibold text-foreground">Research</h3>
+              <h3 className="font-semibold text-foreground">{t("research")}</h3>
             </div>
             <Link href="/dashboard/learner/research" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
               View All <ChevronRight className="size-3" />
@@ -486,11 +489,11 @@ export default function LearnerDashboardPage() {
         </div>
 
         {/* Projects */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("projects")}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Layers className="size-4 text-amber-600" />
-              <h3 className="font-semibold text-foreground">Projects</h3>
+              <h3 className="font-semibold text-foreground">{t("projects")}</h3>
             </div>
             <Link href="/dashboard/learner/projects" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
               View All <ChevronRight className="size-3" />
@@ -538,11 +541,11 @@ export default function LearnerDashboardPage() {
       </div>
 
       {/* My Progress */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("myProgress")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <TrendingUp className="size-4 text-teal-600" />
-            <h3 className="font-semibold text-foreground">My Progress</h3>
+            <h3 className="font-semibold text-foreground">{t("myProgress")}</h3>
           </div>
           <Link href="/dashboard/learner/progress" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
             View Details <ChevronRight className="size-3" />
@@ -552,22 +555,22 @@ export default function LearnerDashboardPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {dash.myProgress.cumulativeGpa != null && (
               <div className="rounded-xl border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">Cumulative GPA</p>
+                <p className="text-xs text-muted-foreground">{t("cumulativeGpa")}</p>
                 <p className="text-lg font-bold text-foreground">{dash.myProgress.cumulativeGpa.toFixed(2)}</p>
               </div>
             )}
             {dash.myProgress.semesterGpa != null && (
               <div className="rounded-xl border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">Semester GPA</p>
+                <p className="text-xs text-muted-foreground">{t("semesterGpa")}</p>
                 <p className="text-lg font-bold text-foreground">{dash.myProgress.semesterGpa.toFixed(2)}</p>
               </div>
             )}
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">Competencies</p>
+              <p className="text-xs text-muted-foreground">{t("competencies")}</p>
               <p className="text-lg font-bold text-foreground">{dash.myProgress.competenciesCompleted}/{dash.myProgress.competenciesTotal}</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">Projects</p>
+              <p className="text-xs text-muted-foreground">{t("projects")}</p>
               <p className="text-lg font-bold text-foreground">{dash.myProgress.projectsCompleted}/{dash.myProgress.projectsTotal}</p>
             </div>
             {dash.myProgress.academicStanding && (
@@ -588,11 +591,11 @@ export default function LearnerDashboardPage() {
       </div>
 
       {/* My Evidence */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("myEvidence")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <FileText className="size-4 text-rose-600" />
-            <h3 className="font-semibold text-foreground">My Evidence</h3>
+            <h3 className="font-semibold text-foreground">{t("myEvidence")}</h3>
           </div>
           <Link href="/dashboard/learner/portfolio" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
             View Portfolio <ChevronRight className="size-3" />
@@ -601,23 +604,23 @@ export default function LearnerDashboardPage() {
         {dash.myEvidence ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">Portfolio Items</p>
+              <p className="text-xs text-muted-foreground">{t("portfolioItems")}</p>
               <p className="text-lg font-bold text-foreground">{dash.myEvidence.portfolioItems}</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">Demonstrations</p>
+              <p className="text-xs text-muted-foreground">{t("demonstrations")}</p>
               <p className="text-lg font-bold text-foreground">{dash.myEvidence.demonstrations}</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">Project Submissions</p>
+              <p className="text-xs text-muted-foreground">{t("projectSubmissions")}</p>
               <p className="text-lg font-bold text-foreground">{dash.myEvidence.projectSubmissions}</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">Logbook Entries</p>
+              <p className="text-xs text-muted-foreground">{t("logbookEntries")}</p>
               <p className="text-lg font-bold text-foreground">{dash.myEvidence.logbookEntries}</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">Competencies Recorded</p>
+              <p className="text-xs text-muted-foreground">{t("competenciesRecorded")}</p>
               <p className="text-lg font-bold text-foreground">{dash.myEvidence.competenciesRecorded}</p>
             </div>
           </div>
@@ -632,11 +635,11 @@ export default function LearnerDashboardPage() {
       </div>
 
       {/* Career World */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("careerWorld")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Briefcase className="size-4 text-blue-600" />
-            <h3 className="font-semibold text-foreground">Career World</h3>
+            <h3 className="font-semibold text-foreground">{t("careerWorld")}</h3>
           </div>
           <Link href="/dashboard/learner/career" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
             {dash.careerWorld?.hasProfile ? "View Profile" : "Create Profile"} <ChevronRight className="size-3" />
@@ -678,11 +681,11 @@ export default function LearnerDashboardPage() {
       </div>
 
       {/* Study Planner */}
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("studyPlanner")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Lightbulb className="size-4 text-amber-500" />
-            <h3 className="font-semibold text-foreground">Study Planner</h3>
+            <h3 className="font-semibold text-foreground">{t("studyPlanner")}</h3>
           </div>
           <Link href="/dashboard/learner/study-planner" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
             Manage Tasks <ChevronRight className="size-3" />
@@ -713,10 +716,10 @@ export default function LearnerDashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Today */}
           {dash.dayWeekView.todayItems.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("today")}>
               <div className="flex items-center gap-2 mb-3">
                 <CalendarDays className="size-4 text-primary" />
-                <h3 className="font-semibold text-foreground">Today</h3>
+                <h3 className="font-semibold text-foreground">{t("today")}</h3>
               </div>
               <div className="space-y-2">
                 {dash.dayWeekView.todayItems.slice(0, 5).map((item, idx) => (
@@ -727,10 +730,10 @@ export default function LearnerDashboardPage() {
           )}
           {/* This Week */}
           {dash.dayWeekView.weekItems.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("thisWeek")}>
               <div className="flex items-center gap-2 mb-3">
                 <CalendarDays className="size-4 text-blue-600" />
-                <h3 className="font-semibold text-foreground">This Week</h3>
+                <h3 className="font-semibold text-foreground">{t("thisWeek")}</h3>
               </div>
               <div className="space-y-2">
                 {dash.dayWeekView.weekItems.slice(0, 5).map((item, idx) => (
@@ -748,9 +751,9 @@ export default function LearnerDashboardPage() {
           <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
             <BookOpen className="size-8 text-primary/40" />
           </div>
-          <h3 className="text-lg font-semibold text-foreground">Welcome to your learning world</h3>
+          <h3 className="text-lg font-semibold text-foreground">{t("welcomeToLearningWorld")}</h3>
           <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            Start exploring courses, enroll in what interests you, and begin your learning journey.
+            {t("welcomeDescription")}
           </p>
           <Link
             href="/dashboard/learner/courses"

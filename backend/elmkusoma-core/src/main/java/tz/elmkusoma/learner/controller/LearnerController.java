@@ -853,6 +853,25 @@ public class LearnerController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    // ── Goals ────────────────────────────────────────────────────────
+
+    @GetMapping("/me/goals")
+    @Operation(summary = "List learning goals")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>>
+        getGoals(@RequestAttribute("userId") UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(List.of()));
+    }
+
+    @PostMapping("/me/goals")
+    @Operation(summary = "Create a learning goal")
+    public ResponseEntity<ApiResponse<Map<String, Object>>>
+        createGoal(@RequestAttribute("userId") UUID userId, @RequestBody Map<String, Object> body) {
+        Map<String, Object> goal = new java.util.HashMap<>(body);
+        goal.put("id", UUID.randomUUID().toString());
+        goal.put("userId", userId.toString());
+        return ResponseEntity.status(201).body(ApiResponse.success(goal));
+    }
+
     // ── Mapping Helpers ──────────────────────────────────────────────────
 
     private CourseSummaryResponse toCourseSummaryResponse(Course c) {
