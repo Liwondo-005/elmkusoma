@@ -56,7 +56,8 @@
     "allLevels": "All Levels",
     "allCategories": "All Categories",
     "allDifficulties": "All Difficulties",
-    "review": "Review"
+    "review": "Review",
+    "progress": "Progress"
   },
   "nav": {
     "myWorld": "My World",
@@ -1636,7 +1637,25 @@
     "simulation": "Simulation",
     "demonstration": "Demonstration",
     "professional": "Professional",
-    "career": "Career",
+    "career": {
+      "subtitle": "Career & Professional World",
+      "myProfile": "My Profile",
+      "myProfileDesc": "Build your professional profile",
+      "objective": "Career Objective",
+      "objectivePlaceholder": "e.g. Become a software engineer",
+      "targetIndustry": "Target Industry",
+      "targetIndustryPlaceholder": "e.g. Technology",
+      "targetRole": "Target Role",
+      "targetRolePlaceholder": "e.g. Full Stack Developer",
+      "skills": "Key Skills",
+      "skillsPlaceholder": "e.g. JavaScript, Python, React",
+      "certifications": "Certifications",
+      "certificationsPlaceholder": "e.g. AWS Certified, Google Cloud",
+      "industries": "Industries",
+      "industriesDesc": "Explore career opportunities across industries",
+      "professionalSkills": "Professional Skills",
+      "professionalSkillsDesc": "Build your professional skill set"
+    },
     "portfolio": "Portfolio",
     "evidence": "Evidence",
     "certificate": "Certificate",

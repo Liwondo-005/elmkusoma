@@ -243,7 +243,7 @@ export default function CollaborationsPage() {
                     {researchTeams}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {t("research")}
+                    Research Teams
                   </p>
                 </div>
               </div>

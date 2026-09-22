@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 
 import { Video, Search, Film, FileText, Music, Image, Loader2, AlertCircle, Play, Clock, HardDrive, Eye, Tag, Calendar } from "lucide-react"
-import { appFetch } from "@/lib/fetch"
+import { mediaApi } from "@/lib/api"
 
 interface MediaAsset {
   id: string
@@ -77,7 +77,7 @@ export default function LearnerMediaLibraryPage() {
       try {
         setLoading(true)
         setError(null)
-        const data = await appFetch<MediaAsset[]>("/api/v1/media")
+        const data = await mediaApi.list()
         setMedia(data || [])
       } catch (err: any) {
         setError(err.message || tc("error.load"))

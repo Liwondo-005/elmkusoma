@@ -2,16 +2,31 @@
 
 import { useState } from "react"
 import { useAuth } from "@/lib/auth"
+import { learnerApi } from "@/lib/learner-api"
 import { Camera } from "lucide-react"
 
 export default function DashboardProfilePage() {
   const { user } = useAuth()
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setSaving(true)
+    setError(null)
+    const form = e.target as HTMLFormElement
+    const bio = (form.elements.namedItem("bio") as HTMLTextAreaElement)?.value || ""
+    learnerApi
+      .updateProfile({ bio: bio || undefined })
+      .then(() => {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      })
+      .catch((err: any) => {
+        setError(err?.message || "Failed to save profile")
+      })
+      .finally(() => setSaving(false))
   }
 
   return (

@@ -254,6 +254,7 @@ export interface SearchFilters {
   dateTo?: string
   sort?: string
   sortBy?: string
+  resourceType?: string
 }
 
 export interface SearchResult {
@@ -452,12 +453,12 @@ export const learnerApi = {
     if (params?.dateFrom) searchParams.set("dateFrom", params.dateFrom)
     if (params?.dateTo) searchParams.set("dateTo", params.dateTo)
     const qs = searchParams.toString()
-    return learnerFetch<ReplayItem[]>(`/v1/learner/replays${qs ? `?${qs}` : ""}`)
+    return learnerFetch<ReplayItem[]>(`/v1/replays${qs ? `?${qs}` : ""}`)
   },
-  getReplay: (id: string) => learnerFetch<ReplayDetail>(`/v1/learner/replays/${id}`),
-  getReplayProgress: (id: string) => learnerFetch<ReplayProgress>(`/v1/learner/replays/${id}/progress`),
+  getReplay: (id: string) => learnerFetch<ReplayDetail>(`/v1/replays/${id}`),
+  getReplayProgress: (id: string) => learnerFetch<ReplayProgress>(`/v1/replays/${id}/progress`),
   updateReplayProgress: (id: string, positionSeconds: number, completed?: boolean) =>
-    learnerFetch<ReplayProgress>(`/v1/learner/replays/${id}/progress`, {
+    learnerFetch<ReplayProgress>(`/v1/replays/${id}/progress`, {
       method: "PUT",
       body: JSON.stringify({ positionSeconds, completed }),
     }),
