@@ -1195,6 +1195,53 @@ export const adminApi = {
     request<void>(`/v1/admin/people/invitations/${invitationId}?institutionId=${institutionId}`, {
       method: "DELETE",
     }),
+
+  // Events
+  getEvents: (institutionId: string) =>
+    request<any[]>(`/v1/events?institutionId=${institutionId}`),
+
+  getEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}`),
+
+  createEvent: (data: Record<string, unknown>) =>
+    request<any>(`/v1/events`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateEvent: (eventId: string, data: Record<string, unknown>) =>
+    request<any>(`/v1/events/${eventId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteEvent: (eventId: string) =>
+    request<void>(`/v1/events/${eventId}`, {
+      method: "DELETE",
+    }),
+
+  publishEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/publish`, {
+      method: "POST",
+    }),
+
+  cancelEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/cancel`, {
+      method: "POST",
+    }),
+
+  startLiveEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/start-live`, {
+      method: "POST",
+    }),
+
+  endLiveEvent: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/end-live`, {
+      method: "POST",
+    }),
+
+  getEventSummary: (eventId: string) =>
+    request<any>(`/v1/events/${eventId}/summary`),
 }
 
 // ---------------------------------------------------------------------------
@@ -1626,7 +1673,7 @@ export const gradingApi = {
 export const mediaApi = {
   upload: async (file: File) => {
     const token = localStorage.getItem("elmkusoma_access_token")
-    const instId = localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
+    const instId = localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
     const formData = new FormData()
     formData.append("file", file)
     const res = await fetch("/api/v1/media/upload", {
@@ -1638,7 +1685,7 @@ export const mediaApi = {
     return res.json()
   },
   list: (institutionId?: string) => {
-    const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
+    const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
     return request<any[]>(`/api/v1/media?institutionId=${instId}`)
   },
   getDownloadUrl: (mediaId: string) => request<any>(`/api/v1/media/${mediaId}/download-url`),

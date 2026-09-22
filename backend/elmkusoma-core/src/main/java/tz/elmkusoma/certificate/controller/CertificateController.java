@@ -101,6 +101,7 @@ public class CertificateController {
 
     @GetMapping("/verify/{verificationCode}")
     @Operation(summary = "Verify a certificate (public endpoint)")
+    @PreAuthorize("permitAll")
     public ResponseEntity<ApiResponse<CertificateVerificationResponse>> verifyCertificate(
             @PathVariable String verificationCode) {
         CertificateVerificationResponse response = certificateService.verifyCertificate(verificationCode);
@@ -109,7 +110,7 @@ public class CertificateController {
 
     @GetMapping("/{certificateId}")
     @Operation(summary = "Get a specific certificate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<CertificateResponse>> getCertificateById(
             @PathVariable UUID certificateId,
             @RequestAttribute("institutionId") UUID institutionId) {
@@ -119,7 +120,7 @@ public class CertificateController {
 
     @GetMapping
     @Operation(summary = "List certificates by student or institution")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<CertificateResponse>>> getCertificates(
             @RequestParam(required = false) UUID studentId,
             @RequestAttribute("institutionId") UUID institutionId) {

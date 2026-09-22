@@ -1,147 +1,299 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { learnerApi, type EventItem } from "@/lib/learner-api"
-import { CalendarDays, Clock, MapPin, ArrowLeft, Loader2, CheckCircle, CalendarOff, ExternalLink } from "lucide-react"
+import { EmptyState, LoadingState } from "@/components/learner/shared"
+import {
+  CalendarDays,
+  Clock,
+  MapPin,
+  ArrowLeft,
+  CheckCircle,
+  CalendarOff,
+  ExternalLink,
+  AlertCircle,
+  RefreshCw,
+  Play,
+  Video,
+  CalendarPlus,
+} from "lucide-react"
+
+type Tab = "upcoming" | "past" | "replays"
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
+  return new Date(d).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
 }
 
 function formatTime(d: string) {
-  return new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+  return new Date(d).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 function getTypeColor(type: string) {
   const m: Record<string, string> = {
-    SEMINAR: "bg-blue-100 text-blue-800", WORKSHOP: "bg-green-100 text-green-800",
-    WEBINAR: "bg-purple-100 text-purple-800", TRAINING: "bg-orange-100 text-orange-800",
-    CONFERENCE: "bg-red-100 text-red-800", LECTURE: "bg-teal-100 text-teal-800",
+    SEMINAR: "bg-blue-500/10 text-blue-600",
+    WORKSHOP: "bg-green-500/10 text-green-600",
+    WEBINAR: "bg-purple-500/10 text-purple-600",
+    TRAINING: "bg-orange-500/10 text-orange-600",
+    CONFERENCE: "bg-red-500/10 text-red-600",
+    LECTURE: "bg-teal-500/10 text-teal-600",
   }
-  return m[type] || "bg-gray-100 text-gray-800"
+  return m[type] || "bg-muted text-muted-foreground"
+}
+
+function getEventStatus(event: EventItem): "upcoming" | "past" {
+  const now = new Date()
+  const end = event.endsAt
+    ? new Date(event.endsAt)
+    : new Date(new Date(event.startsAt).getTime() + (event.durationMinutes || 60) * 60000)
+  if (now > end || event.status === "COMPLETED") return "past"
+  return "upcoming"
 }
 
 export default function RegisteredEventsPage() {
+  const t = useTranslations("events")
+  const tc = useTranslations("common")
+
+  const [activeTab, setActiveTab] = useState<Tab>("upcoming")
   const [upcoming, setUpcoming] = useState<EventItem[]>([])
   const [past, setPast] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
 
-  useEffect(() => {
-    loadRegistrations()
-  }, [])
-
-  async function loadRegistrations() {
+  const loadData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const [up, pa] = await Promise.all([
-        learnerApi.getRegisteredEvents(),
-        learnerApi.getRegisteredPastEvents(),
+        learnerApi.getRegisteredEvents().catch(() => []),
+        learnerApi.getRegisteredPastEvents().catch(() => []),
       ])
       setUpcoming(up)
       setPast(pa)
-    } catch (e: any) {
-      setError(e.message || "Failed to load registrations")
+    } catch {
+      setError(t("error.loadFailed"))
     } finally {
       setLoading(false)
     }
+  }, [t])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData, retryKey])
+
+  const replayEvents = past.filter((e) => e.hasRecording)
+
+  const tabCounts: Record<Tab, number> = {
+    upcoming: upcoming.length,
+    past: past.length,
+    replays: replayEvents.length,
   }
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "upcoming", label: t("tabs.upcoming") },
+    { key: "past", label: t("tabs.past") },
+    { key: "replays", label: t("tabs.replays") },
+  ]
+
+  const filteredByTab =
+    activeTab === "upcoming"
+      ? upcoming
+      : activeTab === "past"
+        ? past
+        : replayEvents
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <div role="main" aria-label={t("myRegistrations")}>
+        <LoadingState />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6" aria-label={t("myRegistrations")}>
       <div>
-        <Link href="/dashboard/learner/events" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-2">
-          <ArrowLeft className="size-4" /> Back to Events
+        <Link
+          href="/dashboard/learner/events"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-2"
+          aria-label={t("detail.backToEvents")}
+        >
+          <ArrowLeft className="size-4" /> {t("detail.backToEvents")}
         </Link>
-        <h1 className="text-2xl font-bold">My Registrations</h1>
-        <p className="text-muted-foreground">Events you have registered for</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("myRegistrations")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
-
-      {upcoming.length === 0 && past.length === 0 && !error ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <CalendarOff className="size-12 text-muted-foreground/40" />
-          <p className="mt-4 text-lg font-medium">No registered events</p>
-          <p className="text-sm text-muted-foreground">Browse events and register to see them here</p>
-          <Link href="/dashboard/learner/events"
-            className="mt-4 flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Browse Events
-          </Link>
+      {error && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
+            <button
+              onClick={() => setRetryKey((k) => k + 1)}
+              aria-label={tc("retry")}
+              className="ml-auto inline-flex items-center gap-1 text-xs font-medium underline hover:no-underline"
+            >
+              <RefreshCw className="size-3" />
+              {tc("retry")}
+            </button>
+          </div>
         </div>
-      ) : (
-        <>
-          {upcoming.length > 0 && (
-            <section>
-              <h2 className="mb-4 text-lg font-semibold">Upcoming ({upcoming.length})</h2>
-              <div className="space-y-3">
-                {upcoming.map((event) => (
-                  <Link key={event.id} href={`/dashboard/learner/events/${event.id}`}
-                    className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-sm">
-                    <div className="flex items-center gap-4">
-                      <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <CalendarDays className="size-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{event.title}</h3>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getTypeColor(event.eventType)}`}>
-                            {event.eventType}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {formatDate(event.startsAt)}</span>
-                          <span className="flex items-center gap-1"><Clock className="size-3" /> {formatTime(event.startsAt)}</span>
-                          {event.location && <span className="flex items-center gap-1"><MapPin className="size-3" /> {event.location}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="size-5 text-green-500" />
-                      <ExternalLink className="size-4 text-muted-foreground" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
+      )}
 
-          {past.length > 0 && (
-            <section>
-              <h2 className="mb-4 text-lg font-semibold">Past ({past.length})</h2>
-              <div className="space-y-3">
-                {past.map((event) => (
-                  <Link key={event.id} href={`/dashboard/learner/events/${event.id}`}
-                    className="flex items-center justify-between rounded-xl border border-border bg-card p-4 opacity-75 transition-all hover:border-primary/30 hover:opacity-100 hover:shadow-sm">
-                    <div className="flex items-center gap-4">
-                      <div className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                        <CalendarDays className="size-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{event.title}</h3>
-                        <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {formatDate(event.startsAt)}</span>
-                          {event.hasRecording && <span className="text-xs text-green-600 font-medium">Recording available</span>}
-                          {event.materialCount > 0 && <span className="text-xs text-blue-600 font-medium">{event.materialCount} materials</span>}
-                        </div>
-                      </div>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label={t("myRegistrations")}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            aria-label={`${tab.label} (${tabCounts[tab.key]})`}
+            onClick={() => setActiveTab(tab.key)}
+            className={`shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === tab.key
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+            {tabCounts[tab.key] > 0 && (
+              <span className="ml-1.5 inline-flex size-5 items-center justify-center rounded-full bg-primary-foreground/20 text-[10px]">
+                {tabCounts[tab.key]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {filteredByTab.length === 0 ? (
+        <EmptyState
+          icon={<CalendarOff className="size-8" />}
+          title={
+            activeTab === "upcoming"
+              ? t("empty.registered")
+              : activeTab === "past"
+                ? t("empty.past")
+                : t("empty.replays")
+          }
+          description={
+            activeTab === "upcoming"
+              ? t("empty.registeredDesc")
+              : activeTab === "past"
+                ? t("empty.pastDesc")
+                : t("empty.replaysDesc")
+          }
+          action={
+            activeTab === "upcoming" ? (
+              <Link
+                href="/dashboard/learner/events"
+                aria-label={t("empty.browseEvents")}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                {t("empty.browseEvents")}
+              </Link>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {filteredByTab.map((event) => {
+            const status = getEventStatus(event)
+            const isPast = status === "past"
+            const now = new Date()
+            const start = new Date(event.startsAt)
+            const end = event.endsAt
+              ? new Date(event.endsAt)
+              : new Date(start.getTime() + (event.durationMinutes || 60) * 60000)
+            const isLive = now >= start && now <= end
+
+            return (
+              <Link
+                key={event.id}
+                href={`/dashboard/learner/events/${event.id}`}
+                aria-label={`${event.title} - ${t(`tabs.${activeTab}`)}`}
+                className={`flex items-center justify-between rounded-2xl border bg-card p-4 shadow-xs transition-all hover:shadow-md ${
+                  isLive ? "border-green-500/30" : "border-border hover:border-primary/30"
+                } ${isPast && activeTab !== "replays" ? "opacity-75 hover:opacity-100" : ""}`}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${
+                      isLive ? "bg-green-500/10 text-green-600" : isPast ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    <CalendarDays className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${getTypeColor(event.eventType)}`}>
+                        {event.eventType}
+                      </span>
+                      {isLive && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
+                          <span className="size-1.5 rounded-full bg-green-500 animate-pulse" />
+                          {t("live.badge")}
+                        </span>
+                      )}
                     </div>
+                    <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <CalendarDays className="size-3" /> {formatDate(event.startsAt)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="size-3" /> {formatTime(event.startsAt)}
+                      </span>
+                      {event.location && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="size-3" /> {event.location}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  {isLive && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white">
+                      <Video className="size-3" />
+                      {t("live.joinNow")}
+                    </span>
+                  )}
+                  {!isLive && !isPast && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-600">
+                      <CheckCircle className="size-3" />
+                      {t("registered.viewEvent")}
+                    </span>
+                  )}
+                  {isPast && activeTab === "replays" && event.hasRecording && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
+                      <Play className="size-3" />
+                      {t("replays.watchNow")}
+                    </span>
+                  )}
+                  {isPast && activeTab === "past" && event.hasRecording && (
+                    <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                      {t("past.recordingAvailable")}
+                    </span>
+                  )}
+                  {isPast && !isLive && (
                     <ExternalLink className="size-4 text-muted-foreground" />
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-        </>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </div>
       )}
     </div>
   )

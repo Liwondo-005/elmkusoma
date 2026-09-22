@@ -12,7 +12,7 @@ async function nurseryFetch<T>(path: string, options?: RequestInit): Promise<T> 
       }
     } catch {}
   }
-  if (!institutionId) institutionId = "00000000-0000-0000-0000-000000000001"
+  if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -131,6 +131,24 @@ export const nurseryApi = {
     nurseryFetch<NurseryParentLearning>(`/v1/nursery/extended/parent-learning`, { method: "POST", body: JSON.stringify(data) }),
   updateParentLearning: (id: string, data: Partial<NurseryParentLearning>) =>
     nurseryFetch<NurseryParentLearning>(`/v1/nursery/extended/parent-learning/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  // Notifications
+  getNotifications: (studentId: string) =>
+    nurseryFetch<NurseryNotification[]>(`/v1/nursery/extended/notifications/student/${studentId}`),
+  markNotificationRead: (id: string) =>
+    nurseryFetch<void>(`/v1/nursery/extended/notifications/${id}/read`, { method: "PUT" }),
+
+  // Live Classes (reuse shared liveclass API)
+  getLiveClasses: (classId: string) =>
+    nurseryFetch<NurseryLiveClass[]>(`/v1/nursery/extended/live-classes?classId=${classId}`),
+
+  // Teacher
+  getMyTeachers: (studentId: string) =>
+    nurseryFetch<NurseryTeacherInfo[]>(`/v1/nursery/extended/teachers/student/${studentId}`),
+
+  // Student profile
+  getStudentProfile: (studentId: string) =>
+    nurseryFetch<NurseryStudentProfile>(`/v1/nursery/extended/profile/${studentId}`),
 }
 
 export interface NurseryStory {
@@ -213,4 +231,51 @@ export interface NurseryParentLearning {
   completedDate: string | null
   notes: string | null
   createdAt: string
+}
+
+export interface NurseryNotification {
+  id: string
+  studentId: string
+  title: string
+  message: string
+  notificationType: "INFO" | "REMINDER" | "ACHIEVEMENT" | "CLASS" | "ASSIGNMENT"
+  isRead: boolean
+  createdAt: string
+}
+
+export interface NurseryLiveClass {
+  id: string
+  classGroupId: string
+  title: string
+  description: string | null
+  teacherId: string
+  teacherName: string
+  scheduledAt: string
+  durationMinutes: number
+  status: "SCHEDULED" | "LIVE" | "COMPLETED" | "CANCELLED"
+  meetingUrl: string | null
+}
+
+export interface NurseryTeacherInfo {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  subject: string | null
+  classGroupId: string
+  className: string | null
+}
+
+export interface NurseryStudentProfile {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  className: string | null
+  institutionName: string | null
+  enrolledAt: string | null
+  milestonesAchieved: number
+  totalMilestones: number
+  badges: number
+  level: string | null
 }

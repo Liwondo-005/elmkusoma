@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
-import { collegeApi } from "@/lib/college-api"
+import { useTranslations } from "next-intl"
+import { learnerApi, type LearnerNotification } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   Bell,
@@ -23,6 +24,7 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Loader2,
 } from "lucide-react"
 
 type Notification = {
@@ -39,14 +41,14 @@ const NOTIFICATION_CONFIG: Record<
   string,
   { icon: typeof Bell; color: string; bg: string; label: string; emoji: string }
 > = {
-  LIVE: { icon: Bell, color: "text-red-500", bg: "bg-red-500/10", label: "Live", emoji: "🔴" },
-  COURSE: { icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10", label: "Course", emoji: "📚" },
-  ASSESSMENT: { icon: FileText, color: "text-amber-500", bg: "bg-amber-500/10", label: "Assessment", emoji: "📝" },
-  RESEARCH: { icon: Award, color: "text-purple-500", bg: "bg-purple-500/10", label: "Research", emoji: "🔬" },
-  PROJECT: { icon: Target, color: "text-cyan-500", bg: "bg-cyan-500/10", label: "Project", emoji: "📁" },
-  ACADEMIC: { icon: GraduationCap, color: "text-indigo-500", bg: "bg-indigo-500/10", label: "Academic", emoji: "🎓" },
-  REPLAY: { icon: Video, color: "text-emerald-500", bg: "bg-emerald-500/10", label: "Replay", emoji: "📹" },
-  CAREER: { icon: Briefcase, color: "text-pink-500", bg: "bg-pink-500/10", label: "Career", emoji: "💼" },
+  LIVE: { icon: Bell, color: "text-red-500", bg: "bg-red-500/10", label: "Live", emoji: "\uD83D\uDD34" },
+  COURSE: { icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10", label: "Course", emoji: "\uD83D\uDCDA" },
+  ASSESSMENT: { icon: FileText, color: "text-amber-500", bg: "bg-amber-500/10", label: "Assessment", emoji: "\uD83D\uDCDD" },
+  RESEARCH: { icon: Award, color: "text-purple-500", bg: "bg-purple-500/10", label: "Research", emoji: "\uD83D\uDD2C" },
+  PROJECT: { icon: Target, color: "text-cyan-500", bg: "bg-cyan-500/10", label: "Project", emoji: "\uD83D\uDCC1" },
+  ACADEMIC: { icon: GraduationCap, color: "text-indigo-500", bg: "bg-indigo-500/10", label: "Academic", emoji: "\uD83C\uDF93" },
+  REPLAY: { icon: Video, color: "text-emerald-500", bg: "bg-emerald-500/10", label: "Replay", emoji: "\uD83D\uDCFA" },
+  CAREER: { icon: Briefcase, color: "text-pink-500", bg: "bg-pink-500/10", label: "Career", emoji: "\uD83D\uDCBC" },
 }
 
 const CATEGORIES = ["ALL", "LIVE", "COURSE", "ASSESSMENT", "RESEARCH", "PROJECT", "ACADEMIC", "CAREER"] as const
@@ -72,102 +74,156 @@ function getCategoryConfig(type: string) {
   return NOTIFICATION_CONFIG[type] || NOTIFICATION_CONFIG.COURSE
 }
 
+function mapNotification(n: LearnerNotification): Notification {
+  const typeMap: Record<string, string> = {
+    LIVE_SESSION: "LIVE",
+    LIVE: "LIVE",
+    COURSE: "COURSE",
+    ASSESSMENT: "ASSESSMENT",
+    RESEARCH: "RESEARCH",
+    PROJECT: "PROJECT",
+    ACADEMIC: "ACADEMIC",
+    REPLAY: "REPLAY",
+    CAREER: "CAREER",
+  }
+  return {
+    id: n.id,
+    title: n.title,
+    message: n.message,
+    type: typeMap[n.notificationType] || "COURSE",
+    read: n.isRead,
+    createdAt: n.createdAt,
+    link: n.targetId
+      ? n.targetType === "COURSE"
+        ? "/dashboard/learner/courses"
+        : n.targetType === "LIVE_CLASS"
+        ? "/dashboard/learner/live-classes"
+        : undefined
+      : undefined,
+  }
+}
+
 export default function NotificationsCenterPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const tc = useTranslations("common")
 
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [readState, setReadState] = useState<Record<string, boolean>>({})
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>("ALL")
-  const [markingId, setMarkingId] = useState<string | null>(null)
-  const [markingAll, setMarkingAll] = useState(false)
 
-  const fetchNotifications = useCallback(async () => {
+  useEffect(() => {
     if (!user) return
+    loadData()
+  }, [user])
+
+  async function loadData() {
     try {
       setLoading(true)
       setError(null)
-      const [data, unread] = await Promise.all([
-        collegeApi.getNotifications(user.id),
-        collegeApi.getUnreadCount(user.id),
-      ])
-      setNotifications(Array.isArray(data) ? data : (data as any)?.data || [])
-      setUnreadCount(typeof unread === "number" ? unread : (unread as any)?.data?.count || 0)
-    } catch (err: any) {
-      setError(err?.message || "Failed to load notifications")
+      const data = await learnerApi.getNotifications()
+      setNotifications(data.map(mapNotification))
+    } catch {
+      setError(tc("error"))
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }
 
-  useEffect(() => {
-    fetchNotifications()
-  }, [fetchNotifications])
+  const notificationsWithRead = notifications.map((n) => ({
+    ...n,
+    read: readState[n.id] !== undefined ? readState[n.id] : n.read,
+  }))
 
-  const markAsRead = useCallback(
-    async (id: string) => {
-      try {
-        setMarkingId(id)
-        await collegeApi.markNotificationRead(id)
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-        )
-        setUnreadCount((prev) => Math.max(0, prev - 1))
-      } catch {
-        // silently fail — notification stays unread
-      } finally {
-        setMarkingId(null)
+  const filtered =
+    activeFilter === "ALL"
+      ? notificationsWithRead
+      : notificationsWithRead.filter((n) => n.type === activeFilter)
+
+  const unreadCount = notificationsWithRead.filter((n) => !n.read).length
+
+  const toggleRead = useCallback(
+    (id: string) => {
+      setReadState((prev) => {
+        const next = { ...prev, [id]: !prev[id] }
+        return next
+      })
+      const isCurrentlyRead = readState[id] !== undefined ? readState[id] : notifications.find((n) => n.id === id)?.read
+      if (!isCurrentlyRead) {
+        learnerApi.markNotificationRead(id).catch(() => {})
       }
+    },
+    [readState, notifications]
+  )
+
+  const markAllRead = useCallback(() => {
+    const next: Record<string, boolean> = {}
+    notificationsWithRead.forEach((n) => {
+      next[n.id] = true
+    })
+    setReadState(next)
+    learnerApi.markAllRead().catch(() => {})
+  }, [notificationsWithRead])
+
+  const deleteNotification = useCallback(
+    (id: string) => {
+      setNotifications((prev) => prev.filter((n) => n.id !== id))
     },
     []
   )
 
-  const markAllAsRead = useCallback(async () => {
-    if (!user || markingAll) return
-    try {
-      setMarkingAll(true)
-      await collegeApi.markAllNotificationsRead(user.id)
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-      setUnreadCount(0)
-    } catch {
-      // silently fail
-    } finally {
-      setMarkingAll(false)
-    }
-  }, [user, markingAll])
-
-  if (authLoading || !user || (user.role !== "Other Learner" && user.role !== "Student")) {
+  if (authLoading || !loading && (!user || (user.role !== "Other Learner" && user.role !== "Student"))) {
     return <LoadingState />
   }
 
-  const firstName = user.firstName || user.name?.split(" ")[0] || "Student"
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 pb-12">
+        <LearnerHeader firstName={user?.firstName || "Student"} subtitle="Stay updated with your academic notifications" />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">{tc("loading")}</span>
+        </div>
+      </div>
+    )
+  }
 
-  const filtered =
-    activeFilter === "ALL"
-      ? notifications
-      : notifications.filter((n) => n.type === activeFilter)
+  if (error) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 pb-12">
+        <LearnerHeader firstName={user?.firstName || "Student"} subtitle="Stay updated with your academic notifications" />
+        <EmptyState
+          icon={<AlertCircle className="size-8" />}
+          title={tc("error")}
+          description={error}
+        />
+        <div className="flex justify-center">
+          <button
+            onClick={loadData}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Student"
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <LearnerHeader firstName={firstName} subtitle="Stay updated with your academic notifications" />
-          {unreadCount > 0 && (
-            <span className="inline-flex items-center justify-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
-              {unreadCount}
-            </span>
-          )}
-        </div>
+        <LearnerHeader firstName={firstName} subtitle="Stay updated with your academic notifications" />
         {unreadCount > 0 && (
           <button
-            onClick={markAllAsRead}
-            disabled={markingAll}
-            className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            onClick={markAllRead}
+            className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             <CheckCircle className="size-4" />
-            {markingAll ? "Marking..." : "Mark All Read"}
+            Mark All Read
           </button>
         )}
       </div>
@@ -179,8 +235,8 @@ export default function NotificationsCenterPage() {
           const config = cat !== "ALL" ? NOTIFICATION_CONFIG[cat] : null
           const count =
             cat === "ALL"
-              ? notifications.length
-              : notifications.filter((n) => n.type === cat).length
+              ? notificationsWithRead.length
+              : notificationsWithRead.filter((n) => n.type === cat).length
           return (
             <button
               key={cat}
@@ -214,22 +270,7 @@ export default function NotificationsCenterPage() {
         </div>
       )}
 
-      {loading ? (
-        <LoadingState />
-      ) : error ? (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-center">
-            <AlertCircle className="mx-auto mb-3 size-8 text-destructive" />
-            <p className="text-sm font-medium text-destructive">{error}</p>
-            <button
-              onClick={fetchNotifications}
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="space-y-4">
           <EmptyState
             icon={<Bell className="size-8" />}
@@ -305,27 +346,27 @@ export default function NotificationsCenterPage() {
                           className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
                         >
                           View Details
-                          <span className="text-xs">→</span>
+                          <span className="text-xs">\u2192</span>
                         </button>
                       )}
                     </div>
                   </div>
 
                   <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    {!notification.read && (
-                      <button
-                        onClick={() => markAsRead(notification.id)}
-                        disabled={markingId === notification.id}
-                        title="Mark as read"
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-                      >
-                        {markingId === notification.id ? (
-                          <span className="size-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-                        ) : (
-                          <Eye className="size-4" />
-                        )}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => toggleRead(notification.id)}
+                      title={notification.read ? "Mark as unread" : "Mark as read"}
+                      className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      {notification.read ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                    <button
+                      onClick={() => deleteNotification(notification.id)}
+                      title="Delete notification"
+                      className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -334,7 +375,7 @@ export default function NotificationsCenterPage() {
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
+      {filtered.length > 0 && (
         <div className="text-center text-xs text-muted-foreground">
           Showing {filtered.length} notification{filtered.length !== 1 ? "s" : ""}
           {activeFilter !== "ALL" && (

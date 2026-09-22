@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { LearnerHeader, EmptyState } from "@/components/learner/shared"
 import { Monitor, Code, Network, Database, Palette, Shield, Wrench, ExternalLink, Search } from "lucide-react"
@@ -41,30 +42,33 @@ const softwareTools: SoftwareTool[] = [
 ]
 
 export default function SoftwareToolsPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [category, setCategory] = useState("all")
   const [search, setSearch] = useState("")
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
 
-  const filtered = softwareTools.filter((t) => {
-    const matchCat = category === "all" || t.category === category
-    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.purpose.toLowerCase().includes(search.toLowerCase())
+  const filtered = softwareTools.filter((tool) => {
+    const matchCat = category === "all" || tool.category === category
+    const matchSearch = tool.name.toLowerCase().includes(search.toLowerCase()) || tool.purpose.toLowerCase().includes(search.toLowerCase())
     return matchCat && matchSearch
   })
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Curated academic software and development tools." />
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("softwareTools.subtitle")} />
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search tools..."
+            placeholder={t("softwareTools.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label={t("softwareTools.searchPlaceholder")}
             className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -73,6 +77,8 @@ export default function SoftwareToolsPage() {
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
+              aria-label={cat.label}
+              aria-pressed={category === cat.value}
               className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-medium transition ${
                 category === cat.value
                   ? "border-primary bg-primary text-primary-foreground"
@@ -88,8 +94,8 @@ export default function SoftwareToolsPage() {
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Monitor className="size-8" />}
-          title="No tools found"
-          description="Try adjusting your search or filter to find the tools you need."
+          title={t("softwareTools.noTools")}
+          description={t("softwareTools.noToolsDesc")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -101,6 +107,7 @@ export default function SoftwareToolsPage() {
                 href={tool.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={`${tool.name} - ${t("softwareTools.openExternal")}`}
                 className="rounded-2xl border border-border bg-card p-5 shadow-xs transition hover:shadow-md group"
               >
                 <div className="flex items-start justify-between">

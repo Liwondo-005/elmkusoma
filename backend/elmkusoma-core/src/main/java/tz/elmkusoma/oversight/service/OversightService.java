@@ -2,6 +2,7 @@ package tz.elmkusoma.oversight.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.AcademicYearRepository;
@@ -54,6 +55,9 @@ public class OversightService {
     private final LiveClassRepository liveClassRepository;
     private final AssessmentRepository assessmentRepository;
     private final SubjectRepository subjectRepository;
+
+    @Value("${app.websocket.url:ws://localhost:8080}")
+    private String websocketBaseUrl;
 
     public OversightDashboardResponse getDashboard(UUID regionId, UUID districtId) {
         String jurisdictionType;
@@ -838,7 +842,7 @@ public class OversightService {
         }
 
         // Build WebSocket URL - the frontend will connect to /ws/live-class/{liveClassId}?token={jwt}&role=OBSERVER
-        String baseUrl = "ws://localhost:8080"; // TODO: make configurable
+        String baseUrl = websocketBaseUrl;
         String websocketUrl = baseUrl + "/ws/live-class/" + liveClassId + "?role=OBSERVER";
 
         String institutionName = institutionRepository.findById(institutionId)

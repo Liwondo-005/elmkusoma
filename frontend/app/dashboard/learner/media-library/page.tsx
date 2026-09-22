@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 
@@ -62,6 +63,8 @@ function formatDate(dateStr: string): string {
 }
 
 export default function LearnerMediaLibraryPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user } = useAuth()
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [loading, setLoading] = useState(true)
@@ -77,7 +80,7 @@ export default function LearnerMediaLibraryPage() {
         const data = await appFetch<MediaAsset[]>("/api/v1/media")
         setMedia(data || [])
       } catch (err: any) {
-        setError(err.message || "Failed to load media")
+        setError(err.message || tc("error.load"))
       } finally {
         setLoading(false)
       }
@@ -96,11 +99,11 @@ export default function LearnerMediaLibraryPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div role="main" className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Media Library</h1>
+        <h1 className="text-2xl font-bold">{t("mediaLibrary.title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Browse recordings, documents, and educational media
+          {t("mediaLibrary.subtitle")}
         </p>
       </div>
 
@@ -109,9 +112,10 @@ export default function LearnerMediaLibraryPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search media..."
+            placeholder={t("mediaLibrary.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label={t("mediaLibrary.searchPlaceholder")}
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pl-9"
           />
         </div>
@@ -122,8 +126,9 @@ export default function LearnerMediaLibraryPage() {
               variant={typeFilter === type ? "default" : "outline"}
               size="sm"
               onClick={() => setTypeFilter(type)}
+              aria-label={type || tc("all")}
             >
-              {type || "All"}
+              {type || tc("all")}
             </Button>
           ))}
         </div>
@@ -131,8 +136,9 @@ export default function LearnerMediaLibraryPage() {
 
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading media...</span>
+          <span className="sr-only">{tc("loading")}</span>
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
+          <span className="ml-2 text-muted-foreground">{tc("loading")}...</span>
         </div>
       )}
 
@@ -146,9 +152,9 @@ export default function LearnerMediaLibraryPage() {
       {!loading && !error && filtered.length === 0 && (
         <div className="text-center py-12">
           <Video className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No media available</h3>
+          <h3 className="text-lg font-medium">{t("mediaLibrary.noMedia")}</h3>
           <p className="text-muted-foreground mt-1">
-            {searchQuery ? "Try a different search term" : "Recordings and materials will appear here once available"}
+            {searchQuery ? t("mediaLibrary.tryDifferentSearch") : t("mediaLibrary.noMediaDesc")}
           </p>
         </div>
       )}
@@ -212,9 +218,10 @@ export default function LearnerMediaLibraryPage() {
                     size="sm"
                     className="w-full mt-3"
                     onClick={() => window.open(item.fileUrl!, "_blank")}
+                    aria-label={`${tc("view")} ${item.title}`}
                   >
                     <Play className="h-4 w-4 mr-1" />
-                    View
+                    {tc("view")}
                   </Button>
                 )}
               </div>

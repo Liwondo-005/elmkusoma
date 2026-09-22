@@ -13,7 +13,7 @@ export default function LearnerCertificatesPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadCertificates()
   }, [user])
 
@@ -65,7 +65,7 @@ export default function LearnerCertificatesPage() {
     URL.revokeObjectURL(url)
   }
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

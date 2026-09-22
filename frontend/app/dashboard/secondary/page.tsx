@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import {
   secondaryApi,
@@ -41,6 +42,8 @@ function getStageLabel(stage?: string | null, form?: string | null) {
 export default function SecondaryHomePage() {
   const { user, loading: authLoading } = useRequireAuth()
   const router = useRouter()
+  const t = useTranslations("secondary")
+  const tc = useTranslations("common")
   const [continueItems, setContinueItems] = useState<ContinueLearningItem[]>([])
   const [assessments, setAssessments] = useState<UpcomingAssessment[]>([])
   const [assignments, setAssignments] = useState<AssignmentSummary[]>([])
@@ -48,6 +51,7 @@ export default function SecondaryHomePage() {
   const [subjects, setSubjects] = useState<SubjectSummary[]>([])
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const firstName = user?.name?.split(" ")[0] || "Student"
   const greeting = getGreeting()
   const GreetingIcon = greeting.icon
@@ -83,13 +87,27 @@ export default function SecondaryHomePage() {
           setAssignments(assignmentData)
           setAssessments(assessmentData)
         }
-      } catch {}
+      } catch {
+        setError(t("loadError"))
+      }
       setLoading(false)
     }
     loadData()
-  }, [user])
+  }, [user, t])
 
   if (authLoading || loading) return <LoadingState />
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6 p-4 pb-24" role="main">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+          <AlertCircle className="mx-auto size-12 text-red-400" />
+          <h3 className="mt-3 text-lg font-bold text-red-800">{tc("common.error")}</h3>
+          <p className="mt-1 text-sm text-red-600">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   const todayItems: TodayItem[] = [
     ...assessments
@@ -121,26 +139,26 @@ export default function SecondaryHomePage() {
   const nextStep: NextStep = continueItems.length > 0
     ? {
         type: "lesson",
-        title: `Continue ${continueItems[0].subjectName || "Learning"}`,
-        subtitle: continueItems[0].title || "Resume where you left off",
+        title: `${t("secondary.continue")} ${continueItems[0].subjectName || t("secondary.learning")}`,
+        subtitle: continueItems[0].title || t("secondary.resumeWhereLeftOff"),
         subjectName: continueItems[0].subjectName,
-        actionLabel: "Continue Learning",
+        actionLabel: t("secondary.continueLearning"),
         actionHref: `/dashboard/lessons/${continueItems[0].lessonId}`,
       }
     : assessments.length > 0
       ? {
           type: "assessment",
-          title: `Prepare for ${assessments[0].subjectName || "Assessment"}`,
+          title: `${t("secondary.prepareFor")} ${assessments[0].subjectName || t("secondary.assessment")}`,
           subtitle: assessments[0].title,
           subjectName: assessments[0].subjectName,
-          actionLabel: "Start Revision",
+          actionLabel: t("secondary.startRevision"),
           actionHref: `/dashboard/assessments/${assessments[0].id}`,
         }
       : {
           type: "none",
-          title: "Your learning space is ready",
-          subtitle: "Choose a subject, explore a challenge, or continue your learning journey.",
-          actionLabel: "Browse Subjects",
+          title: t("secondary.learningSpaceReady"),
+          subtitle: t("secondary.chooseSubjectExplorChallenge"),
+          actionLabel: t("secondary.browseSubjects"),
           actionHref: "/dashboard/courses",
         }
 
@@ -151,8 +169,8 @@ export default function SecondaryHomePage() {
       subjectName: s.name,
       topicName: s.description,
       reason: s.averageScore !== undefined && s.averageScore < 60
-        ? "Practice recommended"
-        : "Review recommended",
+        ? t("secondary.practiceRecommended")
+        : t("secondary.reviewRecommended"),
       type: s.averageScore !== undefined && s.averageScore < 60 ? "practice" : "review",
       subjectId: s.id,
     }))
@@ -167,7 +185,7 @@ export default function SecondaryHomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-6xl space-y-6 p-4 pb-24" role="main">
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-blue-500 p-6 text-white shadow-lg">
         <div className="absolute -right-12 -top-12 size-40 rounded-full bg-white/5" />
@@ -179,13 +197,14 @@ export default function SecondaryHomePage() {
           <div>
             <h1 className="text-xl font-bold">{greeting.text}, {firstName}</h1>
             <p className="mt-0.5 text-sm text-white/70">
-              {stageLabel ? `${stageLabel} · Ready to continue your learning?` : "Ready to continue your learning?"}
+              {stageLabel ? `${stageLabel} · ${t("secondary.readyToContinue")}` : t("secondary.readyToContinue")}
             </p>
           </div>
         </div>
         <Link
           href={nextStep.actionHref}
           className="relative mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm transition-colors hover:bg-white/90"
+          aria-label={nextStep.actionLabel}
         >
           {nextStep.actionLabel} <ArrowRight className="size-4" />
         </Link>
@@ -194,7 +213,7 @@ export default function SecondaryHomePage() {
       {/* Your Next Step */}
       <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          <Zap className="size-3.5" /> Your Next Step
+          <Zap className="size-3.5" /> {t("secondary.yourNextStep")}
         </div>
         <div className="mt-3 flex items-start gap-4">
           <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
@@ -213,6 +232,7 @@ export default function SecondaryHomePage() {
           <Link
             href={nextStep.actionHref}
             className="shrink-0 rounded-lg bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
+            aria-label={nextStep.actionLabel}
           >
             {nextStep.actionLabel}
           </Link>
@@ -223,9 +243,9 @@ export default function SecondaryHomePage() {
         <div className="space-y-6 lg:col-span-2">
           {/* Today */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Today</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.today")}</h2>
             {todayItems.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-400">Your day is clear. Choose something to learn or explore.</p>
+              <p className="mt-3 text-sm text-gray-400">{t("secondary.dayClear")}</p>
             ) : (
               <div className="mt-3 space-y-2">
                 {todayItems.map(item => (
@@ -233,6 +253,7 @@ export default function SecondaryHomePage() {
                     key={item.id}
                     href={item.href}
                     className="flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-gray-50"
+                    aria-label={`${item.title} - ${item.time || ""}`}
                   >
                     <span className="w-14 text-xs font-medium text-gray-400">{item.time || "—"}</span>
                     <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
@@ -258,9 +279,9 @@ export default function SecondaryHomePage() {
 
           {/* Continue Learning */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Continue Where You Left Off</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.continueWhereLeftOff")}</h2>
             {continueItems.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-400">No recent learning activity. Start a lesson to begin tracking progress.</p>
+              <p className="mt-3 text-sm text-gray-400">{t("secondary.noRecentActivity")}</p>
             ) : (
               <div className="mt-3 space-y-3">
                 {continueItems.slice(0, 3).map(item => (
@@ -268,17 +289,24 @@ export default function SecondaryHomePage() {
                     key={item.lessonId}
                     href={`/dashboard/lessons/${item.lessonId}`}
                     className="flex items-center gap-4 rounded-xl border border-gray-100 p-4 transition-all hover:border-indigo-200 hover:shadow-sm"
+                    aria-label={`${item.title || t("secondary.lesson")} - ${Math.round(item.completionPercentage)}%`}
                   >
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
                       <BookOpen className="size-5 text-indigo-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-semibold text-gray-900">{item.title || "Lesson"}</p>
+                      <p className="truncate text-sm font-semibold text-gray-900">{item.title || t("secondary.lesson")}</p>
                       {item.subjectName && <p className="text-xs text-gray-400">{item.subjectName}</p>}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-indigo-600">{Math.round(item.completionPercentage)}%</p>
-                      <div className="mt-1 h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="mt-1 h-1.5 w-16 overflow-hidden rounded-full bg-gray-100"
+                        role="progressbar"
+                        aria-valuenow={Math.round(item.completionPercentage)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
                         <div className="h-full rounded-full bg-indigo-500" style={{ width: `${item.completionPercentage}%` }} />
                       </div>
                     </div>
@@ -293,23 +321,23 @@ export default function SecondaryHomePage() {
         <div className="space-y-6">
           {/* Academic Pulse */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Academic Pulse</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.academicPulse")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-blue-50 p-3 text-center">
                 <p className="text-xl font-bold text-blue-600">{pulse.topicsCompleted}</p>
-                <p className="text-[10px] font-medium text-blue-700">Lessons Done</p>
+                <p className="text-[10px] font-medium text-blue-700">{t("secondary.lessonsDone")}</p>
               </div>
               <div className="rounded-xl bg-amber-50 p-3 text-center">
                 <p className="text-xl font-bold text-amber-600">{pulse.assessmentsUpcoming}</p>
-                <p className="text-[10px] font-medium text-amber-700">Assessments</p>
+                <p className="text-[10px] font-medium text-amber-700">{t("secondary.assessments")}</p>
               </div>
               <div className="rounded-xl bg-orange-50 p-3 text-center">
                 <p className="text-xl font-bold text-orange-600">{pulse.practiceUnfinished}</p>
-                <p className="text-[10px] font-medium text-orange-700">To Complete</p>
+                <p className="text-[10px] font-medium text-orange-700">{t("secondary.toComplete")}</p>
               </div>
               <div className="rounded-xl bg-green-50 p-3 text-center">
                 <p className="text-xl font-bold text-green-600">{pulse.attendanceRate > 0 ? `${Math.round(pulse.attendanceRate)}%` : "—"}</p>
-                <p className="text-[10px] font-medium text-green-700">Attendance</p>
+                <p className="text-[10px] font-medium text-green-700">{t("secondary.attendance")}</p>
               </div>
             </div>
           </section>
@@ -317,7 +345,7 @@ export default function SecondaryHomePage() {
           {/* Your Focus */}
           {focusItems.length > 0 && (
             <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Your Focus</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.yourFocus")}</h2>
               <div className="mt-3 space-y-2">
                 {focusItems.map((item, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
@@ -339,18 +367,19 @@ export default function SecondaryHomePage() {
 
           {/* Quick Actions */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Quick Learn</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.quickLearn")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {[
-                { label: "Learn", href: "/dashboard/secondary/learn", color: "bg-blue-50 text-blue-600" },
-                { label: "Practice", href: "/dashboard/secondary/practice", color: "bg-green-50 text-green-600" },
-                { label: "Revise", href: "/dashboard/secondary/revision", color: "bg-purple-50 text-purple-600" },
-                { label: "Live", href: "/dashboard/secondary/live", color: "bg-red-50 text-red-600" },
+                { label: tc("common.learn"), href: "/dashboard/secondary/learn", color: "bg-blue-50 text-blue-600" },
+                { label: tc("common.practice"), href: "/dashboard/secondary/practice", color: "bg-green-50 text-green-600" },
+                { label: tc("common.revise"), href: "/dashboard/secondary/revision", color: "bg-purple-50 text-purple-600" },
+                { label: tc("common.live"), href: "/dashboard/secondary/live", color: "bg-red-50 text-red-600" },
               ].map(action => (
                 <Link
                   key={action.label}
                   href={action.href}
                   className={`flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all hover:shadow-sm ${action.color}`}
+                  aria-label={action.label}
                 >
                   {action.label}
                 </Link>
@@ -364,9 +393,9 @@ export default function SecondaryHomePage() {
       {subjects.length > 0 && (
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">My Subjects</h2>
-            <Link href="/dashboard/secondary/learn" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-              View All
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.mySubjects")}</h2>
+            <Link href="/dashboard/secondary/learn" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("common.viewAll")}>
+              {tc("common.viewAll")}
             </Link>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -375,6 +404,7 @@ export default function SecondaryHomePage() {
                 key={subject.id}
                 href={`/dashboard/courses/${subject.id}`}
                 className="flex items-center gap-3 rounded-xl border border-gray-100 p-4 transition-all hover:border-indigo-200 hover:shadow-sm"
+                aria-label={subject.name}
               >
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
                   <BookOpen className="size-5 text-indigo-600" />
@@ -382,13 +412,13 @@ export default function SecondaryHomePage() {
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-sm font-semibold text-gray-900">{subject.name}</p>
                   <p className="text-xs text-gray-400">
-                    {subject.totalLessons ? `${subject.totalLessons} topics` : ""}
-                    {subject.upcomingAssessments ? ` · ${subject.upcomingAssessments} assessment${subject.upcomingAssessments > 1 ? "s" : ""}` : ""}
+                    {subject.totalLessons ? `${subject.totalLessons} ${t("secondary.topics")}` : ""}
+                    {subject.upcomingAssessments ? ` · ${subject.upcomingAssessments} ${t("secondary.assessment")}${subject.upcomingAssessments > 1 ? "s" : ""}` : ""}
                   </p>
                 </div>
                 {subject.hasTeacherFeedback && (
                   <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-                    Feedback
+                    {t("secondary.feedback")}
                   </span>
                 )}
               </Link>
@@ -401,9 +431,9 @@ export default function SecondaryHomePage() {
       {liveClasses.length > 0 && (
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Live Learning</h2>
-            <Link href="/dashboard/secondary/live" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-              View All
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.liveLearning")}</h2>
+            <Link href="/dashboard/secondary/live" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("common.viewAll")}>
+              {tc("common.viewAll")}
             </Link>
           </div>
           <div className="mt-3 space-y-2">
@@ -437,9 +467,9 @@ export default function SecondaryHomePage() {
       {subjects.some(s => s.hasTeacherFeedback) && (
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Teacher Feedback</h2>
-            <Link href="/dashboard/secondary/teachers" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-              View All
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.teacherFeedback")}</h2>
+            <Link href="/dashboard/secondary/teachers" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("common.viewAll")}>
+              {tc("common.viewAll")}
             </Link>
           </div>
           <div className="mt-3 space-y-2">
@@ -448,13 +478,14 @@ export default function SecondaryHomePage() {
                 key={s.id}
                 href={`/dashboard/secondary/subjects/${s.id}`}
                 className="flex items-center gap-3 rounded-xl bg-green-50 p-3 transition-all hover:bg-green-100"
+                aria-label={`${s.name} - ${t("secondary.newFeedbackAvailable")}`}
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green-100">
                   <Star className="size-4 text-green-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">{s.name}</p>
-                  <p className="text-xs text-green-600">New feedback available</p>
+                  <p className="text-xs text-green-600">{t("secondary.newFeedbackAvailable")}</p>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-gray-300" />
               </Link>
@@ -466,23 +497,23 @@ export default function SecondaryHomePage() {
       {/* Learning Journey */}
       <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Learning Journey</h2>
-          <Link href="/dashboard/secondary/progress" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-            View Progress
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.learningJourney")}</h2>
+          <Link href="/dashboard/secondary/progress" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.viewProgress")}>
+            {t("secondary.viewProgress")}
           </Link>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-3">
           <div className="rounded-xl bg-indigo-50 p-3 text-center">
             <p className="text-xl font-bold text-indigo-600">{subjects.length}</p>
-            <p className="text-[10px] font-medium text-indigo-700">Subjects</p>
+            <p className="text-[10px] font-medium text-indigo-700">{t("secondary.subjects")}</p>
           </div>
           <div className="rounded-xl bg-green-50 p-3 text-center">
             <p className="text-xl font-bold text-green-600">{subjects.reduce((sum, s) => sum + (s.completedLessons || 0), 0)}</p>
-            <p className="text-[10px] font-medium text-green-700">Completed</p>
+            <p className="text-[10px] font-medium text-green-700">{t("secondary.completed")}</p>
           </div>
           <div className="rounded-xl bg-amber-50 p-3 text-center">
             <p className="text-xl font-bold text-amber-600">{subjects.reduce((sum, s) => sum + ((s.totalLessons || 0) - (s.completedLessons || 0)), 0)}</p>
-            <p className="text-[10px] font-medium text-amber-700">Remaining</p>
+            <p className="text-[10px] font-medium text-amber-700">{t("secondary.remaining")}</p>
           </div>
         </div>
       </section>
@@ -490,30 +521,30 @@ export default function SecondaryHomePage() {
       {/* My Learning Evidence */}
       <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">My Learning Evidence</h2>
-          <Link href="/dashboard/secondary/projects/passport" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-            View Passport
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.myLearningEvidence")}</h2>
+          <Link href="/dashboard/secondary/projects/passport" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.viewPassport")}>
+            {t("secondary.viewPassport")}
           </Link>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-blue-50 p-3 text-center">
             <p className="text-xl font-bold text-blue-600">{attendance?.present || 0}</p>
-            <p className="text-[10px] font-medium text-blue-700">Days Present</p>
+            <p className="text-[10px] font-medium text-blue-700">{t("secondary.daysPresent")}</p>
           </div>
           <div className="rounded-xl bg-purple-50 p-3 text-center">
             <p className="text-xl font-bold text-purple-600">{subjects.reduce((sum, s) => sum + (s.completedLessons || 0), 0)}</p>
-            <p className="text-[10px] font-medium text-purple-700">Lessons Done</p>
+            <p className="text-[10px] font-medium text-purple-700">{t("secondary.lessonsDone")}</p>
           </div>
         </div>
       </section>
 
       {/* Future World */}
-      <Link href="/dashboard/secondary/future" className="block rounded-2xl border border-gray-100 bg-gradient-to-r from-indigo-500 to-purple-500 p-5 text-white transition-all hover:shadow-md">
+      <Link href="/dashboard/secondary/future" className="block rounded-2xl border border-gray-100 bg-gradient-to-r from-indigo-500 to-purple-500 p-5 text-white transition-all hover:shadow-md" aria-label={t("secondary.futureWorld")}>
         <div className="flex items-center gap-3">
           <Target className="size-8" />
           <div>
-            <h2 className="text-lg font-bold">Future World</h2>
-            <p className="text-sm text-white/70">Explore careers, universities, and what comes after secondary school</p>
+            <h2 className="text-lg font-bold">{t("secondary.futureWorld")}</h2>
+            <p className="text-sm text-white/70">{t("secondary.exploreCareersUniversities")}</p>
           </div>
           <ChevronRight className="size-5 shrink-0 text-white/50" />
         </div>

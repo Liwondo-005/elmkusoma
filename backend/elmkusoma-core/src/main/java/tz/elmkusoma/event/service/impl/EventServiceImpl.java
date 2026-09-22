@@ -150,6 +150,8 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
 
+        String oldStatus = event.getStatus();
+
         if (request.getTitle() != null) event.setTitle(request.getTitle());
         if (request.getDescription() != null) event.setDescription(request.getDescription());
         if (request.getEventType() != null) event.setEventType(request.getEventType());
@@ -167,6 +169,10 @@ public class EventServiceImpl implements EventService {
         if (request.getRequiresApproval() != null) event.setRequiresApproval(request.getRequiresApproval());
 
         event = eventRepository.save(event);
+        log.info("Event updated: id={}, institutionId={}", event.getId(), event.getInstitutionId());
+        if (request.getStatus() != null && !request.getStatus().equals(oldStatus)) {
+            log.info("Event status changed: id={}, oldStatus={}, newStatus={}", eventId, oldStatus, request.getStatus());
+        }
         return mapToResponse(event);
     }
 
@@ -174,8 +180,10 @@ public class EventServiceImpl implements EventService {
     public void deleteEvent(UUID eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        UUID institutionId = event.getInstitutionId();
         event.setIsDeleted(true);
         eventRepository.save(event);
+        log.info("Event deleted: id={}, institutionId={}", eventId, institutionId);
     }
 
     @Override

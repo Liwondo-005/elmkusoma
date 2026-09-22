@@ -21,7 +21,7 @@ export default function DashboardCoursesPage() {
     try {
       setLoading(true)
       const [coursesData, progressData] = await Promise.all([
-        courseApi.listCourses(localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001").catch(() => [] as Course[]),
+        courseApi.listCourses(localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001").catch(() => [] as Course[]),
         learningApi.getStudentProgress(user!.id).catch(() => []),
       ])
       setCourses(coursesData || [])

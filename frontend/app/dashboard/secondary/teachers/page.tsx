@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { LoadingState } from "@/components/learner/shared"
 import { ArrowLeft, Users, MessageSquare, Star } from "lucide-react"
@@ -21,10 +22,13 @@ interface Feedback {
 }
 
 export default function SecondaryTeachersPage() {
+  const t = useTranslations("secondary")
+  const tc = useTranslations("common")
   const { user } = useRequireAuth()
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [feedback, setFeedback] = useState<Feedback[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.classGroupId) { setLoading(false); return }
@@ -39,37 +43,53 @@ export default function SecondaryTeachersPage() {
         .then(r => r.json()).then(d => d.data || []).catch(() => []),
     ])
       .then(([t, f]) => { setTeachers(t); setFeedback(f) })
-      .catch(() => {})
+      .catch(() => setError(t("errorLoading")))
       .finally(() => setLoading(false))
   }, [user])
 
   if (loading) return <LoadingState />
 
+  if (error) {
+    return (
+      <div className="mx-auto max-w-5xl p-4 pb-24" role="main">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={() => { setError(null); setLoading(true); }}
+            className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            aria-label={tc("retry")}
+          >
+            {tc("retry")}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary" className="flex size-10 items-center justify-center rounded-xl bg-gray-100">
+        <Link href="/dashboard/secondary" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={tc("goBack")}>
           <ArrowLeft className="size-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">My Teachers</h1>
-          <p className="text-sm text-gray-500">Your subject teachers and their feedback</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("myTeachers")}</h1>
+          <p className="text-sm text-gray-500">{t("subjectTeachersAndFeedback")}</p>
         </div>
       </div>
 
-      {/* Teachers List */}
       {teachers.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Your Teachers</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">{t("yourTeachers")}</h2>
           <div className="space-y-2">
-            {teachers.map(t => (
-              <div key={t.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4">
+            {teachers.map(teacher => (
+              <div key={teacher.id} className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4">
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
                   <Users className="size-6 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{t.name}</p>
-                  {t.subject && <p className="text-xs text-gray-400">{t.subject}</p>}
+                  <p className="font-semibold text-gray-900">{teacher.name}</p>
+                  {teacher.subject && <p className="text-xs text-gray-400">{teacher.subject}</p>}
                 </div>
               </div>
             ))}
@@ -77,10 +97,9 @@ export default function SecondaryTeachersPage() {
         </section>
       )}
 
-      {/* Teacher Feedback */}
       {feedback.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Recent Feedback</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">{t("recentFeedback")}</h2>
           <div className="space-y-3">
             {feedback.map(f => (
               <div key={f.id} className="rounded-2xl border border-gray-100 bg-white p-5">
@@ -100,9 +119,9 @@ export default function SecondaryTeachersPage() {
       {teachers.length === 0 && feedback.length === 0 && (
         <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center">
           <Users className="mx-auto size-12 text-gray-300" />
-          <h3 className="mt-3 text-lg font-bold text-gray-800">Your Teachers</h3>
+          <h3 className="mt-3 text-lg font-bold text-gray-800">{t("yourTeachers")}</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Information about your subject teachers and their feedback will appear here.
+            {t("teachersInfoWillAppear")}
           </p>
         </div>
       )}

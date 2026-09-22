@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { nurseryApi, type NurseryActivity, type NurseryMilestone, type NurseryStory } from "@/lib/nursery-api"
 import { LoadingState } from "@/components/learner/shared"
@@ -14,9 +15,9 @@ import {
 
 function getGreeting() {
   const h = new Date().getHours()
-  if (h < 12) return { text: "Good morning", icon: Sun, emoji: "\u{1F31E}" }
-  if (h < 17) return { text: "Good afternoon", icon: CloudSun, emoji: "\u{26C5}" }
-  return { text: "Good evening", icon: Moon, emoji: "\u{1F319}" }
+  if (h < 12) return { key: "morning" as const, icon: Sun, emoji: "\u{1F31E}" }
+  if (h < 17) return { key: "afternoon" as const, icon: CloudSun, emoji: "\u{26C5}" }
+  return { key: "evening" as const, icon: Moon, emoji: "\u{1F319}" }
 }
 
 const DISCOVERY_AREAS = [
@@ -55,13 +56,15 @@ const MILESTONE_CATEGORY_EMOJI: Record<string, string> = {
 export default function NurseryHomePage() {
   const { user, loading: authLoading } = useRequireAuth()
   const router = useRouter()
+  const t = useTranslations("nursery")
+  const tc = useTranslations("common")
   const [activities, setActivities] = useState<NurseryActivity[]>([])
   const [milestones, setMilestones] = useState<NurseryMilestone[]>([])
   const [stories, setStories] = useState<NurseryStory[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const firstName = user?.name?.split(" ")[0] || "Little Star"
+  const firstName = user?.name?.split(" ")[0] || t("littleStar")
   const greeting = getGreeting()
 
   useEffect(() => {
@@ -86,7 +89,7 @@ export default function NurseryHomePage() {
         if (results[1].status === "fulfilled") setMilestones(results[1].value)
         if (results[2].status === "fulfilled") setStories(results[2].value)
       } catch {
-        setError(true)
+        setError(tc("error"))
       }
       setLoading(false)
     }
@@ -97,18 +100,19 @@ export default function NurseryHomePage() {
 
   if (error) {
     return (
-      <div className="mx-auto flex min-h-[50vh] max-w-5xl flex-col items-center justify-center p-4 text-center">
+      <div role="main" className="mx-auto flex min-h-[50vh] max-w-5xl flex-col items-center justify-center p-4 text-center">
         <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-red-50">
           <Sparkles className="size-8 text-red-400" />
         </div>
-        <h2 className="text-lg font-bold text-gray-800">Something went wrong</h2>
-        <p className="mt-1 text-sm text-gray-500">We couldn&apos;t load your world right now.</p>
+        <h2 className="text-lg font-bold text-gray-800">{tc("error")}</h2>
+        <p className="mt-1 text-sm text-gray-500">{t("empty.default")}</p>
         <button
           type="button"
           onClick={() => window.location.reload()}
+          aria-label={tc("retry")}
           className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary/90"
         >
-          Try Again
+          {tc("retry")}
         </button>
       </div>
     )
@@ -151,7 +155,7 @@ export default function NurseryHomePage() {
   const discoveries = dynamicDiscoveries || DISCOVERY_AREAS
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-4 pb-24 sm:space-y-6">
+    <main role="main" className="mx-auto max-w-5xl space-y-5 p-4 pb-24 sm:space-y-6">
 
       {/* ─── Section 01: Welcome ─── */}
       <div className="nursery-card nursery-card-primary relative overflow-hidden rounded-3xl p-6 text-white sm:p-8">
@@ -164,10 +168,10 @@ export default function NurseryHomePage() {
           </div>
           <div>
             <h1 className="text-xl font-bold sm:text-2xl">
-              {greeting.text}, {firstName}!
+              {t(`greeting.${greeting.key}`)}, {firstName}!
             </h1>
             <p className="mt-1 text-sm text-white/80">
-              Ready for a new discovery today?
+              {t("subtitle.world")}
             </p>
           </div>
         </div>
@@ -221,6 +225,7 @@ export default function NurseryHomePage() {
               </div>
               <Link
                 href="/dashboard/nursery/play"
+                aria-label={t("playAndLearn")}
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-orange px-5 py-3 text-sm font-bold text-white transition-all hover:bg-orange/90 hover:shadow-md active:scale-[0.98]"
               >
                 <Play className="size-4" />
@@ -232,10 +237,11 @@ export default function NurseryHomePage() {
         ) : (
           <div className="nursery-card rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 p-6 text-center">
             <span className="text-3xl">{"\u{1F30D}"}</span>
-            <p className="mt-2 text-sm font-bold text-gray-700">No adventure scheduled today</p>
-            <p className="mt-1 text-xs text-gray-500">Explore your world and find something fun!</p>
+            <p className="mt-2 text-sm font-bold text-gray-700">{t("empty.default")}</p>
+            <p className="mt-1 text-xs text-gray-500">{t("empty.keepLearning")}</p>
             <Link
               href="/dashboard/nursery/play"
+              aria-label={t("playAndLearn")}
               className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-primary/10 px-4 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
             >
               <Compass className="size-3.5" /> Explore Activities
@@ -276,9 +282,10 @@ export default function NurseryHomePage() {
               </div>
               <Link
                 href="/dashboard/nursery/play"
+                aria-label={continueLearning.status === "IN_PROGRESS" ? tc("continue") : tc("startLearning")}
                 className="flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-primary/90 hover:shadow-md active:scale-[0.98]"
               >
-                {continueLearning.status === "IN_PROGRESS" ? "Continue" : "Start"}
+                {continueLearning.status === "IN_PROGRESS" ? tc("continue") : tc("startLearning")}
                 <ArrowRight className="size-3.5" />
               </Link>
             </div>
@@ -286,8 +293,8 @@ export default function NurseryHomePage() {
         ) : (
           <div className="nursery-card rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-5 text-center">
             <span className="text-2xl">{"\u{1F331}"}</span>
-            <p className="mt-2 text-sm font-bold text-gray-700">Nothing to continue yet</p>
-            <p className="mt-1 text-xs text-gray-500">Start your first discovery above!</p>
+            <p className="mt-2 text-sm font-bold text-gray-700">{t("empty.default")}</p>
+            <p className="mt-1 text-xs text-gray-500">{t("empty.keepLearning")}</p>
           </div>
         )}
       </section>
@@ -302,6 +309,7 @@ export default function NurseryHomePage() {
             <Link
               key={`${d.label}-${i}`}
               href={d.href}
+              aria-label={`${d.label} - ${d.desc}`}
               className={`nursery-card group rounded-2xl border-2 p-3 text-center transition-all hover:shadow-md active:scale-[0.97] sm:p-4 ${d.color}`}
             >
               <span className="text-2xl">{d.emoji}</span>
@@ -320,7 +328,7 @@ export default function NurseryHomePage() {
           <div className="p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <span className="text-lg">{"\u{1F3AE}"}</span>
-              <h3 className="text-sm font-bold text-gray-800">Play &amp; Learn</h3>
+              <h3 className="text-sm font-bold text-gray-800">{t("playAndLearn")}</h3>
             </div>
             {playActivity ? (
               <>
@@ -330,10 +338,11 @@ export default function NurseryHomePage() {
                 )}
               </>
             ) : (
-              <p className="mt-2 text-xs text-gray-500">Fun games are waiting for you!</p>
+              <p className="mt-2 text-xs text-gray-500">{t("empty.keepLearning")}</p>
             )}
             <Link
               href="/dashboard/nursery/play"
+              aria-label={t("playAndLearn")}
               className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-primary/90 active:scale-[0.98]"
             >
               <Play className="size-3.5" /> Play
@@ -346,7 +355,7 @@ export default function NurseryHomePage() {
           <div className="p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <span className="text-lg">{"\u{1F4D6}"}</span>
-              <h3 className="text-sm font-bold text-gray-800">Story of the Day</h3>
+              <h3 className="text-sm font-bold text-gray-800">{t("storyWorld")}</h3>
             </div>
             {storyOfTheDay ? (
               <>
@@ -357,6 +366,7 @@ export default function NurseryHomePage() {
                 <div className="mt-3 flex items-center gap-2">
                   <Link
                     href="/dashboard/nursery/stories"
+                    aria-label={t("storyWorld")}
                     className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-primary px-3 py-2 text-[11px] font-bold text-white transition-all hover:bg-primary/90 active:scale-[0.98]"
                   >
                     <Eye className="size-3" /> Read
@@ -364,6 +374,7 @@ export default function NurseryHomePage() {
                   {storyOfTheDay.audioUrl && (
                     <Link
                       href="/dashboard/nursery/stories"
+                      aria-label={t("listenAndLearn")}
                       className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-teal px-3 py-2 text-[11px] font-bold text-white transition-all hover:bg-teal/90 active:scale-[0.98]"
                     >
                       <Headphones className="size-3" /> Listen
@@ -373,9 +384,10 @@ export default function NurseryHomePage() {
               </>
             ) : (
               <>
-                <p className="mt-2 text-xs text-gray-500">No story today yet.</p>
+                <p className="mt-2 text-xs text-gray-500">{t("empty.noStories")}</p>
                 <Link
                   href="/dashboard/nursery/stories"
+                  aria-label={t("storyWorld")}
                   className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-primary/90 active:scale-[0.98]"
                 >
                   <BookOpen className="size-3.5" /> Browse Stories
@@ -395,7 +407,7 @@ export default function NurseryHomePage() {
             </div>
             <div>
               <p className="text-lg font-bold text-teal">{achievedCount}</p>
-              <p className="text-[11px] font-medium text-teal">Stars Earned</p>
+              <p className="text-[11px] font-medium text-teal">{t("stats.stars")}</p>
             </div>
           </div>
           <div className="nursery-card flex items-center gap-3 rounded-2xl bg-orange/10 p-4">
@@ -404,11 +416,11 @@ export default function NurseryHomePage() {
             </div>
             <div>
               <p className="text-lg font-bold text-orange">{completedCount}</p>
-              <p className="text-[11px] font-medium text-orange">Activities Done</p>
+              <p className="text-[11px] font-medium text-orange">{t("stats.completed")}</p>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }

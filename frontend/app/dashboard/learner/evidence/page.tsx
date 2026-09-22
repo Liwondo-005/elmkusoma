@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Portfolio, PracticalDemonstration, Project, FieldworkPlacement, CompetencyRecord } from "@/lib/types/college"
@@ -9,6 +10,8 @@ import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/sh
 import { Award, FolderOpen, Target, BookOpen, Bookmark, ChevronRight, AlertCircle } from "lucide-react"
 
 export default function MyEvidencePage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
   const [demonstrations, setDemonstrations] = useState<PracticalDemonstration[]>([])
@@ -40,45 +43,44 @@ export default function MyEvidencePage() {
       if (fwRes.status === "fulfilled") setFieldwork(Array.isArray(fwRes.value) ? fwRes.value as FieldworkPlacement[] : [])
       if (compRes.status === "fulfilled") setCompetencies(Array.isArray(compRes.value) ? compRes.value as CompetencyRecord[] : [])
     } catch {
-      setError("Failed to load evidence data")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Student"
   const totalItems = portfolios.reduce((sum, p) => sum + (p.items?.length || 0), 0) + demonstrations.length + projects.length + fieldwork.length + competencies.length
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadEvidence() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadEvidence() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
-      <LearnerHeader firstName={firstName} subtitle="All your learning evidence in one place." />
+      <LearnerHeader firstName={firstName} subtitle={t("evidence.subtitle")} />
 
       {totalItems === 0 ? (
         <EmptyState
           icon={<Award className="size-8" />}
-          title="No evidence yet"
-          description="Your portfolio, demonstrations, projects, fieldwork, and competency records will appear here."
+          title={t("evidence.noEvidence")}
+          description={t("evidence.noEvidenceDesc")}
         />
       ) : (
         <>
-          {/* Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              { label: "Portfolio Items", count: totalItems, icon: FolderOpen, color: "bg-primary/10 text-primary" },
-              { label: "Demonstrations", count: demonstrations.length, icon: Award, color: "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" },
-              { label: "Projects", count: projects.length, icon: Target, color: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
-              { label: "Fieldwork", count: fieldwork.length, icon: Bookmark, color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
-              { label: "Competencies", count: competencies.length, icon: BookOpen, color: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400" },
+              { label: t("evidence.portfolioItems"), count: totalItems, icon: FolderOpen, color: "bg-primary/10 text-primary" },
+              { label: t("evidence.demonstrations"), count: demonstrations.length, icon: Award, color: "bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400" },
+              { label: t("evidence.projects"), count: projects.length, icon: Target, color: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
+              { label: t("evidence.fieldwork"), count: fieldwork.length, icon: Bookmark, color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
+              { label: t("evidence.competencies"), count: competencies.length, icon: BookOpen, color: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400" },
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
                 <div className="flex items-center gap-3">
@@ -94,12 +96,11 @@ export default function MyEvidencePage() {
             ))}
           </div>
 
-          {/* Portfolio */}
           {portfolios.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-3">
                 <FolderOpen className="size-4 text-primary" />
-                <h3 className="font-semibold text-foreground">Portfolio</h3>
+                <h3 className="font-semibold text-foreground">{t("evidence.portfolio")}</h3>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {portfolios.map((p) => (
@@ -109,18 +110,17 @@ export default function MyEvidencePage() {
                   </div>
                 ))}
               </div>
-              <Link href="/dashboard/learner/portfolio" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                View Portfolio <ChevronRight className="size-3" />
+              <Link href="/dashboard/learner/portfolio" aria-label={t("evidence.viewPortfolio")} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                {t("evidence.viewPortfolio")} <ChevronRight className="size-3" />
               </Link>
             </div>
           )}
 
-          {/* Demonstrations */}
           {demonstrations.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-3">
                 <Award className="size-4 text-rose-600" />
-                <h3 className="font-semibold text-foreground">Show What I Can Do</h3>
+                <h3 className="font-semibold text-foreground">{t("evidence.showWhatICanDo")}</h3>
               </div>
               <div className="space-y-2">
                 {demonstrations.slice(0, 5).map((d) => (
@@ -132,18 +132,17 @@ export default function MyEvidencePage() {
                   </div>
                 ))}
               </div>
-              <Link href="/dashboard/learner/demonstrations" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                View All <ChevronRight className="size-3" />
+              <Link href="/dashboard/learner/demonstrations" aria-label={t("evidence.viewAll")} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                {tc("viewAll")} <ChevronRight className="size-3" />
               </Link>
             </div>
           )}
 
-          {/* Projects */}
           {projects.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-3">
                 <Target className="size-4 text-amber-600" />
-                <h3 className="font-semibold text-foreground">Projects</h3>
+                <h3 className="font-semibold text-foreground">{t("evidence.projects")}</h3>
               </div>
               <div className="space-y-2">
                 {projects.slice(0, 5).map((p) => (
@@ -155,29 +154,28 @@ export default function MyEvidencePage() {
                   </div>
                 ))}
               </div>
-              <Link href="/dashboard/learner/projects" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                View All <ChevronRight className="size-3" />
+              <Link href="/dashboard/learner/projects" aria-label={t("evidence.viewAllProjects")} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                {tc("viewAll")} <ChevronRight className="size-3" />
               </Link>
             </div>
           )}
 
-          {/* Competencies */}
           {competencies.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-3">
                 <BookOpen className="size-4 text-violet-600" />
-                <h3 className="font-semibold text-foreground">Competencies</h3>
+                <h3 className="font-semibold text-foreground">{t("evidence.competencies")}</h3>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {competencies.slice(0, 6).map((c) => (
                   <div key={c.id} className="rounded-xl border border-border bg-muted/30 p-3">
-                    <p className="font-medium text-foreground text-sm line-clamp-1">{c.competencyName || "Competency"}</p>
+                    <p className="font-medium text-foreground text-sm line-clamp-1">{c.competencyName || tc("competency")}</p>
                     <p className="text-xs text-muted-foreground">{c.status.replace(/_/g, " ")}</p>
                   </div>
                 ))}
               </div>
-              <Link href="/dashboard/learner/competencies" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                View All <ChevronRight className="size-3" />
+              <Link href="/dashboard/learner/competencies" aria-label={t("evidence.viewAllCompetencies")} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                {tc("viewAll")} <ChevronRight className="size-3" />
               </Link>
             </div>
           )}

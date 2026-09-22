@@ -12,7 +12,7 @@ export async function teacherFetch<T>(path: string, options?: RequestInit): Prom
       }
     } catch {}
   }
-  if (!institutionId) institutionId = "00000000-0000-0000-0000-000000000001"
+  if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {

@@ -3,6 +3,7 @@
 import { ArrowLeft, Users, BookOpen, Star, Home, Leaf, Palette, Music, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { nurseryApi, type NurseryParentLearning } from "@/lib/nursery-api"
 import { LoadingState } from "@/components/learner/shared"
@@ -18,26 +19,46 @@ const SUGGESTED_ACTIVITIES = [
 
 export default function ParentLearningPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("nursery")
+  const tc = useTranslations("common")
   const [apiActivities, setApiActivities] = useState<NurseryParentLearning[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.id) { setLoading(false); return }
     nurseryApi.getParentLearningByStudent(user.id)
       .then(setApiActivities)
-      .catch(() => {})
+      .catch(() => setError(tc("error")))
       .finally(() => setLoading(false))
   }, [user])
 
   if (loading) return <LoadingState />
 
+  if (error) {
+    return (
+      <main role="main" className="mx-auto flex min-h-[50vh] max-w-4xl flex-col items-center justify-center p-4 text-center">
+        <h2 className="text-lg font-bold text-gray-800">{tc("error")}</h2>
+        <p className="mt-1 text-sm text-gray-500">{t("empty.default")}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          aria-label={tc("retry")}
+          className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary/90"
+        >
+          {tc("retry")}
+        </button>
+      </main>
+    )
+  }
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
+    <main role="main" className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100"><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <Link href="/dashboard/nursery" aria-label={tc("back")} className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100"><ArrowLeft className="size-5 text-gray-600" /></Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Family Learning</h1>
-          <p className="text-sm text-gray-500">Learn with your family at home</p>
+          <h1 className="text-xl font-bold text-gray-800">{t("familyLearning")}</h1>
+          <p className="text-sm text-gray-500">{t("subtitle.family")}</p>
         </div>
       </div>
 
@@ -45,15 +66,15 @@ export default function ParentLearningPage() {
         <div className="flex items-center gap-3">
           <Home className="size-8" />
           <div>
-            <h2 className="text-lg font-bold">Learn Together at Home</h2>
-            <p className="text-sm text-white/70">Fun activities you can do with your family</p>
+            <h2 className="text-lg font-bold">{t("learnAtHome")}</h2>
+            <p className="text-sm text-white/70">{t("homeActivities")}</p>
           </div>
         </div>
       </div>
 
       {apiActivities.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Your Activities</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("yourActivities")}</h2>
           {apiActivities.map(act => (
             <div key={act.id} className={`nursery-card rounded-2xl bg-white p-4 ${act.completionStatus === "COMPLETED" ? "ring-2 ring-green-400" : ""}`}>
               <div className="flex items-center gap-3">
@@ -72,7 +93,7 @@ export default function ParentLearningPage() {
       )}
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Suggested Activities</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("suggestedActivities")}</h2>
         {SUGGESTED_ACTIVITIES.map(item => (
           <div key={item.title} className="nursery-card rounded-2xl bg-white p-4">
             <div className="flex items-center gap-4">
@@ -86,6 +107,6 @@ export default function ParentLearningPage() {
           </div>
         ))}
       </div>
-    </div>
+    </main>
   )
 }

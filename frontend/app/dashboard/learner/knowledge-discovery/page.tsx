@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
-import { collegeApi } from "@/lib/college-api"
 import { learnerApi } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
@@ -35,20 +35,20 @@ interface EnrolledCourse {
 
 type DiscoveryArea = "course" | "topic" | "research" | "project"
 
-const DISCOVERY_AREAS: { key: DiscoveryArea; label: string; icon: typeof Brain; description: string }[] = [
-  { key: "course", label: "By Course", icon: BookOpen, description: "Group content by enrolled course" },
-  { key: "topic", label: "By Topic", icon: Layers, description: "Cross-course topic connections" },
-  { key: "research", label: "By Research", icon: Search, description: "Research-to-course connections" },
-  { key: "project", label: "By Project", icon: Target, description: "Project-to-learning connections" },
+const DISCOVERY_AREAS: { key: DiscoveryArea; labelKey: string; icon: typeof Brain; descKey: string }[] = [
+  { key: "course", labelKey: "knowledgeDiscovery.byCourse", icon: BookOpen, descKey: "knowledgeDiscovery.byCourseDesc" },
+  { key: "topic", labelKey: "knowledgeDiscovery.byTopic", icon: Layers, descKey: "knowledgeDiscovery.byTopicDesc" },
+  { key: "research", labelKey: "knowledgeDiscovery.byResearch", icon: Search, descKey: "knowledgeDiscovery.byResearchDesc" },
+  { key: "project", labelKey: "knowledgeDiscovery.byProject", icon: Target, descKey: "knowledgeDiscovery.byProjectDesc" },
 ]
 
 const CONNECTION_STEPS = [
-  { label: "Current Topic", icon: Brain, color: "bg-primary/10 text-primary" },
-  { label: "Related Lecture", icon: BookOpen, color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" },
-  { label: "Resource", icon: FileText, color: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
-  { label: "Live Replay", icon: Video, color: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" },
-  { label: "Practice", icon: Zap, color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  { label: "Assessment", icon: Target, color: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" },
+  { labelKey: "knowledgeDiscovery.currentTopic", icon: Brain, color: "bg-primary/10 text-primary" },
+  { labelKey: "knowledgeDiscovery.relatedLecture", icon: BookOpen, color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" },
+  { labelKey: "knowledgeDiscovery.resource", icon: FileText, color: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
+  { labelKey: "knowledgeDiscovery.liveReplay", icon: Video, color: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" },
+  { labelKey: "knowledgeDiscovery.practice", icon: Zap, color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
+  { labelKey: "knowledgeDiscovery.assessment", icon: Target, color: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" },
 ]
 
 interface LearningPathItem {
@@ -62,6 +62,8 @@ interface LearningPathItem {
 }
 
 export default function KnowledgeDiscoveryPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -81,23 +83,19 @@ export default function KnowledgeDiscoveryPage() {
     try {
       setLoading(true)
       setError(null)
-      const studentId = user.id
-      const [enrollRes, researchRes, projectsRes, compRes, liveRes, resRes] = await Promise.all([
-        collegeApi.getStudentEnrollments(studentId).catch(() => ({ data: [] })),
-        collegeApi.getStudentResearch(studentId).catch(() => ({ data: [] })),
-        collegeApi.getStudentProjects(studentId).catch(() => ({ data: [] })),
-        collegeApi.getStudentCompetencies(studentId).catch(() => ({ data: [] })),
+      const [enrollRes, liveRes, resRes] = await Promise.all([
+        learnerApi.getEnrollments().catch(() => []),
         learnerApi.getLiveClasses().catch(() => []),
         learnerApi.getResources().catch(() => []),
       ])
-      setEnrollments(enrollRes.data as any || [])
-      setResearch(researchRes.data || [])
-      setProjects(projectsRes.data || [])
-      setCompetencies(compRes.data || [])
+      setEnrollments(Array.isArray(enrollRes) ? enrollRes as any : [])
+      setResearch([])
+      setProjects([])
+      setCompetencies([])
       setLiveClasses(Array.isArray(liveRes) ? liveRes : [])
       setResources(Array.isArray(resRes) ? resRes : [])
     } catch {
-      setError("Failed to load discovery data")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -107,25 +105,24 @@ export default function KnowledgeDiscoveryPage() {
     loadData()
   }, [loadData])
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   if (error && enrollments.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div role="main" className="mx-auto max-w-6xl space-y-6">
         <LearnerHeader
           firstName={user?.firstName || "Learner"}
-          subtitle="Connected learning — explore how topics connect across courses, resources, and activities"
+          subtitle={t("knowledgeDiscovery.subtitle")}
         />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
           <span>{error}</span>
-          <button onClick={loadData} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={loadData} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
   }
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
-  const studentId = user?.id || ""
 
   const getCourseConnections = (courseId: string) => {
     const courseResearch = research.filter((r: any) => r.subjectId === courseId)
@@ -149,7 +146,7 @@ export default function KnowledgeDiscoveryPage() {
         icon: BookOpen,
         subtitle: `${en.progressPercentage}% complete`,
         link: `/dashboard/learner/courses/${en.courseId}`,
-        connectedTo: "Continue exploring this course",
+        connectedTo: t("knowledgeDiscovery.continueExploring"),
       })
     })
 
@@ -159,9 +156,9 @@ export default function KnowledgeDiscoveryPage() {
         title: r.title,
         type: "resource",
         icon: FileText,
-        subtitle: r.resourceType || "Resource",
+        subtitle: r.resourceType || tc("resource"),
         link: `/dashboard/learner/resources`,
-        connectedTo: "Connected to your courses",
+        connectedTo: t("knowledgeDiscovery.connectedToCourses"),
       })
     })
 
@@ -171,9 +168,9 @@ export default function KnowledgeDiscoveryPage() {
         title: l.title,
         type: "live_class",
         icon: Video,
-        subtitle: l.subjectName || "Live session",
+        subtitle: l.subjectName || t("knowledgeDiscovery.liveSession"),
         link: `/dashboard/learner/live-classes`,
-        connectedTo: "Watch replay to reinforce learning",
+        connectedTo: t("knowledgeDiscovery.watchReplay"),
       })
     })
 
@@ -183,19 +180,18 @@ export default function KnowledgeDiscoveryPage() {
   const learningPath = buildLearningPath()
 
   const connectedCompetencies = competencies.slice(0, 6).map((c: any) => ({
-    name: c.competencyName || c.name || "Competency",
+    name: c.competencyName || c.name || tc("competency"),
     status: c.status || "NOT_STARTED",
     type: c.competencyType || c.type || "SKILL",
   }))
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <LearnerHeader
         firstName={firstName}
-        subtitle="Connected learning — explore how topics connect across courses, resources, and activities"
+        subtitle={t("knowledgeDiscovery.subtitle")}
       />
 
-      {/* Discovery Area Tabs */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {DISCOVERY_AREAS.map((area) => {
           const Icon = area.icon
@@ -204,6 +200,8 @@ export default function KnowledgeDiscoveryPage() {
             <button
               key={area.key}
               onClick={() => setActiveArea(area.key)}
+              aria-label={t(area.labelKey as any)}
+              aria-pressed={isActive}
               className={`rounded-2xl border p-4 text-left transition ${
                 isActive
                   ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary/20"
@@ -216,9 +214,9 @@ export default function KnowledgeDiscoveryPage() {
                 </div>
                 <div>
                   <p className={`text-sm font-semibold ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                    {area.label}
+                    {t(area.labelKey as any)}
                   </p>
-                  <p className="text-xs text-muted-foreground">{area.description}</p>
+                  <p className="text-xs text-muted-foreground">{t(area.descKey as any)}</p>
                 </div>
               </div>
             </button>
@@ -226,20 +224,19 @@ export default function KnowledgeDiscoveryPage() {
         })}
       </div>
 
-      {/* Connection Visualization */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Link2 className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold text-foreground">Learning Connection Path</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("knowledgeDiscovery.learningConnectionPath")}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {CONNECTION_STEPS.map((step, idx) => {
             const Icon = step.icon
             return (
-              <div key={step.label} className="flex items-center gap-2">
+              <div key={step.labelKey} className="flex items-center gap-2">
                 <div className={`flex items-center gap-2 rounded-xl border border-border px-3 py-2 ${step.color}`}>
                   <Icon className="size-4" />
-                  <span className="text-xs font-medium whitespace-nowrap">{step.label}</span>
+                  <span className="text-xs font-medium whitespace-nowrap">{t(step.labelKey as any)}</span>
                 </div>
                 {idx < CONNECTION_STEPS.length - 1 && (
                   <ChevronRight className="size-4 text-muted-foreground shrink-0" />
@@ -250,18 +247,17 @@ export default function KnowledgeDiscoveryPage() {
         </div>
       </div>
 
-      {/* Course Connections (default view) */}
       {activeArea === "course" && (
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <BookOpen className="size-4 text-primary" />
-            Course Connections
+            {t("knowledgeDiscovery.courseConnections")}
           </h2>
           {enrollments.length === 0 ? (
             <EmptyState
               icon={<BookOpen className="size-8" />}
-              title="No enrolled courses"
-              description="Enroll in courses to discover connections between topics, resources, and activities."
+              title={t("knowledgeDiscovery.noEnrolledCourses")}
+              description={t("knowledgeDiscovery.noEnrolledCoursesDesc")}
             />
           ) : (
             <div className="space-y-4">
@@ -283,11 +279,10 @@ export default function KnowledgeDiscoveryPage() {
                     </div>
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      {/* Connected Resources */}
                       <div className="rounded-xl border border-border p-3">
                         <div className="flex items-center gap-2 mb-2">
                           <FileText className="size-3.5 text-amber-500" />
-                          <span className="text-xs font-medium text-muted-foreground">Resources</span>
+                          <span className="text-xs font-medium text-muted-foreground">{t("knowledgeDiscovery.resources")}</span>
                         </div>
                         {conn.courseResearch.length > 0 ? (
                           <div className="space-y-1">
@@ -296,15 +291,14 @@ export default function KnowledgeDiscoveryPage() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground italic">No linked resources</p>
+                          <p className="text-xs text-muted-foreground italic">{t("knowledgeDiscovery.noLinkedResources")}</p>
                         )}
                       </div>
 
-                      {/* Connected Projects */}
                       <div className="rounded-xl border border-border p-3">
                         <div className="flex items-center gap-2 mb-2">
                           <Target className="size-3.5 text-primary" />
-                          <span className="text-xs font-medium text-muted-foreground">Projects</span>
+                          <span className="text-xs font-medium text-muted-foreground">{t("knowledgeDiscovery.projects")}</span>
                         </div>
                         {conn.courseProjects.length > 0 ? (
                           <div className="space-y-1">
@@ -313,15 +307,14 @@ export default function KnowledgeDiscoveryPage() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground italic">No linked projects</p>
+                          <p className="text-xs text-muted-foreground italic">{t("knowledgeDiscovery.noLinkedProjects")}</p>
                         )}
                       </div>
 
-                      {/* Connected Live Sessions */}
                       <div className="rounded-xl border border-border p-3">
                         <div className="flex items-center gap-2 mb-2">
                           <Video className="size-3.5 text-purple-500" />
-                          <span className="text-xs font-medium text-muted-foreground">Live Sessions</span>
+                          <span className="text-xs font-medium text-muted-foreground">{t("knowledgeDiscovery.liveSessions")}</span>
                         </div>
                         {conn.courseLive.length > 0 ? (
                           <div className="space-y-1">
@@ -330,33 +323,33 @@ export default function KnowledgeDiscoveryPage() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground italic">No linked sessions</p>
+                          <p className="text-xs text-muted-foreground italic">{t("knowledgeDiscovery.noLinkedSessions")}</p>
                         )}
                       </div>
 
-                      {/* Connected Competencies */}
                       <div className="rounded-xl border border-border p-3">
                         <div className="flex items-center gap-2 mb-2">
                           <Zap className="size-3.5 text-emerald-500" />
-                          <span className="text-xs font-medium text-muted-foreground">Competencies</span>
+                          <span className="text-xs font-medium text-muted-foreground">{t("knowledgeDiscovery.competencies")}</span>
                         </div>
                         {conn.courseCompetencies.length > 0 ? (
                           <div className="space-y-1">
                             {conn.courseCompetencies.slice(0, 3).map((c: any, i: number) => (
-                              <p key={i} className="text-xs text-foreground truncate">{c.competencyName || c.name || "Competency"}</p>
+                              <p key={i} className="text-xs text-foreground truncate">{c.competencyName || c.name || tc("competency")}</p>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground italic">No linked competencies</p>
+                          <p className="text-xs text-muted-foreground italic">{t("knowledgeDiscovery.noLinkedCompetencies")}</p>
                         )}
                       </div>
                     </div>
 
                     <button
                       onClick={() => router.push(`/dashboard/learner/courses/${en.courseId}`)}
+                      aria-label={`${t("knowledgeDiscovery.openCourse")} - ${en.courseTitle}`}
                       className="mt-4 flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                     >
-                      Open course <ArrowRight className="size-3" />
+                      {t("knowledgeDiscovery.openCourse")} <ArrowRight className="size-3" />
                     </button>
                   </div>
                 )
@@ -366,18 +359,17 @@ export default function KnowledgeDiscoveryPage() {
         </div>
       )}
 
-      {/* Topic View */}
       {activeArea === "topic" && (
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Layers className="size-4 text-primary" />
-            Cross-Course Topic Connections
+            {t("knowledgeDiscovery.crossCourseTopicConnections")}
           </h2>
           {competencies.length === 0 ? (
             <EmptyState
               icon={<Layers className="size-8" />}
-              title="No topics yet"
-              description="Topics will appear as you progress through courses and develop competencies."
+              title={t("knowledgeDiscovery.noTopics")}
+              description={t("knowledgeDiscovery.noTopicsDesc")}
             />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -400,8 +392,8 @@ export default function KnowledgeDiscoveryPage() {
                           <Lightbulb className="size-4 text-primary" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-foreground">{c.competencyName || c.name || "Topic"}</p>
-                          <p className="text-xs text-muted-foreground">{c.competencyType || c.type || "Knowledge"}</p>
+                          <p className="text-sm font-medium text-foreground">{c.competencyName || c.name || t("knowledgeDiscovery.topic")}</p>
+                          <p className="text-xs text-muted-foreground">{c.competencyType || c.type || t("knowledgeDiscovery.knowledge")}</p>
                         </div>
                       </div>
                       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColors[status] || "bg-muted text-muted-foreground"}`}>
@@ -416,18 +408,17 @@ export default function KnowledgeDiscoveryPage() {
         </div>
       )}
 
-      {/* Research View */}
       {activeArea === "research" && (
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Search className="size-4 text-primary" />
-            Research-to-Course Connections
+            {t("knowledgeDiscovery.researchToCourseConnections")}
           </h2>
           {research.length === 0 ? (
             <EmptyState
               icon={<Search className="size-8" />}
-              title="No research projects yet"
-              description="Research projects will connect to your courses as you advance."
+              title={t("knowledgeDiscovery.noResearchProjects")}
+              description={t("knowledgeDiscovery.noResearchProjectsDesc")}
             />
           ) : (
             <div className="space-y-3">
@@ -476,18 +467,17 @@ export default function KnowledgeDiscoveryPage() {
         </div>
       )}
 
-      {/* Project View */}
       {activeArea === "project" && (
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Target className="size-4 text-primary" />
-            Project-to-Learning Connections
+            {t("knowledgeDiscovery.projectToLearningConnections")}
           </h2>
           {projects.length === 0 ? (
             <EmptyState
               icon={<Target className="size-8" />}
-              title="No projects yet"
-              description="Projects will appear here as your instructors assign them."
+              title={t("knowledgeDiscovery.noProjects")}
+              description={t("knowledgeDiscovery.noProjectsDesc")}
             />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -532,23 +522,23 @@ export default function KnowledgeDiscoveryPage() {
         </div>
       )}
 
-      {/* Recent Learning Path */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold text-foreground">Recent Learning Path</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("knowledgeDiscovery.recentLearningPath")}</h2>
         </div>
         {learningPath.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">Start learning to see your path here.</p>
+          <p className="text-xs text-muted-foreground text-center py-4">{t("knowledgeDiscovery.startLearning")}</p>
         ) : (
           <div className="space-y-2">
             {learningPath.map((item) => {
               const Icon = item.icon
               return (
-                <div
+                <button
                   key={item.id}
-                  className="flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50 cursor-pointer"
                   onClick={() => router.push(item.link)}
+                  aria-label={`${item.title} - ${item.connectedTo}`}
+                  className="w-full flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50 cursor-pointer text-left"
                 >
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Icon className="size-4" />
@@ -558,23 +548,22 @@ export default function KnowledgeDiscoveryPage() {
                     <p className="truncate text-xs text-muted-foreground">{item.connectedTo}</p>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-primary font-medium shrink-0">
-                    Continue <ArrowRight className="size-3" />
+                    {tc("continue")} <ArrowRight className="size-3" />
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>
         )}
       </div>
 
-      {/* Related Research */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Lightbulb className="size-4 text-amber-500" />
-          <h2 className="text-sm font-semibold text-foreground">Related Research</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("knowledgeDiscovery.relatedResearch")}</h2>
         </div>
         {research.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">No research projects connected to your courses yet.</p>
+          <p className="text-xs text-muted-foreground text-center py-4">{t("knowledgeDiscovery.noResearchConnected")}</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {research.slice(0, 4).map((r: any) => {
@@ -606,14 +595,13 @@ export default function KnowledgeDiscoveryPage() {
         )}
       </div>
 
-      {/* Skills Map */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="size-4 text-emerald-500" />
-          <h2 className="text-sm font-semibold text-foreground">Skills Map</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("knowledgeDiscovery.skillsMap")}</h2>
         </div>
         {connectedCompetencies.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">No competencies mapped yet.</p>
+          <p className="text-xs text-muted-foreground text-center py-4">{t("knowledgeDiscovery.noCompetenciesMapped")}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {connectedCompetencies.map((comp, idx) => {

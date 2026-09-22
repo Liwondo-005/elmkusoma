@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
@@ -64,11 +65,10 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const label = status.replace(/_/g, " ")
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || "bg-muted text-muted-foreground"}`}>
       {status === "IN_PROGRESS" && <span className="mr-1 size-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-      {label}
+      {status.replace(/_/g, " ")}
     </span>
   )
 }
@@ -84,6 +84,8 @@ const emptyForm = {
 }
 
 export default function WorkshopsPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [sessions, setSessions] = useState<WorkshopSession[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,7 +107,7 @@ export default function WorkshopsPage() {
       const res = await collegeApi.getLearnerWorkshops(studentId)
       setSessions(res.data || [])
     } catch {
-      setError("Failed to load workshops.")
+      setError(tc("error"))
     } finally {
       setLoading(false)
     }
@@ -140,21 +142,21 @@ export default function WorkshopsPage() {
       setShowForm(false)
       await loadSessions()
     } catch {
-      setError("Failed to create workshop.")
+      setError(tc("error"))
     } finally {
       setSubmitting(false)
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this workshop session?")) return
+    if (!confirm(tc("confirm"))) return
     try {
       setDeletingId(id)
       setError(null)
       await collegeApi.deleteWorkshop(id)
       setSessions((prev) => prev.filter((s) => s.id !== id))
     } catch {
-      setError("Failed to delete workshop.")
+      setError(tc("error"))
     } finally {
       setDeletingId(null)
     }
@@ -188,23 +190,25 @@ export default function WorkshopsPage() {
   const inProgressCount = sessions.filter((s) => s.status === "IN_PROGRESS").length
   const completedCount = sessions.filter((s) => s.status === "COMPLETED").length
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-start justify-between">
         <LearnerHeader
           firstName={firstName}
-          subtitle="Manage your workshop sessions, lab activities, and hands-on learning experiences."
+          subtitle={t("subtitle.workshops")}
         />
         <button
           onClick={() => setShowForm(!showForm)}
+          aria-label={t("workshop")}
+          aria-pressed={showForm}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90"
         >
           <Plus className="size-4" />
-          Add Workshop
+          {t("workshop")}
         </button>
       </div>
 
@@ -214,83 +218,91 @@ export default function WorkshopsPage() {
             <AlertCircle className="size-4" />
             {error}
           </div>
+          <button onClick={() => setError(null)} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
       {showForm && (
         <form onSubmit={handleCreate} className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
-          <h3 className="font-semibold text-foreground">New Workshop Session</h3>
+          <h3 className="font-semibold text-foreground">{t("workshop")}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Title *</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("courses")} *</label>
               <input
                 type="text"
                 required
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="e.g. Chemistry Lab: Titration"
+                aria-label={t("courses")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Type</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("department")}</label>
               <select
                 value={form.workshopType}
                 onChange={(e) => setForm((f) => ({ ...f, workshopType: e.target.value }))}
+                aria-label={t("department")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
-                {WORKSHOP_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                {WORKSHOP_TYPES.map((wt) => (
+                  <option key={wt} value={wt}>{wt}</option>
                 ))}
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Scheduled At</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("academicYear")}</label>
               <input
                 type="datetime-local"
                 value={form.scheduledAt}
                 onChange={(e) => setForm((f) => ({ ...f, scheduledAt: e.target.value }))}
+                aria-label={t("academicYear")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Duration (minutes)</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("creditHours")}</label>
               <input
                 type="number"
                 min={0}
                 value={form.durationMinutes}
                 onChange={(e) => setForm((f) => ({ ...f, durationMinutes: Number(e.target.value) }))}
+                aria-label={t("creditHours")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Location</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("location")}</label>
               <input
                 type="text"
                 value={form.location}
                 onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                 placeholder="e.g. Lab Room 204"
+                aria-label={t("location")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Materials URL</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("download")}</label>
               <input
                 type="url"
                 value={form.materialsUrl}
                 onChange={(e) => setForm((f) => ({ ...f, materialsUrl: e.target.value }))}
                 placeholder="https://..."
+                aria-label={t("download")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("description")}</label>
             <textarea
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               placeholder="Describe the workshop session..."
+              aria-label={t("description")}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
             />
           </div>
@@ -298,16 +310,18 @@ export default function WorkshopsPage() {
             <button
               type="submit"
               disabled={submitting || !form.title.trim()}
+              aria-label={tc("submit")}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-50"
             >
-              {submitting ? "Creating..." : "Create Workshop"}
+              {submitting ? tc("loading") : tc("submit")}
             </button>
             <button
               type="button"
               onClick={() => { setShowForm(false); setForm(emptyForm) }}
+              aria-label={tc("cancel")}
               className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
             >
-              Cancel
+              {tc("cancel")}
             </button>
           </div>
         </form>
@@ -320,7 +334,7 @@ export default function WorkshopsPage() {
               <FlaskConical className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Sessions</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.total")}</p>
               <p className="text-2xl font-extrabold text-foreground">{totalSessions}</p>
             </div>
           </div>
@@ -331,7 +345,7 @@ export default function WorkshopsPage() {
               <Calendar className="size-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Scheduled</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("filters.upcoming")}</p>
               <p className="text-2xl font-extrabold text-foreground">{scheduledCount}</p>
             </div>
           </div>
@@ -342,7 +356,7 @@ export default function WorkshopsPage() {
               <Clock className="size-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">In Progress</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.inProgress")}</p>
               <p className="text-2xl font-extrabold text-foreground">{inProgressCount}</p>
             </div>
           </div>
@@ -353,7 +367,7 @@ export default function WorkshopsPage() {
               <CheckCircle className="size-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Completed</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.completed")}</p>
               <p className="text-2xl font-extrabold text-foreground">{completedCount}</p>
             </div>
           </div>
@@ -361,33 +375,39 @@ export default function WorkshopsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Type:</span>
+        <span className="text-xs font-medium text-muted-foreground">{t("department")}:</span>
         <button
           onClick={() => setTypeFilter("All")}
+          aria-pressed={typeFilter === "All"}
+          aria-label={tc("filter")}
           className={`rounded-full px-3 py-1 text-xs font-medium transition ${typeFilter === "All" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
         >
-          All
+          {tc("filter")}
         </button>
-        {WORKSHOP_TYPES.map((t) => (
+        {WORKSHOP_TYPES.map((wt) => (
           <button
-            key={t}
-            onClick={() => setTypeFilter(t)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${typeFilter === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            key={wt}
+            onClick={() => setTypeFilter(wt)}
+            aria-pressed={typeFilter === wt}
+            aria-label={wt}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${typeFilter === wt ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
-            {t}
+            {wt}
           </button>
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Status:</span>
+        <span className="text-xs font-medium text-muted-foreground">{t("status")}:</span>
         {STATUS_OPTIONS.map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
+            aria-pressed={statusFilter === s}
+            aria-label={s === "All" ? tc("filter") : s.replace(/_/g, " ")}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${statusFilter === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
-            {s === "All" ? "All" : s.replace(/_/g, " ")}
+            {s === "All" ? tc("filter") : s.replace(/_/g, " ")}
           </button>
         ))}
       </div>
@@ -395,23 +415,24 @@ export default function WorkshopsPage() {
       {sessions.length === 0 ? (
         <EmptyState
           icon={<FlaskConical className="size-8" />}
-          title="No workshop sessions yet"
-          description="Create your first workshop session to start tracking hands-on learning activities."
+          title={t("empty.noModules")}
+          description={t("empty.noModules")}
           action={
             <button
               onClick={() => setShowForm(true)}
+              aria-label={t("workshop")}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="size-4" />
-              Create Workshop
+              {t("workshop")}
             </button>
           }
         />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<FlaskConical className="size-8" />}
-          title="No sessions match your filters"
-          description="Try adjusting the type or status filters to see results."
+          title={tc("noResults")}
+          description={tc("noResults")}
         />
       ) : (
         <div className="space-y-4">
@@ -434,19 +455,21 @@ export default function WorkshopsPage() {
                       href={session.materialsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      aria-label={t("download")}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
                     >
                       <ExternalLink className="size-3" />
-                      Materials
+                      {t("download")}
                     </a>
                   )}
                   <button
                     onClick={() => handleDelete(session.id)}
                     disabled={deletingId === session.id}
+                    aria-label={tc("delete")}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/10 disabled:opacity-50"
                   >
                     <Trash2 className="size-3" />
-                    {deletingId === session.id ? "Deleting..." : "Delete"}
+                    {deletingId === session.id ? tc("loading") : tc("delete")}
                   </button>
                 </div>
               </div>

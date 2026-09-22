@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
@@ -35,6 +36,8 @@ interface CourseWorkspaceItem {
 }
 
 export default function CourseWorkspacePage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user } = useAuth()
   const [courses, setCourses] = useState<CourseWorkspaceItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,7 +54,7 @@ export default function CourseWorkspacePage() {
       const enrollments = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []
       const mapped: CourseWorkspaceItem[] = enrollments.map((e: any) => ({
         id: e.id,
-        courseTitle: e.courseTitle ?? e.courseName ?? e.title ?? "Untitled Course",
+        courseTitle: e.courseTitle ?? e.courseName ?? e.title ?? tc("untitledCourse"),
         courseCode: e.courseCode ?? e.code ?? "",
         status: e.status ?? "ENROLLED",
         progressPercent: e.progressPercent ?? e.progressPercentage ?? 0,
@@ -70,7 +73,7 @@ export default function CourseWorkspacePage() {
       setCourses(mapped)
     } catch (err) {
       console.error("Failed to load course workspace:", err)
-      setError("Failed to load course workspace. Please try again.")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -117,13 +120,13 @@ export default function CourseWorkspacePage() {
       ? (gpaCourses.reduce((sum, c) => sum + (c.gradePoints ?? 0), 0) / gpaCourses.length).toFixed(2)
       : "--"
 
-  if (loading) return <LoadingState />
+  if (loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <LearnerHeader
         firstName={user?.firstName ?? "Student"}
-        subtitle="Overview of all enrolled courses and academic progress"
+        subtitle={t("courseWorkspace.subtitle")}
       />
 
       {error && (
@@ -133,14 +136,15 @@ export default function CourseWorkspacePage() {
               <AlertCircle className="size-5 text-red-500" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground">Something went wrong</p>
+              <p className="text-sm font-medium text-foreground">{t("courseWorkspace.errorTitle")}</p>
               <p className="text-xs text-muted-foreground">{error}</p>
             </div>
             <button
               onClick={loadData}
+              aria-label={tc("retry")}
               className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Retry
+              {tc("retry")}
             </button>
           </div>
         </div>
@@ -149,8 +153,8 @@ export default function CourseWorkspacePage() {
       {courses.length === 0 && !error ? (
         <EmptyState
           icon={<BookOpen className="size-8" />}
-          title="No courses found"
-          description="You have not been enrolled in any courses yet."
+          title={t("courseWorkspace.noCourses")}
+          description={t("courseWorkspace.noCoursesDesc")}
         />
       ) : (
         <>
@@ -162,7 +166,7 @@ export default function CourseWorkspacePage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{totalCourses}</p>
-                  <p className="text-xs text-muted-foreground">Total Courses</p>
+                  <p className="text-xs text-muted-foreground">{t("courseWorkspace.totalCourses")}</p>
                 </div>
               </div>
             </div>
@@ -173,7 +177,7 @@ export default function CourseWorkspacePage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{inProgressCount}</p>
-                  <p className="text-xs text-muted-foreground">In Progress</p>
+                  <p className="text-xs text-muted-foreground">{t("courseWorkspace.inProgress")}</p>
                 </div>
               </div>
             </div>
@@ -184,7 +188,7 @@ export default function CourseWorkspacePage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{completedCount}</p>
-                  <p className="text-xs text-muted-foreground">Completed</p>
+                  <p className="text-xs text-muted-foreground">{t("courseWorkspace.completed")}</p>
                 </div>
               </div>
             </div>
@@ -195,7 +199,7 @@ export default function CourseWorkspacePage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{averageGpa}</p>
-                  <p className="text-xs text-muted-foreground">Average GPA</p>
+                  <p className="text-xs text-muted-foreground">{t("courseWorkspace.avgGpa")}</p>
                 </div>
               </div>
             </div>
@@ -205,13 +209,14 @@ export default function CourseWorkspacePage() {
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="size-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Active Courses</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("courseWorkspace.activeCourses")}</h3>
               </div>
               <div className="space-y-3">
                 {activeCourses.map((course) => (
                   <div key={course.id} className="rounded-xl border border-border bg-muted/50 overflow-hidden">
                     <button
                       onClick={() => toggleExpand(course.id)}
+                      aria-label={`${course.courseTitle} - ${expandedId === course.id ? tc("collapse") : tc("expand")}`}
                       className="w-full p-4 text-left hover:bg-muted/30 transition-colors"
                     >
                       <div className="flex items-start justify-between">
@@ -238,10 +243,16 @@ export default function CourseWorkspacePage() {
                       </div>
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">Progress</span>
+                          <span className="text-muted-foreground">{tc("progress")}</span>
                           <span className="font-semibold text-primary">{course.progressPercent}%</span>
                         </div>
-                        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          role="progressbar"
+                          aria-valuenow={course.progressPercent}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted"
+                        >
                           <div
                             className="h-full rounded-full bg-primary transition-all"
                             style={{ width: `${course.progressPercent}%` }}
@@ -256,7 +267,7 @@ export default function CourseWorkspacePage() {
                           <div className="rounded-xl border border-border bg-background p-3">
                             <div className="flex items-center gap-2 mb-1.5">
                               <BookOpen className="size-3.5 text-primary" />
-                              <span className="text-xs font-medium text-muted-foreground">Lessons</span>
+                              <span className="text-xs font-medium text-muted-foreground">{t("courseWorkspace.lessons")}</span>
                             </div>
                             <p className="text-lg font-bold text-foreground">
                               {course.lessonsCompleted}
@@ -264,7 +275,13 @@ export default function CourseWorkspacePage() {
                                 /{course.totalLessons || 0}
                               </span>
                             </p>
-                            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              role="progressbar"
+                              aria-valuenow={course.totalLessons > 0 ? Math.round((course.lessonsCompleted / course.totalLessons) * 100) : 0}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted"
+                            >
                               <div
                                 className="h-full rounded-full bg-primary transition-all"
                                 style={{
@@ -280,7 +297,7 @@ export default function CourseWorkspacePage() {
                           <div className="rounded-xl border border-border bg-background p-3">
                             <div className="flex items-center gap-2 mb-1.5">
                               <Users className="size-3.5 text-blue-500" />
-                              <span className="text-xs font-medium text-muted-foreground">Assignments</span>
+                              <span className="text-xs font-medium text-muted-foreground">{t("courseWorkspace.assignments")}</span>
                             </div>
                             <p className="text-lg font-bold text-foreground">
                               {course.assignmentsCompleted}
@@ -288,7 +305,13 @@ export default function CourseWorkspacePage() {
                                 /{course.totalAssignments || 0}
                               </span>
                             </p>
-                            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              role="progressbar"
+                              aria-valuenow={course.totalAssignments > 0 ? Math.round((course.assignmentsCompleted / course.totalAssignments) * 100) : 0}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted"
+                            >
                               <div
                                 className="h-full rounded-full bg-blue-500 transition-all"
                                 style={{
@@ -306,7 +329,7 @@ export default function CourseWorkspacePage() {
                           <div className="rounded-xl border border-border bg-background p-3">
                             <div className="flex items-center gap-2 mb-1.5">
                               <Award className="size-3.5 text-orange" />
-                              <span className="text-xs font-medium text-muted-foreground">Assessments</span>
+                              <span className="text-xs font-medium text-muted-foreground">{t("courseWorkspace.assessments")}</span>
                             </div>
                             <p className="text-lg font-bold text-foreground">
                               {course.assessmentsCompleted}
@@ -314,7 +337,13 @@ export default function CourseWorkspacePage() {
                                 /{course.totalAssessments || 0}
                               </span>
                             </p>
-                            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              role="progressbar"
+                              aria-valuenow={course.totalAssessments > 0 ? Math.round((course.assessmentsCompleted / course.totalAssessments) * 100) : 0}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted"
+                            >
                               <div
                                 className="h-full rounded-full bg-orange transition-all"
                                 style={{
@@ -332,7 +361,7 @@ export default function CourseWorkspacePage() {
                           <div className="rounded-xl border border-border bg-background p-3">
                             <div className="flex items-center gap-2 mb-1.5">
                               <CheckCircle className="size-3.5 text-teal" />
-                              <span className="text-xs font-medium text-muted-foreground">Current Grade</span>
+                              <span className="text-xs font-medium text-muted-foreground">{t("courseWorkspace.currentGrade")}</span>
                             </div>
                             <p className="text-lg font-bold text-foreground">
                               {course.currentGrade || "--"}
@@ -351,7 +380,7 @@ export default function CourseWorkspacePage() {
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center gap-2 mb-4">
                 <CheckCircle className="size-4 text-teal" />
-                <h3 className="text-sm font-semibold text-foreground">Completed Courses</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("courseWorkspace.completedCourses")}</h3>
               </div>
               <div className="space-y-3">
                 {completedCourses.map((course) => (
@@ -375,7 +404,7 @@ export default function CourseWorkspacePage() {
                       {course.currentGrade ? (
                         <span className="text-sm font-bold text-teal">{course.currentGrade}</span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">No grade</span>
+                        <span className="text-xs text-muted-foreground">{t("courseWorkspace.noGrade")}</span>
                       )}
                       <div className="mt-0.5 h-1.5 w-20 overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full bg-teal" style={{ width: "100%" }} />

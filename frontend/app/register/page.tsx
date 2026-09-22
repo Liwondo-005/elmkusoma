@@ -23,6 +23,7 @@ const learningLevels = [
   { value: "PRIMARY", label: "Primary" },
   { value: "SECONDARY", label: "Secondary" },
   { value: "COLLEGE", label: "College" },
+  { value: "VETA", label: "VETA (Vocational)" },
   { value: "UNIVERSITY", label: "University" },
 ]
 

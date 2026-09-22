@@ -89,7 +89,7 @@ export default function DashboardPage() {
 
       try {
         const { studentApi, learningApi, assessmentApi, certificateApi, academicApi } = await import("@/lib/api")
-        const institutionId = localStorage.getItem("elmkusoma_institution_id") || "00000000-0000-0000-0000-000000000001"
+        const institutionId = localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
 
         const students = await studentApi.getStudents(institutionId).catch(() => [])
         const student = students.find((s: any) => s.userId === user?.id || s.email === user?.email)

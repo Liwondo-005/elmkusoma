@@ -83,9 +83,36 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.error("Data integrity violation: {}", ex.getMessage());
+        String msg = ex.getMessage();
+        Throwable root = ex.getRootCause();
+        String detail = root != null ? root.getMessage() : msg;
+        log.error("Data integrity violation: {} | root cause: {}", msg, detail);
+
+        String userMessage = "Data conflict - the operation could not be completed due to a constraint violation";
+        if (detail != null) {
+            String lower = detail.toLowerCase();
+            if (lower.contains("foreign key") || lower.contains("referenc")) {
+                if (lower.contains("institution")) {
+                    userMessage = "Referenced institution does not exist";
+                } else if (lower.contains("teacher")) {
+                    userMessage = "Referenced teacher does not exist";
+                } else if (lower.contains("subject")) {
+                    userMessage = "Referenced subject does not exist";
+                } else if (lower.contains("class_group") || lower.contains("classes")) {
+                    userMessage = "Referenced class group does not exist";
+                } else if (lower.contains("user")) {
+                    userMessage = "Referenced user does not exist";
+                } else {
+                    userMessage = "Referenced record does not exist - check your data";
+                }
+            } else if (lower.contains("unique") || lower.contains("duplicate")) {
+                userMessage = "A record with this information already exists";
+            } else if (lower.contains("not null")) {
+                userMessage = "A required field is missing";
+            }
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error("Data conflict - the operation could not be completed due to a constraint violation"));
+                .body(ApiResponse.error(userMessage));
     }
 
     @ExceptionHandler(ResourceAccessException.class)

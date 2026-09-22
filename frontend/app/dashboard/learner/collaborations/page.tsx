@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { collegeApi } from "@/lib/college-api";
 import {
@@ -83,6 +84,8 @@ const NEW_COLLAB_TYPES = [
 ];
 
 export default function CollaborationsPage() {
+  const t = useTranslations("highered");
+  const tc = useTranslations("common");
   const { user } = useAuth();
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +104,7 @@ export default function CollaborationsPage() {
       const res = await collegeApi.getLearnerCollaborations(user.id);
       setCollaborations(res.data || []);
     } catch (err: any) {
-      setError(err?.message || "Failed to load collaborations");
+      setError(err?.message || tc("error"));
     } finally {
       setLoading(false);
     }
@@ -129,19 +132,19 @@ export default function CollaborationsPage() {
       setShowForm(false);
       await fetchCollaborations();
     } catch (err: any) {
-      setError(err?.message || "Failed to create collaboration");
+      setError(err?.message || tc("error"));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this collaboration?")) return;
+    if (!confirm(tc("confirm"))) return;
     try {
       await collegeApi.deleteCollaboration(id);
       await fetchCollaborations();
     } catch (err: any) {
-      setError(err?.message || "Failed to delete collaboration");
+      setError(err?.message || tc("error"));
     }
   };
 
@@ -166,18 +169,20 @@ export default function CollaborationsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div role="main" className="space-y-6">
       <div className="flex items-center justify-between">
         <LearnerHeader
           firstName={user?.firstName || user?.name?.split(" ")[0] || "Learner"}
-          subtitle="Connect and learn with your peers"
+          subtitle={t("subtitle.collaborations")}
         />
         <button
           onClick={() => setShowForm(!showForm)}
+          aria-label={t("collaborate")}
+          aria-pressed={showForm}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          New Collaboration
+          {t("collaborate")}
         </button>
       </div>
 
@@ -187,15 +192,16 @@ export default function CollaborationsPage() {
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
+            aria-label={tc("retry")}
             className="ml-auto text-xs underline"
           >
-            Dismiss
+            {tc("retry")}
           </button>
         </div>
       )}
 
       {loading ? (
-        <LoadingState />
+        <div aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -208,7 +214,7 @@ export default function CollaborationsPage() {
                   <p className="text-2xl font-semibold text-foreground">
                     {activeCollabs}
                   </p>
-                  <p className="text-sm text-muted-foreground">Active</p>
+                  <p className="text-sm text-muted-foreground">{t("filters.active")}</p>
                 </div>
               </div>
             </div>
@@ -222,7 +228,7 @@ export default function CollaborationsPage() {
                     {studyGroups}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Study Groups
+                    {t("courses")}
                   </p>
                 </div>
               </div>
@@ -237,7 +243,7 @@ export default function CollaborationsPage() {
                     {researchTeams}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Research Teams
+                    {t("research")}
                   </p>
                 </div>
               </div>
@@ -250,12 +256,12 @@ export default function CollaborationsPage() {
               className="rounded-2xl border border-border bg-card p-5 shadow-xs"
             >
               <h3 className="mb-4 text-lg font-semibold text-foreground">
-                Create New Collaboration
+                {t("collaborate")}
               </h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">
-                    Title
+                    {t("courses")}
                   </label>
                   <input
                     type="text"
@@ -263,21 +269,23 @@ export default function CollaborationsPage() {
                     onChange={(e) => setFormTitle(e.target.value)}
                     required
                     placeholder="e.g. Biology Study Group"
+                    aria-label={t("courses")}
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">
-                    Type
+                    {t("department")}
                   </label>
                   <select
                     value={formType}
                     onChange={(e) => setFormType(e.target.value)}
+                    aria-label={t("department")}
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                   >
-                    {NEW_COLLAB_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
+                    {NEW_COLLAB_TYPES.map((ct) => (
+                      <option key={ct.value} value={ct.value}>
+                        {ct.label}
                       </option>
                     ))}
                   </select>
@@ -285,13 +293,14 @@ export default function CollaborationsPage() {
               </div>
               <div className="mt-4 space-y-1.5">
                 <label className="text-sm font-medium text-foreground">
-                  Description
+                  {t("description")}
                 </label>
                 <textarea
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   rows={3}
                   placeholder="What is the goal of this collaboration?"
+                  aria-label={t("description")}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
@@ -299,16 +308,18 @@ export default function CollaborationsPage() {
                 <button
                   type="submit"
                   disabled={submitting || !formTitle.trim()}
+                  aria-label={tc("submit")}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {submitting ? "Creating..." : "Create Collaboration"}
+                  {submitting ? tc("loading") : tc("submit")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
+                  aria-label={tc("cancel")}
                   className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted"
                 >
-                  Cancel
+                  {tc("cancel")}
                 </button>
               </div>
             </form>
@@ -317,8 +328,8 @@ export default function CollaborationsPage() {
           {collaborations.length === 0 ? (
             <EmptyState
               icon={<Users className="h-12 w-12" />}
-              title="No collaborations yet"
-              description="Start collaborating with your peers to learn better together."
+              title={t("empty.noCollaborations")}
+              description={t("empty.noCollaborations")}
             />
           ) : (
             <div className="space-y-6">
@@ -376,14 +387,14 @@ export default function CollaborationsPage() {
                                 )}
                                 {collab.peerStudentId && (
                                   <p className="mt-2 text-xs text-muted-foreground">
-                                    Peer: {collab.peerStudentId}
+                                    {t("supervisor")}: {collab.peerStudentId}
                                   </p>
                                 )}
                               </div>
                               <button
                                 onClick={() => handleDelete(collab.id)}
+                                aria-label={tc("delete")}
                                 className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                                title="Delete collaboration"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>

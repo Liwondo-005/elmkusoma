@@ -64,13 +64,46 @@ public class Event extends BaseEntity {
     @Column(name = "requires_approval", nullable = false)
     private Boolean requiresApproval = false;
 
-    public enum EventType {
-        SEMINAR, WORKSHOP, WEBINAR, TRAINING, CONFERENCE, LECTURE, OTHER
-    }
+    @Enumerated(EnumType.STRING)
+    @Column(name = "event_status", length = 30)
+    private EventStatus eventStatus = EventStatus.DRAFT;
 
-    public enum EventStatus {
-        DRAFT, PUBLISHED, CANCELLED, COMPLETED
-    }
+    @Enumerated(EnumType.STRING)
+    @Column(name = "event_type_enum", length = 50)
+    private EventType eventTypeEnum;
+
+    @Column(name = "timezone", length = 50)
+    private String timezone;
+
+    @Column(name = "max_capacity")
+    private Integer maxCapacity;
+
+    @Column(name = "current_registrations")
+    private Integer currentRegistrations = 0;
+
+    @Column(name = "related_course_id", length = 36)
+    private String relatedCourseId;
+
+    @Column(name = "related_module_id", length = 36)
+    private String relatedModuleId;
+
+    @Column(name = "related_lesson_id", length = 36)
+    private String relatedLessonId;
+
+    @Column(name = "recording_url", length = 500)
+    private String recordingUrl;
+
+    @Column(name = "recording_status", length = 20)
+    private String recordingStatus;
+
+    @Column(name = "provider_id", length = 36)
+    private String providerId;
+
+    @Column(name = "presenter_name", length = 200)
+    private String presenterName;
+
+    @Column(name = "access_level", length = 30)
+    private String accessLevel;
 
     public enum EventCategory {
         ACADEMIC, TECHNICAL, PROFESSIONAL, COMMUNITY, CULTURAL, SPORTS, OTHER

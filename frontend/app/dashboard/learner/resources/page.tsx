@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type Resource } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
@@ -8,6 +9,8 @@ import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, 
 import Link from "next/link"
 
 export default function LearnerResourcesPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,7 +20,7 @@ export default function LearnerResourcesPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadResources()
   }, [user])
 
@@ -38,7 +41,7 @@ export default function LearnerResourcesPage() {
         // Ignore bookmark check failure
       }
     } catch {
-      setError("Failed to load resources")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -88,22 +91,22 @@ export default function LearnerResourcesPage() {
   const types = [...new Set(resources.map((r) => r.resourceType).filter(Boolean))]
 
   const filteredResources = resources.filter((resource) => {
-    const matchesSearch = search === "" || 
+    const matchesSearch = search === "" ||
       resource.title.toLowerCase().includes(search.toLowerCase()) ||
       (resource.description?.toLowerCase().includes(search.toLowerCase()) ?? false)
     const matchesType = typeFilter === "all" || resource.resourceType === typeFilter
     return matchesSearch && matchesType
   })
 
-  if (authLoading || user?.role !== "Other Learner") {
-    return <LoadingState />
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
+    return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Resources</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Access learning materials and resources.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("resources.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("resources.subtitle")}</p>
       </div>
 
       {error && (
@@ -111,6 +114,7 @@ export default function LearnerResourcesPage() {
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="size-4" />
             {error}
+            <button onClick={() => { setError(null); loadResources() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
           </div>
         </div>
       )}
@@ -120,18 +124,20 @@ export default function LearnerResourcesPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search resources..."
+            placeholder={t("resources.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label={t("resources.searchPlaceholder")}
             className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-ring"
           />
         </div>
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label={t("resources.filterType")}
           className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
         >
-          <option value="all">All Types</option>
+          <option value="all">{tc("allTypes")}</option>
           {types.map((type) => (
             <option key={type} value={type}>{type}</option>
           ))}
@@ -143,8 +149,8 @@ export default function LearnerResourcesPage() {
       ) : filteredResources.length === 0 ? (
         <EmptyState
           icon={<FileText className="size-8" />}
-          title="No resources found"
-          description={search ? "Try adjusting your search or filters." : "No resources available yet."}
+          title={t("resources.noResources")}
+          description={search ? t("resources.noResourcesSearch") : t("resources.noResourcesAvailable")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -152,6 +158,7 @@ export default function LearnerResourcesPage() {
             <Link
               key={resource.id}
               href={`/dashboard/learner/resources/${resource.id}`}
+              aria-label={`${resource.title} - ${tc("viewDetails")}`}
               className="rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:shadow-md hover:border-primary/30 block"
             >
               <div className="flex items-start gap-3">
@@ -171,9 +178,9 @@ export default function LearnerResourcesPage() {
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => toggleBookmark(resource.id)}
+                    onClick={(e) => { e.preventDefault(); toggleBookmark(resource.id) }}
+                    aria-label={bookmarkedIds.has(resource.id) ? tc("removeBookmark") : tc("bookmark")}
                     className="inline-flex items-center justify-center rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    title={bookmarkedIds.has(resource.id) ? "Remove bookmark" : "Bookmark"}
                   >
                     {bookmarkedIds.has(resource.id) ? (
                       <BookmarkCheck className="size-4 text-primary" />
@@ -185,10 +192,12 @@ export default function LearnerResourcesPage() {
                     href={resource.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label={`${tc("download")} ${resource.title}`}
+                    onClick={(e) => e.stopPropagation()}
                     className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     <Download className="size-3" />
-                    Download
+                    {tc("download")}
                   </a>
                 </div>
               </div>
