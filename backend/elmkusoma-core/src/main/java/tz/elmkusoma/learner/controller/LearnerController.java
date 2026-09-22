@@ -29,6 +29,8 @@ import tz.elmkusoma.learning.repository.ResourceRepository;
 import tz.elmkusoma.learner.domain.*;
 import tz.elmkusoma.learner.dto.*;
 import tz.elmkusoma.learner.repository.*;
+import tz.elmkusoma.learner.dto.LearningGoalResponse;
+import tz.elmkusoma.learner.dto.LearningGoalRequest;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 
@@ -61,6 +63,7 @@ public class LearnerController {
     private final CertificateTemplateRepository certificateTemplateRepository;
     private final UserRepository userRepository;
     private final LiveClassParticipantRepository liveClassParticipantRepository;
+    private final LearningGoalRepository learningGoalRepository;
 
     // ── Profile ──────────────────────────────────────────────────────────
 
@@ -875,22 +878,92 @@ public class LearnerController {
 
     @GetMapping("/me/goals")
     @Operation(summary = "List learning goals")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>>
+    public ResponseEntity<ApiResponse<List<LearningGoalResponse>>>
         getGoals(@RequestAttribute("userId") UUID userId) {
-        return ResponseEntity.ok(ApiResponse.success(List.of()));
+        List<LearningGoalResponse> goals = learningGoalRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::toGoalResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(goals));
     }
 
     @PostMapping("/me/goals")
     @Operation(summary = "Create a learning goal")
-    public ResponseEntity<ApiResponse<Map<String, Object>>>
-        createGoal(@RequestAttribute("userId") UUID userId, @RequestBody Map<String, Object> body) {
-        Map<String, Object> goal = new java.util.HashMap<>(body);
-        goal.put("id", UUID.randomUUID().toString());
-        goal.put("userId", userId.toString());
-        return ResponseEntity.status(201).body(ApiResponse.success(goal));
+    public ResponseEntity<ApiResponse<LearningGoalResponse>>
+        createGoal(@RequestAttribute("userId") UUID userId, @RequestBody LearningGoalRequest request) {
+        LearningGoal goal = LearningGoal.builder()
+                .userId(userId)
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .goalType(LearningGoal.GoalType.valueOf(request.getGoalType()))
+                .targetDate(request.getTargetDate())
+                .progressPercentage(request.getProgressPercentage())
+                .status(LearningGoal.GoalStatus.valueOf(request.getStatus()))
+                .build();
+        goal = learningGoalRepository.save(goal);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Goal created", toGoalResponse(goal)));
+    }
+
+    @PutMapping("/me/goals/{id}")
+    @Operation(summary = "Update a learning goal")
+    public ResponseEntity<ApiResponse<LearningGoalResponse>>
+        updateGoal(@PathVariable UUID id,
+                   @RequestAttribute("userId") UUID userId,
+                   @RequestBody LearningGoalRequest request) {
+        return learningGoalRepository.findById(id)
+                .filter(g -> g.getUserId().equals(userId) && !Boolean.TRUE.equals(g.getIsDeleted()))
+                .map(goal -> {
+                    if (request.getTitle() != null) goal.setTitle(request.getTitle());
+                    if (request.getDescription() != null) goal.setDescription(request.getDescription());
+                    if (request.getGoalType() != null) goal.setGoalType(LearningGoal.GoalType.valueOf(request.getGoalType()));
+                    if (request.getTargetDate() != null) goal.setTargetDate(request.getTargetDate());
+                    if (request.getProgressPercentage() != null) goal.setProgressPercentage(request.getProgressPercentage());
+                    if (request.getStatus() != null) {
+                        LearningGoal.GoalStatus newStatus = LearningGoal.GoalStatus.valueOf(request.getStatus());
+                        goal.setStatus(newStatus);
+                        if (newStatus == LearningGoal.GoalStatus.COMPLETED && goal.getCompletedAt() == null) {
+                            goal.setCompletedAt(LocalDateTime.now());
+                        }
+                    }
+                    goal = learningGoalRepository.save(goal);
+                    return ResponseEntity.ok(ApiResponse.success("Goal updated", toGoalResponse(goal)));
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Goal not found")));
+    }
+
+    @DeleteMapping("/me/goals/{id}")
+    @Operation(summary = "Delete a learning goal")
+    public ResponseEntity<ApiResponse<Void>>
+        deleteGoal(@PathVariable UUID id, @RequestAttribute("userId") UUID userId) {
+        var optional = learningGoalRepository.findById(id)
+                .filter(g -> g.getUserId().equals(userId) && !Boolean.TRUE.equals(g.getIsDeleted()));
+        if (optional.isPresent()) {
+            LearningGoal goal = optional.get();
+            goal.setIsDeleted(true);
+            learningGoalRepository.save(goal);
+            return ResponseEntity.ok(ApiResponse.success("Goal deleted", null));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.<Void>error("Goal not found"));
+        }
     }
 
     // ── Mapping Helpers ──────────────────────────────────────────────────
+
+    private LearningGoalResponse toGoalResponse(LearningGoal goal) {
+        return LearningGoalResponse.builder()
+                .id(goal.getId())
+                .userId(goal.getUserId())
+                .title(goal.getTitle())
+                .description(goal.getDescription())
+                .goalType(goal.getGoalType().name())
+                .targetDate(goal.getTargetDate())
+                .progressPercentage(goal.getProgressPercentage())
+                .status(goal.getStatus().name())
+                .completedAt(goal.getCompletedAt())
+                .createdAt(goal.getCreatedAt())
+                .build();
+    }
 
     private CourseSummaryResponse toCourseSummaryResponse(Course c) {
         return CourseSummaryResponse.builder()
