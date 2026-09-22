@@ -361,7 +361,13 @@ export const learnerApi = {
       method: "POST",
       body: JSON.stringify({ lessonId, completionPercentage }),
     }),
-  getResources: () => learnerFetch<Resource[]>("/v1/learner/resources"),
+  getResources: (params?: { page?: number; size?: number }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.page != null) searchParams.set("page", String(params.page))
+    if (params?.size != null) searchParams.set("size", String(params.size))
+    const qs = searchParams.toString()
+    return learnerFetch<Resource[]>(`/v1/learner/resources${qs ? `?${qs}` : ""}`)
+  },
   getLiveClasses: () => learnerFetch<LiveClass[]>("/v1/learner/live-classes"),
   getLiveClass: (id: string) => learnerFetch<LiveClass>(`/v1/learner/live-classes/${id}`),
   joinLiveSession: (classId: string) =>
@@ -391,7 +397,7 @@ export const learnerApi = {
   markAllRead: () =>
     learnerFetch<void>("/v1/learner/me/notifications/read-all", { method: "PUT" }),
   getCertificates: () => learnerFetch<Certificate[]>("/v1/learner/me/certificates"),
-  search: (q: string, type?: string, filters?: SearchFilters) => {
+  search: (q: string, type?: string, filters?: SearchFilters, page?: number, size?: number) => {
     const searchParams = new URLSearchParams()
     searchParams.set("q", q)
     if (type) searchParams.set("type", type)
@@ -402,6 +408,8 @@ export const learnerApi = {
     if (filters?.category) searchParams.set("category", filters.category)
     if (filters?.provider) searchParams.set("provider", filters.provider)
     if (filters?.sort) searchParams.set("sort", filters.sort)
+    if (page != null) searchParams.set("page", String(page))
+    if (size != null) searchParams.set("size", String(size))
     return learnerFetch<SearchResult>(`/v1/learner/search?${searchParams.toString()}`)
   },
   getEvents: (params?: { eventType?: string; category?: string; search?: string }) => {

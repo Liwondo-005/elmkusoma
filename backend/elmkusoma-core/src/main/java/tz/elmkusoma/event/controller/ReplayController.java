@@ -25,9 +25,13 @@ public class ReplayController {
     private final ReplayRepository replayRepository;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Replay>>> getAllReplays() {
-        List<Replay> replays = replayRepository.findByStatusAndIsDeletedFalse("AVAILABLE");
-        log.info("Replays listed: count={}", replays.size());
+    public ResponseEntity<ApiResponse<List<Replay>>> getAllReplays(
+            @RequestAttribute("institutionId") UUID institutionId) {
+        List<Replay> replays = replayRepository.findByStatusAndIsDeletedFalse("AVAILABLE")
+                .stream()
+                .filter(r -> institutionId.equals(r.getInstitutionId()))
+                .toList();
+        log.info("Replays listed: count={}, institutionId={}", replays.size(), institutionId);
         return ResponseEntity.ok(ApiResponse.success("Replays retrieved", replays));
     }
 

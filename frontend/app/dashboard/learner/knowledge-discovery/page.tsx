@@ -105,7 +105,7 @@ export default function KnowledgeDiscoveryPage() {
     loadData()
   }, [loadData])
 
-  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><div aria-busy="true"><LoadingState /></div></div>
 
   if (error && enrollments.length === 0) {
     return (
@@ -248,17 +248,19 @@ export default function KnowledgeDiscoveryPage() {
       </div>
 
       {activeArea === "course" && (
-        <div className="space-y-4">
+        <div className="space-y-4" aria-live="polite">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <BookOpen className="size-4 text-primary" />
             {t("knowledgeDiscovery.courseConnections")}
           </h2>
           {enrollments.length === 0 ? (
+            <div role="status">
             <EmptyState
               icon={<BookOpen className="size-8" />}
               title={t("knowledgeDiscovery.noEnrolledCourses")}
               description={t("knowledgeDiscovery.noEnrolledCoursesDesc")}
             />
+            </div>
           ) : (
             <div className="space-y-4">
               {enrollments.map((en) => {
@@ -366,11 +368,14 @@ export default function KnowledgeDiscoveryPage() {
             {t("knowledgeDiscovery.crossCourseTopicConnections")}
           </h2>
           {competencies.length === 0 ? (
-            <EmptyState
-              icon={<Layers className="size-8" />}
-              title={t("knowledgeDiscovery.noTopics")}
-              description={t("knowledgeDiscovery.noTopicsDesc")}
-            />
+            <div role="status" className="rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
+              <Layers className="mx-auto size-8 text-muted-foreground/50" />
+              <p className="mt-3 text-sm font-medium text-foreground">No items found</p>
+              <p className="mt-1 text-xs text-muted-foreground">Browse courses to discover related topics.</p>
+              <button onClick={() => router.push("/dashboard/learner/courses")} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
+                Browse Courses <ArrowRight className="size-3" />
+              </button>
+            </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {competencies.slice(0, 9).map((c: any, idx: number) => {
@@ -415,11 +420,14 @@ export default function KnowledgeDiscoveryPage() {
             {t("knowledgeDiscovery.researchToCourseConnections")}
           </h2>
           {research.length === 0 ? (
-            <EmptyState
-              icon={<Search className="size-8" />}
-              title={t("knowledgeDiscovery.noResearchProjects")}
-              description={t("knowledgeDiscovery.noResearchProjectsDesc")}
-            />
+            <div role="status" className="rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
+              <Search className="mx-auto size-8 text-muted-foreground/50" />
+              <p className="mt-3 text-sm font-medium text-foreground">No items found</p>
+              <p className="mt-1 text-xs text-muted-foreground">Explore resources to find research connections.</p>
+              <button onClick={() => router.push("/dashboard/learner/resources")} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
+                Browse Resources <ArrowRight className="size-3" />
+              </button>
+            </div>
           ) : (
             <div className="space-y-3">
               {research.map((r: any) => {
@@ -474,11 +482,14 @@ export default function KnowledgeDiscoveryPage() {
             {t("knowledgeDiscovery.projectToLearningConnections")}
           </h2>
           {projects.length === 0 ? (
-            <EmptyState
-              icon={<Target className="size-8" />}
-              title={t("knowledgeDiscovery.noProjects")}
-              description={t("knowledgeDiscovery.noProjectsDesc")}
-            />
+            <div role="status" className="rounded-2xl border border-border bg-card p-8 text-center shadow-xs">
+              <Target className="mx-auto size-8 text-muted-foreground/50" />
+              <p className="mt-3 text-sm font-medium text-foreground">No items found</p>
+              <p className="mt-1 text-xs text-muted-foreground">Start a course to begin building projects.</p>
+              <button onClick={() => router.push("/dashboard/learner/courses")} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
+                Browse Courses <ArrowRight className="size-3" />
+              </button>
+            </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {projects.map((p: any) => {

@@ -115,7 +115,17 @@ public class CertificateController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<CertificateResponse>> getCertificateById(
             @PathVariable UUID certificateId,
-            @RequestAttribute("institutionId") UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+        if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
+            CertificateResponse response = certificateService.getCertificateById(certificateId, institutionId);
+            if (response.getStudentId() != null && !response.getStudentId().equals(userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied"));
+            }
+            return ResponseEntity.ok(ApiResponse.success(response));
+        }
         CertificateResponse response = certificateService.getCertificateById(certificateId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

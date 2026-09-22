@@ -51,6 +51,9 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
     @Query("SELECT c FROM Course c WHERE c.isDeleted = false AND c.isPublished = true AND LOWER(c.title) LIKE LOWER(CONCAT('%', :query, '%')) AND (:level IS NULL OR c.level = :level) AND (:category IS NULL OR LOWER(c.category) = LOWER(:category)) AND (:providerId IS NULL OR c.institutionId = :providerId) AND (:dateFrom IS NULL OR c.createdAt >= :dateFrom) AND (:dateTo IS NULL OR c.createdAt <= :dateTo) ORDER BY c.createdAt DESC")
     List<Course> searchPublishedWithAllFilters(@Param("query") String query, @Param("level") String level, @Param("category") String category, @Param("providerId") UUID providerId, @Param("dateFrom") LocalDateTime dateFrom, @Param("dateTo") LocalDateTime dateTo);
 
+    @Query("SELECT c FROM Course c WHERE c.isDeleted = false AND c.isPublished = true AND c.institutionId = :institutionId AND LOWER(c.title) LIKE LOWER(CONCAT('%', :query, '%')) AND (:level IS NULL OR c.level = :level) AND (:category IS NULL OR LOWER(c.category) = LOWER(:category)) AND (:dateFrom IS NULL OR c.createdAt >= :dateFrom) AND (:dateTo IS NULL OR c.createdAt <= :dateTo) ORDER BY c.createdAt DESC")
+    List<Course> searchPublishedByInstitutionWithAllFilters(@Param("institutionId") UUID institutionId, @Param("query") String query, @Param("level") String level, @Param("category") String category, @Param("dateFrom") LocalDateTime dateFrom, @Param("dateTo") LocalDateTime dateTo);
+
     @Query("SELECT c FROM Course c WHERE c.isDeleted = false AND c.isPublished = true AND c.id <> :excludeId AND (LOWER(c.title) LIKE LOWER(CONCAT('%', :query, '%')) OR (c.level = :level) OR (LOWER(c.category) = LOWER(:category))) ORDER BY c.createdAt DESC")
     List<Course> findRelatedPublishedCourses(@Param("excludeId") UUID excludeId, @Param("query") String query, @Param("level") String level, @Param("category") String category);
 
@@ -61,4 +64,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
     List<Course> findAllPublishedByCategoryAndIsDeletedFalse(@Param("category") String category);
 
     Page<Course> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
+
+    @Query("SELECT c FROM Course c WHERE c.isDeleted = false AND c.isPublished = true AND c.institutionId = :institutionId ORDER BY c.createdAt DESC")
+    Page<Course> findByInstitutionIdAndStatusAndIsDeletedFalse(@Param("institutionId") UUID institutionId, @Param("status") String status, Pageable pageable);
 }

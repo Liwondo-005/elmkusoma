@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type SearchResult, type CourseSummary, type Resource, type LiveClass, type SearchFilters } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Search, BookOpen, FileText, Video, AlertCircle, SlidersHorizontal, ChevronDown, Megaphone } from "lucide-react"
+import { Search, BookOpen, FileText, Video, AlertCircle, SlidersHorizontal, ChevronDown, Megaphone, ArrowRight } from "lucide-react"
 
 export default function LearnerSearchPage() {
   const { user, loading: authLoading } = useAuth()
@@ -20,6 +20,7 @@ export default function LearnerSearchPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [page, setPage] = useState(1)
   const [filters, setFilters] = useState<SearchFilters>({
     level: searchParams.get("level") || undefined,
     category: searchParams.get("category") || undefined,
@@ -62,14 +63,14 @@ export default function LearnerSearchPage() {
     }
   }, [user, searchParams])
 
-  async function performSearch(q: string, type: string, searchFilters?: SearchFilters) {
+  async function performSearch(q: string, type: string, searchFilters?: SearchFilters, pageNum?: number) {
     if (!q.trim()) return
     try {
       setLoading(true)
       setError(null)
       const typeMap: Record<string, string> = { courses: "COURSE", resources: "RESOURCE", "live-classes": "LIVE_CLASS", announcements: "ANNOUNCEMENT" }
       const searchType = type === "all" ? undefined : (typeMap[type] || type)
-      const data = await learnerApi.search(q, searchType, searchFilters || filters)
+      const data = await learnerApi.search(q, searchType, searchFilters || filters, pageNum ?? page, 20)
       setResults(data)
     } catch {
       setError("Search failed. Please try again.")
@@ -94,21 +95,24 @@ export default function LearnerSearchPage() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (!query.trim()) return
+    setPage(1)
     router.push(`/dashboard/learner/search?${buildParams()}`)
-    performSearch(query, activeTab)
+    performSearch(query, activeTab, undefined, 1)
   }
 
   function handleTabChange(tab: typeof activeTab) {
     setActiveTab(tab)
+    setPage(1)
     if (query.trim()) {
       router.push(`/dashboard/learner/search?${buildParams(tab)}`)
-      performSearch(query, tab)
+      performSearch(query, tab, undefined, 1)
     }
   }
 
   function handleFilterChange(key: keyof SearchFilters, value: string) {
     const newFilters = { ...filters, [key]: value || undefined }
     setFilters(newFilters)
+    setPage(1)
     if (query.trim()) {
       const params = new URLSearchParams()
       params.set("q", query)
@@ -120,15 +124,16 @@ export default function LearnerSearchPage() {
       if (newFilters.dateTo) params.set("dateTo", newFilters.dateTo)
       if (newFilters.sort && newFilters.sort !== "newest") params.set("sort", newFilters.sort)
       router.push(`/dashboard/learner/search?${params.toString()}`)
-      performSearch(query, activeTab, newFilters)
+      performSearch(query, activeTab, newFilters, 1)
     }
   }
 
   function clearFilters() {
     setFilters({ sort: "newest" })
+    setPage(1)
     if (query.trim()) {
       router.push(`/dashboard/learner/search?q=${encodeURIComponent(query)}&type=${activeTab}`)
-      performSearch(query, activeTab, { sort: "newest" })
+      performSearch(query, activeTab, { sort: "newest" }, 1)
     }
   }
 
@@ -147,7 +152,7 @@ export default function LearnerSearchPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Search</h1>
         <p className="mt-1 text-sm text-muted-foreground">Find courses, resources, and live classes.</p>
@@ -161,6 +166,7 @@ export default function LearnerSearchPage() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for anything..."
           className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-20 text-sm outline-none focus:border-ring"
+          aria-label="Search courses, resources, and live classes"
         />
         <button
           type="submit"
@@ -176,6 +182,7 @@ export default function LearnerSearchPage() {
             <button
               key={tab.key}
               onClick={() => handleTabChange(tab.key)}
+              aria-label={`Filter by ${tab.label}`}
               className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === tab.key
                   ? "border-primary text-primary"
@@ -194,6 +201,7 @@ export default function LearnerSearchPage() {
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
+          aria-label="Toggle advanced filters"
           className={`ml-4 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             showFilters || hasActiveFilters
               ? "border-primary bg-primary/5 text-primary"
@@ -303,15 +311,17 @@ export default function LearnerSearchPage() {
       )}
 
       {loading ? (
-        <LoadingState />
+        <div aria-busy="true"><LoadingState /></div>
       ) : !results ? (
+        <div role="status">
         <EmptyState
           icon={<Search className="size-8" />}
           title="Start searching"
           description="Enter a query to find courses, resources, and live classes."
         />
+        </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6" aria-live="polite">
           {(activeTab === "all" || activeTab === "courses") && results.courses && results.courses.length > 0 && (
             <section>
               <h2 className="text-lg font-semibold text-foreground">Courses</h2>
@@ -453,14 +463,46 @@ export default function LearnerSearchPage() {
           )}
 
           {results.courses?.length === 0 && results.resources?.length === 0 && results.liveClasses?.length === 0 && results.announcements?.length === 0 && (
+            <div role="status">
             <EmptyState
               icon={<Search className="size-8" />}
               title="No results found"
               description={`No results for "${query}". Try different keywords or adjust your filters.`}
             />
+            </div>
+          )}
+
+          {((results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0)) > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t border-border">
+              <span className="text-xs text-muted-foreground">Page {page}</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setPage((p) => Math.max(1, p - 1)); performSearch(query, activeTab, filters, Math.max(1, page - 1)) }}
+                  disabled={page <= 1}
+                  aria-label="Previous page"
+                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => { setPage((p) => p + 1); performSearch(query, activeTab, filters, page + 1) }}
+                  aria-label="Next page"
+                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
+
+      <div className="rounded-xl border border-border bg-card p-6 text-center">
+        <p className="text-sm text-muted-foreground">Want to browse curated content?</p>
+        <Link href="/dashboard/learner/resources" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          Explore our Resources <ArrowRight className="size-3" />
+        </Link>
+      </div>
     </div>
   )
 }

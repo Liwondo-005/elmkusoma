@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { learnerApi, type Resource } from "@/lib/learner-api"
 import { VideoPlayer } from "@/components/events/video-player"
-import { Search, Play, Loader2, VideoOff, Clock, Filter } from "lucide-react"
+import { Search, Play, Loader2, VideoOff, Clock, Filter, Download, ArrowRight } from "lucide-react"
+import Link from "next/link"
 
 export default function VideoLibraryPage() {
   const [videos, setVideos] = useState<Resource[]>([])
@@ -39,7 +40,7 @@ export default function VideoLibraryPage() {
     : videos
 
   return (
-    <div className="space-y-6">
+    <div role="main" className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Video Library</h1>
         <p className="text-muted-foreground">Browse educational videos, tutorials, and recordings</p>
@@ -60,18 +61,20 @@ export default function VideoLibraryPage() {
           placeholder="Search videos..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search videos"
           className="h-10 w-full rounded-lg border border-border bg-card pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
+      <div aria-live="polite" aria-busy={loading}>
       {loading ? (
-        <div className="flex items-center justify-center py-16">
+        <div aria-busy="true" className="flex items-center justify-center py-16">
           <Loader2 className="size-8 animate-spin text-primary" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div role="status" className="flex flex-col items-center justify-center py-16 text-center">
           <VideoOff className="size-12 text-muted-foreground/40" />
           <p className="mt-4 text-lg font-medium">No videos found</p>
           <p className="text-sm text-muted-foreground">
@@ -95,14 +98,33 @@ export default function VideoLibraryPage() {
               <div className="p-4">
                 <h3 className="font-semibold group-hover:text-primary transition-colors line-clamp-2">{video.title}</h3>
                 {video.description && <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">{video.description}</p>}
-                <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="size-3" /> {new Date(video.createdAt).toLocaleDateString()}</span>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" /> {new Date(video.createdAt).toLocaleDateString()}</span>
+                  <a
+                    href={video.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Download ${video.title}`}
+                    className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Download className="size-3" />
+                    Download
+                  </a>
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6 text-center">
+        <p className="text-sm text-muted-foreground">Looking for more materials?</p>
+        <Link href="/dashboard/learner/resources" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          Browse all Resources <ArrowRight className="size-3" />
+        </Link>
+      </div>
     </div>
   )
 }

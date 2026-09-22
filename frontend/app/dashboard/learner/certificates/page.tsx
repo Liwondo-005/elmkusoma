@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type Certificate } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Award, ExternalLink, AlertCircle, Download, ShieldCheck, Calendar, Hash } from "lucide-react"
+import { Award, ExternalLink, AlertCircle, Download, ShieldCheck, Calendar, Hash, ArrowRight } from "lucide-react"
+import Link from "next/link"
 
 export default function LearnerCertificatesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -32,8 +33,10 @@ export default function LearnerCertificatesPage() {
 
   function getStatusBadge(status: string) {
     const styles: Record<string, string> = {
+      ACTIVE: "bg-green-500/10 text-green-600",
       ISSUED: "bg-green-500/10 text-green-600",
       REVOKED: "bg-red-500/10 text-red-500",
+      EXPIRED: "bg-orange/10 text-orange",
       DRAFT: "bg-yellow-500/10 text-yellow-600",
     }
     return styles[status] || "bg-muted text-muted-foreground"
@@ -70,7 +73,7 @@ export default function LearnerCertificatesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Certificates</h1>
         <p className="mt-1 text-sm text-muted-foreground">Your earned certificates and achievements.</p>
@@ -85,14 +88,17 @@ export default function LearnerCertificatesPage() {
         </div>
       )}
 
+      <div aria-live="polite" aria-busy={loading}>
       {loading ? (
-        <LoadingState />
+        <div aria-busy="true"><LoadingState /></div>
       ) : certificates.length === 0 ? (
+        <div role="status">
         <EmptyState
           icon={<Award className="size-8" />}
           title="No certificates yet"
           description="Complete courses to earn certificates."
         />
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {certificates.map((cert) => (
@@ -131,9 +137,10 @@ export default function LearnerCertificatesPage() {
               </div>
               <div className="mt-4 flex gap-2">
                 <a
-                  href={`/certificates/verify/${cert.verificationCode}`}
+                  href={`/certificates/verify?code=${cert.verificationCode}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`Verify certificate ${cert.title}`}
                   className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
                 >
                   <ShieldCheck className="size-3" />
@@ -141,6 +148,7 @@ export default function LearnerCertificatesPage() {
                 </a>
                 <button
                   onClick={() => handleDownload(cert)}
+                  aria-label={`Download certificate ${cert.title}`}
                   className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
                 >
                   <Download className="size-3" />
@@ -150,6 +158,14 @@ export default function LearnerCertificatesPage() {
           ))}
         </div>
       )}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6 text-center">
+        <p className="text-sm text-muted-foreground">Browse courses to earn certificates.</p>
+        <Link href="/dashboard/learner/courses" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          Browse Courses <ArrowRight className="size-3" />
+        </Link>
+      </div>
     </div>
   )
 }

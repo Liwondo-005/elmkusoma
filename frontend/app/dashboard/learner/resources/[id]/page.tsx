@@ -80,12 +80,12 @@ export default function ResourceDetailPage() {
   }
 
   if (authLoading || loading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
-    return <LoadingState />
+    return <div aria-busy="true"><LoadingState /></div>
   }
 
   if (!resource) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="size-4" />
@@ -125,6 +125,7 @@ export default function ResourceDetailPage() {
               <button
                 onClick={toggleBookmark}
                 disabled={bookmarkLoading}
+                aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this resource"}
                 className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
                 title={isBookmarked ? "Remove bookmark" : "Bookmark"}
               >
@@ -149,6 +150,7 @@ export default function ResourceDetailPage() {
             href={resource.fileUrl}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={`Download ${resource.title}`}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Download className="size-4" />
@@ -157,6 +159,7 @@ export default function ResourceDetailPage() {
           <button
             onClick={toggleBookmark}
             disabled={bookmarkLoading}
+            aria-label={isBookmarked ? "Remove bookmark" : "Save to bookmarks"}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
           >
             {isBookmarked ? <BookmarkCheck className="size-4 text-primary" /> : <Bookmark className="size-4" />}
@@ -169,7 +172,7 @@ export default function ResourceDetailPage() {
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <h2 className="text-lg font-semibold text-foreground">Related Resources</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {relatedResources.map((rr) => (
+            {relatedResources.slice(0, 3).map((rr) => (
               <Link
                 key={rr.id}
                 href={`/dashboard/learner/resources/${rr.id}`}

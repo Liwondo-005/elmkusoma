@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { learnerApi, type ReplayItem } from "@/lib/learner-api"
-import { Search, Filter, Play, Clock, Eye, CalendarDays, Loader2, XCircle } from "lucide-react"
+import { Search, Filter, Play, Clock, Eye, CalendarDays, Loader2, XCircle, ArrowRight } from "lucide-react"
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600)
@@ -113,7 +113,7 @@ export default function ReplaysPage() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-16">
+        <div aria-busy="true" className="flex items-center justify-center py-16">
           <Loader2 className="size-8 animate-spin text-primary" />
         </div>
       )}
@@ -125,7 +125,7 @@ export default function ReplaysPage() {
       )}
 
       {!loading && !error && replays.length === 0 && (
-        <div className="rounded-xl border border-border bg-card p-12 text-center">
+        <div role="status" className="rounded-xl border border-border bg-card p-12 text-center">
           <Play className="mx-auto size-12 text-muted-foreground/50" />
           <h2 className="mt-4 text-lg font-semibold">{t("replays.noReplays")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("replays.noReplaysDescription")}</p>
@@ -133,7 +133,7 @@ export default function ReplaysPage() {
       )}
 
       {!loading && !error && continueWatching.length > 0 && (
-        <section>
+        <section aria-live="polite">
           <h2 className="mb-3 text-lg font-semibold">{t("replays.continueWatching")}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {continueWatching.map((replay) => (
@@ -159,6 +159,18 @@ export default function ReplaysPage() {
                 </div>
                 <h3 className="mt-3 line-clamp-2 text-sm font-semibold group-hover:text-primary">{replay.title}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">{replay.eventTitle}</p>
+                <div className="mt-2">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                    <span>{formatPosition(replay.positionSeconds)}</span>
+                    <span>{formatDuration(replay.durationSeconds)}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${replay.durationSeconds > 0 ? Math.min((replay.positionSeconds / replay.durationSeconds) * 100, 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
                 <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {formatDate(replay.recordedAt)}</span>
                   <span className="flex items-center gap-1"><Eye className="size-3" /> {replay.viewCount} {t("replays.viewCount")}</span>
@@ -195,6 +207,16 @@ export default function ReplaysPage() {
                 <p className="mt-1 text-xs text-muted-foreground">{replay.eventTitle}</p>
                 {replay.presenterName && (
                   <p className="mt-0.5 text-xs text-muted-foreground">{replay.presenterName}</p>
+                )}
+                {replay.durationSeconds > 0 && (
+                  <div className="mt-2">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${replay.durationSeconds > 0 ? Math.min((replay.positionSeconds / replay.durationSeconds) * 100, 100) : 0}%` }}
+                      />
+                    </div>
+                  </div>
                 )}
                 <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><CalendarDays className="size-3" /> {formatDate(replay.recordedAt)}</span>
@@ -233,6 +255,13 @@ export default function ReplaysPage() {
           </div>
         </section>
       )}
+
+      <div className="rounded-xl border border-border bg-card p-6 text-center">
+        <p className="text-sm text-muted-foreground">Browse upcoming live classes.</p>
+        <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          Browse Live Classes <ArrowRight className="size-3" />
+        </Link>
+      </div>
     </main>
   )
 }

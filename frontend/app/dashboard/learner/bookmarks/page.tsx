@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type Bookmark } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { Bookmark as BookmarkIcon, Trash2, ExternalLink, AlertCircle, BookOpen, Video, FileText } from "lucide-react"
+import { Bookmark as BookmarkIcon, Trash2, ExternalLink, AlertCircle, BookOpen, Video, FileText, ArrowRight } from "lucide-react"
 
 export default function LearnerBookmarksPage() {
   const { user, loading: authLoading } = useAuth()
@@ -77,7 +77,7 @@ export default function LearnerBookmarksPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Bookmarks</h1>
         <p className="mt-1 text-sm text-muted-foreground">Your saved items for quick access.</p>
@@ -92,14 +92,17 @@ export default function LearnerBookmarksPage() {
         </div>
       )}
 
+      <div aria-live="polite" aria-busy={loading}>
       {loading ? (
-        <LoadingState />
+        <div aria-busy="true"><LoadingState /></div>
       ) : bookmarks.length === 0 ? (
+        <div role="status">
         <EmptyState
           icon={<BookmarkIcon className="size-8" />}
           title="No bookmarks yet"
           description="Save courses, resources, and classes for quick access."
         />
+        </div>
       ) : (
         <div className="space-y-3">
           {bookmarks.map((bookmark) => (
@@ -109,28 +112,50 @@ export default function LearnerBookmarksPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <Link href={getLink(bookmark)} className="text-sm font-medium text-foreground hover:text-primary truncate">
-                      {bookmark.targetTitle || "Untitled"}
-                    </Link>
+                  {bookmark.targetAvailable !== false ? (
+                    <Link href={getLink(bookmark)} className="text-sm font-medium text-foreground hover:text-primary truncate">
+                        {bookmark.targetTitle || "Untitled"}
+                      </Link>
+                  ) : (
+                    <span className="text-sm font-medium text-muted-foreground truncate">{bookmark.targetTitle || "Untitled"}</span>
+                  )}
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getTypeBadge(bookmark.targetType)}`}>
                     {bookmark.targetType}
                   </span>
+                  {bookmark.targetAvailable === false && (
+                    <span className="shrink-0 rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-600">
+                      Content no longer available
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1 text-[10px] text-muted-foreground">
                   Saved {new Date(bookmark.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Link
-                    href={getLink(bookmark)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
-                  >
-                    <ExternalLink className="size-3" />
-                    View
-                  </Link>
+                {bookmark.targetAvailable !== false ? (
+                  <Link
+                      href={getLink(bookmark)}
+                      aria-label={`View ${bookmark.targetTitle || "item"}`}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                    >
+                      <ExternalLink className="size-3" />
+                      View
+                    </Link>
+                ) : (
+                  <button
+                      disabled
+                      aria-label={`View ${bookmark.targetTitle || "item"} (unavailable)`}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground opacity-50 cursor-not-allowed"
+                    >
+                      <ExternalLink className="size-3" />
+                      View
+                    </button>
+                )}
                 <button
                   onClick={() => removeBookmark(bookmark.id)}
                   disabled={removing === bookmark.id}
+                  aria-label={`Remove bookmark for ${bookmark.targetTitle || "item"}`}
                   className="inline-flex items-center gap-1 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
                 >
                   <Trash2 className="size-3" />
@@ -140,6 +165,14 @@ export default function LearnerBookmarksPage() {
           ))}
         </div>
       )}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6 text-center">
+        <p className="text-sm text-muted-foreground">Discover new content to bookmark.</p>
+        <Link href="/dashboard/learner/resources" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          Discover new content <ArrowRight className="size-3" />
+        </Link>
+      </div>
     </div>
   )
 }

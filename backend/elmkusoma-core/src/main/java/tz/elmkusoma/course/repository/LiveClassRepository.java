@@ -67,4 +67,7 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
     Page<LiveClass> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
 
     Page<LiveClass> findAllByIsDeletedFalse(Pageable pageable);
+
+    @Query("SELECT lc FROM LiveClass lc WHERE lc.isDeleted = false AND lc.institutionId = :institutionId AND LOWER(lc.title) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY lc.scheduledAt DESC")
+    List<LiveClass> searchByInstitutionIdAndQuery(@Param("institutionId") UUID institutionId, @Param("query") String query);
 }

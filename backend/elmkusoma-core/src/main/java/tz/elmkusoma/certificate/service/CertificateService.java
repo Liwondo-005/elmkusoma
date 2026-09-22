@@ -18,6 +18,8 @@ import tz.elmkusoma.certificate.repository.*;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.domain.SecurityEvent;
 import tz.elmkusoma.audit.service.AuditService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.domain.LearnerNotification;
@@ -31,6 +33,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +50,10 @@ public class CertificateService {
     private final AuditService auditService;
     private final StudentRepository studentRepository;
     private final LearnerNotificationRepository learnerNotificationRepository;
+
+    private static final ConcurrentHashMap<String, AtomicInteger> verifyAttempts = new ConcurrentHashMap<>();
+    private static final int MAX_VERIFY_ATTEMPTS = 10;
+    private static final long WINDOW_MS = 60_000; // 1 minute
 
     // ── Template Management ──
 
@@ -229,14 +237,19 @@ public class CertificateService {
 
     @Transactional(readOnly = true)
     public CertificateVerificationResponse verifyCertificate(String verificationCode) {
+        // Rate limit check (simplified — in production use Redis)
+        String key = "verify";
+        AtomicInteger attempts = verifyAttempts.computeIfAbsent(key, k -> new AtomicInteger(0));
+        if (attempts.get() > MAX_VERIFY_ATTEMPTS) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts");
+        }
+        attempts.incrementAndGet();
+
         Certificate certificate = certificateRepository.findByVerificationCodeAndIsDeletedFalse(verificationCode)
                 .orElse(null);
 
         if (certificate == null) {
-            return CertificateVerificationResponse.builder()
-                    .valid(false)
-                    .message("Certificate not found")
-                    .build();
+            throw new ResourceNotFoundException("Certificate not found");
         }
 
         if (certificate.getStatus() == CertificateStatus.REVOKED) {

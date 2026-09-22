@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
 import tz.elmkusoma.common.ApiResponse;
 
 import java.util.HashMap;
@@ -120,6 +121,14 @@ public class GlobalExceptionHandler {
         log.error("Service unavailable: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(ApiResponse.error("Service temporarily unavailable"));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
+        log.warn("Response status: {} - {}", ex.getStatusCode(), ex.getReason());
+        String message = ex.getReason() != null ? ex.getReason() : "Request failed";
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ApiResponse.error(message));
     }
 
     @ExceptionHandler(Exception.class)

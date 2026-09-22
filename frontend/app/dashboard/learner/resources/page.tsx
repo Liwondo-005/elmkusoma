@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type Resource } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, AlertCircle, Bookmark, BookmarkCheck } from "lucide-react"
+import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, AlertCircle, Bookmark, BookmarkCheck, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 export default function LearnerResourcesPage() {
@@ -18,18 +18,27 @@ export default function LearnerResourcesPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadResources()
-  }, [user])
+  }, [user, page])
 
   async function loadResources() {
     try {
       setLoading(true)
       setError(null)
-      const data = await learnerApi.getResources()
+      const data = await learnerApi.getResources({ page, size: 20 })
       setResources(data)
+      if (data.length < 20 && page > 1) {
+        setTotalPages(page)
+      } else if (data.length === 20) {
+        setTotalPages(page + 1)
+      } else {
+        setTotalPages(page)
+      }
 
       try {
         const bookmarks = await learnerApi.getBookmarks()
@@ -99,7 +108,7 @@ export default function LearnerResourcesPage() {
   })
 
   if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
-    return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
+    return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 
   return (
@@ -144,15 +153,19 @@ export default function LearnerResourcesPage() {
         </select>
       </div>
 
+      <div aria-live="polite" aria-busy={loading}>
       {loading ? (
-        <LoadingState />
+        <div aria-busy="true"><LoadingState /></div>
       ) : filteredResources.length === 0 ? (
+        <div role="status">
         <EmptyState
           icon={<FileText className="size-8" />}
           title={t("resources.noResources")}
           description={search ? t("resources.noResourcesSearch") : t("resources.noResourcesAvailable")}
         />
+        </div>
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredResources.map((resource) => (
             <Link
@@ -207,7 +220,37 @@ export default function LearnerResourcesPage() {
             </Link>
           ))}
         </div>
+        <div className="flex items-center justify-between pt-4">
+          <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              aria-label="Previous page"
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= totalPages}
+              aria-label="Next page"
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+        </>
       )}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6 text-center">
+        <p className="text-sm text-muted-foreground">Can't find what you need?</p>
+        <Link href="/dashboard/learner/search" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          Try Search <ArrowRight className="size-3" />
+        </Link>
+      </div>
     </div>
   )
 }

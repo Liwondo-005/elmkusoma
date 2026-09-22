@@ -158,11 +158,12 @@ public class LearnerController {
     // ── Courses ──────────────────────────────────────────────────────────
 
     @GetMapping("/courses")
-    @Operation(summary = "Browse all published courses across institutions")
+    @Operation(summary = "Browse published courses for institution")
     public ResponseEntity<ApiResponse<Page<CourseSummaryResponse>>> browseCourses(
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<Course> coursePage = courseRepository.findByStatusAndIsDeletedFalse("PUBLISHED", PageRequest.of(page, size));
+        Page<Course> coursePage = courseRepository.findByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "PUBLISHED", PageRequest.of(page, size));
         Page<CourseSummaryResponse> response = coursePage.map(this::toCourseSummaryResponse);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -410,23 +411,33 @@ public class LearnerController {
     @GetMapping("/resources")
     @Operation(summary = "Browse all resources with optional type filter")
     public ResponseEntity<ApiResponse<Page<Resource>>> browseResources(
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<Resource> resources;
-        if (type != null && !type.isEmpty() && !"all".equalsIgnoreCase(type)) {
-            try {
-                Resource.ResourceType resourceType = Resource.ResourceType.valueOf(type.toUpperCase());
-                List<Resource> filtered = resourceRepository.findByResourceTypeAndIsDeletedFalse(resourceType);
-                List<Resource> paged = filtered.stream().skip((long) page * size).limit(size).collect(Collectors.toList());
-                resources = new org.springframework.data.domain.PageImpl<>(paged, PageRequest.of(page, size), filtered.size());
-            } catch (IllegalArgumentException e) {
-                resources = resourceRepository.findByIsDeletedFalse(PageRequest.of(page, size));
+        try {
+            Page<Resource> resources;
+            if (type != null && !type.isEmpty() && !"all".equalsIgnoreCase(type)) {
+                try {
+                    Resource.ResourceType resourceType = Resource.ResourceType.valueOf(type.toUpperCase());
+                    List<Resource> filtered = resourceRepository.findByInstitutionIdAndIsDeletedFalse(institutionId)
+                            .stream()
+                            .filter(r -> r.getResourceType() == resourceType)
+                            .collect(Collectors.toList());
+                    List<Resource> paged = filtered.stream().skip((long) page * size).limit(size).collect(Collectors.toList());
+                    resources = new org.springframework.data.domain.PageImpl<>(paged, PageRequest.of(page, size), filtered.size());
+                } catch (IllegalArgumentException e) {
+                    resources = resourceRepository.findByInstitutionIdAndIsDeletedFalse(institutionId, PageRequest.of(page, size));
+                }
+            } else {
+                resources = resourceRepository.findByInstitutionIdAndIsDeletedFalse(institutionId, PageRequest.of(page, size));
             }
-        } else {
-            resources = resourceRepository.findByIsDeletedFalse(PageRequest.of(page, size));
+            return ResponseEntity.ok(ApiResponse.success(resources));
+        } catch (Exception ex) {
+            log.error("Failed to browse resources: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to browse resources"));
         }
-        return ResponseEntity.ok(ApiResponse.success(resources));
     }
 
     @GetMapping("/resources/{id}")
@@ -536,9 +547,10 @@ public class LearnerController {
     // ── Announcements ────────────────────────────────────────────────────
 
     @GetMapping("/announcements")
-    @Operation(summary = "Browse all announcements")
-    public ResponseEntity<ApiResponse<List<Announcement>>> browseAnnouncements() {
-        List<Announcement> announcements = announcementRepository.findAllAndIsDeletedFalse();
+    @Operation(summary = "Browse all announcements for institution")
+    public ResponseEntity<ApiResponse<List<Announcement>>> browseAnnouncements(
+            @RequestAttribute("institutionId") UUID institutionId) {
+        List<Announcement> announcements = announcementRepository.findByInstitutionIdAndIsDeletedFalse(institutionId);
         return ResponseEntity.ok(ApiResponse.success(announcements));
     }
 
@@ -558,19 +570,34 @@ public class LearnerController {
     public ResponseEntity<ApiResponse<BookmarkResponse>> createBookmark(
             @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, String> body) {
-        String targetType = body.get("targetType");
-        UUID targetId = UUID.fromString(body.get("targetId"));
-        if (bookmarkRepository.existsByUserIdAndTargetTypeAndTargetIdAndIsDeletedFalse(userId, targetType, targetId)) {
-            return ResponseEntity.ok(ApiResponse.success("Already bookmarked", null));
+        try {
+            String targetType = body.get("targetType");
+            String targetIdStr = body.get("targetId");
+            if (targetType == null || targetType.isBlank()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("targetType is required"));
+            }
+            if (targetIdStr == null || targetIdStr.isBlank()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("targetId is required"));
+            }
+            UUID targetId = UUID.fromString(targetIdStr);
+            if (bookmarkRepository.existsByUserIdAndTargetTypeAndTargetIdAndIsDeletedFalse(userId, targetType, targetId)) {
+                return ResponseEntity.ok(ApiResponse.success("Already bookmarked", null));
+            }
+            Bookmark bookmark = Bookmark.builder()
+                    .userId(userId)
+                    .targetType(targetType)
+                    .targetId(targetId)
+                    .build();
+            bookmark = bookmarkRepository.save(bookmark);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Bookmarked", toBookmarkResponse(bookmark)));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid targetId format"));
+        } catch (Exception ex) {
+            log.error("Failed to create bookmark: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to create bookmark"));
         }
-        Bookmark bookmark = Bookmark.builder()
-                .userId(userId)
-                .targetType(targetType)
-                .targetId(targetId)
-                .build();
-        bookmark = bookmarkRepository.save(bookmark);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Bookmarked", toBookmarkResponse(bookmark)));
     }
 
     @DeleteMapping("/me/bookmarks/{id}")
@@ -578,14 +605,20 @@ public class LearnerController {
     public ResponseEntity<ApiResponse<String>> removeBookmark(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID id) {
-        return bookmarkRepository.findById(id)
-                .filter(b -> b.getUserId().equals(userId))
-                .map(b -> {
-                    b.setIsDeleted(true);
-                    bookmarkRepository.save(b);
-                    return ResponseEntity.ok(ApiResponse.success("Bookmark removed", (String) null));
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Bookmark not found")));
+        try {
+            return bookmarkRepository.findById(id)
+                    .filter(b -> b.getUserId().equals(userId))
+                    .map(b -> {
+                        b.setIsDeleted(true);
+                        bookmarkRepository.save(b);
+                        return ResponseEntity.ok(ApiResponse.success("Bookmark removed", (String) null));
+                    })
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Bookmark not found")));
+        } catch (Exception ex) {
+            log.error("Failed to remove bookmark {}: {}", id, ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to remove bookmark"));
+        }
     }
 
     @GetMapping("/me/bookmarks/check")
@@ -668,6 +701,7 @@ public class LearnerController {
     @GetMapping("/search")
     @Operation(summary = "Search courses, resources, live classes, and announcements with filters")
     public ResponseEntity<ApiResponse<SearchResultResponse>> search(
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam String q,
             @RequestParam(defaultValue = "ALL") String type,
             @RequestParam(required = false) String level,
@@ -678,70 +712,76 @@ public class LearnerController {
             @RequestParam(defaultValue = "newest") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        String query = q.toLowerCase();
-        LocalDateTime fromDate = parseDate(dateFrom);
-        LocalDateTime toDate = parseDate(dateTo) != null ? parseDate(dateTo).plusDays(1) : null;
-        SearchResultResponse result;
+        try {
+            String query = q.toLowerCase();
+            LocalDateTime fromDate = parseDate(dateFrom);
+            LocalDateTime toDate = parseDate(dateTo) != null ? parseDate(dateTo).plusDays(1) : null;
+            SearchResultResponse result;
 
-        if ("COURSE".equalsIgnoreCase(type)) {
-            List<Course> filteredCourses = courseRepository.searchPublishedWithAllFilters(query, level, category, provider, fromDate, toDate)
-                    .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
-            result = SearchResultResponse.builder()
-                    .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
-                    .resources(Collections.emptyList())
-                    .liveClasses(Collections.emptyList())
-                    .announcements(Collections.emptyList())
-                    .build();
-        } else if ("RESOURCE".equalsIgnoreCase(type)) {
-            List<Resource> resources = resourceRepository.searchByTitleAndIsDeletedFalse(query)
-                    .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
-            result = SearchResultResponse.builder()
-                    .courses(Collections.emptyList())
-                    .resources(resources.stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
-                    .liveClasses(Collections.emptyList())
-                    .announcements(Collections.emptyList())
-                    .build();
-        } else if ("LIVE_CLASS".equalsIgnoreCase(type)) {
-            result = SearchResultResponse.builder()
-                    .courses(Collections.emptyList())
-                    .resources(Collections.emptyList())
-                    .liveClasses(liveClassRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().limit(size).skip((long) page * size).map(this::toLiveClassSearchResult).collect(Collectors.toList()))
-                    .announcements(Collections.emptyList())
-                    .build();
-        } else if ("ANNOUNCEMENT".equalsIgnoreCase(type)) {
-            result = SearchResultResponse.builder()
-                    .courses(Collections.emptyList())
-                    .resources(Collections.emptyList())
-                    .liveClasses(Collections.emptyList())
-                    .announcements(announcementRepository.searchByTitleOrContentAndIsDeletedFalse(query)
-                            .stream().limit(size).skip((long) page * size).map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
-                    .build();
-        } else {
-            List<Course> filteredCourses = courseRepository.searchPublishedWithAllFilters(query, level, category, provider, fromDate, toDate)
-                    .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
-            result = SearchResultResponse.builder()
-                    .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
-                    .resources(resourceRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().limit(size).skip((long) page * size).map(this::toResourceSearchResult).collect(Collectors.toList()))
-                    .liveClasses(liveClassRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().limit(size).skip((long) page * size).map(this::toLiveClassSearchResult).collect(Collectors.toList()))
-                    .announcements(announcementRepository.searchByTitleOrContentAndIsDeletedFalse(query)
-                            .stream().limit(size).skip((long) page * size).map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
-                    .build();
+            if ("COURSE".equalsIgnoreCase(type)) {
+                List<Course> filteredCourses = courseRepository.searchPublishedByInstitutionWithAllFilters(institutionId, query, level, category, fromDate, toDate)
+                        .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
+                result = SearchResultResponse.builder()
+                        .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
+                        .resources(Collections.emptyList())
+                        .liveClasses(Collections.emptyList())
+                        .announcements(Collections.emptyList())
+                        .build();
+            } else if ("RESOURCE".equalsIgnoreCase(type)) {
+                List<Resource> resources = resourceRepository.searchByInstitutionIdAndIsDeletedFalse(institutionId, query)
+                        .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
+                result = SearchResultResponse.builder()
+                        .courses(Collections.emptyList())
+                        .resources(resources.stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
+                        .liveClasses(Collections.emptyList())
+                        .announcements(Collections.emptyList())
+                        .build();
+            } else if ("LIVE_CLASS".equalsIgnoreCase(type)) {
+                result = SearchResultResponse.builder()
+                        .courses(Collections.emptyList())
+                        .resources(Collections.emptyList())
+                        .liveClasses(liveClassRepository.searchByInstitutionIdAndQuery(institutionId, query)
+                                .stream().limit(size).skip((long) page * size).map(this::toLiveClassSearchResult).collect(Collectors.toList()))
+                        .announcements(Collections.emptyList())
+                        .build();
+            } else if ("ANNOUNCEMENT".equalsIgnoreCase(type)) {
+                result = SearchResultResponse.builder()
+                        .courses(Collections.emptyList())
+                        .resources(Collections.emptyList())
+                        .liveClasses(Collections.emptyList())
+                        .announcements(announcementRepository.searchByInstitutionIdAndQuery(institutionId, query)
+                                .stream().limit(size).skip((long) page * size).map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
+                        .build();
+            } else {
+                List<Course> filteredCourses = courseRepository.searchPublishedByInstitutionWithAllFilters(institutionId, query, level, category, fromDate, toDate)
+                        .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
+                result = SearchResultResponse.builder()
+                        .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
+                        .resources(resourceRepository.searchByInstitutionIdAndIsDeletedFalse(institutionId, query)
+                                .stream().limit(size).skip((long) page * size).map(this::toResourceSearchResult).collect(Collectors.toList()))
+                        .liveClasses(liveClassRepository.searchByInstitutionIdAndQuery(institutionId, query)
+                                .stream().limit(size).skip((long) page * size).map(this::toLiveClassSearchResult).collect(Collectors.toList()))
+                        .announcements(announcementRepository.searchByInstitutionIdAndQuery(institutionId, query)
+                                .stream().limit(size).skip((long) page * size).map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
+                        .build();
+            }
+
+            if ("oldest".equalsIgnoreCase(sort)) {
+                if (result.getCourses() != null) Collections.reverse(result.getCourses());
+                if (result.getResources() != null) Collections.reverse(result.getResources());
+                if (result.getAnnouncements() != null) Collections.reverse(result.getAnnouncements());
+            } else if ("az".equalsIgnoreCase(sort)) {
+                if (result.getCourses() != null) result.getCourses().sort(Comparator.comparing(CourseSummaryResponse::getTitle));
+                if (result.getResources() != null) result.getResources().sort(Comparator.comparing(ResourceSearchResult::getTitle));
+                if (result.getAnnouncements() != null) result.getAnnouncements().sort(Comparator.comparing(AnnouncementSearchResult::getTitle));
+            }
+
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception ex) {
+            log.error("Search failed for query '{}': {}", q, ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Search failed"));
         }
-
-        if ("oldest".equalsIgnoreCase(sort)) {
-            if (result.getCourses() != null) Collections.reverse(result.getCourses());
-            if (result.getResources() != null) Collections.reverse(result.getResources());
-            if (result.getAnnouncements() != null) Collections.reverse(result.getAnnouncements());
-        } else if ("az".equalsIgnoreCase(sort)) {
-            if (result.getCourses() != null) result.getCourses().sort(Comparator.comparing(CourseSummaryResponse::getTitle));
-            if (result.getResources() != null) result.getResources().sort(Comparator.comparing(ResourceSearchResult::getTitle));
-            if (result.getAnnouncements() != null) result.getAnnouncements().sort(Comparator.comparing(AnnouncementSearchResult::getTitle));
-        }
-
-        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     private LocalDateTime parseDate(String dateStr) {
