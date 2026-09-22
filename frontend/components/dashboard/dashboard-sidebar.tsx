@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
@@ -205,93 +205,93 @@ const collegeNavSections: CollegeNavSection[] = [
   },
 ]
 
-type UniversityNavSection = {
-  group: string
-  items: Array<{ label: string; href: string; icon: typeof LayoutDashboard; dotColor?: string; badge?: number }>
+interface NavSection {
+  label: string
+  icon: typeof LayoutDashboard
+  children?: Array<{ label: string; href: string; icon: typeof LayoutDashboard }>
+  href?: string
+  dotColor?: string
 }
 
-const universityNavSections: UniversityNavSection[] = [
+const universityNavSections: NavSection[] = [
+  { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard, dotColor: "bg-blue-500" },
   {
-    group: "OVERVIEW",
-    items: [
-      { label: "Dashboard", href: "/dashboard/learner", icon: LayoutDashboard, dotColor: "bg-blue-500" },
+    label: "My Learning",
+    icon: BookOpen,
+    dotColor: "bg-teal-500",
+    children: [
+      { label: "My Courses", href: "/dashboard/learner/courses", icon: GraduationCap },
+      { label: "Continue Learning", href: "/dashboard/learner/my-learning", icon: Play },
+      { label: "Resources", href: "/dashboard/learner/resources", icon: Library },
+      { label: "Practical Lab", href: "/dashboard/learner/practical-lab", icon: FlaskConical },
+      { label: "Assessments", href: "/dashboard/learner/assessments", icon: ClipboardList },
     ],
   },
   {
-    group: "MY UNIVERSITY",
-    items: [
-      { label: "My Learning", href: "/dashboard/learner/my-learning", icon: BookOpen, dotColor: "bg-teal-500" },
-      { label: "My Courses", href: "/dashboard/learner/courses", icon: GraduationCap, dotColor: "bg-indigo-500" },
-      { label: "Course Workspace", href: "/dashboard/learner/course-workspace", icon: BookOpen, dotColor: "bg-violet-500" },
-      { label: "Deep Learning", href: "/dashboard/learner/deep-learning", icon: Brain, dotColor: "bg-purple-500" },
+    label: "Live Campus",
+    icon: Radio,
+    dotColor: "bg-red-500",
+    children: [
+      { label: "Live Now", href: "/dashboard/learner/live-campus", icon: Radio },
+      { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
+      { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film },
+      { label: "Workshops & Labs", href: "/dashboard/learner/workshops", icon: FlaskConical },
     ],
   },
   {
-    group: "LIVE & MEDIA",
-    items: [
-      { label: "Live Campus", href: "/dashboard/learner/live-campus", icon: Radio, dotColor: "bg-red-500" },
-      { label: "Media Library", href: "/dashboard/learner/media-library", icon: Film, dotColor: "bg-pink-500" },
-      { label: "Resources", href: "/dashboard/learner/resources", icon: Library, dotColor: "bg-amber-500" },
-      { label: "Events", href: "/dashboard/learner/events", icon: Calendar, dotColor: "bg-purple-500" },
+    label: "Build & Discover",
+    icon: Activity,
+    dotColor: "bg-emerald-500",
+    children: [
+      { label: "Projects", href: "/dashboard/learner/projects", icon: Activity },
+      { label: "Research", href: "/dashboard/learner/research", icon: Target },
+      { label: "Thesis", href: "/dashboard/learner/thesis", icon: FileText },
+      { label: "Software & Tools", href: "/dashboard/learner/software-tools", icon: Zap },
+      { label: "Collaborations", href: "/dashboard/learner/collaborations", icon: Users },
     ],
   },
   {
-    group: "BUILD & DISCOVER",
-    items: [
-      { label: "Projects", href: "/dashboard/learner/projects", icon: Activity, dotColor: "bg-emerald-500" },
-      { label: "Research", href: "/dashboard/learner/research", icon: Target, dotColor: "bg-cyan-500" },
-      { label: "Thesis", href: "/dashboard/learner/thesis", icon: FileText, dotColor: "bg-orange-500" },
-      { label: "Collaborations", href: "/dashboard/learner/collaborations", icon: Users, dotColor: "bg-blue-600" },
+    label: "Academics",
+    icon: BarChart3,
+    dotColor: "bg-blue-500",
+    children: [
+      { label: "Academic Progress", href: "/dashboard/learner/academic-progress", icon: BarChart3 },
+      { label: "Academic Record", href: "/dashboard/learner/academic-record", icon: FileBarChart },
+      { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Clock },
+      { label: "Calendar", href: "/dashboard/learner/calendar", icon: CalendarDays },
+      { label: "Competencies", href: "/dashboard/learner/competencies", icon: Target },
+      { label: "Events", href: "/dashboard/learner/events", icon: CalendarDays },
     ],
   },
   {
-    group: "PRACTICAL",
-    items: [
-      { label: "Practical Lab", href: "/dashboard/learner/practical-lab", icon: FlaskConical, dotColor: "bg-green-500" },
-      { label: "Workshops & Labs", href: "/dashboard/learner/workshops", icon: FlaskConical, dotColor: "bg-teal-600" },
-      { label: "Software & Tools", href: "/dashboard/learner/software-tools", icon: Zap, dotColor: "bg-yellow-500" },
-      { label: "Assessments", href: "/dashboard/learner/assessments", icon: ClipboardList, dotColor: "bg-rose-500" },
+    label: "My World",
+    icon: Award,
+    dotColor: "bg-amber-500",
+    children: [
+      { label: "Portfolio", href: "/dashboard/learner/portfolio", icon: Award },
+      { label: "My Evidence", href: "/dashboard/learner/evidence", icon: ClipboardList },
+      { label: "Demonstrations", href: "/dashboard/learner/demonstrations", icon: Trophy },
+      { label: "Fieldwork", href: "/dashboard/learner/fieldwork", icon: Bookmark },
+      { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: TrendingUp },
+      { label: "Career World", href: "/dashboard/learner/career", icon: Target },
+      { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
     ],
   },
   {
-    group: "ACADEMICS",
-    items: [
-      { label: "Academic Progress", href: "/dashboard/learner/academic-progress", icon: BarChart3, dotColor: "bg-blue-500" },
-      { label: "Academic Record", href: "/dashboard/learner/academic-record", icon: FileBarChart, dotColor: "bg-indigo-500" },
-      { label: "Study Planner", href: "/dashboard/learner/study-planner", icon: Clock, dotColor: "bg-violet-500" },
-      { label: "Calendar", href: "/dashboard/learner/calendar", icon: Calendar, dotColor: "bg-purple-500" },
-      { label: "Competencies", href: "/dashboard/learner/competencies", icon: Target, dotColor: "bg-cyan-500" },
+    label: "Connect",
+    icon: Search,
+    dotColor: "bg-slate-500",
+    children: [
+      { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search },
+      { label: "Knowledge Discovery", href: "/dashboard/learner/knowledge-discovery", icon: Brain },
+      { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
+      { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell },
     ],
   },
-  {
-    group: "MY WORLD",
-    items: [
-      { label: "Portfolio", href: "/dashboard/learner/portfolio", icon: Award, dotColor: "bg-amber-500" },
-      { label: "My Evidence", href: "/dashboard/learner/evidence", icon: ClipboardList, dotColor: "bg-green-500" },
-      { label: "Show What I Can Do", href: "/dashboard/learner/demonstrations", icon: Trophy, dotColor: "bg-orange-500" },
-      { label: "Fieldwork", href: "/dashboard/learner/fieldwork", icon: Bookmark, dotColor: "bg-teal-500" },
-      { label: "Professional Dev", href: "/dashboard/learner/professional-dev", icon: TrendingUp, dotColor: "bg-blue-600" },
-      { label: "Career World", href: "/dashboard/learner/career", icon: Target, dotColor: "bg-indigo-600" },
-    ],
-  },
-  {
-    group: "CONNECT",
-    items: [
-      { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search, dotColor: "bg-slate-500" },
-      { label: "Knowledge Discovery", href: "/dashboard/learner/knowledge-discovery", icon: Brain, dotColor: "bg-purple-500" },
-      { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, dotColor: "bg-blue-500" },
-      { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell, dotColor: "bg-orange-500" },
-    ],
-  },
-  {
-    group: "ACCOUNT",
-    items: [
-      { label: "My Learning Kit", href: "/dashboard/learner/my-learning-kit", icon: Backpack, dotColor: "bg-amber-500" },
-      { label: "Academic Assistant", href: "/dashboard/learner/academic-assistant", icon: Brain, dotColor: "bg-violet-500" },
-      { label: "Profile", href: "/dashboard/profile", icon: User, dotColor: "bg-slate-500" },
-      { label: "Settings", href: "/dashboard/settings", icon: Settings, dotColor: "bg-gray-500" },
-    ],
-  },
+  { label: "Deep Learning", href: "/dashboard/learner/deep-learning", icon: Brain, dotColor: "bg-purple-500" },
+  { label: "Course Workspace", href: "/dashboard/learner/course-workspace", icon: BookOpen, dotColor: "bg-violet-500" },
+  { label: "My Learning Kit", href: "/dashboard/learner/my-learning-kit", icon: Library, dotColor: "bg-amber-500" },
+  { label: "Academic Assistant", href: "/dashboard/learner/academic-assistant", icon: Brain, dotColor: "bg-violet-500" },
 ]
 
 type LearnerNavSection = {
@@ -484,6 +484,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isPrimary = (user?.learningLevel || "").toUpperCase() === "PRIMARY"
 
   const [collapsed, setCollapsed] = useState(false)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
   const [badges, setBadges] = useState<Record<string, number>>({})
 
   const fetchBadges = useCallback(async () => {
@@ -580,6 +581,100 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     ))
   }
 
+  function renderUniversitySections(sections: NavSection[]) {
+    return sections.map((item) => {
+      const isExpanded = expandedSections[item.label]
+      const hasChildren = item.children && item.children.length > 0
+      const isParentActive = hasChildren && item.children!.some(
+        (child) => pathname === child.href || pathname.startsWith(child.href + "/")
+      )
+      const isActive = !hasChildren && (pathname === item.href || (item.href !== "/dashboard/learner" && pathname.startsWith(item.href || "")))
+      const realBadge = badges[item.href || ""] || 0
+
+      if (hasChildren) {
+        return (
+          <div key={item.label}>
+            <button
+              type="button"
+              onClick={() => setExpandedSections(prev => ({ ...prev, [item.label]: !prev[item.label] }))}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                isParentActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {isPrimary && !isParentActive && item.dotColor && (
+                <span className={`size-1.5 shrink-0 rounded-full ${item.dotColor}`} />
+              )}
+              {(!isPrimary || isParentActive) && <item.icon className="size-4 shrink-0" />}
+              <span className="flex-1 text-left">{item.label}</span>
+              <ChevronRight className={cn("size-3.5 transition-transform", isExpanded && "rotate-90")} />
+            </button>
+            {isExpanded && (
+              <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-3">
+                {item.children!.map((child) => {
+                  const childActive = pathname === child.href || pathname.startsWith(child.href + "/")
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      onClick={onNavigate}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all",
+                        childActive
+                          ? "bg-primary text-primary-foreground font-medium shadow-xs"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <child.icon className="size-3.5 shrink-0" />
+                      <span>{child.label}</span>
+                      {badges[child.href] && badges[child.href]! > 0 && (
+                        <span className="ml-auto inline-flex size-5 items-center justify-center rounded-full bg-orange text-[10px] font-bold text-orange-foreground">
+                          {badges[child.href]}
+                        </span>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      return (
+        <Link
+          key={item.href}
+          href={item.href!}
+          onClick={onNavigate}
+          title={collapsed ? item.label : undefined}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+            collapsed && "justify-center px-2",
+            isActive
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          {isPrimary && !isActive && item.dotColor && (
+            <span className={`size-1.5 shrink-0 rounded-full ${item.dotColor}`} />
+          )}
+          {(!isPrimary || isActive) && <item.icon className="size-4 shrink-0" />}
+          {!collapsed && <span className="flex-1">{item.label}</span>}
+          {!collapsed && realBadge > 0 && (
+            <span className={cn(
+              "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
+              isActive ? "bg-primary-foreground text-primary" : "bg-orange text-orange-foreground",
+            )}>
+              {realBadge}
+            </span>
+          )}
+        </Link>
+      )
+    })
+  }
+
   return (
     <div className="flex h-full flex-col bg-card">
       <div className="flex h-16 items-center border-b border-border px-5">
@@ -618,8 +713,10 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           ))
         ) : isPrimary && !isParent ? (
           renderPrimarySections(primaryNavSections)
+        ) : (user?.learningLevel || "").toUpperCase() === "UNIVERSITY" ? (
+          renderUniversitySections(universityNavSections)
         ) : universitySections ? (
-          universitySections.map((section, si) => (
+          (universitySections as CollegeNavSection[]).map((section, si) => (
             <div key={section.group}>
               {si > 0 && <div className="my-2 border-t border-border" />}
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
