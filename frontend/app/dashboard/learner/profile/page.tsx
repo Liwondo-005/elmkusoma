@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type LearnerProfile, type ProfileUpdate } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
+import { useTranslations } from "next-intl"
 import { User, Save, AlertCircle, CheckCircle, Loader2, Shield, BookOpen, Lock, Eye, EyeOff } from "lucide-react"
 
 export default function LearnerProfilePage() {
@@ -27,6 +28,8 @@ export default function LearnerProfilePage() {
   const [changingPassword, setChangingPassword] = useState(false)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
+  const t = useTranslations("profile")
+  const tc = useTranslations("common")
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -44,7 +47,7 @@ export default function LearnerProfilePage() {
       setLearningGoal(data.learningGoal || "")
       setAvatarUrl(data.avatarUrl || "")
     } catch {
-      setError("Failed to load profile")
+      setError(t("loadError"))
     } finally {
       setLoading(false)
     }
@@ -63,9 +66,9 @@ export default function LearnerProfilePage() {
       }
       const updated = await learnerApi.updateProfile(data)
       setProfile(updated)
-      setSuccess("Profile updated successfully!")
+      setSuccess(t("updateSuccess"))
     } catch (err: any) {
-      setError(err.message || "Failed to update profile")
+      setError(err.message || t("updateError"))
     } finally {
       setSaving(false)
     }
@@ -73,15 +76,15 @@ export default function LearnerProfilePage() {
 
   async function handleChangePassword() {
     if (!newPassword || !confirmPassword) {
-      setPasswordError("Please fill in all password fields")
+      setPasswordError(t("passwordFillAll"))
       return
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError("New passwords do not match")
+      setPasswordError(t("passwordNoMatch"))
       return
     }
     if (newPassword.length < 8) {
-      setPasswordError("Password must be at least 8 characters")
+      setPasswordError(t("passwordMinLength"))
       return
     }
     try {
@@ -99,14 +102,14 @@ export default function LearnerProfilePage() {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || body.message || "Failed to change password")
+        throw new Error(body.error || body.message || t("passwordChangeError"))
       }
-      setPasswordSuccess("Password changed successfully!")
+      setPasswordSuccess(t("passwordChangeSuccess"))
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
     } catch (err: any) {
-      setPasswordError(err.message || "Failed to change password")
+      setPasswordError(err.message || t("passwordChangeError"))
     } finally {
       setChangingPassword(false)
     }
@@ -119,8 +122,8 @@ export default function LearnerProfilePage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Profile</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your profile and learning preferences.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
       </div>
 
       {error && (
@@ -145,7 +148,7 @@ export default function LearnerProfilePage() {
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="size-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">Account Information</h2>
+          <h2 className="font-semibold text-foreground">{t("accountInfo")}</h2>
         </div>
         <div className="flex items-center gap-4 mb-6">
           <div className="flex size-16 items-center justify-center rounded-full bg-primary/10">
@@ -162,7 +165,7 @@ export default function LearnerProfilePage() {
             <p className="text-sm text-muted-foreground">{user?.email}</p>
             <div className="mt-1 flex items-center gap-2">
               <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                General Learner
+                {tc("generalLearner")}
               </span>
               {user?.learningLevel && (
                 <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
@@ -175,24 +178,24 @@ export default function LearnerProfilePage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Full Name</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">{t("fullName")}</label>
             <p className="text-sm text-foreground">{user?.firstName} {user?.lastName || ""}</p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">{t("email")}</label>
             <p className="text-sm text-foreground">{user?.email}</p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Role</label>
-            <p className="text-sm text-foreground">General Learner</p>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">{t("role")}</label>
+            <p className="text-sm text-foreground">{tc("generalLearner")}</p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Learning Level</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">{t("learningLevel")}</label>
             <p className="text-sm text-foreground">{user?.learningLevel || "Not set"}</p>
           </div>
           {user?.phone && (
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Phone</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">{t("phone")}</label>
               <p className="text-sm text-foreground">{user.phone}</p>
             </div>
           )}
@@ -203,46 +206,46 @@ export default function LearnerProfilePage() {
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="size-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">Learning Preferences</h2>
+          <h2 className="font-semibold text-foreground">{t("learningPreferences")}</h2>
         </div>
 
         <div className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Bio</label>
+            <label className="block text-sm font-medium text-foreground mb-2">{t("bio")}</label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell us about yourself..."
+              placeholder={t("bioPlaceholder")}
               rows={3}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Interests</label>
+            <label className="block text-sm font-medium text-foreground mb-2">{t("interests")}</label>
             <input
               type="text"
               value={interests}
               onChange={(e) => setInterests(e.target.value)}
-              placeholder="e.g., Mathematics, Science, Programming"
+              placeholder={t("interestsPlaceholder")}
               className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
             />
-            <p className="mt-1 text-xs text-muted-foreground">Comma-separated list of your interests</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("interestsHelp")}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Learning Goal</label>
+            <label className="block text-sm font-medium text-foreground mb-2">{t("learningGoal")}</label>
             <textarea
               value={learningGoal}
               onChange={(e) => setLearningGoal(e.target.value)}
-              placeholder="What do you want to achieve?"
+              placeholder={t("learningGoalPlaceholder")}
               rows={3}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Avatar URL</label>
+            <label className="block text-sm font-medium text-foreground mb-2">{t("avatarUrl")}</label>
             <input
               type="url"
               value={avatarUrl}
@@ -261,12 +264,12 @@ export default function LearnerProfilePage() {
               {saving ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Saving...
+                  {tc("saving")}
                 </>
               ) : (
                 <>
                   <Save className="size-4" />
-                  Save Changes
+                  {t("saveChanges")}
                 </>
               )}
             </button>
@@ -278,7 +281,7 @@ export default function LearnerProfilePage() {
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Lock className="size-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">Change Password</h2>
+          <h2 className="font-semibold text-foreground">{t("changePassword")}</h2>
         </div>
 
         {passwordError && (
@@ -301,13 +304,13 @@ export default function LearnerProfilePage() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Current Password</label>
+            <label className="block text-sm font-medium text-foreground mb-2">{t("currentPassword")}</label>
             <div className="relative">
               <input
                 type={showCurrentPassword ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
+                placeholder={t("currentPasswordPlaceholder")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 pr-10 text-sm outline-none focus:border-ring"
               />
               <button
@@ -322,13 +325,13 @@ export default function LearnerProfilePage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">New Password</label>
+              <label className="block text-sm font-medium text-foreground mb-2">{t("newPassword")}</label>
               <div className="relative">
                 <input
                   type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
+                  placeholder={t("newPasswordPlaceholder")}
                   className="h-10 w-full rounded-lg border border-border bg-background px-3 pr-10 text-sm outline-none focus:border-ring"
                 />
                 <button
@@ -339,15 +342,15 @@ export default function LearnerProfilePage() {
                   {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Minimum 8 characters</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("passwordMinHelp")}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Confirm New Password</label>
+              <label className="block text-sm font-medium text-foreground mb-2">{t("confirmPassword")}</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder={t("confirmPasswordPlaceholder")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
@@ -362,12 +365,12 @@ export default function LearnerProfilePage() {
               {changingPassword ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Changing...
+                  {tc("saving")}
                 </>
               ) : (
                 <>
                   <Lock className="size-4" />
-                  Change Password
+                  {t("changePassword")}
                 </>
               )}
             </button>

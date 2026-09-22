@@ -458,6 +458,21 @@ public class EventServiceImpl implements EventService {
         summary.put("attendanceRate", Math.round(attendanceRate));
         summary.put("participation", Math.round(attendanceRate));
         summary.put("materials", materialList);
+
+        List<Map<String, Object>> attendanceList = allRegs.stream()
+                .filter(EventRegistration::getAttended)
+                .map(reg -> {
+                    Map<String, Object> att = new java.util.HashMap<>();
+                    att.put("userId", reg.getUserId().toString());
+                    att.put("userName", "User");
+                    att.put("email", "");
+                    att.put("joinTime", reg.getAttendedAt() != null ? reg.getAttendedAt().toString() : null);
+                    att.put("leaveTime", null);
+                    att.put("durationMinutes", null);
+                    return att;
+                }).collect(Collectors.toList());
+        summary.put("attendance", attendanceList);
+
         return summary;
     }
 

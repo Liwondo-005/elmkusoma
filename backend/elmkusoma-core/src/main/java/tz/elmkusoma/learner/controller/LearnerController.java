@@ -855,6 +855,24 @@ public class LearnerController {
 
     // ── Goals ────────────────────────────────────────────────────────
 
+    @GetMapping("/me/learning-paths")
+    @Operation(summary = "Get learning paths from enrollments")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>>
+        getLearningPaths(@RequestAttribute("userId") UUID userId) {
+        List<LearnerEnrollment> enrollments =
+            enrollmentRepository.findByUserIdAndIsDeletedFalseOrderByEnrolledAtDesc(userId);
+        List<Map<String, Object>> paths = enrollments.stream().map(e -> {
+            Map<String, Object> path = new java.util.HashMap<>();
+            path.put("id", e.getId().toString());
+            path.put("courseId", e.getCourseId().toString());
+            path.put("title", "Learning Path");
+            path.put("progress", e.getProgressPercentage() != null ? e.getProgressPercentage() : 0);
+            path.put("status", e.getCompletedAt() != null ? "COMPLETED" : "IN_PROGRESS");
+            return path;
+        }).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(paths));
+    }
+
     @GetMapping("/me/goals")
     @Operation(summary = "List learning goals")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>>
