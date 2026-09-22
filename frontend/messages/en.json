@@ -54,38 +54,11 @@
     "competency": "Competency",
     "allTypes": "All Types",
     "allLevels": "All Levels",
-      "allCategories": "All Categories",
-      "allDifficulties": "All Difficulties",
-      "review": "Review",
-      "progress": "Progress",
-      "generalLearner": "General Learner"
-      "allCategories": "All Categories",
-      "allDifficulties": "All Difficulties",
-      "review": "Review",
-      "progress": "Progress",
-      "generalLearner": "General Learner"
-      "allCategories": "All Categories",
-      "allDifficulties": "All Difficulties",
-      "review": "Review",
-      "progress": "Progress",
-      "generalLearner": "General Learner"
-      "allCategories": "All Categories",
-      "allDifficulties": "All Difficulties",
-      "review": "Review",
-      "progress": "Progress",
-      "generalLearner": "General Learner"
-      "allCategories": "All Categories",
-      "allDifficulties": "All Difficulties",
-      "review": "Review",
-      "progress": "Progress",
-      "generalLearner": "General Learner"
-      "allCategories": "All Categories",
-      "allDifficulties": "All Difficulties",
-      "review": "Review",
-      "progress": "Progress",
-      "generalLearner": "General Learner"
+    "allCategories": "All Categories",
+    "allDifficulties": "All Difficulties",
+    "review": "Review",
+    "progress": "Progress",
     "generalLearner": "General Learner"
->>>>>>> 1be226d (feat: 100% completion — profile i18n, admin event forms, event summary, learning paths, SW i18n)
   },
   "nav": {
     "myWorld": "My World",
@@ -390,55 +363,27 @@
   },
   "profile": {
     "title": "Profile",
-    "description": "Manage your profile and learning preferences.",
-    "loadError": "Failed to load profile",
-    "updateSuccess": "Profile updated successfully!",
-    "updateError": "Failed to update profile",
-    "accountInfo": "Account Information",
-    "fullName": "Full Name",
-    "email": "Email",
-    "role": "Role",
-    "learningLevel": "Learning Level",
-    "phone": "Phone",
-    "learningPreferences": "Learning Preferences",
-    "bio": "Bio",
-    "bioPlaceholder": "Tell us about yourself...",
-    "interests": "Interests",
-    "interestsPlaceholder": "e.g., Mathematics, Science, Programming",
-    "interestsHelp": "Comma-separated list of your interests",
-    "learningGoal": "Learning Goal",
-    "learningGoalPlaceholder": "What do you want to achieve?",
-    "avatarUrl": "Avatar URL",
-    "saveChanges": "Save Changes",
-    "changePassword": "Change Password",
-    "currentPassword": "Current Password",
-    "currentPasswordPlaceholder": "Enter current password",
-    "newPassword": "New Password",
-    "newPasswordPlaceholder": "Enter new password",
-    "passwordMinHelp": "Minimum 8 characters",
-    "confirmPassword": "Confirm New Password",
-    "confirmPasswordPlaceholder": "Confirm new password",
-    "passwordFillAll": "Please fill in all password fields",
-    "passwordNoMatch": "New passwords do not match",
-    "passwordMinLength": "Password must be at least 8 characters",
-    "passwordChangeSuccess": "Password changed successfully!",
-    "passwordChangeError": "Failed to change password",
     "myProfile": "My Profile",
     "editProfile": "Edit Profile",
     "personalInfo": "Personal Information",
     "academicInfo": "Academic Information",
     "firstName": "First Name",
     "lastName": "Last Name",
+    "email": "Email",
+    "phone": "Phone",
     "dateOfBirth": "Date of Birth",
     "gender": "Gender",
     "male": "Male",
     "female": "Female",
     "institution": "Institution",
     "classGroup": "Class Group",
+    "learningLevel": "Learning Level",
     "region": "Region",
     "district": "District",
-    "newPasswordShort": "New Password",
-    "confirmPasswordShort": "Confirm Password",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
     "updateProfile": "Update Profile"
   },
   "settings": {
@@ -612,7 +557,12 @@
     "liveClass": "Live Class",
     "notifications": "Notifications",
     "profile": "Profile",
-    "progress": "My Progress",
+    "progress": {
+      "overall": "Overall Progress",
+      "milestonesAchieved": "{n} of {m} milestones achieved",
+      "missionsDone": "{n} of {m} missions done",
+      "pointsEarned": "{n} of {m} points earned"
+    },
     "greeting": {
       "morning": "Good morning",
       "afternoon": "Good afternoon",
@@ -669,12 +619,6 @@
       "points": "Points",
       "of": "of",
       "achieved": "achieved"
-    },
-    "progress": {
-      "overall": "Overall Progress",
-      "milestonesAchieved": "{n} of {m} milestones achieved",
-      "missionsDone": "{n} of {m} missions done",
-      "pointsEarned": "{n} of {m} points earned"
     },
     "filters": {
       "all": "All",
@@ -756,7 +700,13 @@
     "live": "Live",
     "projects": "Projects",
     "portfolio": "Portfolio",
-    "progress": "Progress",
+    "progress": {
+      "overall": "Overall Progress",
+      "subjectProgress": "Subject Progress",
+      "weeklyProgress": "Weekly Progress",
+      "monthlyProgress": "Monthly Progress",
+      "academicPulse": "Academic Pulse"
+    },
     "futureWorld": "Future World",
     "myTeachers": "My Teachers",
     "notifications": "Notifications",
@@ -829,13 +779,6 @@
       "completed": "completed",
       "total": "total"
     },
-    "progress": {
-      "overall": "Overall Progress",
-      "subjectProgress": "Subject Progress",
-      "weeklyProgress": "Weekly Progress",
-      "monthlyProgress": "Monthly Progress",
-      "academicPulse": "Academic Pulse"
-    },
     "filters": {
       "all": "All",
       "completed": "Completed",
@@ -860,7 +803,6 @@
     "criticalThinking": "Critical Thinking",
     "communication": "Communication",
     "practicalLearning": "Practical Learning",
-    "scienceLab": "Science Lab",
     "examMode": "Exam Mode",
     "studyPlanner": "Study Planner",
     "examPrep": "Exam Preparation",
@@ -927,7 +869,6 @@
     "scheduleComingSoon": "Live class schedule coming soon",
     "day": "Day",
     "week": "Week",
-    "today": "Today",
     "noEntries": "No entries yet",
     "addFirst": "Add your first entry"
   },
@@ -1198,6 +1139,10 @@
         "lessonLabel": "Related Lesson (optional)",
         "lessonPlaceholder": "Search for a lesson",
         "recordingLabel": "Enable Recording",
+        "saveDraft": "Save as Draft",
+        "publish": "Publish",
+        "saving": "Saving...",
+        "required": "Required",
         "formatLabel": "Event Format",
         "formatPlaceholder": "Select format",
         "difficultyLabel": "Difficulty",
@@ -1209,11 +1154,7 @@
         "outcomesLabel": "Learning Outcomes",
         "outcomesPlaceholder": "What learners will gain from this event",
         "agendaLabel": "Agenda",
-        "agendaPlaceholder": "Event schedule or agenda items",
-        "saveDraft": "Save as Draft",
-        "publish": "Publish",
-        "saving": "Saving...",
-        "required": "Required"
+        "agendaPlaceholder": "Event schedule or agenda items"
       },
       "types": {
         "LECTURE": "Lecture",
@@ -1355,25 +1296,8 @@
     "academicProgress": "Academic Progress",
     "academicRecord": "Academic Record",
     "studyPlanner": "Study Planner",
-    "portfolio": {
-      "subtitle": "Your professional work"
-    },
-    "evidence": {
-      "subtitle": "Evidence of your learning",
-      "noEvidence": "No evidence yet",
-      "noEvidenceDesc": "Start building your portfolio of evidence.",
-      "portfolioItems": "Portfolio Items",
-      "demonstrations": "Demonstrations",
-      "projects": "Projects",
-      "fieldwork": "Fieldwork",
-      "competencies": "Competencies",
-      "portfolio": "Portfolio",
-      "viewPortfolio": "View Portfolio",
-      "showWhatICanDo": "Show What I Can Do",
-      "viewAll": "View All",
-      "viewAllProjects": "View All Projects",
-      "viewAllCompetencies": "View All Competencies"
-    },
+    "portfolio": "Portfolio",
+    "evidence": "Evidence",
     "demonstrations": {
       "subtitle": "Show your practical skills",
       "totalSubmissions": "Total Submissions",
@@ -1410,9 +1334,7 @@
       "viewEvidence": "View Evidence",
       "completedDate": "Completed Date"
     },
-    "careerWorld": {
-      "subtitle": "Explore career opportunities"
-    },
+    "careerWorld": "Career & Professional World",
     "deepLearning": {
       "title": "Deep Learning",
       "subtitle": "Deep dive into topics",
@@ -1650,10 +1572,8 @@
     "academicLoad": "Academic Load",
     "myProgress": "My Progress",
     "myEvidence": "My Evidence",
-    "careerWorld": "Career & Professional World",
     "myDay": "My Day",
     "myWeek": "My Week",
-    "studyPlanner": "Study Planner",
     "joinSession": "Join Session",
     "viewAll": "View All",
     "viewDetails": "View Details",
@@ -1698,7 +1618,6 @@
     "workshop": "Workshop",
     "seminar": "Seminar",
     "internship": "Internship",
-    "fieldwork": "Fieldwork",
     "logbook": "Logbook",
     "practical": "Practical",
     "laboratory": "Laboratory",
@@ -1724,8 +1643,6 @@
       "professionalSkills": "Professional Skills",
       "professionalSkillsDesc": "Build your professional skill set"
     },
-    "portfolio": "Portfolio",
-    "evidence": "Evidence",
     "certificate": "Certificate",
     "award": "Award",
     "achievement": "Achievement",
