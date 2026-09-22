@@ -192,7 +192,7 @@ export default function AdminLiveOperationsPage() {
       if (mappedSessions.length > 0) setSessions(mappedSessions)
 
       if (enhancedDashboard.status === "fulfilled" && enhancedDashboard.value) {
-        const dash = enhancedDashboard.value as Record<string, unknown>
+        const dash = enhancedDashboard.value as unknown as Record<string, unknown>
         setHealth({
           activeSessions: (dash.liveClassesScheduled as number) || 0,
           concurrentUsers: (dash.activeUsers as number) || 0,

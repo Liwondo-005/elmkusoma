@@ -232,7 +232,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       wsRef.current = ws
 
       ws.onopen = () => {
-        setConnected(true)
         setReconnecting(false)
         setJoinError("")
         retryCountRef.current = 0
@@ -253,9 +252,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             setRoomName(data.data.roomName)
           } else {
             setServiceMode("chat-only")
+            setConnected(true)
           }
         }).catch(() => {
           setServiceMode("chat-only")
+          setConnected(true)
         })
       }
 
@@ -482,6 +483,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         setLocalStream(stream)
         setCameraEnabled(true)
         setVideoTracks((prev) => new Map(prev).set("local-camera", stream))
+        const room = roomRef.current
+        if (room?.localParticipant) {
+          const videoTrack = stream.getVideoTracks()[0]
+          if (videoTrack) {
+            await room.localParticipant.publishTrack(videoTrack, { name: "camera" })
+          }
+        }
       } catch (err) {
         setJoinError("Could not access camera. Please check permissions.")
       }
@@ -500,6 +508,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         if (!localStream) setLocalStream(stream)
         stream.getAudioTracks().forEach((t) => { t.enabled = true })
         setMicEnabled(true)
+        const room = roomRef.current
+        if (room?.localParticipant) {
+          const audioTrack = stream.getAudioTracks()[0]
+          if (audioTrack) {
+            await room.localParticipant.publishTrack(audioTrack, { name: "microphone" })
+          }
+        }
       } catch (err) {
         setJoinError("Could not access microphone. Please check permissions.")
       }
@@ -522,6 +537,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         setScreenStream(stream)
         setScreenSharing(true)
         setVideoTracks((prev) => new Map(prev).set("local-screen", stream))
+        const room = roomRef.current
+        if (room?.localParticipant) {
+          const screenTrack = stream.getVideoTracks()[0]
+          if (screenTrack) {
+            await room.localParticipant.publishTrack(screenTrack, { name: "screen-share" })
+          }
+        }
         stream.getVideoTracks()[0].onended = () => {
           setScreenSharing(false)
           setScreenStream(null)

@@ -236,7 +236,7 @@ export default function EditEventPage() {
       </div>
 
       {/* Live Session Actions */}
-      {event && (event.status === "PUBLISHED" || event.status === "LIVE") && (
+      {event && (
         <div className="flex gap-3">
           {event.status === "PUBLISHED" && (
             <button
