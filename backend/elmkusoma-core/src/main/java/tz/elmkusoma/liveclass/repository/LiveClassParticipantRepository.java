@@ -15,8 +15,6 @@ public interface LiveClassParticipantRepository extends JpaRepository<LiveClassP
 
     boolean existsByLiveClassIdAndUserIdAndIsDeletedFalse(UUID liveClassId, UUID userId);
 
-    boolean existsByLiveClassIdAndUserIdAndIsDeletedFalse(String liveClassId, String userId);
-
     Optional<LiveClassParticipant> findByLiveClassIdAndUserIdAndIsDeletedFalse(UUID liveClassId, UUID userId);
 
     List<LiveClassParticipant> findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(UUID liveClassId);

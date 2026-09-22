@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
-import { collegeApi } from "@/lib/college-api"
 import { learnerApi } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
@@ -84,19 +83,15 @@ export default function KnowledgeDiscoveryPage() {
     try {
       setLoading(true)
       setError(null)
-      const studentId = user.id
-      const [enrollRes, researchRes, projectsRes, compRes, liveRes, resRes] = await Promise.all([
-        collegeApi.getStudentEnrollments(studentId).catch(() => ({ data: [] })),
-        collegeApi.getStudentResearch(studentId).catch(() => ({ data: [] })),
-        collegeApi.getStudentProjects(studentId).catch(() => ({ data: [] })),
-        collegeApi.getStudentCompetencies(studentId).catch(() => ({ data: [] })),
+      const [enrollRes, liveRes, resRes] = await Promise.all([
+        learnerApi.getEnrollments().catch(() => []),
         learnerApi.getLiveClasses().catch(() => []),
         learnerApi.getResources().catch(() => []),
       ])
-      setEnrollments(enrollRes.data as any || [])
-      setResearch(researchRes.data || [])
-      setProjects(projectsRes.data || [])
-      setCompetencies(compRes.data || [])
+      setEnrollments(Array.isArray(enrollRes) ? enrollRes as any : [])
+      setResearch([])
+      setProjects([])
+      setCompetencies([])
       setLiveClasses(Array.isArray(liveRes) ? liveRes : [])
       setResources(Array.isArray(resRes) ? resRes : [])
     } catch {

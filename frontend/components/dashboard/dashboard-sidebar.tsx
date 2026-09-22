@@ -322,6 +322,14 @@ const learnerNavSections: LearnerNavSection[] = [
       { label: "Live Classes", href: "/dashboard/learner/live-classes", icon: Video },
       { label: "Events & Workshops", href: "/dashboard/learner/events", icon: Calendar },
       { label: "My Registrations", href: "/dashboard/learner/events/registered", icon: ClipboardList },
+      { label: "Replays", href: "/dashboard/learner/replays", icon: Film },
+    ],
+  },
+  {
+    group: "KNOWLEDGE",
+    items: [
+      { label: "Search", href: "/dashboard/learner/search", icon: Search },
+      { label: "Knowledge Discovery", href: "/dashboard/learner/knowledge-discovery", icon: Brain },
     ],
   },
   {
