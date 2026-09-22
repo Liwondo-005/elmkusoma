@@ -39,7 +39,7 @@ export default function ErrorAnalysisPage() {
       <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
         <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
           <AlertCircle className="mx-auto size-12 text-red-400" />
-          <h3 className="mt-3 text-lg font-bold text-red-800">{tc("common.error")}</h3>
+          <h3 className="mt-3 text-lg font-bold text-red-800">{tc("error.generic")}</h3>
           <p className="mt-1 text-sm text-red-600">{error}</p>
         </div>
       </div>

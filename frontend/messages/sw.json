@@ -11,7 +11,14 @@
     "startLearning": "Anza Kujifunza",
     "startQuiz": "Anza Mtihani",
     "loading": "Inapakia...",
-    "error": "Kuna hitilafu",
+    "error": {
+      "generic": "Kuna hitilafu",
+      "load": "Imeshindwa kupakia data",
+      "save": "Imeshindwa kuhifadhi mabadiliko",
+      "create": "Imeshindwa kuunda",
+      "update": "Imeshindwa kusasisha",
+      "delete": "Imeshindwa kufuta"
+    },
     "retry": "Jaribu Tena",
     "confirm": "Thibitisha",
     "delete": "Futa",
