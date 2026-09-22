@@ -38,7 +38,7 @@ export default function LearnerSearchPage() {
   ]
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     const q = searchParams.get("q")
     const t = searchParams.get("type")
     const lvl = searchParams.get("level")
@@ -142,7 +142,7 @@ export default function LearnerSearchPage() {
     { key: "announcements" as const, label: "Announcements", count: results?.announcements?.length || 0 },
   ]
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

@@ -8,7 +8,7 @@ import Link from "next/link"
 export default function LearnerSettingsPage() {
   const { user, loading: authLoading } = useAuth()
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

@@ -19,7 +19,7 @@ export default function MyLearningPage() {
   const [search, setSearch] = useState("")
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadEnrollments()
   }, [user])
 
@@ -47,7 +47,7 @@ export default function MyLearningPage() {
   const inProgress = enrollments.filter((e) => !e.completedAt)
   const completed = enrollments.filter((e) => e.completedAt)
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 

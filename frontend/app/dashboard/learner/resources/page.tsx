@@ -20,7 +20,7 @@ export default function LearnerResourcesPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadResources()
   }, [user])
 
@@ -98,7 +98,7 @@ export default function LearnerResourcesPage() {
     return matchesSearch && matchesType
   })
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 

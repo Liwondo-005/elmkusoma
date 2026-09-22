@@ -27,7 +27,7 @@ export default function LearnerHistoryPage() {
   const [filter, setFilter] = useState<"all" | "courses" | "saved">("all")
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadHistory()
   }, [user])
 
@@ -104,7 +104,7 @@ export default function LearnerHistoryPage() {
     return <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Enrolled</span>
   }
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

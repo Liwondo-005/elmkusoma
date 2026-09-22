@@ -21,7 +21,7 @@ export default function ResourceDetailPage() {
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadResource()
   }, [user, resourceId])
 
@@ -79,7 +79,7 @@ export default function ResourceDetailPage() {
     return colors[type?.toUpperCase()] || "bg-muted text-muted-foreground"
   }
 
-  if (authLoading || loading || user?.role !== "Other Learner") {
+  if (authLoading || loading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

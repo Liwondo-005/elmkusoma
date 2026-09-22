@@ -15,7 +15,7 @@ export default function LearnerBookmarksPage() {
   const [removing, setRemoving] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadBookmarks()
   }, [user])
 
@@ -72,7 +72,7 @@ export default function LearnerBookmarksPage() {
     }
   }
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

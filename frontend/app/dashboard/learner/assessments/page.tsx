@@ -27,7 +27,7 @@ export default function AssessmentsPage() {
   const [filter, setFilter] = useState<"all" | "quiz" | "assignment">("all")
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadData()
   }, [user])
 
@@ -72,7 +72,7 @@ export default function AssessmentsPage() {
     }
   }
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 
