@@ -493,7 +493,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       const token = localStorage.getItem("elmkusoma_access_token") || ""
       const headers = { Authorization: `Bearer ${token}` }
       const [countRes, liveRes, assessRes] = await Promise.allSettled([
-        fetch(`/api/v1/notifications/${user.id}/unread-count`, { headers }),
+        fetch(`/api/v1/notifications/unread-count`, { headers }),
         fetch(`/api/v1/student/live-classes/live-now`, { headers }),
         fetch(`/api/v1/student/events`, { headers })
       ])

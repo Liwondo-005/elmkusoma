@@ -47,4 +47,8 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
     long countByIsDeletedFalse();
 
     Page<Certificate> findAllByIsDeletedFalse(Pageable pageable);
+
+    Page<Certificate> findByStudentIdAndIsDeletedFalse(UUID studentId, Pageable pageable);
+
+    Page<Certificate> findByInstitutionIdAndIsDeletedFalse(UUID institutionId, Pageable pageable);
 }

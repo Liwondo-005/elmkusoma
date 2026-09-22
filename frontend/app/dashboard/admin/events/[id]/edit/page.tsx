@@ -272,7 +272,7 @@ export default function EditEventPage() {
               {t("admin.actions.viewRecording")}
             </a>
           )}
-          {event.status !== "ENDED" && event.status !== "CANCELLED" && (
+          {event.status !== "ENDED" as string && event.status !== "CANCELLED" as string && (
             <button
               onClick={() => handleAction("cancel")}
               disabled={!!actionLoading}

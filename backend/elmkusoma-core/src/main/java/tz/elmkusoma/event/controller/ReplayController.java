@@ -41,7 +41,8 @@ public class ReplayController {
     @PutMapping("/{id}/progress")
     public ResponseEntity<ApiResponse<Void>> updateProgress(
             @PathVariable UUID id,
-            @RequestBody Map<String, Integer> body) {
+            @RequestBody Map<String, Integer> body,
+            @RequestAttribute("userId") UUID userId) {
         return replayRepository.findById(id)
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .map(replay -> {

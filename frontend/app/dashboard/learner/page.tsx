@@ -20,7 +20,7 @@ export default function LearnerDashboardPage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>([])
-  const [continueLearningState, setContinueLearningState] = useState<{ courseId: string; courseTitle: string; lessonId: string; lessonTitle: string; moduleTitle: string; accessedAt: string } | null>(null)
+  const [continueLearningState, setContinueLearningState] = useState<{ courseId: string; courseTitle: string; lessonId: string; lessonTitle: string; moduleTitle: string; lastAccessedAt: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -574,7 +574,7 @@ export default function LearnerDashboardPage() {
             {bookmarks.length >= 5 && (
               <div className="flex items-center gap-3 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
-                  <Bookmark className="size-5 text-rose-500" />
+                  <BookmarkIcon className="size-5 text-rose-500" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground">Curator</p>
