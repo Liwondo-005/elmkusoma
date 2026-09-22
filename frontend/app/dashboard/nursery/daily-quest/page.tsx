@@ -2,10 +2,11 @@
 
 import { ArrowLeft, Star, CheckCircle, Trophy } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { nurseryApi, type NurseryDailyQuest } from "@/lib/nursery-api"
 import { LoadingState } from "@/components/learner/shared"
+import { useTranslations } from "next-intl"
 
 const BUILTIN_QUESTS = [
   { id: "builtin-1", title: "Read a Story", desc: "Read or listen to one story today", points: 10, type: "READING" as const },
@@ -16,21 +17,47 @@ const BUILTIN_QUESTS = [
 ]
 
 export default function DailyQuestPage() {
+  const t = useTranslations("nursery")
+  const tc = useTranslations("common")
   const { user } = useRequireAuth()
   const [apiQuests, setApiQuests] = useState<NurseryDailyQuest[]>([])
   const [completed, setCompleted] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadQuests = useCallback(() => {
     const classId = user?.classGroupId
     if (!classId) { setLoading(false); return }
+    setLoading(true)
+    setError(null)
     nurseryApi.getDailyQuests(classId)
       .then(setApiQuests)
-      .catch(() => {})
+      .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [user])
 
-  if (loading) return <LoadingState />
+  useEffect(() => { loadQuests() }, [loadQuests])
+
+  if (loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToList")}>
+            <ArrowLeft className="size-5 text-gray-600" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">{t("dailyQuest")}</h1>
+          </div>
+        </div>
+        <div className="nursery-card rounded-2xl bg-white p-8 text-center">
+          <p className="text-sm text-red-500">{error}</p>
+          <button onClick={loadQuests} className="mt-4 rounded-xl bg-primary px-6 py-2 text-sm font-bold text-white hover:bg-primary/90" aria-label={tc("retry")}>{tc("retry")}</button>
+        </div>
+      </div>
+    )
+  }
 
   const allQuests = [
     ...BUILTIN_QUESTS,
@@ -48,14 +75,15 @@ export default function DailyQuestPage() {
 
   const totalPoints = allQuests.filter(q => completed.has(q.id)).reduce((sum, q) => sum + q.points, 0)
   const maxPoints = allQuests.reduce((sum, q) => sum + q.points, 0)
+  const progressPercent = maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100"><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <Link href="/dashboard/nursery" className="nursery-card flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToList")}><ArrowLeft className="size-5 text-gray-600" /></Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Daily Quest</h1>
-          <p className="text-sm text-gray-500">Complete fun challenges today</p>
+          <h1 className="text-xl font-bold text-gray-800">{t("dailyQuest")}</h1>
+          <p className="text-sm text-gray-500">{t("subtitle.quest")}</p>
         </div>
       </div>
 
@@ -63,18 +91,31 @@ export default function DailyQuestPage() {
         <div className="flex items-center gap-3">
           <Trophy className="size-8" />
           <div>
-            <h2 className="text-lg font-bold">Today&apos;s Points</h2>
-            <p className="text-sm text-white/70">{totalPoints} / {maxPoints} points earned</p>
+            <h2 className="text-lg font-bold">{t("todayPoints")}</h2>
+            <p className="text-sm text-white/70">{t("progress.pointsEarned", { n: totalPoints, m: maxPoints })}</p>
           </div>
         </div>
         <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/30">
-          <div className="h-full rounded-full bg-white transition-all" style={{ width: `${maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0}%` }} />
+          <div
+            className="h-full rounded-full bg-white transition-all"
+            style={{ width: `${progressPercent}%` }}
+            role="progressbar"
+            aria-valuenow={totalPoints}
+            aria-valuemin={0}
+            aria-valuemax={maxPoints}
+          />
         </div>
       </div>
 
       <div className="space-y-3">
         {allQuests.map(quest => (
-          <button key={quest.id} onClick={() => toggleQuest(quest.id)} className={`nursery-card flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left transition-all ${completed.has(quest.id) ? "ring-2 ring-green-400" : ""}`}>
+          <button
+            key={quest.id}
+            onClick={() => toggleQuest(quest.id)}
+            aria-label={`${quest.title} - ${quest.points} ${t("stats.points")}`}
+            aria-pressed={completed.has(quest.id)}
+            className={`nursery-card flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left transition-all ${completed.has(quest.id) ? "ring-2 ring-green-400" : ""}`}
+          >
             <div className={`flex size-12 items-center justify-center rounded-2xl ${completed.has(quest.id) ? "bg-green-100" : "bg-amber-100"}`}>
               {completed.has(quest.id) ? <CheckCircle className="size-6 text-green-500" /> : <Star className="size-6 text-amber-500" />}
             </div>

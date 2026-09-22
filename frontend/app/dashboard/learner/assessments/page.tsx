@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type Enrollment, type CourseModuleSummary, type CourseLesson } from "@/lib/learner-api"
 import { LoadingState, EmptyState } from "@/components/learner/shared"
@@ -16,6 +17,8 @@ interface AssessmentItem {
 }
 
 export default function AssessmentsPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [assessments, setAssessments] = useState<AssessmentItem[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
@@ -63,14 +66,14 @@ export default function AssessmentsPage() {
       }
       setAssessments(allAssessments)
     } catch {
-      setError("Failed to load assessments")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
   }
 
   if (authLoading || user?.role !== "Other Learner") {
-    return <LoadingState />
+    return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 
   const filtered = assessments.filter((a) => {
@@ -84,10 +87,10 @@ export default function AssessmentsPage() {
   const assignmentCount = assessments.filter((a) => a.lesson.contentType === "ASSIGNMENT").length
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Assessments</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Quizzes and assignments from your enrolled courses.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("assessments.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("assessments.subtitle")}</p>
       </div>
 
       {error && (
@@ -95,21 +98,22 @@ export default function AssessmentsPage() {
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="size-4" />
             {error}
+            <button onClick={() => { setError(null); loadData() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
           </div>
         </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Total Assessments</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("assessments.totalAssessments")}</p>
           <p className="mt-1 text-2xl font-extrabold text-foreground">{assessments.length}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Quizzes</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("assessments.quizzes")}</p>
           <p className="mt-1 text-2xl font-extrabold text-primary">{quizCount}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Assignments</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("assessments.assignments")}</p>
           <p className="mt-1 text-2xl font-extrabold text-orange">{assignmentCount}</p>
         </div>
       </div>
@@ -119,11 +123,13 @@ export default function AssessmentsPage() {
           <button
             key={f}
             onClick={() => setFilter(f)}
+            aria-label={f === "all" ? tc("all") : f === "quiz" ? t("assessments.quizzes") : t("assessments.assignments")}
+            aria-pressed={filter === f}
             className={`h-9 rounded-lg px-4 text-sm font-medium transition-colors ${
               filter === f ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground hover:bg-muted"
             }`}
           >
-            {f === "all" ? "All" : f === "quiz" ? "Quizzes" : "Assignments"}
+            {f === "all" ? tc("all") : f === "quiz" ? t("assessments.quizzes") : t("assessments.assignments")}
           </button>
         ))}
       </div>
@@ -133,22 +139,23 @@ export default function AssessmentsPage() {
       ) : assessments.length === 0 ? (
         <EmptyState
           icon={<ClipboardCheck className="size-8" />}
-          title="No assessments yet"
-          description="Assessments will appear here when your courses include quizzes or assignments."
+          title={t("assessments.noAssessments")}
+          description={t("assessments.noAssessmentsDesc")}
           action={
             <Link
               href="/dashboard/learner/courses"
+              aria-label={t("assessments.exploreCourses")}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Explore Courses <ArrowRight className="size-4" />
+              {t("assessments.exploreCourses")} <ArrowRight className="size-4" />
             </Link>
           }
         />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<ClipboardCheck className="size-8" />}
-          title={`No ${filter === "quiz" ? "quizzes" : "assignments"} found`}
-          description="Try a different filter."
+          title={filter === "quiz" ? t("assessments.noQuizzes") : t("assessments.noAssignments")}
+          description={t("assessments.tryDifferentFilter")}
         />
       ) : (
         <div className="space-y-3">
@@ -156,6 +163,7 @@ export default function AssessmentsPage() {
             <Link
               key={item.lesson.id}
               href={`/dashboard/learner/courses/${item.courseId}/lessons/${item.lesson.id}`}
+              aria-label={`${item.lesson.title} - ${item.courseTitle}`}
               className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:shadow-md hover:border-primary/30"
             >
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">

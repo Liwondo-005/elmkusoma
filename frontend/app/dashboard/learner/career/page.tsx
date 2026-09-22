@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { CareerProfile } from "@/lib/types/college"
@@ -8,6 +9,8 @@ import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/sh
 import { Briefcase, TrendingUp, Award, GraduationCap, Building2, Wrench, Star, Save, AlertCircle } from "lucide-react"
 
 export default function CareerPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<CareerProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -39,7 +42,7 @@ export default function CareerPage() {
         setCerts(p.certifications || "")
       }
     } catch {
-      setError("Failed to load career profile")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -58,13 +61,13 @@ export default function CareerPage() {
       })
       setProfile(res.data || null)
     } catch {
-      setError("Failed to save career profile")
+      setError(tc("error.save"))
     } finally {
       setSaving(false)
     }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Student"
 
@@ -87,97 +90,101 @@ export default function CareerPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadProfile() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadProfile() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
-      <LearnerHeader firstName={firstName} subtitle="Explore career paths, professional skills, and development opportunities." />
+      <LearnerHeader firstName={firstName} subtitle={t("career.subtitle")} />
 
-      {/* Career Profile */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
             <Briefcase className="size-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">My Career Profile</h2>
-            <p className="text-sm text-muted-foreground">Define your career goals and professional objectives</p>
+            <h2 className="text-lg font-bold text-foreground">{t("career.myProfile")}</h2>
+            <p className="text-sm text-muted-foreground">{t("career.myProfileDesc")}</p>
           </div>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">Career Objective</label>
+            <label className="text-sm font-medium text-foreground">{t("career.objective")}</label>
             <textarea
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
-              placeholder="What is your career goal?"
+              placeholder={t("career.objectivePlaceholder")}
+              aria-label={t("career.objective")}
               className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               rows={3}
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-foreground">Target Industry</label>
+              <label className="text-sm font-medium text-foreground">{t("career.targetIndustry")}</label>
               <input
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                placeholder="e.g. Technology, Healthcare"
+                placeholder={t("career.targetIndustryPlaceholder")}
+                aria-label={t("career.targetIndustry")}
                 className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Target Role</label>
+              <label className="text-sm font-medium text-foreground">{t("career.targetRole")}</label>
               <input
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                placeholder="e.g. Software Engineer, Doctor"
+                placeholder={t("career.targetRolePlaceholder")}
+                aria-label={t("career.targetRole")}
                 className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Skills (comma-separated)</label>
+            <label className="text-sm font-medium text-foreground">{t("career.skills")}</label>
             <input
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
-              placeholder="e.g. Python, Project Management, Data Analysis"
+              placeholder={t("career.skillsPlaceholder")}
+              aria-label={t("career.skills")}
               className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Certifications (comma-separated)</label>
+            <label className="text-sm font-medium text-foreground">{t("career.certifications")}</label>
             <input
               value={certs}
               onChange={(e) => setCerts(e.target.value)}
-              placeholder="e.g. AWS Certified, PMP, Google Analytics"
+              placeholder={t("career.certificationsPlaceholder")}
+              aria-label={t("career.certifications")}
               className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <button
             onClick={handleSave}
             disabled={saving}
+            aria-label={tc("save")}
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition disabled:opacity-50"
           >
             <Save className="size-4" />
-            {saving ? "Saving..." : "Save Profile"}
+            {saving ? tc("saving") : tc("save")}
           </button>
         </div>
       </div>
 
-      {/* Industries */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex size-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
             <Building2 className="size-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Industries</h2>
-            <p className="text-sm text-muted-foreground">Explore opportunities across key sectors</p>
+            <h2 className="text-lg font-bold text-foreground">{t("career.industries")}</h2>
+            <p className="text-sm text-muted-foreground">{t("career.industriesDesc")}</p>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -190,15 +197,14 @@ export default function CareerPage() {
         </div>
       </div>
 
-      {/* Professional Skills */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
             <Wrench className="size-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Professional Skills</h2>
-            <p className="text-sm text-muted-foreground">Develop skills that employers value</p>
+            <h2 className="text-lg font-bold text-foreground">{t("career.professionalSkills")}</h2>
+            <p className="text-sm text-muted-foreground">{t("career.professionalSkillsDesc")}</p>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

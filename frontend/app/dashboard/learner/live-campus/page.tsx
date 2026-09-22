@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { learnerApi } from "@/lib/learner-api"
@@ -163,6 +164,8 @@ function groupByDay(sessions: LiveClassItem[]): Record<string, LiveClassItem[]> 
 }
 
 export default function LiveCampusPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [sessions, setSessions] = useState<LiveClassItem[]>([])
@@ -179,7 +182,7 @@ export default function LiveCampusPage() {
       const data = await learnerApi.getLiveClasses()
       setSessions(data as unknown as LiveClassItem[])
     } catch {
-      setError("Failed to load live campus sessions. Please try again.")
+      setError(tc("error"))
     } finally {
       setLoading(false)
     }
@@ -191,7 +194,7 @@ export default function LiveCampusPage() {
   }, [user, loadSessions])
 
   if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
-    return <LoadingState />
+    return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 
   const liveNow = sessions.filter((s) => s.status === "IN_PROGRESS" || s.status === "STARTING")
@@ -226,10 +229,10 @@ export default function LiveCampusPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-12">
+    <div role="main" className="mx-auto max-w-6xl space-y-6 pb-12">
       <LearnerHeader
         firstName={user?.firstName || "Student"}
-        subtitle="Your live academic experience — lectures, seminars, research presentations, and more"
+        subtitle={t("subtitle.liveCampus")}
       />
 
       {error && (
@@ -241,16 +244,17 @@ export default function LiveCampusPage() {
             </div>
             <button
               onClick={loadSessions}
+              aria-label={tc("retry")}
               className="text-xs font-medium text-destructive underline underline-offset-2 hover:no-underline"
             >
-              Retry
+              {tc("retry")}
             </button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <LoadingState />
+        <div aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -261,7 +265,7 @@ export default function LiveCampusPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{liveNow.length}</p>
-                  <p className="text-xs text-muted-foreground">Live Now</p>
+                  <p className="text-xs text-muted-foreground">{t("live")}</p>
                 </div>
               </div>
             </div>
@@ -272,7 +276,7 @@ export default function LiveCampusPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{scheduledToday.length}</p>
-                  <p className="text-xs text-muted-foreground">Upcoming Today</p>
+                  <p className="text-xs text-muted-foreground">{t("filters.upcoming")}</p>
                 </div>
               </div>
             </div>
@@ -283,7 +287,7 @@ export default function LiveCampusPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{scheduledThisWeek.length}</p>
-                  <p className="text-xs text-muted-foreground">This Week</p>
+                  <p className="text-xs text-muted-foreground">{t("filters.upcoming")}</p>
                 </div>
               </div>
             </div>
@@ -294,7 +298,7 @@ export default function LiveCampusPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{recordings.length}</p>
-                  <p className="text-xs text-muted-foreground">Recordings Available</p>
+                  <p className="text-xs text-muted-foreground">{t("filters.completed")}</p>
                 </div>
               </div>
             </div>
@@ -307,7 +311,7 @@ export default function LiveCampusPage() {
                   <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex size-3 rounded-full bg-red-500" />
                 </span>
-                <h2 className="text-lg font-semibold text-foreground">Live Now</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("live")}</h2>
                 <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-600">
                   {liveNow.length}
                 </span>
@@ -327,7 +331,7 @@ export default function LiveCampusPage() {
                         <p className="mt-0.5 text-xs text-muted-foreground">{s.teacherName}</p>
                       </div>
                       <span className="shrink-0 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white uppercase">
-                        Live
+                        {t("live")}
                       </span>
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -353,18 +357,20 @@ export default function LiveCampusPage() {
                       {s.canJoin && (
                         <button
                           onClick={() => navigateToClass(s.id)}
+                          aria-label={t("joinSession")}
                           className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
                         >
                           <Video className="size-4" />
-                          Join Live
+                          {t("joinSession")}
                         </button>
                       )}
                       <button
                         onClick={() => navigateToClass(s.id)}
+                        aria-label={t("viewDetails")}
                         className="flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                       >
                         <ExternalLink className="size-4" />
-                        Details
+                        {t("viewDetails")}
                       </button>
                     </div>
                   </div>
@@ -377,7 +383,7 @@ export default function LiveCampusPage() {
             <section>
               <div className="mb-4 flex items-center gap-2">
                 <Clock className="size-5 text-blue-500" />
-                <h2 className="text-lg font-semibold text-foreground">Upcoming Today</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("filters.upcoming")}</h2>
                 <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-600">
                   {scheduledToday.length}
                 </span>
@@ -399,7 +405,7 @@ export default function LiveCampusPage() {
                           <p className="mt-0.5 text-xs text-muted-foreground">{s.teacherName}</p>
                         </div>
                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLORS[s.status] || "bg-muted text-muted-foreground"}`}>
-                          Scheduled
+                          {t("filters.upcoming")}
                         </span>
                       </div>
                       <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
@@ -430,13 +436,15 @@ export default function LiveCampusPage() {
                       <div className="mt-4 flex gap-2">
                         <button
                           onClick={() => navigateToClass(s.id)}
+                          aria-label={t("workshop")}
                           className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                         >
                           <BookOpen className="size-4" />
-                          Prepare
+                          {t("workshop")}
                         </button>
                         <button
                           onClick={() => navigateToClass(s.id)}
+                          aria-label={t("viewDetails")}
                           className="flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-muted transition-colors"
                         >
                           <ChevronRight className="size-4" />
@@ -452,7 +460,7 @@ export default function LiveCampusPage() {
             <section>
               <div className="mb-4 flex items-center gap-2">
                 <Calendar className="size-5 text-indigo-500" />
-                <h2 className="text-lg font-semibold text-foreground">Upcoming This Week</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("filters.upcoming")}</h2>
                 <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-600">
                   {scheduledThisWeek.length}
                 </span>
@@ -497,9 +505,10 @@ export default function LiveCampusPage() {
                           </div>
                           <button
                             onClick={() => navigateToClass(s.id)}
+                            aria-label={t("viewDetails")}
                             className="mt-3 w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                           >
-                            View Details
+                            {t("viewDetails")}
                             <ChevronRight className="size-3" />
                           </button>
                         </div>
@@ -514,7 +523,7 @@ export default function LiveCampusPage() {
             <section>
               <div className="mb-4 flex items-center gap-2">
                 <Play className="size-5 text-green-500" />
-                <h2 className="text-lg font-semibold text-foreground">Recent Recordings</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("filters.completed")}</h2>
                 <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-semibold text-green-600">
                   {recordings.length}
                 </span>
@@ -547,10 +556,11 @@ export default function LiveCampusPage() {
                     </div>
                     <button
                       onClick={() => navigateToClass(s.id)}
+                      aria-label={t("viewDetails")}
                       className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
                     >
                       <Play className="size-4" />
-                      Watch Replay
+                      {t("viewDetails")}
                     </button>
                   </div>
                 ))}
@@ -562,7 +572,7 @@ export default function LiveCampusPage() {
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Monitor className="size-5 text-foreground" />
-                <h2 className="text-lg font-semibold text-foreground">All Sessions</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("live")}</h2>
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                   {filteredSessions.length}
                 </span>
@@ -572,13 +582,15 @@ export default function LiveCampusPage() {
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
+                    aria-pressed={filter === f}
+                    aria-label={f === "all" ? tc("filter") : f}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                       filter === f
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
-                    {f === "all" ? "All" : f === "live" ? "Live Now" : f === "upcoming" ? "Upcoming" : "Recordings"}
+                    {f === "all" ? tc("filter") : f === "live" ? t("live") : f === "upcoming" ? t("filters.upcoming") : t("filters.completed")}
                   </button>
                 ))}
               </div>
@@ -589,9 +601,10 @@ export default function LiveCampusPage() {
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Search sessions, subjects, teachers..."
+                  placeholder={tc("search") + "..."}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  aria-label={tc("search")}
                   className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-ring"
                 />
               </div>
@@ -600,9 +613,10 @@ export default function LiveCampusPage() {
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
+                  aria-label={tc("filter")}
                   className="h-10 rounded-lg border border-border bg-background pl-10 pr-8 text-sm outline-none focus:border-ring appearance-none cursor-pointer"
                 >
-                  <option value="ALL">All Types</option>
+                  <option value="ALL">{tc("filter")}</option>
                   {Object.entries(SESSION_TYPE_LABELS).map(([key, label]) => (
                     <option key={key} value={key}>
                       {label}
@@ -615,11 +629,11 @@ export default function LiveCampusPage() {
             {filteredSessions.length === 0 ? (
               <EmptyState
                 icon={<Video className="size-8" />}
-                title="No sessions found"
+                title={t("empty.noLiveSessions")}
                 description={
                   search || typeFilter !== "ALL" || filter !== "all"
-                    ? "Try adjusting your filters."
-                    : "No live campus sessions available yet."
+                    ? tc("noResults")
+                    : t("empty.noLiveSessions")
                 }
               />
             ) : (
@@ -655,11 +669,11 @@ export default function LiveCampusPage() {
                             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLORS[s.status] || "bg-muted text-muted-foreground"}`}
                           >
                             {s.status === "IN_PROGRESS" || s.status === "STARTING"
-                              ? "Live"
+                              ? t("live")
                               : s.status === "SCHEDULED"
-                                ? "Scheduled"
+                                ? t("filters.upcoming")
                                 : s.status === "COMPLETED"
-                                  ? "Completed"
+                                  ? t("stats.completed")
                                   : s.status}
                           </span>
                         </div>
@@ -715,41 +729,46 @@ export default function LiveCampusPage() {
                         {isLive && s.canJoin && (
                           <button
                             onClick={() => navigateToClass(s.id)}
+                            aria-label={t("joinSession")}
                             className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
                           >
                             <Video className="size-4" />
-                            Join Live
+                            {t("joinSession")}
                           </button>
                         )}
                         {isRecording && (
                           <button
                             onClick={() => navigateToClass(s.id)}
+                            aria-label={t("viewDetails")}
                             className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
                           >
                             <Play className="size-4" />
-                            Watch Replay
+                            {t("viewDetails")}
                           </button>
                         )}
                         {isScheduled && (
                           <button
                             onClick={() => navigateToClass(s.id)}
+                            aria-label={t("workshop")}
                             className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                           >
                             <BookOpen className="size-4" />
-                            Prepare
+                            {t("workshop")}
                           </button>
                         )}
                         {!isLive && !isRecording && !isScheduled && (
                           <button
                             onClick={() => navigateToClass(s.id)}
+                            aria-label={t("viewDetails")}
                             className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                           >
                             <ExternalLink className="size-4" />
-                            View Details
+                            {t("viewDetails")}
                           </button>
                         )}
                         <button
                           onClick={() => navigateToClass(s.id)}
+                          aria-label={t("viewDetails")}
                           className="flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-muted transition-colors"
                         >
                           <ChevronRight className="size-4" />

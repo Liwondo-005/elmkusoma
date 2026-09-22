@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { PracticalDemonstration } from "@/lib/types/college"
@@ -24,6 +25,8 @@ function DemoStatusBadge({ status }: { status: string }) {
 }
 
 export default function DemonstrationsPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [demos, setDemos] = useState<PracticalDemonstration[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,19 +43,19 @@ export default function DemonstrationsPage() {
       const studentId = user?.id || ""
       const res = await collegeApi.getStudentDemonstrations(studentId)
       setDemos((res.data as PracticalDemonstration[] | undefined) || [])
-    } catch { setError("Failed to load demonstrations") } finally { setLoading(false) }
+    } catch { setError(tc("error.load")) } finally { setLoading(false) }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   if (error && demos.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Demonstrate your skills through practical submissions and earn competency recognition." />
+      <div role="main" className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle={t("demonstrations.subtitle")} />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadDemos() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadDemos() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
@@ -64,38 +67,38 @@ export default function DemonstrationsPage() {
   const approved = demos.filter(d => d.status === "APPROVED").length
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Demonstrate your skills through practical submissions and earn competency recognition." />
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("demonstrations.subtitle")} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-primary/10"><Trophy className="size-5 text-primary" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">Total Submissions</p><p className="text-2xl font-extrabold text-foreground">{demos.length}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("demonstrations.totalSubmissions")}</p><p className="text-2xl font-extrabold text-foreground">{demos.length}</p></div>
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-muted"><AlertCircle className="size-5 text-muted-foreground" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">Drafts</p><p className="text-2xl font-extrabold text-foreground">{drafts}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("demonstrations.drafts")}</p><p className="text-2xl font-extrabold text-foreground">{drafts}</p></div>
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30"><Send className="size-5 text-blue-600 dark:text-blue-400" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">Submitted</p><p className="text-2xl font-extrabold text-foreground">{submitted}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("demonstrations.submitted")}</p><p className="text-2xl font-extrabold text-foreground">{submitted}</p></div>
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30"><CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">Approved</p><p className="text-2xl font-extrabold text-foreground">{approved}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("demonstrations.approved")}</p><p className="text-2xl font-extrabold text-foreground">{approved}</p></div>
           </div>
         </div>
       </div>
 
       {demos.length === 0 ? (
-        <EmptyState title="No demonstrations yet" description="Start submitting practical demonstrations to showcase your skills and earn competency recognition." />
+        <EmptyState title={t("demonstrations.noDemonstrations")} description={t("demonstrations.noDemonstrationsDesc")} />
       ) : (
         <div className="space-y-4">
           {demos.map((d) => (
@@ -123,7 +126,7 @@ export default function DemonstrationsPage() {
               </div>
               {d.reviewNotes && (
                 <div className="mt-3 rounded-xl bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
-                  <span className="font-medium">Reviewer notes:</span> {d.reviewNotes}
+                  <span className="font-medium">{t("demonstrations.reviewerNotes")}</span> {d.reviewNotes}
                 </div>
               )}
             </div>

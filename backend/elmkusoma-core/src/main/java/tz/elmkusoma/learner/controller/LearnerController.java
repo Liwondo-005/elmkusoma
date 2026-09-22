@@ -231,13 +231,12 @@ public class LearnerController {
         if (existing.isPresent()) {
             return ResponseEntity.ok(ApiResponse.success("Already enrolled", toEnrollmentResponse(existing.get())));
         }
-        LearnerEnrollment enrollment = LearnerEnrollment.builder()
-                .userId(userId)
-                .courseId(courseId)
-                .institutionId(course.getInstitutionId())
-                .enrolledAt(LocalDateTime.now())
-                .progressPercentage(0.0)
-                .build();
+        LearnerEnrollment enrollment = new LearnerEnrollment();
+        enrollment.setUserId(userId);
+        enrollment.setCourseId(courseId);
+        enrollment.setInstitutionId(course.getInstitutionId());
+        enrollment.setEnrolledAt(LocalDateTime.now());
+        enrollment.setProgressPercentage(0.0);
         enrollment = enrollmentRepository.save(enrollment);
 
         LearnerNotification notification = LearnerNotification.builder()
@@ -258,9 +257,15 @@ public class LearnerController {
     @Operation(summary = "List my enrolled courses")
     public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> myEnrollments(
             @RequestAttribute("userId") UUID userId) {
-        List<EnrollmentResponse> enrollments = enrollmentRepository.findByUserIdAndIsDeletedFalseOrderByEnrolledAtDesc(userId)
-                .stream().map(this::toEnrollmentResponse).collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(enrollments));
+        List<LearnerEnrollment> enrollments = enrollmentRepository.findByUserIdAndIsDeletedFalseOrderByEnrolledAtDesc(userId);
+        enrollments.sort((a, b) -> {
+            if (a.getLastAccessedAt() == null && b.getLastAccessedAt() == null) return b.getEnrolledAt().compareTo(a.getEnrolledAt());
+            if (a.getLastAccessedAt() == null) return 1;
+            if (b.getLastAccessedAt() == null) return -1;
+            return b.getLastAccessedAt().compareTo(a.getLastAccessedAt());
+        });
+        List<EnrollmentResponse> response = enrollments.stream().map(this::toEnrollmentResponse).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/me/enrollments/{courseId}")
@@ -280,6 +285,10 @@ public class LearnerController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCourseProgress(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID courseId) {
+        enrollmentRepository.findByUserIdAndCourseIdAndIsDeletedFalse(userId, courseId).ifPresent(e -> {
+            e.setLastAccessedAt(LocalDateTime.now());
+            enrollmentRepository.save(e);
+        });
         long totalLessons = courseLessonRepository.countByCourseIdAndIsDeletedFalse(courseId);
         // Use userId as studentId for OTHER_LEARNER lesson progress tracking
         long completedLessons = lessonProgressRepository.findByStudentIdAndIsDeletedFalse(userId).stream()
@@ -810,18 +819,19 @@ public class LearnerController {
 
     private EnrollmentResponse toEnrollmentResponse(LearnerEnrollment e) {
         Course course = courseRepository.findById(e.getCourseId()).orElse(null);
-        return EnrollmentResponse.builder()
-                .id(e.getId())
-                .courseId(e.getCourseId())
-                .courseTitle(course != null ? course.getTitle() : null)
-                .courseDescription(course != null ? course.getDescription() : null)
-                .courseThumbnailUrl(course != null ? course.getThumbnailUrl() : null)
-                .courseLevel(course != null ? course.getLevel() : null)
-                .courseCategory(course != null ? course.getCategory() : null)
-                .enrolledAt(e.getEnrolledAt())
-                .completedAt(e.getCompletedAt())
-                .progressPercentage(e.getProgressPercentage())
-                .build();
+        EnrollmentResponse response = new EnrollmentResponse();
+        response.setId(e.getId());
+        response.setCourseId(e.getCourseId());
+        response.setCourseTitle(course != null ? course.getTitle() : null);
+        response.setCourseDescription(course != null ? course.getDescription() : null);
+        response.setCourseThumbnailUrl(course != null ? course.getThumbnailUrl() : null);
+        response.setCourseLevel(course != null ? course.getLevel() : null);
+        response.setCourseCategory(course != null ? course.getCategory() : null);
+        response.setEnrolledAt(e.getEnrolledAt());
+        response.setCompletedAt(e.getCompletedAt());
+        response.setProgressPercentage(e.getProgressPercentage());
+        response.setLastAccessedAt(e.getLastAccessedAt());
+        return response;
     }
 
     private BookmarkResponse toBookmarkResponse(Bookmark b) {

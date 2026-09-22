@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { Portfolio, PortfolioItem } from "@/lib/types/college"
@@ -26,6 +27,8 @@ function ItemTypeBadge({ type }: { type: string }) {
 }
 
 export default function PortfolioPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
   const [items, setItems] = useState<PortfolioItem[]>([])
@@ -47,19 +50,19 @@ export default function PortfolioPage() {
         setPortfolio(data)
         setItems(data.items || [])
       }
-    } catch { setError("Failed to load portfolio") } finally { setLoading(false) }
+    } catch { setError(tc("error")) } finally { setLoading(false) }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   if (error && !portfolio) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Curate and showcase your achievements, certificates, and work samples." />
+      <div role="main" className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle={t("subtitle.portfolio")} />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadPortfolio() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadPortfolio() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
@@ -71,40 +74,40 @@ export default function PortfolioPage() {
   const publicItems = items.filter(i => i.isVisible).length
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Curate and showcase your achievements, certificates, and work samples." />
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("subtitle.portfolio")} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-primary/10"><Briefcase className="size-5 text-primary" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">Total Items</p><p className="text-2xl font-extrabold text-foreground">{items.length}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("stats.total")}</p><p className="text-2xl font-extrabold text-foreground">{items.length}</p></div>
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30"><Award className="size-5 text-emerald-600 dark:text-emerald-400" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">Certificates</p><p className="text-2xl font-extrabold text-foreground">{certificates}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("certificate")}</p><p className="text-2xl font-extrabold text-foreground">{certificates}</p></div>
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30"><FileText className="size-5 text-blue-600 dark:text-blue-400" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">Work Samples</p><p className="text-2xl font-extrabold text-foreground">{workSamples}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("evidence")}</p><p className="text-2xl font-extrabold text-foreground">{workSamples}</p></div>
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30"><Eye className="size-5 text-amber-600 dark:text-amber-400" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">Public Items</p><p className="text-2xl font-extrabold text-foreground">{publicItems}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("filters.active")}</p><p className="text-2xl font-extrabold text-foreground">{publicItems}</p></div>
           </div>
         </div>
       </div>
 
       {!portfolio ? (
-        <EmptyState title="No portfolio yet" description="Start adding your achievements, certificates, and work samples to build your professional profile." />
+        <EmptyState title={t("empty.noPortfolio")} description={t("empty.noPortfolio")} />
       ) : items.length === 0 ? (
-        <EmptyState title="Your portfolio is empty" description="Add items like certificates, project evidence, and work samples to showcase your skills." />
+        <EmptyState title={t("empty.noPortfolio")} description={t("empty.noPortfolio")} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
@@ -118,7 +121,7 @@ export default function PortfolioPage() {
                 {item.dateObtained && <span>{new Date(item.dateObtained).toLocaleDateString()}</span>}
                 <span className="flex items-center gap-1">
                   {item.isVisible ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
-                  {item.isVisible ? "Public" : "Private"}
+                  {item.isVisible ? t("filters.active") : t("filters.archived")}
                 </span>
               </div>
             </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { FieldworkPlacement } from "@/lib/types/college"
@@ -22,6 +23,8 @@ function PlacementStatusBadge({ status }: { status: string }) {
 }
 
 export default function FieldworkPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [placements, setPlacements] = useState<FieldworkPlacement[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,22 +42,22 @@ export default function FieldworkPage() {
       const res = await collegeApi.getStudentFieldwork(studentId)
       setPlacements(res.data || [])
     } catch {
-      setError("Failed to load fieldwork")
+      setError(tc("error"))
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   if (error && placements.length === 0) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Track your fieldwork placements, logbook entries, and practical experience." />
+      <div role="main" className="mx-auto max-w-6xl space-y-6">
+        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle={t("subtitle.fieldwork")} />
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadFieldwork() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadFieldwork() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
@@ -66,8 +69,8 @@ export default function FieldworkPage() {
   const totalHours = placements.reduce((sum, p) => sum + (p.totalHoursCompleted || 0), 0)
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Track your fieldwork placements, logbook entries, and practical experience." />
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("subtitle.fieldwork")} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -76,7 +79,7 @@ export default function FieldworkPage() {
               <Briefcase className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Placements</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.total")}</p>
               <p className="text-2xl font-extrabold text-foreground">{placements.length}</p>
             </div>
           </div>
@@ -87,7 +90,7 @@ export default function FieldworkPage() {
               <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Active</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("filters.active")}</p>
               <p className="text-2xl font-extrabold text-foreground">{active}</p>
             </div>
           </div>
@@ -98,7 +101,7 @@ export default function FieldworkPage() {
               <Clock className="size-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Completed</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.completed")}</p>
               <p className="text-2xl font-extrabold text-foreground">{completed}</p>
             </div>
           </div>
@@ -109,7 +112,7 @@ export default function FieldworkPage() {
               <Hourglass className="size-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Hours Logged</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("creditHours")}</p>
               <p className="text-2xl font-extrabold text-foreground">{totalHours}</p>
             </div>
           </div>
@@ -119,8 +122,8 @@ export default function FieldworkPage() {
       {placements.length === 0 ? (
         <EmptyState
           icon={<Briefcase className="size-8" />}
-          title="No fieldwork placements yet"
-          description="Your placement will appear here once assigned."
+          title={t("empty.noFieldwork")}
+          description={t("empty.noFieldwork")}
         />
       ) : (
         <div className="space-y-4">
@@ -141,23 +144,23 @@ export default function FieldworkPage() {
                       {p.organisationName}
                     </p>
                     {p.supervisorName && (
-                      <p className="text-xs text-muted-foreground">Supervisor: {p.supervisorName}</p>
+                      <p className="text-xs text-muted-foreground">{t("supervisor")}: {p.supervisorName}</p>
                     )}
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">
                       {p.startDate && new Date(p.startDate).toLocaleDateString()} —{" "}
-                      {p.endDate ? new Date(p.endDate).toLocaleDateString() : "Ongoing"}
+                      {p.endDate ? new Date(p.endDate).toLocaleDateString() : t("filters.active")}
                     </p>
                   </div>
                 </div>
                 {p.totalHoursRequired ? (
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{p.totalHoursCompleted || 0} / {p.totalHoursRequired} hours</span>
+                      <span>{p.totalHoursCompleted || 0} / {p.totalHoursRequired} {t("creditHours").toLowerCase()}</span>
                       <span>{pct}%</span>
                     </div>
-                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
                       <div
                         className="h-full rounded-full bg-primary transition-all"
                         style={{ width: `${pct}%` }}

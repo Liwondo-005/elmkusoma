@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type CourseSummary, type Enrollment } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { BookOpen, Search, ArrowRight, Loader2, AlertCircle, Filter } from "lucide-react"
 
 export default function LearnerCoursesPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [courses, setCourses] = useState<CourseSummary[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
@@ -33,7 +36,7 @@ export default function LearnerCoursesPage() {
       setCourses(coursesData)
       setEnrollments(enrollmentsData)
     } catch {
-      setError("Failed to load courses")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -51,7 +54,7 @@ export default function LearnerCoursesPage() {
   const categories = [...new Set(courses.map((c) => c.category).filter(Boolean))]
 
   const filteredCourses = courses.filter((course) => {
-    const matchesSearch = search === "" || 
+    const matchesSearch = search === "" ||
       course.title.toLowerCase().includes(search.toLowerCase()) ||
       (course.description?.toLowerCase().includes(search.toLowerCase()) ?? false)
     const matchesLevel = levelFilter === "all" || course.level === levelFilter
@@ -60,14 +63,14 @@ export default function LearnerCoursesPage() {
   })
 
   if (authLoading || user?.role !== "Other Learner") {
-    return <LoadingState />
+    return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Explore Courses</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Discover courses to enhance your learning.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("courses.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("courses.subtitle")}</p>
       </div>
 
       {error && (
@@ -75,6 +78,7 @@ export default function LearnerCoursesPage() {
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="size-4" />
             {error}
+            <button onClick={() => { setError(null); loadData() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
           </div>
         </div>
       )}
@@ -84,9 +88,10 @@ export default function LearnerCoursesPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search courses..."
+            placeholder={t("courses.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label={t("courses.searchPlaceholder")}
             className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-ring"
           />
         </div>
@@ -94,9 +99,10 @@ export default function LearnerCoursesPage() {
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
+            aria-label={t("courses.filterLevel")}
             className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
           >
-            <option value="all">All Levels</option>
+            <option value="all">{tc("allLevels")}</option>
             {levels.map((level) => (
               <option key={String(level)} value={String(level)}>{String(level)}</option>
             ))}
@@ -104,9 +110,10 @@ export default function LearnerCoursesPage() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label={t("courses.filterCategory")}
             className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
           >
-            <option value="all">All Categories</option>
+            <option value="all">{tc("allCategories")}</option>
             {categories.map((cat) => (
               <option key={String(cat)} value={String(cat)}>{String(cat)}</option>
             ))}
@@ -119,8 +126,8 @@ export default function LearnerCoursesPage() {
       ) : filteredCourses.length === 0 ? (
         <EmptyState
           icon={<BookOpen className="size-8" />}
-          title="No courses found"
-          description={search ? "Try adjusting your search or filters." : "No courses are available yet."}
+          title={t("courses.noCourses")}
+          description={search ? t("courses.noCoursesSearch") : t("courses.noCoursesAvailable")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -131,6 +138,7 @@ export default function LearnerCoursesPage() {
               <Link
                 key={course.id}
                 href={`/dashboard/learner/courses/${course.id}`}
+                aria-label={`${t("courses.viewCourse")} - ${course.title}`}
                 className="group rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:shadow-md hover:border-primary/30"
               >
                 {course.thumbnailUrl ? (
@@ -161,10 +169,16 @@ export default function LearnerCoursesPage() {
                 {enrolled && enrollment && (
                   <div className="mt-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Progress</span>
+                      <span className="text-muted-foreground">{tc("progress")}</span>
                       <span className="font-semibold text-teal">{enrollment.progressPercentage}%</span>
                     </div>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      role="progressbar"
+                      aria-valuenow={enrollment.progressPercentage}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                    >
                       <div className="h-full rounded-full bg-teal transition-all" style={{ width: `${enrollment.progressPercentage}%` }} />
                     </div>
                   </div>
@@ -172,11 +186,11 @@ export default function LearnerCoursesPage() {
                 <div className="mt-3">
                   {enrolled ? (
                     <span className="inline-flex items-center gap-1 rounded-lg bg-teal/10 px-3 py-1.5 text-xs font-medium text-teal">
-                      Enrolled
+                      {tc("enrolled")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground group-hover:bg-primary/90">
-                      View Course <ArrowRight className="size-3" />
+                      {t("courses.viewCourse")} <ArrowRight className="size-3" />
                     </span>
                   )}
                 </div>

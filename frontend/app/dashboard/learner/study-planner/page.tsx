@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { StudyTask } from "@/lib/types/college"
@@ -37,6 +38,8 @@ function TaskTypeIcon({ type }: { type: string }) {
 }
 
 export default function StudyPlannerPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [todayTasks, setTodayTasks] = useState<StudyTask[]>([])
   const [weekTasks, setWeekTasks] = useState<StudyTask[]>([])
@@ -62,13 +65,13 @@ export default function StudyPlannerPage() {
       if (weekRes.status === "fulfilled") setWeekTasks(weekRes.value.data || [])
       if (allRes.status === "fulfilled") setAllTasks(allRes.value.data || [])
     } catch {
-      setError("Failed to load study tasks")
+      setError(tc("error"))
     } finally {
       setLoading(false)
     }
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
   const completedCount = allTasks.filter(t => t.isCompleted).length
@@ -87,16 +90,16 @@ export default function StudyPlannerPage() {
   const sortedDates = Object.keys(groupedByDate).sort()
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div role="main" className="mx-auto max-w-6xl space-y-6">
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadTasks() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadTasks() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
-      <LearnerHeader firstName={firstName} subtitle="Plan your study sessions, revision, and academic tasks." />
+      <LearnerHeader firstName={firstName} subtitle={t("subtitle.studyPlanner")} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -105,7 +108,7 @@ export default function StudyPlannerPage() {
               <ClipboardList className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Today's Tasks</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("today")}</p>
               <p className="text-2xl font-extrabold text-foreground">{todayIncomplete}</p>
             </div>
           </div>
@@ -116,7 +119,7 @@ export default function StudyPlannerPage() {
               <Calendar className="size-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">This Week</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("filters.upcoming")}</p>
               <p className="text-2xl font-extrabold text-foreground">{weekIncomplete}</p>
             </div>
           </div>
@@ -127,7 +130,7 @@ export default function StudyPlannerPage() {
               <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Completed</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("stats.completed")}</p>
               <p className="text-2xl font-extrabold text-foreground">{completedCount}</p>
             </div>
           </div>
@@ -137,8 +140,8 @@ export default function StudyPlannerPage() {
       {allTasks.length === 0 ? (
         <EmptyState
           icon={<ClipboardList className="size-8" />}
-          title="No study tasks yet"
-          description="Create your first study task to start planning your academic sessions."
+          title={t("empty.noModules")}
+          description={t("empty.noModules")}
         />
       ) : (
         <div className="space-y-6">
@@ -152,7 +155,7 @@ export default function StudyPlannerPage() {
                     {new Date(date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
                   </h3>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {tasks.length} tasks
+                    {tasks.length}
                   </span>
                 </div>
                 <div className="space-y-2">

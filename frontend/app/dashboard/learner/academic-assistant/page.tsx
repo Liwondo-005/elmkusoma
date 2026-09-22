@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { StudentCourseEnrollment } from "@/lib/types/college"
@@ -13,14 +14,9 @@ interface ChatMessage {
   content: string
 }
 
-const suggestedPrompts = [
-  "Explain the concept of object-oriented programming",
-  "Help me understand database normalization",
-  "What are the key principles of network security?",
-  "Give me practice questions on data structures",
-]
-
 export default function AcademicAssistantPage() {
+  const t = useTranslations("highered")
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const [enrollments, setEnrollments] = useState<StudentCourseEnrollment[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,7 +36,7 @@ export default function AcademicAssistantPage() {
       const res = await collegeApi.getStudentEnrollments(studentId)
       setEnrollments((res.data as StudentCourseEnrollment[] | undefined) || [])
     } catch {
-      setError("Failed to load course data")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -64,19 +60,26 @@ export default function AcademicAssistantPage() {
     }, 800)
   }
 
-  if (authLoading || loading) return <LoadingState />
+  if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
 
+  const suggestedPrompts = [
+    t("academicAssistant.prompt1"),
+    t("academicAssistant.prompt2"),
+    t("academicAssistant.prompt3"),
+    t("academicAssistant.prompt4"),
+  ]
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="AI-powered learning support for concepts, practice, and study help." />
+    <div role="main" className="mx-auto max-w-4xl space-y-6">
+      <LearnerHeader firstName={firstName} subtitle={t("academicAssistant.subtitle")} />
 
       {error && (
         <div className="rounded-2xl border border-border bg-card p-4 text-sm text-red-600 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadData() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadData() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
@@ -87,35 +90,36 @@ export default function AcademicAssistantPage() {
               <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
                 <BookOpen className="size-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">Concept Explanations</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Understand complex topics step by step</p>
+              <h3 className="text-sm font-semibold text-foreground">{t("academicAssistant.conceptExplanations")}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{t("academicAssistant.conceptExplanationsDesc")}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs text-center">
               <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
                 <HelpCircle className="size-5 text-amber-600 dark:text-amber-400" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">Practice Questions</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Test your knowledge with quizzes</p>
+              <h3 className="text-sm font-semibold text-foreground">{t("academicAssistant.practiceQuestions")}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{t("academicAssistant.practiceQuestionsDesc")}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs text-center">
               <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
                 <Lightbulb className="size-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">Study Guidance</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Get tips and strategies for studying</p>
+              <h3 className="text-sm font-semibold text-foreground">{t("academicAssistant.studyGuidance")}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{t("academicAssistant.studyGuidanceDesc")}</p>
             </div>
           </div>
 
           <EmptyState
             icon={<Bot className="size-8" />}
-            title="Ask me anything"
-            description="Choose a prompt below or type your question to get started."
+            title={t("academicAssistant.askAnything")}
+            description={t("academicAssistant.askAnythingDesc")}
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 {suggestedPrompts.map((p) => (
                   <button
                     key={p}
                     onClick={() => sendMessage(p)}
+                    aria-label={p}
                     className="rounded-xl border border-border bg-card px-4 py-2 text-xs text-muted-foreground hover:bg-muted transition"
                   >
                     {p.length > 40 ? p.slice(0, 40) + "..." : p}
@@ -146,15 +150,17 @@ export default function AcademicAssistantPage() {
       <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-xs">
         <input
           type="text"
-          placeholder="Ask about any topic..."
+          placeholder={t("academicAssistant.inputPlaceholder")}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          aria-label={t("academicAssistant.inputPlaceholder")}
           className="flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
         />
         <button
           onClick={() => sendMessage()}
           disabled={!input.trim()}
+          aria-label={t("academicAssistant.send")}
           className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition"
         >
           <Send className="size-4" />
