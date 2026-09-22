@@ -40,6 +40,12 @@ public class LiveClassParticipant extends BaseEntity {
     @Column(name = "connection_id", length = 100)
     private String connectionId;
 
+    @Column(name = "hand_raised_at")
+    private LocalDateTime handRaisedAt;
+
+    @Column(name = "hand_raise_order")
+    private Integer handRaiseOrder;
+
     public static final String ROLE_LEARNER = "LEARNER";
     public static final String ROLE_TEACHER = "TEACHER";
     public static final String ROLE_OBSERVER = "OBSERVER";

@@ -51,7 +51,7 @@ public class LiveClass extends BaseEntity {
     private Boolean recordingEnabled = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "session_type", length = 40)
+    @Column(name = "session_type", length = 30)
     private LiveClassSessionType sessionType = LiveClassSessionType.LECTURE;
 
     @Column(name = "timezone", length = 50)
