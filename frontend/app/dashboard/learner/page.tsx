@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type Enrollment, type CourseSummary, type LiveClass, type EventItem, type Announcement, type Bookmark as BookmarkType } from "@/lib/learner-api"
+import { learnerApi, type Enrollment, type CourseSummary, type LiveClass, type EventItem, type Announcement, type Bookmark as BookmarkType, getLastAccessedLesson } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   Sparkles, Clock, Play, Video, BookOpen, BarChart3, FolderOpen,
@@ -20,6 +20,7 @@ export default function LearnerDashboardPage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>([])
+  const [continueLearningState, setContinueLearningState] = useState<{ courseId: string; courseTitle: string; lessonId: string; lessonTitle: string; moduleTitle: string; accessedAt: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,6 +47,10 @@ export default function LearnerDashboardPage() {
       setEvents(eventsRes)
       setAnnouncements(announceRes)
       setBookmarks(bookmarkRes)
+      const continueState = getLastAccessedLesson()
+      if (continueState) {
+        setContinueLearningState(continueState)
+      }
     } catch {
       setError("Failed to load dashboard data")
     } finally {
@@ -119,19 +124,38 @@ export default function LearnerDashboardPage() {
           </div>
           {continueLearning.length > 0 ? (
             <div>
-              <p className="font-semibold text-foreground line-clamp-1">{continueLearning[0].courseTitle}</p>
-              {continueLearning[0].courseDescription && (
-                <p className="text-xs text-muted-foreground line-clamp-1">{continueLearning[0].courseDescription}</p>
+              {continueLearningState ? (
+                <>
+                  <p className="font-semibold text-foreground line-clamp-1">{continueLearningState.courseTitle}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1">Last: {continueLearningState.lessonTitle}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Module: {continueLearningState.moduleTitle}</p>
+                  <div className="mt-2">
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${continueLearning[0].progressPercentage}%` }} />
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted-foreground">{continueLearning[0].progressPercentage}% complete</p>
+                  </div>
+                  <Link href={`/dashboard/learner/courses/${continueLearningState.courseId}/lessons/${continueLearningState.lessonId}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    Resume Lesson <ChevronRight className="size-3" />
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-foreground line-clamp-1">{continueLearning[0].courseTitle}</p>
+                  {continueLearning[0].courseDescription && (
+                    <p className="text-xs text-muted-foreground line-clamp-1">{continueLearning[0].courseDescription}</p>
+                  )}
+                  <div className="mt-2">
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${continueLearning[0].progressPercentage}%` }} />
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted-foreground">{continueLearning[0].progressPercentage}% complete</p>
+                  </div>
+                  <Link href={`/dashboard/learner/courses/${continueLearning[0].courseId}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    Resume <ChevronRight className="size-3" />
+                  </Link>
+                </>
               )}
-              <div className="mt-2">
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${continueLearning[0].progressPercentage}%` }} />
-                </div>
-                <p className="mt-1 text-[10px] text-muted-foreground">{continueLearning[0].progressPercentage}% complete</p>
-              </div>
-              <Link href={`/dashboard/learner/courses/${continueLearning[0].courseId}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Resume <ChevronRight className="size-3" />
-              </Link>
             </div>
           ) : liveNow.length > 0 ? (
             <div>
@@ -237,7 +261,11 @@ export default function LearnerDashboardPage() {
             {continueLearning.map((enrollment) => (
               <Link
                 key={enrollment.id}
-                href={`/dashboard/learner/courses/${enrollment.courseId}`}
+                href={
+                  continueLearningState && continueLearningState.courseId === enrollment.courseId
+                    ? `/dashboard/learner/courses/${enrollment.courseId}/lessons/${continueLearningState.lessonId}`
+                    : `/dashboard/learner/courses/${enrollment.courseId}`
+                }
                 className="rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/50"
               >
                 <p className="font-medium text-foreground text-sm line-clamp-1">{enrollment.courseTitle}</p>
