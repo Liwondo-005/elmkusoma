@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -121,14 +123,22 @@ public class CertificateController {
     @GetMapping
     @Operation(summary = "List certificates by student or institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'OTHER_LEARNER')")
-    public ResponseEntity<ApiResponse<List<CertificateResponse>>> getCertificates(
+    public ResponseEntity<ApiResponse<Page<CertificateResponse>>> getCertificates(
             @RequestParam(required = false) UUID studentId,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        List<CertificateResponse> response;
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<CertificateResponse> response;
         if (studentId != null) {
-            response = certificateService.getCertificatesByStudent(studentId);
+            if (("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) && !studentId.equals(userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied: cannot view other students' certificates"));
+            }
+            response = certificateService.getCertificatesByStudent(studentId, PageRequest.of(page, size));
         } else {
-            response = certificateService.getCertificatesByInstitution(institutionId);
+            response = certificateService.getCertificatesByInstitution(institutionId, PageRequest.of(page, size));
         }
         return ResponseEntity.ok(ApiResponse.success(response));
     }

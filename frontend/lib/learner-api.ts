@@ -249,11 +249,11 @@ export interface SearchFilters {
   category?: string
   level?: string
   provider?: string
+  resourceType?: string
   dateFrom?: string
   dateTo?: string
   sort?: string
   sortBy?: string
-  resourceType?: string
 }
 
 export interface SearchResult {

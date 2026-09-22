@@ -20,13 +20,15 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<ApiResponse<List<LearnerNotification>>> getNotifications(@PathVariable UUID userId) {
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<LearnerNotification>>> getNotifications(
+            @RequestAttribute("userId") UUID userId) {
         return ResponseEntity.ok(ApiResponse.success(notificationService.getNotifications(userId)));
     }
 
-    @GetMapping("/{userId}/unread-count")
-    public ResponseEntity<ApiResponse<Map<String, Long>>> getUnreadCount(@PathVariable UUID userId) {
+    @GetMapping("/unread-count")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getUnreadCount(
+            @RequestAttribute("userId") UUID userId) {
         long count = notificationService.getUnreadCount(userId);
         return ResponseEntity.ok(ApiResponse.success(Map.of("count", count)));
     }
@@ -37,8 +39,9 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PutMapping("/{userId}/read-all")
-    public ResponseEntity<ApiResponse<Void>> markAllAsRead(@PathVariable UUID userId) {
+    @PutMapping("/read-all")
+    public ResponseEntity<ApiResponse<Void>> markAllAsRead(
+            @RequestAttribute("userId") UUID userId) {
         notificationService.markAllAsRead(userId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }

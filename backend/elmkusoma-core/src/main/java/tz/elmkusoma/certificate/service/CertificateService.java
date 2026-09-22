@@ -2,6 +2,8 @@ package tz.elmkusoma.certificate.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.certificate.domain.Certificate;
@@ -301,10 +303,22 @@ public class CertificateService {
     }
 
     @Transactional(readOnly = true)
+    public Page<CertificateResponse> getCertificatesByStudent(UUID studentId, Pageable pageable) {
+        return certificateRepository.findByStudentIdAndIsDeletedFalse(studentId, pageable)
+                .map(certificateMapper::toCertificateResponse);
+    }
+
+    @Transactional(readOnly = true)
     public List<CertificateResponse> getCertificatesByInstitution(UUID institutionId) {
         return certificateRepository.findAllByInstitutionId(institutionId).stream()
                 .map(certificateMapper::toCertificateResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CertificateResponse> getCertificatesByInstitution(UUID institutionId, Pageable pageable) {
+        return certificateRepository.findByInstitutionIdAndIsDeletedFalse(institutionId, pageable)
+                .map(certificateMapper::toCertificateResponse);
     }
 
     @Transactional(readOnly = true)

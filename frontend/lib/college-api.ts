@@ -163,10 +163,10 @@ export const collegeApi = {
   deleteWorkshop: (id: string) => api.delete<void>(`/api/v1/college/learner/workshops/${id}`),
 
   // Notifications
-  getNotifications: (userId: string) => api.get<any[]>(`/api/v1/notifications/${userId}`),
-  getUnreadCount: (userId: string) => api.get<{ count: number }>(`/api/v1/notifications/${userId}/unread-count`),
+  getNotifications: () => api.get<any[]>(`/api/v1/notifications`),
+  getUnreadCount: () => api.get<{ count: number }>(`/api/v1/notifications/unread-count`),
   markNotificationRead: (notificationId: string) => api.put<void>(`/api/v1/notifications/${notificationId}/read`),
-  markAllNotificationsRead: (userId: string) => api.put<void>(`/api/v1/notifications/${userId}/read-all`),
+  markAllNotificationsRead: () => api.put<void>(`/api/v1/notifications/read-all`),
 
   // Student Events / Calendar
   getStudentEvents: () => api.get<any[]>("/api/v1/student/events"),

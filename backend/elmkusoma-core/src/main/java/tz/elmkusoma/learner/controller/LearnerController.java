@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -157,10 +159,12 @@ public class LearnerController {
 
     @GetMapping("/courses")
     @Operation(summary = "Browse all published courses across institutions")
-    public ResponseEntity<ApiResponse<List<CourseSummaryResponse>>> browseCourses() {
-        List<CourseSummaryResponse> courses = courseRepository.findAllPublishedAndIsDeletedFalse()
-                .stream().map(this::toCourseSummaryResponse).collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(courses));
+    public ResponseEntity<ApiResponse<Page<CourseSummaryResponse>>> browseCourses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<Course> coursePage = courseRepository.findByStatusAndIsDeletedFalse("PUBLISHED", PageRequest.of(page, size));
+        Page<CourseSummaryResponse> response = coursePage.map(this::toCourseSummaryResponse);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/courses/{id}")
@@ -405,18 +409,22 @@ public class LearnerController {
 
     @GetMapping("/resources")
     @Operation(summary = "Browse all resources with optional type filter")
-    public ResponseEntity<ApiResponse<List<Resource>>> browseResources(
-            @RequestParam(required = false) String type) {
-        List<Resource> resources;
+    public ResponseEntity<ApiResponse<Page<Resource>>> browseResources(
+            @RequestParam(required = false) String type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<Resource> resources;
         if (type != null && !type.isEmpty() && !"all".equalsIgnoreCase(type)) {
             try {
                 Resource.ResourceType resourceType = Resource.ResourceType.valueOf(type.toUpperCase());
-                resources = resourceRepository.findByResourceTypeAndIsDeletedFalse(resourceType);
+                List<Resource> filtered = resourceRepository.findByResourceTypeAndIsDeletedFalse(resourceType);
+                List<Resource> paged = filtered.stream().skip((long) page * size).limit(size).collect(Collectors.toList());
+                resources = new org.springframework.data.domain.PageImpl<>(paged, PageRequest.of(page, size), filtered.size());
             } catch (IllegalArgumentException e) {
-                resources = resourceRepository.findAllAndIsDeletedFalse();
+                resources = resourceRepository.findByIsDeletedFalse(PageRequest.of(page, size));
             }
         } else {
-            resources = resourceRepository.findAllAndIsDeletedFalse();
+            resources = resourceRepository.findByIsDeletedFalse(PageRequest.of(page, size));
         }
         return ResponseEntity.ok(ApiResponse.success(resources));
     }
@@ -667,14 +675,17 @@ public class LearnerController {
             @RequestParam(required = false) UUID provider,
             @RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo,
-            @RequestParam(defaultValue = "newest") String sort) {
+            @RequestParam(defaultValue = "newest") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         String query = q.toLowerCase();
         LocalDateTime fromDate = parseDate(dateFrom);
         LocalDateTime toDate = parseDate(dateTo) != null ? parseDate(dateTo).plusDays(1) : null;
         SearchResultResponse result;
 
         if ("COURSE".equalsIgnoreCase(type)) {
-            List<Course> filteredCourses = courseRepository.searchPublishedWithAllFilters(query, level, category, provider, fromDate, toDate);
+            List<Course> filteredCourses = courseRepository.searchPublishedWithAllFilters(query, level, category, provider, fromDate, toDate)
+                    .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
             result = SearchResultResponse.builder()
                     .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
                     .resources(Collections.emptyList())
@@ -682,7 +693,8 @@ public class LearnerController {
                     .announcements(Collections.emptyList())
                     .build();
         } else if ("RESOURCE".equalsIgnoreCase(type)) {
-            List<Resource> resources = resourceRepository.searchByTitleAndIsDeletedFalse(query);
+            List<Resource> resources = resourceRepository.searchByTitleAndIsDeletedFalse(query)
+                    .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
             result = SearchResultResponse.builder()
                     .courses(Collections.emptyList())
                     .resources(resources.stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
@@ -694,7 +706,7 @@ public class LearnerController {
                     .courses(Collections.emptyList())
                     .resources(Collections.emptyList())
                     .liveClasses(liveClassRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().map(this::toLiveClassSearchResult).collect(Collectors.toList()))
+                            .stream().limit(size).skip((long) page * size).map(this::toLiveClassSearchResult).collect(Collectors.toList()))
                     .announcements(Collections.emptyList())
                     .build();
         } else if ("ANNOUNCEMENT".equalsIgnoreCase(type)) {
@@ -703,18 +715,19 @@ public class LearnerController {
                     .resources(Collections.emptyList())
                     .liveClasses(Collections.emptyList())
                     .announcements(announcementRepository.searchByTitleOrContentAndIsDeletedFalse(query)
-                            .stream().map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
+                            .stream().limit(size).skip((long) page * size).map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
                     .build();
         } else {
-            List<Course> filteredCourses = courseRepository.searchPublishedWithAllFilters(query, level, category, provider, fromDate, toDate);
+            List<Course> filteredCourses = courseRepository.searchPublishedWithAllFilters(query, level, category, provider, fromDate, toDate)
+                    .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
             result = SearchResultResponse.builder()
                     .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
                     .resources(resourceRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
+                            .stream().limit(size).skip((long) page * size).map(this::toResourceSearchResult).collect(Collectors.toList()))
                     .liveClasses(liveClassRepository.searchByTitleAndIsDeletedFalse(query)
-                            .stream().map(this::toLiveClassSearchResult).collect(Collectors.toList()))
+                            .stream().limit(size).skip((long) page * size).map(this::toLiveClassSearchResult).collect(Collectors.toList()))
                     .announcements(announcementRepository.searchByTitleOrContentAndIsDeletedFalse(query)
-                            .stream().map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
+                            .stream().limit(size).skip((long) page * size).map(this::toAnnouncementSearchResult).collect(Collectors.toList()))
                     .build();
         }
 

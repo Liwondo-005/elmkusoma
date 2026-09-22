@@ -1,5 +1,7 @@
 package tz.elmkusoma.learning.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,4 +34,8 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
 
     @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.id <> :excludeId AND ((r.subjectId IS NOT NULL AND r.subjectId = :subjectId) OR LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY r.createdAt DESC")
     List<Resource> findRelatedResources(@Param("excludeId") UUID excludeId, @Param("subjectId") UUID subjectId, @Param("query") String query);
+
+    Page<Resource> findByIsDeletedFalse(Pageable pageable);
+
+    Page<Resource> findByTitleContainingIgnoreCaseOrSubjectContainingIgnoreCase(String title, String subject, Pageable pageable);
 }

@@ -1,5 +1,7 @@
 package tz.elmkusoma.course.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -57,4 +59,6 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
     @Query("SELECT c FROM Course c WHERE c.isDeleted = false AND c.isPublished = true AND LOWER(c.category) = LOWER(:category) ORDER BY c.createdAt DESC")
     List<Course> findAllPublishedByCategoryAndIsDeletedFalse(@Param("category") String category);
+
+    Page<Course> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
 }
