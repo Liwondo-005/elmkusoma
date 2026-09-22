@@ -28,7 +28,7 @@ export default function CourseDetailPage() {
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadCourse()
   }, [user, courseId])
 
@@ -106,7 +106,7 @@ export default function CourseDetailPage() {
     setExpandedModules(newExpanded)
   }
 
-  if (authLoading || loading || user?.role !== "Other Learner") {
+  if (authLoading || loading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

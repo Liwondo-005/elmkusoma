@@ -22,7 +22,7 @@ export default function ProgressPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadData()
   }, [user])
 
@@ -66,7 +66,7 @@ export default function ProgressPage() {
     }
   }
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

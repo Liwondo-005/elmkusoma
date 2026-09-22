@@ -29,7 +29,7 @@ export default function LearnerProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadProfile()
   }, [user])
 
@@ -112,7 +112,7 @@ export default function LearnerProfilePage() {
     }
   }
 
-  if (authLoading || loading || user?.role !== "Other Learner") {
+  if (authLoading || loading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

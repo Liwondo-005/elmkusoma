@@ -47,7 +47,7 @@ export function proxy(request: NextRequest) {
         if (isPlatformAdminRoute && role !== "Admin") {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
-        if (isLearnerRoute && role !== "Other Learner") {
+        if (isLearnerRoute && role !== "Other Learner" && role !== "Student") {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
         if (isStudentRoute && role === "Other Learner") {

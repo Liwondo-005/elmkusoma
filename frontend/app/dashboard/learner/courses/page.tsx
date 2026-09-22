@@ -21,7 +21,7 @@ export default function LearnerCoursesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadData()
   }, [user])
 
@@ -62,7 +62,7 @@ export default function LearnerCoursesPage() {
     return matchesSearch && matchesLevel && matchesCategory
   })
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
 

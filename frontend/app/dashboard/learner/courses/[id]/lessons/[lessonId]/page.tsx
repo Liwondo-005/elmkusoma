@@ -48,7 +48,7 @@ export default function LessonViewerPage() {
   const [completed, setCompleted] = useState(false)
 
   const loadLesson = useCallback(async () => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     try {
       setLoading(true)
       setError(null)
@@ -132,7 +132,7 @@ export default function LessonViewerPage() {
     router.push(`/dashboard/learner/courses/${courseId}/lessons/${id}`)
   }
 
-  if (authLoading || loading || user?.role !== "Other Learner") {
+  if (authLoading || loading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 

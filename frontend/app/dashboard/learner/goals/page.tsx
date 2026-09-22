@@ -57,7 +57,7 @@ export default function GoalsPage() {
   const [formTargetDate, setFormTargetDate] = useState("")
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadData()
   }, [user])
 
@@ -149,7 +149,7 @@ export default function GoalsPage() {
     saveGoals(updated)
   }
 
-  if (authLoading || user?.role !== "Other Learner") {
+  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 
