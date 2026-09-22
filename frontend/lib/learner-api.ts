@@ -252,6 +252,7 @@ export interface SearchFilters {
   dateTo?: string
   sort?: string
   sortBy?: string
+  resourceType?: string
 }
 
 export interface SearchResult {
