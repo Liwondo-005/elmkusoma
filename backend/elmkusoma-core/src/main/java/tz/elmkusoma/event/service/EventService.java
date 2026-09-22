@@ -3,6 +3,7 @@ package tz.elmkusoma.event.service;
 import tz.elmkusoma.event.dto.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface EventService {
@@ -46,4 +47,14 @@ public interface EventService {
     List<EventResponse> getRegisteredEvents(UUID userId, UUID institutionId);
 
     List<EventResponse> getRegisteredPastEvents(UUID userId, UUID institutionId);
+
+    EventResponse publishEvent(UUID eventId, UUID institutionId);
+
+    EventResponse cancelEvent(UUID eventId, UUID institutionId, String reason);
+
+    EventResponse startLiveEvent(UUID eventId, UUID institutionId);
+
+    EventResponse endLiveEvent(UUID eventId, UUID institutionId);
+
+    Map<String, Object> getEventSummary(UUID eventId, UUID institutionId);
 }

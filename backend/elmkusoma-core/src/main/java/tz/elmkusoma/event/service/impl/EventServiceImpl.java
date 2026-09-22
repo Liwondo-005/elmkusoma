@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -134,6 +135,12 @@ public class EventServiceImpl implements EventService {
                 .tags(request.getTags())
                 .isFree(request.getIsFree() != null ? request.getIsFree() : true)
                 .requiresApproval(request.getRequiresApproval() != null ? request.getRequiresApproval() : false)
+                .eventFormat(request.getEventFormat())
+                .difficulty(request.getDifficulty())
+                .targetAudience(request.getTargetAudience())
+                .prerequisites(request.getPrerequisites())
+                .learningOutcomes(request.getLearningOutcomes())
+                .agenda(request.getAgenda())
                 .build();
 
         if (event.getEndsAt() == null && event.getDurationMinutes() != null) {
@@ -167,6 +174,12 @@ public class EventServiceImpl implements EventService {
         if (request.getTags() != null) event.setTags(request.getTags());
         if (request.getIsFree() != null) event.setIsFree(request.getIsFree());
         if (request.getRequiresApproval() != null) event.setRequiresApproval(request.getRequiresApproval());
+        if (request.getEventFormat() != null) event.setEventFormat(request.getEventFormat());
+        if (request.getDifficulty() != null) event.setDifficulty(request.getDifficulty());
+        if (request.getTargetAudience() != null) event.setTargetAudience(request.getTargetAudience());
+        if (request.getPrerequisites() != null) event.setPrerequisites(request.getPrerequisites());
+        if (request.getLearningOutcomes() != null) event.setLearningOutcomes(request.getLearningOutcomes());
+        if (request.getAgenda() != null) event.setAgenda(request.getAgenda());
 
         event = eventRepository.save(event);
         log.info("Event updated: id={}, institutionId={}", event.getId(), event.getInstitutionId());
@@ -351,6 +364,103 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public EventResponse publishEvent(UUID eventId, UUID institutionId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
+        event.setStatus("PUBLISHED");
+        event = eventRepository.save(event);
+        log.info("Event published: id={}", eventId);
+        return mapToResponse(event);
+    }
+
+    @Override
+    public EventResponse cancelEvent(UUID eventId, UUID institutionId, String reason) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
+        event.setStatus("CANCELLED");
+        event.setCancelledAt(LocalDateTime.now());
+        event.setCancellationReason(reason);
+        event = eventRepository.save(event);
+        log.info("Event cancelled: id={}", eventId);
+        return mapToResponse(event);
+    }
+
+    @Override
+    public EventResponse startLiveEvent(UUID eventId, UUID institutionId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
+        event.setStatus("LIVE");
+        event.setEventStatus(tz.elmkusoma.event.domain.EventStatus.LIVE);
+        event = eventRepository.save(event);
+        log.info("Event started live: id={}", eventId);
+        return mapToResponse(event);
+    }
+
+    @Override
+    public EventResponse endLiveEvent(UUID eventId, UUID institutionId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
+        event.setStatus("ENDED");
+        event.setEventStatus(tz.elmkusoma.event.domain.EventStatus.ENDED);
+        event = eventRepository.save(event);
+        log.info("Event ended: id={}", eventId);
+        return mapToResponse(event);
+    }
+
+    @Override
+    public Map<String, Object> getEventSummary(UUID eventId, UUID institutionId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
+            throw new IllegalArgumentException("Access denied");
+        }
+        long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(eventId, "REGISTERED");
+        List<EventRegistration> allRegs = registrationRepository.findByEventIdAndIsDeletedFalse(eventId);
+        long joinedCount = allRegs.stream().filter(EventRegistration::getAttended).count();
+        double attendanceRate = registeredCount > 0 ? (double) joinedCount / registeredCount * 100 : 0;
+
+        List<EventMaterial> materials = materialRepository.findByEventIdAndIsDeletedFalseOrderBySortOrderAsc(eventId);
+        List<Map<String, Object>> materialList = materials.stream().map(m -> {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", m.getId().toString());
+            map.put("name", m.getTitle());
+            map.put("url", m.getFileUrl());
+            map.put("type", m.getMaterialType());
+            return map;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> summary = new java.util.HashMap<>();
+        summary.put("id", event.getId().toString());
+        summary.put("title", event.getTitle());
+        summary.put("eventType", event.getEventType());
+        summary.put("status", event.getStatus());
+        summary.put("startDate", event.getStartsAt());
+        summary.put("durationMinutes", event.getDurationMinutes());
+        summary.put("timezone", event.getTimezone());
+        summary.put("presenterName", event.getPresenterName());
+        summary.put("recordingUrl", event.getRecordingUrl());
+        summary.put("maxCapacity", event.getMaxParticipants());
+        summary.put("currentRegistrations", (int) registeredCount);
+        summary.put("joinedCount", (int) joinedCount);
+        summary.put("attendanceRate", Math.round(attendanceRate));
+        summary.put("participation", Math.round(attendanceRate));
+        summary.put("materials", materialList);
+        return summary;
+    }
+
     private EventResponse mapToResponse(Event event) {
         long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(event.getId(), "REGISTERED");
         int materialCount = (int) materialRepository.countByEventIdAndIsDeletedFalse(event.getId());
@@ -394,6 +504,19 @@ public class EventServiceImpl implements EventService {
                 .materialCount(materialCount)
                 .hasRecording(hasRecording)
                 .createdAt(event.getCreatedAt())
+                .eventFormat(event.getEventFormat())
+                .difficulty(event.getDifficulty())
+                .targetAudience(event.getTargetAudience())
+                .prerequisites(event.getPrerequisites())
+                .learningOutcomes(event.getLearningOutcomes())
+                .agenda(event.getAgenda())
+                .cancelledAt(event.getCancelledAt())
+                .cancellationReason(event.getCancellationReason())
+                .rescheduledFrom(event.getRescheduledFrom())
+                .recordingUrl(event.getRecordingUrl())
+                .recordingStatus(event.getRecordingStatus())
+                .providerId(event.getProviderId())
+                .presenterName(event.getPresenterName())
                 .build();
     }
 

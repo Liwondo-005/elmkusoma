@@ -43,4 +43,12 @@ public class EventRequest {
     private Boolean requiresApproval = false;
 
     private UUID organizerId;
+
+    private String eventFormat;
+    private String difficulty;
+    private String targetAudience;
+    private String prerequisites;
+    private String learningOutcomes;
+    private String agenda;
+    private String rescheduledFrom;
 }

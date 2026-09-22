@@ -35,4 +35,17 @@ public class EventResponse {
     private Integer materialCount;
     private Boolean hasRecording;
     private LocalDateTime createdAt;
+    private String eventFormat;
+    private String difficulty;
+    private String targetAudience;
+    private String prerequisites;
+    private String learningOutcomes;
+    private String agenda;
+    private LocalDateTime cancelledAt;
+    private String cancellationReason;
+    private LocalDateTime rescheduledFrom;
+    private String recordingUrl;
+    private String recordingStatus;
+    private String providerId;
+    private String presenterName;
 }

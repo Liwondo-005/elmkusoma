@@ -11,6 +11,7 @@ import tz.elmkusoma.event.dto.*;
 import tz.elmkusoma.event.service.EventService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -120,6 +121,53 @@ public class EventController {
             HttpServletRequest httpRequest) {
         eventService.deleteEventMaterial(materialId);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/{id}/publish")
+    public ResponseEntity<ApiResponse<EventResponse>> publishEvent(
+            @PathVariable UUID id,
+            HttpServletRequest httpRequest) {
+        UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse event = eventService.publishEvent(id, institutionId);
+        return ResponseEntity.ok(ApiResponse.success("Event published", event));
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<ApiResponse<EventResponse>> cancelEvent(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body,
+            HttpServletRequest httpRequest) {
+        UUID institutionId = getInstitutionId(httpRequest);
+        String reason = body != null ? body.getOrDefault("reason", "") : "";
+        EventResponse event = eventService.cancelEvent(id, institutionId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Event cancelled", event));
+    }
+
+    @PostMapping("/{id}/start-live")
+    public ResponseEntity<ApiResponse<EventResponse>> startLiveEvent(
+            @PathVariable UUID id,
+            HttpServletRequest httpRequest) {
+        UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse event = eventService.startLiveEvent(id, institutionId);
+        return ResponseEntity.ok(ApiResponse.success("Event started live", event));
+    }
+
+    @PostMapping("/{id}/end-live")
+    public ResponseEntity<ApiResponse<EventResponse>> endLiveEvent(
+            @PathVariable UUID id,
+            HttpServletRequest httpRequest) {
+        UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse event = eventService.endLiveEvent(id, institutionId);
+        return ResponseEntity.ok(ApiResponse.success("Event ended", event));
+    }
+
+    @GetMapping("/{id}/summary")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getEventSummary(
+            @PathVariable UUID id,
+            HttpServletRequest httpRequest) {
+        UUID institutionId = getInstitutionId(httpRequest);
+        Map<String, Object> summary = eventService.getEventSummary(id, institutionId);
+        return ResponseEntity.ok(ApiResponse.success(summary));
     }
 
     private UUID getUserId(HttpServletRequest request) {
