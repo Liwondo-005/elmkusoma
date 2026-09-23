@@ -20,6 +20,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
     private static final String ATTR_USER_ID = "userId";
     private static final String ATTR_INSTITUTION_ID = "institutionId";
     private static final String ATTR_USER_NAME = "userName";
+    private static final String ATTR_USER_ROLE = "userRole";
 
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -40,6 +41,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             String userIdStr = jwtTokenProvider.getUserIdFromToken(token);
             String institutionIdStr = jwtTokenProvider.getInstitutionIdFromToken(token);
             String email = jwtTokenProvider.getEmailFromToken(token);
+            String role = jwtTokenProvider.getRoleFromToken(token);
 
             if (userIdStr == null) {
                 log.warn("WebSocket handshake rejected: no userId in token");
@@ -49,12 +51,15 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             UUID userId = UUID.fromString(userIdStr);
             attributes.put(ATTR_USER_ID, userId);
             attributes.put("email", email);
+            if (role != null) {
+                attributes.put(ATTR_USER_ROLE, role);
+            }
 
             if (institutionIdStr != null) {
                 attributes.put(ATTR_INSTITUTION_ID, UUID.fromString(institutionIdStr));
             }
 
-            log.info("WebSocket handshake accepted: userId={}, institutionId={}", userId, institutionIdStr);
+            log.info("WebSocket handshake accepted: userId={}, institutionId={}, role={}", userId, institutionIdStr, role);
             return true;
         } catch (Exception e) {
             log.error("WebSocket handshake rejected: {}", e.getMessage());

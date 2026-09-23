@@ -468,8 +468,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   async function toggleCamera() {
     if (cameraEnabled) {
       if (localStream) {
-        localStream.getTracks().forEach((t) => t.stop())
-        setLocalStream(null)
+        // Only stop video tracks - a microphone track must stay alive when the
+        // camera is turned off while the mic remains on.
+        localStream.getVideoTracks().forEach((t) => {
+          t.stop()
+          localStream.removeTrack(t)
+        })
+        if (localStream.getTracks().length === 0) setLocalStream(null)
       }
       setCameraEnabled(false)
       setVideoTracks((prev) => {
@@ -480,7 +485,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        setLocalStream(stream)
+        // Merge into the existing stream instead of replacing it, so a microphone
+        // track captured earlier (or later) is never dropped.
+        setLocalStream((prev) => {
+          if (!prev) return stream
+          stream.getVideoTracks().forEach((t) => prev.addTrack(t))
+          return prev
+        })
         setCameraEnabled(true)
         setVideoTracks((prev) => new Map(prev).set("local-camera", stream))
         const room = roomRef.current
@@ -504,8 +515,16 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       setMicEnabled(false)
     } else {
       try {
-        const stream = localStream || await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
-        if (!localStream) setLocalStream(stream)
+        let stream = localStream
+        if (!stream) {
+          stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+          setLocalStream(stream)
+        } else if (stream.getAudioTracks().length === 0) {
+          // The camera was turned on first: capture the mic and merge it into the
+          // existing stream so it can actually be published.
+          const mic = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+          mic.getAudioTracks().forEach((t) => stream!.addTrack(t))
+        }
         stream.getAudioTracks().forEach((t) => { t.enabled = true })
         setMicEnabled(true)
         const room = roomRef.current

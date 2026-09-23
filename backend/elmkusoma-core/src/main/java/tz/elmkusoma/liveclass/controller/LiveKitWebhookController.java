@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tz.elmkusoma.course.domain.LiveClass;
+import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.event.domain.Event;
 import tz.elmkusoma.event.domain.Replay;
 import tz.elmkusoma.event.repository.EventRepository;
@@ -20,6 +22,7 @@ public class LiveKitWebhookController {
 
     private final EventRepository eventRepository;
     private final ReplayRepository replayRepository;
+    private final LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
 
     @PostMapping
@@ -71,6 +74,14 @@ public class LiveKitWebhookController {
             String roomName = (String) room.get("name");
             if (roomName == null) return;
 
+            if (roomName.startsWith("liveclass-")) {
+                UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
+                if (liveClassId != null) {
+                    log.info("Live class recording started: classId={}", liveClassId);
+                }
+                return;
+            }
+
             UUID eventId = extractEventIdFromRoomName(roomName);
             if (eventId == null) return;
 
@@ -86,24 +97,36 @@ public class LiveKitWebhookController {
 
     private void handleRecordingCompleted(Map<String, Object> payload) {
         try {
-            Map<String, Object> egress = (Map<String, Object>) payload.get("egress");
+            // EgressInfo is wrapped under "egress", but some payloads put it at top level.
+            Object egressObj = payload.get("egress");
+            Map<String, Object> egress = egressObj instanceof Map
+                    ? (Map<String, Object>) egressObj : payload;
             Map<String, Object> room = (Map<String, Object>) payload.get("room");
             if (room == null) return;
             String roomName = (String) room.get("name");
             if (roomName == null) return;
 
-            UUID eventId = extractEventIdFromRoomName(roomName);
-            if (eventId == null) return;
-
             String recordingUrl = null;
             if (egress != null) {
-                Object fileResults = egress.get("fileResults");
+                // LiveKit serializes proto fields in snake_case (file_results / location).
+                Object fileResults = egress.get("file_results");
+                if (fileResults == null) fileResults = egress.get("fileResults");
                 if (fileResults instanceof java.util.List<?> files && !files.isEmpty()) {
                     Map<String, Object> firstFile = (Map<String, Object>) files.get(0);
-                    recordingUrl = (String) firstFile.get("url");
+                    Object loc = firstFile.get("location");
+                    if (!(loc instanceof String) || loc.toString().isBlank()) loc = firstFile.get("url");
+                    if (loc instanceof String) recordingUrl = (String) loc;
                 }
             }
             final String finalRecordingUrl = recordingUrl;
+
+            if (roomName.startsWith("liveclass-")) {
+                handleLiveClassRecordingCompleted(roomName, finalRecordingUrl);
+                return;
+            }
+
+            UUID eventId = extractEventIdFromRoomName(roomName);
+            if (eventId == null) return;
 
             eventRepository.findById(eventId).ifPresent(event -> {
                 event.setRecordingStatus("AVAILABLE");
@@ -141,6 +164,16 @@ public class LiveKitWebhookController {
             String roomName = (String) room.get("name");
             if (roomName == null) return;
 
+            if (roomName.startsWith("liveclass-")) {
+                UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
+                if (liveClassId != null) {
+                    liveClassRepository.findById(liveClassId).ifPresent(lc -> {
+                        log.info("Live class recording failed: classId={}", liveClassId);
+                    });
+                }
+                return;
+            }
+
             UUID eventId = extractEventIdFromRoomName(roomName);
             if (eventId == null) return;
 
@@ -151,6 +184,36 @@ public class LiveKitWebhookController {
             });
         } catch (Exception e) {
             log.error("Error handling recording_failed webhook", e);
+        }
+    }
+
+    private void handleLiveClassRecordingCompleted(String roomName, String recordingUrl) {
+        try {
+            UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
+            if (liveClassId == null) return;
+
+            liveClassRepository.findById(liveClassId).ifPresent(liveClass -> {
+                if (recordingUrl != null) {
+                    liveClass.setRecordingUrl(recordingUrl);
+                    liveClassRepository.save(liveClass);
+                    log.info("Live class recording URL updated: classId={}, url={}", liveClassId, recordingUrl);
+                } else {
+                    log.warn("Live class recording completed but no URL: classId={}", liveClassId);
+                }
+            });
+        } catch (Exception e) {
+            log.error("Error handling live class recording_completed webhook", e);
+        }
+    }
+
+    private UUID extractLiveClassIdFromRoomName(String roomName) {
+        try {
+            if (roomName.startsWith("liveclass-")) {
+                return UUID.fromString(roomName.substring("liveclass-".length()));
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
         }
     }
 

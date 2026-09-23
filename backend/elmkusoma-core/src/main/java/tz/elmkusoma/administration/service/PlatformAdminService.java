@@ -1098,10 +1098,11 @@ public class PlatformAdminService {
     // ── Support Cases (M26) ──
 
     private static final Map<String, Set<String>> TICKET_TRANSITIONS = Map.of(
-            "OPEN", Set.of("ASSIGNED", "INVESTIGATING", "RESOLVED", "CLOSED"),
-            "ASSIGNED", Set.of("INVESTIGATING", "RESOLVED", "CLOSED", "OPEN"),
-            "INVESTIGATING", Set.of("RESOLVED", "CLOSED"),
-            "RESOLVED", Set.of("CLOSED", "INVESTIGATING"),
+            "OPEN", Set.of("ASSIGNED", "INVESTIGATING", "ACTION_REQUIRED", "RESOLVED", "CLOSED"),
+            "ASSIGNED", Set.of("INVESTIGATING", "ACTION_REQUIRED", "RESOLVED", "CLOSED", "OPEN"),
+            "INVESTIGATING", Set.of("ACTION_REQUIRED", "RESOLVED", "CLOSED"),
+            "ACTION_REQUIRED", Set.of("INVESTIGATING", "RESOLVED", "CLOSED"),
+            "RESOLVED", Set.of("CLOSED", "INVESTIGATING", "ACTION_REQUIRED"),
             "CLOSED", Set.of("OPEN")
     );
 
@@ -1446,7 +1447,20 @@ public class PlatformAdminService {
                         resourceRepository.save(r);
                         affected++;
                     }
-                    default -> throw new IllegalArgumentException("type must be COURSE, EVENT or RESOURCE");
+                    case "MEDIA" -> {
+                        var m = mediaAssetRepository.findById(id).orElse(null);
+                        if (m == null || Boolean.TRUE.equals(m.getIsDeleted())) { failures.add(id + ": not found"); break; }
+                        switch (action) {
+                            case "PUBLISH" -> { }
+                            case "UNPUBLISH" -> { }
+                            case "ARCHIVE" -> m.setIsDeleted(true);
+                            case "RESTORE" -> m.setIsDeleted(false);
+                            default -> { }
+                        }
+                        mediaAssetRepository.save(m);
+                        affected++;
+                    }
+                    default -> throw new IllegalArgumentException("type must be COURSE, EVENT, RESOURCE or MEDIA");
                 }
             } catch (IllegalArgumentException ex) {
                 throw ex;

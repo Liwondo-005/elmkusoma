@@ -1,10 +1,5 @@
 # ELMKUSOMA
 
-> **Master README — authoritative system reference and complete runbook.**
-> Integrated from `docs/README-01-SYSTEM-BACKEND.md`, `docs/README-02-USER-FRONTEND-LIVE.md` (absent at integration time — frontend/user sections below are built from direct repository inspection instead), and the repository itself, which takes precedence wherever sources disagree.
-> Status labels used throughout: `IMPLEMENTED` · `PARTIAL` · `CONFIGURED` · `PLANNED` · `BLOCKED` · `NOT VERIFIED`.
-> No secrets are included — only variable names and placeholders.
-
 ---
 
 ## 1. Overview

@@ -536,9 +536,13 @@ export const platformAdminApi = {
   getOffboardingChecklist: (institutionId: string) =>
     platformFetch<OffboardingChecklist>(`/v1/platform-admin/institutions/${institutionId}/offboarding`),
 
-  bulkContentAction: (type: "COURSE" | "EVENT" | "RESOURCE", action: "PUBLISH" | "UNPUBLISH" | "ARCHIVE" | "RESTORE", ids: string[]) =>
+  bulkContentAction: (type: "COURSE" | "EVENT" | "RESOURCE" | "MEDIA", action: "PUBLISH" | "UNPUBLISH" | "ARCHIVE" | "RESTORE", ids: string[]) =>
     platformFetch<{ affected: number; requested: number; failures: string[] }>(
       "/v1/platform-admin/content/bulk-action", { method: "POST", body: JSON.stringify({ type, action, ids }) }),
+
+  getObserverJoinUrl: (liveClassId: string) =>
+    platformFetch<{ websocketUrl: string; token: string; liveClassId: string; title: string; institutionName: string; subjectName: string; teacherName: string }>(
+      `/v1/oversight/live-classes/${liveClassId}/observe`),
 
   listFeatures: () => platformFetch<FeatureStatus[]>("/v1/platform-admin/features"),
   updateFeatureStatus: (key: string, status: string) =>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { CalendarDays, Search, AlertCircle, RefreshCw, Filter, Clock, Users } from "lucide-react"
+import { CalendarDays, Search, AlertCircle, RefreshCw, Filter, Clock, Users, Archive, Loader2 } from "lucide-react"
 import { platformAdminApi, type PageResponse } from "@/lib/platform-admin-api"
 
 interface PlatformEvent {
@@ -25,6 +25,7 @@ export default function PlatformEventsPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [pageIndex, setPageIndex] = useState(0)
+  const [acting, setActing] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -37,6 +38,16 @@ export default function PlatformEventsPage() {
   }, [pageIndex, search])
 
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t) }, [load])
+
+  const archiveEvent = async (id: string) => {
+    setActing(id); setError(null)
+    try {
+      await platformAdminApi.bulkContentAction("EVENT", "ARCHIVE", [id])
+      await load()
+    } catch (e: any) {
+      setError(e.message || "Failed to archive event")
+    } finally { setActing(null) }
+  }
 
   const filtered = (page?.content ?? []).filter((ev) => {
     if (statusFilter !== "all" && (ev.status ?? "").toLowerCase() !== statusFilter) return false
@@ -91,11 +102,22 @@ export default function PlatformEventsPage() {
               <div key={ev.id} className="rounded-xl border border-border bg-card p-4 hover:shadow-sm transition-shadow">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-semibold text-foreground line-clamp-1">{ev.title}</h3>
-                  {ev.status && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium capitalize">{ev.status.toLowerCase()}</span>}
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {ev.status && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium capitalize">{ev.status.toLowerCase()}</span>}
+                    <button
+                      onClick={() => archiveEvent(ev.id)}
+                      disabled={acting === ev.id}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-0.5 text-[11px] font-semibold hover:bg-muted disabled:opacity-50"
+                      title="Archive event"
+                    >
+                      {acting === ev.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} Archive
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                   {ev.startsAt && <span className="inline-flex items-center gap-1"><Clock className="size-3" />{new Date(ev.startsAt).toLocaleDateString()}</span>}
                   {ev.eventType && <span className="inline-flex items-center gap-1"><Users className="size-3" />{ev.eventType}</span>}
+                  {ev.institutionId && <span className="text-[10px] font-mono">{ev.institutionId.slice(0, 8)}…</span>}
                 </div>
               </div>
             ))}

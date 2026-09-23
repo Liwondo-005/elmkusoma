@@ -22,6 +22,16 @@ public class EventPublisherService {
     private static final String EMAIL_ROUTING_KEY = "elmkusoma.email";
     private static final String PRESENCE_ROUTING_KEY = "elmkusoma.notification.realtime";
 
+    // RabbitMQ is optional (documented in .env): publishing must never break the caller
+    private void publishSafely(String routingKey, Map<String, Object> event, String description) {
+        try {
+            rabbitTemplate.convertAndSend(EXCHANGE_NAME, routingKey, event);
+            log.debug("Published {}", description);
+        } catch (Exception e) {
+            log.warn("Event publish skipped ({}): {}", description, e.getMessage());
+        }
+    }
+
     public void publishNotificationEvent(UUID userId, String title, String message,
                                           String notificationType, String targetType,
                                           UUID targetId, UUID institutionId) {
@@ -35,8 +45,7 @@ public class EventPublisherService {
         event.put("institutionId", institutionId.toString());
         event.put("timestamp", System.currentTimeMillis());
 
-        rabbitTemplate.convertAndSend(EXCHANGE_NAME, NOTIFICATION_ROUTING_KEY, event);
-        log.debug("Published notification event for user {}", userId);
+        publishSafely(NOTIFICATION_ROUTING_KEY, event, "notification event for user " + userId);
     }
 
     public void publishCertificateEvent(UUID certificateId, UUID studentId, String studentName,
@@ -50,8 +59,7 @@ public class EventPublisherService {
         event.put("institutionId", institutionId.toString());
         event.put("timestamp", System.currentTimeMillis());
 
-        rabbitTemplate.convertAndSend(EXCHANGE_NAME, CERTIFICATE_ROUTING_KEY, event);
-        log.debug("Published certificate event for certificate {}", certificateId);
+        publishSafely(CERTIFICATE_ROUTING_KEY, event, "certificate event for " + certificateId);
     }
 
     public void publishEmailEvent(String toEmail, String subject, String templateName,
@@ -64,8 +72,7 @@ public class EventPublisherService {
         event.put("institutionId", institutionId.toString());
         event.put("timestamp", System.currentTimeMillis());
 
-        rabbitTemplate.convertAndSend(EXCHANGE_NAME, EMAIL_ROUTING_KEY, event);
-        log.debug("Published email event to {}", toEmail);
+        publishSafely(EMAIL_ROUTING_KEY, event, "email event to " + toEmail);
     }
 
     public void publishPresenceEvent(UUID userId, UUID institutionId, String status) {
@@ -75,7 +82,6 @@ public class EventPublisherService {
         event.put("status", status);
         event.put("timestamp", System.currentTimeMillis());
 
-        rabbitTemplate.convertAndSend(EXCHANGE_NAME, PRESENCE_ROUTING_KEY, event);
-        log.debug("Published presence event for user {} status {}", userId, status);
+        publishSafely(PRESENCE_ROUTING_KEY, event, "presence event for user " + userId + " status " + status);
     }
 }

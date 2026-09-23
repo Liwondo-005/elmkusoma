@@ -4,14 +4,15 @@ import { useEffect, useState, useCallback } from "react"
 import { LifeBuoy, RefreshCw, AlertCircle, Clock, UserCheck, Search, ChevronRight } from "lucide-react"
 import { platformAdminApi, type PageResponse, type SupportTicket } from "@/lib/platform-admin-api"
 
-const LIFECYCLE = ["OPEN", "ASSIGNED", "INVESTIGATING", "RESOLVED", "CLOSED"] as const
+const LIFECYCLE = ["OPEN", "ASSIGNED", "INVESTIGATING", "ACTION_REQUIRED", "RESOLVED", "CLOSED"] as const
 type TicketStatus = (typeof LIFECYCLE)[number]
 
 const NEXT: Record<string, string[]> = {
-  OPEN: ["ASSIGNED", "INVESTIGATING", "RESOLVED"],
-  ASSIGNED: ["INVESTIGATING", "RESOLVED", "OPEN"],
-  INVESTIGATING: ["RESOLVED"],
-  RESOLVED: ["CLOSED", "INVESTIGATING"],
+  OPEN: ["ASSIGNED", "INVESTIGATING", "ACTION_REQUIRED", "RESOLVED"],
+  ASSIGNED: ["INVESTIGATING", "ACTION_REQUIRED", "RESOLVED", "OPEN"],
+  INVESTIGATING: ["ACTION_REQUIRED", "RESOLVED"],
+  ACTION_REQUIRED: ["INVESTIGATING", "RESOLVED"],
+  RESOLVED: ["CLOSED", "INVESTIGATING", "ACTION_REQUIRED"],
   CLOSED: ["OPEN"],
 }
 
@@ -20,6 +21,7 @@ function StatusBadge({ s }: { s: string }) {
     OPEN: "bg-blue-500/10 text-blue-700 border-blue-200",
     ASSIGNED: "bg-violet-500/10 text-violet-700 border-violet-200",
     INVESTIGATING: "bg-amber-500/10 text-amber-700 border-amber-200",
+    ACTION_REQUIRED: "bg-orange-500/10 text-orange-700 border-orange-200",
     RESOLVED: "bg-emerald-500/10 text-emerald-700 border-emerald-200",
     CLOSED: "bg-slate-500/10 text-slate-600 border-slate-200",
   }
@@ -81,7 +83,7 @@ export default function PlatformSupportPage() {
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-teal-600 text-white"><LifeBuoy className="size-4" /></span> Support & Cases</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Ticket lifecycle: <span className="font-mono text-xs">OPEN → ASSIGNED → INVESTIGATING → RESOLVED → CLOSED</span>. Platform-wide support tickets with status transitions.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Ticket lifecycle: <span className="font-mono text-xs">OPEN → ASSIGNED → INVESTIGATING → ACTION_REQUIRED → RESOLVED → CLOSED</span>. Platform-wide support tickets with status transitions.</p>
           </div>
           <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> Refresh</button>
         </div>

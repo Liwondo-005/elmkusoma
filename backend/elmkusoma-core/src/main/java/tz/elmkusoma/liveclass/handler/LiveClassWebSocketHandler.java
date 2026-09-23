@@ -24,6 +24,7 @@ import tz.elmkusoma.liveclass.repository.LiveClassAttendanceDetailRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.io.IOException;
@@ -550,8 +551,12 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                     kickEvent.put("type", "KICKED");
                     kickEvent.put("message", "You have been removed from the class by the teacher.");
                     kickEvent.put("timestamp", LocalDateTime.now().toString());
-                    targetSession.sendMessage(new TextMessage(objectMapper.writeValueAsString(kickEvent)));
-                    targetSession.close();
+                    safeSend(targetSession, new TextMessage(objectMapper.writeValueAsString(kickEvent)));
+                    try {
+                        targetSession.close();
+                    } catch (IOException e) {
+                        log.debug("Error closing kicked session {}: {}", targetSession.getId(), e.toString());
+                    }
                 }
                 break;
             }
@@ -568,7 +573,14 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         if (userId == null) return false;
         LiveClass liveClass = liveClassRepository.findById(classId).orElse(null);
         if (liveClass == null) return false;
-        if (userId.equals(liveClass.getTeacherId())) return true;
+        UUID classInstitutionId = liveClass.getInstitutionId();
+        if (classInstitutionId != null) {
+            Optional<Teacher> teacher = teacherRepository.findByUserIdAndInstitutionId(userId, classInstitutionId);
+            if (teacher.isPresent() && liveClass.getTeacherId() != null
+                    && liveClass.getTeacherId().equals(teacher.get().getId())) {
+                return true;
+            }
+        }
         User user = userRepository.findById(userId).orElse(null);
         return user != null && (user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.INSTITUTION_ADMIN);
     }
@@ -629,7 +641,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         if (classId != null && userId != null) {
             try {
                 leaveClass(session, classId, userId);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.error("Error handling disconnect for user {} in class {}", userId, classId, e);
             }
         }
@@ -720,23 +732,33 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         TextMessage textMessage = new TextMessage(json);
         for (String sid : sessionIds) {
             if (excludeSessionId != null && sid.equals(excludeSessionId)) continue;
-            WebSocketSession wsSession = sessions.get(sid);
-            if (wsSession != null && wsSession.isOpen()) {
-                try {
-                    wsSession.sendMessage(textMessage);
-                } catch (IOException e) {
-                    log.error("Failed to send message to session {}", sid, e);
-                }
-            }
+            safeSend(sessions.get(sid), textMessage);
         }
     }
 
     private void sendMessage(WebSocketSession session, Map<String, Object> message) {
         try {
             String json = objectMapper.writeValueAsString(message);
-            session.sendMessage(new TextMessage(json));
+            safeSend(session, new TextMessage(json));
         } catch (IOException e) {
-            log.error("Failed to send message to session {}", session.getId(), e);
+            log.error("Failed to serialize message for session {}", session.getId(), e);
+        }
+    }
+
+    /**
+     * Sends a frame to a single session. Sends are synchronized per session so concurrent
+     * broadcasts cannot interleave writes (Tomcat then throws IllegalStateException:
+     * TEXT_PARTIAL_WRITING). Any failure on a closed or broken session is swallowed so one
+     * dead connection cannot tear down the WebSocket handler for everyone else.
+     */
+    private void safeSend(WebSocketSession session, TextMessage message) {
+        if (session == null || !session.isOpen()) return;
+        try {
+            synchronized (session) {
+                session.sendMessage(message);
+            }
+        } catch (Exception e) {
+            log.warn("WebSocket send failed for session {}: {}", session.getId(), e.toString());
         }
     }
 

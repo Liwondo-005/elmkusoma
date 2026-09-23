@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/student/events")
+// Both prefixes are exposed: the frontend rewrites /api/v1/* -> /v1/* while some
+// clients call the /api/v1/* form directly against the backend base URL.
+@RequestMapping({"/api/v1/student/events", "/v1/student/events"})
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER')")
 public class StudentEventController {
@@ -21,6 +23,9 @@ public class StudentEventController {
     private final EventService eventService;
 
     @GetMapping
+    // Read-only, institution-scoped list also used by the dashboard sidebar badge for
+    // every role - the class-level student-only restriction does not apply here.
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'TEACHER', 'ADMIN', 'INSTITUTION_ADMIN', 'PARENT')")
     public ResponseEntity<ApiResponse<List<EventResponse>>> getUpcomingEvents(HttpServletRequest request) {
         UUID institutionId = getInstitutionId(request);
         List<EventResponse> events = eventService.getUpcomingEvents(institutionId);

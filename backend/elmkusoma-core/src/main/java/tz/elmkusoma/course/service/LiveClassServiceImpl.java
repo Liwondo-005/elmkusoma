@@ -16,11 +16,16 @@ import tz.elmkusoma.course.domain.LiveClassSessionType;
 import tz.elmkusoma.course.dto.CreateLiveClassRequest;
 import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.course.repository.LiveClassRepository;
+import tz.elmkusoma.event.domain.Replay;
+import tz.elmkusoma.event.repository.ReplayRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
+import tz.elmkusoma.liveclass.service.LiveKitService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
@@ -29,6 +34,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -44,6 +50,9 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final LiveClassParticipantRepository participantRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final CertificateRepository certificateRepository;
+    private final StudentRepository studentRepository;
+    private final LiveKitService liveKitService;
+    private final ReplayRepository replayRepository;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
@@ -212,6 +221,23 @@ public class LiveClassServiceImpl implements LiveClassService {
 
         liveClass.setStatus(LiveClassStatus.IN_PROGRESS.name());
         LiveClass saved = liveClassRepository.save(liveClass);
+
+        // recordingEnabled => auto-start LiveKit Egress; failure must not block the class
+        if (Boolean.TRUE.equals(saved.getRecordingEnabled())) {
+            try {
+                String egressId = liveKitService.startRecording(saved.getId());
+                if (egressId != null) {
+                    saved.setRecordingUrl("egress:" + egressId);
+                    saved = liveClassRepository.save(saved);
+                    log.info("Auto-recording started for live class {}", saved.getId());
+                } else {
+                    log.warn("Auto-recording did not start for live class {}", saved.getId());
+                }
+            } catch (Exception e) {
+                log.warn("Auto-recording start failed for live class {}: {}", saved.getId(), e.getMessage());
+            }
+        }
+
         return mapToResponse(saved);
     }
 
@@ -230,8 +256,60 @@ public class LiveClassServiceImpl implements LiveClassService {
 
         createAttendanceFromParticipants(saved, markedBy);
         createLiveClassCertificates(saved, markedBy);
+        finalizeRecordingAndCreateReplay(saved);
 
         return mapToResponse(saved);
+    }
+
+    /**
+     * Stops an active LiveKit Egress, resolves the final file URL and creates the
+     * learner-facing Replay row. Everything is best-effort: a recording problem must
+     * never roll back ending the class (attendance/certificates above).
+     */
+    private void finalizeRecordingAndCreateReplay(LiveClass liveClass) {
+        try {
+            String url = liveClass.getRecordingUrl();
+            if (url == null || url.isBlank()) {
+                return;
+            }
+
+            if (url.startsWith("egress:")) {
+                String egressId = url.substring("egress:".length());
+                liveKitService.stopRecording(egressId);
+                url = liveKitService.resolveRecordingUrl(egressId);
+                if (url == null) {
+                    log.warn("Recording URL unresolved for class {} (egress {}); no replay created",
+                            liveClass.getId(), egressId);
+                    return;
+                }
+                liveClass.setRecordingUrl(url);
+                liveClass = liveClassRepository.save(liveClass);
+            }
+
+            if (!url.startsWith("http")) {
+                return;
+            }
+
+            if (!replayRepository.findByLiveSessionIdAndIsDeletedFalse(liveClass.getId()).isEmpty()) {
+                return;
+            }
+
+            Replay replay = Replay.builder()
+                    .liveSessionId(liveClass.getId())
+                    .eventId(null)
+                    .title(liveClass.getTitle())
+                    .description("Live class recording - " + (liveClass.getTitle() != null ? liveClass.getTitle() : liveClass.getId()))
+                    .recordingUrl(url)
+                    .status("AVAILABLE")
+                    .viewCount(0)
+                    .lastPositionSeconds(0)
+                    .institutionId(liveClass.getInstitutionId())
+                    .build();
+            replayRepository.save(replay);
+            log.info("Replay created for live class {}: url={}", liveClass.getId(), url);
+        } catch (Exception e) {
+            log.warn("Finalize recording/replay skipped for class {}: {}", liveClass.getId(), e.getMessage());
+        }
     }
 
     @Override
@@ -250,21 +328,30 @@ public class LiveClassServiceImpl implements LiveClassService {
         }
 
         List<LiveClassParticipant> participants = participantRepository
-                .findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(liveClass.getId());
+                .findByLiveClassIdAndIsDeletedFalse(liveClass.getId());
 
         LocalDate today = LocalDate.now();
         UUID classGroupId = liveClass.getClassGroupId();
 
         for (LiveClassParticipant participant : participants) {
+            // participant.userId references users(id); attendance_records.student_id
+            // has a FK to students(id) -- resolve the student row first.
+            Student student = studentRepository.findByUserIdAndIsDeletedFalse(participant.getUserId())
+                    .orElse(null);
+            if (student == null) {
+                continue; // teacher/host participants have no student row
+            }
+            UUID studentId = student.getId();
+
             boolean alreadyExists = attendanceRecordRepository
                     .findByClassGroupIdAndAttendanceDateAndIsDeletedFalse(classGroupId, today)
                     .stream()
-                    .anyMatch(r -> r.getStudentId().equals(participant.getUserId()));
+                    .anyMatch(r -> r.getStudentId().equals(studentId));
 
             if (!alreadyExists) {
                 AttendanceRecord record = AttendanceRecord.builder()
                         .institutionId(liveClass.getInstitutionId())
-                        .studentId(participant.getUserId())
+                        .studentId(studentId)
                         .classGroupId(classGroupId)
                         .attendanceDate(today)
                         .status(AttendanceRecord.AttendanceStatus.PRESENT)
@@ -283,7 +370,7 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (liveClass.getClassGroupId() == null) return;
 
         List<LiveClassParticipant> participants = participantRepository
-                .findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(liveClass.getId());
+                .findByLiveClassIdAndIsDeletedFalse(liveClass.getId());
 
         Teacher teacher = teacherRepository.findById(liveClass.getTeacherId()).orElse(null);
         String teacherName = "Unknown Teacher";
@@ -299,10 +386,18 @@ public class LiveClassServiceImpl implements LiveClassService {
         }
         String title = subjectName.isEmpty() ? liveClass.getTitle() : subjectName + " - " + liveClass.getTitle();
 
+        int created = 0;
         for (LiveClassParticipant participant : participants) {
-            boolean hasCert = certificateRepository.findAll().stream()
-                    .anyMatch(c -> c.getStudentId().equals(participant.getUserId())
-                            && c.getTitle().equals(title)
+            // certificates.student_id has a FK to students(id), not users(id).
+            Student student = studentRepository.findByUserIdAndIsDeletedFalse(participant.getUserId())
+                    .orElse(null);
+            if (student == null) {
+                continue; // teacher/host participants have no student row
+            }
+            UUID studentId = student.getId();
+
+            boolean hasCert = certificateRepository.findAllByStudentId(studentId).stream()
+                    .anyMatch(c -> Objects.equals(c.getTitle(), title)
                             && !Boolean.TRUE.equals(c.getIsDeleted()));
             if (hasCert) continue;
 
@@ -312,8 +407,10 @@ public class LiveClassServiceImpl implements LiveClassService {
             String serial = "LIVE-" + System.currentTimeMillis() + "-" + participant.getUserId().toString().substring(0, 8);
 
             Certificate cert = Certificate.builder()
-                    .templateId(UUID.randomUUID())
-                    .studentId(participant.getUserId())
+                    // template_id has an FK to certificate_templates(id) which is empty;
+                    // the column is nullable, so leave it unset instead of a random UUID.
+                    .templateId(null)
+                    .studentId(studentId)
                     .issuedBy(markedBy)
                     .serialNumber(serial)
                     .certificateType(Certificate.CertificateType.PARTICIPATION)
@@ -328,9 +425,11 @@ public class LiveClassServiceImpl implements LiveClassService {
                     .build();
             cert.setInstitutionId(liveClass.getInstitutionId());
             certificateRepository.save(cert);
+            created++;
         }
 
-        log.info("Created participation certificates for live class {}", liveClass.getId());
+        log.info("Participation certificates for live class {}: created={} (skipped students already holding this certificate)",
+                liveClass.getId(), created);
     }
 
     private void createRecurringInstances(LiveClass parent, CreateLiveClassRequest request) {

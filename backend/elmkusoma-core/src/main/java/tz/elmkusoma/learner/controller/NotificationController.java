@@ -13,7 +13,9 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/notifications")
+// Both prefixes are exposed: the frontend rewrites /api/v1/* -> /v1/* while some
+// clients call the /api/v1/* form directly against the backend base URL.
+@RequestMapping({"/api/v1/notifications", "/v1/notifications"})
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'TEACHER', 'ADMIN', 'INSTITUTION_ADMIN', 'PARENT')")
 public class NotificationController {

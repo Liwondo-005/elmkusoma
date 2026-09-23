@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Image as ImageIcon, AlertCircle, RefreshCw, HardDrive, Shield, Clock } from "lucide-react"
+import { Image as ImageIcon, AlertCircle, RefreshCw, HardDrive, Shield, Clock, Archive, Loader2 } from "lucide-react"
 import { platformAdminApi, type PageResponse } from "@/lib/platform-admin-api"
 
 interface MediaRow {
@@ -22,6 +22,7 @@ export default function PlatformMediaPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pageIndex, setPageIndex] = useState(0)
+  const [acting, setActing] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -34,6 +35,16 @@ export default function PlatformMediaPage() {
   }, [pageIndex])
 
   useEffect(() => { load() }, [load])
+
+  const archiveMedia = async (id: string) => {
+    setActing(id); setError(null)
+    try {
+      await platformAdminApi.bulkContentAction("MEDIA", "ARCHIVE", [id])
+      await load()
+    } catch (e: any) {
+      setError(e.message || "Failed to archive media")
+    } finally { setActing(null) }
+  }
 
   const items = page?.content ?? []
 
@@ -71,7 +82,7 @@ export default function PlatformMediaPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-border bg-muted/50"><th className="px-4 py-3 text-left font-medium text-muted-foreground">Title</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Institution</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Created</th></tr></thead>
+              <thead><tr className="border-b border-border bg-muted/50"><th className="px-4 py-3 text-left font-medium text-muted-foreground">Title</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Institution</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Created</th><th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th></tr></thead>
               <tbody>
                 {items.map((m) => (
                   <tr key={m.id} className="border-b border-border last:border-0 hover:bg-muted/30">
@@ -80,6 +91,16 @@ export default function PlatformMediaPage() {
                     <td className="px-4 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{m.status ?? "Unknown"}</span></td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{m.institutionId ?? "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : "—"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => archiveMedia(m.id)}
+                        disabled={acting === m.id}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+                        title="Archive media asset"
+                      >
+                        {acting === m.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} Archive
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

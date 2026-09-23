@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { FileText, AlertCircle, RefreshCw } from "lucide-react"
+import { FileText, AlertCircle, RefreshCw, Archive, ArchiveRestore, Loader2 } from "lucide-react"
 import { platformAdminApi, type PageResponse } from "@/lib/platform-admin-api"
 
 interface ResourceRow {
@@ -21,6 +21,7 @@ export default function PlatformResourcesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pageIndex, setPageIndex] = useState(0)
+  const [acting, setActing] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -33,6 +34,16 @@ export default function PlatformResourcesPage() {
   }, [pageIndex])
 
   useEffect(() => { load() }, [load])
+
+  const archiveAction = async (id: string, action: "ARCHIVE" | "RESTORE") => {
+    setActing(id); setError(null)
+    try {
+      await platformAdminApi.bulkContentAction("RESOURCE", action, [id])
+      await load()
+    } catch (e: any) {
+      setError(e.message || `Failed to ${action.toLowerCase()} resource`)
+    } finally { setActing(null) }
+  }
 
   const items = page?.content ?? []
 
@@ -65,7 +76,7 @@ export default function PlatformResourcesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-border bg-muted/50"><th className="px-4 py-3 text-left font-medium text-muted-foreground">Title</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Institution</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Created</th></tr></thead>
+              <thead><tr className="border-b border-border bg-muted/50"><th className="px-4 py-3 text-left font-medium text-muted-foreground">Title</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Institution</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Created</th><th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th></tr></thead>
               <tbody>
                 {items.map((r) => (
                   <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30">
@@ -73,6 +84,16 @@ export default function PlatformResourcesPage() {
                     <td className="px-4 py-3 text-muted-foreground">{r.resourceType ?? "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{r.institutionId ?? "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => archiveAction(r.id, "ARCHIVE")}
+                        disabled={acting === r.id}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+                        title="Archive resource"
+                      >
+                        {acting === r.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} Archive
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -221,7 +221,11 @@ public class LiveSessionController {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
 
-        boolean isTeacher = liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(userId);
+        boolean isTeacher = false;
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
+        if (liveClass.getTeacherId() != null && teacher != null && liveClass.getTeacherId().equals(teacher.getId())) {
+            isTeacher = true;
+        }
         if (!isTeacher) {
             User user = userRepository.findById(userId).orElse(null);
             if (user == null || (user.getRole() != User.Role.ADMIN && user.getRole() != User.Role.INSTITUTION_ADMIN)) {
@@ -231,6 +235,11 @@ public class LiveSessionController {
 
         if (!liveKitService.isAvailable()) {
             return ResponseEntity.status(503).body(ApiResponse.error("LiveKit not configured"));
+        }
+        if (!liveKitService.isRecordingConfigured()) {
+            // Spec: "Recording: Enabled only if configured." Be explicit instead of a generic 500.
+            return ResponseEntity.status(503).body(ApiResponse.error(
+                    "Recording storage is not configured on the server. Ask your administrator to enable it."));
         }
 
         String egressId = liveKitService.startRecording(classId);
@@ -271,8 +280,16 @@ public class LiveSessionController {
         boolean stopped = liveKitService.stopRecording(egressId);
 
         if (stopped) {
-            liveClass.setRecordingUrl(null);
-            liveClassRepository.save(liveClass);
+            // resolve the final file URL right away so download/replay can serve it
+            try {
+                String url = liveKitService.resolveRecordingUrl(egressId);
+                if (url != null) {
+                    liveClass.setRecordingUrl(url);
+                    liveClassRepository.save(liveClass);
+                }
+            } catch (Exception e) {
+                log.warn("Recording URL resolve skipped for class {}: {}", classId, e.getMessage());
+            }
             log.info("Recording stopped for class {} by teacher {}", classId, userId);
             return ResponseEntity.ok(ApiResponse.success("Recording stopped", egressId));
         }

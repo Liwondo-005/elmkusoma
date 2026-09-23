@@ -18,6 +18,7 @@ export default function PlatformUsersPage() {
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [toggling, setToggling] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -45,6 +46,7 @@ export default function PlatformUsersPage() {
   const handleToggleStatus = async (user: UserSummary) => {
     try {
       setToggling(user.id)
+      setConfirmId(null)
       await platformAdminApi.updateUserStatus(user.id, !user.isActive)
       setData((prev) => {
         if (!prev) return prev
@@ -144,24 +146,43 @@ export default function PlatformUsersPage() {
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{formatDate(user.createdAt)}</td>
                     <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={() => handleToggleStatus(user)}
-                        disabled={toggling === user.id}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
-                          user.isActive
-                            ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800"
-                            : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800"
-                        }`}
-                      >
-                        {toggling === user.id ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : user.isActive ? (
-                          <UserX className="size-3.5" />
-                        ) : (
-                          <UserCheck className="size-3.5" />
-                        )}
-                        {user.isActive ? "Suspend" : "Activate"}
-                      </button>
+                      {confirmId === user.id ? (
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground">Confirm {user.isActive ? "suspend" : "activate"}?</span>
+                          <button
+                            onClick={() => handleToggleStatus(user)}
+                            disabled={toggling === user.id}
+                            className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {toggling === user.id ? <Loader2 className="size-3 animate-spin" /> : "Yes"}
+                          </button>
+                          <button
+                            onClick={() => setConfirmId(null)}
+                            className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmId(user.id)}
+                          disabled={toggling === user.id}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                            user.isActive
+                              ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800"
+                              : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800"
+                          }`}
+                        >
+                          {toggling === user.id ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : user.isActive ? (
+                            <UserX className="size-3.5" />
+                          ) : (
+                            <UserCheck className="size-3.5" />
+                          )}
+                          {user.isActive ? "Suspend" : "Activate"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

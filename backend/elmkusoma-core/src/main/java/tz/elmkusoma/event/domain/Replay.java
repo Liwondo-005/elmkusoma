@@ -16,7 +16,7 @@ import java.util.UUID;
 @SuperBuilder
 public class Replay extends BaseEntity {
 
-    @Column(name = "event_id", nullable = false)
+    @Column(name = "event_id")
     private UUID eventId;
 
     @Column(name = "live_session_id")

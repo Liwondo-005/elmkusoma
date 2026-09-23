@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +33,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('TEACHER')")
 @Tag(name = "Teacher Live Classes", description = "Manage live classes for teachers")
+@Slf4j
 public class TeacherLiveClassController {
 
     private final LiveClassService liveClassService;
@@ -64,11 +66,15 @@ public class TeacherLiveClassController {
         String schedInfo = created.getScheduledAt() != null
                 ? " on " + created.getScheduledAt()
                 : "";
-        notificationService.notifyInstitutionStudentsExcluding(
-                institutionId, userId,
-                "New Live Class Scheduled",
-                "A new live class \"" + created.getTitle() + "\"" + schedInfo + " has been scheduled.",
-                "LIVE_CLASS_SCHEDULED", "live_class", created.getId());
+        try {
+            notificationService.notifyInstitutionStudentsExcluding(
+                    institutionId, userId,
+                    "New Live Class Scheduled",
+                    "A new live class \"" + created.getTitle() + "\"" + schedInfo + " has been scheduled.",
+                    "LIVE_CLASS_SCHEDULED", "live_class", created.getId());
+        } catch (Exception e) {
+            log.warn("Failed to send live class scheduled notification: {}", e.getMessage());
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Live class created successfully", created));
@@ -86,12 +92,16 @@ public class TeacherLiveClassController {
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
         if (liveClass != null && request.getScheduledAt() != null) {
-            notificationService.notifyInstitutionStudentsExcluding(
-                    institutionId, userId,
-                    "Live Class Rescheduled",
-                    "The live class \"" + updated.getTitle() + "\" has been rescheduled to " + updated.getScheduledAt(),
-                    "LIVE_CLASS_RESCHEDULED",
-                    "LIVE_CLASS", id);
+            try {
+                notificationService.notifyInstitutionStudentsExcluding(
+                        institutionId, userId,
+                        "Live Class Rescheduled",
+                        "The live class \"" + updated.getTitle() + "\" has been rescheduled to " + updated.getScheduledAt(),
+                        "LIVE_CLASS_RESCHEDULED",
+                        "LIVE_CLASS", id);
+            } catch (Exception e) {
+                log.warn("Failed to send live class rescheduled notification: {}", e.getMessage());
+            }
         }
 
         return ResponseEntity.ok(ApiResponse.success("Live class updated successfully", updated));
@@ -108,11 +118,15 @@ public class TeacherLiveClassController {
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
         if (liveClass != null) {
-            notificationService.notifyInstitutionStudentsExcluding(
-                    institutionId, userId,
-                    "Live Class Cancelled",
-                    "Your live class \"" + liveClass.getTitle() + "\" has been cancelled.",
-                    "LIVE_CLASS_CANCELLED", "live_class", id);
+            try {
+                notificationService.notifyInstitutionStudentsExcluding(
+                        institutionId, userId,
+                        "Live Class Cancelled",
+                        "Your live class \"" + liveClass.getTitle() + "\" has been cancelled.",
+                        "LIVE_CLASS_CANCELLED", "live_class", id);
+            } catch (Exception e) {
+                log.warn("Failed to send live class cancelled notification: {}", e.getMessage());
+            }
         }
 
         return ResponseEntity.ok(ApiResponse.success("Live class cancelled successfully", null));
@@ -127,11 +141,15 @@ public class TeacherLiveClassController {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
         LiveClassResponse started = liveClassService.startSession(teacher.getId(), id);
 
-        notificationService.notifyInstitutionStudentsExcluding(
-                institutionId, userId,
-                "Live Class Started",
-                "Your live class \"" + started.getTitle() + "\" has started. Join now!",
-                "LIVE_CLASS_STARTED", "live_class", started.getId());
+        try {
+            notificationService.notifyInstitutionStudentsExcluding(
+                    institutionId, userId,
+                    "Live Class Started",
+                    "Your live class \"" + started.getTitle() + "\" has started. Join now!",
+                    "LIVE_CLASS_STARTED", "live_class", started.getId());
+        } catch (Exception e) {
+            log.warn("Failed to send live class started notification: {}", e.getMessage());
+        }
 
         return ResponseEntity.ok(ApiResponse.success("Live session started", started));
     }
@@ -147,11 +165,15 @@ public class TeacherLiveClassController {
 
         LiveClass liveClass = liveClassRepository.findById(id).orElse(null);
         if (liveClass != null) {
-            notificationService.notifyInstitutionStudentsExcluding(
-                    institutionId, userId,
-                    "Live Class Ended",
-                    "Your live class \"" + liveClass.getTitle() + "\" has ended.",
-                    "LIVE_CLASS_COMPLETED", "live_class", ended.getId());
+            try {
+                notificationService.notifyInstitutionStudentsExcluding(
+                        institutionId, userId,
+                        "Live Class Ended",
+                        "Your live class \"" + liveClass.getTitle() + "\" has ended.",
+                        "LIVE_CLASS_COMPLETED", "live_class", ended.getId());
+            } catch (Exception e) {
+                log.warn("Failed to send live class ended notification: {}", e.getMessage());
+            }
         }
 
         return ResponseEntity.ok(ApiResponse.success("Live session ended", ended));

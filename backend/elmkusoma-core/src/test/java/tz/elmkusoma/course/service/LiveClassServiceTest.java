@@ -158,7 +158,7 @@ class LiveClassServiceTest {
         lc.setClassGroupId(UUID.randomUUID());
         when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
         when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(participantRepository.findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(liveClassId))
+        when(participantRepository.findByLiveClassIdAndIsDeletedFalse(liveClassId))
                 .thenReturn(Collections.emptyList());
 
         LiveClassResponse response = liveClassService.endSession(teacherId, liveClassId, teacherId);

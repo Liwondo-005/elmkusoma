@@ -65,6 +65,8 @@ public class LearnerController {
     private final CertificateTemplateRepository certificateTemplateRepository;
     private final UserRepository userRepository;
     private final LiveClassParticipantRepository liveClassParticipantRepository;
+    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
+    private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
     private final LearnerGoalRepository learningGoalRepository;
 
     // ── Profile ──────────────────────────────────────────────────────────
@@ -1218,6 +1220,19 @@ public class LearnerController {
     }
 
     private LiveClassResponse toLiveClassResponse(LiveClass lc) {
+        String teacherName = null;
+        if (lc.getTeacherId() != null) {
+            teacherName = teacherRepository.findById(lc.getTeacherId())
+                    .flatMap(t -> userRepository.findById(t.getUserId()))
+                    .map(User::getFullName)
+                    .orElse(null);
+        }
+        String subjectName = null;
+        if (lc.getSubjectId() != null) {
+            subjectName = subjectRepository.findById(lc.getSubjectId())
+                    .map(s -> s.getName())
+                    .orElse(null);
+        }
         return LiveClassResponse.builder()
                 .id(lc.getId())
                 .title(lc.getTitle())
@@ -1228,6 +1243,13 @@ public class LearnerController {
                 .maxParticipants(lc.getMaxParticipants())
                 .teacherId(lc.getTeacherId())
                 .subjectId(lc.getSubjectId())
+                .teacherName(teacherName)
+                .subjectName(subjectName)
+                .recordingUrl(lc.getRecordingUrl())
+                .recordingEnabled(Boolean.TRUE.equals(lc.getRecordingEnabled()))
+                .sessionType(lc.getSessionType() != null ? lc.getSessionType().name() : "LECTURE")
+                .canJoin("IN_PROGRESS".equals(lc.getStatus()) || "LIVE".equals(lc.getStatus()))
+                .createdAt(lc.getCreatedAt() != null ? lc.getCreatedAt().toString() : null)
                 .build();
     }
 
