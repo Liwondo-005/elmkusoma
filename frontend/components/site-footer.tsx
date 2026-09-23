@@ -1,37 +1,43 @@
+"use client"
+
 import Link from "next/link"
 import { Logo } from "@/components/logo"
-
-const columns = [
-  {
-    title: "Learn",
-    links: [
-      { label: "Courses", href: "/courses" },
-      { label: "Live Classes", href: "/live-classes" },
-      { label: "Recorded Classes", href: "/live-classes" },
-      { label: "Digital Library", href: "/notes-library" },
-    ],
-  },
-  {
-    title: "Discover",
-    links: [
-      { label: "Primary Schools", href: "/schools/primary" },
-      { label: "Secondary Schools", href: "/schools/secondary" },
-      { label: "Colleges", href: "/schools/colleges" },
-      { label: "Universities", href: "/schools/universities" },
-    ],
-  },
-  {
-    title: "Platform",
-    links: [
-      { label: "About", href: "/about" },
-      { label: "Verify Certificate", href: "/certificates/verify" },
-      { label: "Become an Instructor", href: "/register" },
-      { label: "For Institutions", href: "/register" },
-    ],
-  },
-]
+import { useTranslations } from "next-intl"
 
 export function SiteFooter() {
+  const tNav = useTranslations("nav")
+  const tCommon = useTranslations("common")
+
+  const columns = [
+    {
+      title: tNav("learn"),
+      links: [
+        { label: tNav("courses"), href: "/courses" },
+        { label: tNav("liveClasses"), href: "/live-classes" },
+        { label: tCommon("recordedClasses"), href: "/live-classes" },
+        { label: tCommon("digitalLibrary"), href: "/notes-library" },
+      ],
+    },
+    {
+      title: tNav("discover"),
+      links: [
+        { label: tCommon("primarySchools"), href: "/schools/primary" },
+        { label: tCommon("secondarySchools"), href: "/schools/secondary" },
+        { label: tCommon("colleges"), href: "/schools/colleges" },
+        { label: tCommon("universities"), href: "/schools/universities" },
+      ],
+    },
+    {
+      title: tCommon("platform"),
+      links: [
+        { label: tNav("about"), href: "/about" },
+        { label: tCommon("verifyCertificate"), href: "/certificates/verify" },
+        { label: tCommon("becomeInstructor"), href: "/register" },
+        { label: tCommon("forInstitutions"), href: "/register" },
+      ],
+    },
+  ]
+
   return (
     <footer className="border-t border-border bg-muted/50">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -39,8 +45,7 @@ export function SiteFooter() {
           <div className="max-w-xs">
             <Logo />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              A unified African EdTech platform for live classes, courses and digital learning — helping students learn,
-              connect and succeed.
+              {tCommon("tagline")}
             </p>
           </div>
           {columns.map((col) => (
@@ -61,7 +66,7 @@ export function SiteFooter() {
             </div>
           ))}
           <div>
-            <h4 className="text-sm font-semibold text-foreground">Contact Us</h4>
+            <h4 className="text-sm font-semibold text-foreground">{tCommon("contactUs")}</h4>
             <ul className="mt-4 space-y-3">
               <li className="text-sm text-muted-foreground">
                 Dar es Salaam, Tanzania
@@ -87,7 +92,7 @@ export function SiteFooter() {
                   href="/contact"
                   className="text-sm text-muted-foreground transition-colors hover:text-primary"
                 >
-                  Send us a message
+                  {tCommon("sendMessage")}
                 </Link>
               </li>
             </ul>
@@ -111,16 +116,16 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">
-          <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} ELMKUSOMA. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">{tCommon("copyright", { year: new Date().getFullYear() })}</p>
           <div className="flex gap-6">
             <Link href="/privacy" className="text-sm text-muted-foreground hover:text-primary">
-              Privacy
+              {tCommon("privacy")}
             </Link>
             <Link href="/terms" className="text-sm text-muted-foreground hover:text-primary">
-              Terms
+              {tCommon("terms")}
             </Link>
             <Link href="/support" className="text-sm text-muted-foreground hover:text-primary">
-              Support
+              {tCommon("support")}
             </Link>
           </div>
         </div>

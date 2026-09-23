@@ -9,6 +9,7 @@ import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { Eye, EyeOff, CheckCircle, ShieldCheck, RefreshCw } from "lucide-react"
 
 const roles = [
@@ -17,42 +18,6 @@ const roles = [
   "Parent",
   "Other Learner",
 ]
-
-const learningLevels = [
-  { value: "NURSERY", label: "Nursery" },
-  { value: "PRIMARY", label: "Primary" },
-  { value: "SECONDARY", label: "Secondary" },
-  { value: "COLLEGE", label: "College" },
-  { value: "VETA", label: "VETA (Vocational)" },
-  { value: "UNIVERSITY", label: "University" },
-]
-
-const registerSchema = z
-  .object({
-    firstName: z.string().min(1, "First name is required").min(2, "First name must be at least 2 characters"),
-    middleName: z.string().optional(),
-    lastName: z.string().min(1, "Last name / surname is required").min(2, "Last name must be at least 2 characters"),
-    email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
-    phone: z.string().min(1, "Phone number is required").min(10, "Phone number must be at least 10 digits"),
-    role: z.string().min(1, "Please select your role"),
-    learningLevel: z.string().optional(),
-    password: z
-      .string()
-      .min(1, "Password is required")
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-      .regex(/[0-9]/, "Password must contain at least one number"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-    agreeToTerms: z.boolean().refine((val) => val === true, {
-      message: "You must agree to the Terms of Service and Privacy Policy",
-    }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  })
-
-type RegisterValues = z.infer<typeof registerSchema>
 
 function generateCaptchaCode(): string {
   return Math.floor(10000 + Math.random() * 90000).toString()
@@ -67,6 +32,7 @@ const CAPTCHA_STYLES: React.CSSProperties[] = [
 ]
 
 export default function RegisterPage() {
+  const t = useTranslations("auth")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
@@ -78,6 +44,42 @@ export default function RegisterPage() {
   const captchaCode = useMemo(() => generateCaptchaCode(), [captchaKey])
   const [userCaptchaInput, setUserCaptchaInput] = useState("")
   const [captchaError, setCaptchaError] = useState("")
+
+  const registerSchema = z
+    .object({
+      firstName: z.string().min(1, t("firstNameRequired")).min(2, t("firstNameTooShort")),
+      middleName: z.string().optional(),
+      lastName: z.string().min(1, t("lastNameRequired")).min(2, t("lastNameTooShort")),
+      email: z.string().min(1, t("emailRequired")).email(t("invalidEmail")),
+      phone: z.string().min(1, t("phoneRequired")).min(10, t("phoneTooShort")),
+      role: z.string().min(1, t("roleRequired")),
+      learningLevel: z.string().optional(),
+      password: z
+        .string()
+        .min(1, t("passwordRequired"))
+        .min(8, t("passwordMin8"))
+        .regex(/[A-Z]/, t("passwordUppercase"))
+        .regex(/[0-9]/, t("passwordNumber")),
+      confirmPassword: z.string().min(1, t("confirmPasswordRequired")),
+      agreeToTerms: z.boolean().refine((val) => val === true, {
+        message: t("agreeToTermsRequired"),
+      }),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("passwordsDoNotMatch"),
+      path: ["confirmPassword"],
+    })
+
+  type RegisterValues = z.infer<typeof registerSchema>
+
+  const learningLevels = [
+    { value: "NURSERY", label: t("levelNursery") },
+    { value: "PRIMARY", label: t("levelPrimary") },
+    { value: "SECONDARY", label: t("levelSecondary") },
+    { value: "COLLEGE", label: t("levelCollege") },
+    { value: "VETA", label: t("levelVeta") },
+    { value: "UNIVERSITY", label: t("levelUniversity") },
+  ]
 
   const {
     register,
@@ -99,7 +101,7 @@ export default function RegisterPage() {
   async function onSubmit(values: RegisterValues) {
     setServerError("")
     if (userCaptchaInput !== captchaCode) {
-      setCaptchaError("Incorrect verification code. Please try again.")
+      setCaptchaError(t("captchaIncorrect"))
       refreshCaptcha()
       return
     }
@@ -140,13 +142,13 @@ export default function RegisterPage() {
                 <CheckCircle className="size-7 text-teal" />
               </div>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
-                Account Created!
+                {t("accountCreated")}!
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Your account has been created successfully. Redirecting to dashboard...
+                {t("accountCreatedMessage")}
               </p>
               <Button onClick={() => router.push("/dashboard")} className="mt-6 w-full">
-                Go to Dashboard
+                {t("goToDashboard")}
               </Button>
             </div>
           </div>
@@ -172,10 +174,10 @@ export default function RegisterPage() {
           <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-sm p-8 shadow-lg">
             <div className="text-center">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Create your account
+                {t("createAccount")}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Join thousands of learners across Africa
+                {t("registerSubtitle")}
               </p>
             </div>
 
@@ -190,12 +192,12 @@ export default function RegisterPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label htmlFor="firstName" className="block text-sm font-medium text-foreground">
-                      First Name
+                      {t("firstName")}
                     </label>
                     <input
                       id="firstName"
                       type="text"
-                      placeholder="First name"
+                      placeholder={t("firstNamePlaceholder")}
                       {...register("firstName")}
                       className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
@@ -206,12 +208,12 @@ export default function RegisterPage() {
 
                   <div>
                     <label htmlFor="middleName" className="block text-sm font-medium text-foreground">
-                      Middle Name <span className="text-muted-foreground">(optional)</span>
+                      {t("middleName")} <span className="text-muted-foreground">{t("optional")}</span>
                     </label>
                     <input
                       id="middleName"
                       type="text"
-                      placeholder="Middle name"
+                      placeholder={t("middleNamePlaceholder")}
                       {...register("middleName")}
                       className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
@@ -220,12 +222,12 @@ export default function RegisterPage() {
 
                 <div>
                   <label htmlFor="lastName" className="block text-sm font-medium text-foreground">
-                    Last Name / Surname
+                    {t("lastName")}
                   </label>
                   <input
                     id="lastName"
                     type="text"
-                    placeholder="Last name or surname"
+                    placeholder={t("lastNamePlaceholder")}
                     {...register("lastName")}
                     className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                   />
@@ -236,7 +238,7 @@ export default function RegisterPage() {
 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-foreground">
-                    Email Address
+                    {t("emailAddress")}
                   </label>
                   <input
                     id="email"
@@ -252,7 +254,7 @@ export default function RegisterPage() {
 
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-foreground">
-                    Phone Number
+                    {t("phoneNumber")}
                   </label>
                   <input
                     id="phone"
@@ -268,14 +270,14 @@ export default function RegisterPage() {
 
                 <div>
                   <label htmlFor="role" className="block text-sm font-medium text-foreground">
-                    Register as
+                    {t("registerAs")}
                   </label>
                   <select
                     id="role"
                     {...register("role")}
                     className="mt-1.5 h-11 w-full appearance-none rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors focus:border-ring focus:bg-background"
                   >
-                    <option value="">Select your role</option>
+                    <option value="">{t("selectRole")}</option>
                     {roles.map((role) => (
                       <option key={role} value={role}>
                         {role}
@@ -290,14 +292,14 @@ export default function RegisterPage() {
                 {selectedRole === "Student" && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-200">
                     <label htmlFor="learningLevel" className="block text-sm font-medium text-foreground">
-                      Learning Level
+                      {t("learningLevel")}
                     </label>
                     <select
                       id="learningLevel"
                       {...register("learningLevel")}
                       className="mt-1.5 h-11 w-full appearance-none rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors focus:border-ring focus:bg-background"
                     >
-                      <option value="">Select your learning level</option>
+                      <option value="">{t("selectLearningLevel")}</option>
                       {learningLevels.map((level) => (
                         <option key={level.value} value={level.value}>
                           {level.label}
@@ -305,20 +307,20 @@ export default function RegisterPage() {
                       ))}
                     </select>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      This helps us customize your learning experience.
+                      {t("learningLevelHint")}
                     </p>
                   </div>
                 )}
 
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-foreground">
-                    Password
+                    {t("password")}
                   </label>
                   <div className="relative mt-1.5">
                     <input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Create a password"
+                      placeholder={t("createPasswordPlaceholder")}
                       {...register("password")}
                       className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 pr-11 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
@@ -327,6 +329,7 @@ export default function RegisterPage() {
                       onClick={() => setShowPassword((v) => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
+                      aria-label={t("togglePasswordVisibility")}
                     >
                       {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
@@ -338,13 +341,13 @@ export default function RegisterPage() {
 
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground">
-                    Confirm Password
+                    {t("confirmPassword")}
                   </label>
                   <div className="relative mt-1.5">
                     <input
                       id="confirmPassword"
                       type={showConfirm ? "text" : "password"}
-                      placeholder="Confirm your password"
+                      placeholder={t("confirmPasswordPlaceholder")}
                       {...register("confirmPassword")}
                       className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 pr-11 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
@@ -353,6 +356,7 @@ export default function RegisterPage() {
                       onClick={() => setShowConfirm((v) => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
+                      aria-label={t("togglePasswordVisibility")}
                     >
                       {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
@@ -367,7 +371,7 @@ export default function RegisterPage() {
               <div className="rounded-xl border border-border bg-muted/40 p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <ShieldCheck className="size-5 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Are you a human?*</span>
+                  <span className="text-sm font-medium text-foreground">{t("captchaTitle")}*</span>
                 </div>
 
                 <div className="flex flex-col items-center gap-3">
@@ -397,7 +401,7 @@ export default function RegisterPage() {
                     />
                   </div>
 
-                  <p className="text-xs text-muted-foreground">Enter five digit code as shown above</p>
+                  <p className="text-xs text-muted-foreground">{t("captchaHint")}</p>
 
                   <input
                     type="text"
@@ -418,7 +422,7 @@ export default function RegisterPage() {
                     className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <RefreshCw className="size-3" />
-                    Refresh verification code
+                    {t("refreshCaptcha")}
                   </button>
                 </div>
 
@@ -435,13 +439,13 @@ export default function RegisterPage() {
                     className="mt-0.5 size-4 rounded border-border accent-primary"
                   />
                   <span className="text-sm text-muted-foreground">
-                    I agree to the{" "}
+                    {t("agreePrefix")}{" "}
                     <Link href="/terms" className="font-medium text-primary hover:underline">
-                      Terms of Service
+                      {t("termsOfService")}
                     </Link>{" "}
-                    and{" "}
+                    {t("and")}{" "}
                     <Link href="/privacy" className="font-medium text-primary hover:underline">
-                      Privacy Policy
+                      {t("privacyPolicy")}
                     </Link>
                   </span>
                 </label>
@@ -451,14 +455,14 @@ export default function RegisterPage() {
               </div>
 
               <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
-                {isSubmitting ? "Creating account..." : "Create Account"}
+                {isSubmitting ? t("creatingAccount") : t("createAccount")}
               </Button>
             </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
+              {t("alreadyHaveAccount")}{" "}
               <Link href="/login" className="font-medium text-primary hover:underline">
-                Login
+                {t("login")}
               </Link>
             </p>
           </div>

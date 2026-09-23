@@ -20,6 +20,14 @@ const STATUS_ICONS: Record<string, typeof Clock> = {
   REVIEWED: CheckCircle2,
 }
 
+const INCIDENT_NEXT: Record<string, string[]> = {
+  DETECTED: ["INVESTIGATING"],
+  INVESTIGATING: ["CONTAINED", "RESOLVED"],
+  CONTAINED: ["RESOLVED"],
+  RESOLVED: ["REVIEWED"],
+  REVIEWED: [],
+}
+
 export default function IncidentsPage() {
   const [data, setData] = useState<PageResponse<IncidentSummary> | null>(null)
   const [loading, setLoading] = useState(true)
@@ -46,8 +54,8 @@ export default function IncidentsPage() {
     } finally { setSaving(false) }
   }
 
-  async function resolveIncident(id: string) {
-    await platformAdminApi.updateIncidentStatus(id, "RESOLVED")
+  async function advanceIncident(id: string, status: string) {
+    await platformAdminApi.updateIncidentStatus(id, status)
     load()
   }
 
@@ -64,7 +72,7 @@ export default function IncidentsPage() {
       </div>
 
       <div className="flex gap-2">
-        {["", "DETECTED", "INVESTIGATING", "RESOLVED"].map(s => (
+        {["", "DETECTED", "INVESTIGATING", "CONTAINED", "RESOLVED", "REVIEWED"].map(s => (
           <button key={s} onClick={() => setFilter(s)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${filter === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
             {s || "All"}
           </button>
@@ -123,10 +131,21 @@ export default function IncidentsPage() {
                       </div>
                     </div>
                   </div>
-                  {inc.status !== "RESOLVED" && inc.status !== "REVIEWED" && (
-                    <button onClick={() => resolveIncident(inc.id)} className="shrink-0 rounded-xl border border-green-200 px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-green-50">
-                      Resolve
-                    </button>
+                  {(INCIDENT_NEXT[inc.status] ?? []).length > 0 && (
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                      {(INCIDENT_NEXT[inc.status] ?? []).map((s) => (
+                        <button key={s} onClick={() => advanceIncident(inc.id, s)}
+                          className={`rounded-xl border px-2.5 py-1.5 text-xs font-medium ${
+                            s === "RESOLVED"
+                              ? "border-green-200 text-green-600 hover:bg-green-50"
+                              : s === "REVIEWED"
+                                ? "border-blue-200 text-blue-600 hover:bg-blue-50"
+                                : "border-border text-muted-foreground hover:bg-muted"
+                          }`}>
+                          {s === "INVESTIGATING" ? "Investigate" : s === "CONTAINED" ? "Contain" : s === "RESOLVED" ? "Resolve" : s === "REVIEWED" ? "Review" : s}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
