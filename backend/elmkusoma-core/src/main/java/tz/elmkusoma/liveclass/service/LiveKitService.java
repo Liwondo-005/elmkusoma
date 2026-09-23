@@ -66,7 +66,10 @@ public class LiveKitService {
                 videoGrants.put("canSubscribe", true);
                 videoGrants.put("canUpdateOwnMetadata", true);
             } else {
-                videoGrants.put("canPublish", false);
+                // Learners are active participants: camera + microphone publishing is required
+                // for the interactive classroom (raise-hand-to-speak, teacher sees/hears learner).
+                // roomAdmin/roomCreate stay teacher-only.
+                videoGrants.put("canPublish", true);
                 videoGrants.put("canPublishData", true);
                 videoGrants.put("canSubscribe", true);
                 videoGrants.put("canUpdateOwnMetadata", true);

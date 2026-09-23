@@ -386,6 +386,7 @@ public class LiveClassServiceImpl implements LiveClassService {
         }
         String title = subjectName.isEmpty() ? liveClass.getTitle() : subjectName + " - " + liveClass.getTitle();
 
+        int created = 0;
         for (LiveClassParticipant participant : participants) {
             // certificates.student_id has a FK to students(id), not users(id).
             Student student = studentRepository.findByUserIdAndIsDeletedFalse(participant.getUserId())
@@ -424,9 +425,11 @@ public class LiveClassServiceImpl implements LiveClassService {
                     .build();
             cert.setInstitutionId(liveClass.getInstitutionId());
             certificateRepository.save(cert);
+            created++;
         }
 
-        log.info("Created participation certificates for live class {}", liveClass.getId());
+        log.info("Participation certificates for live class {}: created={} (skipped students already holding this certificate)",
+                liveClass.getId(), created);
     }
 
     private void createRecurringInstances(LiveClass parent, CreateLiveClassRequest request) {
