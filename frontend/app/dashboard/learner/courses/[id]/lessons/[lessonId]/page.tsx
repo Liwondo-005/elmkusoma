@@ -28,6 +28,8 @@ import {
   LinkIcon,
   Type,
   ExternalLink,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react"
 
 export default function LessonViewerPage() {
@@ -46,6 +48,8 @@ export default function LessonViewerPage() {
   const [error, setError] = useState<string | null>(null)
   const [completing, setCompleting] = useState(false)
   const [completed, setCompleted] = useState(false)
+  const [bookmarked, setBookmarked] = useState(false)
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   const loadLesson = useCallback(async () => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -99,6 +103,28 @@ export default function LessonViewerPage() {
   }, [loadLesson])
 
   useEffect(() => {
+    if (!lessonId) return
+    learnerApi.checkBookmark("course_lesson", lessonId).then((isBookmarked) => {
+      setBookmarked(isBookmarked)
+    }).catch(() => {})
+  }, [lessonId])
+
+  async function handleBookmark() {
+    try {
+      setBookmarkLoading(true)
+      if (bookmarked) {
+        const bookmarks = await learnerApi.getBookmarks()
+        const existing = bookmarks.find((b) => b.targetId === lessonId && b.targetType === "course_lesson")
+        if (existing) await learnerApi.removeBookmark(existing.id)
+        setBookmarked(false)
+      } else {
+        await learnerApi.addBookmark("course_lesson", lessonId)
+        setBookmarked(true)
+      }
+    } catch {} finally { setBookmarkLoading(false) }
+  }
+
+  useEffect(() => {
     if (currentLesson && currentModule && courseData) {
       setLastAccessedLesson({
         courseId,
@@ -120,9 +146,11 @@ export default function LessonViewerPage() {
     if (!currentLesson || completing || completed) return
     try {
       setCompleting(true)
-      await learnerApi.updateProgress(currentLesson.id, 100)
+      await learnerApi.completeLesson(currentLesson.id)
       setCompleted(true)
     } catch {
+      await learnerApi.updateProgress(currentLesson.id, 100).catch(() => {})
+      setCompleted(true)
     } finally {
       setCompleting(false)
     }
@@ -175,11 +203,21 @@ export default function LessonViewerPage() {
         >
           <ArrowLeft className="size-4" /> {courseData?.course.title || "Course"}
         </Link>
-        {currentModule && (
-          <span className="text-xs text-muted-foreground">
-            Module: {currentModule.title}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleBookmark}
+            disabled={bookmarkLoading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+          >
+            {bookmarked ? <BookmarkCheck className="size-3.5 text-primary" /> : <Bookmark className="size-3.5" />}
+            {bookmarked ? "Saved" : "Save"}
+          </button>
+          {currentModule && (
+            <span className="text-xs text-muted-foreground">
+              Module: {currentModule.title}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
@@ -205,18 +243,26 @@ export default function LessonViewerPage() {
           </div>
         </div>
 
-        {currentLesson.contentType === "VIDEO" && currentLesson.contentUrl && (
-          <div className="mb-4 overflow-hidden rounded-xl bg-black">
-            <video
-              src={currentLesson.contentUrl}
-              controls
-              className="w-full"
-              style={{ maxHeight: 480 }}
-            >
-              Your browser does not support video playback.
-            </video>
-          </div>
-        )}
+        {currentLesson.contentType === "VIDEO" && currentLesson.contentUrl && (() => {
+          const isYouTube = currentLesson.contentUrl.includes("youtube.com") || currentLesson.contentUrl.includes("youtu.be")
+          if (isYouTube) {
+            let embedUrl = currentLesson.contentUrl
+            const match = currentLesson.contentUrl.match(/(?:v=|youtu\.be\/)([^&?#]+)/)
+            if (match) embedUrl = `https://www.youtube.com/embed/${match[1]}`
+            return (
+              <div className="mb-4 aspect-video overflow-hidden rounded-xl bg-black">
+                <iframe src={embedUrl} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={currentLesson.title} />
+              </div>
+            )
+          }
+          return (
+            <div className="mb-4 overflow-hidden rounded-xl bg-black">
+              <video src={currentLesson.contentUrl} controls className="w-full" style={{ maxHeight: 480 }}>
+                Your browser does not support video playback.
+              </video>
+            </div>
+          )
+        })()}
 
         {currentLesson.contentType === "TEXT" && currentLesson.contentUrl && (
           <div className="mb-4 rounded-xl border border-border bg-muted/30 p-6">

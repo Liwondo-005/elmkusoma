@@ -4,9 +4,9 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type CourseDetail, type CourseModuleSummary, type CourseLesson, type Enrollment, type CourseSummary } from "@/lib/learner-api"
+import { learnerApi, type CourseDetail, type CourseModuleSummary, type CourseLesson, type Enrollment, type CourseSummary, type CourseLessonFlat } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
-import { BookOpen, ArrowLeft, ChevronDown, ChevronRight, Loader2, AlertCircle, CheckCircle, Bookmark, BookmarkCheck } from "lucide-react"
+import { BookOpen, ArrowLeft, ChevronDown, ChevronRight, Loader2, AlertCircle, CheckCircle, Clock, Bookmark, BookmarkCheck, Play, FileText, ExternalLink } from "lucide-react"
 import { getLastAccessedLesson } from "@/lib/learner-api"
 
 export default function CourseDetailPage() {
@@ -19,13 +19,16 @@ export default function CourseDetailPage() {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const [moduleLessons, setModuleLessons] = useState<Record<string, CourseLesson[]>>({})
+  const [courseLessons, setCourseLessons] = useState<CourseLessonFlat[]>([])
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [enrolling, setEnrolling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [relatedCourses, setRelatedCourses] = useState<CourseSummary[]>([])
-  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [bookmarked, setBookmarked] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
+  const [courseProgress, setCourseProgress] = useState<{ total: number; completed: number; pct: number }>({ total: 0, completed: 0, pct: 0 })
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -36,16 +39,30 @@ export default function CourseDetailPage() {
     try {
       setLoading(true)
       setError(null)
-      const [courseData, enrollmentsData] = await Promise.all([
+      const [courseData, enrollmentsData, courseLessonsData] = await Promise.all([
         learnerApi.getCourse(courseId),
         learnerApi.getEnrollments().catch(() => []),
+        learnerApi.getCourseLessons(courseId).catch(() => []),
       ])
       setCourseData(courseData)
       const existingEnrollment = enrollmentsData.find((e) => e.courseId === courseId)
       setEnrollment(existingEnrollment || null)
+      setCourseLessons(courseLessonsData)
+
+      // Compute progress from enrollment
+      if (existingEnrollment) {
+        const total = courseLessonsData.length
+        const pct = existingEnrollment.progressPercentage || 0
+        const completed = Math.round((pct / 100) * total)
+        setCourseProgress({ total, completed, pct })
+      } else {
+        setCourseProgress({ total: courseLessonsData.length, completed: 0, pct: 0 })
+      }
 
       learnerApi.getRelatedCourses(courseId).then(setRelatedCourses).catch(() => {})
-      learnerApi.checkBookmark("course", courseId).then((res) => setIsBookmarked(res.bookmarked)).catch(() => {})
+      learnerApi.checkBookmark("course", courseId).then((isBookmarked) => {
+        setBookmarked(isBookmarked)
+      }).catch(() => {})
     } catch {
       setError("Failed to load course details")
     } finally {
@@ -67,22 +84,22 @@ export default function CourseDetailPage() {
     }
   }
 
-  async function toggleBookmark() {
+  async function handleBookmark() {
     try {
       setBookmarkLoading(true)
-      if (isBookmarked) {
+      if (bookmarked) {
         const bookmarks = await learnerApi.getBookmarks()
         const existing = bookmarks.find((b) => b.targetType === "course" && b.targetId === courseId)
         if (existing) {
           await learnerApi.removeBookmark(existing.id)
         }
-        setIsBookmarked(false)
+        setBookmarked(false)
       } else {
         await learnerApi.addBookmark("course", courseId)
-        setIsBookmarked(true)
+        setBookmarked(true)
       }
     } catch {
-      // Silent fail for bookmark toggle
+      // Silent fail
     } finally {
       setBookmarkLoading(false)
     }
@@ -106,6 +123,22 @@ export default function CourseDetailPage() {
     setExpandedModules(newExpanded)
   }
 
+  function getContentTypeIcon(contentType: string | null | undefined) {
+    switch (contentType?.toUpperCase()) {
+      case "VIDEO": return <Play className="size-3" />
+      case "DOCUMENT": return <FileText className="size-3" />
+      case "LINK": return <ExternalLink className="size-3" />
+      default: return <BookOpen className="size-3" />
+    }
+  }
+
+  // Find the first incomplete lesson (or the last lesson)
+  function getNextLesson(): CourseLessonFlat | null {
+    if (courseLessons.length === 0) return null
+    const incomplete = courseLessons.find((l) => !completedLessons.has(l.id))
+    return incomplete || courseLessons[courseLessons.length - 1]
+  }
+
   if (authLoading || loading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
@@ -127,12 +160,27 @@ export default function CourseDetailPage() {
   }
 
   const { course, modules } = courseData
+  const nextLesson = getNextLesson()
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <Link href="/dashboard/learner/courses" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft className="size-4" /> Back to courses
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/dashboard/learner/courses" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+          <ArrowLeft className="size-4" /> Back to courses
+        </Link>
+        <button
+          onClick={handleBookmark}
+          disabled={bookmarkLoading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+        >
+          {bookmarked ? (
+            <BookmarkCheck className="size-3.5 text-primary" />
+          ) : (
+            <Bookmark className="size-3.5" />
+          )}
+          {bookmarked ? "Saved" : "Save"}
+        </button>
+      </div>
 
       {error && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
@@ -170,12 +218,12 @@ export default function CourseDetailPage() {
             )}
           </div>
           <button
-            onClick={toggleBookmark}
+            onClick={handleBookmark}
             disabled={bookmarkLoading}
             className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-            title={isBookmarked ? "Remove bookmark" : "Bookmark this course"}
+            title={bookmarked ? "Remove bookmark" : "Bookmark this course"}
           >
-            {isBookmarked ? <BookmarkCheck className="size-5 text-primary" /> : <Bookmark className="size-5" />}
+            {bookmarked ? <BookmarkCheck className="size-5 text-primary" /> : <Bookmark className="size-5" />}
           </button>
         </div>
         <div className="mt-4 flex items-center gap-3 flex-wrap">
@@ -191,7 +239,7 @@ export default function CourseDetailPage() {
           )}
           {modules && (
             <span className="text-xs text-muted-foreground">
-              {modules.length} modules
+              {modules.length} modules &middot; {courseLessons.length} lessons
             </span>
           )}
         </div>
@@ -200,27 +248,40 @@ export default function CourseDetailPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Your progress</span>
-                <span className="font-semibold text-teal">{enrollment.progressPercentage}%</span>
+                <span className="font-semibold text-teal">{courseProgress.pct.toFixed(0)}%</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-teal transition-all" style={{ width: `${enrollment.progressPercentage}%` }} />
+                <div className="h-full rounded-full bg-teal transition-all" style={{ width: `${courseProgress.pct}%` }} />
               </div>
-              <Link
-                href={(() => {
-                  const last = getLastAccessedLesson()
-                  if (last && last.courseId === courseId) {
-                    return `/dashboard/learner/courses/${courseId}/lessons/${last.lessonId}`
-                  }
-                  if (modules && modules.length > 0) {
-                    const firstModule = modules.sort((a, b) => a.sortOrder - b.sortOrder)[0]
-                    return `/dashboard/learner/courses/${courseId}/lessons?moduleId=${firstModule.id}`
-                  }
-                  return `/dashboard/learner/my-learning`
-                })()}
-                className="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-medium text-white hover:bg-teal/90"
-              >
-                Continue Learning
-              </Link>
+              <p className="text-xs text-muted-foreground">
+                {courseProgress.completed} of {courseProgress.total} lessons completed
+              </p>
+              {nextLesson ? (
+                <Link
+                  href={`/dashboard/learner/courses/${courseId}/lessons/${nextLesson.id}`}
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-medium text-white hover:bg-teal/90"
+                >
+                  <Play className="size-4" />
+                  {courseProgress.pct > 0 ? "Continue Learning" : "Start Learning"}
+                </Link>
+              ) : (
+                <Link
+                  href={(() => {
+                    const last = getLastAccessedLesson()
+                    if (last && last.courseId === courseId) {
+                      return `/dashboard/learner/courses/${courseId}/lessons/${last.lessonId}`
+                    }
+                    if (modules && modules.length > 0) {
+                      const firstModule = modules.sort((a, b) => a.sortOrder - b.sortOrder)[0]
+                      return `/dashboard/learner/courses/${courseId}/lessons?moduleId=${firstModule.id}`
+                    }
+                    return `/dashboard/learner/my-learning`
+                  })()}
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-medium text-white hover:bg-teal/90"
+                >
+                  Continue Learning
+                </Link>
+              )}
             </div>
           ) : (
             <button
@@ -243,7 +304,7 @@ export default function CourseDetailPage() {
 
       {modules && modules.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground">Course Modules</h2>
+          <h2 className="text-lg font-semibold text-foreground">Course Content</h2>
           <div className="mt-4 space-y-3">
             {modules.sort((a, b) => a.sortOrder - b.sortOrder).map((module) => (
               <div key={module.id} className="rounded-xl border border-border overflow-hidden">
@@ -277,17 +338,18 @@ export default function CourseDetailPage() {
                           enrollment ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"
                         }`}
                       >
-                        <div className="flex size-6 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                          {lesson.sortOrder}
+                        <div className="flex size-6 items-center justify-center rounded bg-muted text-muted-foreground">
+                          {getContentTypeIcon(lesson.contentType)}
                         </div>
-                        <p className="text-sm text-foreground">{lesson.title}</p>
-                        {lesson.contentType && (
-                          <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            {lesson.contentType}
+                        <p className="flex-1 text-sm text-foreground">{lesson.title}</p>
+                        {lesson.durationMinutes && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Clock className="size-3" />
+                            {lesson.durationMinutes}m
                           </span>
                         )}
                         {enrollment && (
-                          <ChevronRight className="size-3 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground capitalize">{lesson.contentType?.toLowerCase()}</span>
                         )}
                       </Link>
                     ))}

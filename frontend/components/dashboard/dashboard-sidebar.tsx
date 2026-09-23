@@ -341,6 +341,7 @@ const learnerNavSections: LearnerNavSection[] = [
       { label: "Goals", href: "/dashboard/learner/goals", icon: Target },
       { label: "Bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },
       { label: "Certificates", href: "/dashboard/learner/certificates", icon: Award },
+      { label: "Announcements", href: "/dashboard/learner/announcements", icon: MessageSquare },
     ],
   },
   {
