@@ -77,6 +77,39 @@ export interface CourseLesson {
   isFree: boolean
 }
 
+export interface CourseLessonDetail {
+  id: string
+  moduleId: string
+  moduleTitle: string | null
+  title: string
+  contentType: string
+  contentUrl: string | null
+  durationMinutes: number | null
+  sortOrder: number
+  isFree: boolean
+  completed: boolean
+  progressPercentage: number
+  previousLessonId: string | null
+  previousLessonTitle: string | null
+  nextLessonId: string | null
+  nextLessonTitle: string | null
+  courseId: string | null
+  totalLessons: number
+  currentIndex: number
+}
+
+export interface CourseLessonFlat {
+  id: string
+  moduleId: string
+  moduleTitle: string
+  title: string
+  contentType: string
+  contentUrl: string | null
+  durationMinutes: number | null
+  sortOrder: number
+  isFree: boolean
+}
+
 export interface Enrollment {
   id: string
   courseId: string
@@ -349,6 +382,13 @@ export const learnerApi = {
   getCourse: (id: string) => learnerFetch<CourseDetail>(`/v1/learner/courses/${id}`),
   getCourseModules: (courseId: string) => learnerFetch<CourseModuleSummary[]>(`/v1/learner/courses/${courseId}/modules`),
   getModuleLessons: (moduleId: string) => learnerFetch<CourseLesson[]>(`/v1/learner/courses/modules/${moduleId}/lessons`),
+  getCourseLessons: (courseId: string) => learnerFetch<CourseLessonFlat[]>(`/v1/learner/courses/${courseId}/lessons`),
+  getLessonDetail: (lessonId: string) => learnerFetch<CourseLessonDetail>(`/v1/learner/courses/lessons/${lessonId}`),
+  completeLesson: (lessonId: string) =>
+    learnerFetch<{ lessonId: string; completed: boolean; courseProgressPercentage: number }>(
+      `/v1/learner/me/lessons/${lessonId}/complete`,
+      { method: "POST" },
+    ),
   enroll: (courseId: string) =>
     learnerFetch<Enrollment>("/v1/learner/me/enrollments", {
       method: "POST",
@@ -389,7 +429,7 @@ export const learnerApi = {
   removeBookmark: (id: string) =>
     learnerFetch<void>(`/v1/learner/me/bookmarks/${id}`, { method: "DELETE" }),
   checkBookmark: (targetType: string, targetId: string) =>
-    learnerFetch<{ bookmarked: boolean }>(`/v1/learner/me/bookmarks/check?targetType=${targetType}&targetId=${targetId}`),
+    learnerFetch<boolean>(`/v1/learner/me/bookmarks/check?targetType=${targetType}&targetId=${targetId}`),
   getNotifications: () => learnerFetch<LearnerNotification[]>("/v1/learner/me/notifications"),
   getUnreadCount: () => learnerFetch<{ count: number }>("/v1/learner/me/notifications/unread-count"),
   markNotificationRead: (id: string) =>
