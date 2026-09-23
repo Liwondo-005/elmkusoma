@@ -29,6 +29,7 @@ import tz.elmkusoma.learning.repository.ResourceRepository;
 import tz.elmkusoma.learner.domain.*;
 import tz.elmkusoma.learner.dto.*;
 import tz.elmkusoma.learner.repository.*;
+import tz.elmkusoma.learner.repository.LearnerGoalRepository;
 import tz.elmkusoma.learner.dto.LearningGoalResponse;
 import tz.elmkusoma.learner.dto.LearningGoalRequest;
 import tz.elmkusoma.shared.domain.User;
@@ -63,7 +64,7 @@ public class LearnerController {
     private final CertificateTemplateRepository certificateTemplateRepository;
     private final UserRepository userRepository;
     private final LiveClassParticipantRepository liveClassParticipantRepository;
-    private final LearningGoalRepository learningGoalRepository;
+    private final LearnerGoalRepository learningGoalRepository;
 
     // ── Profile ──────────────────────────────────────────────────────────
 

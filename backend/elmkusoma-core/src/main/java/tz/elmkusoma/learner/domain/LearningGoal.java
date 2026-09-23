@@ -12,8 +12,8 @@ import tz.elmkusoma.common.BaseEntity;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Entity
-@Table(name = "learning_goals")
+@Entity(name = "LearnerGoal")
+@Table(name = "learner_goals")
 @Getter
 @Setter
 @NoArgsConstructor

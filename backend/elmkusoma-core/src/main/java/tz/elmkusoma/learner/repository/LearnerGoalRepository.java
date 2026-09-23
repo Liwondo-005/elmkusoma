@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface LearningGoalRepository extends JpaRepository<LearningGoal, UUID> {
+public interface LearnerGoalRepository extends JpaRepository<LearningGoal, UUID> {
 
     List<LearningGoal> findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID userId);
 
