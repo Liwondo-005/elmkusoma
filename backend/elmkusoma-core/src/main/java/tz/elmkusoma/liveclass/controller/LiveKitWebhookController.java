@@ -20,6 +20,7 @@ public class LiveKitWebhookController {
 
     private final EventRepository eventRepository;
     private final ReplayRepository replayRepository;
+    private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
 
     @PostMapping
     public ResponseEntity<Map<String, String>> handleWebhook(
@@ -30,27 +31,34 @@ public class LiveKitWebhookController {
         log.info("LiveKit webhook received: event={}", event);
 
         if (event == null) {
+            integrationService.recordWebhook("LIVEKIT", "malformed", "FAILED", "FAILED", "Missing event field");
             return ResponseEntity.badRequest().body(Map.of("error", "Missing event field"));
         }
 
-        switch (event) {
-            case "room_started" -> log.info("Room started: {}", payload.get("room"));
-            case "room_ended" -> log.info("Room ended: {}", payload.get("room"));
-            case "participant_joined" -> log.info("Participant joined: {}", payload.get("participant"));
-            case "participant_left" -> log.info("Participant left: {}", payload.get("participant"));
-            case "recording_started" -> {
-                log.info("Recording started: {}", payload.get("egress"));
-                handleRecordingStarted(payload);
+        try {
+            switch (event) {
+                case "room_started" -> log.info("Room started: {}", payload.get("room"));
+                case "room_ended" -> log.info("Room ended: {}", payload.get("room"));
+                case "participant_joined" -> log.info("Participant joined: {}", payload.get("participant"));
+                case "participant_left" -> log.info("Participant left: {}", payload.get("participant"));
+                case "recording_started" -> {
+                    log.info("Recording started: {}", payload.get("egress"));
+                    handleRecordingStarted(payload);
+                }
+                case "recording_completed" -> {
+                    log.info("Recording completed: {}", payload.get("egress"));
+                    handleRecordingCompleted(payload);
+                }
+                case "recording_failed" -> {
+                    log.error("Recording failed: {}", payload.get("egress"));
+                    handleRecordingFailed(payload);
+                }
+                default -> log.debug("Unhandled webhook event: {}", event);
             }
-            case "recording_completed" -> {
-                log.info("Recording completed: {}", payload.get("egress"));
-                handleRecordingCompleted(payload);
-            }
-            case "recording_failed" -> {
-                log.error("Recording failed: {}", payload.get("egress"));
-                handleRecordingFailed(payload);
-            }
-            default -> log.debug("Unhandled webhook event: {}", event);
+            integrationService.recordWebhook("LIVEKIT", event, "UNVERIFIED", "SUCCESS", null);
+        } catch (Exception e) {
+            integrationService.recordWebhook("LIVEKIT", event, "UNVERIFIED", "FAILED", e.getMessage());
+            throw e;
         }
 
         return ResponseEntity.ok(Map.of("status", "ok"));

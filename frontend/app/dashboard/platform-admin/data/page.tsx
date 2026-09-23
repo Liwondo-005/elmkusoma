@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Database, Shield, Eye, Lock, Download, AlertTriangle, RefreshCw, FileCheck, Users, Building2, HardDrive, AlertCircle, Clock } from "lucide-react"
-import { platformAdminApi, type PlatformConfigItem } from "@/lib/platform-admin-api"
+import { useEffect, useState, useCallback } from "react"
+import { Database, Shield, Eye, Lock, Download, RefreshCw, FileCheck, Building2, HardDrive, AlertCircle, Clock, PlayCircle } from "lucide-react"
+import { platformAdminApi, type PlatformConfigItem, type RetentionStatus, type DataQualityCheck } from "@/lib/platform-admin-api"
 
 export default function PlatformDataGovernancePage() {
   const [exporting, setExporting] = useState(false)
@@ -11,20 +11,37 @@ export default function PlatformDataGovernancePage() {
   const [config, setConfig] = useState<PlatformConfigItem[] | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
   const [configLoading, setConfigLoading] = useState(true)
+  const [retention, setRetention] = useState<RetentionStatus | null>(null)
+  const [quality, setQuality] = useState<DataQualityCheck[] | null>(null)
+  const [sweeping, setSweeping] = useState(false)
+  const [govError, setGovError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let alive = true
-    ;(async () => {
-      setConfigLoading(true); setConfigError(null)
-      try {
-        const items = await platformAdminApi.listConfig("DATA")
-        if (alive) setConfig(items)
-      } catch (e: any) {
-        if (alive) { setConfig(null); setConfigError(e.message || "Data unavailable") }
-      } finally { if (alive) setConfigLoading(false) }
-    })()
-    return () => { alive = false }
+  const loadGov = useCallback(async () => {
+    setConfigLoading(true); setGovError(null)
+    try {
+      const [r, q, c] = await Promise.all([
+        platformAdminApi.getRetentionStatus(),
+        platformAdminApi.getDataQuality(),
+        platformAdminApi.listConfig("DATA"),
+      ])
+      setRetention(r); setQuality(q); setConfig(c)
+    } catch (e: any) {
+      setGovError(e.message || "Data unavailable")
+      setRetention(null); setQuality(null)
+    } finally { setConfigLoading(false) }
   }, [])
+
+  useEffect(() => { loadGov() }, [loadGov])
+
+  const runSweep = async () => {
+    setSweeping(true); setGovError(null)
+    try {
+      const r = await platformAdminApi.runRetentionSweep()
+      setRetention(r)
+    } catch (e: any) {
+      setGovError(e.message || "Sweep failed")
+    } finally { setSweeping(false) }
+  }
 
   const handleExport = async (type: "users" | "institutions" | "audit") => {
     setExporting(true); setExportError(null); setExportSuccess(false)
@@ -40,7 +57,7 @@ export default function PlatformDataGovernancePage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-white"><Database className="size-4" /></span> Data Governance</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Ownership, access, retention, and quality — who owns, manages, and views data across the platform. Per platform_admin.md data governance.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Ownership, retention sweep, and live data-quality checks — every number from a real query.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -70,50 +87,96 @@ export default function PlatformDataGovernancePage() {
         </div>
       </div>
 
+      {govError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+          <span className="flex items-center gap-2"><AlertCircle className="size-4" />{govError}</span>
+          <button onClick={loadGov} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Retry</button>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Lock className="size-4" /> Retention &amp; Compliance</h2>
-              <button onClick={() => platformAdminApi.listConfig("DATA").then(setConfig).catch((e) => setConfigError(e.message))} className="text-muted-foreground hover:text-foreground"><RefreshCw className="size-3.5" /></button>
+              <div className="flex items-center gap-2">
+                <button onClick={loadGov} className="text-muted-foreground hover:text-foreground" aria-label="Refresh"><RefreshCw className="size-3.5" /></button>
+                <button onClick={runSweep} disabled={sweeping}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:opacity-50">
+                  {sweeping ? <RefreshCw className="size-3.5 animate-spin" /> : <PlayCircle className="size-3.5" />} Run sweep
+                </button>
+              </div>
             </div>
             {configLoading ? (
               <div className="mt-3 animate-pulse space-y-2"><div className="h-8 rounded-lg bg-muted" /><div className="h-8 rounded-lg bg-muted" /></div>
-            ) : configError ? (
-              <p className="mt-3 flex items-center gap-1 text-xs text-red-600"><AlertCircle className="size-3.5" />{configError} — retention config unavailable.</p>
-            ) : !config || config.length === 0 ? (
-              <p className="mt-3 text-xs text-muted-foreground">No DATA retention config found. Expected keys from V69 migration.</p>
             ) : (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {config.map((c) => (
-                  <div key={c.id} className="rounded-xl border border-border bg-muted/20 p-3">
-                    <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-foreground"><Clock className="size-3" /> {c.configKey}</p>
-                    <p className="mt-1 text-lg font-bold text-foreground">{c.configValue}{c.configKey.includes("days") ? " days" : ""}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{c.description}</p>
+              <>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Archived audit logs</p>
+                    <p className="mt-1 text-lg font-bold text-foreground">{retention?.archivedAuditCount ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">of {retention?.totalAuditCount ?? "—"} total</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Purged soft-deleted reports</p>
+                    <p className="mt-1 text-lg font-bold text-foreground">{retention?.purgedSoftDeletedReports ?? "—"}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-muted/20 p-3">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Last sweep</p>
+                    <p className="mt-1 text-xs font-medium text-foreground break-all">{retention?.lastSweep ?? "Never run"}</p>
+                  </div>
+                </div>
+                {config && config.length > 0 && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {config.map((c) => (
+                      <div key={c.id} className="rounded-xl border border-border bg-muted/20 p-3">
+                        <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-foreground"><Clock className="size-3" /> {c.configKey}</p>
+                        <p className="mt-1 text-lg font-bold text-foreground">{c.configValue}{c.configKey.includes("days") ? " days" : ""}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{c.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!config || config.length === 0 ? (
+                  <p className="mt-3 text-xs text-muted-foreground">No DATA retention config found.</p>
+                ) : null}
+              </>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><FileCheck className="size-4" /> Data Quality Checks</h2>
+            {configLoading ? (
+              <div className="mt-3 h-24 animate-pulse rounded-xl bg-muted" />
+            ) : !quality ? (
+              <p className="mt-3 text-sm text-muted-foreground">Data unavailable — quality endpoint unreachable.</p>
+            ) : quality.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">No checks returned.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {quality.map((q) => (
+                  <div key={q.name} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{q.name}</p>
+                      <p className="text-xs text-muted-foreground">{q.detail}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-bold tabular-nums text-foreground">{q.count ?? "—"}</span>
+                      <span className={`rounded-full border px-2 py-0.5 font-semibold ${q.status === "OK" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : q.status === "WARN" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                        {q.status}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 text-xs">
-              <div className="rounded-xl border border-border bg-muted/20 p-3"><p className="font-bold uppercase tracking-widest">Access</p><p className="mt-1 text-muted-foreground">X-Institution-Id + JWT role gate every read. Cross-institution queries go through platform-admin API only.</p></div>
-              <div className="rounded-xl border border-border bg-muted/20 p-3"><p className="font-bold uppercase tracking-widest">Audit</p><p className="mt-1 text-muted-foreground">All data access and exports are audit-logged with actor, purpose, and scope.</p></div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><FileCheck className="size-4" /> Data Quality Issues</h2>
-            <div className="mt-3 rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
-              <AlertTriangle className="mx-auto size-8 text-amber-500" />
-              <p className="mt-2 text-sm font-semibold">No data quality issues reported</p>
-              <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">Quality signals (duplicate users, orphan enrollments, stale media, missing consent) will surface here when the data-quality endpoint is available. No fabricated issues — Data unavailable when not wired.</p>
-            </div>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Download className="size-4" /> Export (CSV, audit-logged)</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Platform-wide export via <code className="rounded bg-muted px-1">GET /v1/platform-admin/export?type=…</code>. Every export writes an audit row.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Every export writes an audit row.</p>
             <div className="mt-3 space-y-2">
               {(["users", "institutions", "audit"] as const).map((t) => (
                 <button key={t} onClick={() => handleExport(t)} disabled={exporting}
@@ -128,7 +191,7 @@ export default function PlatformDataGovernancePage() {
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="flex items-center gap-2 text-sm font-bold text-amber-800"><HardDrive className="size-4" /> Storage</p>
-            <p className="mt-1 text-xs leading-relaxed text-amber-800/80">Storage and retention quotas are pending platform policy. When available, per-institution usage and growth will be shown from verified metering — no estimates.</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800/80">Per-institution usage surfaces from verified metering when available — no estimates.</p>
           </div>
         </div>
       </div>

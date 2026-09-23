@@ -29,6 +29,9 @@ public class ParentPaymentService {
     private final EntitlementRepository entitlementRepository;
     private final AuditLogRepository auditLogRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
+
     public ParentPaymentResponse getPayments(UUID parentId) {
         List<Payment> allPayments = paymentRepository.findByParentIdAndIsDeletedFalseOrderByCreatedAtDesc(parentId);
         List<Payment> completedPayments = allPayments.stream()
@@ -60,6 +63,9 @@ public class ParentPaymentService {
     public Payment initiatePayment(UUID parentId, UUID studentId, UUID institutionId,
                                    BigDecimal amount, String serviceType, UUID serviceId,
                                    String description) {
+        if (platformPolicyService != null && !platformPolicyService.chargeEnabled()) {
+            throw new IllegalStateException("Platform policy forbids charging users");
+        }
         Payment payment = Payment.builder()
                 .parentId(parentId)
                 .studentId(studentId)

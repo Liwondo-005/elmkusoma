@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Building2, Loader2, ArrowLeft, Users, GraduationCap, BookOpen, MapPin, Phone, Mail, Calendar, Shield, ShieldOff } from "lucide-react"
-import { platformAdminApi, type InstitutionDetail } from "@/lib/platform-admin-api"
+import { Building2, Loader2, ArrowLeft, Users, GraduationCap, BookOpen, MapPin, Phone, Mail, Calendar, Shield, ShieldOff, ListChecks, CheckCircle2, Circle, AlertCircle, RefreshCw } from "lucide-react"
+import { platformAdminApi, type InstitutionDetail, type OffboardingChecklist } from "@/lib/platform-admin-api"
 
 export default function InstitutionDetailPage() {
   const params = useParams()
@@ -13,6 +13,18 @@ export default function InstitutionDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
+  const [offboarding, setOffboarding] = useState<OffboardingChecklist | null>(null)
+  const [offboardingError, setOffboardingError] = useState<string | null>(null)
+
+  const loadOffboarding = useCallback(async (institutionId: string) => {
+    setOffboardingError(null)
+    try {
+      setOffboarding(await platformAdminApi.getOffboardingChecklist(institutionId))
+    } catch (e: any) {
+      setOffboarding(null)
+      setOffboardingError(e.message || "Offboarding checklist unavailable")
+    }
+  }, [])
 
   useEffect(() => {
     if (!id) return
@@ -21,7 +33,8 @@ export default function InstitutionDetailPage() {
       .then(setInst)
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load institution"))
       .finally(() => setLoading(false))
-  }, [id])
+    loadOffboarding(id)
+  }, [id, loadOffboarding])
 
   const handleToggleStatus = async () => {
     if (!inst) return
@@ -161,6 +174,43 @@ export default function InstitutionDetailPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><ListChecks className="size-4" /> Offboarding Checklist</h2>
+          <button onClick={() => loadOffboarding(id)} className="text-muted-foreground hover:text-foreground" aria-label="Refresh offboarding"><RefreshCw className="size-3.5" /></button>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">Live readiness steps before deactivating or removing this institution.</p>
+        {offboardingError ? (
+          <p className="mt-3 flex items-center gap-1 text-sm text-red-600"><AlertCircle className="size-4" />{offboardingError}</p>
+        ) : !offboarding ? (
+          <div className="mt-3 h-16 animate-pulse rounded-xl bg-muted" />
+        ) : offboarding.steps.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">Data unavailable — no checklist steps returned.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {offboarding.steps.map((step) => {
+              const done = ["DONE", "COMPLETE", "COMPLETED", "OK", "READY", "CLEARED", "NONE"].includes(String(step.status).toUpperCase())
+              return (
+                <li key={step.step} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    {done
+                      ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                      : <Circle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{step.step}</p>
+                      {step.detail && <p className="text-xs text-muted-foreground">{step.detail}</p>}
+                    </div>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${done ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}`}>
+                    {step.status}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </div>
     </div>
   )

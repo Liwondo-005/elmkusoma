@@ -69,6 +69,14 @@ export interface PlatformHealth {
   activeUsers: number
   totalInstitutions: number
   activeInstitutions: number
+  livekitStatus?: string
+  storageStatus?: string
+  backgroundJobsStatus?: string
+  notificationsStatus?: string
+  paymentsStatus?: string
+  realtimeStatus?: string
+  mediaStatus?: string
+  heartbeatAt?: string | null
 }
 
 export interface UserSummary {
@@ -243,6 +251,79 @@ export interface ContentReport {
   resolvedAt: string | null; createdAt: string
 }
 
+export interface IntegrationStatus {
+  key: string; name: string; category: string | null
+  connectionStatus: string; lastSuccessAt: string | null; failureCount: number
+  webhookStatus: string | null; retryStatus: string | null; configStatus: string
+  diagnostics: string | null; probeDetail: string | null
+}
+
+export interface WebhookEvent {
+  id: string; source: string; eventType: string | null
+  verificationStatus: string; processingResult: string
+  errorDetails: string | null; retryCount: number
+  receivedAt: string; processedAt: string | null
+}
+
+export interface BackupStatus {
+  status: string | null; lastRunAt: string | null; lastFile: string | null
+  lastFileSizeBytes: number | null; integrityOk: boolean | null
+  backupCount: number | null; newestBackupAt: string | null; oldestBackupAt: string | null
+  backupDirectory: string; statusFilePath: string
+  scriptPresent: boolean; restoreScriptPresent: boolean
+  restoreProcedure: string; recoveryEvents: string[] | null
+}
+
+export interface PolicyFlag {
+  key: string; value: string; description: string | null; category: string | null
+}
+
+export interface RetentionStatus {
+  config: Record<string, string>
+  lastSweep: string | null
+  archivedAuditCount: number | null
+  totalAuditCount: number | null
+  purgedSoftDeletedReports: number | null
+}
+
+export interface DataQualityCheck {
+  name: string; status: string; count: number | null; detail: string
+}
+
+export interface AdminAccount {
+  userId: string; email: string; fullName: string; role: string
+  assignedRoleName: string | null; permissions: string[]; scope: string | null
+  isActive: boolean | null; createdAt: string | null; createdBy: string | null
+  lastModifiedAt: string | null; expiresAt: string | null; recentActionCount: number | null
+}
+
+export interface OffboardingStep {
+  step: string; status: string; detail: string
+}
+
+export interface OffboardingChecklist {
+  institutionId: string; institutionName: string; lifecycleStatus: string
+  steps: OffboardingStep[]
+}
+
+export interface FeatureStatus {
+  key: string; name: string; status: string; description: string | null; updatedAt: string | null
+}
+
+export interface CommunicationDelivery {
+  platformNotifications: number | null
+  learnerNotifications: number | null
+  learnerRead: number | null
+  learnerUnread: number | null
+  learnerReadRate: number | null
+  platformReadCountSum: number | null
+  deliveryNote: string | null
+}
+
+export interface AnalyticsSnapshot {
+  id: string; snapshotType: string; generatedAt: string | null; data: Record<string, unknown> | null
+}
+
 export const platformAdminApi = {
   getDashboard: () => platformFetch<PlatformDashboard>("/v1/platform-admin/dashboard"),
   getAttention: () => platformFetch<AttentionItem[]>("/v1/platform-admin/attention"),
@@ -415,4 +496,65 @@ export const platformAdminApi = {
     a.click()
     URL.revokeObjectURL(a.href)
   },
+
+  // ── BATCH 13 ──
+
+  listIntegrations: () => platformFetch<IntegrationStatus[]>("/v1/platform-admin/integrations"),
+  probeIntegration: (key: string) =>
+    platformFetch<IntegrationStatus>(`/v1/platform-admin/integrations/${key}/probe`, { method: "POST" }),
+  listWebhookEvents: (source?: string, failedOnly = false, page = 0, size = 20) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (source) params.set("source", source)
+    if (failedOnly) params.set("failedOnly", "true")
+    return platformFetch<PageResponse<WebhookEvent>>(`/v1/platform-admin/webhook-events?${params}`)
+  },
+  getBackupStatus: () => platformFetch<BackupStatus>("/v1/platform-admin/backup/status"),
+
+  listPolicies: () => platformFetch<PolicyFlag[]>("/v1/platform-admin/policies"),
+  updatePolicy: (key: string, value: boolean) =>
+    platformFetch<PolicyFlag>(`/v1/platform-admin/policies/${key}`, {
+      method: "PUT", body: JSON.stringify({ value: String(value) }),
+    }),
+
+  getRetentionStatus: () => platformFetch<RetentionStatus>("/v1/platform-admin/data-governance/retention"),
+  runRetentionSweep: () =>
+    platformFetch<RetentionStatus>("/v1/platform-admin/data-governance/retention/run", { method: "POST" }),
+  getDataQuality: () => platformFetch<DataQualityCheck[]>("/v1/platform-admin/data-governance/quality"),
+
+  assignSupportTicket: (ticketId: string, assigneeId: string | null) =>
+    platformFetch<SupportTicket>(`/v1/platform-admin/support/tickets/${ticketId}/assign`, {
+      method: "PUT", body: JSON.stringify({ assigneeId }),
+    }),
+
+  listAdmins: () => platformFetch<AdminAccount[]>("/v1/platform-admin/admins"),
+  getRolePermissions: (roleId: string) => platformFetch<string[]>(`/v1/platform-admin/roles/${roleId}/permissions`),
+  updateRolePermissions: (roleId: string, permissions: string[]) =>
+    platformFetch<string[]>(`/v1/platform-admin/roles/${roleId}/permissions`, {
+      method: "PUT", body: JSON.stringify({ permissions }),
+    }),
+
+  getOffboardingChecklist: (institutionId: string) =>
+    platformFetch<OffboardingChecklist>(`/v1/platform-admin/institutions/${institutionId}/offboarding`),
+
+  bulkContentAction: (type: "COURSE" | "EVENT" | "RESOURCE", action: "PUBLISH" | "UNPUBLISH" | "ARCHIVE" | "RESTORE", ids: string[]) =>
+    platformFetch<{ affected: number; requested: number; failures: string[] }>(
+      "/v1/platform-admin/content/bulk-action", { method: "POST", body: JSON.stringify({ type, action, ids }) }),
+
+  listFeatures: () => platformFetch<FeatureStatus[]>("/v1/platform-admin/features"),
+  updateFeatureStatus: (key: string, status: string) =>
+    platformFetch<FeatureStatus>(`/v1/platform-admin/features/${key}/status`, {
+      method: "PUT", body: JSON.stringify({ status }),
+    }),
+
+  getCommunicationDelivery: () => platformFetch<CommunicationDelivery>("/v1/platform-admin/communications/delivery"),
+
+  listAnalyticsSnapshots: (limit = 20) =>
+    platformFetch<AnalyticsSnapshot[]>(`/v1/platform-admin/analytics/snapshots?limit=${limit}`),
+  createAnalyticsSnapshot: () =>
+    platformFetch<AnalyticsSnapshot>("/v1/platform-admin/analytics/snapshots", { method: "POST" }),
+
+  revokeCertificatePlatform: (certificateId: string, reason?: string) =>
+    platformFetch<{ id: string; status: string; serialNumber: string; reason: string | null }>(
+      `/v1/platform-admin/certificates/${certificateId}/revoke`,
+      { method: "POST", body: JSON.stringify({ reason }) }),
 }

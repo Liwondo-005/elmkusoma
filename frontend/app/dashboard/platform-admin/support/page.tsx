@@ -34,6 +34,8 @@ export default function PlatformSupportPage() {
   const [search, setSearch] = useState("")
   const [pageIndex, setPageIndex] = useState(0)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [adminId, setAdminId] = useState("")
+  const [assigning, setAssigning] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -56,6 +58,17 @@ export default function PlatformSupportPage() {
     } catch (e: any) {
       setError(e.message || "Failed to update ticket")
     } finally { setUpdating(null) }
+  }
+
+  const assign = async (t: SupportTicket) => {
+    if (!adminId.trim()) { setError("Enter an admin user ID to assign"); return }
+    setAssigning(t.id); setError(null)
+    try {
+      await platformAdminApi.assignSupportTicket(t.id, adminId.trim())
+      await load()
+    } catch (e: any) {
+      setError(e.message || "Failed to assign ticket")
+    } finally { setAssigning(null) }
   }
 
   const rows = (page?.content ?? []).filter((t) =>
@@ -81,6 +94,12 @@ export default function PlatformSupportPage() {
             <option value="">All statuses</option>
             {LIFECYCLE.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          <input
+            value={adminId}
+            onChange={(e) => setAdminId(e.target.value)}
+            placeholder="Assignee admin user ID"
+            className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-mono outline-none focus:ring-2 focus:ring-ring sm:w-56"
+          />
         </div>
       </div>
 
@@ -113,6 +132,10 @@ export default function PlatformSupportPage() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
+                  <button disabled={assigning === t.id || !adminId.trim()} onClick={() => assign(t)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50">
+                    <UserCheck className="size-3" /> Assign
+                  </button>
                   {(NEXT[t.status] ?? []).map((s) => (
                     <button key={s} disabled={updating === t.id} onClick={() => advance(t, s)}
                       className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50">
