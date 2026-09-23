@@ -179,7 +179,9 @@ export default function TeacherAssignmentsPage() {
       assignmentType: a.assignmentType || "ESSAY",
       classGroupId: a.classGroupId,
       subjectId: a.subjectId,
-      dueDate: a.dueDate ? new Date(a.dueDate).toISOString().slice(0, 16) : "",
+      // Wall-clock as stored (backend LocalDateTime = server-local time, UTC+3);
+      // toISOString() would shift the edit field 3 hours back.
+      dueDate: a.dueDate ? String(a.dueDate).replace(" ", "T").slice(0, 16) : "",
       totalMarks: a.totalMarks,
       status: a.status || "DRAFT",
       attachments: a.attachments || "",
@@ -203,7 +205,9 @@ export default function TeacherAssignmentsPage() {
         assignmentType: form.assignmentType,
         classGroupId: form.classGroupId,
         subjectId: form.subjectId,
-        dueDate: form.dueDate ? new Date(form.dueDate).toISOString().slice(0, 19) : undefined,
+        // Wall-clock as picked — backend stores LocalDateTime in server-local time
+        // (UTC+3); toISOString() would store the due date 3 hours too early.
+        dueDate: form.dueDate ? (form.dueDate.length === 16 ? `${form.dueDate}:00` : form.dueDate.slice(0, 19)) : undefined,
         totalMarks: Number(form.totalMarks) || 100,
         status: form.status,
         attachments: form.attachments.trim(),

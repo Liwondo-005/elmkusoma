@@ -135,7 +135,9 @@ export default function TeacherLiveClassesPage() {
     setForm({
       title: lc.title,
       description: lc.description || "",
-      scheduledAt: lc.scheduledAt ? new Date(lc.scheduledAt).toISOString().slice(0, 16) : "",
+      // Keep the stored wall-clock time as-is (server LocalDateTime is local time,
+      // UTC+3) — toISOString() used to shift the value 3 hours in the edit field.
+      scheduledAt: lc.scheduledAt ? String(lc.scheduledAt).replace(" ", "T").slice(0, 16) : "",
       durationMinutes: lc.durationMinutes,
       maxParticipants: lc.maxParticipants || 50,
       classGroupId: lc.classGroupId || "",
@@ -170,11 +172,15 @@ export default function TeacherLiveClassesPage() {
     try {
       setSubmitting(true)
       setError(null)
-      const scheduledDate = new Date(form.scheduledAt)
       const payload: Record<string, unknown> = {
         title: form.title.trim(),
         description: form.description.trim(),
-        scheduledAt: scheduledDate.toISOString().slice(0, 19),
+        // Send the wall-clock time exactly as picked. The backend parses it as a
+        // plain LocalDateTime compared against server-local now() (UTC+3).
+        // toISOString() converted to UTC, shifting the value 3 hours into the past,
+        // so scheduling "today, in 5 minutes" failed with
+        // "Scheduled time must be in the future".
+        scheduledAt: form.scheduledAt.length === 16 ? `${form.scheduledAt}:00` : form.scheduledAt.slice(0, 19),
         durationMinutes: Number(form.durationMinutes) || 60,
         maxParticipants: Number(form.maxParticipants) || 50,
         recordingEnabled: form.enableRecording,
