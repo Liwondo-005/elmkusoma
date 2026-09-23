@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tz.elmkusoma.common.ApiResponse;
 
 import java.util.HashMap;
@@ -129,6 +130,15 @@ public class GlobalExceptionHandler {
         String message = ex.getReason() != null ? ex.getReason() : "Request failed";
         return ResponseEntity.status(ex.getStatusCode())
                 .body(ApiResponse.error(message));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(NoResourceFoundException ex) {
+        // Unknown path (e.g. a client polling an endpoint that does not exist).
+        // This is a 404, not an "unexpected" 500 - do not dump a stack trace for it.
+        log.warn("No route mapped for path: {}", ex.getResourcePath());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Endpoint not found: /" + ex.getResourcePath()));
     }
 
     @ExceptionHandler(Exception.class)

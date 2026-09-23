@@ -84,7 +84,7 @@ public class LiveClassInteractionController {
     }
 
     @GetMapping("/classes/{classId}/quizzes")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Get quizzes for a live class")
     public ResponseEntity<ApiResponse<List<LiveClassQuiz>>> getQuizzes(
             @RequestAttribute("userId") UUID userId,
@@ -93,7 +93,7 @@ public class LiveClassInteractionController {
     }
 
     @GetMapping("/quizzes/{quizId}/questions")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Get quiz questions")
     public ResponseEntity<ApiResponse<List<LiveClassQuizQuestion>>> getQuizQuestions(
             @PathVariable UUID quizId) {
@@ -101,7 +101,7 @@ public class LiveClassInteractionController {
     }
 
     @PostMapping("/quizzes/{quizId}/respond")
-    @PreAuthorize("hasRole('OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Submit quiz response")
     public ResponseEntity<ApiResponse<String>> submitQuizResponse(
             @RequestAttribute("userId") UUID userId,
@@ -182,7 +182,7 @@ public class LiveClassInteractionController {
     }
 
     @PostMapping("/polls/{pollId}/vote")
-    @PreAuthorize("hasRole('OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Vote on a poll")
     public ResponseEntity<ApiResponse<String>> votePoll(
             @RequestAttribute("userId") UUID userId,
@@ -233,7 +233,7 @@ public class LiveClassInteractionController {
     }
 
     @GetMapping("/polls/{pollId}/results")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Get poll results")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPollResults(
             @PathVariable UUID pollId) {
@@ -325,7 +325,7 @@ public class LiveClassInteractionController {
     }
 
     @GetMapping("/classes/{classId}/breakout-rooms")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Get breakout rooms for a live class")
     public ResponseEntity<ApiResponse<List<LiveClassBreakoutRoom>>> getBreakoutRooms(
             @PathVariable UUID classId) {
@@ -357,7 +357,7 @@ public class LiveClassInteractionController {
     // ==================== SHARED MEDIA ====================
 
     @PostMapping("/classes/{classId}/shared-media")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Share media during live class")
     public ResponseEntity<ApiResponse<LiveClassSharedMedia>> shareMedia(
             @RequestAttribute("userId") UUID userId,
@@ -377,7 +377,7 @@ public class LiveClassInteractionController {
     }
 
     @GetMapping("/classes/{classId}/shared-media")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Get shared media for a live class")
     public ResponseEntity<ApiResponse<List<LiveClassSharedMedia>>> getSharedMedia(
             @PathVariable UUID classId) {
@@ -387,7 +387,7 @@ public class LiveClassInteractionController {
     // ==================== ATTENDANCE DETAIL ====================
 
     @PostMapping("/classes/{classId}/attendance-detail")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Record detailed attendance entry")
     public ResponseEntity<ApiResponse<LiveClassAttendanceDetail>> recordAttendanceDetail(
             @RequestAttribute("userId") UUID userId,
@@ -408,7 +408,7 @@ public class LiveClassInteractionController {
     }
 
     @GetMapping("/classes/{classId}/attendance-detail")
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Get detailed attendance for a live class")
     public ResponseEntity<ApiResponse<List<LiveClassAttendanceDetail>>> getAttendanceDetail(
             @PathVariable UUID classId) {

@@ -39,7 +39,11 @@ public class SecurityConfig {
             "/v1/public/**",
             "/v1/certificates/verify/**",
             "/v1/institutions",
-            "/v1/institutions/{id}"
+            "/v1/institutions/{id}",
+            "/v1/webhooks/livekit",
+            // WebSocket upgrade carries the JWT as a ?token= query param and is
+            // authenticated by JwtHandshakeInterceptor, not by the header filter.
+            "/ws/**"
     };
 
     private static final String[] ADMIN_ONLY_URLS = {

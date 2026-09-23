@@ -23,9 +23,12 @@ import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
 import tz.elmkusoma.identity.repository.RevokedTokenRepository;
 import tz.elmkusoma.identity.repository.VerificationCodeRepository;
 import tz.elmkusoma.identity.service.AuthService;
+import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.student.domain.StudentClassAssignment;
+import tz.elmkusoma.student.domain.StudentStatus;
 import tz.elmkusoma.student.repository.StudentClassAssignmentRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
 
@@ -54,6 +57,13 @@ public class AuthServiceImpl implements AuthService {
     private final VerificationCodeRepository verificationCodeRepository;
     private final tz.elmkusoma.parent.repository.ParentRepository parentRepository;
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
+    private final tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
+    private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
+    private final tz.elmkusoma.academic.repository.ClassGroupRepository classGroupRepository;
+    private final tz.elmkusoma.academic.repository.AcademicYearRepository academicYearRepository;
+    private final tz.elmkusoma.enrollment.repository.EnrollmentRepository enrollmentRepository;
+
+    private static final UUID HQ_INSTITUTION_ID = UUID.fromString("a0000000-0000-0000-0000-000000000001");
 
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
@@ -69,7 +79,12 @@ public class AuthServiceImpl implements AuthService {
                            RevokedTokenRepository revokedTokenRepository,
                            VerificationCodeRepository verificationCodeRepository,
                            tz.elmkusoma.parent.repository.ParentRepository parentRepository,
-                           tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository) {
+                           tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository,
+                           tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository,
+                           tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository,
+                           tz.elmkusoma.academic.repository.ClassGroupRepository classGroupRepository,
+                           tz.elmkusoma.academic.repository.AcademicYearRepository academicYearRepository,
+                           tz.elmkusoma.enrollment.repository.EnrollmentRepository enrollmentRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -82,6 +97,11 @@ public class AuthServiceImpl implements AuthService {
         this.verificationCodeRepository = verificationCodeRepository;
         this.parentRepository = parentRepository;
         this.teacherRepository = teacherRepository;
+        this.membershipRepository = membershipRepository;
+        this.institutionRepository = institutionRepository;
+        this.classGroupRepository = classGroupRepository;
+        this.academicYearRepository = academicYearRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     private static final java.util.Set<User.Role> PUBLIC_REGISTRATION_ROLES = java.util.Set.of(
@@ -151,25 +171,24 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        user = userRepository.save(user);
-        log.info("User registered successfully: {}", user.getEmail());
-
         UUID instId = user.getInstitutionId();
-        if (role == User.Role.PARENT && instId != null) {
-            var parent = tz.elmkusoma.parent.domain.Parent.builder()
-                    .userId(user.getId())
-                    .relationshipType(tz.elmkusoma.parent.domain.Parent.RelationshipType.GUARDIAN)
-                    .build();
-            parent.setInstitutionId(instId);
-            parentRepository.save(parent);
-        } else if (role == User.Role.TEACHER && instId != null) {
-            var teacher = tz.elmkusoma.teacher.domain.Teacher.builder()
-                    .userId(user.getId())
-                    .status(tz.elmkusoma.teacher.domain.TeacherStatus.ACTIVE)
-                    .build();
-            teacher.setInstitutionId(instId);
-            teacherRepository.save(teacher);
+        if (instId == null) {
+            instId = resolveDefaultInstitutionId();
+            user.setInstitutionId(instId);
         }
+        user = userRepository.save(user);
+
+        ensureMembership(user, instId, role);
+
+        if (role == User.Role.STUDENT || role == User.Role.OTHER_LEARNER) {
+            ensureStudentProfile(user, instId);
+        } else if (role == User.Role.PARENT) {
+            ensureParentProfile(user, instId);
+        } else if (role == User.Role.TEACHER) {
+            ensureTeacherProfile(user, instId);
+        }
+
+        log.info("User registered successfully: {}", user.getEmail());
 
         String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
                 user.getEmail(), user.getId(), user.getRole().name(), instId);
@@ -182,6 +201,93 @@ public class AuthServiceImpl implements AuthService {
                 .expiresIn(accessTokenExpirationMs / 1000)
                 .user(buildUserInfo(user))
                 .build();
+    }
+
+    private UUID resolveDefaultInstitutionId() {
+        return institutionRepository.findByIdAndIsDeletedFalse(HQ_INSTITUTION_ID)
+                .map(tz.elmkusoma.shared.domain.Institution::getId)
+                .orElse(HQ_INSTITUTION_ID);
+    }
+
+    private void ensureMembership(User user, UUID institutionId, User.Role role) {
+        if (institutionId == null || user.getId() == null) {
+            return;
+        }
+        if (membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(user.getId(), institutionId)) {
+            return;
+        }
+        InstitutionMembership.Role membershipRole = switch (role) {
+            case TEACHER -> InstitutionMembership.Role.TEACHER;
+            case PARENT -> InstitutionMembership.Role.PARENT;
+            case STUDENT, OTHER_LEARNER -> InstitutionMembership.Role.STUDENT;
+            default -> InstitutionMembership.Role.STUDENT;
+        };
+        InstitutionMembership membership = InstitutionMembership.builder()
+                .userId(user.getId())
+                .institutionId(institutionId)
+                .role(membershipRole)
+                .isActive(true)
+                .isDeleted(false)
+                .build();
+        membershipRepository.save(membership);
+    }
+
+    private void ensureStudentProfile(User user, UUID institutionId) {
+        if (studentRepository.existsByUserIdAndIsDeletedFalse(user.getId())) {
+            return;
+        }
+        Student student = Student.builder()
+                .userId(user.getId())
+                .admissionNumber(generateAdmissionNumber())
+                .status(StudentStatus.ACTIVE)
+                .enrollmentDate(java.time.LocalDate.now())
+                .build();
+        student.setInstitutionId(institutionId);
+        studentRepository.save(student);
+    }
+
+    private void ensureParentProfile(User user, UUID institutionId) {
+        if (institutionId == null) {
+            return;
+        }
+        if (parentRepository.findByUserIdAndIsDeletedFalse(user.getId()).isPresent()) {
+            return;
+        }
+        var parent = tz.elmkusoma.parent.domain.Parent.builder()
+                .userId(user.getId())
+                .relationshipType(tz.elmkusoma.parent.domain.Parent.RelationshipType.GUARDIAN)
+                .build();
+        parent.setInstitutionId(institutionId);
+        parentRepository.save(parent);
+    }
+
+    private void ensureTeacherProfile(User user, UUID institutionId) {
+        if (institutionId == null) {
+            return;
+        }
+        if (teacherRepository.findByUserIdAndInstitutionId(user.getId(), institutionId).isPresent()) {
+            return;
+        }
+        var teacher = tz.elmkusoma.teacher.domain.Teacher.builder()
+                .userId(user.getId())
+                .status(tz.elmkusoma.teacher.domain.TeacherStatus.ACTIVE)
+                .build();
+        teacher.setInstitutionId(institutionId);
+        teacherRepository.save(teacher);
+    }
+
+    private String generateAdmissionNumber() {
+        String candidate;
+        int attempts = 0;
+        do {
+            candidate = "ADM-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
+            attempts++;
+            if (attempts > 10) {
+                candidate = "ADM-" + System.currentTimeMillis();
+                break;
+            }
+        } while (studentRepository.existsByAdmissionNumberAndIsDeletedFalse(candidate));
+        return candidate;
     }
 
     @Override

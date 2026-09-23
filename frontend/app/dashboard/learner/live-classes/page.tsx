@@ -15,7 +15,10 @@ export default function LearnerLiveClassesPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
+    if (!user || (user.role !== "Other Learner" && user.role !== "Student")) {
+      setLoading(false)
+      return
+    }
     loadLiveClasses()
   }, [user])
 
@@ -91,11 +94,21 @@ export default function LearnerLiveClassesPage() {
   })
 
   const upcomingClasses = filteredClasses.filter((cls) => cls.status === "SCHEDULED")
-  const liveNowClasses = filteredClasses.filter((cls) => cls.status === "IN_PROGRESS")
+  const liveNowClasses = filteredClasses.filter((cls) => cls.status === "IN_PROGRESS" || cls.status === "LIVE")
   const pastClasses = filteredClasses.filter((cls) => cls.status === "COMPLETED" || cls.status === "CANCELLED")
 
-  if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
+  if (authLoading) {
     return <LoadingState />
+  }
+
+  if (!user || (user.role !== "Other Learner" && user.role !== "Student")) {
+    return (
+      <EmptyState
+        icon={<AlertCircle className="size-8" />}
+        title="Learners only"
+        description="Sign in with a learner account to view live classes."
+      />
+    )
   }
 
   return (

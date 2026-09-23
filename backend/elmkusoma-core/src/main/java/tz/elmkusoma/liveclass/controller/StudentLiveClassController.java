@@ -15,7 +15,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/student/live-classes")
+// Both prefixes are exposed: the frontend rewrites /api/v1/* -> /v1/* while some
+// clients call the /api/v1/* form directly against the backend base URL.
+@RequestMapping({"/api/v1/student/live-classes", "/v1/student/live-classes"})
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER')")
 public class StudentLiveClassController {
@@ -59,6 +61,9 @@ public class StudentLiveClassController {
     }
 
     @GetMapping("/live-now")
+    // Read-only, institution-scoped "live now" list also used by the dashboard sidebar
+    // badge for every role - the class-level student-only restriction does not apply here.
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'TEACHER', 'ADMIN', 'INSTITUTION_ADMIN', 'PARENT')")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getLiveNow(HttpServletRequest request) {
         UUID institutionId = getInstitutionId(request);
         if (institutionId == null) {
