@@ -102,6 +102,21 @@ Membership roles (`InstitutionMembership`): `OWNER` · `ADMIN` · `TEACHER` · `
 
 Example: Role = STUDENT + Context = PRIMARY routes to the primary experience; Role = STUDENT + Context = SECONDARY + FORM_4 routes to the secondary experience; Role = OTHER_LEARNER uses the general learner portal. Never confuse educational level with authorization role.
 
+Workspace dispatch after login (enforced in three layers — `proxy.ts` route guard, dashboard `AuthGuard` layout, per-world `layout.tsx` guards):
+
+| Who | Workspace |
+|---|---|
+| Student + NURSERY | `/dashboard/nursery` |
+| Student + PRIMARY | `/dashboard` (generic primary branch) |
+| Student + SECONDARY | `/dashboard/secondary` |
+| Student + COLLEGE/VETA/UNIVERSITY | `/dashboard/learner` (HE branch) |
+| Other Learner | `/dashboard/learner` (Other Learner branch) |
+| Teacher | `/dashboard/teacher` |
+| Parent | `/dashboard/parent` |
+| Institution Admin | `/dashboard/admin` |
+| Platform Admin (`ADMIN`) | `/dashboard/platform-admin` |
+| National/Regional/District Admin | `/oversight` |
+
 ---
 
 ## 8. How the Whole Platform Works
@@ -184,6 +199,10 @@ Dashboard · classes · students · learner-support · lessons · courses · ass
 
 Flow: create course → add modules/lessons → publish → enroll learners → assign/practice → assess → grade with feedback → track attendance → go live → record → share replay → notify.
 
+Lecturer workspace (`/dashboard/lecturer`: courses, live-dashboard with polling and start/end windows) mirrors the teacher console for higher-education teaching.
+
+> **Student list showing 0/stale (documented, workaround known):** students register successfully but a teacher's Students/Classes pages can show 0. Documented cause: missing `StudentClassEnrollment`/`TeacherAssignment` linking student and teacher to the same `classGroupId` — a data-seeding/assignment gap, not a UI defect (the frontend correctly calls `getStudentsByClass`). Workaround: via Admin → People (or Institution Admin → Organization), set the student's `classGroupId` and the teacher's `TeacherAssignment` to the same group. Permanent fix (backend enrollment linking) is pending.
+
 > **Student visibility:** whether a teacher reliably sees all registered students in their list was flagged as a concern during audits but the specific defect was NOT VERIFIED in repository inspection. Treated as a KNOWN DOCUMENTATION GAP, not a confirmed bug.
 
 ("Lecturer" exists as a frontend workspace label; no `LECTURER` backend role — lecturer access is governed by `TEACHER`/membership roles.)
@@ -216,7 +235,7 @@ Sharply distinct from Institution Admin (own-institution only) and Oversight (re
 
 ## 15. Education Oversight & Intelligence
 
-National → Region → District → institutions/schools → performance/attendance/curriculum/assessments/live-classes/reports/alerts (`/v1/oversight/*`; UI `/oversight/*` + `/dashboard/{national,regional,district}/*`). Jurisdiction-based read access (`NATIONAL/REGIONAL/DISTRICT_ADMIN`); live observation via OBSERVER role. No write access to learning data. **Ward level: NOT VERIFIED** (no ward entity or field found).
+National → Region → District → institutions/schools → performance/attendance/curriculum/assessments/live-classes/reports/alerts (`/v1/oversight/*`; UI `/oversight/*` + `/dashboard/{national,regional,district}/*`). Jurisdiction-based read access (`NATIONAL/REGIONAL/DISTRICT_ADMIN`); live observation via OBSERVER role. No write access to learning data. **Ward level: no ward implementation exists — district subsumes ward-level concerns.**
 
 ---
 
@@ -246,7 +265,7 @@ Core learning capability:
 Teach → Schedule → Prepare → Go Live → Interact → Attend → Record → Store → Replay → Learn → Analyze
 ```
 
-Teachers schedule/prepare/start/end classes (lobby, recurring, timezone-aware); learners find eligible sessions, join, use audio/video/screen-share, interact, accrue attendance, leave, and continue via replay. Administrators/oversight observe (OBSERVER). Frontend classroom: `components/live/live-classroom.tsx` (LiveKit client); preparation/preflight/waiting flows verified as routes.
+Teachers schedule/prepare/start/end classes (lobby, recurring, timezone-aware); learners find eligible sessions, join, use audio/video/screen-share, interact, accrue attendance, leave, and continue via replay. Starting is guarded by a start window (15 min before → 60 min after scheduled time). If LiveKit is unavailable the classroom degrades gracefully to chat-only WebSocket mode (not a failure). Replay playback restores saved position and offers speed/fullscreen controls. Administrators/oversight observe (OBSERVER). Frontend classroom: `components/live/live-classroom.tsx` (LiveKit client); preparation/preflight/waiting flows verified as routes.
 
 ---
 
@@ -270,7 +289,7 @@ Typed resources (DOCUMENT/VIDEO/IMAGE/AUDIO/LINK/OTHER) with institution-scoped 
 
 ## 23. Certificates
 
-Templates → generation (serials `CERT-<TYPE>-<year>-<digits>`, 16-char verification codes) → issue (DRAFT→ISSUED + learner notification) → public verification (`GET /v1/certificates/verify/{code}`, `permitAll`; UI `/certificates/verify`) → revocation (audited + security event). Statuses: DRAFT/ISSUED/REVOKED. Transcripts parallel this flow. NFE mirror exists. Rate-limited (10/min, single-instance semantics).
+Templates → generation (serials `CERT-<TYPE>-<year>-<digits>`, 16-char verification codes) → issue (DRAFT→ISSUED + learner notification) → public verification (`GET /v1/certificates/verify/{code}`, `permitAll`; UI `/certificates/verify` and `/certificates/verify/[code]`) → revocation (audited + security event). Statuses: DRAFT/ISSUED/REVOKED. Transcripts parallel this flow. NFE mirror exists. Rate-limited (10/min, single-instance semantics).
 
 ---
 
@@ -307,7 +326,7 @@ Workers ◀── RabbitMQ ──▶ mail, certificates (OpenPDF)
 
 ## 28. Frontend Architecture
 
-Next.js `16.3.3` App Router + React 19 + TypeScript `5.7.3` + Tailwind `4.3.3`; `next-intl` (EN `61KB` + SW `50KB` message files); `react-hook-form` + `zod`; shadcn/base-ui components; `@livekit/components-react` + `livekit-client`; Playwright e2e. Routes: 15 public groups + ~50 dashboard workspaces (role/level routed). API via `next.config.mjs` rewrites (`/v1/:path*`, `/api/v1/:path*` → backend; `/api/v1/media/:path*` → media; `/ws/:path*` → realtime). `output: standalone`. (Deeper UX detail was Developer 02's scope; its document was absent — behaviors above are route/component-verified only.)
+Next.js `16.3.3` App Router + React 19 + TypeScript `5.7.3` + Tailwind `4.3.3`; `next-intl` 4.14.x (EN + SW message files, locale switcher, `NEXT_LOCALE` cookie); `react-hook-form` + `zod`; shadcn/base-ui components; `@livekit/components-react` + `livekit-client`; Playwright e2e. Routes: 15 public groups + ~50 dashboard workspaces (role/level routed, guarded by `proxy.ts` + `AuthGuard` + per-world layouts). API via `next.config.mjs` rewrites (`/v1/:path*`, `/api/v1/:path*` → backend; `/api/v1/media/:path*` → media; `/ws/:path*` → realtime). `output: standalone`. (Deeper UX detail was Developer 02's scope; its document was absent — behaviors above are route/component-verified only.)
 
 ---
 
@@ -325,7 +344,7 @@ PostgreSQL 16, ~170 tables. `BaseEntity`: UUID id, `institution_id`, timestamps,
 
 ## 31. Authentication & Authorization
 
-JWT access (1h) + refresh (7d, hash-revoked), BCrypt passwords, 10 auth endpoints (register/login/refresh/me/forgot/reset/verify-email/logout/send-code/verify-code), reset + email-verification token tables, throttled 5-digit codes. Authorization via `@PreAuthorize` role expressions + membership-derived request identity (`userId/userEmail/userRole/institutionId`). Public: `/v1/auth/**`, `/v1/public/**`, `/v1/certificates/verify/**`, institution reads.
+JWT access (1h) + refresh (7d, hash-revoked), BCrypt passwords, 10 auth endpoints (register/login/refresh/me/forgot/reset/verify-email/logout/send-code/verify-code), reset + email-verification token tables, throttled 5-digit codes. Registration UX: role-restricted roles, `learningLevel` for students, password rules, agree-to-terms, rotated 5-digit captcha; frontend maps display roles to backend values (`Other Learner→OTHER_LEARNER`, Teacher/Lecturer/Facilitator→TEACHER). Session persists via `elmkusoma_current_user` + token artifacts with frontend-managed lifetimes and auto-refresh; route protection runs in three layers (`proxy.ts`, dashboard `AuthGuard`, per-world layouts). Authorization via `@PreAuthorize` role expressions + membership-derived request identity (`userId/userEmail/userRole/institutionId`). Public: `/v1/auth/**`, `/v1/public/**`, `/v1/certificates/verify/**`, institution reads.
 
 ---
 
@@ -432,6 +451,8 @@ NEXT_PUBLIC_API_URL=/api
 BACKEND_URL=http://localhost:8080  MEDIA_URL=http://localhost:8083  REALTIME_URL=http://localhost:8081
 ```
 
+Extra frontend variables (verified in code/config): `NEXT_PUBLIC_API_BASE` (alias used by live calls), `NEXT_PUBLIC_WS_HOST`/`NEXT_PUBLIC_WS_PORT` and `NEXT_PUBLIC_REALTIME_HOST`/`NEXT_PUBLIC_REALTIME_PORT` (legacy WS addressing), `NEXT_PUBLIC_LIVEKIT_URL` (runtime SFU URL from join handshake), `NEXT_LOCALE` (cookie `en`/`sw`, set by the locale toggle, default `en`).
+
 ### LiveKit
 
 `LIVEKIT_URL` (`ws://localhost:7880` default), `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`; ingress/egress toggles off by default.
@@ -497,6 +518,8 @@ Verify: frontend 200 at `/`, backend reachable (`/v1/certificates/verify/{code}`
 
 Infrastructure (DB/Redis/RabbitMQ up) → Database (Flyway V01–V70 applied) → Backend (`mvn test`, boot without errors) → LiveKit (separate stack if testing live) → Frontend (build passes) → Registration (4 public roles) → Login (tokens issued) → Role routing (correct workspace) → Learner workspace → Enrollment → Course/Learning (progress accrues) → Teacher (content/grading) → Live (schedule→join→interact→attendance→recording→replay). Mark LiveKit-dependent stages unsupported without the live stack.
 
+Two-browser live test (mandatory for live changes — Chrome + Incognito/Firefox): Browser A = Teacher (schedule → prepare → start at `/live-classes/{id}`), Browser B = Learner (see LIVE pill → join → verify teacher crown, A/V, chat, hand-raise with position). Verify both participant panes stay consistent, mute/kick flows work teacher-side, reconnect backoff appears on network drop, and chat-only banner (not a failure) appears when LiveKit is down.
+
 ---
 
 ## 46. Live Streaming Testing
@@ -532,6 +555,13 @@ Create (DRAFT) → publish → registration opens → learner registers → mate
 | 403 on valid login | Role lacks endpoint authorization; check membership/institution scope |
 | Frontend OOM during dev | Use production `npm start` on low-RAM machines |
 | Live join fails | LiveKit stack not running / keys misconfigured; check `:7880` |
+| Stale `.next` types after route moves | Delete `frontend/.next` and rebuild |
+| `cross-env: not found` on build | Reinstall deps (`npm install`); or run `next build` with `NODE_OPTIONS` directly |
+| Ambiguous lesson routes | Keep one lesson route (`[id]/lessons/[lessonId]`); remove duplicates |
+| WebSocket kicked right after join | Institution mismatch — learner and teacher must share `institutionId`; use `learnerApi` (adds header), not raw fetch |
+| Teacher cannot start (start guard) | Outside the 15-min-before → 60-min-after window; schedule near-term for tests |
+| "Chat only" banner in classroom | Expected graceful degradation when LiveKit is down — chat/polls still work |
+| Replay 404 / not playing | MinIO down or no persisted recording (Egress unconfigured); check `MEDIA_URL` |
 | Swagger UI forbidden | By design — ADMIN role required |
 
 ---
@@ -580,7 +610,7 @@ Backend: 18 test classes (unit + MockMvc integration + security), run `mvn test`
 
 | Issue | Area | Status | Evidence / Notes |
 |---|---|---|---|
-| Teacher student-list visibility concern | Teacher | NOT VERIFIED | Flagged in audits; specific defect not reproduced in code — documentation gap, not confirmed bug |
+| Teacher student-list visibility concern | Teacher | DOCUMENTED (workaround known) | Students register but teacher list can show 0: missing class-group linking (see §11). Workaround via Admin → People; permanent enrollment-linking fix pending |
 | V60 duplicate-migration concern | Flyway | RESOLVED | Single V60 file; secondary-stage migration is V65; V01–V70 contiguous, no gaps/duplicates |
 | DB history vs files mismatch | Flyway | NOT VERIFIED | Requires live `flyway_schema_history` comparison; procedure in §41 |
 | No DB foreign keys | Database | KNOWN LIMITATION | Raw-UUID pattern; integrity is application-enforced |
@@ -591,11 +621,12 @@ Backend: 18 test classes (unit + MockMvc integration + security), run `mvn test`
 | Duplicate concept tables | Database | PARTIAL (consolidating) | LearningGoal pair, Certificate/NFE pairs; distinct ownership until unified |
 | Dev-default secrets | Config | KNOWN LIMITATION | Override all placeholders via env outside local dev |
 | No CI | Quality | KNOWN LIMITATION | Manual test runs only |
+| Media API prefix drift | Media | KNOWN LIMITATION | `mediaApi` uses `/api/v1/media` while learner resources use `/v1/learner/resources` — unify to avoid confusion |
 | LiveKit outside main compose | Live | KNOWN LIMITATION | Separate stack required for live features |
-| Ward-level oversight | Oversight | NOT VERIFIED | No ward entity/field found |
+| Ward-level oversight | Oversight | DOCUMENTED ABSENT | No ward entity/field; district subsumes ward-level concerns |
 
 ---
 
 ## 54. Production Readiness Notes
 
-Do not deploy without: real `DB_PASSWORD`/`JWT_SECRET`/LiveKit/MinIO credentials (no defaults in core); `application-prod.yml` profile (validate + enforce); CORS tightening if the allowlist exceeds deployment domains; per-endpoint authorization re-audit (header institution sources, ownership checks); multi-instance review of in-memory rate limits; Flyway history reconciliation; backup/restore drill (`infrastructure/scripts/`);  
+Do not deploy without: real `DB_PASSWORD`/`JWT_SECRET`/LiveKit/MinIO credentials (no defaults in core); `application-prod.yml` profile (validate + enforce); CORS tightening if the allowlist exceeds deployment domains; per-endpoint authorization re-audit (header institution sources, ownership checks); multi-instance review of in-memory rate limits; Flyway history reconciliation; backup/restore drill (`infrastructure/scripts/`); offline/PWA absent — no service worker, online-only assumed.  
