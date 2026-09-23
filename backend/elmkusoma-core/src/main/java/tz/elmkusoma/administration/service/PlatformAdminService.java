@@ -26,6 +26,10 @@ import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
+import tz.elmkusoma.course.repository.CourseRepository;
+import tz.elmkusoma.event.repository.EventRepository;
+import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
+import tz.elmkusoma.learning.repository.ResourceRepository;
 import tz.elmkusoma.parent.repository.PaymentRepository;
 import tz.elmkusoma.parent.repository.EntitlementRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
@@ -40,6 +44,9 @@ import java.util.stream.Collectors;
 @Slf4j
 @Transactional
 public class PlatformAdminService {
+
+    /** Platform-scope audit rows must reference the national HQ institution (audit_logs.institution_id NOT NULL + FK). */
+    static final UUID PLATFORM_INSTITUTION_ID = UUID.fromString("a0000000-0000-0000-0000-000000000001");
 
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
@@ -57,6 +64,13 @@ public class PlatformAdminService {
     private final PlatformNotificationRepository notificationRepository;
     private final AdminDelegationRepository delegationRepository;
     private final VerificationRecordRepository verificationRepository;
+    private final CourseRepository courseRepository;
+    private final EventRepository eventRepository;
+    private final MediaAssetRepository mediaAssetRepository;
+    private final ResourceRepository resourceRepository;
+    private final ProviderServiceEntitlementRepository providerEntitlementRepository;
+    private final ContentReportRepository contentReportRepository;
+    private final tz.elmkusoma.parent.repository.SupportTicketRepository supportTicketRepository;
 
     // ── Command Center ──
 
@@ -154,11 +168,18 @@ public class PlatformAdminService {
 
     @Transactional(readOnly = true)
     public PlatformHealthResponse getPlatformHealth() {
-        long totalUsers = userRepository.countByIsDeletedFalse();
-        long totalInstitutions = institutionRepository.countByIsDeletedFalse();
-
+        String dbStatus = "Operational";
+        long totalUsers = 0; long totalInstitutions = 0;
+        try {
+            totalUsers = userRepository.countByIsDeletedFalse();
+            totalInstitutions = institutionRepository.countByIsDeletedFalse();
+            // probe DB - if counts succeed, DB is operational
+        } catch (Exception e) {
+            dbStatus = "Failing";
+            log.warn("Health DB probe failed: {}", e.getMessage());
+        }
         return PlatformHealthResponse.builder()
-                .databaseStatus("Operational")
+                .databaseStatus(dbStatus)
                 .apiStatus("Operational")
                 .totalUsers(totalUsers)
                 .activeUsers(totalUsers)
@@ -202,8 +223,26 @@ public class PlatformAdminService {
     public UserSummaryResponse updateUserStatus(UUID userId, boolean active) {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        if (!active && User.Role.ADMIN.equals(user.getRole())) {
+            long activeAdmins = userRepository.countByRoleAndIsDeletedFalse(User.Role.ADMIN);
+            // count only active; if last active admin, block
+            long activeCount = userRepository.findByRoleAndIsDeletedFalse(User.Role.ADMIN, PageRequest.of(0, 1000)).getContent().stream().filter(u -> Boolean.TRUE.equals(u.getIsActive())).count();
+            if (activeCount <= 1) {
+                throw new IllegalStateException("Cannot suspend the last active Platform Admin - at least one recovery path must remain");
+            }
+        }
         user.setIsActive(active);
         userRepository.save(user);
+        AuditLog al = new AuditLog();
+        al.setInstitutionId(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID);
+        al.setUserId(userId);
+        al.setEntityType("USER");
+        al.setEntityId(userId);
+        al.setEntityName(user.getEmail());
+        al.setAction(active ? AuditLog.AuditAction.UPDATE : AuditLog.AuditAction.UPDATE);
+        al.setOldValues(Map.of("isActive", !active));
+        al.setNewValues(Map.of("isActive", active));
+        auditLogRepository.save(al);
         log.info("User {} {} by platform admin", userId, active ? "activated" : "suspended");
         return toUserSummary(user);
     }
@@ -258,9 +297,112 @@ public class PlatformAdminService {
         Institution inst = institutionRepository.findByIdAndIsDeletedFalse(institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", institutionId));
         inst.setIsActive(active);
+        inst.setStatus(active ? "ACTIVE" : "SUSPENDED");
         institutionRepository.save(inst);
+        writeAudit(inst.getId(), "INSTITUTION", institutionId, inst.getName(), "UPDATE",
+                Map.of("isActive", !active), Map.of("isActive", active));
         log.info("Institution {} {} by platform admin", institutionId, active ? "activated" : "suspended");
         return toInstitutionSummary(inst);
+    }
+
+    // ── Institution Lifecycle (offboarding per spec: ACTIVE → SUSPENDED → DEACTIVATED → ARCHIVED) ──
+
+    private static final Set<String> LIFECYCLE_STATUSES = Set.of("ACTIVE", "SUSPENDED", "DEACTIVATED", "ARCHIVED");
+    private static final Map<String, Set<String>> LIFECYCLE_TRANSITIONS = Map.of(
+            "ACTIVE", Set.of("SUSPENDED", "DEACTIVATED", "ARCHIVED"),
+            "SUSPENDED", Set.of("ACTIVE", "DEACTIVATED", "ARCHIVED"),
+            "DEACTIVATED", Set.of("ACTIVE", "ARCHIVED", "SUSPENDED"),
+            "ARCHIVED", Set.of("ACTIVE", "SUSPENDED")
+    );
+
+    public InstitutionSummaryResponse updateInstitutionLifecycle(UUID institutionId, String status) {
+        if (status == null || !LIFECYCLE_STATUSES.contains(status.toUpperCase())) {
+            throw new IllegalArgumentException("Invalid lifecycle status. Allowed: " + LIFECYCLE_STATUSES);
+        }
+        String target = status.toUpperCase();
+        Institution inst = institutionRepository.findByIdAndIsDeletedFalse(institutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", institutionId));
+        String current = inst.getStatus() != null ? inst.getStatus() : "ACTIVE";
+        if (current.equals(target)) {
+            return toInstitutionSummary(inst);
+        }
+        if (!LIFECYCLE_TRANSITIONS.getOrDefault(current, Set.of()).contains(target)) {
+            throw new IllegalStateException("Invalid lifecycle transition: " + current + " → " + target);
+        }
+        String oldStatus = current;
+        inst.setStatus(target);
+        inst.setIsActive("ACTIVE".equals(target));
+        institutionRepository.save(inst);
+        writeAudit(institutionId, "INSTITUTION", institutionId, inst.getName(), "UPDATE",
+                Map.of("status", oldStatus), Map.of("status", target));
+        log.info("Institution {} lifecycle: {} → {} by platform admin", institutionId, oldStatus, target);
+        return toInstitutionSummary(inst);
+    }
+
+    // ── Provider Quotas / Entitlements ──
+
+    @Transactional(readOnly = true)
+    public List<ProviderQuotaResponse> listProviderQuotas(UUID providerId) {
+        return providerEntitlementRepository.findByProviderIdAndIsDeletedFalse(providerId).stream()
+                .map(ent -> {
+                    PlatformService svc = platformServiceRepository.findById(ent.getServiceId()).orElse(null);
+                    return ProviderQuotaResponse.builder()
+                            .id(ent.getId())
+                            .providerId(ent.getProviderId())
+                            .serviceId(ent.getServiceId())
+                            .serviceName(svc != null ? svc.getName() : null)
+                            .serviceCode(svc != null ? svc.getCode() : null)
+                            .status(ent.getStatus())
+                            .seatsUsed(ent.getSeatsUsed())
+                            .maxSeats(ent.getMaxSeats())
+                            .expiresAt(ent.getExpiresAt())
+                            .createdAt(ent.getCreatedAt())
+                            .build();
+                })
+                .toList();
+    }
+
+    public ProviderQuotaResponse updateProviderEntitlement(UUID entitlementId, EntitlementUpdateRequest req) {
+        ProviderServiceEntitlement ent = providerEntitlementRepository.findById(entitlementId)
+                .orElseThrow(() -> new ResourceNotFoundException("Entitlement", "id", entitlementId));
+        Integer oldMax = ent.getMaxSeats();
+        String oldStatus = ent.getStatus();
+        if (req.getMaxSeats() != null) {
+            int used = ent.getSeatsUsed() != null ? ent.getSeatsUsed() : 0;
+            if (req.getMaxSeats() < used) {
+                throw new IllegalStateException("maxSeats (" + req.getMaxSeats() + ") cannot be below seats used (" + used + ")");
+            }
+            ent.setMaxSeats(req.getMaxSeats());
+        }
+        if (req.getStatus() != null && !req.getStatus().isBlank()) {
+            ent.setStatus(req.getStatus().toUpperCase());
+        }
+        providerEntitlementRepository.save(ent);
+        writeAudit(ent.getInstitutionId(), "ENTITLEMENT", entitlementId, String.valueOf(ent.getServiceId()), "UPDATE",
+                Map.of("maxSeats", String.valueOf(oldMax), "status", String.valueOf(oldStatus)),
+                Map.of("maxSeats", String.valueOf(ent.getMaxSeats()), "status", String.valueOf(ent.getStatus())));
+        log.info("Provider entitlement {} updated: maxSeats {} → {}, status {} → {}",
+                entitlementId, oldMax, ent.getMaxSeats(), oldStatus, ent.getStatus());
+        PlatformService svc = platformServiceRepository.findById(ent.getServiceId()).orElse(null);
+        return ProviderQuotaResponse.builder()
+                .id(ent.getId()).providerId(ent.getProviderId()).serviceId(ent.getServiceId())
+                .serviceName(svc != null ? svc.getName() : null).serviceCode(svc != null ? svc.getCode() : null)
+                .status(ent.getStatus()).seatsUsed(ent.getSeatsUsed()).maxSeats(ent.getMaxSeats())
+                .expiresAt(ent.getExpiresAt()).createdAt(ent.getCreatedAt()).build();
+    }
+
+    private void writeAudit(UUID institutionId, String entityType, UUID entityId, String entityName, String action,
+                            Map<String, Object> oldValues, Map<String, Object> newValues) {
+        AuditLog al = new AuditLog();
+        al.setInstitutionId(institutionId != null ? institutionId : PLATFORM_INSTITUTION_ID);
+        al.setUserId(null);
+        al.setEntityType(entityType);
+        al.setEntityId(entityId);
+        al.setEntityName(entityName);
+        al.setAction(AuditLog.AuditAction.valueOf(action));
+        al.setOldValues(oldValues);
+        al.setNewValues(newValues);
+        auditLogRepository.save(al);
     }
 
     // ── Live Classes ──
@@ -378,8 +520,25 @@ public class PlatformAdminService {
 
     @Transactional(readOnly = true)
     public List<AuditLogResponse> getAuditLogs(int page, int size, String action, String entityType) {
-        Page<AuditLog> logs = auditLogRepository.findAll(
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<AuditLog> logs;
+        PageRequest pr = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        boolean hasAction = action != null && !action.isBlank();
+        boolean hasEntity = entityType != null && !entityType.isBlank();
+        try {
+            if (hasAction && hasEntity) {
+                AuditLog.AuditAction act = AuditLog.AuditAction.valueOf(action.toUpperCase());
+                logs = auditLogRepository.findByActionAndEntityTypeAndIsDeletedFalse(act, entityType.toUpperCase(), pr);
+            } else if (hasAction) {
+                AuditLog.AuditAction act = AuditLog.AuditAction.valueOf(action.toUpperCase());
+                logs = auditLogRepository.findByActionAndIsDeletedFalse(act, pr);
+            } else if (hasEntity) {
+                logs = auditLogRepository.findByEntityTypeAndIsDeletedFalse(entityType.toUpperCase(), pr);
+            } else {
+                logs = auditLogRepository.findAll(pr);
+            }
+        } catch (IllegalArgumentException e) {
+            logs = auditLogRepository.findAll(pr);
+        }
 
         return logs.getContent().stream()
                 .map(log -> AuditLogResponse.builder()
@@ -404,29 +563,55 @@ public class PlatformAdminService {
     @Transactional(readOnly = true)
     public List<GlobalSearchResult> globalSearch(String query, String type, int limit) {
         List<GlobalSearchResult> results = new ArrayList<>();
+        String q = query == null ? "" : query.toLowerCase();
 
         if (type == null || type.equalsIgnoreCase("user") || type.equalsIgnoreCase("all")) {
-            Page<User> users = userRepository.findBySearchTermAndIsDeletedFalse(query, PageRequest.of(0, limit));
-            results.addAll(users.getContent().stream()
-                    .map(u -> GlobalSearchResult.builder()
-                            .type("USER")
-                            .id(u.getId())
-                            .title(u.getFirstName() + " " + u.getLastName())
-                            .subtitle(u.getEmail())
-                            .build())
-                    .toList());
+            try {
+                Page<User> users = userRepository.findBySearchTermAndIsDeletedFalse(query, PageRequest.of(0, limit));
+                results.addAll(users.getContent().stream()
+                        .map(u -> GlobalSearchResult.builder().type("USER").id(u.getId()).title((u.getFirstName() + " " + u.getLastName()).trim()).subtitle(u.getEmail()).build()).toList());
+            } catch (Exception e) { log.debug("Search users failed: {}", e.getMessage()); }
         }
-
         if (type == null || type.equalsIgnoreCase("institution") || type.equalsIgnoreCase("all")) {
-            Page<Institution> institutions = institutionRepository.findBySearchTermAndIsDeletedFalse(query, PageRequest.of(0, limit));
-            results.addAll(institutions.getContent().stream()
-                    .map(i -> GlobalSearchResult.builder()
-                            .type("INSTITUTION")
-                            .id(i.getId())
-                            .title(i.getName())
-                            .subtitle(i.getCode())
-                            .build())
-                    .toList());
+            try {
+                Page<Institution> institutions = institutionRepository.findBySearchTermAndIsDeletedFalse(query, PageRequest.of(0, limit));
+                results.addAll(institutions.getContent().stream().map(i -> GlobalSearchResult.builder().type("INSTITUTION").id(i.getId()).title(i.getName()).subtitle(i.getCode()).build()).toList());
+            } catch (Exception e) { log.debug("Search institutions failed: {}", e.getMessage()); }
+        }
+        if (type == null || type.equalsIgnoreCase("live") || type.equalsIgnoreCase("live_class") || type.equalsIgnoreCase("all")) {
+            try {
+                List<LiveClass> lives = liveClassRepository.findAllByIsDeletedFalse(PageRequest.of(0, 100)).getContent().stream()
+                        .filter(lc -> lc.getTitle() != null && lc.getTitle().toLowerCase().contains(q)).limit(limit).toList();
+                results.addAll(lives.stream().map(lc -> GlobalSearchResult.builder().type("LIVE_CLASS").id(lc.getId()).title(lc.getTitle()).subtitle(lc.getStatus()).build()).toList());
+            } catch (Exception e) { log.debug("Search live failed: {}", e.getMessage()); }
+        }
+        if (type == null || type.equalsIgnoreCase("certificate") || type.equalsIgnoreCase("all")) {
+            try {
+                List<Certificate> certs = certificateRepository.findAllByIsDeletedFalse(PageRequest.of(0, 100)).getContent().stream()
+                        .filter(c -> (c.getTitle() != null && c.getTitle().toLowerCase().contains(q)) || (c.getSerialNumber() != null && c.getSerialNumber().toLowerCase().contains(q))).limit(limit).toList();
+                results.addAll(certs.stream().map(c -> GlobalSearchResult.builder().type("CERTIFICATE").id(c.getId()).title(c.getTitle()).subtitle(c.getSerialNumber()).build()).toList());
+            } catch (Exception e) { log.debug("Search cert failed: {}", e.getMessage()); }
+        }
+        if (type == null || type.equalsIgnoreCase("payment") || type.equalsIgnoreCase("transaction") || type.equalsIgnoreCase("all")) {
+            try {
+                List<tz.elmkusoma.parent.domain.Payment> pays = paymentRepository.findAllByIsDeletedFalse(PageRequest.of(0, 100)).getContent().stream()
+                        .filter(p -> p.getId().toString().contains(q) || (p.getServiceType() != null && p.getServiceType().toLowerCase().contains(q))).limit(limit).toList();
+                results.addAll(pays.stream().map(p -> GlobalSearchResult.builder().type("PAYMENT").id(p.getId()).title("Payment " + p.getAmount() + " " + p.getCurrency()).subtitle(p.getStatus()).build()).toList());
+            } catch (Exception e) { log.debug("Search payment failed: {}", e.getMessage()); }
+        }
+        if (type == null || type.equalsIgnoreCase("incident") || type.equalsIgnoreCase("all")) {
+            try {
+                List<PlatformIncident> incs = incidentRepository.findByIsDeletedFalseOrderByDetectedAtDesc(PageRequest.of(0, 100)).getContent().stream()
+                        .filter(i -> (i.getTitle() != null && i.getTitle().toLowerCase().contains(q)) || (i.getCategory() != null && i.getCategory().toLowerCase().contains(q))).limit(limit).toList();
+                results.addAll(incs.stream().map(i -> GlobalSearchResult.builder().type("INCIDENT").id(i.getId()).title(i.getTitle()).subtitle(i.getSeverity() + " · " + i.getStatus()).build()).toList());
+            } catch (Exception e) { log.debug("Search incident failed: {}", e.getMessage()); }
+        }
+        if (type == null || type.equalsIgnoreCase("service") || type.equalsIgnoreCase("all")) {
+            try {
+                List<PlatformService> svcs = platformServiceRepository.findByIsDeletedFalse(PageRequest.of(0, 100)).getContent().stream()
+                        .filter(s -> s.getName() != null && s.getName().toLowerCase().contains(q)).limit(limit).toList();
+                results.addAll(svcs.stream().map(s -> GlobalSearchResult.builder().type("SERVICE").id(s.getId()).title(s.getName()).subtitle(s.getCategory()).build()).toList());
+            } catch (Exception e) { log.debug("Search service failed: {}", e.getMessage()); }
         }
 
         return results.stream().limit(limit).toList();
@@ -648,6 +833,7 @@ public class PlatformAdminService {
         }
 
         AuditLog auditLog = new AuditLog();
+        auditLog.setInstitutionId(rec.getInstitutionId() != null ? rec.getInstitutionId() : PLATFORM_INSTITUTION_ID);
         auditLog.setEntityType("VerificationRecord");
         auditLog.setEntityId(id);
         auditLog.setEntityName("Verification Review");
@@ -746,6 +932,224 @@ public class PlatformAdminService {
                 .build();
     }
 
+    // ── Platform Learning/Content/Event/Media/Resources ──
+
+    @Transactional(readOnly = true)
+    public PageResponse<PlatformCourseResponse> listPlatformCourses(int page, int size, String search) {
+        Page<tz.elmkusoma.course.domain.Course> p;
+        if (search != null && !search.isBlank()) {
+            List<tz.elmkusoma.course.domain.Course> filtered = courseRepository.searchByTitleAndIsDeletedFalse(search);
+            int from = Math.min(page * size, filtered.size());
+            int to = Math.min(from + size, filtered.size());
+            List<PlatformCourseResponse> content = filtered.subList(from, to).stream().map(c -> PlatformCourseResponse.builder()
+                    .id(c.getId()).institutionId(c.getInstitutionId()).title(c.getTitle()).level(c.getLevel()).category(c.getCategory())
+                    .isPublished(c.getIsPublished()).isFeatured(c.getIsFeatured()).createdAt(c.getCreatedAt()).build()).toList();
+            return new PageResponse<>(content, page, size, filtered.size(), (int) Math.ceil((double) filtered.size() / size), page == 0, to >= filtered.size());
+        }
+        p = courseRepository.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        List<PlatformCourseResponse> content = p.getContent().stream().map(c -> PlatformCourseResponse.builder()
+                .id(c.getId()).institutionId(c.getInstitutionId()).title(c.getTitle()).level(c.getLevel()).category(c.getCategory())
+                .isPublished(c.getIsPublished()).isFeatured(c.getIsFeatured()).createdAt(c.getCreatedAt()).build()).toList();
+        return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages(), p.isFirst(), p.isLast());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PlatformEventResponse> listPlatformEvents(int page, int size, String search) {
+        Page<tz.elmkusoma.event.domain.Event> p = eventRepository.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        List<PlatformEventResponse> content = p.getContent().stream()
+                .filter(e -> search == null || search.isBlank() || (e.getTitle() != null && e.getTitle().toLowerCase().contains(search.toLowerCase())))
+                .map(e -> PlatformEventResponse.builder().id(e.getId()).institutionId(e.getInstitutionId()).title(e.getTitle()).eventType(e.getEventType()).status(e.getStatus()).startsAt(e.getStartsAt()).createdAt(e.getCreatedAt()).build()).toList();
+        return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages(), p.isFirst(), p.isLast());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PlatformMediaResponse> listPlatformMedia(int page, int size) {
+        Page<tz.elmkusoma.liveclass.domain.MediaAsset> p = mediaAssetRepository.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        List<PlatformMediaResponse> content = p.getContent().stream().map(m -> PlatformMediaResponse.builder()
+                .id(m.getId()).institutionId(m.getInstitutionId()).title(m.getTitle()).mediaType(m.getMediaType()).status(m.getStatus()).createdAt(m.getCreatedAt()).build()).toList();
+        return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages(), p.isFirst(), p.isLast());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PlatformResourceResponse> listPlatformResources(int page, int size) {
+        Page<tz.elmkusoma.learning.domain.Resource> p = resourceRepository.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        List<PlatformResourceResponse> content = p.getContent().stream().map(r -> PlatformResourceResponse.builder()
+                .id(r.getId()).institutionId(r.getInstitutionId()).title(r.getTitle()).resourceType(r.getResourceType() != null ? r.getResourceType().name() : null).createdAt(r.getCreatedAt()).build()).toList();
+        return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages(), p.isFirst(), p.isLast());
+    }
+
+    // ── Support Cases (M26) ──
+
+    private static final Map<String, Set<String>> TICKET_TRANSITIONS = Map.of(
+            "OPEN", Set.of("ASSIGNED", "INVESTIGATING", "RESOLVED", "CLOSED"),
+            "ASSIGNED", Set.of("INVESTIGATING", "RESOLVED", "CLOSED", "OPEN"),
+            "INVESTIGATING", Set.of("RESOLVED", "CLOSED"),
+            "RESOLVED", Set.of("CLOSED", "INVESTIGATING"),
+            "CLOSED", Set.of("OPEN")
+    );
+
+    @Transactional(readOnly = true)
+    public PageResponse<SupportTicketResponse> listSupportTickets(int page, int size, String status) {
+        Page<tz.elmkusoma.parent.domain.SupportTicket> p;
+        if (status != null && !status.isBlank()) {
+            p = supportTicketRepository.findByStatusAndIsDeletedFalse(status.toUpperCase(),
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        } else {
+            p = supportTicketRepository.findByIsDeletedFalse(
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        }
+        List<SupportTicketResponse> content = p.getContent().stream().map(t -> SupportTicketResponse.builder()
+                .id(t.getId()).userId(t.getUserId()).title(t.getSubject()).description(t.getDescription())
+                .category(t.getCategory()).priority(t.getPriority()).status(t.getStatus())
+                .assignedTo(t.getAssignedTo()).resolvedAt(t.getResolvedAt()).createdAt(t.getCreatedAt())
+                .build()).toList();
+        return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages(), p.isFirst(), p.isLast());
+    }
+
+    public SupportTicketResponse updateSupportTicketStatus(UUID ticketId, String status) {
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("status is required");
+        }
+        String target = status.toUpperCase();
+        tz.elmkusoma.parent.domain.SupportTicket t = supportTicketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("SupportTicket", "id", ticketId));
+        String current = t.getStatus() != null ? t.getStatus() : "OPEN";
+        if (!current.equals(target)) {
+            if (!TICKET_TRANSITIONS.getOrDefault(current, Set.of()).contains(target)) {
+                throw new IllegalStateException("Invalid ticket transition: " + current + " → " + target);
+            }
+            t.setStatus(target);
+            if ("RESOLVED".equals(target) || "CLOSED".equals(target)) {
+                t.setResolvedAt(LocalDateTime.now());
+            }
+            supportTicketRepository.save(t);
+            writeAudit(t.getInstitutionId(), "SUPPORT_TICKET", ticketId, t.getSubject(), "UPDATE",
+                    Map.of("status", current), Map.of("status", target));
+            log.info("Support ticket {} status: {} → {}", ticketId, current, target);
+        }
+        return SupportTicketResponse.builder()
+                .id(t.getId()).userId(t.getUserId()).title(t.getSubject()).description(t.getDescription())
+                .category(t.getCategory()).priority(t.getPriority()).status(t.getStatus())
+                .assignedTo(t.getAssignedTo()).resolvedAt(t.getResolvedAt()).createdAt(t.getCreatedAt())
+                .build();
+    }
+
+    // ── Content Moderation (M10/M11) ──
+
+    private static final Set<String> REPORT_ACTIONS = Set.of("REVIEWING", "RESOLVED", "DISMISSED");
+
+    @Transactional(readOnly = true)
+    public PageResponse<ContentReportResponse> listContentReports(int page, int size, String status) {
+        Page<ContentReport> p;
+        if (status != null && !status.isBlank()) {
+            p = contentReportRepository.findByStatusAndIsDeletedFalse(status.toUpperCase(),
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        } else {
+            p = contentReportRepository.findByIsDeletedFalse(
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        }
+        List<ContentReportResponse> content = p.getContent().stream().map(r -> ContentReportResponse.builder()
+                .id(r.getId()).entityType(r.getEntityType()).entityId(r.getEntityId()).entityTitle(r.getEntityTitle())
+                .reporterId(r.getReporterId()).reason(r.getReason()).description(r.getDescription())
+                .status(r.getStatus()).resolutionNotes(r.getResolutionNotes()).resolvedBy(r.getResolvedBy())
+                .resolvedAt(r.getResolvedAt()).createdAt(r.getCreatedAt())
+                .build()).toList();
+        return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages(), p.isFirst(), p.isLast());
+    }
+
+    public ContentReportResponse createContentReport(ContentReportCreateRequest req) {
+        ContentReport r = ContentReport.builder()
+                .entityType(req.getEntityType().toUpperCase())
+                .entityId(req.getEntityId())
+                .entityTitle(req.getEntityTitle())
+                .reporterId(req.getReporterId())
+                .reason(req.getReason())
+                .description(req.getDescription())
+                .status("OPEN")
+                .build();
+        r.setInstitutionId(PLATFORM_INSTITUTION_ID);
+        contentReportRepository.save(r);
+        writeAudit(PLATFORM_INSTITUTION_ID, "CONTENT_REPORT", r.getId(), req.getEntityTitle(), "CREATE",
+                Map.of(), Map.of("entityType", r.getEntityType(), "reason", r.getReason()));
+        log.info("Content report created: {} on {}/{}", r.getId(), r.getEntityType(), r.getEntityId());
+        return ContentReportResponse.builder()
+                .id(r.getId()).entityType(r.getEntityType()).entityId(r.getEntityId()).entityTitle(r.getEntityTitle())
+                .reporterId(r.getReporterId()).reason(r.getReason()).description(r.getDescription())
+                .status(r.getStatus()).createdAt(r.getCreatedAt())
+                .build();
+    }
+
+    public ContentReportResponse actOnContentReport(UUID reportId, ContentReportActionRequest req) {
+        if (req.getAction() == null || !REPORT_ACTIONS.contains(req.getAction().toUpperCase())) {
+            throw new IllegalArgumentException("action must be one of " + REPORT_ACTIONS);
+        }
+        String target = req.getAction().toUpperCase();
+        ContentReport r = contentReportRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("ContentReport", "id", reportId));
+        String old = r.getStatus();
+        r.setStatus(target);
+        if ("RESOLVED".equals(target) || "DISMISSED".equals(target)) {
+            r.setResolvedAt(LocalDateTime.now());
+            if (req.getNotes() != null) r.setResolutionNotes(req.getNotes());
+        } else if (req.getNotes() != null) {
+            r.setResolutionNotes(req.getNotes());
+        }
+        contentReportRepository.save(r);
+        writeAudit(r.getInstitutionId(), "CONTENT_REPORT", reportId, r.getEntityTitle(), "UPDATE",
+                Map.of("status", old), Map.of("status", target));
+        log.info("Content report {} action: {} → {}", reportId, old, target);
+        return ContentReportResponse.builder()
+                .id(r.getId()).entityType(r.getEntityType()).entityId(r.getEntityId()).entityTitle(r.getEntityTitle())
+                .reporterId(r.getReporterId()).reason(r.getReason()).description(r.getDescription())
+                .status(r.getStatus()).resolutionNotes(r.getResolutionNotes()).resolvedBy(r.getResolvedBy())
+                .resolvedAt(r.getResolvedAt()).createdAt(r.getCreatedAt())
+                .build();
+    }
+
+    // ── Data Governance Export (M24) ──
+
+    public String exportPlatformData(String type) {
+        String t = type != null ? type.toUpperCase() : "USERS";
+        StringBuilder csv = new StringBuilder();
+        switch (t) {
+            case "INSTITUTIONS" -> {
+                csv.append("id,name,code,type,city,status,created_at\n");
+                institutionRepository.findByIsDeletedFalse(PageRequest.of(0, 10000)).forEach(i ->
+                        csv.append(i.getId()).append(',').append(esc(i.getName())).append(',')
+                                .append(i.getCode()).append(',')
+                                .append(i.getType() != null ? i.getType() : "").append(',')
+                                .append(esc(i.getCity())).append(',')
+                                .append(i.getStatus() != null ? i.getStatus() : (Boolean.TRUE.equals(i.getIsActive()) ? "ACTIVE" : "INACTIVE")).append(',')
+                                .append(i.getCreatedAt()).append('\n'));
+            }
+            case "AUDIT" -> {
+                csv.append("id,entity_type,entity_id,action,user_id,created_at\n");
+                auditLogRepository.findAll(PageRequest.of(0, 10000)).forEach(a ->
+                        csv.append(a.getId()).append(',').append(a.getEntityType()).append(',')
+                                .append(a.getEntityId()).append(',').append(a.getAction()).append(',')
+                                .append(a.getUserId()).append(',').append(a.getCreatedAt()).append('\n'));
+            }
+            default -> {
+                csv.append("id,email,first_name,last_name,role,is_active,created_at\n");
+                userRepository.findAllByIsDeletedFalse(PageRequest.of(0, 10000)).forEach(u ->
+                        csv.append(u.getId()).append(',').append(esc(u.getEmail())).append(',')
+                                .append(esc(u.getFirstName())).append(',').append(esc(u.getLastName())).append(',')
+                                .append(u.getRole() != null ? u.getRole() : "").append(',')
+                                .append(u.getIsActive()).append(',').append(u.getCreatedAt()).append('\n'));
+            }
+        }
+        writeAudit(PLATFORM_INSTITUTION_ID, "EXPORT", PLATFORM_INSTITUTION_ID, "Platform Export " + t, "EXPORT",
+                Map.of(), Map.of("type", t, "rows", String.valueOf(csv.toString().lines().count() - 1)));
+        log.info("Platform data export: {} ({} bytes)", t, csv.length());
+        return csv.toString();
+    }
+
+    private String esc(String v) {
+        if (v == null) return "";
+        return v.contains(",") || v.contains("\"") || v.contains("\n")
+                ? "\"" + v.replace("\"", "\"\"") + "\"" : v;
+    }
+
     // ── Mappers ──
 
     private UserSummaryResponse toUserSummary(User user) {
@@ -770,6 +1174,7 @@ public class PlatformAdminService {
                 .city(inst.getCity())
                 .region(inst.getRegion())
                 .isActive(inst.getIsActive())
+                .status(inst.getStatus())
                 .createdAt(inst.getCreatedAt())
                 .build();
     }

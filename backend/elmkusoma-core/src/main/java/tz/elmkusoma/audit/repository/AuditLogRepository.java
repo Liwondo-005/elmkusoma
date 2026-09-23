@@ -36,4 +36,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     @Query("SELECT a.action, COUNT(a) FROM AuditLog a WHERE a.institutionId = :institutionId GROUP BY a.action ORDER BY COUNT(a) DESC")
     List<Object[]> countByActionForInstitution(@Param("institutionId") UUID institutionId);
+
+    Page<AuditLog> findByActionAndIsDeletedFalse(tz.elmkusoma.audit.domain.AuditLog.AuditAction action, Pageable pageable);
+    Page<AuditLog> findByEntityTypeAndIsDeletedFalse(String entityType, Pageable pageable);
+    Page<AuditLog> findByActionAndEntityTypeAndIsDeletedFalse(tz.elmkusoma.audit.domain.AuditLog.AuditAction action, String entityType, Pageable pageable);
 }

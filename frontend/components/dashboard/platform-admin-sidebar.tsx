@@ -6,104 +6,93 @@ import {
   LayoutDashboard, Users, School, Video, CreditCard, Award,
   Shield, Activity, Settings, Search, Bell, ChevronDown, ChevronRight,
   AlertTriangle, BarChart3, Database, Globe, Zap, Package, Radio,
-  MessageSquare, ShieldCheck, Key
+  MessageSquare, ShieldCheck, Key, BookOpen, Calendar, Image as ImageIcon,
+  Library, SearchCode, LifeBuoy, Plug, HardDrive, FileSearch, Layers,
+  Building2, GraduationCap, Mic2
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { platformAdminApi, type PlatformHealth } from "@/lib/platform-admin-api"
 
-interface NavItem {
-  label: string
-  href: string
-  icon: typeof LayoutDashboard
-}
-
-interface NavSection {
-  title: string
-  items: NavItem[]
-}
+interface NavItem { label: string; href: string; icon: typeof LayoutDashboard; badge?: string }
+interface NavSection { title: string; items: NavItem[] }
 
 const NAV_SECTIONS: NavSection[] = [
-  {
-    title: "COMMAND CENTER",
-    items: [
-      { label: "Dashboard", href: "/dashboard/platform-admin", icon: LayoutDashboard },
-      { label: "Attention", href: "/dashboard/platform-admin/attention", icon: AlertTriangle },
-    ],
-  },
-  {
-    title: "IDENTITY & ACCESS",
-    items: [
-      { label: "Users", href: "/dashboard/platform-admin/users", icon: Users },
-      { label: "Admins", href: "/dashboard/platform-admin/admins", icon: Shield },
-      { label: "Delegations", href: "/dashboard/platform-admin/delegations", icon: Key },
-    ],
-  },
-  {
-    title: "ECOSYSTEM",
-    items: [
-      { label: "Institutions", href: "/dashboard/platform-admin/institutions", icon: School },
-      { label: "Providers", href: "/dashboard/platform-admin/providers", icon: Globe },
-      { label: "Services", href: "/dashboard/platform-admin/services", icon: Package },
-      { label: "Verifications", href: "/dashboard/platform-admin/verifications", icon: ShieldCheck },
-    ],
-  },
-  {
-    title: "LEARNING",
-    items: [
-      { label: "Live Classes", href: "/dashboard/platform-admin/live-classes", icon: Video },
-      { label: "Certificates", href: "/dashboard/platform-admin/certificates", icon: Award },
-      { label: "Entitlements", href: "/dashboard/platform-admin/entitlements", icon: Award },
-    ],
-  },
-  {
-    title: "COMMERCE",
-    items: [
-      { label: "Payments", href: "/dashboard/platform-admin/payments", icon: CreditCard },
-    ],
-  },
-  {
-    title: "COMMUNICATION",
-    items: [
-      { label: "Notifications", href: "/dashboard/platform-admin/communications", icon: MessageSquare },
-    ],
-  },
-  {
-    title: "TRUST & SAFETY",
-    items: [
-      { label: "Security", href: "/dashboard/platform-admin/security", icon: Shield },
-      { label: "Incidents", href: "/dashboard/platform-admin/incidents", icon: AlertTriangle },
-      { label: "Audit Logs", href: "/dashboard/platform-admin/audit", icon: Activity },
-    ],
-  },
-  {
-    title: "PLATFORM",
-    items: [
-      { label: "Configuration", href: "/dashboard/platform-admin/config", icon: Settings },
-      { label: "Settings", href: "/dashboard/platform-admin/settings", icon: Settings },
-    ],
-  },
+  { title: "COMMAND CENTER", items: [
+    { label: "Dashboard", href: "/dashboard/platform-admin", icon: LayoutDashboard },
+    { label: "Attention", href: "/dashboard/platform-admin/attention", icon: AlertTriangle },
+  ]},
+  { title: "IDENTITY & ACCESS", items: [
+    { label: "Users", href: "/dashboard/platform-admin/users", icon: Users },
+    { label: "Admins", href: "/dashboard/platform-admin/admins", icon: Shield },
+    { label: "Delegations", href: "/dashboard/platform-admin/delegations", icon: Key },
+  ]},
+  { title: "ECOSYSTEM", items: [
+    { label: "Institutions", href: "/dashboard/platform-admin/institutions", icon: School },
+    { label: "Providers", href: "/dashboard/platform-admin/providers", icon: Globe },
+    { label: "Organizations", href: "/dashboard/platform-admin/organizations", icon: Building2 },
+    { label: "Services", href: "/dashboard/platform-admin/services", icon: Package },
+  ]},
+  { title: "LEARNING", items: [
+    { label: "Courses", href: "/dashboard/platform-admin/courses", icon: BookOpen },
+    { label: "Live Classes", href: "/dashboard/platform-admin/live-classes", icon: Video },
+    { label: "Certificates", href: "/dashboard/platform-admin/certificates", icon: Award },
+    { label: "Entitlements", href: "/dashboard/platform-admin/entitlements", icon: Layers },
+  ]},
+  { title: "LIVE & EVENTS", items: [
+    { label: "Events", href: "/dashboard/platform-admin/events", icon: Calendar },
+    { label: "Streaming", href: "/dashboard/platform-admin/streaming", icon: Radio },
+  ]},
+  { title: "MEDIA & RESOURCES", items: [
+    { label: "Media", href: "/dashboard/platform-admin/media", icon: ImageIcon },
+    { label: "Resources", href: "/dashboard/platform-admin/resources", icon: Library },
+  ]},
+  { title: "COMMERCE", items: [
+    { label: "Payments", href: "/dashboard/platform-admin/payments", icon: CreditCard },
+    { label: "Packages", href: "/dashboard/platform-admin/packages", icon: Package },
+  ]},
+  { title: "TRUST & SAFETY", items: [
+    { label: "Verifications", href: "/dashboard/platform-admin/verifications", icon: ShieldCheck },
+    { label: "Moderation", href: "/dashboard/platform-admin/moderation", icon: FileSearch },
+  ]},
+  { title: "COMMUNICATION", items: [
+    { label: "Notifications", href: "/dashboard/platform-admin/communications", icon: MessageSquare },
+  ]},
+  { title: "INTELLIGENCE", items: [
+    { label: "Analytics", href: "/dashboard/platform-admin/analytics", icon: BarChart3 },
+  ]},
+  { title: "SECURITY", items: [
+    { label: "Security", href: "/dashboard/platform-admin/security", icon: Shield },
+    { label: "Audit Logs", href: "/dashboard/platform-admin/audit", icon: Activity },
+  ]},
+  { title: "OPERATIONS", items: [
+    { label: "Incidents", href: "/dashboard/platform-admin/incidents", icon: AlertTriangle },
+    { label: "Integrations", href: "/dashboard/platform-admin/integrations", icon: Plug },
+    { label: "Health", href: "/dashboard/platform-admin/health", icon: Database },
+  ]},
+  { title: "DATA", items: [
+    { label: "Governance", href: "/dashboard/platform-admin/data", icon: HardDrive },
+  ]},
+  { title: "PLATFORM", items: [
+    { label: "Configuration", href: "/dashboard/platform-admin/config", icon: Settings },
+    { label: "Lifecycle", href: "/dashboard/platform-admin/lifecycle", icon: Zap },
+  ]},
+  { title: "SUPPORT", items: [
+    { label: "Cases", href: "/dashboard/platform-admin/support", icon: LifeBuoy },
+    { label: "Search", href: "/dashboard/platform-admin/search", icon: SearchCode },
+  ]},
 ]
 
 export function PlatformAdminSidebar() {
   const pathname = usePathname()
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(NAV_SECTIONS.map(s => s.title))
-  )
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(NAV_SECTIONS.map(s => s.title)))
   const [health, setHealth] = useState<PlatformHealth | null>(null)
 
-  useEffect(() => {
-    platformAdminApi.getHealth().then(setHealth).catch(() => {})
-  }, [])
+  useEffect(() => { platformAdminApi.getHealth().then(setHealth).catch(() => {}) }, [])
 
   function toggleSection(title: string) {
-    setExpandedSections(prev => {
-      const next = new Set(prev)
-      if (next.has(title)) next.delete(title)
-      else next.add(title)
-      return next
-    })
+    setExpandedSections(prev => { const n = new Set(prev); if (n.has(title)) n.delete(title); else n.add(title); return n })
   }
 
   return (
@@ -117,40 +106,21 @@ export function PlatformAdminSidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-        {NAV_SECTIONS.map((section) => {
+        {NAV_SECTIONS.map(section => {
           const isExpanded = expandedSections.has(section.title)
-          const isActive = section.items.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
-
+          const isActive = section.items.some(item => pathname === item.href || pathname.startsWith(item.href + "/"))
           return (
             <div key={section.title}>
-              <button
-                onClick={() => toggleSection(section.title)}
-                className={cn(
-                  "flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {isExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-                {section.title}
+              <button onClick={() => toggleSection(section.title)} className={cn("flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-colors", isActive ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
+                {isExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}{section.title}
               </button>
-
               {isExpanded && (
                 <div className="mt-0.5 space-y-0.5">
-                  {section.items.map((item) => {
+                  {section.items.map(item => {
                     const isActiveItem = pathname === item.href || pathname.startsWith(item.href + "/")
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                          isActiveItem
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                      >
-                        <item.icon className="size-4 shrink-0" />
-                        {item.label}
+                      <Link key={item.href} href={item.href} className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all", isActiveItem ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                        <item.icon className="size-4 shrink-0" />{item.label}
                       </Link>
                     )
                   })}
@@ -164,18 +134,10 @@ export function PlatformAdminSidebar() {
       <div className="border-t border-border p-3">
         <div className="rounded-xl bg-muted/50 p-3">
           <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
-              <Zap className="size-3.5 text-primary" />
-            </div>
+            <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10"><Zap className="size-3.5 text-primary" /></div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-foreground">Platform Status</p>
-              {health ? (
-                <p className={`text-[10px] font-medium ${health.databaseStatus === "Operational" ? "text-green-600" : "text-amber-600"}`}>
-                  DB: {health.databaseStatus} | API: {health.apiStatus}
-                </p>
-              ) : (
-                <p className="text-[10px] text-muted-foreground">Checking...</p>
-              )}
+              {health ? <p className={`text-[10px] font-medium ${health.databaseStatus === "Operational" ? "text-emerald-600" : "text-amber-600"}`}>DB: {health.databaseStatus} | API: {health.apiStatus}</p> : <p className="text-[10px] text-muted-foreground">Checking...</p>}
             </div>
           </div>
         </div>

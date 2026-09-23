@@ -7,6 +7,13 @@ import { platformAdminApi, type InstitutionSummary, type PageResponse } from "@/
 
 const PAGE_SIZE = 20
 
+const LIFECYCLE_OPTIONS: Record<string, string[]> = {
+  ACTIVE: ["SUSPENDED", "DEACTIVATED", "ARCHIVED"],
+  SUSPENDED: ["ACTIVE", "DEACTIVATED", "ARCHIVED"],
+  DEACTIVATED: ["ACTIVE", "ARCHIVED", "SUSPENDED"],
+  ARCHIVED: ["ACTIVE", "SUSPENDED"],
+}
+
 export default function PlatformInstitutionsPage() {
   const router = useRouter()
   const [data, setData] = useState<PageResponse<InstitutionSummary> | null>(null)
@@ -15,6 +22,7 @@ export default function PlatformInstitutionsPage() {
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
+  const [lifecycleBusy, setLifecycleBusy] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -53,6 +61,25 @@ export default function PlatformInstitutionsPage() {
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update institution status")
+    }
+  }
+
+  const handleLifecycleChange = async (inst: InstitutionSummary, status: string) => {
+    setLifecycleBusy(inst.id)
+    setError(null)
+    try {
+      const updated = await platformAdminApi.updateInstitutionLifecycle(inst.id, status)
+      setData((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          content: prev.content.map((i) => (i.id === inst.id ? { ...i, ...updated } : i)),
+        }
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update lifecycle status")
+    } finally {
+      setLifecycleBusy(null)
     }
   }
 
@@ -109,7 +136,7 @@ export default function PlatformInstitutionsPage() {
                   </div>
                 </div>
                 <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${inst.isActive ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
-                  {inst.isActive ? "Active" : "Inactive"}
+                  {inst.status ?? (inst.isActive ? "Active" : "Inactive")}
                 </span>
               </div>
 
@@ -120,7 +147,19 @@ export default function PlatformInstitutionsPage() {
                 )}
               </div>
 
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex justify-end items-center gap-2">
+                <select
+                  value=""
+                  disabled={lifecycleBusy === inst.id}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => { if (e.target.value) handleLifecycleChange(inst, e.target.value) }}
+                  className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                >
+                  <option value="">Change lifecycle…</option>
+                  {(LIFECYCLE_OPTIONS[inst.status ?? "ACTIVE"] ?? []).map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleToggleStatus(inst) }}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${

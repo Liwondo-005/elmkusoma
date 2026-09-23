@@ -26,4 +26,6 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, UUID> {
 
     @Query("SELECT m FROM MediaAsset m WHERE m.institutionId = :institutionId AND m.isDeleted = false AND (LOWER(m.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(m.description) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<MediaAsset> searchByTitle(@Param("institutionId") UUID institutionId, @Param("query") String query);
+    org.springframework.data.domain.Page<MediaAsset> findByIsDeletedFalse(org.springframework.data.domain.Pageable pageable);
+    long countByIsDeletedFalse();
 }

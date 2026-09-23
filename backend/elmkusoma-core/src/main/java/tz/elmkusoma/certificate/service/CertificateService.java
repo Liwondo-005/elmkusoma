@@ -249,7 +249,11 @@ public class CertificateService {
                 .orElse(null);
 
         if (certificate == null) {
-            throw new ResourceNotFoundException("Certificate not found");
+            return CertificateVerificationResponse.builder()
+                    .valid(false)
+                    .status("NOT_FOUND")
+                    .message("Certificate not found")
+                    .build();
         }
 
         if (certificate.getStatus() == CertificateStatus.REVOKED) {

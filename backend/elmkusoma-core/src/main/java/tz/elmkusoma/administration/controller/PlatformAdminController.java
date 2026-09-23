@@ -25,6 +25,7 @@ import java.util.UUID;
 public class PlatformAdminController {
 
     private final PlatformAdminService platformAdminService;
+    private final tz.elmkusoma.administration.service.PlatformCommerceService platformCommerceService;
 
     // ── Command Center ──
 
@@ -345,5 +346,144 @@ public class PlatformAdminController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.listEntitlements(page, size, status)));
+    }
+
+    // ── Platform Learning/Content/Event/Media/Resources ──
+
+    @GetMapping("/courses")
+    @Operation(summary = "List courses across platform (governance)")
+    public ResponseEntity<ApiResponse<PageResponse<PlatformCourseResponse>>> listPlatformCourses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformCourses(page, size, search)));
+    }
+
+    @GetMapping("/events")
+    @Operation(summary = "List events across platform (governance)")
+    public ResponseEntity<ApiResponse<PageResponse<PlatformEventResponse>>> listPlatformEvents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformEvents(page, size, search)));
+    }
+
+    @GetMapping("/media")
+    @Operation(summary = "List media assets across platform (governance)")
+    public ResponseEntity<ApiResponse<PageResponse<PlatformMediaResponse>>> listPlatformMedia(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformMedia(page, size)));
+    }
+
+    @GetMapping("/resources")
+    @Operation(summary = "List resources across platform (governance)")
+    public ResponseEntity<ApiResponse<PageResponse<PlatformResourceResponse>>> listPlatformResources(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformResources(page, size)));
+    }
+
+    // ── Provider Quotas / Entitlements ──
+
+    @GetMapping("/providers/{providerId}/quotas")
+    @Operation(summary = "List provider service entitlements and seat quotas")
+    public ResponseEntity<ApiResponse<List<ProviderQuotaResponse>>> listProviderQuotas(@PathVariable UUID providerId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listProviderQuotas(providerId)));
+    }
+
+    @PutMapping("/entitlements/{entitlementId}")
+    @Operation(summary = "Update provider entitlement quota (max seats / status)")
+    public ResponseEntity<ApiResponse<ProviderQuotaResponse>> updateProviderEntitlement(
+            @PathVariable UUID entitlementId,
+            @RequestBody EntitlementUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Entitlement updated", platformAdminService.updateProviderEntitlement(entitlementId, request)));
+    }
+
+    // ── Institution Lifecycle (offboarding) ──
+
+    @PutMapping("/institutions/{institutionId}/lifecycle")
+    @Operation(summary = "Update institution lifecycle status (ACTIVE/SUSPENDED/DEACTIVATED/ARCHIVED)")
+    public ResponseEntity<ApiResponse<InstitutionSummaryResponse>> updateInstitutionLifecycle(
+            @PathVariable UUID institutionId,
+            @RequestBody LifecycleStatusRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Lifecycle updated", platformAdminService.updateInstitutionLifecycle(institutionId, request.getStatus())));
+    }
+
+    // ── Commerce: Sponsored Seats (Payment Model B/C) ──
+
+    @PostMapping("/commerce/sponsor-seats")
+    @Operation(summary = "Grant sponsored seats from a provider package (spec §36)")
+    public ResponseEntity<ApiResponse<SponsorGrantResponse>> grantSponsoredSeats(
+            @Valid @RequestBody SponsorSeatGrantRequest request) {
+        UUID grantedBy = null;
+        return ResponseEntity.ok(ApiResponse.success("Seats granted",
+                platformCommerceService.grantSponsoredSeats(request, grantedBy)));
+    }
+
+    @PutMapping("/commerce/entitlements/{entitlementId}/revoke")
+    @Operation(summary = "Revoke a sponsored entitlement and free its seat")
+    public ResponseEntity<ApiResponse<String>> revokeSponsoredEntitlement(@PathVariable UUID entitlementId) {
+        platformCommerceService.revokeSponsoredEntitlement(entitlementId, null);
+        return ResponseEntity.ok(ApiResponse.success("Entitlement revoked", "REVOKED"));
+    }
+
+    // ── Support Cases (M26) ──
+
+    @GetMapping("/support/tickets")
+    @Operation(summary = "List platform support tickets")
+    public ResponseEntity<ApiResponse<PageResponse<SupportTicketResponse>>> listSupportTickets(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listSupportTickets(page, size, status)));
+    }
+
+    @PutMapping("/support/tickets/{ticketId}/status")
+    @Operation(summary = "Advance support ticket status (OPEN → ASSIGNED → INVESTIGATING → RESOLVED → CLOSED)")
+    public ResponseEntity<ApiResponse<SupportTicketResponse>> updateSupportTicketStatus(
+            @PathVariable UUID ticketId,
+            @RequestParam String status) {
+        return ResponseEntity.ok(ApiResponse.success("Ticket status updated",
+                platformAdminService.updateSupportTicketStatus(ticketId, status)));
+    }
+
+    // ── Content Moderation (M10/M11) ──
+
+    @GetMapping("/moderation/reports")
+    @Operation(summary = "List content reports (moderation queue)")
+    public ResponseEntity<ApiResponse<PageResponse<ContentReportResponse>>> listContentReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listContentReports(page, size, status)));
+    }
+
+    @PostMapping("/moderation/reports")
+    @Operation(summary = "Create a content report")
+    public ResponseEntity<ApiResponse<ContentReportResponse>> createContentReport(
+            @Valid @RequestBody ContentReportCreateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Report created", platformAdminService.createContentReport(request)));
+    }
+
+    @PutMapping("/moderation/reports/{reportId}/action")
+    @Operation(summary = "Act on a content report (REVIEWING/RESOLVED/DISMISSED)")
+    public ResponseEntity<ApiResponse<ContentReportResponse>> actOnContentReport(
+            @PathVariable UUID reportId,
+            @RequestBody ContentReportActionRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Report updated",
+                platformAdminService.actOnContentReport(reportId, request)));
+    }
+
+    // ── Data Governance Export (M24) ──
+
+    @GetMapping("/export")
+    @Operation(summary = "Export platform data as CSV (users|institutions|audit) — audit-logged")
+    public ResponseEntity<byte[]> exportPlatformData(@RequestParam(defaultValue = "users") String type) {
+        String csv = platformAdminService.exportPlatformData(type);
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/csv")
+                .header("Content-Disposition", "attachment; filename=platform_" + type.toLowerCase() + "_export.csv")
+                .body(csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

@@ -6,6 +6,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tz.elmkusoma.event.domain.Event;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -49,4 +51,7 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     long countByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
     long countByInstitutionIdAndStatusAndIsDeletedFalse(UUID institutionId, String status);
+
+    Page<Event> findByIsDeletedFalse(Pageable pageable);
+    long countByIsDeletedFalse();
 }

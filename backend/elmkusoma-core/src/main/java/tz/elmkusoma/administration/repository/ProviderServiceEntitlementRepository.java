@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface ProviderServiceEntitlementRepository extends JpaRepository<ProviderServiceEntitlement, UUID> {
     List<ProviderServiceEntitlement> findByProviderIdAndIsDeletedFalse(UUID providerId);
     long countByStatusAndIsDeletedFalse(String status);
+    java.util.Optional<ProviderServiceEntitlement> findByProviderIdAndServiceIdAndIsDeletedFalse(UUID providerId, UUID serviceId);
 }

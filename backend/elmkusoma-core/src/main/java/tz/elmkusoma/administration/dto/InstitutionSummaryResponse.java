@@ -19,5 +19,6 @@ public class InstitutionSummaryResponse {
     private String city;
     private String region;
     private Boolean isActive;
+    private String status;
     private java.time.LocalDateTime createdAt;
 }
