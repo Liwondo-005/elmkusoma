@@ -45,6 +45,9 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final CertificateRepository certificateRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
+
     @Override
     @Transactional(readOnly = true)
     public List<LiveClassResponse> getTeacherLiveClasses(UUID teacherId) {
@@ -75,6 +78,9 @@ public class LiveClassServiceImpl implements LiveClassService {
 
     @Override
     public LiveClassResponse createLiveClass(UUID teacherId, UUID institutionId, CreateLiveClassRequest request) {
+        if (platformPolicyService != null && !platformPolicyService.liveCreateEnabled()) {
+            throw new IllegalStateException("Platform policy forbids creating live sessions");
+        }
         Teacher teacher = teacherRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
 

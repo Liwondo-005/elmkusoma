@@ -25,6 +25,7 @@ public class InstitutionPeopleService {
     private final InstitutionMembershipRepository membershipRepository;
     private final InstitutionInvitationRepository invitationRepository;
     private final InstitutionScopeService scopeService;
+    private final PlatformPolicyService platformPolicyService;
 
     public List<PeopleMemberResponse> listPeople(UUID institutionId, int page, int size) {
         List<User> users = scopeService.getUsersInInstitution(institutionId);
@@ -130,6 +131,9 @@ public class InstitutionPeopleService {
     }
 
     public InvitationResponse inviteUser(UUID institutionId, InviteUserRequest request, UUID invitedBy) {
+        if (platformPolicyService != null && !platformPolicyService.inviteEnabled()) {
+            throw new IllegalStateException("Platform policy forbids inviting participants");
+        }
         String token = UUID.randomUUID().toString().replace("-", "");
         InstitutionInvitation invitation = InstitutionInvitation.builder()
                 .institutionId(institutionId)

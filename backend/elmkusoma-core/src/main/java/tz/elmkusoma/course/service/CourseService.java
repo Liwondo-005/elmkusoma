@@ -40,6 +40,9 @@ public class CourseService {
     private final LearnerEnrollmentRepository enrollmentRepository;
     private final LearnerNotificationRepository notificationRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
+
     // ── Course CRUD ──
 
     public CourseResponse createCourse(CourseRequest request, UUID institutionId, UUID userId) {
@@ -159,6 +162,11 @@ public class CourseService {
             throw new ForbiddenException("course", "update");
         }
 
+        if (!Boolean.TRUE.equals(course.getIsPublished())) {
+            if (platformPolicyService != null && !platformPolicyService.contentPublishEnabled()) {
+                throw new IllegalStateException("Platform policy forbids publishing content");
+            }
+        }
         course.setIsPublished(!course.getIsPublished());
         courseRepository.save(course);
 

@@ -50,6 +50,19 @@ class PlatformAdminServiceTest {
     @Mock private PlatformNotificationRepository notificationRepository;
     @Mock private AdminDelegationRepository delegationRepository;
     @Mock private VerificationRecordRepository verificationRepository;
+    @Mock private tz.elmkusoma.course.repository.CourseRepository courseRepository;
+    @Mock private tz.elmkusoma.event.repository.EventRepository eventRepository;
+    @Mock private tz.elmkusoma.liveclass.repository.MediaAssetRepository mediaAssetRepository;
+    @Mock private tz.elmkusoma.learning.repository.ResourceRepository resourceRepository;
+    @Mock private tz.elmkusoma.administration.repository.ProviderServiceEntitlementRepository providerEntitlementRepository;
+    @Mock private tz.elmkusoma.administration.repository.ContentReportRepository contentReportRepository;
+    @Mock private tz.elmkusoma.parent.repository.SupportTicketRepository supportTicketRepository;
+    @Mock private PlatformFeatureRepository featureRepository;
+    @Mock private RolePermissionRepository rolePermissionRepository;
+    @Mock private DashboardSnapshotRepository snapshotRepository;
+    @Mock private tz.elmkusoma.learner.repository.LearnerNotificationRepository learnerNotificationRepository;
+    @Mock private PlatformIntegrationService integrationService;
+    @Mock private BackupStatusService backupStatusService;
 
     @InjectMocks
     private PlatformAdminService service;
@@ -233,5 +246,96 @@ class PlatformAdminServiceTest {
 
         assertFalse(result.isEmpty());
         assertTrue(result.stream().anyMatch(i -> i.getCategory().equals("SECURITY")));
+    }
+
+    @Test
+    void createIncident_startsDetectedWithAudit() {
+        IncidentCreateRequest req = IncidentCreateRequest.builder()
+                .title("DB latency spike").category("DATABASE").severity("HIGH")
+                .affectedService("postgres").build();
+        when(incidentRepository.save(any(PlatformIncident.class))).thenAnswer(i -> i.getArgument(0));
+        when(auditLogRepository.save(any(tz.elmkusoma.audit.domain.AuditLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        var result = service.createIncident(req);
+
+        assertEquals("DETECTED", result.getStatus());
+        verify(incidentRepository).save(any(PlatformIncident.class));
+        verify(auditLogRepository).save(any(tz.elmkusoma.audit.domain.AuditLog.class));
+    }
+
+    @Test
+    void updateIncidentStatus_followsLifecycle() {
+        PlatformIncident inc = PlatformIncident.builder()
+                .id(TEST_ID).title("Outage").status("DETECTED").build();
+        when(incidentRepository.findById(TEST_ID)).thenReturn(Optional.of(inc));
+        when(incidentRepository.save(any(PlatformIncident.class))).thenAnswer(i -> i.getArgument(0));
+        when(auditLogRepository.save(any(tz.elmkusoma.audit.domain.AuditLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.updateIncidentStatus(TEST_ID, "INVESTIGATING", null);
+        assertEquals("INVESTIGATING", inc.getStatus());
+        assertNotNull(inc.getAcknowledgedAt());
+
+        service.updateIncidentStatus(TEST_ID, "CONTAINED", null);
+        assertEquals("CONTAINED", inc.getStatus());
+
+        service.updateIncidentStatus(TEST_ID, "RESOLVED", "mitigated");
+        assertEquals("RESOLVED", inc.getStatus());
+        assertEquals("mitigated", inc.getResolutionNotes());
+
+        service.updateIncidentStatus(TEST_ID, "REVIEWED", null);
+        assertEquals("REVIEWED", inc.getStatus());
+    }
+
+    @Test
+    void updateIncidentStatus_rejectsIllegalJump() {
+        PlatformIncident inc = PlatformIncident.builder()
+                .id(TEST_ID).title("Outage").status("DETECTED").build();
+        when(incidentRepository.findById(TEST_ID)).thenReturn(Optional.of(inc));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.updateIncidentStatus(TEST_ID, "RESOLVED", null));
+    }
+
+    @Test
+    void updateIncidentStatus_acknowledgedMapsToInvestigating() {
+        PlatformIncident inc = PlatformIncident.builder()
+                .id(TEST_ID).title("Outage").status("DETECTED").build();
+        when(incidentRepository.findById(TEST_ID)).thenReturn(Optional.of(inc));
+        when(incidentRepository.save(any(PlatformIncident.class))).thenAnswer(i -> i.getArgument(0));
+        when(auditLogRepository.save(any(tz.elmkusoma.audit.domain.AuditLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.updateIncidentStatus(TEST_ID, "ACKNOWLEDGED", null);
+
+        assertEquals("INVESTIGATING", inc.getStatus());
+    }
+
+    @Test
+    void listFeatures_mapsRows() {
+        PlatformFeature f = PlatformFeature.builder()
+                .id(TEST_ID).featureKey("payments").name("Payments").status("ACTIVE").build();
+        when(featureRepository.findByIsDeletedFalse()).thenReturn(List.of(f));
+
+        var result = service.listFeatures();
+
+        assertEquals(1, result.size());
+        assertEquals("payments", result.get(0).getKey());
+        assertEquals("ACTIVE", result.get(0).getStatus());
+    }
+
+    @Test
+    void updateFeatureStatus_enforcesTransitions() {
+        PlatformFeature f = PlatformFeature.builder()
+                .id(TEST_ID).featureKey("integration_registry").name("Registry").status("ROLLOUT").build();
+        when(featureRepository.findByFeatureKeyAndIsDeletedFalse("integration_registry"))
+                .thenReturn(Optional.of(f));
+        when(featureRepository.save(any(PlatformFeature.class))).thenAnswer(i -> i.getArgument(0));
+        when(auditLogRepository.save(any(tz.elmkusoma.audit.domain.AuditLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        var result = service.updateFeatureStatus("integration_registry", "ACTIVE");
+
+        assertEquals("ACTIVE", result.getStatus());
+
+        assertThrows(IllegalStateException.class,
+                () -> service.updateFeatureStatus("integration_registry", "PLANNED"));
     }
 }

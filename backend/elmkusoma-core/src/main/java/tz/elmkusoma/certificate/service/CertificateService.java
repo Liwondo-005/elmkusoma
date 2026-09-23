@@ -51,6 +51,9 @@ public class CertificateService {
     private final StudentRepository studentRepository;
     private final LearnerNotificationRepository learnerNotificationRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
+
     private static final ConcurrentHashMap<String, AtomicInteger> verifyAttempts = new ConcurrentHashMap<>();
     private static final int MAX_VERIFY_ATTEMPTS = 10;
     private static final long WINDOW_MS = 60_000; // 1 minute
@@ -97,6 +100,9 @@ public class CertificateService {
 
     public CertificateResponse generateCertificate(GenerateCertificateRequest request, UUID institutionId,
                                                     UUID issuedBy, String userEmail, String userRole) {
+        if (platformPolicyService != null && !platformPolicyService.certificateIssueEnabled()) {
+            throw new IllegalStateException("Platform policy forbids issuing certificates");
+        }
         // Validate template exists
         CertificateTemplate template = templateRepository.findByIdAndIsDeletedFalse(request.getTemplateId())
                 .orElseThrow(() -> new ResourceNotFoundException("CertificateTemplate", "id", request.getTemplateId()));
@@ -162,6 +168,9 @@ public class CertificateService {
 
     public CertificateResponse issueCertificate(UUID certificateId, UUID institutionId,
                                                   String userEmail, String userRole) {
+        if (platformPolicyService != null && !platformPolicyService.certificateIssueEnabled()) {
+            throw new IllegalStateException("Platform policy forbids issuing certificates");
+        }
         Certificate certificate = certificateRepository.findByIdAndIsDeletedFalse(certificateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Certificate", "id", certificateId));
 

@@ -29,6 +29,7 @@ public class PlatformCommerceService {
     private final ProviderServiceEntitlementRepository providerEntitlementRepository;
     private final EntitlementRepository entitlementRepository;
     private final AuditLogRepository auditLogRepository;
+    private final PlatformPolicyService platformPolicyService;
 
     /**
      * Payment Model B — provider sponsors seats (spec §36).
@@ -36,6 +37,9 @@ public class PlatformCommerceService {
      * so selected users join free (hybrid Model C shares the same entitlement engine).
      */
     public SponsorGrantResponse grantSponsoredSeats(SponsorSeatGrantRequest req, UUID grantedBy) {
+        if (platformPolicyService != null && !platformPolicyService.sponsorEnabled()) {
+            throw new IllegalStateException("Platform policy forbids sponsoring users");
+        }
         ProviderServiceEntitlement pkg = providerEntitlementRepository
                 .findByProviderIdAndServiceIdAndIsDeletedFalse(req.getProviderId(), req.getServiceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Provider entitlement", "providerId+serviceId",

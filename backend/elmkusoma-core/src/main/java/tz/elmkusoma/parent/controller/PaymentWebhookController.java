@@ -25,6 +25,7 @@ public class PaymentWebhookController {
 
     private final PaymentRepository paymentRepository;
     private final ParentPaymentService paymentService;
+    private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
 
     @Value("${payment.webhook.secret:elmkusoma-dev-webhook-secret}")
     private String webhookSecret;
@@ -44,15 +45,18 @@ public class PaymentWebhookController {
 
         if (secret == null || !webhookSecret.equals(secret)) {
             log.warn("Payment webhook rejected: invalid secret");
+            integrationService.recordWebhook("PAYMENT", "rejected", "FAILED", "FAILED", "Invalid webhook secret");
             return ResponseEntity.status(401).body(ApiResponse.error("Invalid webhook secret"));
         }
         if (payload == null || payload.paymentId == null || payload.result == null) {
+            integrationService.recordWebhook("PAYMENT", "malformed", "FAILED", "FAILED", "paymentId and result are required");
             return ResponseEntity.badRequest().body(ApiResponse.error("paymentId and result are required"));
         }
 
         Payment payment = paymentRepository.findById(payload.paymentId)
                 .orElse(null);
         if (payment == null) {
+            integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "FAILED", "Payment not found");
             return ResponseEntity.status(404).body(ApiResponse.error("Payment not found"));
         }
 
@@ -60,6 +64,7 @@ public class PaymentWebhookController {
         if ("SUCCESS".equals(result)) {
             if ("COMPLETED".equals(payment.getStatus())) {
                 log.info("Duplicate payment webhook for {}", payload.paymentId);
+                integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "SUCCESS", "Duplicate callback");
                 return ResponseEntity.ok(ApiResponse.success(Map.of(
                         "paymentId", payload.paymentId,
                         "status", "COMPLETED",
@@ -68,6 +73,7 @@ public class PaymentWebhookController {
             paymentService.verifyPayment(payload.paymentId,
                     payload.providerReference, null);
             log.info("Payment webhook: {} completed, entitlement granted", payload.paymentId);
+            integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "SUCCESS", null);
             return ResponseEntity.ok(ApiResponse.success(Map.of(
                     "paymentId", payload.paymentId,
                     "status", "COMPLETED",
@@ -78,10 +84,12 @@ public class PaymentWebhookController {
                 paymentRepository.save(payment);
             }
             log.info("Payment webhook: {} failed", payload.paymentId);
+            integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "FAILED", "Gateway reported failure");
             return ResponseEntity.ok(ApiResponse.success(Map.of(
                     "paymentId", payload.paymentId,
                     "status", payment.getStatus())));
         } else {
+            integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "FAILED", "Invalid result value");
             return ResponseEntity.badRequest().body(ApiResponse.error("result must be SUCCESS or FAILED"));
         }
     }

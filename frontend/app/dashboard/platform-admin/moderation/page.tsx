@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { ShieldCheck, AlertCircle, RefreshCw, Search, Clock, Flag, CheckCircle2, XCircle, Eye, Plus } from "lucide-react"
 import { platformAdminApi, type PageResponse, type ContentReport } from "@/lib/platform-admin-api"
 
-const STATUSES = ["", "OPEN", "REVIEWING", "RESOLVED", "DISMISSED"]
+const STATUSES = ["", "OPEN", "REVIEWING", "APPEALED", "RESOLVED", "DISMISSED"]
 const ENTITY_TYPES = ["COURSE", "MEDIA", "RESOURCE", "EVENT", "USER", "COMMENT"]
 const REASONS = ["INAPPROPRIATE", "SPAM", "COPYRIGHT", "SAFETY", "OTHER"]
 
@@ -12,6 +12,7 @@ function StatusBadge({ s }: { s: string }) {
   const map: Record<string, string> = {
     OPEN: "bg-blue-500/10 text-blue-700 border-blue-200",
     REVIEWING: "bg-amber-500/10 text-amber-700 border-amber-200",
+    APPEALED: "bg-purple-500/10 text-purple-700 border-purple-200",
     RESOLVED: "bg-emerald-500/10 text-emerald-700 border-emerald-200",
     DISMISSED: "bg-slate-500/10 text-slate-600 border-slate-200",
   }
@@ -71,7 +72,7 @@ export default function PlatformModerationPage() {
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-orange-500 text-white"><ShieldCheck className="size-4" /></span> Moderation</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Content report queue — reported courses, media, resources, events, and users. Actions: <span className="font-mono text-xs">OPEN → REVIEWING → RESOLVED | DISMISSED</span>.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Content report queue — reported courses, media, resources, events, and users. Actions: <span className="font-mono text-xs">OPEN → REVIEWING → RESOLVED | DISMISSED | APPEALED</span>.</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowForm(v => !v)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><Plus className="size-4" /> New report</button>
@@ -154,12 +155,19 @@ export default function PlatformModerationPage() {
                   {r.status === "OPEN" && (
                     <button disabled={updating === r.id} onClick={() => act(r.id, "REVIEWING")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><Eye className="size-3" /> Review</button>
                   )}
-                  {r.status === "OPEN" || r.status === "REVIEWING" ? (
+                  {(r.status === "OPEN" || r.status === "REVIEWING") && (
                     <>
                       <button disabled={updating === r.id} onClick={() => act(r.id, "RESOLVED", "Actioned by platform admin")} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><CheckCircle2 className="size-3" /> Resolve</button>
                       <button disabled={updating === r.id} onClick={() => act(r.id, "DISMISSED", "No violation found")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><XCircle className="size-3" /> Dismiss</button>
+                      <button disabled={updating === r.id} onClick={() => act(r.id, "APPEALED", "Reported party filed an appeal")} className="inline-flex items-center gap-1 rounded-lg border border-purple-200 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-50"><Flag className="size-3" /> Appeal</button>
                     </>
-                  ) : null}
+                  )}
+                  {r.status === "APPEALED" && (
+                    <>
+                      <button disabled={updating === r.id} onClick={() => act(r.id, "RESOLVED", "Appeal upheld after review")} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><CheckCircle2 className="size-3" /> Uphold</button>
+                      <button disabled={updating === r.id} onClick={() => act(r.id, "DISMISSED", "Appeal dismissed")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><XCircle className="size-3" /> Deny</button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

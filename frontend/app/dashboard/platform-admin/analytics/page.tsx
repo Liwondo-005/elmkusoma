@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BarChart3, Users, Building2, Radio, AlertTriangle, ShieldAlert, Package, Award, GraduationCap, Activity, Loader2, AlertCircle, RefreshCw, TrendingUp } from "lucide-react"
-import { platformAdminApi, type EnhancedDashboard, type AttentionItem } from "@/lib/platform-admin-api"
+import { BarChart3, Users, Building2, Radio, AlertTriangle, ShieldAlert, Package, Award, GraduationCap, Activity, Loader2, AlertCircle, RefreshCw, TrendingUp, Camera, History } from "lucide-react"
+import { platformAdminApi, type EnhancedDashboard, type AttentionItem, type AnalyticsSnapshot } from "@/lib/platform-admin-api"
 
 function SkeletonCard() {
   return <div className="rounded-2xl border border-border bg-card p-5 animate-pulse"><div className="h-10 w-10 rounded-xl bg-muted" /><div className="mt-4 h-6 w-20 rounded bg-muted" /><div className="mt-2 h-3 w-24 rounded bg-muted" /></div>
@@ -24,6 +24,9 @@ export default function PlatformAnalyticsPage() {
   const [attention, setAttention] = useState<AttentionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [snapshots, setSnapshots] = useState<AnalyticsSnapshot[]>([])
+  const [snapError, setSnapError] = useState<string | null>(null)
+  const [snapBusy, setSnapBusy] = useState(false)
 
   async function load() {
     setLoading(true); setError(null)
@@ -35,6 +38,22 @@ export default function PlatformAnalyticsPage() {
     } catch (e: any) { setError(e.message) } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
+  useEffect(() => { loadSnapshots() }, [])
+
+  async function loadSnapshots() {
+    setSnapError(null)
+    try { setSnapshots(await platformAdminApi.listAnalyticsSnapshots(20)) }
+    catch (e: any) { setSnapshots([]); setSnapError(e.message || "Snapshots unavailable") }
+  }
+
+  async function createSnapshot() {
+    setSnapBusy(true); setSnapError(null)
+    try {
+      await platformAdminApi.createAnalyticsSnapshot()
+      await loadSnapshots()
+    } catch (e: any) { setSnapError(e.message || "Failed to create snapshot") }
+    finally { setSnapBusy(false) }
+  }
 
   const hasDash = !!dash
 
@@ -79,6 +98,46 @@ export default function PlatformAnalyticsPage() {
           <Kpi icon={GraduationCap} label="Payments" value={dash?.totalPayments ?? null} sub="Total payments" available={hasDash} />
         </div>
       )}
+
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><History className="size-4 text-primary" /> Analytics Snapshots</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Persisted daily snapshots of verified KPI counts (created by scheduler or on demand).</p>
+          </div>
+          <button onClick={createSnapshot} disabled={snapBusy}
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-50">
+            {snapBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />} Create snapshot
+          </button>
+        </div>
+        {snapError && <p className="mt-2 flex items-center gap-1 text-xs text-red-600"><AlertCircle className="size-3.5" />{snapError}</p>}
+        <div className="mt-4">
+          {snapshots.length === 0 && !snapError ? (
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center">
+              <p className="text-sm font-medium">No snapshots yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">Create one now or wait for the daily job.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {snapshots.map(s => (
+                <div key={s.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{s.snapshotType}</p>
+                    <p className="text-xs text-muted-foreground">{s.generatedAt ? new Date(s.generatedAt).toLocaleString() : "Data unavailable"}</p>
+                    {s.data && (
+                      <p className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {Object.entries(s.data).slice(0, 8).map(([k, v]) => (
+                          <span key={k} className="rounded-full bg-muted px-2 py-0.5">{k}: {String(v)}</span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 shadow-sm">

@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Bell, Send, Loader2 } from "lucide-react"
-import { platformAdminApi, type NotificationSummary, type PageResponse } from "@/lib/platform-admin-api"
+import { useEffect, useState, useCallback } from "react"
+import { Bell, Send, Loader2, Inbox, RefreshCw, AlertCircle } from "lucide-react"
+import { platformAdminApi, type NotificationSummary, type PageResponse, type CommunicationDelivery } from "@/lib/platform-admin-api"
 
 export default function CommunicationsPage() {
   const [data, setData] = useState<PageResponse<NotificationSummary> | null>(null)
@@ -10,13 +10,32 @@ export default function CommunicationsPage() {
   const [showSend, setShowSend] = useState(false)
   const [form, setForm] = useState({ title: "", message: "", notificationType: "ANNOUNCEMENT", priority: "NORMAL", targetAudience: "ALL" })
   const [saving, setSaving] = useState(false)
+  const [delivery, setDelivery] = useState<CommunicationDelivery | null>(null)
+  const [deliveryError, setDeliveryError] = useState<string | null>(null)
+  const [pageIndex, setPageIndex] = useState(0)
 
-  const load = (p = 0) => {
+  const load = useCallback(async (p = 0) => {
     setLoading(true)
-    platformAdminApi.listNotifications(p, 20).then(setData).finally(() => setLoading(false))
-  }
+    try {
+      setData(await platformAdminApi.listNotifications(p, 20))
+    } catch (e: any) {
+      setDeliveryError(e.message || "Failed to load notifications")
+      setData(null)
+    } finally { setLoading(false) }
+  }, [])
 
-  useEffect(() => { load() }, [])
+  const loadDelivery = useCallback(async () => {
+    setDeliveryError(null)
+    try {
+      setDelivery(await platformAdminApi.getCommunicationDelivery())
+    } catch (e: any) {
+      setDelivery(null)
+      setDeliveryError(e.message || "Delivery stats unavailable")
+    }
+  }, [])
+
+  useEffect(() => { load(pageIndex) }, [load, pageIndex])
+  useEffect(() => { loadDelivery() }, [loadDelivery])
 
   async function handleSend() {
     if (!form.title || !form.message) return
@@ -25,7 +44,7 @@ export default function CommunicationsPage() {
       await platformAdminApi.sendNotification(form)
       setForm({ title: "", message: "", notificationType: "ANNOUNCEMENT", priority: "NORMAL", targetAudience: "ALL" })
       setShowSend(false)
-      load()
+      await Promise.all([load(pageIndex), loadDelivery()])
     } finally { setSaving(false) }
   }
 
@@ -39,6 +58,32 @@ export default function CommunicationsPage() {
         <button onClick={() => setShowSend(!showSend)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
           <Send className="size-4" /> Send Notification
         </button>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Inbox className="size-4" /> Delivery Stats</h2>
+          <button onClick={loadDelivery} className="text-muted-foreground hover:text-foreground" aria-label="Refresh delivery"><RefreshCw className="size-3.5" /></button>
+        </div>
+        {deliveryError && <p className="mt-2 flex items-center gap-1 text-xs text-red-600"><AlertCircle className="size-3.5" />{deliveryError}</p>}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Platform notifications", value: delivery?.platformNotifications },
+            { label: "Learner notifications", value: delivery?.learnerNotifications },
+            { label: "Learner read", value: delivery?.learnerRead },
+            { label: "Learner unread", value: delivery?.learnerUnread },
+          ].map(s => (
+            <div key={s.label} className="rounded-xl border border-border bg-background p-4">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              {s.value === null || s.value === undefined
+                ? <p className="mt-1 text-sm font-semibold text-muted-foreground">Data unavailable</p>
+                : <p className="mt-1 text-xl font-bold tabular-nums">{s.value.toLocaleString()}</p>}
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Read rate {delivery?.learnerReadRate != null ? `${delivery.learnerReadRate}%` : "—"} · {delivery?.deliveryNote ?? "Data unavailable"}
+        </p>
       </div>
 
       {showSend && (
@@ -94,6 +139,14 @@ export default function CommunicationsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {data && data.totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <button disabled={pageIndex === 0} onClick={() => setPageIndex(i => i - 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">Previous</button>
+          <span className="text-xs text-muted-foreground">Page {pageIndex + 1} of {data.totalPages}</span>
+          <button disabled={data.last} onClick={() => setPageIndex(i => i + 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">Next</button>
         </div>
       )}
     </div>
