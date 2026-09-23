@@ -4,9 +4,22 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
+
+function sidebarKey(label: string): string {
+  return label
+    .replace(/&/g, " and ")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((word, index) =>
+      index === 0 ? word.toLowerCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
+    .join("")
+}
 
 const nurseryNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "My World", href: "/dashboard/nursery", icon: Home },
@@ -192,7 +205,7 @@ const collegeNavSections: CollegeNavSection[] = [
     items: [
       { label: "Academic Search", href: "/dashboard/learner/search", icon: Search, dotColor: "bg-slate-500" },
       { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, dotColor: "bg-blue-500" },
-      { label: "Notifications", href: "/dashboard/notifications", icon: Bell, dotColor: "bg-orange-500" },
+      { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell, dotColor: "bg-orange-500" },
     ],
   },
   {
@@ -471,6 +484,12 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const router = useRouter()
+  const t = useTranslations("sidebar")
+
+  function tl(label: string): string {
+    const key = sidebarKey(label)
+    return t.has(key) ? t(key) : label
+  }
 
   function handleLogout() {
     logout()
@@ -537,7 +556,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           key={item.href}
           href={item.href}
           onClick={onNavigate}
-          title={collapsed ? item.label : undefined}
+          title={collapsed ? tl(item.label) : undefined}
           className={cn(
             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
             collapsed && "justify-center px-2",
@@ -550,7 +569,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className={`size-1.5 shrink-0 rounded-full ${item.dotColor}`} />
           )}
           {(!isPrimary || active) && <item.icon className="size-4 shrink-0" />}
-          {!collapsed && <span className="flex-1">{item.label}</span>}
+          {!collapsed && <span className="flex-1">{tl(item.label)}</span>}
           {!collapsed && realBadge > 0 && (
             <span
               className={cn(
@@ -574,7 +593,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       <div key={section.group}>
         {si > 0 && <div className="my-2 border-t border-border" />}
         <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {section.group}
+          {tl(section.group)}
         </p>
         {renderNavItems(section.items)}
       </div>
@@ -608,7 +627,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 <span className={`size-1.5 shrink-0 rounded-full ${item.dotColor}`} />
               )}
               {(!isPrimary || isParentActive) && <item.icon className="size-4 shrink-0" />}
-              <span className="flex-1 text-left">{item.label}</span>
+              <span className="flex-1 text-left">{tl(item.label)}</span>
               <ChevronRight className={cn("size-3.5 transition-transform", isExpanded && "rotate-90")} />
             </button>
             {isExpanded && (
@@ -628,7 +647,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
                       )}
                     >
                       <child.icon className="size-3.5 shrink-0" />
-                      <span>{child.label}</span>
+                      <span>{tl(child.label)}</span>
                       {badges[child.href] && badges[child.href]! > 0 && (
                         <span className="ml-auto inline-flex size-5 items-center justify-center rounded-full bg-orange text-[10px] font-bold text-orange-foreground">
                           {badges[child.href]}
@@ -648,7 +667,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           key={item.href}
           href={item.href!}
           onClick={onNavigate}
-          title={collapsed ? item.label : undefined}
+          title={collapsed ? tl(item.label) : undefined}
           className={cn(
             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
             collapsed && "justify-center px-2",
@@ -661,7 +680,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className={`size-1.5 shrink-0 rounded-full ${item.dotColor}`} />
           )}
           {(!isPrimary || isActive) && <item.icon className="size-4 shrink-0" />}
-          {!collapsed && <span className="flex-1">{item.label}</span>}
+          {!collapsed && <span className="flex-1">{tl(item.label)}</span>}
           {!collapsed && realBadge > 0 && (
             <span className={cn(
               "inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold",
@@ -690,13 +709,13 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Main navigation" role="navigation">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label={tl("Main navigation")} role="navigation">
         {isTeacher ? (
           teacherNavSections.map((section, si) => (
             <div key={section.group}>
               {si > 0 && <div className="my-2 border-t border-border" />}
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {section.group}
+                {tl(section.group)}
               </p>
               {renderNavItems(section.items)}
             </div>
@@ -706,7 +725,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <div key={section.group}>
               {si > 0 && <div className="my-2 border-t border-border" />}
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {section.group}
+                {tl(section.group)}
               </p>
               {renderNavItems(section.items)}
             </div>
@@ -720,7 +739,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <div key={section.group}>
               {si > 0 && <div className="my-2 border-t border-border" />}
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {section.group}
+                {tl(section.group)}
               </p>
               {renderNavItems(section.items)}
             </div>
@@ -732,7 +751,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               <>
                 <div className="my-2 border-t border-border" />
                 <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Administration
+                  {tl("Administration")}
                 </p>
                 {renderNavItems(adminNav)}
               </>
@@ -748,7 +767,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <LogOut className="size-4 shrink-0" />
-          Logout
+          {tl("Logout")}
         </button>
       </div>
     </div>

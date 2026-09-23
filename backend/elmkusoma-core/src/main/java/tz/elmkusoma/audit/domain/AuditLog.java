@@ -76,10 +76,17 @@ public class AuditLog {
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;
 
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
+        if (isDeleted == null) isDeleted = false;
     }
+
+    public Boolean getIsDeleted() { return isDeleted; }
+    public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }

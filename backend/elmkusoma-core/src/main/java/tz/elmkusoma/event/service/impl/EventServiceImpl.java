@@ -4,10 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tz.elmkusoma.event.domain.Event;
-import tz.elmkusoma.event.domain.EventMaterial;
-import tz.elmkusoma.event.domain.EventRegistration;
-import tz.elmkusoma.event.dto.*;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateType;
@@ -17,22 +13,28 @@ import tz.elmkusoma.certificate.repository.CertificateTemplateRepository;
 import tz.elmkusoma.event.domain.Event;
 import tz.elmkusoma.event.domain.EventMaterial;
 import tz.elmkusoma.event.domain.EventRegistration;
+import tz.elmkusoma.event.domain.EventStatus;
 import tz.elmkusoma.event.dto.*;
 import tz.elmkusoma.event.repository.EventMaterialRepository;
 import tz.elmkusoma.event.repository.EventRegistrationRepository;
 import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.event.service.EventService;
+import tz.elmkusoma.exception.ForbiddenException;
+import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.domain.LearnerNotification;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -41,6 +43,15 @@ import java.util.stream.Collectors;
 public class EventServiceImpl implements EventService {
 
     private static final Logger log = LoggerFactory.getLogger(EventServiceImpl.class);
+
+    private static final Set<EventStatus> LEARNER_VISIBLE_STATUSES = EnumSet.of(
+            EventStatus.PUBLISHED, EventStatus.REGISTRATION_OPEN, EventStatus.REGISTRATION_CLOSED,
+            EventStatus.PREPARING, EventStatus.STARTING, EventStatus.LIVE, EventStatus.ENDING,
+            EventStatus.ENDED, EventStatus.RECORDING, EventStatus.PROCESSING,
+            EventStatus.REPLAY_AVAILABLE, EventStatus.FULL);
+
+    private static final Set<EventStatus> REGISTRATION_OPEN_STATUSES = EnumSet.of(
+            EventStatus.PUBLISHED, EventStatus.REGISTRATION_OPEN);
 
     private final EventRepository eventRepository;
     private final EventRegistrationRepository registrationRepository;
@@ -51,7 +62,7 @@ public class EventServiceImpl implements EventService {
     private final CertificateTemplateRepository certificateTemplateRepository;
     private final LearnerNotificationRepository notificationRepository;
 
-public EventServiceImpl(EventRepository eventRepository,
+    public EventServiceImpl(EventRepository eventRepository,
                             EventRegistrationRepository registrationRepository,
                             EventMaterialRepository materialRepository,
                             UserRepository userRepository,
@@ -68,6 +79,128 @@ public EventServiceImpl(EventRepository eventRepository,
         this.certificateTemplateRepository = certificateTemplateRepository;
         this.notificationRepository = notificationRepository;
     }
+
+    // ==================== Status helpers ====================
+
+    private Event requireEvent(UUID eventId) {
+        return eventRepository.findById(eventId)
+                .filter(event -> !Boolean.TRUE.equals(event.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Event", "id", eventId));
+    }
+
+    private EventStatus currentStatus(Event event) {
+        if (event.getEventStatus() != null) {
+            return event.getEventStatus();
+        }
+        if (event.getStatus() != null && !event.getStatus().isBlank()) {
+            try {
+                return EventStatus.fromString(event.getStatus());
+            } catch (IllegalArgumentException ex) {
+                return EventStatus.DRAFT;
+            }
+        }
+        return EventStatus.DRAFT;
+    }
+
+    private void applyStatus(Event event, EventStatus status) {
+        event.setEventStatus(status);
+        event.setStatus(status.name());
+    }
+
+    private void changeStatus(Event event, EventStatus next) {
+        EventStatus current = currentStatus(event);
+        current.assertCanTransitionTo(next);
+        applyStatus(event, next);
+    }
+
+    private void changeStatus(Event event, String rawStatus) {
+        changeStatus(event, EventStatus.fromString(rawStatus));
+    }
+
+    // ==================== Access level helpers ====================
+
+    private String accessLevelOf(Event event) {
+        if (event.getAccessLevel() == null || event.getAccessLevel().isBlank()) {
+            return "INSTITUTION";
+        }
+        return event.getAccessLevel().trim().toUpperCase();
+    }
+
+    private boolean isPublicAccess(String level) {
+        return "PUBLIC".equals(level) || "AUTHENTICATED".equals(level);
+    }
+
+    private boolean isPrivateAccess(String level) {
+        return "PRIVATE".equals(level) || "INVITED".equals(level) || "RESTRICTED".equals(level);
+    }
+
+    private boolean isPlatformAdmin(User.Role role) {
+        return role == User.Role.ADMIN || role == User.Role.NATIONAL_ADMIN;
+    }
+
+    private boolean sameInstitution(User user, Event event) {
+        return event.getInstitutionId() == null
+                || user.getInstitutionId() == null
+                || event.getInstitutionId().equals(user.getInstitutionId());
+    }
+
+    private void assertCanViewEvent(Event event, UUID currentUserId) {
+        String level = accessLevelOf(event);
+        if (isPublicAccess(level)) {
+            return;
+        }
+        if (currentUserId == null) {
+            if (isPrivateAccess(level)) {
+                throw new ForbiddenException("This event is private to its organizer");
+            }
+            return;
+        }
+        if (currentUserId.equals(event.getOrganizerId())) {
+            return;
+        }
+        User user = userRepository.findById(currentUserId).orElse(null);
+        if (user == null) {
+            return;
+        }
+        if (isPlatformAdmin(user.getRole())) {
+            return;
+        }
+        if (isPrivateAccess(level)) {
+            if (user.getRole() == User.Role.INSTITUTION_ADMIN && sameInstitution(user, event)) {
+                return;
+            }
+            throw new ForbiddenException("This event is only visible to its organizer and administrators");
+        }
+        if (!sameInstitution(user, event)) {
+            throw new ForbiddenException("This event is not available in your institution");
+        }
+    }
+
+    private void assertCanRegister(Event event, User user) {
+        String level = accessLevelOf(event);
+        if (isPublicAccess(level)) {
+            return;
+        }
+        if (isPrivateAccess(level)) {
+            if (user.getId() != null && user.getId().equals(event.getOrganizerId())) {
+                return;
+            }
+            if (isPlatformAdmin(user.getRole())
+                    || (user.getRole() == User.Role.INSTITUTION_ADMIN && sameInstitution(user, event))) {
+                return;
+            }
+            throw new ForbiddenException("Registration for this event is restricted to its organizer");
+        }
+        if (isPlatformAdmin(user.getRole())) {
+            return;
+        }
+        if (event.getInstitutionId() != null && user.getInstitutionId() != null
+                && !event.getInstitutionId().equals(user.getInstitutionId())) {
+            throw new IllegalArgumentException("This event is not available in your institution");
+        }
+    }
+
+    // ==================== Queries ====================
 
     @Override
     public List<EventResponse> getEvents(UUID institutionId, String status, String eventType, String category) {
@@ -95,19 +228,30 @@ public EventServiceImpl(EventRepository eventRepository,
 
     @Override
     public EventResponse getEventById(UUID eventId, UUID currentUserId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
-        if (event.getIsDeleted()) {
-            throw new IllegalArgumentException("Event not found");
+        Event event = requireEvent(eventId);
+        EventStatus status = currentStatus(event);
+        boolean registered = currentUserId != null
+                && registrationRepository.existsByEventIdAndUserIdAndIsDeletedFalse(eventId, currentUserId);
+
+        if (!LEARNER_VISIBLE_STATUSES.contains(status)) {
+            boolean cancelledForRegistered = registered
+                    && (status == EventStatus.CANCELLED || status == EventStatus.RESCHEDULED);
+            if (!cancelledForRegistered) {
+                throw new ResourceNotFoundException("Event", "id", eventId);
+            }
+            return buildLearnerResponse(event, currentUserId, registered);
         }
-        if (!"PUBLISHED".equals(event.getStatus()) && !"COMPLETED".equals(event.getStatus())) {
-            throw new IllegalArgumentException("Event not found");
-        }
+
+        assertCanViewEvent(event, currentUserId);
+        return buildLearnerResponse(event, currentUserId, registered);
+    }
+
+    private EventResponse buildLearnerResponse(Event event, UUID currentUserId, boolean registered) {
         EventResponse response = mapToResponse(event);
         if (currentUserId != null) {
-            response.setIsRegistered(registrationRepository.existsByEventIdAndUserIdAndIsDeletedFalse(eventId, currentUserId));
-            if (response.getIsRegistered()) {
-                registrationRepository.findByEventIdAndUserIdAndIsDeletedFalse(eventId, currentUserId)
+            response.setIsRegistered(registered);
+            if (registered) {
+                registrationRepository.findByEventIdAndUserIdAndIsDeletedFalse(event.getId(), currentUserId)
                         .ifPresent(reg -> response.setRegistrationStatus(reg.getStatus()));
             }
         }
@@ -116,12 +260,7 @@ public EventServiceImpl(EventRepository eventRepository,
 
     @Override
     public EventResponse getEventByIdForAdmin(UUID eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
-        if (event.getIsDeleted()) {
-            throw new IllegalArgumentException("Event not found");
-        }
-        return mapToResponse(event);
+        return mapToResponse(requireEvent(eventId));
     }
 
     @Override
@@ -136,6 +275,8 @@ public EventServiceImpl(EventRepository eventRepository,
         List<Event> events = eventRepository.findPastOrOngoing(institutionId, now, now.minusDays(365));
         return events.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
+
+    // ==================== CRUD ====================
 
     @Override
     public EventResponse createEvent(UUID institutionId, UUID organizerId, EventRequest request) {
@@ -152,18 +293,25 @@ public EventServiceImpl(EventRepository eventRepository,
                 .endsAt(request.getEndsAt() != null ? parseDateTime(request.getEndsAt()) : null)
                 .durationMinutes(request.getDurationMinutes())
                 .maxParticipants(request.getMaxParticipants())
-                .status(request.getStatus() != null ? request.getStatus() : "DRAFT")
                 .thumbnailUrl(request.getThumbnailUrl())
                 .tags(request.getTags())
                 .isFree(request.getIsFree() != null ? request.getIsFree() : true)
                 .requiresApproval(request.getRequiresApproval() != null ? request.getRequiresApproval() : false)
+                .timezone(request.getTimezone())
+                .accessLevel(request.getAccessLevel())
+                .presenterName(request.getPresenterName())
                 .eventFormat(request.getEventFormat())
                 .difficulty(request.getDifficulty())
                 .targetAudience(request.getTargetAudience())
                 .prerequisites(request.getPrerequisites())
                 .learningOutcomes(request.getLearningOutcomes())
                 .agenda(request.getAgenda())
+                .rescheduledFrom(request.getRescheduledFrom())
                 .build();
+
+        applyStatus(event, request.getStatus() != null
+                ? EventStatus.fromString(request.getStatus())
+                : EventStatus.DRAFT);
 
         if (event.getEndsAt() == null && event.getDurationMinutes() != null) {
             event.setEndsAt(event.getStartsAt().plusMinutes(event.getDurationMinutes()));
@@ -176,8 +324,7 @@ public EventServiceImpl(EventRepository eventRepository,
 
     @Override
     public EventResponse updateEvent(UUID eventId, EventRequest request) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Event event = requireEvent(eventId);
 
         String oldStatus = event.getStatus();
 
@@ -191,11 +338,13 @@ public EventServiceImpl(EventRepository eventRepository,
         if (request.getEndsAt() != null) event.setEndsAt(parseDateTime(request.getEndsAt()));
         if (request.getDurationMinutes() != null) event.setDurationMinutes(request.getDurationMinutes());
         if (request.getMaxParticipants() != null) event.setMaxParticipants(request.getMaxParticipants());
-        if (request.getStatus() != null) event.setStatus(request.getStatus());
         if (request.getThumbnailUrl() != null) event.setThumbnailUrl(request.getThumbnailUrl());
         if (request.getTags() != null) event.setTags(request.getTags());
         if (request.getIsFree() != null) event.setIsFree(request.getIsFree());
         if (request.getRequiresApproval() != null) event.setRequiresApproval(request.getRequiresApproval());
+        if (request.getTimezone() != null) event.setTimezone(request.getTimezone());
+        if (request.getAccessLevel() != null) event.setAccessLevel(request.getAccessLevel());
+        if (request.getPresenterName() != null) event.setPresenterName(request.getPresenterName());
         if (request.getEventFormat() != null) event.setEventFormat(request.getEventFormat());
         if (request.getDifficulty() != null) event.setDifficulty(request.getDifficulty());
         if (request.getTargetAudience() != null) event.setTargetAudience(request.getTargetAudience());
@@ -203,31 +352,34 @@ public EventServiceImpl(EventRepository eventRepository,
         if (request.getLearningOutcomes() != null) event.setLearningOutcomes(request.getLearningOutcomes());
         if (request.getAgenda() != null) event.setAgenda(request.getAgenda());
         if (request.getRescheduledFrom() != null) event.setRescheduledFrom(request.getRescheduledFrom());
+        if (request.getStatus() != null) {
+            changeStatus(event, request.getStatus());
+        }
 
         event = eventRepository.save(event);
         log.info("Event updated: id={}, institutionId={}", event.getId(), event.getInstitutionId());
         if (request.getStatus() != null && !request.getStatus().equals(oldStatus)) {
-            log.info("Event status changed: id={}, oldStatus={}, newStatus={}", eventId, oldStatus, request.getStatus());
+            log.info("Event status changed: id={}, oldStatus={}, newStatus={}", eventId, oldStatus, event.getStatus());
         }
         return mapToResponse(event);
     }
 
     @Override
     public void deleteEvent(UUID eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Event event = requireEvent(eventId);
         UUID institutionId = event.getInstitutionId();
         event.setIsDeleted(true);
         eventRepository.save(event);
         log.info("Event deleted: id={}, institutionId={}", eventId, institutionId);
     }
 
+    // ==================== Registrations ====================
+
     @Override
     public EventRegistrationResponse registerForEvent(UUID eventId, UUID userId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Event event = requireEvent(eventId);
 
-        if (!"PUBLISHED".equals(event.getStatus())) {
+        if (!REGISTRATION_OPEN_STATUSES.contains(currentStatus(event))) {
             throw new IllegalArgumentException("This event is not available for registration");
         }
 
@@ -236,17 +388,17 @@ public EventServiceImpl(EventRepository eventRepository,
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        if (event.getInstitutionId() != null && user.getInstitutionId() != null
-                && !event.getInstitutionId().equals(user.getInstitutionId())) {
-            throw new IllegalArgumentException("This event is not available in your institution");
-        }
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        assertCanRegister(event, user);
 
-        java.util.Optional<EventRegistration> existing = registrationRepository.findByEventIdAndUserIdAndIsDeletedFalse(eventId, userId);
+        java.util.Optional<EventRegistration> existing =
+                registrationRepository.findByEventIdAndUserIdAndIsDeletedFalse(eventId, userId);
         if (existing.isPresent()) {
             EventRegistration reg = existing.get();
-            if ("REGISTERED".equals(reg.getStatus())) {
-                throw new IllegalArgumentException("You are already registered for this event");
+            if ("REGISTERED".equals(reg.getStatus()) || "WAITLISTED".equals(reg.getStatus())) {
+                log.info("User {} already registered for event {} - returning existing registration",
+                        userId, eventId);
+                return mapRegistrationToResponse(reg, event);
             }
             if ("CANCELLED".equals(reg.getStatus())) {
                 if (event.getMaxParticipants() != null) {
@@ -263,6 +415,7 @@ public EventServiceImpl(EventRepository eventRepository,
                 log.info("User {} re-registered for event {}", userId, eventId);
                 return mapRegistrationToResponse(reg, event);
             }
+            return mapRegistrationToResponse(reg, event);
         }
 
         if (event.getMaxParticipants() != null) {
@@ -274,6 +427,7 @@ public EventServiceImpl(EventRepository eventRepository,
 
         EventRegistration registration = EventRegistration.builder()
                 .eventId(eventId)
+                .institutionId(event.getInstitutionId())
                 .userId(userId)
                 .status(event.getRequiresApproval() ? "WAITLISTED" : "REGISTERED")
                 .registeredAt(LocalDateTime.now())
@@ -287,11 +441,13 @@ public EventServiceImpl(EventRepository eventRepository,
 
     @Override
     public void cancelRegistration(UUID eventId, UUID userId, String reason) {
-        EventRegistration registration = registrationRepository.findByEventIdAndUserIdAndIsDeletedFalse(eventId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Registration not found"));
+        EventRegistration registration = registrationRepository
+                .findByEventIdAndUserIdAndIsDeletedFalse(eventId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Registration", "event", eventId));
 
         if ("CANCELLED".equals(registration.getStatus())) {
-            throw new IllegalArgumentException("Registration is already cancelled");
+            log.info("Registration already cancelled for user {} on event {}", userId, eventId);
+            return;
         }
 
         registration.setStatus("CANCELLED");
@@ -323,6 +479,44 @@ public EventServiceImpl(EventRepository eventRepository,
     public boolean isUserRegistered(UUID eventId, UUID userId) {
         return registrationRepository.existsByEventIdAndUserIdAndIsDeletedFalse(eventId, userId);
     }
+
+    @Override
+    public EventRegistration markEventAttendance(UUID eventId, UUID userId) {
+        requireEvent(eventId);
+        EventRegistration registration = registrationRepository
+                .findByEventIdAndUserIdAndIsDeletedFalse(eventId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Registration", "user", userId + " for event " + eventId));
+        if (!Boolean.TRUE.equals(registration.getAttended())) {
+            registration.setAttended(true);
+            registration.setAttendedAt(LocalDateTime.now());
+            registration = registrationRepository.save(registration);
+            log.info("Attendance marked: event={}, user={}", eventId, userId);
+        }
+        return registration;
+    }
+
+    @Override
+    public int markEventAttendanceBulk(UUID eventId, Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return 0;
+        }
+        int marked = 0;
+        for (UUID userId : userIds) {
+            if (userId == null) {
+                continue;
+            }
+            try {
+                markEventAttendance(eventId, userId);
+                marked++;
+            } catch (ResourceNotFoundException ex) {
+                log.warn("Attendance mark skipped - no registration for user {} on event {}", userId, eventId);
+            }
+        }
+        return marked;
+    }
+
+    // ==================== Materials ====================
 
     @Override
     public List<EventMaterialResponse> getEventMaterials(UUID eventId) {
@@ -359,10 +553,13 @@ public EventServiceImpl(EventRepository eventRepository,
     @Override
     public void deleteEventMaterial(UUID materialId) {
         EventMaterial material = materialRepository.findById(materialId)
-                .orElseThrow(() -> new IllegalArgumentException("Material not found"));
+                .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Material", "id", materialId));
         material.setIsDeleted(true);
         materialRepository.save(material);
     }
+
+    // ==================== Registered event lists ====================
 
     @Override
     public List<EventResponse> getRegisteredEvents(UUID userId, UUID institutionId) {
@@ -387,14 +584,15 @@ public EventServiceImpl(EventRepository eventRepository,
                 .collect(Collectors.toList());
     }
 
+    // ==================== Lifecycle ====================
+
     @Override
     public EventResponse publishEvent(UUID eventId, UUID institutionId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Event event = requireEvent(eventId);
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
-            throw new IllegalArgumentException("Access denied");
+            throw new ForbiddenException("Access denied");
         }
-        event.setStatus("PUBLISHED");
+        changeStatus(event, EventStatus.PUBLISHED);
         event = eventRepository.save(event);
         log.info("Event published: id={}", eventId);
         return mapToResponse(event);
@@ -402,12 +600,11 @@ public EventServiceImpl(EventRepository eventRepository,
 
     @Override
     public EventResponse cancelEvent(UUID eventId, UUID institutionId, String reason) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Event event = requireEvent(eventId);
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
-            throw new IllegalArgumentException("Access denied");
+            throw new ForbiddenException("Access denied");
         }
-        event.setStatus("CANCELLED");
+        changeStatus(event, EventStatus.CANCELLED);
         event.setCancelledAt(LocalDateTime.now());
         event.setCancellationReason(reason);
         event = eventRepository.save(event);
@@ -417,13 +614,11 @@ public EventServiceImpl(EventRepository eventRepository,
 
     @Override
     public EventResponse startLiveEvent(UUID eventId, UUID institutionId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Event event = requireEvent(eventId);
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
-            throw new IllegalArgumentException("Access denied");
+            throw new ForbiddenException("Access denied");
         }
-        event.setStatus("LIVE");
-        event.setEventStatus(tz.elmkusoma.event.domain.EventStatus.LIVE);
+        changeStatus(event, EventStatus.LIVE);
         event = eventRepository.save(event);
         log.info("Event started live: id={}", eventId);
         return mapToResponse(event);
@@ -431,17 +626,14 @@ public EventServiceImpl(EventRepository eventRepository,
 
     @Override
     public EventResponse endLiveEvent(UUID eventId, UUID institutionId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Event event = requireEvent(eventId);
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
-            throw new IllegalArgumentException("Access denied");
+            throw new ForbiddenException("Access denied");
         }
-        event.setStatus("ENDED");
-        event.setEventStatus(tz.elmkusoma.event.domain.EventStatus.ENDED);
+        changeStatus(event, EventStatus.ENDED);
         event = eventRepository.save(event);
         log.info("Event ended: id={}", eventId);
 
-        // Issue certificates for attendees
         issueCertificatesForEventAttendees(event);
 
         return mapToResponse(event);
@@ -451,7 +643,7 @@ public EventServiceImpl(EventRepository eventRepository,
         try {
             List<EventRegistration> attendedRegistrations = registrationRepository.findByEventIdAndIsDeletedFalse(event.getId())
                     .stream()
-                    .filter(EventRegistration::getAttended)
+                    .filter(reg -> Boolean.TRUE.equals(reg.getAttended()))
                     .toList();
 
             if (attendedRegistrations.isEmpty()) {
@@ -459,18 +651,18 @@ public EventServiceImpl(EventRepository eventRepository,
                 return;
             }
 
-            // Find or create a participation certificate template
             List<CertificateTemplate> templates = certificateTemplateRepository.findByInstitutionIdAndTemplateType(
                     event.getInstitutionId(), CertificateTemplate.TemplateType.PARTICIPATION);
-            CertificateTemplate template = templates.isEmpty() ? createDefaultParticipationTemplate(event.getInstitutionId()) : templates.get(0);
+            CertificateTemplate template = templates.isEmpty()
+                    ? createDefaultParticipationTemplate(event.getInstitutionId())
+                    : templates.get(0);
 
             int issuedCount = 0;
             for (EventRegistration registration : attendedRegistrations) {
-                // Check if certificate already issued for this registration
                 if (certificateRepository.findAllByStudentId(registration.getUserId()).stream()
                         .anyMatch(c -> c.getMetadata() != null &&
                                 event.getId().toString().equals(c.getMetadata().get("eventId")))) {
-                    continue; // Already issued
+                    continue;
                 }
 
                 User user = userRepository.findById(registration.getUserId()).orElse(null);
@@ -494,34 +686,43 @@ public EventServiceImpl(EventRepository eventRepository,
                         .status(CertificateStatus.ISSUED)
                         .verificationCode(verificationCode)
                         .instructorName(event.getPresenterName())
-                        .metadata(Map.of(
-                                "eventId", event.getId().toString(),
-                                "eventTitle", event.getTitle(),
-                                "eventType", event.getEventType(),
-                                "registrationId", registration.getId().toString(),
-                                "attendedAt", registration.getAttendedAt() != null ? registration.getAttendedAt().toString() : null
-                        ))
+                        .metadata(buildCertificateMetadata(event, registration))
                         .build();
                 certificate.setInstitutionId(event.getInstitutionId());
 
                 certificateRepository.save(certificate);
+                registration.setCertificateId(certificate.getId());
+                registrationRepository.save(registration);
                 issuedCount++;
 
-                // Create notification
                 LearnerNotification notification = LearnerNotification.builder()
                         .userId(registration.getUserId())
+                        .institutionId(event.getInstitutionId())
                         .title("Certificate Earned!")
-                        .message("You've earned a certificate for attending " + event.getTitle() + ". Verification code: " + verificationCode)
+                        .message("You've earned a certificate for attending " + event.getTitle()
+                                + ". Verification code: " + verificationCode)
                         .notificationType("CERTIFICATE")
                         .targetType("certificate")
                         .targetId(certificate.getId())
                         .build();
-                // Note: notificationRepository not injected here, would need to be added if notifications required
+                notificationRepository.save(notification);
             }
             log.info("Issued {} participation certificates for event: {}", issuedCount, event.getId());
         } catch (Exception ex) {
             log.warn("Failed to issue certificates for event {}: {}", event.getId(), ex.getMessage());
         }
+    }
+
+    private Map<String, Object> buildCertificateMetadata(Event event, EventRegistration registration) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("eventId", event.getId().toString());
+        metadata.put("eventTitle", event.getTitle());
+        metadata.put("eventType", event.getEventType());
+        metadata.put("registrationId", registration.getId().toString());
+        metadata.put("attendedAt", registration.getAttendedAt() != null
+                ? registration.getAttendedAt().toString()
+                : "");
+        return metadata;
     }
 
     private CertificateTemplate createDefaultParticipationTemplate(UUID institutionId) {
@@ -535,21 +736,27 @@ public EventServiceImpl(EventRepository eventRepository,
         return certificateTemplateRepository.save(template);
     }
 
+    // ==================== Summary ====================
+
     @Override
     public Map<String, Object> getEventSummary(UUID eventId, UUID institutionId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+        Event event = requireEvent(eventId);
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
-            throw new IllegalArgumentException("Access denied");
+            throw new ForbiddenException("Access denied");
         }
-        long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(eventId, "REGISTERED");
+
         List<EventRegistration> allRegs = registrationRepository.findByEventIdAndIsDeletedFalse(eventId);
-        long joinedCount = allRegs.stream().filter(EventRegistration::getAttended).count();
+        long registeredCount = allRegs.stream()
+                .filter(reg -> !"CANCELLED".equals(reg.getStatus()))
+                .count();
+        long joinedCount = allRegs.stream()
+                .filter(reg -> Boolean.TRUE.equals(reg.getAttended()))
+                .count();
         double attendanceRate = registeredCount > 0 ? (double) joinedCount / registeredCount * 100 : 0;
 
         List<EventMaterial> materials = materialRepository.findByEventIdAndIsDeletedFalseOrderBySortOrderAsc(eventId);
         List<Map<String, Object>> materialList = materials.stream().map(m -> {
-            Map<String, Object> map = new java.util.HashMap<>();
+            Map<String, Object> map = new HashMap<>();
             map.put("id", m.getId().toString());
             map.put("name", m.getTitle());
             map.put("url", m.getFileUrl());
@@ -557,11 +764,17 @@ public EventServiceImpl(EventRepository eventRepository,
             return map;
         }).collect(Collectors.toList());
 
-        Map<String, Object> summary = new java.util.HashMap<>();
+        List<Map<String, Object>> attendanceList = allRegs.stream()
+                .filter(reg -> Boolean.TRUE.equals(reg.getAttended()))
+                .map(reg -> buildAttendanceRow(event, reg))
+                .collect(Collectors.toList());
+
+        Map<String, Object> summary = new HashMap<>();
         summary.put("id", event.getId().toString());
         summary.put("title", event.getTitle());
         summary.put("eventType", event.getEventType());
         summary.put("status", event.getStatus());
+        summary.put("eventStatus", currentStatus(event).name());
         summary.put("startDate", event.getStartsAt());
         summary.put("durationMinutes", event.getDurationMinutes());
         summary.put("timezone", event.getTimezone());
@@ -569,27 +782,43 @@ public EventServiceImpl(EventRepository eventRepository,
         summary.put("recordingUrl", event.getRecordingUrl());
         summary.put("maxCapacity", event.getMaxParticipants());
         summary.put("currentRegistrations", (int) registeredCount);
+        summary.put("registeredCount", (int) registeredCount);
         summary.put("joinedCount", (int) joinedCount);
         summary.put("attendanceRate", Math.round(attendanceRate));
         summary.put("participation", Math.round(attendanceRate));
         summary.put("materials", materialList);
-
-        List<Map<String, Object>> attendanceList = allRegs.stream()
-                .filter(EventRegistration::getAttended)
-                .map(reg -> {
-                    Map<String, Object> att = new java.util.HashMap<>();
-                    att.put("userId", reg.getUserId().toString());
-                    att.put("userName", "User");
-                    att.put("email", "");
-                    att.put("joinTime", reg.getAttendedAt() != null ? reg.getAttendedAt().toString() : null);
-                    att.put("leaveTime", null);
-                    att.put("durationMinutes", null);
-                    return att;
-                }).collect(Collectors.toList());
         summary.put("attendance", attendanceList);
 
         return summary;
     }
+
+    private Map<String, Object> buildAttendanceRow(Event event, EventRegistration reg) {
+        Map<String, Object> att = new HashMap<>();
+        User attendee = userRepository.findById(reg.getUserId()).orElse(null);
+        att.put("userId", reg.getUserId().toString());
+        att.put("userName", attendee != null && attendee.getFullName() != null
+                ? attendee.getFullName()
+                : "Unknown");
+        att.put("email", attendee != null && attendee.getEmail() != null
+                ? attendee.getEmail()
+                : "");
+        att.put("joinTime", reg.getAttendedAt() != null ? reg.getAttendedAt().toString() : null);
+        att.put("leaveTime", event.getEndsAt() != null ? event.getEndsAt().toString() : null);
+        Integer durationMinutes = null;
+        if (reg.getAttendedAt() != null && event.getEndsAt() != null
+                && event.getEndsAt().isAfter(reg.getAttendedAt())) {
+            durationMinutes = (int) ChronoUnit.MINUTES.between(reg.getAttendedAt(), event.getEndsAt());
+        }
+        att.put("durationMinutes", durationMinutes);
+        att.put("attendedAt", reg.getAttendedAt() != null ? reg.getAttendedAt().toString() : null);
+        att.put("status", reg.getStatus());
+        att.put("certificateId", reg.getCertificateId() != null
+                ? reg.getCertificateId().toString()
+                : null);
+        return att;
+    }
+
+    // ==================== Mapping ====================
 
     private EventResponse mapToResponse(Event event) {
         long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(event.getId(), "REGISTERED");
@@ -627,6 +856,9 @@ public EventServiceImpl(EventRepository eventRepository,
                 .registeredCount((int) registeredCount)
                 .availableSpots(availableSpots)
                 .status(event.getStatus())
+                .eventStatus(currentStatus(event).name())
+                .accessLevel(event.getAccessLevel())
+                .timezone(event.getTimezone())
                 .thumbnailUrl(event.getThumbnailUrl())
                 .tags(event.getTags())
                 .isFree(event.getIsFree())

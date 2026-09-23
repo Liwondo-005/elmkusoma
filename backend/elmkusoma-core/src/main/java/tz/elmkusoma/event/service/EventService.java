@@ -1,7 +1,9 @@
 package tz.elmkusoma.event.service;
 
+import tz.elmkusoma.event.domain.EventRegistration;
 import tz.elmkusoma.event.dto.*;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -57,4 +59,8 @@ public interface EventService {
     EventResponse endLiveEvent(UUID eventId, UUID institutionId);
 
     Map<String, Object> getEventSummary(UUID eventId, UUID institutionId);
+
+    EventRegistration markEventAttendance(UUID eventId, UUID userId);
+
+    int markEventAttendanceBulk(UUID eventId, Collection<UUID> userIds);
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, Calendar } from "lucide-react"
 import Link from "next/link"
-import { adminApi, getInstitutionId } from "@/lib/api"
+import { adminApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const EVENT_TYPES = [
@@ -77,6 +77,16 @@ const initialForm: EventFormData = {
   rescheduledFrom: "",
 }
 
+function computeEndsAt(startDate: string, durationMinutes: string): string | undefined {
+  if (!startDate) return undefined
+  const mins = parseInt(durationMinutes) || 60
+  const end = new Date(startDate)
+  if (isNaN(end.getTime())) return undefined
+  end.setMinutes(end.getMinutes() + mins)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
+}
+
 export default function NewEventPage() {
   const t = useTranslations("events")
   const tc = useTranslations("common")
@@ -103,8 +113,6 @@ export default function NewEventPage() {
 
   async function handleSave(status: "DRAFT" | "PUBLISHED") {
     if (!validate()) return
-    const institutionId = getInstitutionId()
-    if (!institutionId) { setError("No institution context found"); return }
 
     setSaving(true)
     setError(null)
@@ -114,16 +122,11 @@ export default function NewEventPage() {
         description: form.description.trim() || undefined,
         eventType: form.eventType,
         category: form.category || undefined,
-        startDate: form.startDate,
+        startsAt: form.startDate,
+        endsAt: computeEndsAt(form.startDate, form.durationMinutes),
         durationMinutes: form.durationMinutes ? parseInt(form.durationMinutes) : undefined,
-        timezone: form.timezone,
-        maxCapacity: form.maxCapacity ? parseInt(form.maxCapacity) : undefined,
-        accessLevel: form.accessLevel,
-        presenterName: form.presenterName.trim() || undefined,
-        relatedCourseId: form.relatedCourseId || undefined,
-        relatedModuleId: form.relatedModuleId || undefined,
-        relatedLessonId: form.relatedLessonId || undefined,
-        recordingEnabled: form.recordingEnabled,
+        maxParticipants: form.maxCapacity ? parseInt(form.maxCapacity) : undefined,
+        status,
         eventFormat: form.eventFormat || undefined,
         difficulty: form.difficulty || undefined,
         targetAudience: form.targetAudience || undefined,
@@ -131,8 +134,6 @@ export default function NewEventPage() {
         learningOutcomes: form.learningOutcomes || undefined,
         agenda: form.agenda || undefined,
         rescheduledFrom: form.rescheduledFrom || undefined,
-        status,
-        institutionId,
       })
       router.push("/dashboard/admin/events")
     } catch (err) {

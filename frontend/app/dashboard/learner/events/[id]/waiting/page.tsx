@@ -119,7 +119,7 @@ export default function WaitingPage() {
           <ArrowLeft className="size-4" /> {tc("back")}
         </Link>
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-sm text-red-700">{error || tc("error")}</p>
+          <p className="text-sm text-red-700">{error || tc("error.generic")}</p>
         </div>
       </main>
     )

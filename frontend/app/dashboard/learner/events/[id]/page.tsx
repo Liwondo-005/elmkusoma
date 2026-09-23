@@ -115,7 +115,7 @@ export default function EventDetailPage() {
       setEvent(ev)
       setMaterials(mats)
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }
@@ -189,7 +189,7 @@ export default function EventDetailPage() {
 
   if (error && !event) {
     return (
-      <div role="main" className="mx-auto max-w-4xl space-y-4" aria-label={tc("error")}>
+      <div role="main" className="mx-auto max-w-4xl space-y-4" aria-label={tc("error.generic")}>
         <Link
           href="/dashboard/learner/events"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"

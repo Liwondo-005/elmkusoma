@@ -53,7 +53,7 @@ export default function ReplaysPage() {
       })
       setReplays(data)
     } catch (e: any) {
-      setError(e.message || tc("error"))
+      setError(e.message || tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -183,7 +183,7 @@ export default function ReplaysPage() {
 
       {!loading && !error && otherReplays.length > 0 && (
         <section>
-          {continueWatching.length > 0 && <h2 className="mb-3 text-lg font-semibold">All Replays</h2>}
+          {continueWatching.length > 0 && <h2 className="mb-3 text-lg font-semibold">{t("allReplays")}</h2>}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {otherReplays.map((replay) => (
               <Link
@@ -257,9 +257,9 @@ export default function ReplaysPage() {
       )}
 
       <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">Browse upcoming live classes.</p>
+        <p className="text-sm text-muted-foreground">{t("browseUpcomingLive")}</p>
         <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          Browse Live Classes <ArrowRight className="size-3" />
+          {t("browseLiveClasses")} <ArrowRight className="size-3" />
         </Link>
       </div>
     </main>

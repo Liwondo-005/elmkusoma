@@ -26,6 +26,9 @@ public class EventResponse {
     private Integer registeredCount;
     private Integer availableSpots;
     private String status;
+    private String eventStatus;
+    private String accessLevel;
+    private String timezone;
     private String thumbnailUrl;
     private String tags;
     private Boolean isFree;

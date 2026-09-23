@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { learnerApi, type ReplayDetail } from "@/lib/learner-api"
+import { announce } from "@/lib/announce"
 import {
   ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize,
   Minimize, Loader2, CalendarDays, Clock, User, Eye,
@@ -36,7 +37,6 @@ const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 export default function ReplayViewerPage() {
   const params = useParams()
-  const router = useRouter()
   const t = useTranslations("events")
   const tc = useTranslations("common")
   const replayId = params.id as string
@@ -67,7 +67,9 @@ export default function ReplayViewerPage() {
       setData(detail)
       setError("")
     } catch (e: any) {
-      setError(e.message || tc("error"))
+      const msg = e.message || tc("error.load")
+      setError(msg)
+      announce(msg)
     } finally {
       setLoading(false)
     }
@@ -194,7 +196,7 @@ export default function ReplayViewerPage() {
           <ArrowLeft className="size-4" /> {tc("back")}
         </Link>
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-sm text-red-700">{error || tc("error")}</p>
+          <p className="text-sm text-red-700">{error || tc("error.load")}</p>
         </div>
       </main>
     )
@@ -205,7 +207,7 @@ export default function ReplayViewerPage() {
   return (
     <main role="main" aria-label={t("viewer.eventContext")} className="space-y-6">
       <Link href="/dashboard/learner/replays" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> Back to Replays
+        <ArrowLeft className="size-4" /> {t("backToReplays")}
       </Link>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -332,7 +334,7 @@ export default function ReplayViewerPage() {
 
             <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
               <Eye className="size-4" />
-              <span>{replay.viewCount} views</span>
+              <span>{t("views", { count: replay.viewCount })}</span>
             </div>
           </div>
 

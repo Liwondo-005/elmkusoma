@@ -5,23 +5,21 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import { learnerApi, type CourseSummary as LearnerCourseSummary, type Bookmark as BookmarkType, getLastAccessedLesson } from "@/lib/learner-api"
+import { announce } from "@/lib/announce"
 import type {
   HigherEducationDashboard,
   CourseSummary,
   StudyTask,
-  ResearchProject,
-  LiveSessionSummary,
   TodayItem,
   DayItem,
 } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import { useTranslations } from "next-intl"
 import {
-  Sparkles, Clock, Play, Video, BookOpen, BarChart3, FolderOpen,
+  Sparkles, Clock, Play, Video, BookOpen, BarChart3,
   Award, CalendarDays, ChevronRight, CheckCircle2, AlertCircle,
   TrendingUp, Target, FileText, Briefcase, GraduationCap, Lightbulb,
-  FlaskConical, Layers, Search, Bell, ExternalLink, MapPin,
-  Trophy, Rss, BookMarked, PenTool, Star, Bookmark as BookmarkIcon, Library, Film
+  FlaskConical, Layers, Search, Trophy, BookMarked, Library, Film, Bookmark as BookmarkIcon
 } from "lucide-react"
 
 export default function LearnerDashboardPage() {
@@ -59,7 +57,8 @@ export default function LearnerDashboardPage() {
         setContinueState(getLastAccessedLesson())
       }
     } catch {
-      setError("Failed to load dashboard data")
+      setError(t("failedToLoadDashboard"))
+      announce(t("failedToLoadDashboard"))
     } finally {
       setLoading(false)
     }
@@ -80,7 +79,7 @@ export default function LearnerDashboardPage() {
           <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
-            <button onClick={loadDashboard} className="ml-auto text-xs underline">Retry</button>
+            <button onClick={loadDashboard} className="ml-auto text-xs underline">{tc("retry")}</button>
           </div>
         )}
         <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
@@ -95,7 +94,7 @@ export default function LearnerDashboardPage() {
             <p className="font-semibold text-foreground text-sm line-clamp-1">{continueState.lessonTitle}</p>
             <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{continueState.courseTitle}</p>
             <Link href={`/dashboard/learner/courses/${continueState.courseId}/lessons/${continueState.lessonId}`} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              Resume <ChevronRight className="size-3" />
+              {t("resume")} <ChevronRight className="size-3" />
             </Link>
           </div>
         )}
@@ -106,7 +105,7 @@ export default function LearnerDashboardPage() {
               <h3 className="font-semibold text-foreground">{t("myCourses")}</h3>
             </div>
             <Link href="/dashboard/learner/courses" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-              Browse More <ChevronRight className="size-3" />
+              {t("browseMore")} <ChevronRight className="size-3" />
             </Link>
           </div>
           {generalCourses.length > 0 ? (
@@ -114,23 +113,23 @@ export default function LearnerDashboardPage() {
               {generalCourses.slice(0, 6).map((course) => (
                 <Link key={course.id} href={`/dashboard/learner/courses/${course.id}`} className="rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/50">
                   <p className="font-medium text-foreground text-sm line-clamp-1">{course.title}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{course.description || "No description"}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{course.description || t("noDescription")}</p>
                 </Link>
               ))}
             </div>
           ) : (
-            <EmptyState icon={<BookOpen className="size-6 text-muted-foreground" />} title="No courses yet" description="Enroll in courses to start your learning journey." action={<Link href="/dashboard/learner/courses" className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Explore Courses</Link>} />
+            <EmptyState icon={<BookOpen className="size-6 text-muted-foreground" />} title={t("noCoursesYet")} description={t("enrollCoursesDesc")} action={<Link href="/dashboard/learner/courses" className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">{t("exploreCourses")}</Link>} />
           )}
         </div>
         {bookmarks.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label="Saved Items">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("savedItems")}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <BookmarkIcon className="size-4 text-rose-600" />
-                <h3 className="font-semibold text-foreground">Saved Items</h3>
+                <h3 className="font-semibold text-foreground">{t("savedItems")}</h3>
               </div>
               <Link href="/dashboard/learner/bookmarks" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-                View All <ChevronRight className="size-3" />
+                {tc("viewAll")} <ChevronRight className="size-3" />
               </Link>
             </div>
             <div className="space-y-2">
@@ -173,15 +172,14 @@ export default function LearnerDashboardPage() {
         <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={loadDashboard} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={loadDashboard} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
-      {/* Welcome / Academic Context */}
       <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
         <LearnerHeader
           firstName={firstName}
-          subtitle={dash.academicContext || "My Learning World"}
+          subtitle={dash.academicContext || t("myLearningWorld")}
         />
         <div className="mt-3 flex flex-wrap gap-2">
           {dash.programmeName && (
@@ -207,7 +205,6 @@ export default function LearnerDashboardPage() {
         </div>
       </div>
 
-      {/* What's Next */}
       <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-teal/5 p-5 shadow-xs" role="region" aria-label={t("whatsNext")}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -216,7 +213,7 @@ export default function LearnerDashboardPage() {
           </div>
           {dash.whatsNext?.url && (
             <Link href={dash.whatsNext.url} className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline">
-              Open <ChevronRight className="size-3.5" />
+              {t("open")} <ChevronRight className="size-3.5" />
             </Link>
           )}
         </div>
@@ -230,7 +227,7 @@ export default function LearnerDashboardPage() {
               </span>
               {dash.whatsNext.deadline && (
                 <span className="text-[10px] text-muted-foreground">
-                  Due {new Date(dash.whatsNext.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  {t("due", { date: new Date(dash.whatsNext.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" }) })}
                 </span>
               )}
             </div>
@@ -243,7 +240,6 @@ export default function LearnerDashboardPage() {
         )}
       </div>
 
-      {/* Today's Tasks */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("todaysTasks")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -266,7 +262,7 @@ export default function LearnerDashboardPage() {
           <div className="py-4 text-center">
             <p className="text-sm text-muted-foreground">{t("noTasksForToday")}</p>
             <Link href="/dashboard/learner/courses" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              Browse Courses <ChevronRight className="size-3" />
+              {t("browseCourses")} <ChevronRight className="size-3" />
             </Link>
           </div>
         )}
@@ -283,9 +279,7 @@ export default function LearnerDashboardPage() {
         )}
       </div>
 
-      {/* Continue Learning + Live Campus */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Continue Learning */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("continueLearning")}>
           <div className="flex items-center gap-2 mb-2">
             <Play className="size-4 text-emerald-600" />
@@ -299,7 +293,7 @@ export default function LearnerDashboardPage() {
               )}
               <div className="mt-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Progress</span>
+                  <span className="text-muted-foreground">{t("progress")}</span>
                   <span className="font-semibold text-primary">{dash.continueLearning.progressPercent}%</span>
                 </div>
                 <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -310,20 +304,19 @@ export default function LearnerDashboardPage() {
                 href={dash.continueLearning.courseId ? `/dashboard/learner/courses/${dash.continueLearning.courseId}` : "/dashboard/learner/courses"}
                 className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
               >
-                Resume <ChevronRight className="size-3" />
+                {t("resume")} <ChevronRight className="size-3" />
               </Link>
             </div>
           ) : (
             <div>
               <p className="text-sm text-muted-foreground">{t("noCourseInProgress")}</p>
               <Link href="/dashboard/learner/courses" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Start Learning <ChevronRight className="size-3" />
+                {t("startLearning")} <ChevronRight className="size-3" />
               </Link>
             </div>
           )}
         </div>
 
-        {/* Live Campus */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("liveCampus")}>
           <div className="flex items-center gap-2 mb-2">
             <Video className="size-4 text-red-600" />
@@ -342,7 +335,7 @@ export default function LearnerDashboardPage() {
                 ))}
               </div>
               <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Join <ChevronRight className="size-3" />
+                {t("join")} <ChevronRight className="size-3" />
               </Link>
             </div>
           ) : dash.liveCampus && dash.liveCampus.upcomingToday > 0 ? (
@@ -350,7 +343,7 @@ export default function LearnerDashboardPage() {
               <p className="text-2xl font-extrabold text-foreground">{dash.liveCampus.upcomingToday}</p>
               <p className="text-xs text-muted-foreground">{t("upcomingToday")}</p>
               <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                View Schedule <ChevronRight className="size-3" />
+                {t("viewSchedule")} <ChevronRight className="size-3" />
               </Link>
             </div>
           ) : (
@@ -358,13 +351,12 @@ export default function LearnerDashboardPage() {
               <p className="text-2xl font-extrabold text-foreground">0</p>
               <p className="text-xs text-muted-foreground">{t("noLiveSessions")}</p>
               <Link href="/dashboard/learner/live-classes" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Browse Classes <ChevronRight className="size-3" />
+                {t("browseClasses")} <ChevronRight className="size-3" />
               </Link>
             </div>
           )}
         </div>
 
-        {/* Academic Load */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("academicLoad")}>
           <div className="flex items-center gap-2 mb-2">
             <BarChart3 className="size-4 text-teal-600" />
@@ -393,21 +385,20 @@ export default function LearnerDashboardPage() {
                 <span className="font-bold text-foreground">{dash.academicLoad.completedCreditHours}/{dash.academicLoad.totalCreditHours}</span>
               </p>
               <Link href="/dashboard/learner/academic" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                View Record <ChevronRight className="size-3" />
+                {t("viewRecord")} <ChevronRight className="size-3" />
               </Link>
             </div>
           ) : (
             <div>
-              <p className="text-sm text-muted-foreground">No academic data yet</p>
+              <p className="text-sm text-muted-foreground">{t("noAcademicData")}</p>
               <Link href="/dashboard/learner/courses" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Enroll in Courses <ChevronRight className="size-3" />
+                {t("enrollInCourses")} <ChevronRight className="size-3" />
               </Link>
             </div>
           )}
         </div>
       </div>
 
-      {/* My Courses */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("myCourses")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -415,7 +406,7 @@ export default function LearnerDashboardPage() {
               <h3 className="font-semibold text-foreground">{t("myCourses")}</h3>
           </div>
           <Link href="/dashboard/learner/courses" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-            Browse More <ChevronRight className="size-3" />
+            {t("browseMore")} <ChevronRight className="size-3" />
           </Link>
         </div>
         {dash.myCourses.length > 0 ? (
@@ -427,20 +418,18 @@ export default function LearnerDashboardPage() {
         ) : (
           <EmptyState
             icon={<BookOpen className="size-6 text-muted-foreground" />}
-            title="No courses yet"
-            description="Enroll in courses to start your learning journey."
+            title={t("noCoursesYet")}
+            description={t("enrollCoursesDesc")}
             action={
               <Link href="/dashboard/learner/courses" className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                Explore Courses <ChevronRight className="size-3.5" />
+                {t("exploreCourses")} <ChevronRight className="size-3.5" />
               </Link>
             }
           />
         )}
       </div>
 
-      {/* Research + Projects */}
       <div className="grid gap-4 sm:grid-cols-2">
-        {/* Research */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("research")}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -448,7 +437,7 @@ export default function LearnerDashboardPage() {
               <h3 className="font-semibold text-foreground">{t("research")}</h3>
             </div>
             <Link href="/dashboard/learner/research" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-              View All <ChevronRight className="size-3" />
+              {tc("viewAll")} <ChevronRight className="size-3" />
             </Link>
           </div>
           {dash.research.length > 0 ? (
@@ -477,18 +466,17 @@ export default function LearnerDashboardPage() {
           ) : (
             <EmptyState
               icon={<FlaskConical className="size-5 text-muted-foreground" />}
-              title="No research projects"
-              description="Start a research project to explore your academic interests."
+              title={t("noResearchProjects")}
+              description={t("noResearchDesc")}
               action={
                 <Link href="/dashboard/learner/research" className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                  Start Research <ChevronRight className="size-3.5" />
+                  {t("startResearch")} <ChevronRight className="size-3.5" />
                 </Link>
               }
             />
           )}
         </div>
 
-        {/* Projects */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("projects")}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -496,7 +484,7 @@ export default function LearnerDashboardPage() {
               <h3 className="font-semibold text-foreground">{t("projects")}</h3>
             </div>
             <Link href="/dashboard/learner/projects" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-              View All <ChevronRight className="size-3" />
+              {tc("viewAll")} <ChevronRight className="size-3" />
             </Link>
           </div>
           {dash.projects.length > 0 ? (
@@ -513,7 +501,7 @@ export default function LearnerDashboardPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{p.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {p.completedModules}/{p.totalModules} modules
+                      {p.completedModules}/{p.totalModules} {t("modules")}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
@@ -528,11 +516,11 @@ export default function LearnerDashboardPage() {
           ) : (
             <EmptyState
               icon={<Layers className="size-5 text-muted-foreground" />}
-              title="No projects yet"
-              description="Work on projects to build practical skills."
+              title={t("noProjectsYet")}
+              description={t("noProjectsDesc")}
               action={
                 <Link href="/dashboard/learner/projects" className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                  Browse Projects <ChevronRight className="size-3.5" />
+                  {t("browseProjects")} <ChevronRight className="size-3.5" />
                 </Link>
               }
             />
@@ -540,7 +528,6 @@ export default function LearnerDashboardPage() {
         </div>
       </div>
 
-      {/* My Progress */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("myProgress")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -548,7 +535,7 @@ export default function LearnerDashboardPage() {
             <h3 className="font-semibold text-foreground">{t("myProgress")}</h3>
           </div>
           <Link href="/dashboard/learner/progress" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-            View Details <ChevronRight className="size-3" />
+            {t("viewDetails")} <ChevronRight className="size-3" />
           </Link>
         </div>
         {dash.myProgress ? (
@@ -582,15 +569,14 @@ export default function LearnerDashboardPage() {
           </div>
         ) : (
           <div className="py-4 text-center">
-            <p className="text-sm text-muted-foreground">No progress data yet</p>
+            <p className="text-sm text-muted-foreground">{t("noProgressData")}</p>
             <Link href="/dashboard/learner/courses" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              Start Learning <ChevronRight className="size-3" />
+              {t("startLearning")} <ChevronRight className="size-3" />
             </Link>
           </div>
         )}
       </div>
 
-      {/* My Evidence */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("myEvidence")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -598,7 +584,7 @@ export default function LearnerDashboardPage() {
             <h3 className="font-semibold text-foreground">{t("myEvidence")}</h3>
           </div>
           <Link href="/dashboard/learner/portfolio" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-            View Portfolio <ChevronRight className="size-3" />
+            {t("viewPortfolio")} <ChevronRight className="size-3" />
           </Link>
         </div>
         {dash.myEvidence ? (
@@ -626,15 +612,14 @@ export default function LearnerDashboardPage() {
           </div>
         ) : (
           <div className="py-4 text-center">
-            <p className="text-sm text-muted-foreground">No evidence recorded yet</p>
+            <p className="text-sm text-muted-foreground">{t("noEvidenceYet")}</p>
             <Link href="/dashboard/learner/portfolio" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              Start Building Portfolio <ChevronRight className="size-3" />
+              {t("startBuildingPortfolio")} <ChevronRight className="size-3" />
             </Link>
           </div>
         )}
       </div>
 
-      {/* Career World */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("careerWorld")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -642,45 +627,44 @@ export default function LearnerDashboardPage() {
             <h3 className="font-semibold text-foreground">{t("careerWorld")}</h3>
           </div>
           <Link href="/dashboard/learner/career" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-            {dash.careerWorld?.hasProfile ? "View Profile" : "Create Profile"} <ChevronRight className="size-3" />
+            {dash.careerWorld?.hasProfile ? t("viewProfile") : t("createProfile")} <ChevronRight className="size-3" />
           </Link>
         </div>
         {dash.careerWorld && dash.careerWorld.hasProfile ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {dash.careerWorld.careerObjective && (
               <div className="rounded-xl border border-border bg-muted/30 p-3 sm:col-span-2 lg:col-span-4">
-                <p className="text-xs text-muted-foreground">Career Objective</p>
+                <p className="text-xs text-muted-foreground">{t("careerObjective")}</p>
                 <p className="text-sm font-medium text-foreground line-clamp-2">{dash.careerWorld.careerObjective}</p>
               </div>
             )}
             {dash.careerWorld.targetIndustry && (
               <div className="rounded-xl border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">Target Industry</p>
+                <p className="text-xs text-muted-foreground">{t("targetIndustry")}</p>
                 <p className="text-sm font-bold text-foreground">{dash.careerWorld.targetIndustry}</p>
               </div>
             )}
             {dash.careerWorld.targetRole && (
               <div className="rounded-xl border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">Target Role</p>
+                <p className="text-xs text-muted-foreground">{t("targetRole")}</p>
                 <p className="text-sm font-bold text-foreground">{dash.careerWorld.targetRole}</p>
               </div>
             )}
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">Skills</p>
+              <p className="text-xs text-muted-foreground">{t("skills")}</p>
               <p className="text-sm font-bold text-foreground">{dash.careerWorld.skillsCount}</p>
             </div>
           </div>
         ) : (
           <div className="py-4 text-center">
-            <p className="text-sm text-muted-foreground">Set up your career profile to get personalized recommendations</p>
+            <p className="text-sm text-muted-foreground">{t("careerSetupDesc")}</p>
             <Link href="/dashboard/learner/career" className="mt-3 inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              Create Profile <ChevronRight className="size-3.5" />
+              {t("createProfile")} <ChevronRight className="size-3.5" />
             </Link>
           </div>
         )}
       </div>
 
-      {/* Study Planner */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("studyPlanner")}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -688,7 +672,7 @@ export default function LearnerDashboardPage() {
             <h3 className="font-semibold text-foreground">{t("studyPlanner")}</h3>
           </div>
           <Link href="/dashboard/learner/study-planner" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-            Manage Tasks <ChevronRight className="size-3" />
+            {t("manageTasks")} <ChevronRight className="size-3" />
           </Link>
         </div>
         {dash.studyPlannerTasks.length > 0 ? (
@@ -700,21 +684,19 @@ export default function LearnerDashboardPage() {
         ) : (
           <EmptyState
             icon={<Lightbulb className="size-5 text-muted-foreground" />}
-            title="No study tasks"
-            description="Create study tasks to plan your learning sessions."
+            title={t("noStudyTasks")}
+            description={t("noStudyTasksDesc")}
             action={
               <Link href="/dashboard/learner/study-planner" className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                Create Task <ChevronRight className="size-3.5" />
+                {t("createTask")} <ChevronRight className="size-3.5" />
               </Link>
             }
           />
         )}
       </div>
 
-      {/* Day/Week View */}
       {dash.dayWeekView && (dash.dayWeekView.todayItems.length > 0 || dash.dayWeekView.weekItems.length > 0) && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {/* Today */}
           {dash.dayWeekView.todayItems.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("today")}>
               <div className="flex items-center gap-2 mb-3">
@@ -728,7 +710,6 @@ export default function LearnerDashboardPage() {
               </div>
             </div>
           )}
-          {/* This Week */}
           {dash.dayWeekView.weekItems.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("thisWeek")}>
               <div className="flex items-center gap-2 mb-3">
@@ -745,7 +726,6 @@ export default function LearnerDashboardPage() {
         </div>
       )}
 
-      {/* Empty State for New Learners */}
       {dash.myCourses.length === 0 && dash.research.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
@@ -759,7 +739,7 @@ export default function LearnerDashboardPage() {
             href="/dashboard/learner/courses"
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Explore Courses <ChevronRight className="size-4" />
+            {t("exploreCourses")} <ChevronRight className="size-4" />
           </Link>
         </div>
       )}

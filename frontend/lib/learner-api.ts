@@ -295,6 +295,67 @@ export interface ReplayProgress {
   lastWatchedAt: string
 }
 
+export interface LearningGoal {
+  id: string
+  userId?: string
+  title: string
+  description: string | null
+  goalType: string
+  targetDate: string | null
+  progressPercentage: number
+  status: string
+  completedAt?: string | null
+  createdAt?: string
+}
+
+export interface GoalInput {
+  title: string
+  description?: string
+  goalType?: string
+  targetDate?: string | null
+  progressPercentage?: number
+  status?: string
+}
+
+export interface LearningPathItem {
+  id: string
+  courseId: string
+  title: string
+  progress: number
+  status: string
+}
+
+function normalizeReplay(raw: Record<string, unknown>): ReplayItem {
+  const rec = raw as Record<string, any>
+  const durationSeconds = Number(rec.durationSeconds ?? 0)
+  const positionSeconds = Number(rec.positionSeconds ?? rec.lastPositionSeconds ?? rec.position ?? 0)
+  const recordedAt = String(rec.recordedAt ?? rec.createdAt ?? "")
+  const title = String(rec.title ?? rec.eventTitle ?? "")
+  const completed =
+    typeof rec.completed === "boolean"
+      ? rec.completed
+      : durationSeconds > 0 && positionSeconds > 0 && positionSeconds >= durationSeconds - 10
+  return {
+    id: String(rec.id ?? ""),
+    eventId: String(rec.eventId ?? ""),
+    eventTitle: String(rec.eventTitle ?? title),
+    title,
+    presenterName: rec.presenterName ?? null,
+    thumbnailUrl: rec.thumbnailUrl ?? null,
+    videoUrl: String(rec.videoUrl ?? rec.recordingUrl ?? ""),
+    durationSeconds,
+    viewCount: Number(rec.viewCount ?? 0),
+    recordedAt,
+    eventType: String(rec.eventType ?? ""),
+    positionSeconds,
+    completed,
+    relatedCourseId: rec.relatedCourseId ?? null,
+    relatedCourseTitle: rec.relatedCourseTitle ?? null,
+    relatedLessonId: rec.relatedLessonId ?? null,
+    relatedLessonTitle: rec.relatedLessonTitle ?? null,
+  }
+}
+
 export interface CourseProgress {
   courseId: string
   completedLessons: number
@@ -445,23 +506,64 @@ export const learnerApi = {
   getRelatedResources: (resourceId: string) =>
     learnerFetch<Resource[]>(`/v1/learner/resources/${resourceId}/related`),
 
-  getReplays: (params?: { eventType?: string; search?: string; dateFrom?: string; dateTo?: string }) => {
-    const searchParams = new URLSearchParams()
-    if (params?.eventType) searchParams.set("eventType", params.eventType)
-    if (params?.search) searchParams.set("search", params.search)
-    if (params?.dateFrom) searchParams.set("dateFrom", params.dateFrom)
-    if (params?.dateTo) searchParams.set("dateTo", params.dateTo)
-    const qs = searchParams.toString()
-    return learnerFetch<ReplayItem[]>(`/v1/replays${qs ? `?${qs}` : ""}`)
-  },
-  getReplay: (id: string) => learnerFetch<ReplayDetail>(`/v1/replays/${id}`),
-  getReplayProgress: (id: string) => learnerFetch<ReplayProgress>(`/v1/replays/${id}/progress`),
-  updateReplayProgress: (id: string, positionSeconds: number, completed?: boolean) =>
-    learnerFetch<ReplayProgress>(`/v1/replays/${id}/progress`, {
+  getGoals: () => learnerFetch<LearningGoal[]>("/v1/learner/me/goals"),
+  createGoal: (data: GoalInput) =>
+    learnerFetch<LearningGoal>("/v1/learner/me/goals", {
+      method: "POST",
+      body: JSON.stringify({ goalType: "PERSONAL", status: "ACTIVE", progressPercentage: 0, ...data }),
+    }),
+  updateGoal: (id: string, data: Partial<GoalInput>) =>
+    learnerFetch<LearningGoal>(`/v1/learner/me/goals/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ positionSeconds, completed }),
+      body: JSON.stringify(data),
+    }),
+  deleteGoal: (id: string) =>
+    learnerFetch<void>(`/v1/learner/me/goals/${id}`, { method: "DELETE" }),
+  getLearningPaths: () => learnerFetch<LearningPathItem[]>("/v1/learner/me/learning-paths"),
+
+  getReplays: async (params?: { eventType?: string; search?: string; dateFrom?: string; dateTo?: string }) => {
+    const data = await learnerFetch<unknown[]>("/v1/learner/replays")
+    let items = (Array.isArray(data) ? data : []).map((raw) =>
+      normalizeReplay(raw as Record<string, unknown>)
+    )
+    if (params?.search) {
+      const q = params.search.toLowerCase()
+      items = items.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.eventTitle.toLowerCase().includes(q)
+      )
+    }
+    if (params?.eventType) {
+      items = items.filter((r) => r.eventType === params.eventType)
+    }
+    if (params?.dateFrom) {
+      items = items.filter((r) => r.recordedAt >= params.dateFrom!)
+    }
+    if (params?.dateTo) {
+      items = items.filter((r) => r.recordedAt <= params.dateTo!)
+    }
+    return items
+  },
+  getReplay: async (id: string): Promise<ReplayDetail> => {
+    const data = await learnerFetch<Record<string, unknown>>(`/v1/learner/replays/${id}`)
+    if (data && typeof data === "object" && "replay" in data) {
+      return data as unknown as ReplayDetail
+    }
+    return { replay: normalizeReplay(data), relatedResources: [], upcomingEvents: [] }
+  },
+  getReplayProgress: async (id: string): Promise<ReplayProgress> => {
+    const data = await learnerFetch<Record<string, unknown>>(`/v1/learner/replays/${id}/progress`)
+    return {
+      positionSeconds: Number(data.positionSeconds ?? data.position ?? 0),
+      completed: Boolean(data.completed),
+      lastWatchedAt: String(data.lastWatchedAt ?? ""),
+    }
+  },
+  updateReplayProgress: (id: string, positionSeconds: number, completed?: boolean) =>
+    learnerFetch<void>(`/v1/learner/replays/${id}/progress`, {
+      method: "PUT",
+      body: JSON.stringify({ positionSeconds, position: positionSeconds, completed }),
     }),
   getLiveSessionHealth: () => learnerFetch<{ status: string }>("/v1/live-session/health"),
-  getEventSessionState: (eventId: string) =>
-    learnerFetch<{ status: string; meetingUrl?: string }>(`/v1/learner/events/${eventId}/session-state`),
 }

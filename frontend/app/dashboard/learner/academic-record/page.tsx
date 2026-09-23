@@ -33,7 +33,7 @@ export default function AcademicRecordPage() {
       if (recordRes.status === "fulfilled") setRecord((recordRes.value.data as AcademicRecord) || null)
       if (historyRes.status === "fulfilled") setHistory((historyRes.value.data as AcademicRecord[]) || [])
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }

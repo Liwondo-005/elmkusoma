@@ -182,7 +182,7 @@ export default function LiveCampusPage() {
       const data = await learnerApi.getLiveClasses()
       setSessions(data as unknown as LiveClassItem[])
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }

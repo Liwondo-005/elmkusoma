@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.event.dto.*;
 import tz.elmkusoma.event.service.EventService;
+import tz.elmkusoma.exception.ForbiddenException;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,58 @@ public class EventController {
             HttpServletRequest request) {
         EventResponse event = eventService.getEventByIdForAdmin(id);
         return ResponseEntity.ok(ApiResponse.success(event));
+    }
+
+    @GetMapping("/institution/{institutionId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    public ResponseEntity<ApiResponse<List<EventResponse>>> getEventsByInstitution(
+            @PathVariable UUID institutionId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer limit,
+            HttpServletRequest request) {
+        UUID callerInstitutionId = getInstitutionId(request);
+        String role = getRequestRole(request);
+        if (!isPlatformRole(role)
+                && (callerInstitutionId == null || !callerInstitutionId.equals(institutionId))) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+        String effectiveStatus = status;
+        if ((effectiveStatus == null || effectiveStatus.isBlank()) && isLearnerRole(role)) {
+            effectiveStatus = "PUBLISHED";
+        }
+        List<EventResponse> events = eventService.getEvents(institutionId, effectiveStatus, null, null);
+        if (limit != null && limit > 0 && events.size() > limit) {
+            events = events.subList(0, limit);
+        }
+        return ResponseEntity.ok(ApiResponse.success(events));
+    }
+
+    @GetMapping("/registrations/user/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    public ResponseEntity<ApiResponse<List<EventRegistrationResponse>>> getRegistrationsForUser(
+            @PathVariable UUID userId,
+            HttpServletRequest request) {
+        UUID callerId = getUserId(request);
+        String role = getRequestRole(request);
+        if ((callerId == null || !callerId.equals(userId)) && !isAdminRole(role)) {
+            throw new ForbiddenException("You can only view your own registrations");
+        }
+        List<EventRegistrationResponse> registrations = eventService.getUserRegistrations(userId);
+        return ResponseEntity.ok(ApiResponse.success(registrations));
+    }
+
+    @GetMapping("/registrations/event/{eventId}")
+    public ResponseEntity<ApiResponse<List<EventRegistrationResponse>>> getRegistrationsForEvent(
+            @PathVariable UUID eventId,
+            HttpServletRequest request) {
+        UUID userId = getUserId(request);
+        UUID institutionId = getInstitutionId(request);
+        EventResponse existing = eventService.getEventByIdForAdmin(eventId);
+        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+        List<EventRegistrationResponse> registrations = eventService.getEventRegistrations(eventId, userId);
+        return ResponseEntity.ok(ApiResponse.success(registrations));
     }
 
     @PostMapping
@@ -180,5 +233,23 @@ public class EventController {
         Object instIdAttr = request.getAttribute("institutionId");
         if (instIdAttr instanceof UUID uuid) return uuid;
         return null;
+    }
+
+    private String getRequestRole(HttpServletRequest request) {
+        Object roleAttr = request.getAttribute("userRole");
+        return roleAttr instanceof String role ? role : null;
+    }
+
+    private boolean isPlatformRole(String role) {
+        return "ADMIN".equals(role) || "NATIONAL_ADMIN".equals(role);
+    }
+
+    private boolean isAdminRole(String role) {
+        return "ADMIN".equals(role) || "INSTITUTION_ADMIN".equals(role)
+                || "NATIONAL_ADMIN".equals(role);
+    }
+
+    private boolean isLearnerRole(String role) {
+        return "STUDENT".equals(role) || "OTHER_LEARNER".equals(role) || "LEARNER".equals(role);
     }
 }

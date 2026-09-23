@@ -44,7 +44,7 @@ export default function ProjectsPage() {
       const res = await collegeApi.getStudentProjects(studentId)
       setProjects(res.data || [])
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }

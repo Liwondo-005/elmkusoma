@@ -44,6 +44,12 @@ public class EventRequest {
 
     private UUID organizerId;
 
+    private String timezone;
+
+    private String accessLevel;
+
+    private String presenterName;
+
     private String eventFormat;
     private String difficulty;
     private String targetAudience;

@@ -22,7 +22,7 @@ public class LiveSessionHealthController {
     private final LiveKitService liveKitService;
 
     @GetMapping("/health")
-    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','NATIONAL_ADMIN','REGIONAL_ADMIN','DISTRICT_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Check live service health status")
     public ResponseEntity<Map<String, Object>> getHealth() {
         Map<String, Object> health = new HashMap<>();

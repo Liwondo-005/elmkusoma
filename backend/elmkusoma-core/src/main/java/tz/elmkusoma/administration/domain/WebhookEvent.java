@@ -31,9 +31,11 @@ public class WebhookEvent extends BaseEntity {
     @Column(name = "error_details", columnDefinition = "TEXT")
     private String errorDetails;
 
+    @Builder.Default
     @Column(name = "retry_count", nullable = false)
     private Integer retryCount = 0;
 
+    @Builder.Default
     @Column(name = "received_at", nullable = false)
     private LocalDateTime receivedAt = LocalDateTime.now();
 
