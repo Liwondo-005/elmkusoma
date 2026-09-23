@@ -6,6 +6,7 @@ import { Menu, X, Bell, Search, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { useAuth } from "@/lib/auth"
+import { learnerApi } from "@/lib/learner-api"
 
 function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("")
@@ -89,6 +90,7 @@ export function DashboardTopbar() {
   const [open, setOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const { user, logout } = useAuth()
   const router = useRouter()
 
@@ -100,6 +102,20 @@ export function DashboardTopbar() {
     document.addEventListener("keydown", handleKey)
     return () => document.removeEventListener("keydown", handleKey)
   }, [])
+
+  useEffect(() => {
+    if (!user || user.role !== "Other Learner") return
+    learnerApi.getUnreadCount().then((data) => {
+      setUnreadCount(data.count)
+    }).catch(() => {})
+    // Poll every 30 seconds
+    const interval = setInterval(() => {
+      learnerApi.getUnreadCount().then((data) => {
+        setUnreadCount(data.count)
+      }).catch(() => {})
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [user])
 
   function handleLogout() {
     logout()
@@ -168,9 +184,18 @@ export function DashboardTopbar() {
             type="button"
             className="relative flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Notifications"
+            onClick={() => {
+              if (user?.role === "Other Learner") {
+                router.push("/dashboard/learner/notifications-center")
+              }
+            }}
           >
             <Bell className="size-5" />
-            <span className="absolute right-2 top-2 size-2 rounded-full bg-orange" />
+            {user?.role === "Other Learner" && unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-orange text-[9px] font-bold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
           <div className="relative">
             <button
