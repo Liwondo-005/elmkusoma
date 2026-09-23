@@ -629,4 +629,20 @@ Backend: 18 test classes (unit + MockMvc integration + security), run `mvn test`
 
 ## 54. Production Readiness Notes
 
-Do not deploy without: real `DB_PASSWORD`/`JWT_SECRET`/LiveKit/MinIO credentials (no defaults in core); `application-prod.yml` profile (validate + enforce); CORS tightening if the allowlist exceeds deployment domains; per-endpoint authorization re-audit (header institution sources, ownership checks); multi-instance review of in-memory rate limits; Flyway history reconciliation; backup/restore drill (`infrastructure/scripts/`); offline/PWA absent — no service worker, online-only assumed.  
+Do not deploy without: real `DB_PASSWORD`/`JWT_SECRET`/LiveKit/MinIO credentials (no defaults in core); `application-prod.yml` profile (validate + enforce); CORS tightening if the allowlist exceeds deployment domains; per-endpoint authorization re-audit (header institution sources, ownership checks); multi-instance review of in-memory rate limits; Flyway history reconciliation; backup/restore drill (`infrastructure/scripts/`); offline/PWA absent — no service worker, online-only assumed.
+
+---
+
+## 55. Documentation Status
+
+| Document | Owner | Status | Notes |
+|---|---|---|---|
+| `README.md` (this file) | Integrator | COMPLETE | 55/55 sections; repo-verified; reconciled from both source docs |
+| `docs/README-01-SYSTEM-BACKEND.md` | Developer 01 | COMPLETE | System overview + backend/database/security depth |
+| `docs/README-02-USER-FRONTEND-LIVE.md` | Developer 02 | COMPLETE | Frontend/user/live/testing runbook depth |
+| `docs/api/api-reference.md` | Pre-existing | NOT VERIFIED | Endpoint detail may have drifted; cross-check with controllers |
+| `docs/architecture/overview.md` | Pre-existing | NOT VERIFIED | Cross-check against §27 before relying on diagrams |
+| `docs/database/schema.md` | Pre-existing | NOT VERIFIED | Cross-check against V01–V70 migrations + entities |
+| `docs/security/jwt-setup.md` | Pre-existing | NOT VERIFIED | Cross-check lifetimes/secrets handling against §31/§40 |
+
+Rule: this README is the primary entry point. Source docs (`README-01/02`) are complements, not prerequisites. Pre-existing detail docs are unverified against current code — treat them as secondary until re-audited.  
