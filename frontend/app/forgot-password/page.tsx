@@ -9,15 +9,17 @@ import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Mail, CheckCircle } from "lucide-react"
 import { authApi } from "@/lib/api"
-
-const forgotSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
-})
-
-type ForgotValues = z.infer<typeof forgotSchema>
+import { useTranslations } from "next-intl"
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations("auth")
   const [sent, setSent] = useState(false)
+
+  const forgotSchema = z.object({
+    email: z.string().min(1, t("emailRequired")).email(t("invalidEmail")),
+  })
+
+  type ForgotValues = z.infer<typeof forgotSchema>
 
   const {
     register,
@@ -57,17 +59,17 @@ export default function ForgotPasswordPage() {
                 <CheckCircle className="size-7 text-teal" />
               </div>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
-                Check your email
+                {t("checkYourEmail")}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                We&apos;ve sent a password reset link to{" "}
+                {t("resetLinkSent")}{" "}
                 <span className="font-medium text-foreground">{getValues("email")}</span>
               </p>
               <Link
                 href="/login"
                 className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Back to Login
+                {t("backToLogin")}
               </Link>
             </div>
           </div>
@@ -97,17 +99,17 @@ export default function ForgotPasswordPage() {
                 <Mail className="size-5" />
               </div>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
-                Reset your password
+                {t("resetPassword")}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Enter your email address and we&apos;ll send you a link to reset your password.
+                {t("forgotSubtitle")}
               </p>
             </div>
 
             <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)}>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-foreground">
-                  Email Address
+                  {t("emailAddress")}
                 </label>
                 <input
                   id="email"
@@ -122,14 +124,14 @@ export default function ForgotPasswordPage() {
               </div>
 
               <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
-                {isSubmitting ? "Sending..." : "Send Reset Link"}
+                {isSubmitting ? t("sending") : t("sendResetLink")}
               </Button>
             </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              Remember your password?{" "}
+              {t("rememberPassword")}{" "}
               <Link href="/login" className="font-medium text-primary hover:underline">
-                Back to Login
+                {t("backToLogin")}
               </Link>
             </p>
           </div>

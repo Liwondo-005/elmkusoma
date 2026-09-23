@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { certificateApi, type CertificateVerificationResponse } from "@/lib/api"
 import { LoadingState } from "@/components/learner/shared"
 import { Award, CheckCircle, XCircle, AlertCircle, ArrowLeft, ExternalLink } from "lucide-react"
 
 export default function CertificateVerifyPage() {
+  const tc = useTranslations("common")
   const params = useParams()
   const code = params.code as string
 
@@ -27,7 +29,7 @@ export default function CertificateVerifyPage() {
       const data = await certificateApi.verify(code)
       setResult(data)
     } catch {
-      setError("Failed to verify certificate. Please check the verification code.")
+      setError(tc("verifyLoadError"))
     } finally {
       setLoading(false)
     }
@@ -45,16 +47,16 @@ export default function CertificateVerifyPage() {
     <div className="min-h-screen bg-muted/30">
       <div className="mx-auto max-w-2xl space-y-6 px-4 py-12">
         <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-          <ArrowLeft className="size-4" /> Back to home
+          <ArrowLeft className="size-4" /> {tc("verifyBackHome")}
         </Link>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-xs text-center">
           <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-primary/10">
             <Award className="size-8 text-primary" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">Certificate Verification</h1>
+          <h1 className="text-xl font-bold text-foreground">{tc("verifyPageTitle")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Verifying code: <span className="font-mono font-medium text-foreground">{code}</span>
+            {tc("verifyCodeLabel", { code })}
           </p>
         </div>
 
@@ -76,8 +78,8 @@ export default function CertificateVerifyPage() {
                     <CheckCircle className="size-6 text-teal" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-teal">Valid Certificate</h2>
-                    <p className="text-xs text-muted-foreground">This certificate has been verified successfully.</p>
+                    <h2 className="text-lg font-bold text-teal">{tc("verifyValidTitle")}</h2>
+                    <p className="text-xs text-muted-foreground">{tc("verifyValidDesc")}</p>
                   </div>
                 </>
               ) : (
@@ -86,8 +88,8 @@ export default function CertificateVerifyPage() {
                     <XCircle className="size-6 text-red-500" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-red-500">Invalid Certificate</h2>
-                    <p className="text-xs text-muted-foreground">{result.message || "This certificate could not be verified."}</p>
+                    <h2 className="text-lg font-bold text-red-500">{tc("verifyInvalidTitle")}</h2>
+                    <p className="text-xs text-muted-foreground">{result.message || tc("verifyInvalidDesc")}</p>
                   </div>
                 </>
               )}
@@ -97,7 +99,7 @@ export default function CertificateVerifyPage() {
               <div className="space-y-4">
                 {result.title && (
                   <div className="rounded-xl border border-border p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Certificate Title</p>
+                    <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldTitle")}</p>
                     <p className="mt-0.5 text-sm font-semibold text-foreground">{result.title}</p>
                   </div>
                 )}
@@ -105,37 +107,37 @@ export default function CertificateVerifyPage() {
                 <div className="grid grid-cols-2 gap-3">
                   {result.studentName && (
                     <div className="rounded-xl border border-border p-4">
-                      <p className="text-xs font-medium text-muted-foreground">Recipient</p>
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldRecipient")}</p>
                       <p className="mt-0.5 text-sm font-medium text-foreground">{result.studentName}</p>
                     </div>
                   )}
                   {result.certificateType && (
                     <div className="rounded-xl border border-border p-4">
-                      <p className="text-xs font-medium text-muted-foreground">Type</p>
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldType")}</p>
                       <p className="mt-0.5 text-sm font-medium text-foreground capitalize">{result.certificateType.toLowerCase()}</p>
                     </div>
                   )}
                   {result.courseTitle && (
                     <div className="rounded-xl border border-border p-4">
-                      <p className="text-xs font-medium text-muted-foreground">Course</p>
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldCourse")}</p>
                       <p className="mt-0.5 text-sm font-medium text-foreground">{result.courseTitle}</p>
                     </div>
                   )}
                   {result.instructorName && (
                     <div className="rounded-xl border border-border p-4">
-                      <p className="text-xs font-medium text-muted-foreground">Instructor</p>
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldInstructor")}</p>
                       <p className="mt-0.5 text-sm font-medium text-foreground">{result.instructorName}</p>
                     </div>
                   )}
                   {result.grade && (
                     <div className="rounded-xl border border-border p-4">
-                      <p className="text-xs font-medium text-muted-foreground">Grade</p>
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldGrade")}</p>
                       <p className="mt-0.5 text-sm font-medium text-foreground">{result.grade}</p>
                     </div>
                   )}
                   {result.completionDate && (
                     <div className="rounded-xl border border-border p-4">
-                      <p className="text-xs font-medium text-muted-foreground">Completion Date</p>
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldCompletionDate")}</p>
                       <p className="mt-0.5 text-sm font-medium text-foreground">
                         {new Date(result.completionDate).toLocaleDateString()}
                       </p>
@@ -143,13 +145,13 @@ export default function CertificateVerifyPage() {
                   )}
                   {result.serialNumber && (
                     <div className="rounded-xl border border-border p-4">
-                      <p className="text-xs font-medium text-muted-foreground">Serial Number</p>
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldSerial")}</p>
                       <p className="mt-0.5 text-sm font-mono font-medium text-foreground">{result.serialNumber}</p>
                     </div>
                   )}
                   {result.institutionName && (
                     <div className="rounded-xl border border-border p-4">
-                      <p className="text-xs font-medium text-muted-foreground">Institution</p>
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldInstitution")}</p>
                       <p className="mt-0.5 text-sm font-medium text-foreground">{result.institutionName}</p>
                     </div>
                   )}
@@ -157,7 +159,7 @@ export default function CertificateVerifyPage() {
 
                 {result.skills && result.skills.length > 0 && (
                   <div className="rounded-xl border border-border p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Skills</p>
+                    <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldSkills")}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {result.skills.map((skill, i) => (
                         <span key={i} className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
@@ -170,7 +172,7 @@ export default function CertificateVerifyPage() {
 
                 {result.status && (
                   <div className="rounded-xl border border-border p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Status</p>
+                    <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldStatus")}</p>
                     <p className={`mt-0.5 text-sm font-semibold ${
                       result.status === "ISSUED" ? "text-teal" :
                       result.status === "REVOKED" ? "text-red-500" : "text-muted-foreground"

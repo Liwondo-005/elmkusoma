@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { CertificateCard } from "@/components/certificates/certificate-card"
 import { certificateApi, type CertificateVerificationResponse } from "@/lib/api"
 import { AlertTriangle, BadgeCheck, XCircle } from "lucide-react"
 
 export function CertificateVerifier() {
+  const tc = useTranslations("common")
   const [query, setQuery] = useState("")
   const [result, setResult] = useState<CertificateVerificationResponse | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +41,7 @@ export function CertificateVerifier() {
         <div className="relative flex-1">
           <input
             type="text"
-            placeholder="Enter certificate verification code"
+            placeholder={tc("verifyInputPlaceholder")}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -50,7 +52,7 @@ export function CertificateVerifier() {
           />
         </div>
         <Button type="submit" size="lg" className="px-6" disabled={loading || !query.trim()}>
-          {loading ? "Verifying..." : "Verify"}
+          {loading ? tc("verifyVerifying") : tc("verifyButton")}
         </Button>
       </form>
 
@@ -58,7 +60,7 @@ export function CertificateVerifier() {
         {result === undefined && !error && (
           <div className="rounded-2xl border border-border border-dashed bg-muted/30 px-6 py-16 text-center">
             <p className="text-sm text-muted-foreground">
-              Enter a verification code above to check certificate authenticity.
+              {tc("verifyEnterHint")}
             </p>
           </div>
         )}
@@ -66,7 +68,7 @@ export function CertificateVerifier() {
         {error && (
           <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-16 text-center">
             <XCircle className="mx-auto size-8 text-destructive" />
-            <p className="mt-3 text-sm font-medium text-destructive">Verification Failed</p>
+            <p className="mt-3 text-sm font-medium text-destructive">{tc("verifyFailedTitle")}</p>
             <p className="mt-1 text-xs text-muted-foreground">{error}</p>
           </div>
         )}
@@ -74,9 +76,9 @@ export function CertificateVerifier() {
         {result && !result.valid && (
           <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-16 text-center">
             <XCircle className="mx-auto size-8 text-destructive" />
-            <p className="mt-3 text-sm font-medium text-destructive">Certificate Not Valid</p>
+            <p className="mt-3 text-sm font-medium text-destructive">{tc("verifyNotValidTitle")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {result.message || "No certificate matches this verification code. Please check and try again."}
+              {result.message || tc("verifyNotValidFallback")}
             </p>
           </div>
         )}
@@ -85,7 +87,7 @@ export function CertificateVerifier() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 rounded-xl border border-teal/20 bg-teal/5 px-4 py-3">
               <BadgeCheck className="size-5 text-teal" />
-              <span className="text-sm font-semibold text-teal">Certificate Verified</span>
+              <span className="text-sm font-semibold text-teal">{tc("verifyVerifiedTitle")}</span>
             </div>
             <CertificateCard
               certificate={{
@@ -100,13 +102,13 @@ export function CertificateVerifier() {
             />
             {result.institutionName && (
               <p className="text-center text-xs text-muted-foreground">
-                Issued by: <span className="font-medium text-foreground">{result.institutionName}</span>
+                {tc("verifyIssuedBy")}<span className="font-medium text-foreground">{result.institutionName}</span>
               </p>
             )}
             {result.status && result.status !== "ISSUED" && (
               <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
                 <AlertTriangle className="size-4 text-amber-600" />
-                <span className="text-xs font-medium text-amber-600">Status: {result.status}</span>
+                <span className="text-xs font-medium text-amber-600">{tc("verifyStatusLabel")}{result.status}</span>
               </div>
             )}
           </div>
