@@ -827,16 +827,15 @@ public class OversightService {
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
                 .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("LiveClass", "id", liveClassId));
 
-        // Verify live class is in progress
-        if (!"IN_PROGRESS".equals(liveClass.getStatus())) {
+        // Verify live class is active (LIVE or IN_PROGRESS both accepted)
+        String lcStatus = liveClass.getStatus();
+        if (!"IN_PROGRESS".equals(lcStatus) && !"LIVE".equals(lcStatus)) {
             throw new IllegalStateException("Live class is not currently in session");
         }
 
-        // Verify jurisdiction - observer must have access to the live class's institution
+        // Verify jurisdiction - platform super-admin may observe any session;
+        // regional/district admins must match institution membership
         UUID institutionId = liveClass.getInstitutionId();
-        UUID userRegionId = userRepository.findById(userId).map(User::getRegionId).orElse(null);
-        UUID userDistrictId = userRepository.findById(userId).map(User::getDistrictId).orElse(null);
-
         if (!verifyJurisdictionAccess(userId, institutionId)) {
             throw new tz.elmkusoma.exception.ForbiddenException("observer", "join");
         }
@@ -866,13 +865,18 @@ public class OversightService {
     }
 
     private boolean isAuthorityRole(String role) {
-        return "NATIONAL_ADMIN".equals(role) ||
+        return "ADMIN".equals(role) ||
+                "INSTITUTION_ADMIN".equals(role) ||
+                "NATIONAL_ADMIN".equals(role) ||
                 "REGIONAL_ADMIN".equals(role) ||
                 "DISTRICT_ADMIN".equals(role);
     }
 
     private boolean verifyJurisdictionAccess(UUID userId, UUID institutionId) {
-        // Check if user has membership in the institution
+        // Platform super-admin (ADMIN) may observe any session
+        String role = userRepository.findById(userId).map(u -> u.getRole().name()).orElse("");
+        if ("ADMIN".equals(role)) return true;
+        // Otherwise require active membership in the institution
         return membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, institutionId);
     }
 }

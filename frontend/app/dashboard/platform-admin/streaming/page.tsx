@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Radio, RefreshCw, AlertCircle, Search, Users, Clock, Activity, HeartPulse } from "lucide-react"
+import { Radio, RefreshCw, AlertCircle, Search, Users, Clock, Activity, HeartPulse, Eye, ExternalLink, Loader2 } from "lucide-react"
 import { platformAdminApi, type LiveClassSummary, type PlatformHealth, type PageResponse } from "@/lib/platform-admin-api"
 
 function Stat({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string | number | null; sub: string }) {
@@ -23,6 +23,9 @@ export default function PlatformStreamingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
+  const [observing, setObserving] = useState<string | null>(null)
+  const [observerUrl, setObserverUrl] = useState<string | null>(null)
+  const [observerError, setObserverError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -38,6 +41,16 @@ export default function PlatformStreamingPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  const joinAsObserver = async (liveClassId: string) => {
+    setObserving(liveClassId); setObserverError(null); setObserverUrl(null)
+    try {
+      const res = await platformAdminApi.getObserverJoinUrl(liveClassId)
+      setObserverUrl(res.websocketUrl)
+    } catch (e: any) {
+      setObserverError(e.message || "Unable to join as observer")
+    } finally { setObserving(null) }
+  }
 
   const rows = (all?.content ?? []).filter((c) =>
     (!search || c.title.toLowerCase().includes(search.toLowerCase()))
@@ -70,6 +83,21 @@ export default function PlatformStreamingPage() {
         </div>
       )}
 
+      {observerError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+          <span className="flex items-center gap-2"><AlertCircle className="size-4" />{observerError}</span>
+          <button onClick={() => setObserverError(null)} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Dismiss</button>
+        </div>
+      )}
+      {observerUrl && (
+        <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 flex items-center justify-between gap-3">
+          <span className="flex min-w-0 items-center gap-2"><Eye className="size-4 shrink-0" />Observer WebSocket: <code className="truncate font-mono text-xs">{observerUrl}</code></span>
+          <a href={observerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white border border-violet-200 px-3 py-1 text-xs font-semibold hover:bg-violet-100">
+            Open <ExternalLink className="size-3" />
+          </a>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-bold text-foreground">Sessions</h2>
@@ -99,6 +127,17 @@ export default function PlatformStreamingPage() {
                     <span className="inline-flex items-center gap-1"><Users className="size-3" />{c.currentParticipants}/{c.maxParticipants}</span>
                   </p>
                 </div>
+                {(c.status === "LIVE" || c.status === "IN_PROGRESS") && (
+                  <button
+                    onClick={() => joinAsObserver(c.id)}
+                    disabled={observing === c.id}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                    title="Join as read-only observer"
+                  >
+                    {observing === c.id ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
+                    Observe
+                  </button>
+                )}
               </div>
             ))}
         </div>

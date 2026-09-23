@@ -338,4 +338,34 @@ class PlatformAdminServiceTest {
         assertThrows(IllegalStateException.class,
                 () -> service.updateFeatureStatus("integration_registry", "PLANNED"));
     }
+
+    @Test
+    void updateSupportTicketStatus_actionRequiredLifecycle() {
+        tz.elmkusoma.parent.domain.SupportTicket t = tz.elmkusoma.parent.domain.SupportTicket.builder()
+                .id(TEST_ID).subject("Payment issue").description("desc").category("PAYMENT").status("INVESTIGATING")
+                .institutionId(TEST_ID).build();
+        when(supportTicketRepository.findById(TEST_ID)).thenReturn(Optional.of(t));
+        when(supportTicketRepository.save(any(tz.elmkusoma.parent.domain.SupportTicket.class))).thenAnswer(i -> i.getArgument(0));
+        when(auditLogRepository.save(any(tz.elmkusoma.audit.domain.AuditLog.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.updateSupportTicketStatus(TEST_ID, "ACTION_REQUIRED");
+        assertEquals("ACTION_REQUIRED", t.getStatus());
+
+        service.updateSupportTicketStatus(TEST_ID, "RESOLVED");
+        assertEquals("RESOLVED", t.getStatus());
+
+        service.updateSupportTicketStatus(TEST_ID, "CLOSED");
+        assertEquals("CLOSED", t.getStatus());
+    }
+
+    @Test
+    void updateSupportTicketStatus_rejectsIllegalJump() {
+        tz.elmkusoma.parent.domain.SupportTicket t = tz.elmkusoma.parent.domain.SupportTicket.builder()
+                .id(TEST_ID).subject("Access issue").description("desc").category("ACCOUNT").status("CLOSED")
+                .institutionId(TEST_ID).build();
+        when(supportTicketRepository.findById(TEST_ID)).thenReturn(Optional.of(t));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.updateSupportTicketStatus(TEST_ID, "RESOLVED"));
+    }
 }
