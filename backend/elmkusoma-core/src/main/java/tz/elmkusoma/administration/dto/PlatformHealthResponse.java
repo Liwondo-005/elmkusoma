@@ -5,8 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,4 +16,12 @@ public class PlatformHealthResponse {
     private long activeUsers;
     private long totalInstitutions;
     private long activeInstitutions;
+    private String livekitStatus;
+    private String storageStatus;
+    private String backgroundJobsStatus;
+    private String notificationsStatus;
+    private String paymentsStatus;
+    private String realtimeStatus;
+    private String mediaStatus;
+    private String heartbeatAt;
 }

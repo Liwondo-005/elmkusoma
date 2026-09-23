@@ -530,7 +530,12 @@
     "liveClass": "Darasa la Moja kwa Moja",
     "notifications": "Arifa",
     "profile": "Wasifu",
-    "progress": "Maendeleo Yangu",
+    "progress": {
+      "overall": "Maendeleo ya Jumla",
+      "milestonesAchieved": "{n} ya {m} hatua muhimu zimepatikana",
+      "missionsDone": "{n} ya {m} kazi zimekamilika",
+      "pointsEarned": "{n} ya {m} pointi zimepatikana"
+    },
     "greeting": {
       "morning": "Habari za asubuhi",
       "afternoon": "Habari za mchana",
@@ -587,12 +592,6 @@
       "points": "Pointi",
       "of": "ya",
       "achieved": "imepatikana"
-    },
-    "progress": {
-      "overall": "Maendeleo ya Jumla",
-      "milestonesAchieved": "{n} ya {m} hatua muhimu zimepatikana",
-      "missionsDone": "{n} ya {m} kazi zimekamilika",
-      "pointsEarned": "{n} ya {m} pointi zimepatikana"
     },
     "filters": {
       "all": "Zote",
@@ -674,7 +673,13 @@
     "live": "Moja kwa Moja",
     "projects": "Miradi",
     "portfolio": "Faili",
-    "progress": "Maendeleo",
+    "progress": {
+      "overall": "Maendeleo ya Jumla",
+      "subjectProgress": "Maendeleo ya Masomo",
+      "weeklyProgress": "Maendeleo ya Wiki",
+      "monthlyProgress": "Maendeleo ya Mwezi",
+      "academicPulse": "Mapigo ya Masomo"
+    },
     "futureWorld": "Dunia ya Mustakabali",
     "myTeachers": "Walimu Wangu",
     "notifications": "Arifa",
@@ -747,13 +752,6 @@
       "completed": "imekamilika",
       "total": "jumla"
     },
-    "progress": {
-      "overall": "Maendeleo ya Jumla",
-      "subjectProgress": "Maendeleo ya Masomo",
-      "weeklyProgress": "Maendeleo ya Wiki",
-      "monthlyProgress": "Maendeleo ya Mwezi",
-      "academicPulse": "Mapigo ya Masomo"
-    },
     "filters": {
       "all": "Zote",
       "completed": "Imekamilika",
@@ -778,7 +776,6 @@
     "criticalThinking": "Ufikiraji wa Kina",
     "communication": "Mawasiliano",
     "practicalLearning": "Kujifunza kwa Vitendo",
-    "scienceLab": "Maabara ya Sayansi",
     "examMode": "Hali ya Mtihani",
     "studyPlanner": "Mpangaji wa Kusoma",
     "examPrep": "Maandalizi ya Mtihani",
@@ -930,25 +927,8 @@
     "academicProgress": "Maendeleo ya Masomo",
     "academicRecord": "Rekodi ya Masomo",
     "studyPlanner": "Mpangaji wa Kusoma",
-    "portfolio": {
-      "subtitle": "Kazi yako ya kitaalamu"
-    },
-    "evidence": {
-      "subtitle": "Ushahidi wa kujifunza kwako",
-      "noEvidence": "Hakuna ushahidi bado",
-      "noEvidenceDesc": "Anza kujenga faili lako la ushahidi.",
-      "portfolioItems": "Bidhaa za Legacy",
-      "demonstrations": "Mafunzo",
-      "projects": "Miradi",
-      "fieldwork": "Kazi ya Shambani",
-      "competencies": "Ujuzi",
-      "portfolio": "Faili",
-      "viewPortfolio": "Tazama Faili",
-      "showWhatICanDo": "Onyescha Ninachoweza",
-      "viewAll": "Tazama Zote",
-      "viewAllProjects": "Tazama Miradi Yote",
-      "viewAllCompetencies": "Tazama Ujuzi Wote"
-    },
+    "portfolio": "Faili",
+    "evidence": "Ushahidi",
     "demonstrations": {
       "subtitle": "Onyesha ujuzi wako wa vitendo",
       "totalSubmissions": "Uwasilisho Jumla",
@@ -985,9 +965,7 @@
       "viewEvidence": "Tazama Ushahidi",
       "completedDate": "Tarehe ya Kukamilika"
     },
-    "careerWorld": {
-      "subtitle": "Vinjari fursa za kazi"
-    },
+    "careerWorld": "Dunia ya Kazi na Utaalamu",
     "deepLearning": {
       "title": "Kujifunza Kwa Kina",
       "subtitle": "Vinjari kwa kina",
@@ -1219,10 +1197,8 @@
     "academicLoad": "Mzigo wa Masomo",
     "myProgress": "Maendeleo Yangu",
     "myEvidence": "Ushahidi Wangu",
-    "careerWorld": "Dunia ya Kazi na Utaalamu",
     "myDay": "Siku Yangu",
     "myWeek": "Wiki Yangu",
-    "studyPlanner": "Mpangaji wa Kusoma",
     "joinSession": "Jiunge na Kikao",
     "viewAll": "Tazama Zote",
     "viewDetails": "Tazama Maelezo",
@@ -1267,7 +1243,6 @@
     "workshop": "Warsha",
     "seminar": "Semina",
     "internship": "Mafunzo",
-    "fieldwork": "Kazi ya Shambani",
     "logbook": "Kitabu cha Kumbukumbu",
     "practical": "Vitendo",
     "laboratory": "Maabara",
@@ -1275,8 +1250,6 @@
     "demonstration": "Onyesho",
     "professional": "Kitaalamu",
     "career": "Kazi",
-    "portfolio": "Faili",
-    "evidence": "Ushahidi",
     "certificate": "Cheti",
     "award": "Tuzo",
     "achievement": "Mafanikio",

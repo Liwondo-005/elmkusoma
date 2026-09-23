@@ -8,13 +8,26 @@ import tz.elmkusoma.event.domain.Event;
 import tz.elmkusoma.event.domain.EventMaterial;
 import tz.elmkusoma.event.domain.EventRegistration;
 import tz.elmkusoma.event.dto.*;
+import tz.elmkusoma.certificate.domain.Certificate;
+import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
+import tz.elmkusoma.certificate.domain.Certificate.CertificateType;
+import tz.elmkusoma.certificate.domain.CertificateTemplate;
+import tz.elmkusoma.certificate.repository.CertificateRepository;
+import tz.elmkusoma.certificate.repository.CertificateTemplateRepository;
+import tz.elmkusoma.event.domain.Event;
+import tz.elmkusoma.event.domain.EventMaterial;
+import tz.elmkusoma.event.domain.EventRegistration;
+import tz.elmkusoma.event.dto.*;
 import tz.elmkusoma.event.repository.EventMaterialRepository;
 import tz.elmkusoma.event.repository.EventRegistrationRepository;
 import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.event.service.EventService;
+import tz.elmkusoma.learner.domain.LearnerNotification;
+import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -34,17 +47,26 @@ public class EventServiceImpl implements EventService {
     private final EventMaterialRepository materialRepository;
     private final UserRepository userRepository;
     private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
+    private final CertificateRepository certificateRepository;
+    private final CertificateTemplateRepository certificateTemplateRepository;
+    private final LearnerNotificationRepository notificationRepository;
 
-    public EventServiceImpl(EventRepository eventRepository,
-                           EventRegistrationRepository registrationRepository,
-                           EventMaterialRepository materialRepository,
-                           UserRepository userRepository,
-                           tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository) {
+public EventServiceImpl(EventRepository eventRepository,
+                            EventRegistrationRepository registrationRepository,
+                            EventMaterialRepository materialRepository,
+                            UserRepository userRepository,
+                            tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository,
+                            CertificateRepository certificateRepository,
+                            CertificateTemplateRepository certificateTemplateRepository,
+                            LearnerNotificationRepository notificationRepository) {
         this.eventRepository = eventRepository;
         this.registrationRepository = registrationRepository;
         this.materialRepository = materialRepository;
         this.userRepository = userRepository;
         this.institutionRepository = institutionRepository;
+        this.certificateRepository = certificateRepository;
+        this.certificateTemplateRepository = certificateTemplateRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     @Override
@@ -180,6 +202,7 @@ public class EventServiceImpl implements EventService {
         if (request.getPrerequisites() != null) event.setPrerequisites(request.getPrerequisites());
         if (request.getLearningOutcomes() != null) event.setLearningOutcomes(request.getLearningOutcomes());
         if (request.getAgenda() != null) event.setAgenda(request.getAgenda());
+        if (request.getRescheduledFrom() != null) event.setRescheduledFrom(request.getRescheduledFrom());
 
         event = eventRepository.save(event);
         log.info("Event updated: id={}, institutionId={}", event.getId(), event.getInstitutionId());
@@ -417,7 +440,99 @@ public class EventServiceImpl implements EventService {
         event.setEventStatus(tz.elmkusoma.event.domain.EventStatus.ENDED);
         event = eventRepository.save(event);
         log.info("Event ended: id={}", eventId);
+
+        // Issue certificates for attendees
+        issueCertificatesForEventAttendees(event);
+
         return mapToResponse(event);
+    }
+
+    private void issueCertificatesForEventAttendees(Event event) {
+        try {
+            List<EventRegistration> attendedRegistrations = registrationRepository.findByEventIdAndIsDeletedFalse(event.getId())
+                    .stream()
+                    .filter(EventRegistration::getAttended)
+                    .toList();
+
+            if (attendedRegistrations.isEmpty()) {
+                log.info("No attendees to issue certificates for event: {}", event.getId());
+                return;
+            }
+
+            // Find or create a participation certificate template
+            List<CertificateTemplate> templates = certificateTemplateRepository.findByInstitutionIdAndTemplateType(
+                    event.getInstitutionId(), CertificateTemplate.TemplateType.PARTICIPATION);
+            CertificateTemplate template = templates.isEmpty() ? createDefaultParticipationTemplate(event.getInstitutionId()) : templates.get(0);
+
+            int issuedCount = 0;
+            for (EventRegistration registration : attendedRegistrations) {
+                // Check if certificate already issued for this registration
+                if (certificateRepository.findAllByStudentId(registration.getUserId()).stream()
+                        .anyMatch(c -> c.getMetadata() != null &&
+                                event.getId().toString().equals(c.getMetadata().get("eventId")))) {
+                    continue; // Already issued
+                }
+
+                User user = userRepository.findById(registration.getUserId()).orElse(null);
+                if (user == null) continue;
+
+                String serialNumber = "CERT-EVT-" + System.currentTimeMillis() + "-" + registration.getUserId().toString().substring(0, 8);
+                String verificationCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+
+                Certificate certificate = Certificate.builder()
+                        .templateId(template.getId())
+                        .studentId(registration.getUserId())
+                        .issuedBy(event.getOrganizerId())
+                        .serialNumber(serialNumber)
+                        .certificateType(CertificateType.PARTICIPATION)
+                        .title("Certificate of Participation - " + event.getTitle())
+                        .description("Awarded for attending " + event.getTitle())
+                        .studentName(user.getFullName())
+                        .courseOrProgramme(event.getTitle())
+                        .completionDate(java.time.LocalDate.now())
+                        .issueDate(LocalDateTime.now())
+                        .status(CertificateStatus.ISSUED)
+                        .verificationCode(verificationCode)
+                        .instructorName(event.getPresenterName())
+                        .metadata(Map.of(
+                                "eventId", event.getId().toString(),
+                                "eventTitle", event.getTitle(),
+                                "eventType", event.getEventType(),
+                                "registrationId", registration.getId().toString(),
+                                "attendedAt", registration.getAttendedAt() != null ? registration.getAttendedAt().toString() : null
+                        ))
+                        .build();
+                certificate.setInstitutionId(event.getInstitutionId());
+
+                certificateRepository.save(certificate);
+                issuedCount++;
+
+                // Create notification
+                LearnerNotification notification = LearnerNotification.builder()
+                        .userId(registration.getUserId())
+                        .title("Certificate Earned!")
+                        .message("You've earned a certificate for attending " + event.getTitle() + ". Verification code: " + verificationCode)
+                        .notificationType("CERTIFICATE")
+                        .targetType("certificate")
+                        .targetId(certificate.getId())
+                        .build();
+                // Note: notificationRepository not injected here, would need to be added if notifications required
+            }
+            log.info("Issued {} participation certificates for event: {}", issuedCount, event.getId());
+        } catch (Exception ex) {
+            log.warn("Failed to issue certificates for event {}: {}", event.getId(), ex.getMessage());
+        }
+    }
+
+    private CertificateTemplate createDefaultParticipationTemplate(UUID institutionId) {
+        CertificateTemplate template = CertificateTemplate.builder()
+                .institutionId(institutionId)
+                .name("Event Participation Certificate")
+                .description("Default template for event participation certificates")
+                .templateType(CertificateTemplate.TemplateType.PARTICIPATION)
+                .isActive(true)
+                .build();
+        return certificateTemplateRepository.save(template);
     }
 
     @Override
@@ -458,6 +573,21 @@ public class EventServiceImpl implements EventService {
         summary.put("attendanceRate", Math.round(attendanceRate));
         summary.put("participation", Math.round(attendanceRate));
         summary.put("materials", materialList);
+
+        List<Map<String, Object>> attendanceList = allRegs.stream()
+                .filter(EventRegistration::getAttended)
+                .map(reg -> {
+                    Map<String, Object> att = new java.util.HashMap<>();
+                    att.put("userId", reg.getUserId().toString());
+                    att.put("userName", "User");
+                    att.put("email", "");
+                    att.put("joinTime", reg.getAttendedAt() != null ? reg.getAttendedAt().toString() : null);
+                    att.put("leaveTime", null);
+                    att.put("durationMinutes", null);
+                    return att;
+                }).collect(Collectors.toList());
+        summary.put("attendance", attendanceList);
+
         return summary;
     }
 

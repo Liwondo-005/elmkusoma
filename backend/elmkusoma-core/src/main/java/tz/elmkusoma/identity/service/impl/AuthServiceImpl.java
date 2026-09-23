@@ -65,6 +65,9 @@ public class AuthServiceImpl implements AuthService {
 
     private static final UUID HQ_INSTITUTION_ID = UUID.fromString("a0000000-0000-0000-0000-000000000001");
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
+
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
 
@@ -129,6 +132,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse register(RegisterRequest request) {
+        if (platformPolicyService != null && !platformPolicyService.registrationEnabled()) {
+            throw new IllegalStateException("Platform policy forbids public registration");
+        }
         if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
             throw new IllegalArgumentException("An account with this email already exists");
         }

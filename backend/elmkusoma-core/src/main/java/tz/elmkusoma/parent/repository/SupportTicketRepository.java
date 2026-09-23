@@ -13,4 +13,8 @@ public interface SupportTicketRepository extends JpaRepository<SupportTicket, UU
     List<SupportTicket> findByUserIdAndStatusAndIsDeletedFalse(UUID userId, String status);
     long countByUserIdAndStatusAndIsDeletedFalse(UUID userId, String status);
     long countByUserIdAndIsDeletedFalse(UUID userId);
+    org.springframework.data.domain.Page<SupportTicket> findByIsDeletedFalse(org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<SupportTicket> findByStatusAndIsDeletedFalse(String status, org.springframework.data.domain.Pageable pageable);
+    long countByStatusAndIsDeletedFalse(String status);
+    long countByStatusAndCreatedAtBeforeAndIsDeletedFalse(String status, java.time.LocalDateTime createdAtBefore);
 }

@@ -39,4 +39,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByIdAndIsDeletedFalse(UUID id);
 
     Page<User> findByRoleAndIsDeletedFalse(User.Role role, Pageable pageable);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.isDeleted = false GROUP BY u.email HAVING COUNT(u) > 1")
+    List<Object[]> findDuplicateEmailGroups();
+
+    default long countDuplicateEmails() {
+        return findDuplicateEmailGroups().size();
+    }
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.isDeleted = false AND u.role IN (tz.elmkusoma.shared.domain.User.Role.STUDENT, tz.elmkusoma.shared.domain.User.Role.OTHER_LEARNER, tz.elmkusoma.shared.domain.User.Role.LEARNER) AND u.institutionId IS NULL")
+    long countStudentsWithoutInstitution();
 }

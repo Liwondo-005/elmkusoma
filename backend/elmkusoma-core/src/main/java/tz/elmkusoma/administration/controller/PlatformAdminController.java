@@ -25,6 +25,7 @@ import java.util.UUID;
 public class PlatformAdminController {
 
     private final PlatformAdminService platformAdminService;
+    private final tz.elmkusoma.administration.service.PlatformCommerceService platformCommerceService;
 
     // ── Command Center ──
 
@@ -345,5 +346,311 @@ public class PlatformAdminController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.listEntitlements(page, size, status)));
+    }
+
+    // ── Platform Learning/Content/Event/Media/Resources ──
+
+    @GetMapping("/courses")
+    @Operation(summary = "List courses across platform (governance)")
+    public ResponseEntity<ApiResponse<PageResponse<PlatformCourseResponse>>> listPlatformCourses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformCourses(page, size, search)));
+    }
+
+    @GetMapping("/events")
+    @Operation(summary = "List events across platform (governance)")
+    public ResponseEntity<ApiResponse<PageResponse<PlatformEventResponse>>> listPlatformEvents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformEvents(page, size, search)));
+    }
+
+    @GetMapping("/media")
+    @Operation(summary = "List media assets across platform (governance)")
+    public ResponseEntity<ApiResponse<PageResponse<PlatformMediaResponse>>> listPlatformMedia(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformMedia(page, size)));
+    }
+
+    @GetMapping("/resources")
+    @Operation(summary = "List resources across platform (governance)")
+    public ResponseEntity<ApiResponse<PageResponse<PlatformResourceResponse>>> listPlatformResources(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformResources(page, size)));
+    }
+
+    // ── Provider Quotas / Entitlements ──
+
+    @GetMapping("/providers/{providerId}/quotas")
+    @Operation(summary = "List provider service entitlements and seat quotas")
+    public ResponseEntity<ApiResponse<List<ProviderQuotaResponse>>> listProviderQuotas(@PathVariable UUID providerId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listProviderQuotas(providerId)));
+    }
+
+    @PutMapping("/entitlements/{entitlementId}")
+    @Operation(summary = "Update provider entitlement quota (max seats / status)")
+    public ResponseEntity<ApiResponse<ProviderQuotaResponse>> updateProviderEntitlement(
+            @PathVariable UUID entitlementId,
+            @RequestBody EntitlementUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Entitlement updated", platformAdminService.updateProviderEntitlement(entitlementId, request)));
+    }
+
+    // ── Institution Lifecycle (offboarding) ──
+
+    @PutMapping("/institutions/{institutionId}/lifecycle")
+    @Operation(summary = "Update institution lifecycle status (ACTIVE/SUSPENDED/DEACTIVATED/ARCHIVED)")
+    public ResponseEntity<ApiResponse<InstitutionSummaryResponse>> updateInstitutionLifecycle(
+            @PathVariable UUID institutionId,
+            @RequestBody LifecycleStatusRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Lifecycle updated", platformAdminService.updateInstitutionLifecycle(institutionId, request.getStatus())));
+    }
+
+    // ── Commerce: Sponsored Seats (Payment Model B/C) ──
+
+    @PostMapping("/commerce/sponsor-seats")
+    @Operation(summary = "Grant sponsored seats from a provider package (spec §36)")
+    public ResponseEntity<ApiResponse<SponsorGrantResponse>> grantSponsoredSeats(
+            @Valid @RequestBody SponsorSeatGrantRequest request) {
+        UUID grantedBy = null;
+        return ResponseEntity.ok(ApiResponse.success("Seats granted",
+                platformCommerceService.grantSponsoredSeats(request, grantedBy)));
+    }
+
+    @PutMapping("/commerce/entitlements/{entitlementId}/revoke")
+    @Operation(summary = "Revoke a sponsored entitlement and free its seat")
+    public ResponseEntity<ApiResponse<String>> revokeSponsoredEntitlement(@PathVariable UUID entitlementId) {
+        platformCommerceService.revokeSponsoredEntitlement(entitlementId, null);
+        return ResponseEntity.ok(ApiResponse.success("Entitlement revoked", "REVOKED"));
+    }
+
+    // ── Support Cases (M26) ──
+
+    @GetMapping("/support/tickets")
+    @Operation(summary = "List platform support tickets")
+    public ResponseEntity<ApiResponse<PageResponse<SupportTicketResponse>>> listSupportTickets(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listSupportTickets(page, size, status)));
+    }
+
+    @PutMapping("/support/tickets/{ticketId}/status")
+    @Operation(summary = "Advance support ticket status (OPEN → ASSIGNED → INVESTIGATING → RESOLVED → CLOSED)")
+    public ResponseEntity<ApiResponse<SupportTicketResponse>> updateSupportTicketStatus(
+            @PathVariable UUID ticketId,
+            @RequestParam String status) {
+        return ResponseEntity.ok(ApiResponse.success("Ticket status updated",
+                platformAdminService.updateSupportTicketStatus(ticketId, status)));
+    }
+
+    // ── Content Moderation (M10/M11) ──
+
+    @GetMapping("/moderation/reports")
+    @Operation(summary = "List content reports (moderation queue)")
+    public ResponseEntity<ApiResponse<PageResponse<ContentReportResponse>>> listContentReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listContentReports(page, size, status)));
+    }
+
+    @PostMapping("/moderation/reports")
+    @Operation(summary = "Create a content report")
+    public ResponseEntity<ApiResponse<ContentReportResponse>> createContentReport(
+            @Valid @RequestBody ContentReportCreateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Report created", platformAdminService.createContentReport(request)));
+    }
+
+    @PutMapping("/moderation/reports/{reportId}/action")
+    @Operation(summary = "Act on a content report (REVIEWING/RESOLVED/DISMISSED)")
+    public ResponseEntity<ApiResponse<ContentReportResponse>> actOnContentReport(
+            @PathVariable UUID reportId,
+            @RequestBody ContentReportActionRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Report updated",
+                platformAdminService.actOnContentReport(reportId, request)));
+    }
+
+    // ── Data Governance Export (M24) ──
+
+    @GetMapping("/export")
+    @Operation(summary = "Export platform data as CSV (users|institutions|audit) — audit-logged")
+    public ResponseEntity<byte[]> exportPlatformData(@RequestParam(defaultValue = "users") String type) {
+        String csv = platformAdminService.exportPlatformData(type);
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/csv")
+                .header("Content-Disposition", "attachment; filename=platform_" + type.toLowerCase() + "_export.csv")
+                .body(csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    // ── BATCH 13: Integrations, Webhooks, Backup, Policy, Governance, Admins, Features ──
+
+    private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
+    private final tz.elmkusoma.administration.service.BackupStatusService backupStatusService;
+    private final tz.elmkusoma.administration.service.DataGovernanceService dataGovernanceService;
+    private final tz.elmkusoma.administration.service.PlatformPolicyService policyService;
+
+    @GetMapping("/integrations")
+    @Operation(summary = "List integration registry status (no secrets)")
+    public ResponseEntity<ApiResponse<List<IntegrationStatusResponse>>> listIntegrations() {
+        return ResponseEntity.ok(ApiResponse.success(integrationService.listIntegrations()));
+    }
+
+    @PostMapping("/integrations/{key}/probe")
+    @Operation(summary = "Run a live probe against an integration")
+    public ResponseEntity<ApiResponse<IntegrationStatusResponse>> probeIntegration(@PathVariable String key) {
+        return ResponseEntity.ok(ApiResponse.success("Probe complete", integrationService.probe(key)));
+    }
+
+    @GetMapping("/webhook-events")
+    @Operation(summary = "List recorded webhook events (payment / livekit)")
+    public ResponseEntity<ApiResponse<PageResponse<WebhookEventResponse>>> listWebhookEvents(
+            @RequestParam(required = false) String source,
+            @RequestParam(defaultValue = "false") boolean failedOnly,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                integrationService.listWebhookEvents(source, failedOnly, page, size)));
+    }
+
+    @GetMapping("/backup/status")
+    @Operation(summary = "Real backup status from status file and dump directory (never fabricated)")
+    public ResponseEntity<ApiResponse<BackupStatusResponse>> backupStatus() {
+        return ResponseEntity.ok(ApiResponse.success(backupStatusService.getBackupStatus()));
+    }
+
+    @GetMapping("/policies")
+    @Operation(summary = "List central platform policy flags")
+    public ResponseEntity<ApiResponse<List<PolicyFlagResponse>>> listPolicies() {
+        return ResponseEntity.ok(ApiResponse.success(policyService.listPolicies()));
+    }
+
+    @PutMapping("/policies/{key}")
+    @Operation(summary = "Update a platform policy flag (true/false)")
+    public ResponseEntity<ApiResponse<PolicyFlagResponse>> updatePolicy(
+            @PathVariable String key,
+            @RequestBody java.util.Map<String, String> body,
+            HttpServletRequest request) {
+        String actor = request.getAttribute("userEmail") != null ? request.getAttribute("userEmail").toString() : "admin";
+        String value = body.get("value");
+        if (value == null || !(value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false"))) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("value must be true or false"));
+        }
+        var result = platformAdminService.updateConfig(key, value, actor);
+        return ResponseEntity.ok(ApiResponse.success("Policy updated", PolicyFlagResponse.builder()
+                .key(result.getConfigKey()).value(result.getConfigValue())
+                .description(result.getDescription()).category(result.getCategory()).build()));
+    }
+
+    @GetMapping("/data-governance/retention")
+    @Operation(summary = "Data retention status (audit archive, config, last sweep)")
+    public ResponseEntity<ApiResponse<RetentionStatusResponse>> retentionStatus() {
+        return ResponseEntity.ok(ApiResponse.success(dataGovernanceService.retentionStatus()));
+    }
+
+    @PostMapping("/data-governance/retention/run")
+    @Operation(summary = "Run retention sweep (archive old audit logs, purge soft-deleted reports)")
+    public ResponseEntity<ApiResponse<RetentionStatusResponse>> runRetentionSweep(HttpServletRequest request) {
+        String actor = request.getAttribute("userEmail") != null ? request.getAttribute("userEmail").toString() : "admin";
+        return ResponseEntity.ok(ApiResponse.success("Sweep complete", dataGovernanceService.runSweep(actor)));
+    }
+
+    @GetMapping("/data-governance/quality")
+    @Operation(summary = "Data quality checks (live queries)")
+    public ResponseEntity<ApiResponse<List<DataQualityCheckResponse>>> dataQuality() {
+        return ResponseEntity.ok(ApiResponse.success(dataGovernanceService.dataQuality()));
+    }
+
+    @PutMapping("/support/tickets/{ticketId}/assign")
+    @Operation(summary = "Assign a support ticket to an admin user")
+    public ResponseEntity<ApiResponse<SupportTicketResponse>> assignSupportTicket(
+            @PathVariable UUID ticketId,
+            @RequestBody java.util.Map<String, UUID> body) {
+        return ResponseEntity.ok(ApiResponse.success("Ticket assigned",
+                platformAdminService.assignSupportTicket(ticketId, body.get("assigneeId"))));
+    }
+
+    @GetMapping("/admins")
+    @Operation(summary = "List admin accounts with role permissions")
+    public ResponseEntity<ApiResponse<List<AdminAccountResponse>>> listAdmins() {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listAdmins()));
+    }
+
+    @GetMapping("/roles/{roleId}/permissions")
+    @Operation(summary = "Get permissions for a role / admin user id")
+    public ResponseEntity<ApiResponse<List<String>>> getRolePermissions(@PathVariable UUID roleId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.getRolePermissions(roleId)));
+    }
+
+    @PutMapping("/roles/{roleId}/permissions")
+    @Operation(summary = "Replace permissions for a role / admin user id")
+    public ResponseEntity<ApiResponse<List<String>>> updateRolePermissions(
+            @PathVariable UUID roleId,
+            @RequestBody RolePermissionUpdateRequest req) {
+        return ResponseEntity.ok(ApiResponse.success("Permissions updated",
+                platformAdminService.updateRolePermissions(roleId, req)));
+    }
+
+    @GetMapping("/institutions/{institutionId}/offboarding")
+    @Operation(summary = "Provider/institution offboarding checklist")
+    public ResponseEntity<ApiResponse<OffboardingChecklistResponse>> offboardingChecklist(@PathVariable UUID institutionId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.offboardingChecklist(institutionId)));
+    }
+
+    @PostMapping("/content/bulk-action")
+    @Operation(summary = "Bulk content action (COURSE|EVENT|RESOURCE × PUBLISH|UNPUBLISH|ARCHIVE|RESTORE)")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> bulkContentAction(
+            @RequestBody BulkContentActionRequest req) {
+        return ResponseEntity.ok(ApiResponse.success("Bulk action applied", platformAdminService.bulkContentAction(req)));
+    }
+
+    @GetMapping("/features")
+    @Operation(summary = "List platform features with lifecycle status")
+    public ResponseEntity<ApiResponse<List<FeatureStatusResponse>>> listFeatures() {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listFeatures()));
+    }
+
+    @PutMapping("/features/{key}/status")
+    @Operation(summary = "Transition feature lifecycle status")
+    public ResponseEntity<ApiResponse<FeatureStatusResponse>> updateFeatureStatus(
+            @PathVariable String key,
+            @RequestBody java.util.Map<String, String> body) {
+        return ResponseEntity.ok(ApiResponse.success("Feature updated",
+                platformAdminService.updateFeatureStatus(key, body.get("status"))));
+    }
+
+    @GetMapping("/communications/delivery")
+    @Operation(summary = "Notification delivery statistics")
+    public ResponseEntity<ApiResponse<CommunicationDeliveryResponse>> communicationDelivery() {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.communicationDelivery()));
+    }
+
+    @GetMapping("/analytics/snapshots")
+    @Operation(summary = "List stored analytics snapshots")
+    public ResponseEntity<ApiResponse<List<AnalyticsSnapshotResponse>>> analyticsSnapshots(
+            @RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.analyticsSnapshots(limit)));
+    }
+
+    @PostMapping("/analytics/snapshots")
+    @Operation(summary = "Generate a new platform analytics snapshot")
+    public ResponseEntity<ApiResponse<AnalyticsSnapshotResponse>> createAnalyticsSnapshot() {
+        return ResponseEntity.ok(ApiResponse.success("Snapshot created", platformAdminService.createAnalyticsSnapshot()));
+    }
+
+    @PostMapping("/certificates/{certificateId}/revoke")
+    @Operation(summary = "Platform-level certificate revocation (cross-institution)")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> revokeCertificatePlatform(
+            @PathVariable UUID certificateId,
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            HttpServletRequest request) {
+        String actor = request.getAttribute("userEmail") != null ? request.getAttribute("userEmail").toString() : "admin";
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(ApiResponse.success("Certificate revoked",
+                platformAdminService.revokeCertificatePlatform(certificateId, reason, actor)));
     }
 }

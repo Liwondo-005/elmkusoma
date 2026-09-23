@@ -44,6 +44,13 @@ interface EventFormData {
   relatedModuleId: string
   relatedLessonId: string
   recordingEnabled: boolean
+  eventFormat: string
+  difficulty: string
+  targetAudience: string
+  prerequisites: string
+  learningOutcomes: string
+  agenda: string
+  rescheduledFrom: string
 }
 
 const initialForm: EventFormData = {
@@ -61,6 +68,13 @@ const initialForm: EventFormData = {
   relatedModuleId: "",
   relatedLessonId: "",
   recordingEnabled: false,
+  eventFormat: "",
+  difficulty: "",
+  targetAudience: "",
+  prerequisites: "",
+  learningOutcomes: "",
+  agenda: "",
+  rescheduledFrom: "",
 }
 
 export default function NewEventPage() {
@@ -110,6 +124,13 @@ export default function NewEventPage() {
         relatedModuleId: form.relatedModuleId || undefined,
         relatedLessonId: form.relatedLessonId || undefined,
         recordingEnabled: form.recordingEnabled,
+        eventFormat: form.eventFormat || undefined,
+        difficulty: form.difficulty || undefined,
+        targetAudience: form.targetAudience || undefined,
+        prerequisites: form.prerequisites || undefined,
+        learningOutcomes: form.learningOutcomes || undefined,
+        agenda: form.agenda || undefined,
+        rescheduledFrom: form.rescheduledFrom || undefined,
         status,
         institutionId,
       })
@@ -332,6 +353,105 @@ export default function NewEventPage() {
               aria-label={t("admin.form.lessonLabel")}
             />
           </div>
+        </div>
+
+        {/* Event Format & Difficulty */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.formatLabel")}</label>
+            <select
+              value={form.eventFormat}
+              onChange={(e) => updateField("eventFormat", e.target.value)}
+              className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              aria-label={t("admin.form.formatLabel")}
+            >
+              <option value="">{t("admin.form.formatPlaceholder")}</option>
+              <option value="LIVE">Live</option>
+              <option value="RECORDED">Recorded</option>
+              <option value="HYBRID">Hybrid</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.difficultyLabel")}</label>
+            <select
+              value={form.difficulty}
+              onChange={(e) => updateField("difficulty", e.target.value)}
+              className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              aria-label={t("admin.form.difficultyLabel")}
+            >
+              <option value="">{t("admin.form.difficultyPlaceholder")}</option>
+              <option value="BEGINNER">Beginner</option>
+              <option value="INTERMEDIATE">Intermediate</option>
+              <option value="ADVANCED">Advanced</option>
+              <option value="EXPERT">Expert</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Target Audience */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.targetAudienceLabel")}</label>
+          <input
+            type="text"
+            value={form.targetAudience}
+            onChange={(e) => updateField("targetAudience", e.target.value)}
+            placeholder={t("admin.form.targetAudiencePlaceholder")}
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            aria-label={t("admin.form.targetAudienceLabel")}
+          />
+        </div>
+
+        {/* Prerequisites */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.prerequisitesLabel")}</label>
+          <textarea
+            value={form.prerequisites}
+            onChange={(e) => updateField("prerequisites", e.target.value)}
+            placeholder={t("admin.form.prerequisitesPlaceholder")}
+            rows={2}
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+            aria-label={t("admin.form.prerequisitesLabel")}
+          />
+        </div>
+
+        {/* Learning Outcomes */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.outcomesLabel")}</label>
+          <textarea
+            value={form.learningOutcomes}
+            onChange={(e) => updateField("learningOutcomes", e.target.value)}
+            placeholder={t("admin.form.outcomesPlaceholder")}
+            rows={2}
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+            aria-label={t("admin.form.outcomesLabel")}
+          />
+        </div>
+
+        {/* Agenda */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.agendaLabel")}</label>
+          <textarea
+            value={form.agenda}
+            onChange={(e) => updateField("agenda", e.target.value)}
+            placeholder={t("admin.form.agendaPlaceholder")}
+            rows={3}
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+            aria-label={t("admin.form.agendaLabel")}
+          />
+        </div>
+
+        {/* Rescheduled From */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.rescheduledFromLabel")}</label>
+          <input
+            type="text"
+            value={form.rescheduledFrom}
+            onChange={(e) => updateField("rescheduledFrom", e.target.value)}
+            placeholder={t("admin.form.rescheduledFromPlaceholder")}
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            aria-label={t("admin.form.rescheduledFromLabel")}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">Event ID this was rescheduled from</p>
         </div>
 
         {/* Recording Toggle */}

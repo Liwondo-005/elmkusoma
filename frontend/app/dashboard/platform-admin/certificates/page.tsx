@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Award, Loader2, Hash } from "lucide-react"
+import { Award, Loader2, Hash, Ban, AlertCircle } from "lucide-react"
 import { platformAdminApi, type CertificateSummary, type PageResponse } from "@/lib/platform-admin-api"
 
 const PAGE_SIZE = 20
@@ -11,6 +11,8 @@ export default function CertificatesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
+  const [revoking, setRevoking] = useState<string | null>(null)
+  const [revokePrompt, setRevokePrompt] = useState<{ id: string; reason: string } | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -28,6 +30,18 @@ export default function CertificatesPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const revoke = async () => {
+    if (!revokePrompt) return
+    setRevoking(revokePrompt.id); setError(null)
+    try {
+      await platformAdminApi.revokeCertificatePlatform(revokePrompt.id, revokePrompt.reason.trim() || undefined)
+      setRevokePrompt(null)
+      await loadData()
+    } catch (e: any) {
+      setError(e instanceof Error ? e.message : "Failed to revoke certificate")
+    } finally { setRevoking(null) }
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -52,7 +66,27 @@ export default function CertificatesPage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-4 text-sm text-destructive">{error}</div>
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-4 text-sm text-destructive flex items-center gap-2"><AlertCircle className="size-4" />{error}</div>
+      )}
+
+      {revokePrompt && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 space-y-3">
+          <p className="text-sm font-semibold text-destructive">Revoke certificate (platform action)</p>
+          <input
+            autoFocus
+            value={revokePrompt.reason}
+            onChange={(e) => setRevokePrompt({ ...revokePrompt, reason: e.target.value })}
+            placeholder="Reason (required for audit)"
+            className="w-full rounded-xl border border-destructive/30 bg-background px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-destructive/30"
+          />
+          <div className="flex gap-2">
+            <button onClick={revoke} disabled={revoking === revokePrompt.id || !revokePrompt.reason.trim()}
+              className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
+              {revoking === revokePrompt.id ? <Loader2 className="size-4 animate-spin" /> : <Ban className="size-4" />} Confirm revoke
+            </button>
+            <button onClick={() => setRevokePrompt(null)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">Cancel</button>
+          </div>
+        </div>
       )}
 
       {loading ? (
@@ -75,6 +109,7 @@ export default function CertificatesPage() {
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Serial Number</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Issue Date</th>
                   <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -89,6 +124,16 @@ export default function CertificatesPage() {
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{formatDate(cert.issueDate)}</td>
                     <td className="px-5 py-3.5">{getStatusBadge(cert.status)}</td>
+                    <td className="px-5 py-3.5 text-right">
+                      {cert.status !== "REVOKED" && (
+                        <button
+                          onClick={() => setRevokePrompt({ id: cert.id, reason: "" })}
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          <Ban className="size-3" /> Revoke
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

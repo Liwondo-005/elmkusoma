@@ -50,5 +50,5 @@ public class EventRequest {
     private String prerequisites;
     private String learningOutcomes;
     private String agenda;
-    private String rescheduledFrom;
+    private UUID rescheduledFrom;
 }

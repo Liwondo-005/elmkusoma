@@ -190,7 +190,7 @@ const collegeNavSections: CollegeNavSection[] = [
   {
     group: "CONNECT",
     items: [
-      { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search, dotColor: "bg-slate-500" },
+      { label: "Academic Search", href: "/dashboard/learner/search", icon: Search, dotColor: "bg-slate-500" },
       { label: "Messages", href: "/dashboard/messages", icon: MessageSquare, dotColor: "bg-blue-500" },
       { label: "Notifications", href: "/dashboard/notifications", icon: Bell, dotColor: "bg-orange-500" },
     ],
@@ -282,7 +282,7 @@ const universityNavSections: NavSection[] = [
     icon: Search,
     dotColor: "bg-slate-500",
     children: [
-      { label: "Academic Search", href: "/dashboard/learner/search-academic", icon: Search },
+      { label: "Academic Search", href: "/dashboard/learner/search", icon: Search },
       { label: "Knowledge Discovery", href: "/dashboard/learner/knowledge-discovery", icon: Brain },
       { label: "Messages", href: "/dashboard/messages", icon: MessageSquare },
       { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell },
@@ -346,7 +346,7 @@ const learnerNavSections: LearnerNavSection[] = [
   {
     group: "ACCOUNT",
     items: [
-      { label: "Notifications", href: "/dashboard/learner/notifications", icon: Bell },
+      { label: "Notifications", href: "/dashboard/learner/notifications-center", icon: Bell },
       { label: "Profile", href: "/dashboard/learner/profile", icon: User },
       { label: "Settings", href: "/dashboard/learner/settings", icon: Settings },
     ],

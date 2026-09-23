@@ -31,4 +31,10 @@ public class ProviderServiceEntitlement extends BaseEntity {
 
     @Column(name = "max_seats")
     private Integer maxSeats;
+
+    @Column(name = "starts_at")
+    private java.time.LocalDateTime startsAt;
+
+    @Column(name = "expires_at")
+    private java.time.LocalDateTime expiresAt;
 }

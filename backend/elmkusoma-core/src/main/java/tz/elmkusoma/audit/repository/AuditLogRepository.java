@@ -3,6 +3,7 @@ package tz.elmkusoma.audit.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -36,4 +37,14 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     @Query("SELECT a.action, COUNT(a) FROM AuditLog a WHERE a.institutionId = :institutionId GROUP BY a.action ORDER BY COUNT(a) DESC")
     List<Object[]> countByActionForInstitution(@Param("institutionId") UUID institutionId);
+
+    Page<AuditLog> findByActionAndIsDeletedFalse(tz.elmkusoma.audit.domain.AuditLog.AuditAction action, Pageable pageable);
+    Page<AuditLog> findByEntityTypeAndIsDeletedFalse(String entityType, Pageable pageable);
+    Page<AuditLog> findByActionAndEntityTypeAndIsDeletedFalse(tz.elmkusoma.audit.domain.AuditLog.AuditAction action, String entityType, Pageable pageable);
+
+    long countByArchivedAtIsNotNull();
+
+    @Modifying
+    @Query("UPDATE AuditLog a SET a.archivedAt = CURRENT_TIMESTAMP WHERE a.createdAt < :cutoff AND a.archivedAt IS NULL")
+    int archiveOlderThan(@Param("cutoff") LocalDateTime cutoff);
 }
