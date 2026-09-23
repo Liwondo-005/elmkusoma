@@ -25,6 +25,8 @@ import tz.elmkusoma.identity.repository.RevokedTokenRepository;
 import tz.elmkusoma.identity.service.impl.AuthServiceImpl;
 import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
+import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.student.repository.StudentClassAssignmentRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
@@ -63,6 +65,10 @@ class AuthServiceTest {
     private ParentRepository parentRepository;
     @Mock
     private TeacherRepository teacherRepository;
+    @Mock
+    private InstitutionMembershipRepository membershipRepository;
+    @Mock
+    private InstitutionRepository institutionRepository;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -99,7 +105,8 @@ class AuthServiceTest {
 
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(jwtTokenProvider.generateAccessTokenWithClaims(
-                eq("john@example.com"), eq(userId), eq("STUDENT"), isNull()))
+                eq("john@example.com"), eq(userId), eq("STUDENT"),
+                eq(UUID.fromString("a0000000-0000-0000-0000-000000000001"))))
                 .thenReturn("access_token_123");
         when(jwtTokenProvider.generateRefreshToken("john@example.com")).thenReturn("refresh_token_123");
         when(studentRepository.findByUserIdAndIsDeletedFalse(userId)).thenReturn(Optional.empty());
