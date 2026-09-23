@@ -52,6 +52,7 @@ public class LiveKitWebhookController {
     private final UserRepository userRepository;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
+    private final tz.elmkusoma.learner.service.NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     private final Set<String> processedWebhookKeys = ConcurrentHashMap.newKeySet();
@@ -551,6 +552,7 @@ public class LiveKitWebhookController {
                 }
 
                 if (target != null) {
+                    boolean wasAlreadyAvailable = Replay.STATUS_AVAILABLE.equals(target.getStatus());
                     target.setStatus(Replay.STATUS_AVAILABLE);
                     if (finalRecordingUrl != null) {
                         target.setRecordingUrl(finalRecordingUrl);
@@ -561,6 +563,10 @@ public class LiveKitWebhookController {
                     replayRepository.save(target);
                     log.info("Replay AVAILABLE from recording_completed: eventId={}, replayId={}",
                             eventId, target.getId());
+                    // §18/19: notify registrants the replay/recording is now available (once)
+                    if (!wasAlreadyAvailable) {
+                        notifyRecordingAvailable(event, target.getId());
+                    }
                 } else {
                     replays.stream()
                             .filter(r -> Replay.STATUS_AVAILABLE.equals(r.getStatus()))
@@ -656,6 +662,24 @@ public class LiveKitWebhookController {
             return null;
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /** §18/19: recording/replay available → notify all non-cancelled registrants. */
+    private void notifyRecordingAvailable(Event event, UUID replayId) {
+        try {
+            registrationRepository.findByEventIdAndIsDeletedFalse(event.getId()).stream()
+                    .filter(r -> !"CANCELLED".equals(r.getStatus()))
+                    .forEach(r -> notificationService.notifyUser(
+                            r.getUserId(),
+                            "Recording available: " + event.getTitle(),
+                            "The recording of \"" + event.getTitle() + "\" is now available to watch.",
+                            "EVENT_RECORDING",
+                            "replay",
+                            replayId));
+        } catch (Exception e) {
+            log.warn("Failed to send recording-available notifications for event {}: {}",
+                    event.getId(), e.getMessage());
         }
     }
 }

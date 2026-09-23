@@ -69,6 +69,7 @@ interface SystemHealth {
   uptime: number
   apiResponseTime: number
   dbStatus: "connected" | "degraded" | "down"
+  attendanceRate?: number
 }
 
 function formatDuration(startedAt: string): string {
@@ -124,6 +125,7 @@ export default function AdminLiveOperationsPage() {
     uptime: 99.97,
     apiResponseTime: 45,
     dbStatus: "connected",
+    attendanceRate: undefined,
   })
 
   const [loading, setLoading] = useState(true)
@@ -193,19 +195,23 @@ export default function AdminLiveOperationsPage() {
 
       if (enhancedDashboard.status === "fulfilled" && enhancedDashboard.value) {
         const dash = enhancedDashboard.value as unknown as Record<string, unknown>
-        setHealth({
-          activeSessions: (dash.liveClassesScheduled as number) || 0,
-          concurrentUsers: (dash.activeUsers as number) || 0,
+        const scheduled = (dash.liveClassesScheduled as number) || 0
+        const completed = (dash.liveClassesCompleted as number) || 0
+        const active = (dash.activeUsers as number) || 0
+        setHealth((prev) => ({
+          ...prev,
+          activeSessions: scheduled,
+          concurrentUsers: active,
           serverHealth: "green",
           uptime: 99.97,
           apiResponseTime: 45,
           dbStatus: "connected",
-        })
+        }))
         setAnalytics({
-          sessionsToday: (dash.liveClassesScheduled as number) || 0,
-          avgParticipants: 0,
-          peakConcurrent: 0,
-          completionRate: (dash.liveClassesCompleted as number) || 0,
+          sessionsToday: scheduled,
+          avgParticipants: scheduled > 0 ? Math.round((active / scheduled) * 10) / 10 : 0,
+          peakConcurrent: active,
+          completionRate: completed,
           avgDuration: 0,
           hourlyDistribution: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         })
@@ -230,6 +236,12 @@ export default function AdminLiveOperationsPage() {
         }
       } catch {}
       setActivityLog(activityData)
+      const joins = activityData.filter((e) => e.action === "join").length
+      const leaves = activityData.filter((e) => e.action === "leave").length
+      const attendanceRate = joins > 0
+        ? Math.max(0, Math.min(100, Math.round(((joins - leaves) / joins) * 100)))
+        : undefined
+      setHealth((prev) => ({ ...prev, attendanceRate }))
 
       let alertsData: SystemAlert[] = []
       try {
@@ -377,7 +389,7 @@ export default function AdminLiveOperationsPage() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
           {/* Active Sessions */}
           <div className="rounded-xl border border-border bg-background p-4">
             <div className="flex items-center gap-2">
@@ -441,6 +453,17 @@ export default function AdminLiveOperationsPage() {
               <p className="text-sm font-bold text-foreground capitalize">{health.dbStatus}</p>
             </div>
             <p className="text-[10px] text-muted-foreground">Database</p>
+          </div>
+
+          {/* Attendance Rate */}
+          <div className="rounded-xl border border-border bg-background p-4">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10">
+              <CheckCircle className="size-4 text-emerald-500" />
+            </div>
+            <p className="mt-2 text-2xl font-bold text-foreground">
+              {health.attendanceRate != null ? `${health.attendanceRate}%` : "—"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">Attendance Rate</p>
           </div>
         </div>
       </section>

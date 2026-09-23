@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
+import { useLowBandwidth } from "@/components/primary/low-bandwidth-provider"
 
-import { Video, Search, Film, FileText, Music, Image, Loader2, AlertCircle, Play, Clock, HardDrive, Eye, Tag, Calendar } from "lucide-react"
+import { Video, Search, Film, FileText, Music, Image, Loader2, AlertCircle, Play, Clock, HardDrive, Eye, Tag, Calendar, RefreshCw } from "lucide-react"
 import { mediaApi } from "@/lib/api"
 
 interface MediaAsset {
@@ -66,27 +67,29 @@ export default function LearnerMediaLibraryPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
   const { user } = useAuth()
+  const { lazyLoadImages } = useLowBandwidth()
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("")
 
-  useEffect(() => {
-    const fetchMedia = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await mediaApi.list()
-        setMedia(data || [])
-      } catch (err: any) {
-        setError(err.message || tc("error.load"))
-      } finally {
-        setLoading(false)
-      }
+  const fetchMedia = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await mediaApi.list()
+      setMedia(data || [])
+    } catch (err: any) {
+      setError(err.message || tc("error.load"))
+    } finally {
+      setLoading(false)
     }
+  }, [tc])
+
+  useEffect(() => {
     fetchMedia()
-  }, [])
+  }, [fetchMedia])
 
   const filtered = media.filter((item) => {
     const matchesSearch =
@@ -143,9 +146,19 @@ export default function LearnerMediaLibraryPage() {
       )}
 
       {error && (
-        <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 text-destructive">
+        <div role="alert" className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 text-destructive">
           <AlertCircle className="h-5 w-5" />
-          {error}
+          <span className="flex-1">{error}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={fetchMedia}
+            aria-label={tc("retry")}
+          >
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            {tc("retry")}
+          </Button>
         </div>
       )}
 
@@ -170,12 +183,13 @@ export default function LearnerMediaLibraryPage() {
                 className="rounded-lg border p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-2">
-                  <Icon className={`h-5 w-5 ${typeInfo.color}`} />
+                  <Icon className={`h-5 w-5 ${typeInfo.color}`} aria-hidden="true" />
                   <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted">
                     {typeInfo.label}
                   </span>
                   <div className="ml-auto">
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <span className="sr-only">{tc("view")}</span>
                   </div>
                 </div>
 
@@ -204,6 +218,15 @@ export default function LearnerMediaLibraryPage() {
                     {formatDate(item.createdAt)}
                   </span>
                 </div>
+
+                {item.thumbnailUrl && (
+                  <img
+                    src={item.thumbnailUrl}
+                    alt={item.title}
+                    loading={lazyLoadImages ? "lazy" : "eager"}
+                    className="mt-2 h-24 w-full rounded object-cover"
+                  />
+                )}
 
                 {item.tags && (
                   <div className="flex items-center gap-1 mt-2">

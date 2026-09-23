@@ -1,11 +1,13 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { learnerApi, type EventItem } from "@/lib/learner-api"
-import { ArrowLeft, Clock, CalendarDays, Users, RefreshCw, Loader2, Play } from "lucide-react"
+import { announce } from "@/lib/announce"
+import { useLowBandwidth } from "@/components/primary/low-bandwidth-provider"
+import { ArrowLeft, Clock, CalendarDays, Users, RefreshCw, Loader2, Play, ExternalLink, WifiOff } from "lucide-react"
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
@@ -37,6 +39,7 @@ export default function WaitingPage() {
   const t = useTranslations("events")
   const tc = useTranslations("common")
   const eventId = params.id as string
+  const { isLowBandwidth } = useLowBandwidth()
 
   const [event, setEvent] = useState<EventItem | null>(null)
   const [loading, setLoading] = useState(true)
@@ -45,6 +48,7 @@ export default function WaitingPage() {
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 })
   const [isLive, setIsLive] = useState(false)
   const [now, setNow] = useState(Date.now())
+  const autoJoinAttempted = useRef(false)
 
   const loadEvent = useCallback(async () => {
     try {
@@ -52,11 +56,11 @@ export default function WaitingPage() {
       setEvent(ev)
       setError("")
     } catch (e: any) {
-      setError(e.message || "Failed to load event")
+      setError(e.message || tc("error.generic"))
     } finally {
       setLoading(false)
     }
-  }, [eventId])
+  }, [eventId, tc])
 
   useEffect(() => {
     loadEvent()
@@ -69,6 +73,18 @@ export default function WaitingPage() {
 
   useEffect(() => {
     if (!event) return
+    const backend = (event.eventStatus || event.status || "").toUpperCase()
+    if (backend === "LIVE" || backend === "STARTING") {
+      setIsLive(true)
+      setCountdown({ hours: 0, minutes: 0, seconds: 0 })
+      announce(t("detail.live"))
+      return
+    }
+    if (["ENDED", "RECORDING", "PROCESSING", "REPLAY_AVAILABLE", "CANCELLED", "FAILED", "COMPLETED"].includes(backend)) {
+      setIsLive(false)
+      setCountdown({ hours: 0, minutes: 0, seconds: 0 })
+      return
+    }
     const start = new Date(event.startsAt).getTime()
     const end = event.endsAt ? new Date(event.endsAt).getTime() : start + (event.durationMinutes || 60) * 60000
     const current = now
@@ -83,20 +99,31 @@ export default function WaitingPage() {
       setIsLive(false)
       setCountdown({ hours: 0, minutes: 0, seconds: 0 })
     }
-  }, [event, now])
+  }, [event, now, t])
 
   useEffect(() => {
     if (isLive) return
+    const pollMs = isLowBandwidth ? 45000 : 15000
     const interval = setInterval(async () => {
       try {
         const ev = await learnerApi.getEvent(eventId)
         setEvent(ev)
-        const start = new Date(ev.startsAt).getTime()
-        if (Date.now() >= start) setIsLive(true)
+        const backend = (ev.eventStatus || ev.status || "").toUpperCase()
+        if (backend === "LIVE" || backend === "STARTING") setIsLive(true)
       } catch {}
-    }, 30000)
+    }, pollMs)
     return () => clearInterval(interval)
-  }, [eventId, isLive])
+  }, [eventId, isLive, isLowBandwidth])
+
+  // §73: when the event goes live, record join intent via the backend once,
+  // then send the learner through preflight for the token-authorized join.
+  useEffect(() => {
+    if (!isLive || autoJoinAttempted.current) return
+    autoJoinAttempted.current = true
+    learnerApi.joinEvent(eventId)
+      .then(() => announce(t("detail.live")))
+      .catch(() => {})
+  }, [isLive, eventId, t])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -118,12 +145,17 @@ export default function WaitingPage() {
         <Link href={`/dashboard/learner/events/${eventId}`} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" /> {tc("back")}
         </Link>
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center" role="alert">
           <p className="text-sm text-red-700">{error || tc("error.generic")}</p>
+          <button onClick={handleRefresh} className="mt-3 text-xs font-medium text-red-700 underline">
+            {tc("retry")}
+          </button>
         </div>
       </main>
     )
   }
+
+  const eventStatus = (event.eventStatus || event.status || "").toUpperCase()
 
   return (
     <main role="main" aria-label={t("waiting.title")} className="space-y-6">
@@ -132,6 +164,12 @@ export default function WaitingPage() {
       </Link>
 
       <div className="rounded-xl border border-border bg-card p-6 text-center">
+        {isLowBandwidth && (
+          <p className="mb-4 flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-700" role="status">
+            <WifiOff className="size-3.5 shrink-0" aria-hidden="true" />
+            {t("lowBandwidth.notice")}
+          </p>
+        )}
         <div className="mb-4 flex items-center justify-center gap-2">
           <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${getTypeColor(event.eventType)}`}>
             {event.eventType}
@@ -142,6 +180,10 @@ export default function WaitingPage() {
         </div>
 
         <h1 className="text-2xl font-bold">{event.title}</h1>
+        <span className="sr-only" role="status">{eventStatus || t("waiting.sessionNotStarted")}</span>
+        {event.accessLevel && (
+          <p className="mt-1 text-xs text-muted-foreground">{t("detail.accessLevel")}: {t(`admin.accessLevels.${event.accessLevel}` as any)}</p>
+        )}
 
         {!isLive ? (
           <>
@@ -156,7 +198,8 @@ export default function WaitingPage() {
         ) : (
           <div className="mt-4">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-4 py-2 text-sm font-medium text-red-700 animate-pulse">
-              ● Live Now
+              <span aria-hidden="true">●</span> {t("live.badge")}
+              <span className="sr-only">{t("live.badge")}</span>
             </span>
           </div>
         )}
@@ -164,7 +207,7 @@ export default function WaitingPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-3 text-left">
           <div className="rounded-lg border border-border p-4">
             <p className="text-xs font-medium text-muted-foreground">{t("waiting.presenter")}</p>
-            <p className="mt-1 text-sm font-medium">{event.organizerName || "—"}</p>
+            <p className="mt-1 text-sm font-medium">{event.presenterName || event.organizerName || "—"}</p>
           </div>
           <div className="rounded-lg border border-border p-4">
             <p className="text-xs font-medium text-muted-foreground">{t("waiting.type")}</p>
@@ -183,13 +226,14 @@ export default function WaitingPage() {
               <p className="text-xs font-medium text-muted-foreground">{t("waiting.scheduledStart")}</p>
               <p className="text-sm font-medium">{formatDate(event.startsAt)}</p>
               <p className="text-xs text-muted-foreground">{formatTime(event.startsAt)}</p>
+              {event.timezone && <p className="text-xs text-muted-foreground">{event.timezone}</p>}
             </div>
           </div>
           {event.maxParticipants && (
             <div className="flex items-start gap-3 rounded-lg border border-border p-4">
               <Users className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Registered</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("detail.capacity")}</p>
                 <p className="text-sm font-medium">{event.registeredCount} / {event.maxParticipants}</p>
               </div>
             </div>
@@ -207,16 +251,28 @@ export default function WaitingPage() {
             {t("waiting.refreshStatus")}
           </button>
 
+          {isLive && (
+            <Link
+              href={`/dashboard/learner/events/${eventId}/preflight`}
+              className="flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              aria-label={t("preflight.joinLive")}
+            >
+              <Play className="size-4" />
+              {t("preflight.joinLive")}
+            </Link>
+          )}
+
           {isLive && event.meetingUrl && (
             <a
               href={event.meetingUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              aria-label={t("waiting.joinNow")}
+              className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-6 text-sm font-medium hover:bg-muted"
+              aria-label={`${t("waiting.joinNow")} — ${t("join.external")}`}
             >
-              <Play className="size-4" />
+              <ExternalLink className="size-4" aria-hidden="true" />
               {t("waiting.joinNow")}
+              <span className="sr-only">{t("join.external")}</span>
             </a>
           )}
         </div>

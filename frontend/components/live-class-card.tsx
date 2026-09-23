@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Eye, Clock, Users } from "lucide-react"
 import type { LiveClass } from "@/lib/data"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 function StatusBadge({ status, badge }: { status: LiveClass["status"]; badge: string }) {
@@ -80,9 +80,13 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
               Join Live Class
             </Link>
           ) : (
-            <Button className="h-9 w-full hover:bg-primary/90">
+            <Link
+              href="/dashboard/learner/calendar-integration"
+              aria-label={`Set reminder for ${item.title} — open calendar`}
+              className={cn(buttonVariants({ variant: "outline" }), "h-9 w-full hover:bg-primary/10")}
+            >
               Set Reminder
-            </Button>
+            </Link>
           )}
         </div>
       </div>

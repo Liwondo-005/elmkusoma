@@ -2,12 +2,15 @@
 
 > **Sprint D03: Live Events, Recordings & Replay**
 > **Author:** opencode
-> **Date:** 2026-09-23
-> **Status:** COMPLETE — AUDIT FIXES APPLIED
+> **Date:** 2026-09-24
+> **Status:** AUDIT FIXES APPLIED — **final re-score I100 / P11 / M0 = 95.0%** (see `D01_D03_SCORECARD.md`; full item-by-item audit in `D03_REPO_AUDIT.md`)
+> **Honesty note (§107):** NOT claiming COMPLETE / 100% — LiveKit server is undeployed; email SMTP, event payments, HLS transcoding, captions assets, and event Playwright e2e remain open (see §K).
 
 ---
 
 ## A. AUDIT — Existing Architecture Summary
+
+> Full rubric §5 checklist audit (94 items: backend/frontend/database) with path evidence and owners: **`D03_REPO_AUDIT.md`**.
 
 Before D03, the following subsystems existed:
 
@@ -102,7 +105,7 @@ There is no `EventE2ETest.java` or `LiveKitTest.java` under `test/.../event/`.
 backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/ReplayProgress.java
 backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/repository/ReplayProgressRepository.java
 backend/elmkusoma-core/src/main/resources/db/migration/V71__event_d03_extended_columns.sql
-backend/elmkusoma-core/src/main/resources/db/migration/V72__replay_tables.sql
+backend/elmkusoma-core/src/main/resources/db/migration/V76__replay_tables.sql
 ```
 
 ### Modified Files (Backend, audit-fix set)
@@ -151,9 +154,11 @@ frontend/messages/sw.json
 ### Documentation Files
 
 ```
-D03_DOMAIN_OWNERSHIP.md
-D03_CROSS_DEVELOPER_CONTRACTS.md
+D03_DOMAIN_OWNERSHIP.md            (§87 — paths corrected: liveclass/ LiveKit*, App Router pages)
+D03_CROSS_DEVELOPER_CONTRACTS.md   (§88 — Source of Truth on every contract; Contract 2 status=LIVE fix)
+D03_REPO_AUDIT.md                  (§5/§6/§7 — 94-item audit, 8-field problem records, evidence model)
 D03_FINAL_REPORT.md (this file)
+D01_D03_SCORECARD.md               (score formula + baseline 46/64/1 = 70.3%)
 ```
 
 ---
@@ -212,7 +217,9 @@ There is **no** `/v1/livekit/token` and **no** `/v1/livekit/webhook`.
 | Migration | File | Contents |
 |-----------|------|----------|
 | V71 | `V71__event_d03_extended_columns.sql` | `events` full definition + extended columns (`event_status`, recording, access, agenda…), `event_registrations`, `event_materials`, backfill of `event_status` (legacy `COMPLETED` → `ENDED`), indexes |
-| V72 | `V72__replay_tables.sql` | `replays` table + indexes; `replay_progress` table (per-user `position_seconds`, unique replay+user) |
+| V76 | `V76__replay_tables.sql` | `replays` table + indexes; `replay_progress` table (per-user `position_seconds`, unique replay+user) |
+
+*(Correction: the replay migration is **V76**, not V72 — `V72__live_streaming_schema_repair.sql` is a different, pre-existing migration. Later D03-related migrations: `V74__events_access_level.sql`, `V75__events_entity_columns.sql`.)*
 
 - `spring.flyway.enabled: true` in `application.yml` and `application-prod.yml`.
 - `FlywayConfig` **no longer skips migrations** — it only logs that Spring Boot auto-configuration runs Flyway.
@@ -328,12 +335,12 @@ Cross-tenant replay id → 404
 
 ## H. CROSS-DEVELOPER CONTRACTS
 
-See `D03_CROSS_DEVELOPER_CONTRACTS.md` for full details.
+See `D03_CROSS_DEVELOPER_CONTRACTS.md` for full details (every contract now carries a **Source of Truth** field per rubric §88).
 
 | Contract | From → To | Endpoint | Purpose |
 |----------|-----------|----------|---------|
 | 001 | D03 → D01 | `GET /v1/events/institution/{id}` | Dashboard upcoming events |
-| 002 | D03 → D01 | `GET /v1/events/institution/{id}` | Dashboard live events |
+| 002 | D03 → D01 | `GET /v1/events/institution/{id}?status=LIVE` (client fallback: `eventStatus == "LIVE"`) | Dashboard live events — **note: `EventType` has no LIVE value; LIVE is `EventStatus`** |
 | 003 | D03 → D01 | `GET /v1/replays/event/{id}` | Dashboard recording count |
 | 004 | D03 → D02 | `GET /v1/events/{id}` | Course↔Event link |
 | 005 | D03 → D02 | `GET /v1/events/registrations/user/{id}` | Event attendance history |
@@ -391,38 +398,65 @@ Test resources: `src/test/resources/application-test.properties` (Flyway disable
 
 ## J. BUILD
 
-### Backend
+### Backend — actual `mvn test` results (§109 J)
+
+Command: `cd /opt/lampp/htdocs/elmkusoma/backend/elmkusoma-core && mvn test`
+
+**AUTHORITATIVE FULL RUN — 2026-09-24 (post all fix waves):**
 
 ```
-mvn compile  →  success (no compilation errors)
-D03 test suites present: 82 @Test methods (30 + 22 + 30)
+Tests: 285 run, 0 failures, 0 errors, 0 skipped
+BUILD SUCCESS (exit 0)
 ```
 
-### Frontend
+Earlier green runs this wave (all 0 fail / 0 err): 228 → 275 → **285**.
 
-```
-Next.js App Router app; D03 pages under app/dashboard/{learner,admin}/…
-TypeScript: D03 surfaces type-check; no missing-module errors for event/replay pages
-i18n: en + sw message files load in dashboard layout
-```
+D03 suites inside the 285 run (all PASS):
 
-Evidence-based status: **82 tests defined**; backend main sources **compile green**; no fabricated completion percentages.
+| Suite | Tests | Result |
+|-------|------:|--------|
+| `security/EventSecurityTest` | 30 | PASS |
+| `integration/EventLifecycleE2ETest` | 22 | PASS |
+| `integration/LiveKitIntegrationTest` | 30 | PASS |
+| `integration/EventD03ComplianceTest` | 49 | PASS (new this wave: pagination, join chain, almostFull, wrong-provider, contracts, notifications, capacity, ICS, meetingUrl sanitize) |
+| `integration/FlywayMigrationValidationTest` | 9 | PASS (new: naming, monotonic versions, V71–V77 set, IF-NOT-EXISTS overlap) |
+| **D03 subtotal** | **140** | **PASS** |
+
+Notes recorded honestly (§107/§109):
+
+- Surefire XML + txt aggregates for the 2026-09-24 run: **285 / 0 / 0 / 0**.
+- LiveKit suite still passes on **dev defaults** (`devkey`/`devsecret`, `ws://localhost:7880`) with no real server listening — does not prove real-media E2E (see §K).
+
+### Frontend — `npx next build`
+
+**AUTHORITATIVE RUN — 2026-09-24:** `cd frontend && npx next build` → **Compiled successfully** (exit 0), Next.js 16.3.3 Turbopack.
+
+If a run fails, the failing file and error are reported verbatim — not papered over. Historical note: a 2026-09-23 21:29 attempt failed on a concurrent uncommitted edit to `replays/page.tsx`; the current tree is clean.
 
 ---
 
-## K. REMAINING GAPS
+## K. REMAINING GAPS (§109 K — GAP / WHY / IMPACT / BLOCKER / NEXT ACTION)
 
-Only gaps that are still true after audit fixes:
+Only gaps that are still true after audit fixes. **These gaps are why this report does not claim COMPLETE (§107).**
 
-| Gap | Impact | Mitigation |
-|-----|--------|------------|
-| LiveKit **server not deployed** for real media | Code is ready (token, rooms, webhooks, egress) but runs on **dev defaults** (`devkey`/`devsecret`, `ws://localhost:7880`) | Deploy LiveKit server; set `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` to real values in production |
-| Email notifications not implemented | Registration/certificate flows save in-app `LearnerNotification` rows only; no SMTP/email send | Future: wire into platform email/notification pipeline |
-| Payment not implemented | `isFree=false` events have no payment/checkout flow | Manual/offline verification by provider until commerce integration |
-| Recording transcoding not implemented | Recordings served in original egress file format (no HLS/DASH renditions) | Future: add transcoding pipeline for adaptive playback |
-| Minor: learner dashboard “view record” link points at `/dashboard/learner/academic` which has no matching route (actual pages are `academic-progress` / `academic-record`) | Link 404s on click | Point link at `/dashboard/learner/academic-record` |
+| GAP | WHY | IMPACT | BLOCKER | NEXT ACTION |
+|-----|-----|--------|---------|-------------|
+| LiveKit **server not deployed** for real media | Code (token, rooms, webhooks, egress) runs on **dev defaults** (`devkey`/`devsecret`, `ws://localhost:7880`); verified: no Docker container, no listener on 7880/7881 | Live rooms, recording egress, webhook lifecycle **cannot run end-to-end in any real environment**; §108 "LiveKit works" unverifiable | Needs infra: Docker/host + secrets provisioning (Ops + D03) | Deploy via `docker-compose.livekit.yml` / `livekit.yaml`; set `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`; re-run `LiveKitIntegrationTest` + manual join E2E |
+| Email notifications not implemented | No `spring.mail`/SMTP config in `application.yml`; no `MailSender` usage (grep-verified) | Registration/certificate/live notices exist only as in-app `LearnerNotification` rows; users expecting email miss them | SMTP provider credentials + D01 notification pipeline | Wire registration/certificate events into platform email sender (D01 scope) |
+| Payment not implemented for paid events | `Event.isFree=false` accepted but no checkout path on event endpoints (platform/parent commerce exists separately: `PlatformCommerceService`, `ParentPaymentService`) | Paid events require manual/offline verification by provider | Payment provider integration decision (D01 commerce) | Manual verification until commerce integration covers events |
+| Recording transcoding (HLS/DASH) not implemented | No `HLS`/`transcod` code anywhere (grep = 0 hits); recordings served in original egress file format | Poor adaptive playback on weak/mobile networks | Transcoder/CDN choice + cost | Add transcoding pipeline after `recording_completed` webhook |
+| Event/replay Playwright e2e missing | `frontend/e2e` only has accessibility/auth/navigation/responsive specs | §89 runtime UX regression risk | Time to write event lifecycle Playwright specs | Add `events.spec.ts` + `replays.spec.ts` |
+| No captions / VTT for media | No `<track>` / caption assets in frontend | §78 accessibility incomplete for hard-of-hearing learners | Requires caption assets or ASR pipeline | Generate VTT per recording; wire `<track>` on player |
+| STOMP absent (rubric mentions STOMP) | Codebase uses raw WebSocket (`LiveClassWebSocketHandler`), no SimpMessaging | Consumers expecting STOMP frames will fail to integrate | Architecture decision | Document raw-WebSocket protocol as the contract (see `D03_REPO_AUDIT.md` §6 M1); add STOMP only if required |
+| Moderator promote/demote API+UI | `ROLE_MODERATOR` constant exists; no promote endpoint or participant-mode switcher | §30 partial — TEACHER/LEARNER/OBSERVER/MODERATOR constant only | Contract decision with D02 | Add promote endpoint + live-classroom moderator control |
+| Scheduling still `LocalDateTime.now()` | Capacity/reminders use wall clock; timezone is metadata | §96 partial — learner TZ may not match stored wall clock | Redesign to Instant + zone rules | Migrate event scheduling columns to Instant/OffsetDateTime |
+| V71/V75 column overlap retained | Applied migrations never rewritten; V77 is comment-only IF-NOT-EXISTS no-op | §83 partial under strict “no duplicate column defs” | Flyway checksum immutability | New envs: V71 first (UUID type); existing: document only |
+
+**Closed this wave (verified):** learner “view record” dead link → `/dashboard/learner/academic-record` (`learner/page.tsx:395`); Learning Feed card present; Set Reminder navigates to calendar-integration; DURING guidance i18n; almostFull badge; accessLevel/provider; real player connectionStatus; FAILED recording UI; lesson deep link; useLowBandwidth on detail/preflight/waiting; DELETE_MESSAGE over WS; wrong-provider 403 tests; contract tests; V77 migration.
 
 Timezone remains metadata (`LocalDateTime` storage) — client-side conversion still recommended; this was already accurate and is not a regression.
+
+**Not gaps (verified EXISTS):** state machine, per-user replay progress, webhook HS256 security, Flyway-managed schema (V71–V77), cross-developer contract endpoints, ICS calendar export, en+sw i18n, goals API wiring, service worker, announcer, sidebar i18n, join API + preflight/waiting — see `D03_REPO_AUDIT.md` §5/§6 and `D01_D03_SCORECARD.md`.
 
 ---
 
@@ -434,14 +468,16 @@ Timezone remains metadata (`LocalDateTime` storage) — client-side conversion s
 | Shared API service | `frontend/lib/api.ts`, `frontend/lib/learner-api.ts` | Prefer namespaced methods (`adminApi.*`, `learnerApi.*`); avoid renaming shared exports |
 | Shared User entity | `backend/.../shared/domain/User.java` | D03 reads User but does not modify |
 | Shared Institution entity | `backend/.../shared/domain/Institution.java` | D03 reads Institution but does not modify |
-| Shared Flyway history | `db/migration/` | V71/V72 reserved for D03; keep global migration order D01 → D02 → D03 → D04 |
+| Shared Flyway history | `db/migration/` | V71–V77 reserved for D03; keep global migration order D01 → D02 → D03 → D04; never rewrite applied checksums |
+| **Concurrent working-tree edits (live risk, observed 2026-09-23 21:13–21:28)** | `event/controller/StudentEventController.java` (+55 lines, caused a transient compile failure at 21:17), `frontend/app/dashboard/learner/replays/page.tsx` (+27 lines, broke `next build` at line 244), other `event/*`, `liveclass/*`, dashboard pages | Another session is editing implementation files while this docs pass runs. Coordinate before merging: re-run `mvn test` + `npx next build` on the final tree; do not interleave Java/TSX edits with build verification |
 
 ### Recommended Coordination
 
 1. **Sidebar**: finalize navigation after all sprints; i18n keys go under `sidebar.*`
 2. **API clients**: extend `api.ts` / `learner-api.ts` without breaking existing method names
 3. **User entity**: coordinate any field changes across D01/D02/D03
-4. **Migrations**: run in version order; do not renumber V71/V72
+4. **Migrations**: run in version order; do not renumber V71/V74/V75/V76
+5. **Build gates**: treat concurrent-edit failures as races, not regressions — verify on a frozen tree
 
 ---
 
@@ -454,7 +490,7 @@ Gap → fix mapping applied in this audit pass:
 | Admin create contract: form sent `startDate` / `maxCapacity` / extra fields the API ignores | `admin/events/new` + `edit` send `startsAt`, `endsAt` (computed), `maxParticipants`, `status` matching `EventRequest` |
 | Attendance chain incomplete | `participant_joined` → `markEventAttendance` marks `EventRegistration.attended`; `endLiveEvent` → `issueCertificatesForEventAttendees` issues participation certs + saves `LearnerNotification` |
 | Webhook treated as internal/JWT-protected | `/v1/webhooks/livekit` added to `PUBLIC_URLS`; HS256 signature verification (iss + sha256 body hash); VERIFIED/FAILED recorded; invalid signature → 401 |
-| Schema not Flyway-managed; FlywayConfig skipped migrations | `V71__event_d03_extended_columns.sql` + `V72__replay_tables.sql`; `spring.flyway.enabled=true`; FlywayConfig no longer skips; `ddl-auto: none`/`validate` |
+| Schema not Flyway-managed; FlywayConfig skipped migrations | `V71__event_d03_extended_columns.sql` + `V76__replay_tables.sql` (note: V76, previously mis-cited as V72); `spring.flyway.enabled=true`; FlywayConfig no longer skips; `ddl-auto: none`/`validate` |
 | Replay: single `lastPositionSeconds`, weak scoping, wrong payload field | Per-user `replay_progress` table; institution filter → **404** cross-tenant; progress payload uses **`positionSeconds`** |
 | State machine missing | `EventStatus.canTransitionTo` / `assertCanTransitionTo`; invalid transition → `IllegalStateException` → **409 CONFLICT**; `status` String and `eventStatus` enum kept in sync via `applyStatus` |
 | Missing 404s on soft-delete / detail | Soft-deleted and unknown events/replays return **404** (`ResourceNotFoundException` handler; replay filters `.orElse(404)`) |
@@ -489,3 +525,39 @@ Gap → fix mapping applied in this audit pass:
 | `markEventAttendance` | `Attendance marked: event={}, user={}` |
 | `endLiveEvent` | `Event ended: id={id}` + `Issued {n} participation certificates for event: {id}` |
 | `addEventMaterial` | `Material added to event {eventId}: {title}` |
+
+---
+
+## Build verification log (2026-09-24, evidence for §J)
+
+### Backend — `mvn test` (authoritative, post all waves)
+
+```
+Tests: 285, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+D03 suites: EventSecurityTest 30/30 · EventLifecycleE2ETest 22/22 · LiveKitIntegrationTest 30/30 · EventD03ComplianceTest 49/49 · FlywayMigrationValidationTest 9/9 = **140/140 D03**. Full suite 285/285 green.
+
+### Frontend — `npx next build` (authoritative, post all waves)
+
+```
+✓ Compiled successfully (exit 0)
+```
+
+D03 routes present: `/dashboard/admin/events`, `…/new`, `…/[id]/edit`, `…/[id]/summary`,
+`/dashboard/learner/events`, `…/[id]`, `…/[id]/preflight`, `…/[id]/waiting`, `events/registered`,
+`/dashboard/learner/replays`, `…/[id]`.
+
+### i18n JSON
+
+```
+python3 -c "json.load(en + sw)" → JSON OK (both files)
+```
+
+### Final D03 score (see `D01_D03_SCORECARD.md`)
+
+```
+I = 100, P = 11, M = 0, total = 111
+Score = (100 + 0.5×11) / 111 × 100 = 105.5 / 111 × 100 = 95.0%
+```

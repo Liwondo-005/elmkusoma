@@ -428,7 +428,8 @@
     "modules": "moduli",
     "viewDetails": "Tazama Maelezo",
     "viewPortfolio": "Tazama Kanzidata",
-    "failedToLoadDashboard": "Imeshindikana kupakia data ya dashibodi"
+    "failedToLoadDashboard": "Imeshindikana kupakia data ya dashibodi",
+    "learningFeed": "Mpito wa Kujifunza"
   },
   "primary": {
     "myTeacher": "Mwalimu Wangu",
@@ -1729,7 +1730,9 @@
       "watchReplay": "Tazama Kurejeshwa",
       "recordingAvailable": "Kurekodi kunapatikana",
       "noReplay": "Hakuna kurekodi kilichopatikana",
-      "materials": "vifaa {count}"
+      "materials": "vifaa {count}",
+      "viewAttendance": "Angalia Mahudhurio",
+      "registeredEvents": "Matukio yako yaliyosajiliwa"
     },
     "replays": {
       "title": "Kurejeshwa",
@@ -1752,7 +1755,9 @@
       "relatedLesson": "Somo Inayohusiana",
       "relatedResource": "Rasilimali Inayohusiana",
       "durationLabel": "Muda",
-      "dateRecorded": "Tarehe ya Kurekodi"
+      "dateRecorded": "Tarehe ya Kurekodi",
+      "newRecordings": "Rekodi Mpya",
+      "processingNote": "Kurekodi zinazochakatwa zitaonekana hapa zikiwa tayari."
     },
     "recordings": "Kurekodi",
     "allEvents": "Matukio Yote",
@@ -1812,7 +1817,12 @@
     "relatedResource": "Rasilimali Inayohusiana",
     "upcomingEvent": "Tukio Lijalo",
     "before": "Kabla",
-    "during": "Wakati",
+    "during": {
+      "connection": "Kagua muunganisho wako kabla ya kujiunga; tumia mtandao thabiti ikiwezekana.",
+      "attendance": "Kaa kikao kizima ili mahudhurio yako yaweze kurekodiwa.",
+      "questions": "Tumia chati au Maswali kuuliza wakati wa kikao.",
+      "reconnect": "Ukikatika, rudi hapa na ujiunge tena kupitia ukurasa huu wa tukio."
+    },
     "after": "Baada",
     "provider": "Mtoaji",
     "institution": "Taasisi",
@@ -1873,17 +1883,36 @@
       "continueLearning": "Endelea Kujifunza",
       "continueDescription": "Endelea na hatua zinazopendekezwa zifuatazo",
       "positionSaved": "Nafasi imehifadhiwa",
-      "connectionStatus": "Hali ya Muunganisho"
+      "connectionStatus": "Hali ya Muunganisho",
+      "connected": "Imeunganishwa",
+      "buffering": "Inapakia",
+      "quality": "Ubora",
+      "qualityAuto": "Otomatiki",
+      "waiting": "Inasubiri video",
+      "disconnected": "Imekatika"
     },
     "subtitle": "Gundua semina, warsha, webinari, na vipindi vya mafunzo",
     "myRegistrations": "Usajili Wangu",
     "searchPlaceholder": "Tafuta matukio...",
     "tabs": {
+      "allEvents": "MATUKIO YOTE",
+      "related": "INAYOHUSIANA",
       "liveNow": "MOJA KWA MOJA SASA",
       "upcoming": "YANAYOKUJA",
       "registered": "YALIYOSAJILIWA",
       "past": "YALIYOPITA",
       "replays": "KUREJESHWA"
+    },
+    "status": {
+      "cancelled": "Imefutwa",
+      "rescheduled": "Imepangwa upya",
+      "processing": "Kurekodi kinaendelea kuchakatwa",
+      "almostFull": "Karibu kujaa",
+      "recordingFailed": "Kurekodi kumeshindwa",
+      "recordingFailedDesc": "Kurekodi hiki hakikuweza kuchakatwa. Wasiliana na mwendesha kama unahitaji ufikiaji."
+    },
+    "join": {
+      "external": "Hufunguka kwenye kichujio kipya"
     },
     "live": {
       "badge": "Hai Sasa",
@@ -1905,6 +1934,7 @@
       "presenter": "Mtayarishaji",
       "organizer": "Imeandaliwa na {name}",
       "timezone": "Saa ya Eneo",
+      "relatedCourse": "Kozi Inayohusiana",
       "duration": "Muda",
       "capacity": "Uwezo",
       "meetingUrl": "Jiunge na Mkutano",
@@ -1930,7 +1960,9 @@
       "duringEvent": "Wakati wa Tukio",
       "afterEvent": "Baada ya Tukio",
       "calendarAdded": "Tukio limeongezwa kwenye kalenda yako",
-      "tags": "Lebo"
+      "tags": "Lebo",
+      "accessLevel": "Kiwango cha kufikia",
+      "provider": "Mtoaji"
     },
     "empty": {
       "liveNow": "Hakuna matukio hai sasa",
@@ -1945,7 +1977,9 @@
       "replaysDesc": "Kurekodi za matukio ya zamani zitaonekana hapa.",
       "browseEvents": "Vinjari Matukio",
       "noEvents": "Hakuna matukio yaliyopatikana",
-      "noEventsDesc": "Angalia tena baadaye kwa matukio yanayokuja"
+      "noEventsDesc": "Angalia tena baadaye kwa matukio yanayokuja",
+      "related": "Hakuna matukio inayohusiana",
+      "relatedDesc": "Matukio yaliyounganishwa na kozi ulizosajiliwa yataonekana hapa."
     },
     "error": {
       "loadFailed": "Imeshindwa kupakia matukio",
@@ -2115,7 +2149,8 @@
         "duration": "Muda",
         "attendeeName": "Jina",
         "attendeeEmail": "Barua pepe",
-        "replayAvailability": "Upatikanaji wa Kurejeshwa"
+        "replayAvailability": "Upatikanaji wa Kurejeshwa",
+        "noAttendance": "Hakuna data ya mahudhurio inayopatikana"
       }
     },
     "confirm": {
@@ -2130,7 +2165,10 @@
     "browseUpcomingLive": "Vinjari madarasa ya moja kwa moja yanayokuja.",
     "browseLiveClasses": "Vinjari Madarasa ya Moja kwa Moja",
     "backToReplays": "Rudi kwenye Kurejeshwa",
-    "views": "mitazamo {count}"
+    "views": "mitazamo {count}",
+    "lowBandwidth": {
+      "notice": "Hali ya data ndogo: masasisho ya hali hufanyika mara chini ili koko data."
+    }
   },
   "search": {
     "title": "Tafuta",
@@ -2152,6 +2190,8 @@
     "courses": "Kozi",
     "resources": "Rasilimali",
     "liveClasses": "Madarasa ya Moja kwa Moja",
+    "events": "Matukio",
+    "replays": "Kurejeshwa",
     "announcements": "Taarifa",
     "download": "Pakua",
     "startSearching": "Anza kutafuta",
@@ -2297,6 +2337,9 @@
       "ACADEMIC": "Kielimu",
       "REPLAY": "Kurejeshwa",
       "CAREER": "Kazi"
+    },
+    "error": {
+      "load": "Imeshindwa kupakia arifa"
     }
   }
 }

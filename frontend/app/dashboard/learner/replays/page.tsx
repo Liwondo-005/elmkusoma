@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { learnerApi, type ReplayItem } from "@/lib/learner-api"
-import { Search, Filter, Play, Clock, Eye, CalendarDays, Loader2, XCircle, ArrowRight } from "lucide-react"
+import { learnerApi, isReplayFailed, type ReplayItem, LearnerApiError } from "@/lib/learner-api"
+import { useLowBandwidth } from "@/components/primary/low-bandwidth-provider"
+import { Search, Play, CalendarDays, Loader2, XCircle, ArrowRight, Eye, RefreshCw, AlertCircle, Clock } from "lucide-react"
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600)
@@ -32,6 +33,7 @@ const EVENT_TYPES = ["SEMINAR", "WORKSHOP", "WEBINAR", "TRAINING", "CONFERENCE",
 export default function ReplaysPage() {
   const t = useTranslations("events")
   const tc = useTranslations("common")
+  const { lazyLoadImages } = useLowBandwidth()
 
   const [replays, setReplays] = useState<ReplayItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,7 +55,11 @@ export default function ReplaysPage() {
       })
       setReplays(data)
     } catch (e: any) {
-      setError(e.message || tc("error.load"))
+      if (e instanceof LearnerApiError) {
+        setError(`${e.message}${e.status ? ` (${e.status})` : ""}`)
+      } else {
+        setError(e.message || tc("error.load"))
+      }
     } finally {
       setLoading(false)
     }
@@ -63,8 +69,14 @@ export default function ReplaysPage() {
     loadReplays()
   }, [loadReplays])
 
-  const continueWatching = replays.filter((r) => r.positionSeconds > 0 && !r.completed)
-  const otherReplays = replays.filter((r) => r.positionSeconds === 0 || r.completed)
+  const continueWatching = replays.filter((r) => r.positionSeconds > 0 && !r.completed && !isReplayFailed(r))
+  const failedReplays = replays.filter((r) => isReplayFailed(r))
+  const processingReplays = replays.filter((r) => (r.status || r.recordingStatus || "").toUpperCase() === "PROCESSING")
+  const newRecordings = [...replays]
+    .filter((r) => (r.positionSeconds === 0 || r.completed) && !isReplayFailed(r))
+    .sort((a, b) => (b.recordedAt || "").localeCompare(a.recordedAt || ""))
+    .slice(0, 6)
+  const otherReplays = replays.filter((r) => (r.positionSeconds === 0 || r.completed) && !isReplayFailed(r))
 
   return (
     <main role="main" aria-label={t("replays.title")} className="space-y-6">
@@ -119,16 +131,55 @@ export default function ReplaysPage() {
       )}
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <XCircle className="size-4 shrink-0" /> {error}
+        <div role="alert" className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <XCircle className="size-4 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            type="button"
+            onClick={loadReplays}
+            className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-medium hover:bg-red-100"
+            aria-label={tc("retry")}
+          >
+            <RefreshCw className="size-3" /> {tc("retry")}
+          </button>
         </div>
       )}
 
       {!loading && !error && replays.length === 0 && (
         <div role="status" className="rounded-xl border border-border bg-card p-12 text-center">
-          <Play className="mx-auto size-12 text-muted-foreground/50" />
+          <Play className="mx-auto size-12 text-muted-foreground/50" aria-hidden="true" />
           <h2 className="mt-4 text-lg font-semibold">{t("replays.noReplays")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("replays.noReplaysDescription")}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("replays.processingNote")}</p>
+        </div>
+      )}
+
+      {!loading && !error && failedReplays.length > 0 && (
+        <section aria-label={t("status.recordingFailed")}>
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            <span>{t("status.recordingFailed")}: {failedReplays.length}</span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {failedReplays.map((replay) => (
+              <div key={`failed-${replay.id}`} className="rounded-xl border border-destructive/20 bg-card p-4">
+                <div className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="size-4" aria-hidden="true" />
+                  <span className="text-xs font-semibold uppercase tracking-wide" role="status">{t("status.recordingFailed")}</span>
+                </div>
+                <h3 className="mt-2 line-clamp-2 text-sm font-semibold">{replay.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">{replay.eventTitle}</p>
+                <p className="mt-2 text-xs text-muted-foreground">{t("status.recordingFailedDesc")}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!loading && !error && processingReplays.length > 0 && (
+        <div role="status" className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-700">
+          <Clock className="size-4 shrink-0" aria-hidden="true" />
+          {t("status.processing")} — {t("replays.processingNote")}
         </div>
       )}
 
@@ -143,11 +194,13 @@ export default function ReplaysPage() {
                 className="group rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
               >
                 <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-                  {replay.thumbnailUrl ? (
+                  {replay.thumbnailUrl && !lazyLoadImages ? (
                     <img src={replay.thumbnailUrl} alt={replay.title} className="h-full w-full object-cover" />
+                  ) : replay.thumbnailUrl && lazyLoadImages ? (
+                    <img src={replay.thumbnailUrl} alt={replay.title} loading="lazy" className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center">
-                      <Play className="size-10 text-muted-foreground/50" />
+                      <Play className="size-10 text-muted-foreground/50" aria-hidden="true" />
                     </div>
                   )}
                   <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
@@ -181,6 +234,42 @@ export default function ReplaysPage() {
         </section>
       )}
 
+      {!loading && !error && newRecordings.length > 0 && (
+        <section aria-label={t("replays.newRecordings")}>
+          <h2 className="mb-3 text-lg font-semibold">{t("replays.newRecordings")}</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {newRecordings.map((replay) => (
+              <Link
+                key={`new-${replay.id}`}
+                href={`/dashboard/learner/replays/${replay.id}`}
+                className="group rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
+              >
+                <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
+                  {replay.thumbnailUrl && !lazyLoadImages ? (
+                    <img src={replay.thumbnailUrl} alt={replay.title} className="h-full w-full object-cover" />
+                  ) : replay.thumbnailUrl && lazyLoadImages ? (
+                    <img src={replay.thumbnailUrl} alt={replay.title} loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <Play className="size-10 text-muted-foreground/50" aria-hidden="true" />
+                    </div>
+                  )}
+                  <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
+                    {formatDuration(replay.durationSeconds)}
+                  </div>
+                </div>
+                <h3 className="mt-3 line-clamp-2 text-sm font-semibold group-hover:text-primary">{replay.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">{replay.eventTitle}</p>
+                <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><CalendarDays className="size-3" aria-hidden="true" /> {formatDate(replay.recordedAt)}</span>
+                  <span className="flex items-center gap-1"><Eye className="size-3" aria-hidden="true" /> {replay.viewCount} {t("replays.viewCount")}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {!loading && !error && otherReplays.length > 0 && (
         <section>
           {continueWatching.length > 0 && <h2 className="mb-3 text-lg font-semibold">{t("allReplays")}</h2>}
@@ -192,11 +281,13 @@ export default function ReplaysPage() {
                 className="group rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
               >
                 <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-                  {replay.thumbnailUrl ? (
+                  {replay.thumbnailUrl && !lazyLoadImages ? (
                     <img src={replay.thumbnailUrl} alt={replay.title} className="h-full w-full object-cover" />
+                  ) : replay.thumbnailUrl && lazyLoadImages ? (
+                    <img src={replay.thumbnailUrl} alt={replay.title} loading="lazy" className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center">
-                      <Play className="size-10 text-muted-foreground/50" />
+                      <Play className="size-10 text-muted-foreground/50" aria-hidden="true" />
                     </div>
                   )}
                   <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
@@ -207,6 +298,11 @@ export default function ReplaysPage() {
                 <p className="mt-1 text-xs text-muted-foreground">{replay.eventTitle}</p>
                 {replay.presenterName && (
                   <p className="mt-0.5 text-xs text-muted-foreground">{replay.presenterName}</p>
+                )}
+                {(replay.status || replay.recordingStatus || "").toUpperCase() === "PROCESSING" && (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700" role="status">
+                    <Clock className="size-3" aria-hidden="true" /> {t("status.processing")}
+                  </span>
                 )}
                 {replay.durationSeconds > 0 && (
                   <div className="mt-2">
@@ -244,8 +340,15 @@ export default function ReplaysPage() {
                 )}
                 {replay.relatedLessonId && (
                   <Link
-                    href={`/dashboard/learner/courses/${replay.relatedCourseId}`}
+                    href={
+                      replay.relatedLessonId && replay.relatedCourseId
+                        ? `/dashboard/learner/courses/${replay.relatedCourseId}/lessons/${replay.relatedLessonId}`
+                        : replay.relatedCourseId
+                          ? `/dashboard/learner/courses/${replay.relatedCourseId}`
+                          : "#"
+                    }
                     className="block rounded-lg border border-border p-3 text-sm font-medium hover:bg-muted/50"
+                    aria-label={`${t("replays.relatedLesson")}: ${replay.relatedLessonTitle || replay.relatedLessonId}`}
                   >
                     {t("replays.relatedLesson")}: {replay.relatedLessonTitle}
                   </Link>

@@ -2,8 +2,16 @@ package tz.elmkusoma.event.service.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.audit.domain.AuditLog;
+import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateType;
@@ -14,24 +22,32 @@ import tz.elmkusoma.event.domain.Event;
 import tz.elmkusoma.event.domain.EventMaterial;
 import tz.elmkusoma.event.domain.EventRegistration;
 import tz.elmkusoma.event.domain.EventStatus;
+import tz.elmkusoma.event.domain.Replay;
 import tz.elmkusoma.event.dto.*;
 import tz.elmkusoma.event.repository.EventMaterialRepository;
 import tz.elmkusoma.event.repository.EventRegistrationRepository;
 import tz.elmkusoma.event.repository.EventRepository;
+import tz.elmkusoma.event.repository.ReplayRepository;
 import tz.elmkusoma.event.service.EventService;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.learner.domain.LearnerEnrollment;
 import tz.elmkusoma.learner.domain.LearnerNotification;
+import tz.elmkusoma.learner.repository.LearnerEnrollmentRepository;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
+import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +60,9 @@ public class EventServiceImpl implements EventService {
 
     private static final Logger log = LoggerFactory.getLogger(EventServiceImpl.class);
 
+    /** IANA default for wall-clock event times when no timezone is supplied (§96). */
+    public static final String DEFAULT_TIMEZONE = "Africa/Dar_es_Salaam";
+
     private static final Set<EventStatus> LEARNER_VISIBLE_STATUSES = EnumSet.of(
             EventStatus.PUBLISHED, EventStatus.REGISTRATION_OPEN, EventStatus.REGISTRATION_CLOSED,
             EventStatus.PREPARING, EventStatus.STARTING, EventStatus.LIVE, EventStatus.ENDING,
@@ -53,34 +72,55 @@ public class EventServiceImpl implements EventService {
     private static final Set<EventStatus> REGISTRATION_OPEN_STATUSES = EnumSet.of(
             EventStatus.PUBLISHED, EventStatus.REGISTRATION_OPEN);
 
+    private static final Set<EventStatus> REGISTRATION_BLOCKED_STATUSES = EnumSet.of(
+            EventStatus.CANCELLED, EventStatus.RESCHEDULED, EventStatus.FULL, EventStatus.FAILED);
+
+    private static final Set<EventStatus> LIVE_CHAIN_STATUSES = EnumSet.of(
+            EventStatus.PREPARING, EventStatus.STARTING, EventStatus.LIVE, EventStatus.ENDING);
+
     private final EventRepository eventRepository;
     private final EventRegistrationRepository registrationRepository;
     private final EventMaterialRepository materialRepository;
+    private final ReplayRepository replayRepository;
     private final UserRepository userRepository;
     private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
     private final CertificateRepository certificateRepository;
     private final CertificateTemplateRepository certificateTemplateRepository;
     private final LearnerNotificationRepository notificationRepository;
+    private final LearnerEnrollmentRepository enrollmentRepository;
+    private final NotificationService notificationService;
+    private final AuditService auditService;
 
     public EventServiceImpl(EventRepository eventRepository,
                             EventRegistrationRepository registrationRepository,
                             EventMaterialRepository materialRepository,
+                            ReplayRepository replayRepository,
                             UserRepository userRepository,
                             tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository,
                             CertificateRepository certificateRepository,
                             CertificateTemplateRepository certificateTemplateRepository,
-                            LearnerNotificationRepository notificationRepository) {
+                            LearnerNotificationRepository notificationRepository,
+                            LearnerEnrollmentRepository enrollmentRepository,
+                            NotificationService notificationService,
+                            AuditService auditService) {
         this.eventRepository = eventRepository;
         this.registrationRepository = registrationRepository;
         this.materialRepository = materialRepository;
+        this.replayRepository = replayRepository;
         this.userRepository = userRepository;
         this.institutionRepository = institutionRepository;
         this.certificateRepository = certificateRepository;
         this.certificateTemplateRepository = certificateTemplateRepository;
         this.notificationRepository = notificationRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.notificationService = notificationService;
+        this.auditService = auditService;
     }
 
     // ==================== Status helpers ====================
+    // §23 dual vocabulary: LiveClass statuses map to EventStatus as
+    // SCHEDULED→PUBLISHED/REGISTRATION_OPEN, LIVE→LIVE, ENDED→ENDED,
+    // CANCELLED→CANCELLED (no mapping applied unless an Event is linked to a LiveClass).
 
     private Event requireEvent(UUID eventId) {
         return eventRepository.findById(eventId)
@@ -115,6 +155,73 @@ public class EventServiceImpl implements EventService {
 
     private void changeStatus(Event event, String rawStatus) {
         changeStatus(event, EventStatus.fromString(rawStatus));
+    }
+
+    // ==================== Audit / notification helpers (§18/§19/§94) ====================
+
+    /**
+     * Records an event operation into the existing audit_logs table via {@link AuditService}.
+     * Never throws — auditing must not break the business operation.
+     */
+    private void auditEvent(Event event, String operation, AuditLog.AuditAction action,
+                            Map<String, Object> oldValues, Map<String, Object> newValues) {
+        try {
+            UUID userId = null;
+            String email = null;
+            String role = null;
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+                email = auth.getName();
+                User user = userRepository.findByEmailAndIsDeletedFalse(email).orElse(null);
+                if (user != null) {
+                    userId = user.getId();
+                    role = user.getRole() != null ? user.getRole().name() : null;
+                }
+            }
+            Map<String, Object> nv = newValues != null ? new HashMap<>(newValues) : new HashMap<>();
+            nv.putIfAbsent("operation", operation);
+            auditService.recordAuditLog(
+                    event.getInstitutionId() != null ? event.getInstitutionId() : resolveCallerInstitution(userId),
+                    userId, email, role,
+                    "EVENT", event.getId(), event.getTitle(),
+                    action, oldValues, nv);
+        } catch (Exception ex) {
+            log.warn("Audit record failed for event {} op={}: {}", event.getId(), operation, ex.getMessage());
+        }
+    }
+
+    private UUID resolveCallerInstitution(UUID userId) {
+        if (userId == null) {
+            return null;
+        }
+        return userRepository.findById(userId).map(User::getInstitutionId).orElse(null);
+    }
+
+    private void notifyUserQuietly(UUID userId, String title, String message,
+                                   String notificationType, UUID targetEventId) {
+        if (userId == null) {
+            return;
+        }
+        try {
+            notificationService.notifyUser(userId, title, message, notificationType, "event", targetEventId);
+        } catch (Exception ex) {
+            log.warn("Notification failed for user {} event {}: {}", userId, targetEventId, ex.getMessage());
+        }
+    }
+
+    /** Notifies every non-cancelled registrant of the event (§18/19 lifecycle notifications). */
+    private void notifyRegistrants(Event event, String title, String message, String notificationType) {
+        try {
+            List<EventRegistration> regs = registrationRepository.findByEventIdAndIsDeletedFalse(event.getId());
+            for (EventRegistration reg : regs) {
+                if ("CANCELLED".equals(reg.getStatus())) {
+                    continue;
+                }
+                notifyUserQuietly(reg.getUserId(), title, message, notificationType, event.getId());
+            }
+        } catch (Exception ex) {
+            log.warn("Registrant notification failed for event {}: {}", event.getId(), ex.getMessage());
+        }
     }
 
     // ==================== Access level helpers ====================
@@ -204,8 +311,25 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<EventResponse> getEvents(UUID institutionId, String status, String eventType, String category) {
+        return getEvents(institutionId, status, eventType, category, null);
+    }
+
+    @Override
+    public List<EventResponse> getEvents(UUID institutionId, String status, String eventType, String category,
+                                         String providerId) {
         List<Event> events;
-        if (category != null && !category.isBlank()) {
+        if (providerId != null && !providerId.isBlank()) {
+            // §97: provider_id used as a real query filter
+            events = eventRepository.findByInstitutionIdAndProviderIdAndIsDeletedFalse(institutionId, providerId);
+            final String fStatus = blankToNull(status);
+            final String fType = blankToNull(eventType);
+            final String fCategory = blankToNull(category);
+            events = events.stream()
+                    .filter(e -> fStatus == null || fStatus.equals(e.getStatus()))
+                    .filter(e -> fType == null || fType.equals(e.getEventType()))
+                    .filter(e -> fCategory == null || fCategory.equals(e.getCategory()))
+                    .collect(Collectors.toList());
+        } else if (category != null && !category.isBlank()) {
             events = eventRepository.findByCategory(institutionId, category);
         } else if (eventType != null && !eventType.isBlank()) {
             events = eventRepository.findByInstitutionIdAndEventTypeAndIsDeletedFalseOrderByStartsAtAsc(institutionId, eventType);
@@ -215,6 +339,22 @@ public class EventServiceImpl implements EventService {
             events = eventRepository.findByInstitutionIdAndIsDeletedFalseOrderByStartsAtAsc(institutionId);
         }
         return events.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<EventResponse> getEvents(UUID institutionId, String status, String eventType, String category,
+                                         String providerId, Pageable pageable) {
+        String effectiveStatus = blankToNull(status);
+        if (effectiveStatus == null && category != null && !category.isBlank()) {
+            effectiveStatus = "PUBLISHED";
+        }
+        Page<Event> page = eventRepository.findFiltered(institutionId, effectiveStatus,
+                blankToNull(eventType), blankToNull(category), blankToNull(providerId), pageable);
+        return page.map(this::mapToResponse);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     @Override
@@ -255,7 +395,33 @@ public class EventServiceImpl implements EventService {
                         .ifPresent(reg -> response.setRegistrationStatus(reg.getStatus()));
             }
         }
+        // §59: meeting/join URL only for registered users (or organizer/provider/teacher/admin)
+        if (response.getMeetingUrl() != null && !canViewMeetingUrl(event, currentUserId, registered)) {
+            response.setMeetingUrl(null);
+        }
         return response;
+    }
+
+    private boolean canViewMeetingUrl(Event event, UUID currentUserId, boolean registered) {
+        if (registered) {
+            return true;
+        }
+        if (currentUserId == null) {
+            return false;
+        }
+        if (currentUserId.equals(event.getOrganizerId())) {
+            return true;
+        }
+        if (event.getProviderId() != null && currentUserId.toString().equals(event.getProviderId())) {
+            return true;
+        }
+        return userRepository.findById(currentUserId)
+                .map(u -> isPlatformAdmin(u.getRole())
+                        || u.getRole() == User.Role.TEACHER
+                        || u.getRole() == User.Role.INSTITUTION_ADMIN
+                        || u.getRole() == User.Role.PROVIDER_ADMIN
+                        || u.getRole() == User.Role.PROVIDER_STAFF)
+                .orElse(false);
     }
 
     @Override
@@ -270,10 +436,72 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    public Page<EventResponse> getUpcomingEvents(UUID institutionId, Pageable pageable) {
+        Page<Event> page = eventRepository.findUpcomingPublished(institutionId, LocalDateTime.now(), pageable);
+        return page.map(this::mapToResponse);
+    }
+
+    @Override
     public List<EventResponse> getPastEvents(UUID institutionId) {
         LocalDateTime now = LocalDateTime.now();
         List<Event> events = eventRepository.findPastOrOngoing(institutionId, now, now.minusDays(365));
         return events.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    // ==================== Personal relevance (§53) ====================
+
+    @Override
+    public List<EventResponse> getPersonalizedEvents(UUID institutionId, UUID userId) {
+        List<Event> events = eventRepository.findUpcomingPublished(institutionId, LocalDateTime.now());
+        if (events.isEmpty() || userId == null) {
+            return events.stream().map(this::mapToResponse).collect(Collectors.toList());
+        }
+
+        // Real signal 1: courses the learner is enrolled in
+        Set<String> enrolledCourseIds = enrollmentRepository
+                .findByUserIdAndIsDeletedFalseOrderByEnrolledAtDesc(userId).stream()
+                .map(LearnerEnrollment::getCourseId)
+                .filter(id -> id != null)
+                .map(UUID::toString)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        // Real signal 2/3/4: previously registered event types, providers, categories
+        Set<String> previousEventTypes = new HashSet<>();
+        Set<String> previousProviders = new HashSet<>();
+        Set<String> previousCategories = new HashSet<>();
+        for (EventRegistration reg : registrationRepository.findActiveRegistrationsByUser(userId)) {
+            eventRepository.findById(reg.getEventId()).ifPresent(pe -> {
+                if (pe.getEventType() != null) previousEventTypes.add(pe.getEventType());
+                if (pe.getProviderId() != null) previousProviders.add(pe.getProviderId());
+                if (pe.getCategory() != null) previousCategories.add(pe.getCategory());
+            });
+        }
+
+        Set<String> finalEnrolledCourseIds = enrolledCourseIds;
+        Map<UUID, Integer> scores = new HashMap<>();
+        for (Event e : events) {
+            int score = 0;
+            if (e.getRelatedCourseId() != null && finalEnrolledCourseIds.contains(e.getRelatedCourseId())) {
+                score += 3;
+            }
+            if (e.getEventType() != null && previousEventTypes.contains(e.getEventType())) {
+                score += 2;
+            }
+            if (e.getProviderId() != null && previousProviders.contains(e.getProviderId())) {
+                score += 1;
+            }
+            if (e.getCategory() != null && previousCategories.contains(e.getCategory())) {
+                score += 1;
+            }
+            scores.put(e.getId(), score);
+        }
+
+        return events.stream()
+                .sorted(Comparator
+                        .comparingInt((Event e) -> scores.getOrDefault(e.getId(), 0)).reversed()
+                        .thenComparing(Event::getStartsAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     // ==================== CRUD ====================
@@ -297,7 +525,8 @@ public class EventServiceImpl implements EventService {
                 .tags(request.getTags())
                 .isFree(request.getIsFree() != null ? request.getIsFree() : true)
                 .requiresApproval(request.getRequiresApproval() != null ? request.getRequiresApproval() : false)
-                .timezone(request.getTimezone())
+                .timezone(request.getTimezone() != null && !request.getTimezone().isBlank()
+                        ? request.getTimezone() : DEFAULT_TIMEZONE)
                 .accessLevel(request.getAccessLevel())
                 .presenterName(request.getPresenterName())
                 .eventFormat(request.getEventFormat())
@@ -307,6 +536,10 @@ public class EventServiceImpl implements EventService {
                 .learningOutcomes(request.getLearningOutcomes())
                 .agenda(request.getAgenda())
                 .rescheduledFrom(request.getRescheduledFrom())
+                .relatedCourseId(request.getRelatedCourseId() != null ? request.getRelatedCourseId().toString() : null)
+                .relatedModuleId(request.getRelatedModuleId() != null ? request.getRelatedModuleId().toString() : null)
+                .relatedLessonId(request.getRelatedLessonId() != null ? request.getRelatedLessonId().toString() : null)
+                .providerId(request.getProviderId())
                 .build();
 
         applyStatus(event, request.getStatus() != null
@@ -319,6 +552,9 @@ public class EventServiceImpl implements EventService {
 
         event = eventRepository.save(event);
         log.info("Event created: {} by institution {}", event.getId(), institutionId);
+        auditEvent(event, "CREATE", AuditLog.AuditAction.CREATE, null,
+                Map.of("title", String.valueOf(event.getTitle()),
+                        "status", String.valueOf(event.getStatus())));
         return mapToResponse(event);
     }
 
@@ -327,6 +563,10 @@ public class EventServiceImpl implements EventService {
         Event event = requireEvent(eventId);
 
         String oldStatus = event.getStatus();
+        LocalDateTime oldStartsAt = event.getStartsAt();
+        Map<String, Object> oldValues = new HashMap<>();
+        oldValues.put("status", oldStatus);
+        oldValues.put("startsAt", oldStartsAt != null ? oldStartsAt.toString() : null);
 
         if (request.getTitle() != null) event.setTitle(request.getTitle());
         if (request.getDescription() != null) event.setDescription(request.getDescription());
@@ -352,6 +592,10 @@ public class EventServiceImpl implements EventService {
         if (request.getLearningOutcomes() != null) event.setLearningOutcomes(request.getLearningOutcomes());
         if (request.getAgenda() != null) event.setAgenda(request.getAgenda());
         if (request.getRescheduledFrom() != null) event.setRescheduledFrom(request.getRescheduledFrom());
+        if (request.getRelatedCourseId() != null) event.setRelatedCourseId(request.getRelatedCourseId().toString());
+        if (request.getRelatedModuleId() != null) event.setRelatedModuleId(request.getRelatedModuleId().toString());
+        if (request.getRelatedLessonId() != null) event.setRelatedLessonId(request.getRelatedLessonId().toString());
+        if (request.getProviderId() != null) event.setProviderId(request.getProviderId());
         if (request.getStatus() != null) {
             changeStatus(event, request.getStatus());
         }
@@ -361,16 +605,64 @@ public class EventServiceImpl implements EventService {
         if (request.getStatus() != null && !request.getStatus().equals(oldStatus)) {
             log.info("Event status changed: id={}, oldStatus={}, newStatus={}", eventId, oldStatus, event.getStatus());
         }
+
+        boolean rescheduled = oldStartsAt != null && event.getStartsAt() != null
+                && !oldStartsAt.equals(event.getStartsAt());
+        if (rescheduled) {
+            notifyRegistrants(event,
+                    "Event rescheduled: " + event.getTitle(),
+                    "\"" + event.getTitle() + "\" has been rescheduled to " + event.getStartsAt()
+                            + (event.getTimezone() != null ? " (" + event.getTimezone() + ")" : "")
+                            + ". Your registration is still valid.",
+                    "EVENT_RESCHEDULED");
+        }
+
+        auditEvent(event, rescheduled ? "RESCHEDULE" : "UPDATE",
+                AuditLog.AuditAction.UPDATE, oldValues,
+                Map.of("status", String.valueOf(event.getStatus()),
+                        "startsAt", event.getStartsAt() != null ? event.getStartsAt().toString() : ""));
         return mapToResponse(event);
     }
 
     @Override
     public void deleteEvent(UUID eventId) {
+        deleteEvent(eventId, false);
+    }
+
+    /**
+     * §95 dependency handling:
+     * <ul>
+     *   <li>Live/preparing events cannot be deleted without {@code force=true} (409).</li>
+     *   <li>The event is soft-deleted; dependent replays are soft-deleted so they disappear
+     *       from institution replay listings (chain: EVENT → REPLAY).</li>
+     *   <li>Registrations and materials are intentionally retained as historical/audit
+     *       records; they become unreachable through event-scoped endpoints once the event
+     *       is soft-deleted.</li>
+     * </ul>
+     */
+    @Override
+    public void deleteEvent(UUID eventId, boolean force) {
         Event event = requireEvent(eventId);
+        EventStatus status = currentStatus(event);
+        if (!force && LIVE_CHAIN_STATUSES.contains(status)) {
+            throw new IllegalStateException(
+                    "Event is in a live state (" + status.name() + ") and cannot be deleted without force");
+        }
         UUID institutionId = event.getInstitutionId();
         event.setIsDeleted(true);
         eventRepository.save(event);
-        log.info("Event deleted: id={}, institutionId={}", eventId, institutionId);
+
+        int cascadedReplays = 0;
+        for (Replay replay : replayRepository.findByEventIdAndIsDeletedFalse(eventId)) {
+            replay.setIsDeleted(true);
+            replayRepository.save(replay);
+            cascadedReplays++;
+        }
+
+        log.info("Event deleted: id={}, institutionId={}, cascadedReplays={}, force={}",
+                eventId, institutionId, cascadedReplays, force);
+        auditEvent(event, "DELETE", AuditLog.AuditAction.DELETE, null,
+                Map.of("force", force, "cascadedReplays", cascadedReplays));
     }
 
     // ==================== Registrations ====================
@@ -379,7 +671,15 @@ public class EventServiceImpl implements EventService {
     public EventRegistrationResponse registerForEvent(UUID eventId, UUID userId) {
         Event event = requireEvent(eventId);
 
-        if (!REGISTRATION_OPEN_STATUSES.contains(currentStatus(event))) {
+        EventStatus status = currentStatus(event);
+        if (REGISTRATION_BLOCKED_STATUSES.contains(status)) {
+            if (status == EventStatus.FULL) {
+                throw new IllegalStateException("This event is full - registration is closed");
+            }
+            throw new IllegalStateException("This event has been " + status.name().toLowerCase()
+                    + " - registration is not possible");
+        }
+        if (!REGISTRATION_OPEN_STATUSES.contains(status)) {
             throw new IllegalArgumentException("This event is not available for registration");
         }
 
@@ -401,29 +701,25 @@ public class EventServiceImpl implements EventService {
                 return mapRegistrationToResponse(reg, event);
             }
             if ("CANCELLED".equals(reg.getStatus())) {
-                if (event.getMaxParticipants() != null) {
-                    long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(eventId, "REGISTERED");
-                    if (registeredCount >= event.getMaxParticipants()) {
-                        throw new IllegalArgumentException("This event is full");
-                    }
-                }
+                assertCapacityAvailable(event);
                 reg.setStatus(event.getRequiresApproval() ? "WAITLISTED" : "REGISTERED");
                 reg.setCancelledAt(null);
                 reg.setCancellationReason(null);
                 reg.setRegisteredAt(LocalDateTime.now());
                 reg = registrationRepository.save(reg);
                 log.info("User {} re-registered for event {}", userId, eventId);
+                markFullIfAtCapacity(event);
+                notifyUserQuietly(userId,
+                        "Registration confirmed: " + event.getTitle(),
+                        "You are registered for \"" + event.getTitle() + "\" starting "
+                                + event.getStartsAt() + ".",
+                        "EVENT_REGISTRATION", event.getId());
                 return mapRegistrationToResponse(reg, event);
             }
             return mapRegistrationToResponse(reg, event);
         }
 
-        if (event.getMaxParticipants() != null) {
-            long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(eventId, "REGISTERED");
-            if (registeredCount >= event.getMaxParticipants()) {
-                throw new IllegalArgumentException("This event is full");
-            }
-        }
+        assertCapacityAvailable(event);
 
         EventRegistration registration = EventRegistration.builder()
                 .eventId(eventId)
@@ -436,7 +732,45 @@ public class EventServiceImpl implements EventService {
 
         registration = registrationRepository.save(registration);
         log.info("User {} registered for event {}", userId, eventId);
+        markFullIfAtCapacity(event);
+        notifyUserQuietly(userId,
+                "Registration confirmed: " + event.getTitle(),
+                "You are registered for \"" + event.getTitle() + "\" starting "
+                        + event.getStartsAt() + ".",
+                "EVENT_REGISTRATION", event.getId());
         return mapRegistrationToResponse(registration, event);
+    }
+
+    /** §69: rejects registration when at capacity; keeps currentRegistrations in sync. */
+    private void assertCapacityAvailable(Event event) {
+        if (event.getMaxParticipants() == null) {
+            return;
+        }
+        long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(event.getId(), "REGISTERED");
+        if (registeredCount >= event.getMaxParticipants()) {
+            throw new IllegalStateException("This event is full - no seats remaining");
+        }
+    }
+
+    /**
+     * §69: flips event status to FULL once currentRegistrations reaches maxParticipants.
+     * The response-level {@code almostFull} hint (within 10% of max, not yet full) is
+     * computed in {@link #mapToResponse} on every read, so it is correct on this path too.
+     */
+    private void markFullIfAtCapacity(Event event) {
+        if (event.getMaxParticipants() == null) {
+            return;
+        }
+        long registeredCount = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(event.getId(), "REGISTERED");
+        event.setCurrentRegistrations((int) registeredCount);
+        if (registeredCount >= event.getMaxParticipants()) {
+            EventStatus status = currentStatus(event);
+            if (status.canTransitionTo(EventStatus.FULL)) {
+                applyStatus(event, EventStatus.FULL);
+                log.info("Event {} marked FULL at capacity {}/{}", event.getId(), registeredCount, event.getMaxParticipants());
+            }
+        }
+        eventRepository.save(event);
     }
 
     @Override
@@ -455,6 +789,26 @@ public class EventServiceImpl implements EventService {
         registration.setCancellationReason(reason);
         registrationRepository.save(registration);
         log.info("User {} cancelled registration for event {}", userId, eventId);
+
+        Event event = eventRepository.findById(eventId).orElse(null);
+        if (event != null) {
+            // §69: free a seat — reopen FULL events when a registrant cancels
+            if (event.getMaxParticipants() != null) {
+                long count = registrationRepository.countByEventIdAndStatusAndIsDeletedFalse(eventId, "REGISTERED");
+                event.setCurrentRegistrations((int) count);
+                if (count < event.getMaxParticipants()
+                        && currentStatus(event) == EventStatus.FULL
+                        && currentStatus(event).canTransitionTo(EventStatus.REGISTRATION_OPEN)) {
+                    applyStatus(event, EventStatus.REGISTRATION_OPEN);
+                }
+                eventRepository.save(event);
+            }
+            notifyUserQuietly(userId,
+                    "Registration cancelled: " + event.getTitle(),
+                    "Your registration for \"" + event.getTitle() + "\" has been cancelled"
+                            + (reason != null && !reason.isBlank() ? " (" + reason + ")" : "") + ".",
+                    "EVENT_REGISTRATION_CANCELLED", event.getId());
+        }
     }
 
     @Override
@@ -592,9 +946,12 @@ public class EventServiceImpl implements EventService {
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
             throw new ForbiddenException("Access denied");
         }
+        EventStatus old = currentStatus(event);
         changeStatus(event, EventStatus.PUBLISHED);
         event = eventRepository.save(event);
         log.info("Event published: id={}", eventId);
+        auditEvent(event, "PUBLISH", AuditLog.AuditAction.UPDATE,
+                Map.of("status", old.name()), Map.of("status", EventStatus.PUBLISHED.name()));
         return mapToResponse(event);
     }
 
@@ -604,11 +961,24 @@ public class EventServiceImpl implements EventService {
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
             throw new ForbiddenException("Access denied");
         }
+        EventStatus old = currentStatus(event);
         changeStatus(event, EventStatus.CANCELLED);
         event.setCancelledAt(LocalDateTime.now());
         event.setCancellationReason(reason);
         event = eventRepository.save(event);
         log.info("Event cancelled: id={}", eventId);
+
+        notifyRegistrants(event,
+                "Event cancelled: " + event.getTitle(),
+                "\"" + event.getTitle() + "\" has been cancelled"
+                        + (reason != null && !reason.isBlank() ? ": " + reason : ".")
+                        + " We are sorry for the inconvenience.",
+                "EVENT_CANCELLED");
+
+        auditEvent(event, "CANCEL", AuditLog.AuditAction.UPDATE,
+                Map.of("status", old.name()),
+                Map.of("status", EventStatus.CANCELLED.name(),
+                        "reason", reason != null ? reason : ""));
         return mapToResponse(event);
     }
 
@@ -618,9 +988,18 @@ public class EventServiceImpl implements EventService {
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
             throw new ForbiddenException("Access denied");
         }
+        EventStatus old = currentStatus(event);
         changeStatus(event, EventStatus.LIVE);
         event = eventRepository.save(event);
         log.info("Event started live: id={}", eventId);
+
+        notifyRegistrants(event,
+                "Live now: " + event.getTitle(),
+                "\"" + event.getTitle() + "\" is starting now. Join from your registered events page.",
+                "EVENT_LIVE");
+
+        auditEvent(event, "START_LIVE", AuditLog.AuditAction.UPDATE,
+                Map.of("status", old.name()), Map.of("status", EventStatus.LIVE.name()));
         return mapToResponse(event);
     }
 
@@ -630,9 +1009,13 @@ public class EventServiceImpl implements EventService {
         if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
             throw new ForbiddenException("Access denied");
         }
+        EventStatus old = currentStatus(event);
         changeStatus(event, EventStatus.ENDED);
         event = eventRepository.save(event);
         log.info("Event ended: id={}", eventId);
+
+        auditEvent(event, "END_LIVE", AuditLog.AuditAction.UPDATE,
+                Map.of("status", old.name()), Map.of("status", EventStatus.ENDED.name()));
 
         issueCertificatesForEventAttendees(event);
 
@@ -831,6 +1214,13 @@ public class EventServiceImpl implements EventService {
             availableSpots = event.getMaxParticipants() - (int) registeredCount;
         }
 
+        // §69: capacity hint — registered within 10% of max but not yet full
+        Boolean almostFull = null;
+        if (event.getMaxParticipants() != null && event.getMaxParticipants() > 0) {
+            almostFull = registeredCount >= event.getMaxParticipants() * 0.9
+                    && registeredCount < event.getMaxParticipants();
+        }
+
         String organizerName = null;
         if (event.getOrganizerId() != null) {
             organizerName = userRepository.findById(event.getOrganizerId())
@@ -855,6 +1245,7 @@ public class EventServiceImpl implements EventService {
                 .maxParticipants(event.getMaxParticipants())
                 .registeredCount((int) registeredCount)
                 .availableSpots(availableSpots)
+                .almostFull(almostFull)
                 .status(event.getStatus())
                 .eventStatus(currentStatus(event).name())
                 .accessLevel(event.getAccessLevel())
@@ -879,7 +1270,21 @@ public class EventServiceImpl implements EventService {
                 .recordingStatus(event.getRecordingStatus())
                 .providerId(event.getProviderId())
                 .presenterName(event.getPresenterName())
+                .relatedCourseId(parseUuidQuietly(event.getRelatedCourseId()))
+                .relatedModuleId(parseUuidQuietly(event.getRelatedModuleId()))
+                .relatedLessonId(parseUuidQuietly(event.getRelatedLessonId()))
                 .build();
+    }
+
+    private static UUID parseUuidQuietly(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     private EventRegistrationResponse mapRegistrationToResponse(EventRegistration reg, Event event) {

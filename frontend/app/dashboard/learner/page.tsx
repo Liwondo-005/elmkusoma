@@ -19,8 +19,10 @@ import {
   Sparkles, Clock, Play, Video, BookOpen, BarChart3,
   Award, CalendarDays, ChevronRight, CheckCircle2, AlertCircle,
   TrendingUp, Target, FileText, Briefcase, GraduationCap, Lightbulb,
-  FlaskConical, Layers, Search, Trophy, BookMarked, Library, Film, Bookmark as BookmarkIcon
+  FlaskConical, Layers, Search, Trophy, BookMarked, Library, Film, Bookmark as BookmarkIcon,
+  Bell
 } from "lucide-react"
+import type { LearnerNotification } from "@/lib/learner-api"
 
 export default function LearnerDashboardPage() {
   const { user, loading: authLoading } = useAuth()
@@ -29,6 +31,7 @@ export default function LearnerDashboardPage() {
   const [generalCourses, setGeneralCourses] = useState<LearnerCourseSummary[]>([])
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>([])
   const [continueState, setContinueState] = useState<ReturnType<typeof getLastAccessedLesson>>(null)
+  const [feedNotifications, setFeedNotifications] = useState<LearnerNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const t = useTranslations("dashboard")
@@ -48,12 +51,14 @@ export default function LearnerDashboardPage() {
         const res = await collegeApi.getHEDashboard(user.id, user.learningLevel || "UNIVERSITY")
         setDashboard(res.data ?? null)
       } else {
-        const [coursesRes, bookmarkRes] = await Promise.allSettled([
+        const [coursesRes, bookmarkRes, notifRes] = await Promise.allSettled([
           learnerApi.getCourses(),
           learnerApi.getBookmarks(),
+          learnerApi.getNotifications(),
         ])
         if (coursesRes.status === "fulfilled") setGeneralCourses(coursesRes.value)
         if (bookmarkRes.status === "fulfilled") setBookmarks(bookmarkRes.value)
+        if (notifRes.status === "fulfilled") setFeedNotifications(notifRes.value.slice(0, 5))
         setContinueState(getLastAccessedLesson())
       }
     } catch {
@@ -85,6 +90,7 @@ export default function LearnerDashboardPage() {
         <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
           <LearnerHeader firstName={firstName} subtitle={t("myLearningWorld")} />
         </div>
+        <LearningFeedCard notifications={feedNotifications} />
         {continueState && (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("continueLearning")}>
             <div className="flex items-center gap-2 mb-2">
@@ -204,6 +210,8 @@ export default function LearnerDashboardPage() {
           )}
         </div>
       </div>
+
+      <LearningFeedCard notifications={feedNotifications} />
 
       <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-teal/5 p-5 shadow-xs" role="region" aria-label={t("whatsNext")}>
         <div className="flex items-center justify-between">
@@ -384,7 +392,7 @@ export default function LearnerDashboardPage() {
                 <span className="text-muted-foreground">{t("credits")}: </span>
                 <span className="font-bold text-foreground">{dash.academicLoad.completedCreditHours}/{dash.academicLoad.totalCreditHours}</span>
               </p>
-              <Link href="/dashboard/learner/academic" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              <Link href="/dashboard/learner/academic-record" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
                 {t("viewRecord")} <ChevronRight className="size-3" />
               </Link>
             </div>
@@ -742,6 +750,44 @@ export default function LearnerDashboardPage() {
             {t("exploreCourses")} <ChevronRight className="size-4" />
           </Link>
         </div>
+      )}
+    </div>
+  )
+}
+
+function LearningFeedCard({ notifications }: { notifications: LearnerNotification[] }) {
+  const t = useTranslations("dashboard")
+  const tn = useTranslations("notifications")
+  const tc = useTranslations("common")
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("learningFeed")}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Bell className="size-4 text-blue-600" />
+          <h3 className="font-semibold text-foreground text-sm">{t("learningFeed")}</h3>
+        </div>
+        <Link href="/dashboard/learner/notifications-center" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+          {tc("viewAll")} <ChevronRight className="size-3" />
+        </Link>
+      </div>
+      {notifications.length > 0 ? (
+        <div className="space-y-2">
+          {notifications.map((n) => (
+            <Link
+              key={n.id}
+              href="/dashboard/learner/notifications-center"
+              className={`flex items-start gap-3 rounded-xl border p-3 transition-colors hover:bg-muted/50 ${n.isRead ? "" : "border-primary/40 bg-primary/5"}`}
+            >
+              <div className="min-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{n.title}</p>
+                <p className="truncate text-xs text-muted-foreground mt-0.5">{n.message}</p>
+              </div>
+              {!n.isRead && <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" aria-label={tn("unreadCount")} />}
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">{tn("noNotificationsYet")}</p>
       )}
     </div>
   )

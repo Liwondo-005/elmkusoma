@@ -30,18 +30,38 @@ public class LearnerReplayController {
     private final ReplayRepository replayRepository;
     private final ReplayProgressRepository progressRepository;
     private final EventRepository eventRepository;
+    private final tz.elmkusoma.event.repository.EventMaterialRepository materialRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Replay>>> getReplays(
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
-            @RequestAttribute(value = "userId", required = false) UUID userId) {
-        List<Replay> replays = replayRepository.findByStatusAndIsDeletedFalse("AVAILABLE")
-                .stream()
-                .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
-                .toList();
+            @RequestAttribute(value = "userId", required = false) UUID userId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        List<Replay> replays;
+        long total;
+        // §81/§82: optional Pageable pagination
+        if ((page != null || size != null) && institutionId != null) {
+            org.springframework.data.domain.Page<Replay> result = replayRepository
+                    .findByStatusAndIsDeletedFalseAndInstitutionId("AVAILABLE", institutionId,
+                            org.springframework.data.domain.PageRequest.of(
+                                    page != null && page >= 0 ? page : 0,
+                                    size != null && size > 0 ? size : 20,
+                                    org.springframework.data.domain.Sort.by("createdAt").descending()));
+            replays = result.getContent();
+            total = result.getTotalElements();
+        } else {
+            replays = replayRepository.findByStatusAndIsDeletedFalse("AVAILABLE")
+                    .stream()
+                    .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
+                    .toList();
+            total = replays.size();
+        }
         Map<UUID, ReplayProgress> progressMap = loadProgress(userId, replays);
         replays.forEach(r -> enrich(r, userId, progressMap));
-        return ResponseEntity.ok(ApiResponse.success(replays));
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(total))
+                .body(ApiResponse.success(replays));
     }
 
     @GetMapping("/{id}")
@@ -56,10 +76,18 @@ public class LearnerReplayController {
                     r.setViewCount(r.getViewCount() + 1);
                     replayRepository.save(r);
                     enrich(r, userId, Map.of());
+                    Event event = r.getEventId() != null ? eventRepository.findById(r.getEventId()).orElse(null) : null;
                     Map<String, Object> detail = new HashMap<>();
                     detail.put("replay", r);
-                    detail.put("relatedResources", List.of());
-                    detail.put("upcomingEvents", List.of());
+                    // §46/§51/§52: related data derived from the linked Event, not hardcoded empties
+                    detail.put("relatedResources", buildRelatedResources(event));
+                    detail.put("upcomingEvents", buildUpcomingEvents(
+                            r.getInstitutionId() != null ? r.getInstitutionId()
+                                    : (event != null ? event.getInstitutionId() : institutionId),
+                            r.getEventId()));
+                    detail.put("relatedCourseId", event != null ? event.getRelatedCourseId() : null);
+                    detail.put("relatedModuleId", event != null ? event.getRelatedModuleId() : null);
+                    detail.put("relatedLessonId", event != null ? event.getRelatedLessonId() : null);
                     return ResponseEntity.ok(ApiResponse.success(detail));
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -192,5 +220,57 @@ public class LearnerReplayController {
                 }
             }
         }
+    }
+
+    /** §46/§51/§52: related resources from the linked event's related ids + materials. */
+    private List<Map<String, Object>> buildRelatedResources(Event event) {
+        List<Map<String, Object>> related = new java.util.ArrayList<>();
+        if (event == null) {
+            return related;
+        }
+        addRelatedIfPresent(related, "COURSE", event.getRelatedCourseId());
+        addRelatedIfPresent(related, "MODULE", event.getRelatedModuleId());
+        addRelatedIfPresent(related, "LESSON", event.getRelatedLessonId());
+        materialRepository.findByEventIdAndIsPublicTrueAndIsDeletedFalseOrderBySortOrderAsc(event.getId())
+                .forEach(m -> {
+                    Map<String, Object> res = new HashMap<>();
+                    res.put("type", "MATERIAL");
+                    res.put("id", m.getId().toString());
+                    res.put("title", m.getTitle());
+                    res.put("url", m.getFileUrl());
+                    res.put("materialType", m.getMaterialType());
+                    related.add(res);
+                });
+        return related;
+    }
+
+    private void addRelatedIfPresent(List<Map<String, Object>> related, String type, String id) {
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        Map<String, Object> res = new HashMap<>();
+        res.put("type", type);
+        res.put("id", id);
+        related.add(res);
+    }
+
+    /** §46/§52: upcoming events for the same institution, excluding the replay's own event. */
+    private List<Map<String, Object>> buildUpcomingEvents(UUID institutionId, UUID excludeEventId) {
+        if (institutionId == null) {
+            return List.of();
+        }
+        return eventRepository.findUpcomingPublished(institutionId, java.time.LocalDateTime.now())
+                .stream()
+                .filter(e -> excludeEventId == null || !excludeEventId.equals(e.getId()))
+                .limit(5)
+                .map(e -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", e.getId().toString());
+                    m.put("title", e.getTitle());
+                    m.put("startsAt", e.getStartsAt());
+                    m.put("eventType", e.getEventType());
+                    return m;
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 }

@@ -1,5 +1,37 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
 
+export class LearnerApiError extends Error {
+  status: number
+  code: string
+  constructor(message: string, status: number, code: string) {
+    super(message)
+    this.name = "LearnerApiError"
+    this.status = status
+    this.code = code
+  }
+}
+
+function statusMessage(status: number, body: Record<string, unknown>): string {
+  const serverMsg =
+    (typeof body.error === "string" && body.error) ||
+    (typeof body.message === "string" && body.message) ||
+    ""
+  switch (status) {
+    case 401:
+      return serverMsg || "Your session has expired. Please sign in again."
+    case 403:
+      return serverMsg || "You do not have permission to perform this action."
+    case 404:
+      return serverMsg || "The requested item was not found."
+    case 409:
+      return serverMsg || "This conflicts with the current state. Refresh and try again."
+    case 422:
+      return serverMsg || "Some of the provided information is invalid."
+    default:
+      return serverMsg || `Request failed (${status})`
+  }
+}
+
 async function learnerFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
   let institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") : null
@@ -24,7 +56,7 @@ async function learnerFetch<T>(path: string, options?: RequestInit): Promise<T> 
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || body.message || `Request failed: ${res.status}`)
+    throw new LearnerApiError(statusMessage(res.status, body), res.status, String(body.code || ""))
   }
   const json = await res.json()
   return json.data ?? json
@@ -190,6 +222,16 @@ export interface LiveSessionJoinResponse {
   message: string
 }
 
+export interface EventJoinResponse {
+  token: string | null
+  serverUrl: string | null
+  roomName: string
+  meetingUrl: string | null
+  eventStatus: string
+  liveKitAvailable: boolean
+  waitingRoom?: boolean
+}
+
 export interface ParticipantInfo {
   userId: string
   userName: string
@@ -239,6 +281,22 @@ export interface EventItem {
   registeredCount: number
   availableSpots: number | null
   status: string
+  eventStatus?: string | null
+  accessLevel?: string | null
+  timezone?: string | null
+  presenterName?: string | null
+  providerId?: string | null
+  cancelledAt?: string | null
+  cancellationReason?: string | null
+  rescheduledFrom?: string | null
+  recordingStatus?: string | null
+  recordingUrl?: string | null
+  relatedCourseId?: string | null
+  relatedCourseTitle?: string | null
+  relatedLessonId?: string | null
+  relatedModuleId?: string | null
+  almostFull?: boolean
+  attended?: boolean
   thumbnailUrl: string | null
   tags: string | null
   isFree: boolean
@@ -294,6 +352,8 @@ export interface SearchResult {
   resources: Resource[]
   liveClasses: LiveClass[]
   announcements: any[]
+  events?: EventItem[]
+  replays?: ReplayItem[]
 }
 
 export interface ReplayItem {
@@ -314,6 +374,8 @@ export interface ReplayItem {
   relatedCourseTitle: string | null
   relatedLessonId: string | null
   relatedLessonTitle: string | null
+  recordingStatus?: string | null
+  status?: string | null
 }
 
 export interface ReplayDetail {
@@ -386,7 +448,23 @@ function normalizeReplay(raw: Record<string, unknown>): ReplayItem {
     relatedCourseTitle: rec.relatedCourseTitle ?? null,
     relatedLessonId: rec.relatedLessonId ?? null,
     relatedLessonTitle: rec.relatedLessonTitle ?? null,
+    recordingStatus: rec.recordingStatus ?? null,
+    status: rec.status ?? null,
   }
+}
+
+export function isAlmostFull(event: Pick<EventItem, "almostFull" | "availableSpots" | "maxParticipants" | "registeredCount">): boolean {
+  if (typeof event.almostFull === "boolean") return event.almostFull
+  const max = event.maxParticipants ?? 0
+  if (max <= 0) return false
+  const left = event.availableSpots != null ? event.availableSpots : max - event.registeredCount
+  const threshold = Math.max(2, Math.floor(max * 0.1))
+  return left > 0 && left <= threshold
+}
+
+export function isReplayFailed(replay: Pick<ReplayItem, "recordingStatus" | "status">): boolean {
+  const s = (replay.status || replay.recordingStatus || "").toUpperCase()
+  return s === "FAILED" || s === "RECORDING_FAILED"
 }
 
 export interface CourseProgress {
@@ -498,7 +576,7 @@ export const learnerApi = {
   markAllRead: () =>
     learnerFetch<void>("/v1/learner/me/notifications/read-all", { method: "PUT" }),
   getCertificates: () => learnerFetch<Certificate[]>("/v1/learner/me/certificates"),
-  search: (q: string, type?: string, filters?: SearchFilters, page?: number, size?: number) => {
+  search: async (q: string, type?: string, filters?: SearchFilters, page?: number, size?: number): Promise<SearchResult> => {
     const searchParams = new URLSearchParams()
     searchParams.set("q", q)
     if (type) searchParams.set("type", type)
@@ -511,7 +589,32 @@ export const learnerApi = {
     if (filters?.sort) searchParams.set("sort", filters.sort)
     if (page != null) searchParams.set("page", String(page))
     if (size != null) searchParams.set("size", String(size))
-    return learnerFetch<SearchResult>(`/v1/learner/search?${searchParams.toString()}`)
+    const data = await learnerFetch<Partial<SearchResult>>(`/v1/learner/search?${searchParams.toString()}`)
+    const base: SearchResult = {
+      courses: data.courses || [],
+      resources: data.resources || [],
+      liveClasses: data.liveClasses || [],
+      announcements: data.announcements || [],
+      events: data.events || [],
+      replays: data.replays || [],
+    }
+    if (type === "EVENT") {
+      const events = await learnerApi.getEvents({ search: q }).catch(() => [] as EventItem[])
+      base.events = events
+      base.courses = []
+      base.resources = []
+      base.liveClasses = []
+      base.announcements = []
+    }
+    if (type === "REPLAY") {
+      const replays = await learnerApi.getReplays({ search: q }).catch(() => [] as ReplayItem[])
+      base.replays = replays
+      base.courses = []
+      base.resources = []
+      base.liveClasses = []
+      base.announcements = []
+    }
+    return base
   },
   getEvents: (params?: { eventType?: string; category?: string; search?: string }) => {
     const searchParams = new URLSearchParams()
@@ -526,6 +629,8 @@ export const learnerApi = {
   getEvent: (id: string) => learnerFetch<EventItem>(`/v1/learner/events/${id}`),
   registerForEvent: (eventId: string) =>
     learnerFetch<EventRegistration>(`/v1/learner/events/${eventId}/register`, { method: "POST" }),
+  joinEvent: (eventId: string) =>
+    learnerFetch<EventJoinResponse>(`/v1/learner/events/${eventId}/join`, { method: "POST" }),
   cancelEventRegistration: (eventId: string, reason?: string) =>
     learnerFetch<void>(`/v1/learner/events/${eventId}/cancel`, {
       method: "POST",

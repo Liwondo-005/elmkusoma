@@ -17,7 +17,7 @@ export default function LearnerSearchPage() {
   const t = useTranslations("search")
   const tc = useTranslations("common")
   const [query, setQuery] = useState(searchParams.get("q") || "")
-  const [activeTab, setActiveTab] = useState<"all" | "courses" | "resources" | "live-classes" | "announcements">(
+  const [activeTab, setActiveTab] = useState<"all" | "courses" | "resources" | "live-classes" | "announcements" | "events" | "replays">(
     (searchParams.get("type") as any) || "all"
   )
   const [results, setResults] = useState<SearchResult | null>(null)
@@ -72,7 +72,14 @@ export default function LearnerSearchPage() {
     try {
       setLoading(true)
       setError(null)
-      const typeMap: Record<string, string> = { courses: "COURSE", resources: "RESOURCE", "live-classes": "LIVE_CLASS", announcements: "ANNOUNCEMENT" }
+      const typeMap: Record<string, string> = {
+        courses: "COURSE",
+        resources: "RESOURCE",
+        "live-classes": "LIVE_CLASS",
+        announcements: "ANNOUNCEMENT",
+        events: "EVENT",
+        replays: "REPLAY",
+      }
       const searchType = type === "all" ? undefined : (typeMap[type] || type)
       const data = await learnerApi.search(q, searchType, searchFilters || filters, pageNum ?? page, 20)
       setResults(data)
@@ -145,10 +152,12 @@ export default function LearnerSearchPage() {
   const hasActiveFilters = filters.level || filters.category || filters.provider || filters.dateFrom || filters.dateTo || (filters.sort && filters.sort !== "newest")
 
   const tabs = [
-    { key: "all" as const, label: t("all"), count: results ? (results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0) : 0 },
+    { key: "all" as const, label: t("all"), count: results ? (results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0) + (results.events?.length || 0) + (results.replays?.length || 0) : 0 },
     { key: "courses" as const, label: t("courses"), count: results?.courses?.length || 0 },
     { key: "resources" as const, label: t("resources"), count: results?.resources?.length || 0 },
     { key: "live-classes" as const, label: t("liveClasses"), count: results?.liveClasses?.length || 0 },
+    { key: "events" as const, label: t("events"), count: results?.events?.length || 0 },
+    { key: "replays" as const, label: t("replays"), count: results?.replays?.length || 0 },
     { key: "announcements" as const, label: t("announcements"), count: results?.announcements?.length || 0 },
   ]
 
@@ -432,6 +441,57 @@ export default function LearnerSearchPage() {
             </section>
           )}
 
+          {(activeTab === "all" || activeTab === "events") && results.events && results.events.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground">{t("events")}</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {results.events.map((ev) => (
+                  <Link
+                    key={ev.id}
+                    href={`/dashboard/learner/events/${ev.id}`}
+                    className="rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-foreground truncate">{ev.title}</h3>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary shrink-0">
+                        {ev.eventStatus || ev.status}
+                      </span>
+                    </div>
+                    {ev.description && (
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{ev.description}</p>
+                    )}
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {new Date(ev.startsAt).toLocaleString()}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {(activeTab === "all" || activeTab === "replays") && results.replays && results.replays.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground">{t("replays")}</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {results.replays.map((rp) => (
+                  <Link
+                    key={rp.id}
+                    href={`/dashboard/learner/replays/${rp.id}`}
+                    className="rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
+                  >
+                    <h3 className="text-sm font-semibold text-foreground truncate">{rp.title}</h3>
+                    {rp.eventTitle && (
+                      <p className="mt-1 text-xs text-muted-foreground">{rp.eventTitle}</p>
+                    )}
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {new Date(rp.recordedAt).toLocaleDateString()}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           {(activeTab === "all" || activeTab === "announcements") && results.announcements && results.announcements.length > 0 && (
             <section>
               <h2 className="text-lg font-semibold text-foreground">{t("announcements")}</h2>
@@ -467,7 +527,7 @@ export default function LearnerSearchPage() {
             </section>
           )}
 
-          {results.courses?.length === 0 && results.resources?.length === 0 && results.liveClasses?.length === 0 && results.announcements?.length === 0 && (
+          {results.courses?.length === 0 && results.resources?.length === 0 && results.liveClasses?.length === 0 && results.announcements?.length === 0 && (results.events?.length ?? 0) === 0 && (results.replays?.length ?? 0) === 0 && (
             <div role="status">
             <EmptyState
               icon={<Search className="size-8" />}
@@ -477,7 +537,7 @@ export default function LearnerSearchPage() {
             </div>
           )}
 
-          {((results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0)) > 0 && (
+          {((results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0) + (results.events?.length || 0) + (results.replays?.length || 0)) > 0 && (
             <div className="flex items-center justify-between pt-4 border-t border-border">
               <span className="text-xs text-muted-foreground">{t("page", { page })}</span>
               <div className="flex gap-2">

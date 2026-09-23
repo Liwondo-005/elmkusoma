@@ -15,4 +15,11 @@ public interface LearnerNotificationRepository extends JpaRepository<LearnerNoti
     long countByUserIdAndIsReadFalseAndIsDeletedFalse(UUID userId);
 
     List<LearnerNotification> findByUserIdAndIsReadFalseAndIsDeletedFalseOrderByCreatedAtDesc(UUID userId);
+
+    /** Idempotency guard for event reminders (§18/19): one notification per user/event/offset. */
+    boolean existsByUserIdAndTargetIdAndNotificationTypeAndIsDeletedFalse(
+            UUID userId, UUID targetId, String notificationType);
+
+    List<LearnerNotification> findByTargetIdAndNotificationTypeAndIsDeletedFalse(
+            UUID targetId, String notificationType);
 }

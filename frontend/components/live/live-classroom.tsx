@@ -41,11 +41,15 @@ interface Participant {
 }
 
 interface ChatMessage {
+  id?: string | null
   userId: string
   userName: string
   message: string
   timestamp: string
   system?: boolean
+  kind?: "CHAT" | "QA"
+  reactions?: Record<string, number>
+  deleted?: boolean
 }
 
 interface HandRaiseEntry {
@@ -125,6 +129,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [breakoutRooms, setBreakoutRooms] = useState<Array<{id: string; name: string; maxParticipants: number; status: string}>>([])
   const [showBreakoutModal, setShowBreakoutModal] = useState(false)
   const [newBreakoutName, setNewBreakoutName] = useState("")
+  const [sideTab, setSideTab] = useState<"chat" | "qa" | "people">("chat")
   const roomRef = useRef<Room | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
@@ -293,18 +298,35 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           case "PARTICIPANTS":
             if (data.participants) setParticipants(data.participants)
             break
-          case "CHAT_MESSAGE":
-            setChat((prev) => [...prev, { userId: data.userId, userName: data.userName, message: data.message, timestamp: data.timestamp }])
+          case "CHAT_MESSAGE": {
+            const raw = String(data.message || "")
+            const isQa = raw.startsWith("[Q&A]")
+            setChat((prev) => [...prev, { id: data.id ?? data.messageId ?? null, userId: data.userId, userName: data.userName, message: isQa ? raw.slice(6).trim() : raw, timestamp: data.timestamp, kind: isQa ? "QA" : "CHAT" }])
             break
+          }
           case "CHAT_HISTORY":
             if (data.messages) {
               const history: ChatMessage[] = data.messages.map((m: any) => ({
+                id: m.id ?? m.messageId ?? null,
                 userId: m.userId,
                 userName: m.userName,
                 message: m.message,
                 timestamp: m.timestamp,
+                kind: String(m.message || "").startsWith("[Q&A]") ? "QA" : "CHAT",
+                deleted: Boolean(m.deleted || m.isDeleted),
               }))
               setChat((prev) => [...history, ...prev])
+            }
+            break
+          case "MESSAGE_DELETED":
+            if (data.messageId) {
+              setChat((prev) =>
+                prev.map((m) =>
+                  m.id === data.messageId || (m.timestamp === data.timestamp && m.message === data.message)
+                    ? { ...m, deleted: true }
+                    : m,
+                ),
+              )
             }
             break
           case "HAND_RAISED":
@@ -614,7 +636,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     e.preventDefault()
     const trimmed = message.trim()
     if (!trimmed || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-    wsRef.current.send(JSON.stringify({ type: "CHAT", message: trimmed }))
+    const isQa = sideTab === "qa"
+    wsRef.current.send(JSON.stringify({ type: "CHAT", message: isQa ? `[Q&A] ${trimmed}` : trimmed, messageType: isQa ? "Q&A" : "CHAT" }))
+    if (isQa) {
+      setChat((prev) => [...prev, { userId: myUserId, userName: "You", message: trimmed, timestamp: new Date().toISOString(), kind: "QA" }])
+    }
     setMessage("")
   }
 
@@ -876,7 +902,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 order-2 lg:order-1">
           <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="relative aspect-video bg-slate-900 flex items-center justify-center">
               {isInProgress ? (
@@ -1043,7 +1069,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           )}
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 order-1 lg:order-2">
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold text-foreground">Participants ({participants.length})</h2>
@@ -1336,7 +1362,20 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
           <div className="flex min-h-80 flex-col rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-              <h2 className="text-xs font-semibold text-foreground">Live Chat</h2>
+              <div className="flex gap-1" role="tablist" aria-label="Class side panel">
+                {(["chat", "qa", "people"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={sideTab === tab}
+                    onClick={() => setSideTab(tab)}
+                    className={`rounded px-2 py-1 text-[10px] font-semibold uppercase ${sideTab === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    {tab === "chat" ? "Chat" : tab === "qa" ? "Q&A" : "People"}
+                  </button>
+                ))}
+              </div>
               <span className="inline-flex items-center gap-1">
                 {connected && <span className="size-1.5 rounded-full bg-teal animate-pulse" />}
                 <span className="text-[10px] text-muted-foreground">
@@ -1344,14 +1383,45 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 </span>
               </span>
             </div>
+            {sideTab === "people" ? (
+              <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
+                {participants.map((p) => (
+                  <div key={p.userId} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-foreground">{p.userName}</span>
+                    <span className="text-[10px] text-muted-foreground">{p.role}</span>
+                    {(user?.role === "Teacher" || user?.role === "Admin") && p.userId !== myUserId && (
+                      <span className="flex gap-1">
+                        <button onClick={() => muteParticipant(p.userId)} aria-label={`Mute ${p.userName}`} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
+                          <MicOff className="size-3" />
+                        </button>
+                        <button onClick={() => kickParticipant(p.userId)} aria-label={`Remove ${p.userName}`} className="rounded p-0.5 text-destructive">
+                          <XCircle className="size-3" />
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {participants.length === 0 && (
+                  <p className="text-center text-[11px] text-muted-foreground py-6">No participants yet</p>
+                )}
+              </div>
+            ) : (
             <div className="flex-1 space-y-2 overflow-y-auto p-4">
-              {chat.length === 0 ? (
-                <p className="text-center text-[11px] text-muted-foreground py-6">No messages yet</p>
-              ) : (
-                chat.map((c, i) => (
-                  <div key={i} className={cn("flex gap-2", c.system && "justify-center")}>
-                    {c.system ? (
-                      <span className="text-[10px] text-muted-foreground italic">{c.message}</span>
+              {(() => {
+                const visible = chat.filter((c) =>
+                  sideTab === "qa" ? c.kind === "QA" || (c.message || "").includes("[Q&A]") : c.kind !== "QA",
+                )
+                if (visible.length === 0) {
+                  return (
+                    <p className="text-center text-[11px] text-muted-foreground py-6">
+                      {sideTab === "qa" ? "No questions yet" : "No messages yet"}
+                    </p>
+                  )
+                }
+                return visible.map((c, i) => (
+                  <div key={i} className={cn("flex gap-2", (c.system || c.deleted) && "justify-center")}>
+                    {c.system || c.deleted ? (
+                      <span className="text-[10px] text-muted-foreground italic">{c.deleted ? "Message removed" : c.message}</span>
                     ) : (
                       <>
                         <span className={cn(
@@ -1366,21 +1436,62 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                             <span className="text-[9px] text-muted-foreground">{formatTime(c.timestamp)}</span>
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">{c.message}</p>
+                          <div className="mt-0.5 flex gap-1">
+                            {["👍", "❤️"].map((r) => (
+                              <button
+                                key={r}
+                                type="button"
+                                aria-label={`React ${r}`}
+                                onClick={() => {
+                                  setChat((prev) => prev.map((m) => (m === c ? { ...m, reactions: { ...(m.reactions || {}), [r]: ((m.reactions || {})[r] || 0) + 1 } } : m)))
+                                  if (wsRef.current?.readyState === WebSocket.OPEN) {
+                                    wsRef.current.send(JSON.stringify({ type: "CHAT", message: r }))
+                                  }
+                                }}
+                                className="rounded px-1 text-[10px] hover:bg-muted"
+                              >
+                                {r}{c.reactions?.[r] ? ` ${c.reactions[r]}` : ""}
+                              </button>
+                            ))}
+                            {(user?.role === "Teacher" || user?.role === "Admin") && c.userId !== myUserId && (
+                              <button
+                                type="button"
+                                aria-label="Remove message"
+                                onClick={() => {
+                                  setChat((prev) => prev.map((m) => (m === c ? { ...m, deleted: true } : m)))
+                                  if (c.id && wsRef.current?.readyState === WebSocket.OPEN) {
+                                    wsRef.current.send(
+                                      JSON.stringify({
+                                        type: "DELETE_MESSAGE",
+                                        messageType: "DELETE_MESSAGE",
+                                        messageId: c.id,
+                                      }),
+                                    )
+                                  }
+                                }}
+                                className="rounded px-1 text-[10px] text-destructive hover:bg-destructive/10"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </>
                     )}
                   </div>
                 ))
-              )}
+              })()}
               <div ref={chatEndRef} />
             </div>
+            )}
             <form onSubmit={sendChatMessage} className="flex items-center gap-1.5 border-t border-border p-2.5">
               <input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isInProgress ? "Type a message..." : "Chat during live session"}
+                placeholder={sideTab === "qa" ? (isInProgress ? "Ask a question..." : "Q&A during live session") : isInProgress ? "Type a message..." : "Chat during live session"}
                 disabled={!isInProgress || !connected}
+                aria-label={sideTab === "qa" ? "Ask a question" : "Chat message"}
                 className="h-9 flex-1 rounded-lg border border-border bg-muted/60 px-3 text-xs outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background disabled:opacity-50"
               />
               <Button type="submit" size="icon" className="size-9 shrink-0" aria-label="Send" disabled={!isInProgress || !connected || !message.trim()}>

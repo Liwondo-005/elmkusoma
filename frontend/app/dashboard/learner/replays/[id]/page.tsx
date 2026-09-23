@@ -4,12 +4,12 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { learnerApi, type ReplayDetail } from "@/lib/learner-api"
+import { learnerApi, isReplayFailed, type ReplayDetail } from "@/lib/learner-api"
 import { announce } from "@/lib/announce"
 import {
   ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize,
   Minimize, Loader2, CalendarDays, Clock, User, Eye,
-  ChevronRight, CheckCircle
+  ChevronRight, CheckCircle, AlertCircle
 } from "lucide-react"
 
 function formatDuration(seconds: number) {
@@ -35,6 +35,8 @@ function formatDate(d: string) {
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
+type ConnectionStatus = "waiting" | "buffering" | "connected" | "disconnected"
+
 export default function ReplayViewerPage() {
   const params = useParams()
   const t = useTranslations("events")
@@ -57,7 +59,8 @@ export default function ReplayViewerPage() {
   const [speed, setSpeed] = useState(1)
   const [fullscreen, setFullscreen] = useState(false)
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected">("connected")
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("waiting")
+  const [quality, setQuality] = useState<"auto" | "1080p" | "720p" | "480p">("auto")
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
@@ -94,12 +97,22 @@ export default function ReplayViewerPage() {
     const onEnded = () => setPlaying(false)
     const onPlay = () => setPlaying(true)
     const onPause = () => setPlaying(false)
+    const onWaiting = () => setConnectionStatus("buffering")
+    const onPlaying = () => setConnectionStatus("connected")
+    const onStalled = () => setConnectionStatus("buffering")
+    const onCanPlay = () => setConnectionStatus((prev) => (prev === "waiting" || prev === "buffering" ? "connected" : prev))
+    const onError = () => setConnectionStatus("disconnected")
 
     video.addEventListener("timeupdate", onTimeUpdate)
     video.addEventListener("loadedmetadata", onLoadedMetadata)
     video.addEventListener("ended", onEnded)
     video.addEventListener("play", onPlay)
     video.addEventListener("pause", onPause)
+    video.addEventListener("waiting", onWaiting)
+    video.addEventListener("playing", onPlaying)
+    video.addEventListener("stalled", onStalled)
+    video.addEventListener("canplay", onCanPlay)
+    video.addEventListener("error", onError)
 
     return () => {
       video.removeEventListener("timeupdate", onTimeUpdate)
@@ -107,6 +120,11 @@ export default function ReplayViewerPage() {
       video.removeEventListener("ended", onEnded)
       video.removeEventListener("play", onPlay)
       video.removeEventListener("pause", onPause)
+      video.removeEventListener("waiting", onWaiting)
+      video.removeEventListener("playing", onPlaying)
+      video.removeEventListener("stalled", onStalled)
+      video.removeEventListener("canplay", onCanPlay)
+      video.removeEventListener("error", onError)
     }
   }, [data])
 
@@ -203,6 +221,27 @@ export default function ReplayViewerPage() {
   }
 
   const { replay, relatedResources, upcomingEvents } = data
+  const replayFailed = isReplayFailed(replay)
+  const connectionLabel =
+    connectionStatus === "connected"
+      ? t("viewer.connected")
+      : connectionStatus === "buffering"
+        ? t("viewer.buffering")
+        : connectionStatus === "waiting"
+          ? t("viewer.waiting")
+          : t("viewer.disconnected")
+  const connectionDotClass =
+    connectionStatus === "connected"
+      ? "bg-green-500"
+      : connectionStatus === "disconnected"
+        ? "bg-red-500"
+        : "bg-amber-500"
+  const relatedLessonHref =
+    replay.relatedLessonId && replay.relatedCourseId
+      ? `/dashboard/learner/courses/${replay.relatedCourseId}/lessons/${replay.relatedLessonId}`
+      : replay.relatedCourseId
+        ? `/dashboard/learner/courses/${replay.relatedCourseId}`
+        : null
 
   return (
     <main role="main" aria-label={t("viewer.eventContext")} className="space-y-6">
@@ -218,7 +257,9 @@ export default function ReplayViewerPage() {
             className="w-full"
             preload="metadata"
             onClick={togglePlay}
+            aria-label={replay.title}
           />
+          <span className="sr-only">{t("viewer.eventContext")}: {replay.title}</span>
 
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-10">
             <div
@@ -295,9 +336,41 @@ export default function ReplayViewerPage() {
         </div>
 
         <div className="p-4">
-          <div className="flex items-center gap-2">
-            <div className={`size-2 rounded-full ${connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"}`} />
+          <div className="flex items-center gap-2" role="status" aria-live="polite">
+            <div
+              className={`size-2 rounded-full ${connectionDotClass}`}
+              aria-hidden="true"
+              title={`${t("viewer.connectionStatus")}: ${connectionLabel}`}
+            />
             <span className="text-xs text-muted-foreground">{t("viewer.connectionStatus")}</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              — {connectionLabel}
+            </span>
+            <span className="sr-only">{connectionLabel}</span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1" role="group" aria-label={t("viewer.quality")}>
+            {(["auto", "1080p", "720p", "480p"] as const).map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => {
+                  setQuality(q)
+                  const video = videoRef.current
+                  if (!video) return
+                  const levels = (video as HTMLVideoElement & { qualities?: unknown[] }).qualities
+                  if (Array.isArray(levels) && levels.length > 0) {
+                    const idx = levels.findIndex((_, i) => String(i) === q || q === "auto")
+                    if (idx >= 0) video.currentTime = video.currentTime
+                  }
+                }}
+                aria-pressed={quality === q}
+                className={`rounded border px-2 py-0.5 text-[10px] font-medium ${
+                  quality === q ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {q === "auto" ? t("viewer.qualityAuto") : q}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -307,6 +380,20 @@ export default function ReplayViewerPage() {
           <div className="rounded-xl border border-border bg-card p-6">
             <h2 className="text-xl font-bold">{replay.title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{replay.eventTitle}</p>
+            {replayFailed ? (
+              <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive" role="alert">
+                <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="font-semibold">{t("status.recordingFailed")}</p>
+                  <p className="mt-0.5 opacity-90">{t("status.recordingFailedDesc")}</p>
+                </div>
+              </div>
+            ) : null}
+            {!replayFailed && (replay.recordingStatus === "PROCESSING" || (replay as { status?: string }).status === "PROCESSING") ? (
+              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" role="status">
+                {t("status.processing")}
+              </p>
+            ) : null}
 
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               <div className="flex items-start gap-2">
@@ -395,10 +482,11 @@ export default function ReplayViewerPage() {
                   {t("viewer.relatedCourse")}: {replay.relatedCourseTitle}
                 </Link>
               )}
-              {replay.relatedLessonId && (
+              {replay.relatedLessonId && relatedLessonHref && (
                 <Link
-                  href={`/dashboard/learner/courses/${replay.relatedCourseId}`}
+                  href={relatedLessonHref}
                   className="block rounded-lg border border-border p-3 text-sm font-medium hover:bg-muted/50"
+                  aria-label={`${t("viewer.relatedLesson")}: ${replay.relatedLessonTitle || replay.relatedLessonId}`}
                 >
                   {t("viewer.relatedLesson")}: {replay.relatedLessonTitle}
                 </Link>

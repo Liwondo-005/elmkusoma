@@ -428,7 +428,8 @@
     "modules": "modules",
     "viewDetails": "View Details",
     "viewPortfolio": "View Portfolio",
-    "failedToLoadDashboard": "Failed to load dashboard data"
+    "failedToLoadDashboard": "Failed to load dashboard data",
+    "learningFeed": "Learning Feed"
   },
   "primary": {
     "myTeacher": "My Teacher",
@@ -1290,19 +1291,42 @@
       "continueLearning": "Continue Your Learning",
       "continueDescription": "Keep the momentum going with these suggested next steps",
       "positionSaved": "Position saved",
-      "connectionStatus": "Connection Status"
+      "connectionStatus": "Connection Status",
+      "connected": "Connected",
+      "buffering": "Buffering",
+      "quality": "Quality",
+      "qualityAuto": "Auto",
+      "waiting": "Waiting for video",
+      "disconnected": "Disconnected"
     },
     "title": "Events & Workshops",
     "subtitle": "Discover seminars, workshops, webinars, and training sessions",
     "myRegistrations": "My Registrations",
     "searchPlaceholder": "Search events...",
     "tabs": {
+      "allEvents": "ALL EVENTS",
+      "related": "RELATED",
       "liveNow": "LIVE NOW",
       "upcoming": "UPCOMING",
       "registered": "REGISTERED",
       "past": "PAST",
       "replays": "REPLAYS"
     },
+    "status": {
+      "cancelled": "Cancelled",
+      "rescheduled": "Rescheduled",
+      "processing": "Recording is being processed",
+      "almostFull": "Almost full",
+      "recordingFailed": "Recording failed",
+      "recordingFailedDesc": "This recording could not be processed. Contact the organizer if you need access."
+    },
+    "join": {
+      "external": "Opens in a new tab"
+    },
+    "waitingRoom": "Waiting Room",
+    "checkingAccess": "Checking access...",
+    "sessionEnded": "This session has ended",
+    "attendanceRecorded": "Attendance recorded",
     "live": {
       "badge": "Live Now",
       "joinNow": "Join Now",
@@ -1331,7 +1355,9 @@
       "watchReplay": "Watch Replay",
       "recordingAvailable": "Recording available",
       "noReplay": "No recording available",
-      "materials": "{count} materials"
+      "materials": "{count} materials",
+      "viewAttendance": "View Attendance",
+      "registeredEvents": "Your registered events"
     },
     "replays": {
       "title": "Replays",
@@ -1354,7 +1380,9 @@
       "relatedLesson": "Related Lesson",
       "relatedResource": "Related Resource",
       "durationLabel": "Duration",
-      "dateRecorded": "Date Recorded"
+      "dateRecorded": "Date Recorded",
+      "newRecordings": "New Recordings",
+      "processingNote": "Recordings still processing appear here when ready."
     },
     "card": {
       "presenter": "by {name}",
@@ -1371,6 +1399,7 @@
       "presenter": "Presenter",
       "organizer": "Organized by {name}",
       "timezone": "Timezone",
+      "relatedCourse": "Related Course",
       "duration": "Duration",
       "capacity": "Capacity",
       "meetingUrl": "Join Meeting",
@@ -1396,7 +1425,9 @@
       "duringEvent": "During the Event",
       "afterEvent": "After the Event",
       "calendarAdded": "Event added to your calendar",
-      "tags": "Tags"
+      "tags": "Tags",
+      "accessLevel": "Access level",
+      "provider": "Provider"
     },
     "empty": {
       "liveNow": "No live events right now",
@@ -1411,7 +1442,9 @@
       "replaysDesc": "Recordings from past events will appear here.",
       "browseEvents": "Browse Events",
       "noEvents": "No events found",
-      "noEventsDesc": "Check back later for upcoming events"
+      "noEventsDesc": "Check back later for upcoming events",
+      "related": "No related events",
+      "relatedDesc": "Events linked to your enrolled courses will appear here."
     },
     "error": {
       "loadFailed": "Failed to load events",
@@ -1581,7 +1614,8 @@
         "duration": "Duration",
         "attendeeName": "Name",
         "attendeeEmail": "Email",
-        "replayAvailability": "Replay Availability"
+        "replayAvailability": "Replay Availability",
+        "noAttendance": "No attendance data available"
       }
     },
     "confirm": {
@@ -1596,7 +1630,16 @@
     "browseUpcomingLive": "Browse upcoming live classes.",
     "browseLiveClasses": "Browse Live Classes",
     "backToReplays": "Back to Replays",
-    "views": "{count} views"
+    "views": "{count} views",
+    "during": {
+      "connection": "Check your connection before joining; keep a stable network if possible.",
+      "attendance": "Stay for the full session so your attendance can be recorded.",
+      "questions": "Use chat or Q&A to ask questions during the session.",
+      "reconnect": "If you disconnect, return here and rejoin from this event page."
+    },
+    "lowBandwidth": {
+      "notice": "Low bandwidth mode: status updates refresh less often to save data."
+    }
   },
   "highered": {
     "myAcademicProfessionalWorld": "My Academic & Professional World",
@@ -2079,6 +2122,8 @@
     "courses": "Courses",
     "resources": "Resources",
     "liveClasses": "Live Classes",
+    "events": "Events",
+    "replays": "Replays",
     "announcements": "Announcements",
     "download": "Download",
     "startSearching": "Start searching",
@@ -2224,6 +2269,9 @@
       "ACADEMIC": "Academic",
       "REPLAY": "Replay",
       "CAREER": "Career"
+    },
+    "error": {
+      "load": "Failed to load notifications"
     }
   }
 }

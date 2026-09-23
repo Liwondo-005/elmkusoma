@@ -57,4 +57,12 @@ public class EventRequest {
     private String learningOutcomes;
     private String agenda;
     private UUID rescheduledFrom;
+
+    /** Optional links to course/module/lesson content (persisted on Event, §46/§48/§51/§52). */
+    private UUID relatedCourseId;
+    private UUID relatedModuleId;
+    private UUID relatedLessonId;
+
+    /** Owning provider id (stored on Event and enforced on mutation, §97). */
+    private String providerId;
 }

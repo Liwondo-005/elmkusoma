@@ -2,6 +2,9 @@ package tz.elmkusoma.event.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,7 +20,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/v1/events")
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
 public class EventController {
 
     private final EventService eventService;
@@ -31,17 +34,34 @@ public class EventController {
             HttpServletRequest request,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String eventType,
-            @RequestParam(required = false) String category) {
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String providerId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         UUID institutionId = getInstitutionId(request);
-        List<EventResponse> events = eventService.getEvents(institutionId, status, eventType, category);
+        String effectiveProviderId = scopedProviderId(providerId, request);
+
+        // §81/§82: optional Pageable pagination; absent page/size keeps legacy full-list behavior
+        if (page != null || size != null) {
+            Page<EventResponse> result = eventService.getEvents(institutionId, status, eventType, category,
+                    effectiveProviderId, pageRequest(page, size));
+            return pagedResponse(result);
+        }
+        List<EventResponse> events = eventService.getEvents(institutionId, status, eventType, category,
+                effectiveProviderId);
         return ResponseEntity.ok(ApiResponse.success(events));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<EventResponse>> getEvent(
+    public ResponseEntity<?> getEvent(
             @PathVariable UUID id,
             HttpServletRequest request) {
+        UUID institutionId = getInstitutionId(request);
         EventResponse event = eventService.getEventByIdForAdmin(id);
+        if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
+            // §41/§60/§98: object-level (ID-manipulation) denial across institutions
+            return ResponseEntity.status(404).body(ApiResponse.error("Event not found"));
+        }
         return ResponseEntity.ok(ApiResponse.success(event));
     }
 
@@ -51,6 +71,9 @@ public class EventController {
             @PathVariable UUID institutionId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String providerId,
             HttpServletRequest request) {
         UUID callerInstitutionId = getInstitutionId(request);
         String role = getRequestRole(request);
@@ -62,10 +85,15 @@ public class EventController {
         if ((effectiveStatus == null || effectiveStatus.isBlank()) && isLearnerRole(role)) {
             effectiveStatus = "PUBLISHED";
         }
-        List<EventResponse> events = eventService.getEvents(institutionId, effectiveStatus, null, null);
-        if (limit != null && limit > 0 && events.size() > limit) {
-            events = events.subList(0, limit);
+
+        // §82: real Pageable slicing replaces the previous in-memory subList(0, limit)
+        if (page != null || size != null || limit != null) {
+            int pageSize = size != null ? size : (limit != null ? limit : 20);
+            Page<EventResponse> result = eventService.getEvents(institutionId, effectiveStatus, null, null,
+                    providerId, pageRequest(page, pageSize));
+            return pagedResponse(result);
         }
+        List<EventResponse> events = eventService.getEvents(institutionId, effectiveStatus, null, null, providerId);
         return ResponseEntity.ok(ApiResponse.success(events));
     }
 
@@ -118,6 +146,7 @@ public class EventController {
         if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
+        assertProviderCanManage(existing, httpRequest);
         EventResponse event = eventService.updateEvent(id, request);
         return ResponseEntity.ok(ApiResponse.success("Event updated", event));
     }
@@ -125,13 +154,15 @@ public class EventController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteEvent(
             @PathVariable UUID id,
+            @RequestParam(defaultValue = "false") boolean force,
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
         if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
-        eventService.deleteEvent(id);
+        assertProviderCanManage(existing, httpRequest);
+        eventService.deleteEvent(id, force);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
@@ -151,7 +182,13 @@ public class EventController {
 
     @GetMapping("/{id}/materials")
     public ResponseEntity<ApiResponse<List<EventMaterialResponse>>> getEventMaterials(
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            HttpServletRequest httpRequest) {
+        UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse existing = eventService.getEventByIdForAdmin(id);
+        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
         List<EventMaterialResponse> materials = eventService.getEventMaterials(id);
         return ResponseEntity.ok(ApiResponse.success(materials));
     }
@@ -162,6 +199,11 @@ public class EventController {
             @Valid @RequestBody EventMaterialRequest request,
             HttpServletRequest httpRequest) {
         UUID userId = getUserId(httpRequest);
+        UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse existing = eventService.getEventByIdForAdmin(id);
+        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
         request.setEventId(id);
         EventMaterialResponse material = eventService.addEventMaterial(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -181,6 +223,11 @@ public class EventController {
             @PathVariable UUID id,
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse existing = eventService.getEventByIdForAdmin(id);
+        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+        assertProviderCanManage(existing, httpRequest);
         EventResponse event = eventService.publishEvent(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Event published", event));
     }
@@ -191,6 +238,11 @@ public class EventController {
             @RequestBody(required = false) Map<String, String> body,
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse existing = eventService.getEventByIdForAdmin(id);
+        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+        assertProviderCanManage(existing, httpRequest);
         String reason = body != null ? body.getOrDefault("reason", "") : "";
         EventResponse event = eventService.cancelEvent(id, institutionId, reason);
         return ResponseEntity.ok(ApiResponse.success("Event cancelled", event));
@@ -201,6 +253,11 @@ public class EventController {
             @PathVariable UUID id,
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse existing = eventService.getEventByIdForAdmin(id);
+        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+        assertProviderCanManage(existing, httpRequest);
         EventResponse event = eventService.startLiveEvent(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Event started live", event));
     }
@@ -210,6 +267,11 @@ public class EventController {
             @PathVariable UUID id,
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse existing = eventService.getEventByIdForAdmin(id);
+        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+        assertProviderCanManage(existing, httpRequest);
         EventResponse event = eventService.endLiveEvent(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Event ended", event));
     }
@@ -221,6 +283,52 @@ public class EventController {
         UUID institutionId = getInstitutionId(httpRequest);
         Map<String, Object> summary = eventService.getEventSummary(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(summary));
+    }
+
+    // ==================== Helpers ====================
+
+    private PageRequest pageRequest(Integer page, Integer size) {
+        int p = page != null && page >= 0 ? page : 0;
+        int s = size != null && size > 0 ? size : 20;
+        return PageRequest.of(p, s, Sort.by("startsAt").ascending());
+    }
+
+    private ResponseEntity<ApiResponse<List<EventResponse>>> pagedResponse(Page<EventResponse> result) {
+        return ResponseEntity.ok()
+                .header("X-Total-Count", String.valueOf(result.getTotalElements()))
+                .body(ApiResponse.success(result.getContent()));
+    }
+
+    /** §97: provider-role callers are always scoped to their own events. */
+    private String scopedProviderId(String providerId, HttpServletRequest request) {
+        String role = getRequestRole(request);
+        if ("PROVIDER_ADMIN".equals(role) || "PROVIDER_STAFF".equals(role)) {
+            UUID userId = getUserId(request);
+            return userId != null ? userId.toString() : providerId;
+        }
+        return providerId;
+    }
+
+    /**
+     * §97: when an event carries provider_id, only the owning provider (or organizer/admin)
+     * may mutate it.
+     */
+    private void assertProviderCanManage(EventResponse existing, HttpServletRequest request) {
+        if (existing.getProviderId() == null || existing.getProviderId().isBlank()) {
+            return;
+        }
+        String role = getRequestRole(request);
+        if (isAdminRole(role) || isPlatformRole(role)) {
+            return;
+        }
+        UUID userId = getUserId(request);
+        if (userId != null && userId.toString().equals(existing.getProviderId())) {
+            return;
+        }
+        if (userId != null && userId.equals(existing.getOrganizerId())) {
+            return;
+        }
+        throw new ForbiddenException("Only the owning provider can manage this event");
     }
 
     private UUID getUserId(HttpServletRequest request) {

@@ -28,21 +28,66 @@ public class LearnerEventController {
             HttpServletRequest request,
             @RequestParam(required = false) String eventType,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean personalized,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         UUID institutionId = getInstitutionId(request);
+        UUID userId = getUserId(request);
+
+        // §53: personal relevance ranking from enrollments + previous participation
+        if (Boolean.TRUE.equals(personalized) && userId != null
+                && (search == null || search.isBlank())) {
+            List<EventResponse> ranked = eventService.getPersonalizedEvents(institutionId, userId);
+            return ResponseEntity.ok(ApiResponse.success(sanitizeMeetingUrls(ranked, userId)));
+        }
+
         if (search != null && !search.isBlank()) {
             List<EventResponse> events = eventService.searchEvents(institutionId, search);
-            return ResponseEntity.ok(ApiResponse.success(events));
+            return ResponseEntity.ok(ApiResponse.success(sanitizeMeetingUrls(events, userId)));
+        }
+
+        // §81/§82: optional Pageable pagination (absent page/size keeps full list)
+        if (page != null || size != null) {
+            org.springframework.data.domain.Page<EventResponse> result =
+                    eventService.getEvents(institutionId, "PUBLISHED", eventType, category, null,
+                            org.springframework.data.domain.PageRequest.of(
+                                    page != null && page >= 0 ? page : 0,
+                                    size != null && size > 0 ? size : 20,
+                                    org.springframework.data.domain.Sort.by("startsAt").ascending()));
+            return ResponseEntity.ok()
+                    .header("X-Total-Count", String.valueOf(result.getTotalElements()))
+                    .body(ApiResponse.success(sanitizeMeetingUrls(result.getContent(), userId)));
         }
         List<EventResponse> events = eventService.getEvents(institutionId, "PUBLISHED", eventType, category);
-        return ResponseEntity.ok(ApiResponse.success(events));
+        return ResponseEntity.ok(ApiResponse.success(sanitizeMeetingUrls(events, userId)));
     }
 
     @GetMapping("/events/upcoming")
-    public ResponseEntity<ApiResponse<List<EventResponse>>> getUpcomingEvents(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<List<EventResponse>>> getUpcomingEvents(
+            HttpServletRequest request,
+            @RequestParam(required = false) Boolean personalized,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         UUID institutionId = getInstitutionId(request);
+        UUID userId = getUserId(request);
+        if (Boolean.TRUE.equals(personalized) && userId != null) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    sanitizeMeetingUrls(eventService.getPersonalizedEvents(institutionId, userId), userId)));
+        }
+        if (page != null || size != null) {
+            org.springframework.data.domain.Page<EventResponse> result =
+                    eventService.getUpcomingEvents(institutionId,
+                            org.springframework.data.domain.PageRequest.of(
+                                    page != null && page >= 0 ? page : 0,
+                                    size != null && size > 0 ? size : 20,
+                                    org.springframework.data.domain.Sort.by("startsAt").ascending()));
+            return ResponseEntity.ok()
+                    .header("X-Total-Count", String.valueOf(result.getTotalElements()))
+                    .body(ApiResponse.success(sanitizeMeetingUrls(result.getContent(), userId)));
+        }
         List<EventResponse> events = eventService.getUpcomingEvents(institutionId);
-        return ResponseEntity.ok(ApiResponse.success(events));
+        return ResponseEntity.ok(ApiResponse.success(sanitizeMeetingUrls(events, userId)));
     }
 
     @GetMapping("/events/past")
@@ -141,6 +186,11 @@ public class LearnerEventController {
         return ResponseEntity.ok(ApiResponse.success(events));
     }
 
+    /**
+     * §49: public materials for an event. Each item carries a stable material {@code id}
+     * and {@code fileUrl} so downstream consumers (e.g. D04 deep links) can reference
+     * materials directly — no separate linking platform is introduced here.
+     */
     @GetMapping("/events/{id}/materials")
     public ResponseEntity<ApiResponse<List<EventMaterialResponse>>> getEventMaterials(@PathVariable UUID id) {
         List<EventMaterialResponse> materials = eventService.getPublicEventMaterials(id);
@@ -151,6 +201,25 @@ public class LearnerEventController {
         Object userIdAttr = request.getAttribute("userId");
         if (userIdAttr instanceof UUID uuid) return uuid;
         return null;
+    }
+
+    /** §59: strip meeting/join URLs from list payloads for users who are not registered. */
+    private List<EventResponse> sanitizeMeetingUrls(List<EventResponse> events, UUID userId) {
+        if (events == null) {
+            return events;
+        }
+        for (EventResponse e : events) {
+            if (e.getMeetingUrl() == null) {
+                continue;
+            }
+            boolean registered = userId != null
+                    && (Boolean.TRUE.equals(e.getIsRegistered())
+                            || eventService.isUserRegistered(e.getId(), userId));
+            if (!registered) {
+                e.setMeetingUrl(null);
+            }
+        }
+        return events;
     }
 
     private UUID getInstitutionId(HttpServletRequest request) {
