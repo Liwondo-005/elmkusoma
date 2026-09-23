@@ -33,7 +33,7 @@ export default function ResourceDetailPage() {
       setResource(data)
 
       learnerApi.getRelatedResources(resourceId).then(setRelatedResources).catch(() => {})
-      learnerApi.checkBookmark("resource", resourceId).then((res) => setIsBookmarked(res.bookmarked)).catch(() => {})
+      learnerApi.checkBookmark("resource", resourceId).then((isBookmarked) => setIsBookmarked(isBookmarked)).catch(() => {})
     } catch {
       setError("Failed to load resource")
     } finally {

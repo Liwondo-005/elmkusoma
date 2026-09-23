@@ -128,7 +128,7 @@ public class AuditLog {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getArchivedAt() { return archivedAt; }
     public void setArchivedAt(LocalDateTime archivedAt) { this.archivedAt = archivedAt; }
-
+    
     public enum AuditAction {
         CREATE, UPDATE, DELETE, LOGIN, LOGOUT, LOGIN_FAILED,
         PASSWORD_CHANGE, ROLE_CHANGE, PERMISSION_CHANGE, EXPORT, IMPORT, VIEW

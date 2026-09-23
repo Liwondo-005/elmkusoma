@@ -1,21 +1,17 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useState, useEffect } from "react"
 import { NextIntlClientProvider } from "next-intl"
+import { useLocaleContext, messagesForLocale } from "@/components/locale-provider"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { LowBandwidthProvider } from "@/components/primary/low-bandwidth-provider"
 
-import en from "../../messages/en.json"
-import sw from "../../messages/sw.json"
-
-const messages = { en, sw }
-
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const { locale } = useLocaleContext()
   return (
-    <NextIntlClientProvider locale="en" messages={messages.en}>
+    <NextIntlClientProvider locale={locale} messages={messagesForLocale(locale)}>
       <AuthGuard>
         <LowBandwidthProvider>
           <div className="flex min-h-dvh bg-muted/40">

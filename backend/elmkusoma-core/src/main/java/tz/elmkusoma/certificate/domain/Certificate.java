@@ -33,6 +33,13 @@ public class Certificate extends BaseEntity {
     @Column(name = "serial_number", nullable = false, unique = true)
     private String serialNumber;
 
+    /**
+     * Legacy NOT NULL column in the certificates table (unique). Not previously mapped,
+     * which caused every certificate INSERT to fail with a not-null constraint violation.
+     */
+    @Column(name = "certificate_number")
+    private String certificateNumber;
+
     @Column(name = "certificate_type", nullable = false)
     @Enumerated(EnumType.STRING)
     private CertificateType certificateType;
@@ -93,6 +100,18 @@ public class Certificate extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, Object> metadata;
+
+    /**
+     * certificate_number is NOT NULL + UNIQUE in the database but has no default,
+     * so every INSERT must provide it. Generate one automatically when the caller
+     * did not set it explicitly.
+     */
+    @PrePersist
+    void onCreate() {
+        if (certificateNumber == null || certificateNumber.isBlank()) {
+            certificateNumber = "CERT-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
+        }
+    }
 
     public enum CertificateType {
         COMPLETION,

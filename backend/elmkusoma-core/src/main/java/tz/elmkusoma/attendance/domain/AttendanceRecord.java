@@ -30,6 +30,17 @@ public class AttendanceRecord extends BaseEntity {
     @Column(name = "attendance_date", nullable = false)
     private LocalDate attendanceDate;
 
+    @Column(name = "record_date", nullable = false)
+    private LocalDate recordDate;
+
+    @PrePersist
+    void onCreate() {
+        // record_date is NOT NULL with no DB default and is not set by builders
+        if (recordDate == null) {
+            recordDate = attendanceDate != null ? attendanceDate : LocalDate.now();
+        }
+    }
+
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private AttendanceStatus status;

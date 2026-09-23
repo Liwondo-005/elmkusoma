@@ -50,6 +50,7 @@ public class LiveKitWebhookController {
     private final LiveKitConfig liveKitConfig;
     private final Environment environment;
     private final UserRepository userRepository;
+    private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
     private final ObjectMapper objectMapper;
 
@@ -447,6 +448,17 @@ public class LiveKitWebhookController {
 
     private void handleRecordingStarted(Map<String, Object> payload) {
         try {
+            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
+            String roomName = room != null ? (String) room.get("name") : null;
+
+            if (roomName != null && roomName.startsWith("liveclass-")) {
+                UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
+                if (liveClassId != null) {
+                    log.info("Live class recording started: classId={}", liveClassId);
+                }
+                return;
+            }
+
             UUID eventId = resolveEventId(payload);
             if (eventId == null) return;
 
@@ -480,16 +492,43 @@ public class LiveKitWebhookController {
 
     private void handleRecordingCompleted(Map<String, Object> payload) {
         try {
+            // EgressInfo is wrapped under "egress", but some payloads put it at top level.
+            Object egressObj = payload.get("egress");
+            Map<String, Object> egress = egressObj instanceof Map
+                    ? (Map<String, Object>) egressObj : payload;
+            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
+            String roomName = room != null ? (String) room.get("name") : null;
+
+            String recordingUrl = null;
+            Integer durationSeconds = null;
+            if (egress != null) {
+                // LiveKit serializes proto fields in snake_case (file_results / location).
+                Object fileResults = egress.get("file_results");
+                if (fileResults == null) fileResults = egress.get("fileResults");
+                if (fileResults instanceof java.util.List<?> files && !files.isEmpty()) {
+                    Map<String, Object> firstFile = (Map<String, Object>) files.get(0);
+                    Object loc = firstFile.get("location");
+                    if (!(loc instanceof String) || loc.toString().isBlank()) loc = firstFile.get("url");
+                    if (loc instanceof String) recordingUrl = (String) loc;
+                    Object duration = firstFile.get("duration");
+                    if (duration instanceof Number n) durationSeconds = n.intValue();
+                }
+            }
+            final String finalRecordingUrl = recordingUrl;
+            final Integer finalDuration = durationSeconds;
+
+            if (roomName != null && roomName.startsWith("liveclass-")) {
+                handleLiveClassRecordingCompleted(roomName, finalRecordingUrl);
+                return;
+            }
+
             UUID eventId = resolveEventId(payload);
             if (eventId == null) return;
 
-            String recordingUrl = extractRecordingUrl(payload);
-            Integer durationSeconds = extractDurationSeconds(payload);
-
             eventRepository.findById(eventId).ifPresent(event -> {
                 event.setRecordingStatus("AVAILABLE");
-                if (recordingUrl != null) {
-                    event.setRecordingUrl(recordingUrl);
+                if (finalRecordingUrl != null) {
+                    event.setRecordingUrl(finalRecordingUrl);
                 }
                 eventRepository.save(event);
 
@@ -513,11 +552,11 @@ public class LiveKitWebhookController {
 
                 if (target != null) {
                     target.setStatus(Replay.STATUS_AVAILABLE);
-                    if (recordingUrl != null) {
-                        target.setRecordingUrl(recordingUrl);
+                    if (finalRecordingUrl != null) {
+                        target.setRecordingUrl(finalRecordingUrl);
                     }
-                    if (durationSeconds != null) {
-                        target.setDurationSeconds(durationSeconds);
+                    if (finalDuration != null) {
+                        target.setDurationSeconds(finalDuration);
                     }
                     replayRepository.save(target);
                     log.info("Replay AVAILABLE from recording_completed: eventId={}, replayId={}",
@@ -525,12 +564,12 @@ public class LiveKitWebhookController {
                 } else {
                     replays.stream()
                             .filter(r -> Replay.STATUS_AVAILABLE.equals(r.getStatus()))
-                            .filter(r -> recordingUrl != null && !recordingUrl.equals(r.getRecordingUrl()))
+                            .filter(r -> finalRecordingUrl != null && !finalRecordingUrl.equals(r.getRecordingUrl()))
                             .findFirst()
                             .ifPresent(r -> {
-                                r.setRecordingUrl(recordingUrl);
-                                if (durationSeconds != null) {
-                                    r.setDurationSeconds(durationSeconds);
+                                r.setRecordingUrl(finalRecordingUrl);
+                                if (finalDuration != null) {
+                                    r.setDurationSeconds(finalDuration);
                                 }
                                 replayRepository.save(r);
                             });
@@ -543,6 +582,18 @@ public class LiveKitWebhookController {
 
     private void handleRecordingFailed(Map<String, Object> payload) {
         try {
+            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
+            String roomName = room != null ? (String) room.get("name") : null;
+
+            if (roomName != null && roomName.startsWith("liveclass-")) {
+                UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
+                if (liveClassId != null) {
+                    liveClassRepository.findById(liveClassId).ifPresent(lc ->
+                            log.info("Live class recording failed: classId={}", liveClassId));
+                }
+                return;
+            }
+
             UUID eventId = resolveEventId(payload);
             if (eventId == null) return;
 
@@ -578,33 +629,33 @@ public class LiveKitWebhookController {
         }
     }
 
-    private String extractRecordingUrl(Map<String, Object> payload) {
-        if (!(payload.get("egress") instanceof Map<?, ?> egress)) {
-            return null;
+    private void handleLiveClassRecordingCompleted(String roomName, String recordingUrl) {
+        try {
+            UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
+            if (liveClassId == null) return;
+
+            liveClassRepository.findById(liveClassId).ifPresent(liveClass -> {
+                if (recordingUrl != null) {
+                    liveClass.setRecordingUrl(recordingUrl);
+                    liveClassRepository.save(liveClass);
+                    log.info("Live class recording URL updated: classId={}, url={}", liveClassId, recordingUrl);
+                } else {
+                    log.warn("Live class recording completed but no URL: classId={}", liveClassId);
+                }
+            });
+        } catch (Exception e) {
+            log.error("Error handling live class recording_completed webhook", e);
         }
-        Object fileResults = egress.get("fileResults");
-        if (fileResults instanceof List<?> files && !files.isEmpty()
-                && files.get(0) instanceof Map<?, ?> firstFile) {
-            Object url = firstFile.get("url");
-            if (url != null) {
-                return url.toString();
-            }
-        }
-        return null;
     }
 
-    private Integer extractDurationSeconds(Map<String, Object> payload) {
-        if (!(payload.get("egress") instanceof Map<?, ?> egress)) {
+    private UUID extractLiveClassIdFromRoomName(String roomName) {
+        try {
+            if (roomName.startsWith("liveclass-")) {
+                return UUID.fromString(roomName.substring("liveclass-".length()));
+            }
+            return null;
+        } catch (Exception e) {
             return null;
         }
-        Object fileResults = egress.get("fileResults");
-        if (fileResults instanceof List<?> files && !files.isEmpty()
-                && files.get(0) instanceof Map<?, ?> firstFile) {
-            Object duration = firstFile.get("duration");
-            if (duration instanceof Number n) {
-                return n.intValue();
-            }
-        }
-        return null;
     }
 }

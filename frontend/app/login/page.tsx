@@ -9,22 +9,24 @@ import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { Eye, EyeOff } from "lucide-react"
 
-const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
-})
-
-type LoginValues = z.infer<typeof loginSchema>
-
 function LoginForm() {
+  const t = useTranslations("auth")
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState("")
   const { login } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") || "/dashboard"
+
+  const loginSchema = z.object({
+    email: z.string().min(1, t("emailRequired")).email(t("invalidEmail")),
+    password: z.string().min(1, t("passwordRequired")).min(6, t("passwordTooShort")),
+  })
+
+  type LoginValues = z.infer<typeof loginSchema>
 
   const {
     register,
@@ -62,10 +64,10 @@ function LoginForm() {
           <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-sm p-8 shadow-lg">
             <div className="text-center">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Welcome back
+                {t("welcomeBack")}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Sign in to continue your learning journey
+                {t("loginToContinue")}
               </p>
             </div>
 
@@ -79,7 +81,7 @@ function LoginForm() {
               <div className="space-y-4">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-foreground">
-                    Email Address
+                    {t("emailAddress")}
                   </label>
                   <input
                     id="email"
@@ -96,20 +98,20 @@ function LoginForm() {
                 <div>
                   <div className="flex items-center justify-between">
                     <label htmlFor="password" className="text-sm font-medium text-foreground">
-                      Password
+                      {t("password")}
                     </label>
                     <Link
                       href="/forgot-password"
                       className="text-xs font-medium text-primary hover:underline"
                     >
-                      Forgot password?
+                      {t("forgotPassword")}?
                     </Link>
                   </div>
                   <div className="relative mt-1.5">
                     <input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder={t("passwordPlaceholder")}
                       {...register("password")}
                       className="h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 pr-11 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
@@ -118,6 +120,7 @@ function LoginForm() {
                       onClick={() => setShowPassword((v) => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
                       tabIndex={-1}
+                      aria-label={t("togglePasswordVisibility")}
                     >
                       {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
@@ -129,14 +132,14 @@ function LoginForm() {
               </div>
 
               <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
-                {isSubmitting ? "Signing in..." : "Sign In"}
+                {isSubmitting ? t("signingIn") : t("signIn")}
               </Button>
             </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
+              {t("dontHaveAccount")}{" "}
               <Link href="/register" className="font-medium text-primary hover:underline">
-                Register
+                {t("register")}
               </Link>
             </p>
           </div>

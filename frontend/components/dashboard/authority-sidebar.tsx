@@ -26,23 +26,26 @@ import {
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 
-const authorityNav: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> = [
-  { label: "Overview", href: "/oversight", icon: LayoutDashboard },
-  { label: "Schools", href: "/oversight/schools", icon: Building2 },
-  { label: "Performance", href: "/oversight/performance", icon: BarChart3 },
-  { label: "Attendance", href: "/oversight/attendance", icon: ClipboardList },
-  { label: "Curriculum", href: "/oversight/curriculum", icon: BookOpen },
-  { label: "Assessments", href: "/oversight/assessments", icon: FileText },
-  { label: "Live Classes", href: "/oversight/live-classes", icon: Video },
-  { label: "Reports", href: "/oversight/reports", icon: FileBarChart },
-  { label: "Alerts", href: "/oversight/alerts", icon: AlertTriangle },
+const authorityNav: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Overview", labelKey: "overview", href: "/oversight", icon: LayoutDashboard },
+  { label: "Schools", labelKey: "schools", href: "/oversight/schools", icon: Building2 },
+  { label: "Performance", labelKey: "performance", href: "/oversight/performance", icon: BarChart3 },
+  { label: "Attendance", labelKey: "attendance", href: "/oversight/attendance", icon: ClipboardList },
+  { label: "Curriculum", labelKey: "curriculum", href: "/oversight/curriculum", icon: BookOpen },
+  { label: "Assessments", labelKey: "assessments", href: "/oversight/assessments", icon: FileText },
+  { label: "Live Classes", labelKey: "liveClasses", href: "/oversight/live-classes", icon: Video },
+  { label: "Reports", labelKey: "reports", href: "/oversight/reports", icon: FileBarChart },
+  { label: "Alerts", labelKey: "alerts", href: "/oversight/alerts", icon: AlertTriangle },
 ]
 
 export function AuthoritySidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const router = useRouter()
+  const t = useTranslations("nav")
+  const tc = useTranslations("common")
 
   function handleLogout() {
     logout()
@@ -66,7 +69,7 @@ export function AuthoritySidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Education Oversight
+          {t("educationOversight")}
         </p>
         {authorityNav.map((item) => {
           const active = pathname === item.href || (item.href !== "/oversight" && pathname.startsWith(item.href))
@@ -83,14 +86,14 @@ export function AuthoritySidebar({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <item.icon className="size-4 shrink-0" />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{item.labelKey ? t(item.labelKey) : item.label}</span>
             </Link>
           )
         })}
 
         <div className="my-2 border-t border-border" />
         <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Account
+          {t("account")}
         </p>
         <Link
           href="/oversight/profile"
@@ -102,7 +105,7 @@ export function AuthoritySidebar({ onNavigate }: { onNavigate?: () => void }) {
           )}
         >
           <User className="size-4 shrink-0" />
-          <span className="flex-1">Profile</span>
+          <span className="flex-1">{t("profile")}</span>
         </Link>
         <Link
           href="/oversight/settings"
@@ -114,7 +117,7 @@ export function AuthoritySidebar({ onNavigate }: { onNavigate?: () => void }) {
           )}
         >
           <Settings className="size-4 shrink-0" />
-          <span className="flex-1">Settings</span>
+          <span className="flex-1">{t("settings")}</span>
         </Link>
       </nav>
 
@@ -125,7 +128,7 @@ export function AuthoritySidebar({ onNavigate }: { onNavigate?: () => void }) {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <LogOut className="size-4 shrink-0" />
-          Logout
+          {tc("logout")}
         </button>
       </div>
     </div>

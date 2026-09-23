@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Menu, X, Bell, Search, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { useAuth } from "@/lib/auth"
+import { useLocaleContext } from "@/components/locale-provider"
+import { learnerApi } from "@/lib/learner-api"
 
 function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("common")
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<Array<{ type: string; id: string; title: string; subtitle: string }>>([])
   const [loading, setLoading] = useState(false)
@@ -54,15 +58,15 @@ function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
       <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-xl">
         <div className="flex items-center gap-3 border-b border-border px-4">
           <Search className="size-4 text-muted-foreground" />
-          <input ref={inputRef} type="text" placeholder="Search users, institutions, live classes, payments..."
+          <input ref={inputRef} type="text" placeholder={t("searchPlatform")}
             value={query} onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-muted-foreground" />
           <kbd className="hidden rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">ESC</kbd>
         </div>
         <div className="max-h-80 overflow-y-auto p-2">
-          {loading && <p className="px-3 py-6 text-center text-sm text-muted-foreground">Searching...</p>}
+          {loading && <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("searching")}</p>}
           {!loading && query.length >= 2 && results.length === 0 && (
-            <p className="px-3 py-6 text-center text-sm text-muted-foreground">No results found</p>
+            <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("noResults")}</p>
           )}
           {results.map((r) => (
             <button key={`${r.type}-${r.id}`} onClick={() => navigateTo(r.type, r.id)}
@@ -76,7 +80,7 @@ function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
           ))}
           {query.length < 2 && (
             <div className="px-3 py-6 text-center">
-              <p className="text-sm text-muted-foreground">Type to search across the platform</p>
+              <p className="text-sm text-muted-foreground">{t("typeToSearch")}</p>
             </div>
           )}
         </div>
@@ -86,9 +90,13 @@ function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
 }
 
 export function DashboardTopbar() {
+  const t = useTranslations("common")
+  const tn = useTranslations("nav")
+  const { locale, setLocale } = useLocaleContext()
   const [open, setOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const { user, logout } = useAuth()
   const router = useRouter()
 
@@ -101,21 +109,28 @@ export function DashboardTopbar() {
     return () => document.removeEventListener("keydown", handleKey)
   }, [])
 
+  useEffect(() => {
+    if (!user || user.role !== "Other Learner") return
+    learnerApi.getUnreadCount().then((data) => {
+      setUnreadCount(data.count)
+    }).catch(() => {})
+    // Poll every 30 seconds
+    const interval = setInterval(() => {
+      learnerApi.getUnreadCount().then((data) => {
+        setUnreadCount(data.count)
+      }).catch(() => {})
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [user])
+
   function handleLogout() {
     logout()
     router.push("/login")
   }
 
   function toggleLocale() {
-    const current = document.cookie.split('; ').find(c => c.startsWith('NEXT_LOCALE='))?.split('=')[1] || 'en'
-    const next = current === 'en' ? 'sw' : 'en'
-    document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000`
-    window.location.reload()
+    setLocale(locale === "en" ? "sw" : "en")
   }
-
-  const locale = typeof document !== 'undefined'
-    ? (document.cookie.split('; ').find(c => c.startsWith('NEXT_LOCALE='))?.split('=')[1] || 'en')
-    : 'en'
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -130,7 +145,7 @@ export function DashboardTopbar() {
           variant="ghost"
           size="icon"
           className="h-10 w-10 lg:hidden"
-          aria-label="Open menu"
+          aria-label={t("openMenu")}
           onClick={() => setOpen(true)}
         >
           <Menu className="size-5" />
@@ -140,7 +155,7 @@ export function DashboardTopbar() {
           <button onClick={() => setSearchOpen(true)}
             className="hidden items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted sm:flex">
             <Search className="size-4" />
-            <span>Search platform...</span>
+            <span>{t("searchPlatform")}</span>
             <kbd className="ml-4 rounded-md border border-border px-1.5 py-0.5 text-[10px]">Ctrl+K</kbd>
           </button>
         ) : (
@@ -148,7 +163,7 @@ export function DashboardTopbar() {
             <Search className="absolute left-3 size-4 text-muted-foreground" />
             <input
               type="search"
-              placeholder="Search courses, lessons..."
+              placeholder={t("searchCourses")}
               className="h-10 w-64 rounded-lg border border-border bg-muted/60 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background"
             />
           </label>
@@ -159,18 +174,28 @@ export function DashboardTopbar() {
             type="button"
             onClick={toggleLocale}
             className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Switch language"
+            aria-label={t("changeLanguage")}
+            title={t("changeLanguage")}
           >
             <Globe className="size-3.5" />
-            {locale === 'en' ? 'SW' : 'EN'}
+            {locale === "en" ? "EN" : "SW"}
           </button>
           <button
             type="button"
             className="relative flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Notifications"
+            aria-label={tn("notifications")}
+            onClick={() => {
+              if (user?.role === "Other Learner") {
+                router.push("/dashboard/learner/notifications-center")
+              }
+            }}
           >
             <Bell className="size-5" />
-            <span className="absolute right-2 top-2 size-2 rounded-full bg-orange" />
+            {user?.role === "Other Learner" && unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-orange text-[9px] font-bold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
           <div className="relative">
             <button
@@ -196,7 +221,7 @@ export function DashboardTopbar() {
                   onClick={handleLogout}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
-                  Logout
+                  {t("logout")}
                 </button>
               </div>
             )}
@@ -214,7 +239,7 @@ export function DashboardTopbar() {
               variant="ghost"
               size="icon"
               className="absolute right-2 top-3 z-10 h-9 w-9"
-              aria-label="Close menu"
+              aria-label={t("closeMenu")}
               onClick={() => setOpen(false)}
             >
               <X className="size-5" />

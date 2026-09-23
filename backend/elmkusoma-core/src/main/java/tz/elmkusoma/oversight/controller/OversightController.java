@@ -271,7 +271,7 @@ public class OversightController {
     }
 
     @GetMapping("/live-classes/{liveClassId}/observe")
-    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<ObserverJoinResponse> getObserverJoinUrl(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID liveClassId) {

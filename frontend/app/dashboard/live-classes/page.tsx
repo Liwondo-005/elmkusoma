@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
 import { dashboardApi } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
-import { Video, Calendar, Clock, Users, Play, CheckCircle, ArrowRight, User } from "lucide-react"
+import { Video, Calendar, Clock, Users, Play, CheckCircle, ArrowRight, User, AlertCircle } from "lucide-react"
 
 interface LiveClass {
   id?: string
@@ -18,6 +18,7 @@ interface LiveClass {
   maxParticipants?: number
   durationMinutes?: number
   recordingUrl?: string
+  canJoin?: boolean | null
 }
 
 function isToday(dateStr?: string): boolean {
@@ -143,9 +144,15 @@ export default function LiveClassesPage() {
                           </span>
                         )}
                       </div>
-                      <p className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1">
-                        <CheckCircle className="size-3" /> You are eligible to join
-                      </p>
+                      {cls.canJoin === false ? (
+                        <p className="mt-2 text-xs text-amber-600 font-medium flex items-center gap-1">
+                          <AlertCircle className="size-3" /> Waiting for class to go live
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1">
+                          <CheckCircle className="size-3" /> You are eligible to join
+                        </p>
+                      )}
                       <Link
                         href={`/live-classes/${cls.id}`}
                         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 transition-colors"

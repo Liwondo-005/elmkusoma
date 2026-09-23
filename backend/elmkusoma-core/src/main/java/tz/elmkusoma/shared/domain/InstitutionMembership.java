@@ -52,6 +52,7 @@ public class InstitutionMembership {
         ADMIN,
         TEACHER,
         STUDENT,
-        PARENT
+        PARENT,
+        OTHER_LEARNER
     }
 }

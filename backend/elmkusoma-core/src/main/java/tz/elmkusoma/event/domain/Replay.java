@@ -20,7 +20,7 @@ public class Replay extends BaseEntity {
     public static final String STATUS_AVAILABLE = "AVAILABLE";
     public static final String STATUS_FAILED = "FAILED";
 
-    @Column(name = "event_id", nullable = false)
+    @Column(name = "event_id")
     private UUID eventId;
 
     @Column(name = "live_session_id")

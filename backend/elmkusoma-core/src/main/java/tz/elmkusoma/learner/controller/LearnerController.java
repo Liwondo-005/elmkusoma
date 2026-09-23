@@ -40,6 +40,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.HashSet;
 
 @RestController
 @RequestMapping("/v1/learner")
@@ -64,6 +65,8 @@ public class LearnerController {
     private final CertificateTemplateRepository certificateTemplateRepository;
     private final UserRepository userRepository;
     private final LiveClassParticipantRepository liveClassParticipantRepository;
+    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
+    private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
     private final LearnerGoalRepository learningGoalRepository;
 
     // ── Profile ──────────────────────────────────────────────────────────
@@ -700,6 +703,159 @@ public class LearnerController {
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Certificate not found")));
     }
 
+    // ── Course Lessons (flattened) ─────────────────────────────────────
+
+    @GetMapping("/courses/{courseId}/lessons")
+    @Operation(summary = "Get all lessons for a course (flattened across modules)")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getCourseLessons(@PathVariable UUID courseId) {
+        List<CourseModule> modules = courseModuleRepository.findByCourseIdAndIsDeletedFalseOrderBySortOrder(courseId);
+        List<Map<String, Object>> allLessons = new ArrayList<>();
+        for (CourseModule module : modules) {
+            List<CourseLesson> lessons = courseLessonRepository.findByModuleIdAndIsDeletedFalseOrderBySortOrder(module.getId());
+            for (CourseLesson lesson : lessons) {
+                Map<String, Object> lessonMap = new LinkedHashMap<>();
+                lessonMap.put("id", lesson.getId());
+                lessonMap.put("moduleId", lesson.getModuleId());
+                lessonMap.put("moduleId", module.getId());
+                lessonMap.put("moduleTitle", module.getTitle());
+                lessonMap.put("title", lesson.getTitle());
+                lessonMap.put("contentType", lesson.getContentType());
+                lessonMap.put("contentUrl", lesson.getContentUrl());
+                lessonMap.put("durationMinutes", lesson.getDurationMinutes());
+                lessonMap.put("sortOrder", lesson.getSortOrder());
+                lessonMap.put("isFree", lesson.getIsFree());
+                allLessons.add(lessonMap);
+            }
+        }
+        return ResponseEntity.ok(ApiResponse.success(allLessons));
+    }
+
+    @GetMapping("/courses/lessons/{lessonId}")
+    @Operation(summary = "Get a specific course lesson detail")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getCourseLessonDetail(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID lessonId) {
+        CourseLesson lesson = courseLessonRepository.findById(lessonId)
+                .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                .orElse(null);
+        if (lesson == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Lesson not found"));
+        }
+        CourseModule module = courseModuleRepository.findById(lesson.getModuleId()).orElse(null);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", lesson.getId());
+        result.put("moduleId", lesson.getModuleId());
+        result.put("moduleTitle", module != null ? module.getTitle() : null);
+        result.put("title", lesson.getTitle());
+        result.put("contentType", lesson.getContentType());
+        result.put("contentUrl", lesson.getContentUrl());
+        result.put("durationMinutes", lesson.getDurationMinutes());
+        result.put("sortOrder", lesson.getSortOrder());
+        result.put("isFree", lesson.getIsFree());
+
+        // Check completion status
+        LessonProgress lp = lessonProgressRepository.findByLessonIdAndStudentIdAndIsDeletedFalse(lessonId, userId).orElse(null);
+        result.put("completed", lp != null && lp.getCompletionPercentage() != null && lp.getCompletionPercentage() >= 100.0);
+        result.put("progressPercentage", lp != null && lp.getCompletionPercentage() != null ? lp.getCompletionPercentage() : 0.0);
+
+        // Get navigation info (previous/next lesson within course)
+        if (module != null) {
+            Course course = courseRepository.findById(module.getCourseId()).orElse(null);
+            if (course != null) {
+                List<CourseModule> allModules = courseModuleRepository.findByCourseIdAndIsDeletedFalseOrderBySortOrder(course.getId());
+                List<CourseLesson> flatLessons = new ArrayList<>();
+                for (CourseModule m : allModules) {
+                    flatLessons.addAll(courseLessonRepository.findByModuleIdAndIsDeletedFalseOrderBySortOrder(m.getId()));
+                }
+                int idx = -1;
+                for (int i = 0; i < flatLessons.size(); i++) {
+                    if (flatLessons.get(i).getId().equals(lessonId)) {
+                        idx = i;
+                        break;
+                    }
+                }
+                if (idx > 0) {
+                    CourseLesson prev = flatLessons.get(idx - 1);
+                    result.put("previousLessonId", prev.getId());
+                    result.put("previousLessonTitle", prev.getTitle());
+                }
+                if (idx >= 0 && idx < flatLessons.size() - 1) {
+                    CourseLesson next = flatLessons.get(idx + 1);
+                    result.put("nextLessonId", next.getId());
+                    result.put("nextLessonTitle", next.getTitle());
+                }
+                result.put("courseId", course.getId());
+                result.put("totalLessons", flatLessons.size());
+                result.put("currentIndex", idx + 1);
+            }
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @PostMapping("/me/lessons/{lessonId}/complete")
+    @Operation(summary = "Mark a lesson as completed and update course progress")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> completeLesson(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID lessonId) {
+        CourseLesson lesson = courseLessonRepository.findById(lessonId)
+                .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                .orElse(null);
+        if (lesson == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Lesson not found"));
+        }
+
+        // Upsert lesson progress to 100%
+        LessonProgress progress = lessonProgressRepository.findByLessonIdAndStudentIdAndIsDeletedFalse(lessonId, userId)
+                .orElseGet(() -> LessonProgress.builder()
+                        .lessonId(lessonId)
+                        .studentId(userId)
+                        .startedAt(LocalDateTime.now())
+                        .build());
+        progress.setCompletionPercentage(100.0);
+        if (progress.getCompletedAt() == null) {
+            progress.setCompletedAt(LocalDateTime.now());
+        }
+        lessonProgressRepository.save(progress);
+
+        // Update enrollment progress
+        CourseModule module = courseModuleRepository.findById(lesson.getModuleId()).orElse(null);
+        if (module != null) {
+            UUID courseId = module.getCourseId();
+            enrollmentRepository.findByUserIdAndCourseIdAndIsDeletedFalse(userId, courseId).ifPresent(enrollment -> {
+                List<CourseModule> modules = courseModuleRepository.findByCourseIdAndIsDeletedFalseOrderBySortOrder(courseId);
+                Set<UUID> moduleIds = modules.stream().map(CourseModule::getId).collect(Collectors.toSet());
+                Set<UUID> allLessonIds = new HashSet<>();
+                for (UUID mid : moduleIds) {
+                    courseLessonRepository.findByModuleIdAndIsDeletedFalseOrderBySortOrder(mid)
+                            .forEach(l -> allLessonIds.add(l.getId()));
+                }
+                long total = allLessonIds.size();
+                long completed = lessonProgressRepository.findByStudentIdAndIsDeletedFalse(userId).stream()
+                        .filter(lp -> allLessonIds.contains(lp.getLessonId()))
+                        .filter(lp -> lp.getCompletionPercentage() != null && lp.getCompletionPercentage() >= 100.0)
+                        .count();
+                double pct = total == 0 ? 0.0 : (completed * 100.0 / total);
+                enrollment.setProgressPercentage(pct);
+                if (pct >= 100.0 && enrollment.getCompletedAt() == null) {
+                    enrollment.setCompletedAt(LocalDateTime.now());
+                }
+                enrollmentRepository.save(enrollment);
+            });
+
+            // Return updated course progress
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("lessonId", lessonId);
+            result.put("completed", true);
+            enrollmentRepository.findByUserIdAndCourseIdAndIsDeletedFalse(userId, module.getCourseId()).ifPresent(e -> {
+                result.put("courseProgressPercentage", e.getProgressPercentage());
+            });
+            return ResponseEntity.ok(ApiResponse.success("Lesson completed", result));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success("Lesson completed", Map.of("lessonId", lessonId, "completed", true)));
+    }
+
     // ── Search ───────────────────────────────────────────────────────────
 
     @GetMapping("/search")
@@ -1064,6 +1220,19 @@ public class LearnerController {
     }
 
     private LiveClassResponse toLiveClassResponse(LiveClass lc) {
+        String teacherName = null;
+        if (lc.getTeacherId() != null) {
+            teacherName = teacherRepository.findById(lc.getTeacherId())
+                    .flatMap(t -> userRepository.findById(t.getUserId()))
+                    .map(User::getFullName)
+                    .orElse(null);
+        }
+        String subjectName = null;
+        if (lc.getSubjectId() != null) {
+            subjectName = subjectRepository.findById(lc.getSubjectId())
+                    .map(s -> s.getName())
+                    .orElse(null);
+        }
         return LiveClassResponse.builder()
                 .id(lc.getId())
                 .title(lc.getTitle())
@@ -1074,6 +1243,13 @@ public class LearnerController {
                 .maxParticipants(lc.getMaxParticipants())
                 .teacherId(lc.getTeacherId())
                 .subjectId(lc.getSubjectId())
+                .teacherName(teacherName)
+                .subjectName(subjectName)
+                .recordingUrl(lc.getRecordingUrl())
+                .recordingEnabled(Boolean.TRUE.equals(lc.getRecordingEnabled()))
+                .sessionType(lc.getSessionType() != null ? lc.getSessionType().name() : "LECTURE")
+                .canJoin("IN_PROGRESS".equals(lc.getStatus()) || "LIVE".equals(lc.getStatus()))
+                .createdAt(lc.getCreatedAt() != null ? lc.getCreatedAt().toString() : null)
                 .build();
     }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { type ReactNode } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 
 export function LearnerHeader({ firstName, level, subtitle }: { firstName: string; level?: string; subtitle?: string }) {
@@ -138,10 +139,11 @@ export function EmptyState({ icon, title, description, action }: { icon?: ReactN
 }
 
 export function LoadingState() {
+  const t = useTranslations("common")
   return (
-    <div className="flex items-center justify-center py-20" role="status" aria-label="Loading">
+    <div className="flex items-center justify-center py-20" role="status" aria-label={t("loading")}>
       <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">{t("loading")}</span>
     </div>
   )
 }
