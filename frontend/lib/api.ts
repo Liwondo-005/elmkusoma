@@ -1782,6 +1782,24 @@ export const dashboardApi = {
 
   getLiveClasses: () =>
     request<unknown[]>("/v1/student/dashboard/live-classes"),
+
+  // Student live-class list that includes classes that are currently running
+  // and recently completed (±7 day window). The dashboard variant above only
+  // queries "now → +7 days", which can never include an IN_PROGRESS class
+  // (its scheduledAt is already in the past), leaving the live "Join Now!"
+  // section permanently empty — used by the student Live Learning page that
+  // students return to after leaving a live classroom. size=100 because the
+  // endpoint's default first-20 window is institution-wide and unprioritized:
+  // a running class could otherwise be paginated out of the list a student
+  // returns to after leaving it.
+  getStudentLiveClasses: () =>
+    request<unknown[]>("/v1/student/live-classes?size=100"),
+
+  // Unpaginated today's-running-classes list (IN_PROGRESS/LIVE/STARTING);
+  // merged into the list page so the Join action for the class being returned
+  // to is always visible regardless of list pagination.
+  getStudentLiveNow: () =>
+    request<unknown[]>("/v1/student/live-classes/live-now"),
 }
 
 // ── Primary Student API ──────────────────────────────────────────────────────

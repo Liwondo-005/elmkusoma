@@ -133,6 +133,77 @@ public class LiveSessionController {
         return ResponseEntity.ok(ApiResponse.success(info));
     }
 
+    @PostMapping("/participants/{classId}/role")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
+    @Operation(summary = "Promote or demote a live class participant role (§30)")
+    public ResponseEntity<ApiResponse<ParticipantInfo>> updateParticipantRole(
+            @RequestAttribute("userId") UUID actorId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @PathVariable UUID classId,
+            @Valid @RequestBody ParticipantRoleRequest request) {
+
+        LiveClass liveClass = liveClassRepository.findById(classId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
+        }
+        if (!liveClass.getInstitutionId().equals(institutionId)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+
+        boolean isActorTeacher = teacherRepository.findByUserIdAndInstitutionId(actorId, institutionId)
+                .map(t -> liveClass.getTeacherId() != null
+                        && (liveClass.getTeacherId().equals(t.getId()) || liveClass.getTeacherId().equals(actorId)))
+                .orElse(liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(actorId));
+        User actor = userRepository.findById(actorId).orElse(null);
+        boolean isAdmin = actor != null
+                && (actor.getRole() == User.Role.ADMIN || actor.getRole() == User.Role.INSTITUTION_ADMIN);
+        if (!isActorTeacher && !isAdmin) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Only the class teacher or an admin can change roles"));
+        }
+
+        String role = request.getRole() == null ? "" : request.getRole().trim().toUpperCase(Locale.ROOT);
+        Set<String> allowed = Set.of(
+                LiveClassParticipant.ROLE_LEARNER,
+                LiveClassParticipant.ROLE_TEACHER,
+                LiveClassParticipant.ROLE_MODERATOR,
+                LiveClassParticipant.ROLE_OBSERVER);
+        if (!allowed.contains(role)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid role: " + role));
+        }
+
+        UUID targetUserId = request.getUserId();
+        if (targetUserId == null || targetUserId.equals(actorId)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Cannot change own role here"));
+        }
+
+        LiveClassParticipant participant = participantRepository
+                .findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, targetUserId)
+                .orElse(null);
+        if (participant == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("Participant not found in this class"));
+        }
+
+        participant.setRole(role);
+        participantRepository.save(participant);
+
+        User pUser = userRepository.findById(targetUserId).orElse(null);
+        ParticipantInfo info = ParticipantInfo.builder()
+                .userId(targetUserId.toString())
+                .userName(pUser != null ? pUser.getFullName() : "Unknown")
+                .role(role)
+                .joinedAt(participant.getJoinedAt())
+                .leftAt(participant.getLeftAt())
+                .durationSeconds(participant.getDurationSeconds())
+                .online(participant.getLeftAt() == null)
+                .build();
+
+        log.info("Participant role changed: class={} user={} role={} by={}",
+                classId, targetUserId, role, actorId);
+        return ResponseEntity.ok(ApiResponse.success(info));
+    }
+
     @GetMapping("/analytics/{classId}")
     @PreAuthorize("hasRole('TEACHER')")
     @Operation(summary = "Get live class analytics (teacher only)")

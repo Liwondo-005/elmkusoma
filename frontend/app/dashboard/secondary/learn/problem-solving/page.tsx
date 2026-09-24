@@ -59,10 +59,10 @@ export default function ProblemSolvingPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToLearn")}><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToLearn")}><ArrowLeft className="size-5 text-gray-600" /></Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{t("secondary.problemSolvingEngine")}</h1>
-          <p className="text-sm text-gray-500">{t("secondary.practiceSolvingProblemsStepByStep")}</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("problemSolvingEngine")}</h1>
+          <p className="text-sm text-gray-500">{t("practiceSolvingProblemsStepByStep")}</p>
         </div>
       </div>
 
@@ -99,9 +99,9 @@ export default function ProblemSolvingPage() {
               )}
 
               {!isSubmitted ? (
-                <button onClick={() => handleSubmit(problem.id)} disabled={!isSelected} className="mt-4 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50" aria-label={t("secondary.checkAnswer")}>{t("secondary.checkAnswer")}</button>
+                <button onClick={() => handleSubmit(problem.id)} disabled={!isSelected} className="mt-4 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50" aria-label={t("checkAnswer")}>{t("checkAnswer")}</button>
               ) : (
-                <div className="mt-4 rounded-xl bg-blue-50 p-4"><p className="text-sm font-medium text-blue-800">{t("secondary.solution")}</p><p className="mt-1 text-sm text-blue-700">{problem.solution}</p></div>
+                <div className="mt-4 rounded-xl bg-blue-50 p-4"><p className="text-sm font-medium text-blue-800">{t("solution")}</p><p className="mt-1 text-sm text-blue-700">{problem.solution}</p></div>
               )}
             </div>
           )

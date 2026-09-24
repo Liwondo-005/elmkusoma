@@ -56,27 +56,27 @@ export default function ErrorAnalysisPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToLearn")}><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToLearn")}><ArrowLeft className="size-5 text-gray-600" /></Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{t("secondary.errorAnalysis")}</h1>
-          <p className="text-sm text-gray-500">{t("secondary.learnFromCommonMistakes")}</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("errorAnalysis")}</h1>
+          <p className="text-sm text-gray-500">{t("learnFromCommonMistakes")}</p>
         </div>
       </div>
 
       {selected && active ? (
         <div className="space-y-4">
-          <button onClick={() => setSelected(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.backToErrors")}>{t("secondary.backToErrors")}</button>
+          <button onClick={() => setSelected(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("backToErrors")}>{t("backToErrors")}</button>
           <div className="rounded-2xl border border-gray-100 bg-white p-6">
             <div className="flex items-center gap-2"><AlertTriangle className="size-5 text-amber-600" /><span className="text-xs font-semibold uppercase tracking-wider text-amber-600">{active.frequency}</span></div>
             <h2 className="mt-2 text-lg font-bold text-gray-900">{active.errorTitle}</h2>
             <p className="mt-1 text-sm text-gray-600">{active.errorDescription}</p>
             {active.incorrectExample && (
-              <div className="mt-4 rounded-xl bg-red-50 p-4"><p className="text-sm font-medium text-red-800">{t("secondary.commonMistake")}</p><p className="mt-1 text-sm text-red-700 font-mono">{active.incorrectExample}</p></div>
+              <div className="mt-4 rounded-xl bg-red-50 p-4"><p className="text-sm font-medium text-red-800">{t("commonMistake")}</p><p className="mt-1 text-sm text-red-700 font-mono">{active.incorrectExample}</p></div>
             )}
             {active.correctExample && (
-              <div className="mt-3 rounded-xl bg-green-50 p-4"><p className="text-sm font-medium text-green-800">{t("secondary.correctApproach")}</p><p className="mt-1 text-sm text-green-700 font-mono">{active.correctExample}</p></div>
+              <div className="mt-3 rounded-xl bg-green-50 p-4"><p className="text-sm font-medium text-green-800">{t("correctApproach")}</p><p className="mt-1 text-sm text-green-700 font-mono">{active.correctExample}</p></div>
             )}
-            <div className="mt-3 rounded-xl bg-blue-50 p-4"><p className="text-sm font-medium text-blue-800">{t("secondary.why")}</p><p className="mt-1 text-sm text-blue-700">{active.explanation}</p></div>
+            <div className="mt-3 rounded-xl bg-blue-50 p-4"><p className="text-sm font-medium text-blue-800">{t("why")}</p><p className="mt-1 text-sm text-blue-700">{active.explanation}</p></div>
           </div>
         </div>
       ) : (

@@ -123,27 +123,27 @@ export default function CommunicationPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToLearn")}>
+        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToLearn")}>
           <ArrowLeft className="size-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{t("secondary.communication")}</h1>
-          <p className="text-sm text-gray-500">{t("secondary.writingSpeakingAndArgumentationSkills")}</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("communication")}</h1>
+          <p className="text-sm text-gray-500">{t("writingSpeakingAndArgumentationSkills")}</p>
         </div>
       </div>
 
       {completedActivities.size > 0 && (
         <div className="rounded-xl bg-green-50 p-3 text-center">
           <p className="text-sm font-medium text-green-700">
-            {completedActivities.size} {tc("common.of")} {activities.length} {t("secondary.activitiesCompleted")}
+            {completedActivities.size} {tc("of")} {activities.length} {t("activitiesCompleted")}
           </p>
         </div>
       )}
 
       {selectedActivity && activeActivity ? (
         <div className="space-y-4">
-          <button onClick={() => setSelectedActivity(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.backToActivities")}>
-            {t("secondary.backToActivities")}
+          <button onClick={() => setSelectedActivity(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("backToActivities")}>
+            {t("backToActivities")}
           </button>
           <div className="rounded-2xl border border-gray-100 bg-white p-6">
             <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ export default function CommunicationPage() {
             </div>
 
             <div className="mt-6 rounded-xl bg-indigo-50 p-4">
-              <p className="text-sm font-medium text-indigo-800">{t("secondary.proTip")}</p>
+              <p className="text-sm font-medium text-indigo-800">{t("proTip")}</p>
               <p className="mt-1 text-sm text-indigo-700">{activeActivity.tip}</p>
             </div>
 
@@ -178,15 +178,15 @@ export default function CommunicationPage() {
               <button
                 onClick={() => markComplete(activeActivity.id)}
                 className="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-                aria-label={t("secondary.markAsCompleted")}
+                aria-label={t("markAsCompleted")}
               >
-                {t("secondary.markAsCompleted")}
+                {t("markAsCompleted")}
               </button>
             )}
             {completedActivities.has(activeActivity.id) && (
               <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-green-50 py-3">
                 <CheckCircle className="size-4 text-green-600" />
-                <span className="text-sm font-medium text-green-700">{tc("common.completed")}</span>
+                <span className="text-sm font-medium text-green-700">{tc("completed")}</span>
               </div>
             )}
           </div>
@@ -198,14 +198,14 @@ export default function CommunicationPage() {
               key={activity.id}
               onClick={() => setSelectedActivity(activity.id)}
               className="flex w-full items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 text-left transition-all hover:border-indigo-200 hover:shadow-sm"
-              aria-label={`${activity.title} - ${activity.type} ${activity.sections.length} ${t("secondary.sections")}`}
+              aria-label={`${activity.title} - ${activity.type} ${activity.sections.length} ${t("sections")}`}
             >
               <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-50">
                 <activity.icon className="size-6 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900">{activity.title}</p>
-                <p className="text-xs text-gray-400">{activity.type} · {activity.sections.length} {t("secondary.sections")}</p>
+                <p className="text-xs text-gray-400">{activity.type} · {activity.sections.length} {t("sections")}</p>
               </div>
               {completedActivities.has(activity.id) ? (
                 <CheckCircle className="size-5 shrink-0 text-green-500" />

@@ -26,6 +26,7 @@ public class ProfessionalDevelopmentGoal extends BaseEntity {
     private String description;
 
     @Column(name = "goal_type", length = 30, nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private DevGoalType goalType = DevGoalType.SKILL_DEVELOPMENT;
 
@@ -36,6 +37,7 @@ public class ProfessionalDevelopmentGoal extends BaseEntity {
     private LocalDate completedDate;
 
     @Column(name = "status", length = 20, nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private DevGoalStatus status = DevGoalStatus.NOT_STARTED;
 

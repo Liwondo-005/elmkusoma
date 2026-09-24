@@ -29,6 +29,7 @@ public class WorkshopSession extends BaseEntity {
     private String description;
 
     @Column(name = "workshop_type", length = 30, nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private WorkshopType workshopType = WorkshopType.WORKSHOP;
 
@@ -45,6 +46,7 @@ public class WorkshopSession extends BaseEntity {
     private String location;
 
     @Column(name = "status", length = 20, nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private WorkshopStatus status = WorkshopStatus.SCHEDULED;
 

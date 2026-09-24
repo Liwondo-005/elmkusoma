@@ -37,7 +37,7 @@ class FlywayMigrationValidationTest {
     private static final Pattern MIGRATION_NAME = Pattern.compile("^V(\\d+)__(.+)\\.sql$");
     private static final Pattern REQUIRED = Pattern.compile(
             "^(V71__event_d03_extended_columns|V75__events_entity_columns|"
-                    + "V76__replay_tables|V77__dedupe_event_columns)\\.sql$");
+                    + "V76__replay_tables|V77__dedupe_event_columns|V78__replay_caption_url)\\.sql$");
 
     private static Path migrationDir;
     private static List<Path> migrationFiles;
@@ -85,8 +85,8 @@ class FlywayMigrationValidationTest {
                             + " then V" + sorted.get(i));
         }
         assertTrue(versions.contains(71) && versions.contains(75)
-                        && versions.contains(76) && versions.contains(77),
-                "D03 migrations V71/V75/V76/V77 must all be present (found " + versions.size() + ")");
+                        && versions.contains(76) && versions.contains(77) && versions.contains(78),
+                "D03 migrations V71/V75/V76/V77/V78 must all be present (found " + versions.size() + ")");
     }
 
     @Test
@@ -99,7 +99,8 @@ class FlywayMigrationValidationTest {
                 "V71__event_d03_extended_columns.sql",
                 "V75__events_entity_columns.sql",
                 "V76__replay_tables.sql",
-                "V77__dedupe_event_columns.sql"}) {
+                "V77__dedupe_event_columns.sql",
+                "V78__replay_caption_url.sql"}) {
             assertTrue(names.contains(required), "missing required migration: " + required);
         }
     }

@@ -87,19 +87,19 @@ export default function ExamModePage() {
     return (
       <div className="mx-auto max-w-3xl space-y-6 p-4 pb-24" role="main">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/secondary/revision" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToRevision")}><ArrowLeft className="size-5 text-gray-600" /></Link>
-          <div><h1 className="text-xl font-bold text-gray-900">{t("secondary.examMode")}</h1><p className="text-sm text-gray-500">{t("secondary.timedPracticeExam")}</p></div>
+          <Link href="/dashboard/secondary/revision" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToRevision")}><ArrowLeft className="size-5 text-gray-600" /></Link>
+          <div><h1 className="text-xl font-bold text-gray-900">{t("examMode")}</h1><p className="text-sm text-gray-500">{t("timedPracticeExam")}</p></div>
         </div>
         <div className="rounded-2xl bg-gradient-to-r from-red-600 to-orange-500 p-6 text-white">
-          <h2 className="text-lg font-bold">{t("secondary.practiceExam")}</h2>
-          <p className="mt-1 text-sm text-white/70">{allQuestions.length} {t("secondary.questions")} · 5 {t("secondary.minutes")}</p>
-          <div className="mt-4 space-y-2 text-sm"><p>• {t("secondary.noGoingBack")}</p><p>• {t("secondary.timerCannotBePaused")}</p><p>• {t("secondary.answerAllQuestionsBeforeTime")}</p></div>
+          <h2 className="text-lg font-bold">{t("practiceExam")}</h2>
+          <p className="mt-1 text-sm text-white/70">{allQuestions.length} {t("questions")} · 5 {t("minutes")}</p>
+          <div className="mt-4 space-y-2 text-sm"><p>• {t("noGoingBack")}</p><p>• {t("timerCannotBePaused")}</p><p>• {t("answerAllQuestionsBeforeTime")}</p></div>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-center gap-2"><AlertTriangle className="size-5 text-amber-600" /><p className="text-sm font-semibold text-amber-800">{t("secondary.examConditions")}</p></div>
-          <p className="mt-1 text-sm text-amber-700">{t("secondary.treatThisLikeRealExam")}</p>
+          <div className="flex items-center gap-2"><AlertTriangle className="size-5 text-amber-600" /><p className="text-sm font-semibold text-amber-800">{t("examConditions")}</p></div>
+          <p className="mt-1 text-sm text-amber-700">{t("treatThisLikeRealExam")}</p>
         </div>
-        <button onClick={() => { setStarted(true); setAnswers(new Array(allQuestions.length).fill(null)) }} className="w-full rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700" aria-label={t("secondary.startExam")}>{t("secondary.startExam")}</button>
+        <button onClick={() => { setStarted(true); setAnswers(new Array(allQuestions.length).fill(null)) }} className="w-full rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700" aria-label={t("startExam")}>{t("startExam")}</button>
       </div>
     )
   }
@@ -110,7 +110,7 @@ export default function ExamModePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 pb-24" role="main">
       <div className={`flex items-center justify-between rounded-2xl p-4 ${timeLeft < 60 ? "bg-red-100" : "bg-gray-100"}`}>
-        <span className="text-sm font-medium text-gray-600">{t("secondary.question")} {current + 1}/{allQuestions.length}</span>
+        <span className="text-sm font-medium text-gray-600">{t("question")} {current + 1}/{allQuestions.length}</span>
         <div className="flex items-center gap-2"><Clock className={`size-5 ${timeLeft < 60 ? "text-red-500" : "text-gray-500"}`} /><span className={`text-lg font-bold ${timeLeft < 60 ? "text-red-600" : "text-gray-800"}`}>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}</span></div>
       </div>
 
@@ -134,14 +134,14 @@ export default function ExamModePage() {
 
       {!submitted ? (
         <div className="flex gap-3">
-          <button onClick={() => { setAnswers(a => { const n = [...a]; n[current] = selected; return n }); setSelected(null); setCurrent(c => c + 1) }} disabled={current === allQuestions.length - 1} className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50" aria-label={tc("common.next")}>{tc("common.next")}</button>
-          {current === allQuestions.length - 1 && <button onClick={handleSubmit} className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700" aria-label={t("secondary.submitExam")}>{t("secondary.submitExam")}</button>}
+          <button onClick={() => { setAnswers(a => { const n = [...a]; n[current] = selected; return n }); setSelected(null); setCurrent(c => c + 1) }} disabled={current === allQuestions.length - 1} className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50" aria-label={tc("next")}>{tc("next")}</button>
+          {current === allQuestions.length - 1 && <button onClick={handleSubmit} className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-bold text-white hover:bg-red-700" aria-label={t("submitExam")}>{t("submitExam")}</button>}
         </div>
       ) : (
         <div className="rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-500 p-6 text-center text-white">
           <p className="text-3xl font-bold">{getScore()}/{allQuestions.length}</p>
-          <p className="mt-1 text-sm text-white/70">{t("secondary.correctAnswers")}</p>
-          <Link href="/dashboard/secondary/revision" className="mt-4 inline-block rounded-xl bg-white/20 px-6 py-2 text-sm font-medium text-white hover:bg-white/30" aria-label={t("secondary.backToRevision")}>{t("secondary.backToRevision")}</Link>
+          <p className="mt-1 text-sm text-white/70">{t("correctAnswers")}</p>
+          <Link href="/dashboard/secondary/revision" className="mt-4 inline-block rounded-xl bg-white/20 px-6 py-2 text-sm font-medium text-white hover:bg-white/30" aria-label={t("backToRevision")}>{t("backToRevision")}</Link>
         </div>
       )}
     </div>

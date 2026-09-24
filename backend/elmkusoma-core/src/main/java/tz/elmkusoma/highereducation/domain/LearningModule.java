@@ -43,6 +43,7 @@ public class LearningModule extends BaseEntity {
     private String academicYear;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private ModuleStatus status = ModuleStatus.NOT_STARTED;
 

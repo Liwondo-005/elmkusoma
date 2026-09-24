@@ -40,6 +40,7 @@ import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -683,7 +684,7 @@ public class EventServiceImpl implements EventService {
             throw new IllegalArgumentException("This event is not available for registration");
         }
 
-        if (event.getStartsAt().isBefore(LocalDateTime.now())) {
+        if (hasEventStarted(event)) {
             throw new IllegalArgumentException("Cannot register for a past event");
         }
 
@@ -739,6 +740,27 @@ public class EventServiceImpl implements EventService {
                         + event.getStartsAt() + ".",
                 "EVENT_REGISTRATION", event.getId());
         return mapRegistrationToResponse(registration, event);
+    }
+
+    /**
+     * §96: wall-clock "has started" using the event timezone when configured,
+     * so stored LocalDateTime values are compared against the same zone.
+     */
+    private boolean hasEventStarted(Event event) {
+        if (event.getStartsAt() == null) {
+            return false;
+        }
+        String tz = event.getTimezone();
+        if (tz == null || tz.isBlank()) {
+            return event.getStartsAt().isBefore(LocalDateTime.now());
+        }
+        try {
+            ZoneId zone = ZoneId.of(tz);
+            LocalDateTime zonedNow = LocalDateTime.now(zone);
+            return event.getStartsAt().isBefore(zonedNow);
+        } catch (Exception ex) {
+            return event.getStartsAt().isBefore(LocalDateTime.now());
+        }
     }
 
     /** §69: rejects registration when at capacity; keeps currentRegistrations in sync. */

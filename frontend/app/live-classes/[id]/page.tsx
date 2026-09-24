@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl"
 import { learnerApi, type LiveClass } from "@/lib/learner-api"
 import { LiveClassroom } from "@/components/live/live-classroom"
 import { AuthGuard } from "@/components/auth/auth-guard"
-import { SiteHeader } from "@/components/site-header"
+import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar"
 import { Loader2, AlertCircle } from "lucide-react"
 
 export default function ClassroomPage() {
@@ -35,7 +35,7 @@ export default function ClassroomPage() {
   return (
     <AuthGuard>
       <div className="flex min-h-dvh flex-col">
-        <SiteHeader />
+        <DashboardTopbar />
         <main className="flex-1 bg-muted/40">
           {loading ? (
             <div className="flex items-center justify-center py-20">

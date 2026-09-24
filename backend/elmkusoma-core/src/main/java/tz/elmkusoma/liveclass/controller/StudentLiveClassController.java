@@ -5,9 +5,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.repository.LiveClassRepository;
+import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -23,6 +26,9 @@ import java.util.stream.Collectors;
 public class StudentLiveClassController {
 
     private final LiveClassRepository liveClassRepository;
+    private final TeacherRepository teacherRepository;
+    private final UserRepository userRepository;
+    private final SubjectRepository subjectRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyLiveClasses(
@@ -41,6 +47,12 @@ public class StudentLiveClassController {
                         today.minusDays(7).atStartOfDay(),
                         today.plusDays(7).atTime(LocalTime.MAX));
 
+        // Surface running classes first, then scheduled ones, so the paginated
+        // window below can never push an IN_PROGRESS class off the first page.
+        classes.sort(Comparator
+                .comparingInt((LiveClass lc) -> statusPriority(lc.getStatus()))
+                .thenComparing(LiveClass::getScheduledAt, Comparator.nullsLast(Comparator.naturalOrder())));
+
         List<Map<String, Object>> result = classes.stream()
                 .limit((long) (page + 1) * size)
                 .skip((long) page * size)
@@ -48,11 +60,21 @@ public class StudentLiveClassController {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("id", lc.getId().toString());
                     map.put("title", lc.getTitle());
+                    map.put("description", lc.getDescription());
                     map.put("sessionType", lc.getSessionType() != null ? lc.getSessionType().name() : "LECTURE");
                     map.put("status", lc.getStatus());
                     map.put("scheduledAt", lc.getScheduledAt() != null ? lc.getScheduledAt().toString() : null);
                     map.put("durationMinutes", lc.getDurationMinutes());
                     map.put("subjectId", lc.getSubjectId() != null ? lc.getSubjectId().toString() : null);
+                    map.put("subjectName", lc.getSubjectId() != null
+                            ? subjectRepository.findById(lc.getSubjectId()).map(s -> s.getName()).orElse(null)
+                            : null);
+                    map.put("teacherName", lc.getTeacherId() != null
+                            ? teacherRepository.findById(lc.getTeacherId())
+                                    .flatMap(tr -> userRepository.findById(tr.getUserId()))
+                                    .map(u -> u.getFullName())
+                                    .orElse(null)
+                            : null);
                     return map;
                 })
                 .collect(Collectors.toList());
@@ -121,6 +143,12 @@ public class StudentLiveClassController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(ApiResponse.success(upcoming));
+    }
+
+    private static int statusPriority(String status) {
+        if ("IN_PROGRESS".equals(status) || "LIVE".equals(status) || "STARTING".equals(status)) return 0;
+        if ("SCHEDULED".equals(status) || "PENDING".equals(status)) return 1;
+        return 2;
     }
 
     private UUID getInstitutionId(HttpServletRequest request) {

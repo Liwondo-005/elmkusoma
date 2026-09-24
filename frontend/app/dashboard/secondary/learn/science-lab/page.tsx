@@ -53,12 +53,12 @@ export default function ScienceLabPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToSecondary")}><ArrowLeft className="size-5 text-gray-600" /></Link>
-        <div><h1 className="text-xl font-bold text-gray-900">{t("secondary.scienceLab")}</h1><p className="text-sm text-gray-500">{t("secondary.handsOnExperimentsAndDiscoveries")}</p></div>
+        <Link href="/dashboard/secondary" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToSecondary")}><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <div><h1 className="text-xl font-bold text-gray-900">{t("scienceLab")}</h1><p className="text-sm text-gray-500">{t("handsOnExperimentsAndDiscoveries")}</p></div>
       </div>
 
       <div className="rounded-2xl bg-gradient-to-r from-green-600 to-emerald-500 p-5 text-white">
-        <div className="flex items-center gap-3"><FlaskConical className="size-8" /><div><h2 className="text-lg font-bold">{t("secondary.labExperiments")}</h2><p className="text-sm text-white/70">{t("secondary.learnByDoingRealExperiments")}</p></div></div>
+        <div className="flex items-center gap-3"><FlaskConical className="size-8" /><div><h2 className="text-lg font-bold">{t("labExperiments")}</h2><p className="text-sm text-white/70">{t("learnByDoingRealExperiments")}</p></div></div>
       </div>
 
       <div className="space-y-4">
@@ -69,7 +69,7 @@ export default function ScienceLabPage() {
               <div><p className="font-semibold text-gray-900">{exp.problemTitle}</p><p className="text-xs text-gray-400">{exp.problemDescription}</p></div>
             </div>
             {exp.solution && (
-              <div className="mt-4 rounded-xl bg-green-50 p-4"><p className="text-sm font-medium text-green-800">{t("secondary.howItWorks")}</p><p className="mt-1 text-sm text-green-700">{exp.solution}</p></div>
+              <div className="mt-4 rounded-xl bg-green-50 p-4"><p className="text-sm font-medium text-green-800">{t("howItWorks")}</p><p className="mt-1 text-sm text-green-700">{exp.solution}</p></div>
             )}
           </div>
         ))}
