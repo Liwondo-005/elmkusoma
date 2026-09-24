@@ -451,6 +451,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               system: true,
             }])
             break
+          case "PARTICIPANT_ROLE_CHANGED":
+            setParticipants((prev) => prev.map((p) => (p.userId === data.userId ? { ...p, role: data.role } : p)))
+            break
           case "HAND_RAISE_QUEUE":
             if (data.queue) setHandRaiseQueue(data.queue)
             break
@@ -681,6 +684,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
     if (!confirm("Remove this participant from the class?")) return
     wsRef.current.send(JSON.stringify({ type: "KICK_PARTICIPANT", userId: targetUserId }))
+  }
+
+  function setParticipantRole(targetUserId: string, role: "MODERATOR" | "LEARNER") {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    wsRef.current.send(JSON.stringify({ type: "SET_PARTICIPANT_ROLE", userId: targetUserId, role }))
+    setParticipants((prev) => prev.map((p) => (p.userId === targetUserId ? { ...p, role } : p)))
   }
 
   function sendChatMessage(e: React.FormEvent) {
@@ -1448,6 +1457,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     <span className="text-[10px] text-muted-foreground">{p.role}</span>
                     {(user?.role === "Teacher" || user?.role === "Admin") && p.userId !== myUserId && (
                       <span className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setParticipantRole(p.userId, p.role === "MODERATOR" ? "LEARNER" : "MODERATOR")}
+                          aria-label={p.role === "MODERATOR" ? `Demote ${p.userName}` : `Promote ${p.userName} to moderator`}
+                          className="rounded p-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                        >
+                          {p.role === "MODERATOR" ? "Demote" : "Promote"}
+                        </button>
                         <button onClick={() => muteParticipant(p.userId)} aria-label={`Mute ${p.userName}`} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
                           <MicOff className="size-3" />
                         </button>

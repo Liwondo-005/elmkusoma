@@ -27,7 +27,7 @@ public final class TestTokens {
     private static final String JWT_SECRET_B64 = "dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLTIwMjQ=";
     /** Must match livekit.server.api-key / livekit.server.api-secret. */
     private static final String LIVEKIT_API_KEY = "devkey";
-    private static final String LIVEKIT_API_SECRET = "devsecret";
+    private static final String LIVEKIT_API_SECRET = "devsecret-devsecret-devsecret-dev01!";
 
     private TestTokens() {
     }

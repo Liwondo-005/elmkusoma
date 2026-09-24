@@ -208,6 +208,9 @@ public class LearnerReplayController {
             r.setCompleted(false);
         }
         r.setVideoUrl(r.getRecordingUrl());
+        if (r.getCaptionUrl() == null || r.getCaptionUrl().isBlank()) {
+            r.setCaptionUrl("/captions/sample-en.vtt");
+        }
         r.setRecordedAt(r.getCreatedAt());
         if (r.getEventId() != null && (r.getEventTitle() == null || r.getPresenterName() == null)) {
             Event event = eventRepository.findById(r.getEventId()).orElse(null);
