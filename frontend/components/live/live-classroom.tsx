@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   ChevronLeft,
   Video,
@@ -78,7 +79,14 @@ interface Poll {
 
 export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const { user, token } = useAuth()
+  const router = useRouter()
   const [participants, setParticipants] = useState<Participant[]>([])
+  // LiveKit participant identity = JWT users.id, but LiveClass.teacherId is the
+  // teachers-profile PK (different table/UUID space). The WS USER_JOINED /
+  // PARTICIPANTS payloads carry role:"TEACHER" with the users.id, which is the
+  // only existing source that matches participant.identity — used to gate which
+  // remote track may occupy the primary classroom stage.
+  const teacherUserIdRef = useRef<string | null>(null)
   const [chat, setChat] = useState<ChatMessage[]>([])
   const [message, setMessage] = useState("")
   const [connected, setConnected] = useState(false)
@@ -138,6 +146,37 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
   const isInProgress = liveClass.status === "IN_PROGRESS" || liveClass.status === "LIVE"
   const myUserId = user?.id || ""
+  const isTeacherClient = user?.role === "Teacher"
+
+  // Existing authenticated Live Class list/details page for this account —
+  // the Leave/Back destination (never the public Home page). Every href is an
+  // existing route that shows the account's own Join action for live classes.
+  const listHref = isTeacherClient
+    ? `/dashboard/teacher/live-classes/${liveClass.id}`
+    : user?.role === "Admin"
+      ? "/dashboard/platform-admin/live-classes"
+      : user?.role === "Other Learner" ||
+          (user?.role === "Student" &&
+            ["COLLEGE", "UNIVERSITY", "VETA"].includes((user?.learningLevel || "").toUpperCase()))
+        ? "/dashboard/learner/live-classes"
+        : user?.role === "Parent"
+          ? "/dashboard/parent/live-classes"
+          : "/dashboard/live-classes"
+
+  // Which remote tracks may become the PRIMARY classroom stream for this
+  // client. Viewers (students) may receive the TEACHER's tracks only. The
+  // backend derives the LiveKit token identity from JWT users.id, while
+  // LiveClass.teacherId holds the teachers-profile PK — different UUID
+  // spaces — so the matching id comes from the existing WS role
+  // announcements (USER_JOINED / PARTICIPANTS, role:"TEACHER"), never
+  // hardcoded participant IDs. Until that announcement arrives the previous
+  // accept-any behavior is kept so no track published in the first instants
+  // is lost. The teacher client keeps its existing behavior (remote
+  // participants → own screen → own camera).
+  function isClassroomSource(identity?: string) {
+    if (isTeacherClient || !teacherUserIdRef.current) return true
+    return identity === teacherUserIdRef.current
+  }
 
   const getElapsed = useCallback(() => {
     if (!startTimeRef.current) return "00:00:00"
@@ -190,6 +229,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     room.on(RoomEvent.ParticipantConnected, (participant: LKParticipant) => {
       setRemoteParticipants(prev => new Map(prev).set(participant.identity, participant))
       participant.on(RoomEvent.TrackSubscribed, (_track: any, pub: TrackPublication) => {
+        if (!isClassroomSource(participant.identity)) return
         if (pub.kind === Track.Kind.Video) setRemoteVideoTrack(pub)
         if (pub.kind === Track.Kind.Audio) setRemoteAudioTrack(pub)
       })
@@ -203,9 +243,15 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       })
     })
 
-    room.on(RoomEvent.TrackSubscribed, (_track: any, pub: TrackPublication, _participant: any) => {
+    room.on(RoomEvent.TrackSubscribed, (_track: any, pub: TrackPublication, participant?: LKParticipant) => {
+      if (!isClassroomSource(participant?.identity)) return
       if (pub.kind === Track.Kind.Video) setRemoteVideoTrack(pub)
       if (pub.kind === Track.Kind.Audio) setRemoteAudioTrack(pub)
+    })
+
+    room.on(RoomEvent.TrackUnsubscribed, (_track: any, pub: TrackPublication) => {
+      setRemoteVideoTrack(prev => (prev === pub ? null : prev))
+      setRemoteAudioTrack(prev => (prev === pub ? null : prev))
     })
 
     room.connect(liveKitUrl, liveKitToken).catch(err => {
@@ -264,9 +310,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         const data = JSON.parse(event.data)
         switch (data.type) {
           case "USER_JOINED":
+            if (data.role === "TEACHER") teacherUserIdRef.current = data.userId
             setParticipants((prev) => {
               if (prev.some((p) => p.userId === data.userId)) return prev
-              return [...prev, { userId: data.userId, userName: data.userName, role: "LEARNER", joinedAt: data.timestamp }]
+              return [...prev, { userId: data.userId, userName: data.userName, role: data.role || "LEARNER", joinedAt: data.timestamp }]
             })
             if (data.userId !== myUserId) {
               setChat((prev) => [...prev, {
@@ -291,7 +338,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             }
             break
           case "PARTICIPANTS":
-            if (data.participants) setParticipants(data.participants)
+            if (data.participants) {
+              const teacher = data.participants.find((p: Participant) => p.role === "TEACHER")
+              if (teacher) teacherUserIdRef.current = teacher.userId
+              setParticipants(data.participants)
+            }
             break
           case "CHAT_MESSAGE":
             setChat((prev) => [...prev, { userId: data.userId, userName: data.userName, message: data.message, timestamp: data.timestamp }])
@@ -799,6 +850,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       wsRef.current.send(JSON.stringify({ type: "LEAVE" }))
       wsRef.current.close()
     }
+    // Return to the existing authenticated Live Class list/details page (with
+    // its Join action) — never the public Home page. Unmount then runs the
+    // effect cleanup, which is idempotent (sockets already closed above).
+    router.push(listHref)
   }
 
   const formatTime = (d: string) => {
@@ -810,7 +865,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link
-            href="/dashboard/learner/live-classes"
+            href={listHref}
             className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="size-4" />
@@ -892,7 +947,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       playsInline
                       className="absolute inset-0 w-full h-full object-contain"
                     />
-                  ) : screenStream ? (
+                  ) : isTeacherClient && screenStream ? (
                     <video
                       ref={screenVideoRef}
                       autoPlay
@@ -900,7 +955,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       muted
                       className="absolute inset-0 w-full h-full object-contain"
                     />
-                  ) : localStream && cameraEnabled ? (
+                  ) : isTeacherClient && localStream && cameraEnabled ? (
                     <video
                       ref={localVideoRef}
                       autoPlay
@@ -911,7 +966,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   ) : (
                     <div className="text-center text-white">
                       <Video className="mx-auto size-10 mb-2 opacity-40" />
-                      <p className="text-xs opacity-60">Camera off</p>
+                      <p className="text-xs opacity-60">
+                        {isTeacherClient ? "Camera off" : "Waiting for the teacher's stream"}
+                      </p>
                     </div>
                   )}
 
@@ -926,7 +983,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     />
                   )}
 
-                  {screenStream && localStream && cameraEnabled && (
+                  {localStream && cameraEnabled && (screenStream || (!isTeacherClient && !remoteVideoTrack)) && (
                     <div className="absolute bottom-2 right-2 w-40 aspect-video rounded-lg overflow-hidden border-2 border-white/20">
                       <video
                         ref={localVideoRef}

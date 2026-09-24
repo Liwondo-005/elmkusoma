@@ -68,8 +68,16 @@ export default function LiveClassesPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const data = await dashboardApi.getLiveClasses().catch(() => [])
-      setClasses(data as LiveClass[])
+      const [data, liveNow] = await Promise.all([
+        dashboardApi.getStudentLiveClasses().catch(() => []),
+        dashboardApi.getStudentLiveNow().catch(() => []),
+      ])
+      const merged = [...(data as LiveClass[])]
+      const known = new Set(merged.map((c) => c.id))
+      for (const ln of liveNow as LiveClass[]) {
+        if (!known.has(ln.id)) merged.push(ln)
+      }
+      setClasses(merged)
     } catch {
       setClasses([])
     } finally {
