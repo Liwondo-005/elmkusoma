@@ -23,7 +23,14 @@ interface LearningPath {
   overallProgress: number
 }
 
-function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummary[]): LearningPath[] {
+interface PathLabels {
+  levelTitle: (level: string) => string
+  levelDesc: (level: string) => string
+  focusTitle: string
+  focusDesc: string
+}
+
+function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummary[], labels: PathLabels): LearningPath[] {
   const paths: LearningPath[] = []
 
   const levelGroups: Record<string, CourseSummary[]> = {}
@@ -58,8 +65,8 @@ function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummar
 
     paths.push({
       id: `level-${level}`,
-      title: `${level} Learning Path`,
-      description: `A structured progression through ${level.toLowerCase()} level courses.`,
+      title: labels.levelTitle(level),
+      description: labels.levelDesc(level),
       courses: pathCourses,
       overallProgress,
     })
@@ -74,8 +81,8 @@ function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummar
     if (activeCourses.length >= 2) {
       paths.unshift({
         id: "active-focus",
-        title: "Active Learning Focus",
-        description: "Your currently active courses prioritized by progress.",
+        title: labels.focusTitle,
+        description: labels.focusDesc,
         courses: activeCourses.map((e) => ({
           courseId: e.courseId,
           courseTitle: e.courseTitle,
@@ -95,7 +102,8 @@ function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummar
 
 function mapApiPaths(
   items: LearningPathItem[],
-  allCourses: CourseSummary[]
+  allCourses: CourseSummary[],
+  labels: Pick<PathLabels, "levelTitle" | "levelDesc">
 ): LearningPath[] {
   const courseById = new Map(allCourses.map((c) => [c.id, c]))
   const levelGroups: Record<
@@ -121,8 +129,8 @@ function mapApiPaths(
     if (courses.length === 0) continue
     paths.push({
       id: `api-level-${level}`,
-      title: `${level} Learning Path`,
-      description: `A structured progression through ${level.toLowerCase()} level courses.`,
+      title: labels.levelTitle(level),
+      description: labels.levelDesc(level),
       courses,
       overallProgress: Math.round(courses.reduce((s, c) => s + c.progress, 0) / courses.length),
     })
@@ -134,6 +142,7 @@ export default function LearningPathsPage() {
   const { user, loading: authLoading } = useAuth()
   const t = useTranslations("learningPaths")
   const tc = useTranslations("common")
+  const tl = useTranslations("learner")
   const [paths, setPaths] = useState<LearningPath[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
@@ -154,11 +163,18 @@ export default function LearningPathsPage() {
       ])
       setEnrollments(enrollmentsData)
 
+      const labels: PathLabels = {
+        levelTitle: (level: string) => tl("levelPathTitle", { level }),
+        levelDesc: (level: string) => tl("levelPathDesc", { level: level.toLowerCase() }),
+        focusTitle: tl("activeFocusTitle"),
+        focusDesc: tl("activeFocusDesc"),
+      }
+
       let apiPaths: LearningPath[] | null = null
       try {
         const items = await learnerApi.getLearningPaths()
         if (items.length > 0) {
-          apiPaths = mapApiPaths(items, coursesData)
+          apiPaths = mapApiPaths(items, coursesData, labels)
         }
       } catch {
         apiPaths = null
@@ -167,7 +183,7 @@ export default function LearningPathsPage() {
       if (apiPaths && apiPaths.length > 0) {
         setPaths(apiPaths)
       } else {
-        setPaths(deriveLearningPaths(enrollmentsData, coursesData))
+        setPaths(deriveLearningPaths(enrollmentsData, coursesData, labels))
       }
     } catch {
       setError(t("loadFailed"))

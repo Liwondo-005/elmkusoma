@@ -57,7 +57,7 @@ export default function LearnerCertificatesPage() {
       t("certs.fileCompleted", { date: new Date(cert.completionDate).toLocaleDateString() }),
       t("certs.fileIssued", { date: new Date(cert.issueDate).toLocaleDateString() }),
       t("certs.fileCode", { code: cert.verificationCode }),
-      t("certs.file{t("certs.verify")}", { url: verifyUrl }),
+      t("certs.fileVerify", { url: verifyUrl }),
     ].filter(Boolean).join("\n")
 
     const blob = new Blob([content], { type: "text/plain" })
@@ -79,7 +79,7 @@ export default function LearnerCertificatesPage() {
     <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("certs.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("certs.subtitle")}
+        <p className="mt-1 text-sm text-muted-foreground">{t("certs.subtitle")}</p>
       </div>
 
       {error && (
@@ -164,7 +164,7 @@ export default function LearnerCertificatesPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">{t("certs.browseHint")}
+        <p className="text-sm text-muted-foreground">{t("certs.browseHint")}</p>
         <Link href="/dashboard/learner/courses" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           {t("exploreCourses")} <ArrowRight className="size-3" />
         </Link>

@@ -128,6 +128,7 @@ export default function OversightReportsPage() {
 }
 
 function ReportCard({ report }: { report: Report }) {
+  const t = useTranslations("oversight")
   const icons: Record<string, React.ReactNode> = {
     Award: <Award className="size-5" />,
     ClipboardList: <ClipboardList className="size-5" />,

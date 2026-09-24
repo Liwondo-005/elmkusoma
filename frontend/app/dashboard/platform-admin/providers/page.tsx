@@ -7,6 +7,9 @@ import { Globe, Loader2, ChevronDown, ChevronUp, Gauge, Ban, CheckCircle2, Alert
 import { platformAdminApi, type UserSummary, type ProviderQuota } from "@/lib/platform-admin-api"
 
 function SponsorRow({ providerId, q, onDone }: { providerId: string; q: ProviderQuota; onDone: () => void }) {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [open, setOpen] = useState(false)
   const [userId, setUserId] = useState("")
   const [studentId, setStudentId] = useState("")
@@ -44,6 +47,9 @@ function SponsorRow({ providerId, q, onDone }: { providerId: string; q: Provider
 }
 
 function QuotaPanel({ providerId }: { providerId: string }) {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [quotas, setQuotas] = useState<ProviderQuota[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -209,6 +215,9 @@ function ProviderRow({ provider, expanded, onToggleExpand, onToggleStatus, toggl
   onToggleStatus: () => void
   toggling: boolean
 }) {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   return (
     <>
       <tr className="hover:bg-muted/30 transition-colors">

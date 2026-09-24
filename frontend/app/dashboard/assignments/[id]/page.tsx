@@ -211,7 +211,7 @@ export default function AssignmentDetailPage() {
               <div>
                 <h2 className="text-lg font-bold text-emerald-800">{t("assignmentDetail.gradedTitle")}</h2>
                 <p className="text-sm text-emerald-700">
-                  {t("assignmentDetail.scoreLine", { grade: submission.grade, total: assignment.totalMarks })}
+                  {t("assignmentDetail.scoreLine", { grade: submission.grade ?? 0, total: assignment.totalMarks ?? 0 })}
                 </p>
               </div>
             </div>
@@ -229,7 +229,7 @@ export default function AssignmentDetailPage() {
                 <CheckCircle className="size-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-blue-800">{t("assignmentDetail.submittedTitle")}
+                <h2 className="text-lg font-bold text-blue-800">{t("assignmentDetail.submittedTitle")}</h2>
                 <p className="text-sm text-blue-700">{t("assignmentDetail.submittedDesc")}</p>
               </div>
             </div>
@@ -367,7 +367,7 @@ export default function AssignmentDetailPage() {
 
         {attachments.length > 0 && (
           <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-semibold text-foreground">{t("assignmentDetail.attachments")}
+            <h3 className="text-sm font-semibold text-foreground">{t("assignmentDetail.attachments")}</h3>
             <div className="mt-2 space-y-1">
               {attachments.map((att, i) => (
                 <a
@@ -388,7 +388,7 @@ export default function AssignmentDetailPage() {
 
       {status === "graded" && submission ? (
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
-          <h2 className="text-lg font-semibold text-foreground">{t("assignmentDetail.resultsTitle")}
+          <h2 className="text-lg font-semibold text-foreground">{t("assignmentDetail.resultsTitle")}</h2>
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-2">
               <span className="text-muted-foreground">{t("assignmentDetail.scoreLabel")}</span>
@@ -405,12 +405,12 @@ export default function AssignmentDetailPage() {
       ) : status === "submitted" ? (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 text-center">
           <CheckCircle className="mx-auto size-10 text-blue-600" />
-          <h3 className="mt-3 text-lg font-semibold text-foreground">{t("assignmentDetail.submittedStateTitle")}
-          <p className="mt-1 text-sm text-muted-foreground">{t("assignmentDetail.pendingReview")}
+          <h3 className="mt-3 text-lg font-semibold text-foreground">{t("assignmentDetail.submittedStateTitle")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("assignmentDetail.pendingReview")}</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">{t("assignmentDetail.submitTitle")}
+          <h2 className="text-lg font-semibold text-foreground">{t("assignmentDetail.submitTitle")}</h2>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">{t("assignmentDetail.writtenAnswer")}</label>
@@ -443,7 +443,7 @@ export default function AssignmentDetailPage() {
               ) : (
                 <>
                   <Upload className="size-8 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">{t("assignmentDetail.dragDrop")}
+                  <p className="text-xs text-muted-foreground">{t("assignmentDetail.dragDrop")}</p>
                 </>
               )}
               <input

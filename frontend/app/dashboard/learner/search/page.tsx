@@ -433,7 +433,7 @@ export default function LearnerSearchPage() {
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
                     )}
                     <div className="mt-2 text-xs text-muted-foreground">
-                      {new Date(cls.scheduledAt).toLocaleString()} · {cls.durationMinutes} min
+                      {new Date(cls.scheduledAt).toLocaleString()} · {tc("durationShort", { count: cls.durationMinutes })}
                     </div>
                   </div>
                 ))}

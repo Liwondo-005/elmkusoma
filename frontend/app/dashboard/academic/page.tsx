@@ -10,13 +10,6 @@ type Tab = "years" | "terms" | "grades" | "subjects" | "classes"
 export default function AcademicPage() {
   const { user } = useAuth()
   const t = useTranslations("primary")
-  const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "years", label: t("academicTab.years"), count: years.length },
-    { key: "terms", label: t("academicTab.terms"), count: terms.length },
-    { key: "grades", label: t("academicTab.grades"), count: grades.length },
-    { key: "subjects", label: t("academicTab.subjects"), count: subjects.length },
-    { key: "classes", label: t("academicTab.classes"), count: classes.length },
-  ]
   const ts = useTranslations("status")
   const tc = useTranslations("common")
   const [tab, setTab] = useState<Tab>("years")
@@ -28,6 +21,13 @@ export default function AcademicPage() {
   const [grades, setGrades] = useState<Grade[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [classes, setClasses] = useState<ClassGroup[]>([])
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: "years", label: t("academicTab.years"), count: years.length },
+    { key: "terms", label: t("academicTab.terms"), count: terms.length },
+    { key: "grades", label: t("academicTab.grades"), count: grades.length },
+    { key: "subjects", label: t("academicTab.subjects"), count: subjects.length },
+    { key: "classes", label: t("academicTab.classes"), count: classes.length },
+  ]
 
   const institutionId = user?.institutionId || ""
 
@@ -120,13 +120,13 @@ export default function AcademicPage() {
               {terms.length === 0 ? (
                 <p className="p-6 text-center text-muted-foreground">{t("academicTab.emptyTerms")}</p>
               ) : (
-                terms.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between p-4">
+                terms.map((term) => (
+                  <div key={term.id} className="flex items-center justify-between p-4">
                     <div>
-                      <p className="font-medium">{t.name}</p>
-                      <p className="text-sm text-muted-foreground">{t("academicTab.termLine", { n: t.termNumber, start: t.startDate, end: t.endDate })}</p>
+                      <p className="font-medium">{term.name}</p>
+                      <p className="text-sm text-muted-foreground">{t("academicTab.termLine", { n: term.termNumber, start: term.startDate, end: term.endDate })}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">{t.isActive ? ts("active") : ts("inactive")}</span>
+                    <span className="text-xs text-muted-foreground">{term.isActive ? ts("active") : ts("inactive")}</span>
                   </div>
                 ))
               )}

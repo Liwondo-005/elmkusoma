@@ -19,6 +19,7 @@ function isAvailable(a: Assessment) {
 
 function PrimaryDiscoverView({ assessments }: { assessments: Assessment[] }) {
   const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const discoveryAreas = [
   {
     title: t("assessments.areaTanzania"),

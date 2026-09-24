@@ -19,11 +19,11 @@ export default function LearnerSettingsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("lsettings.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("lsettings.subtitle")}
+        <p className="mt-1 text-sm text-muted-foreground">{t("lsettings.subtitle")}</p>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t("lsettings.account")}
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("lsettings.account")}</h2>
         <div className="space-y-4">
           <div className="flex items-center gap-4 rounded-xl border border-border p-4">
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
@@ -67,7 +67,7 @@ export default function LearnerSettingsPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t("lsettings.security")}
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("lsettings.security")}</h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-xl border border-border p-4">
             <div className="flex items-center gap-4">
@@ -90,7 +90,7 @@ export default function LearnerSettingsPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t("lsettings.about")}
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("lsettings.about")}</h2>
         <p className="text-sm text-muted-foreground">
           {t("lsettings.aboutBody")}
         </p>

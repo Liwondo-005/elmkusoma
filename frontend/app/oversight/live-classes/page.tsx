@@ -192,7 +192,9 @@ export default function OversightLiveClassesPage() {
 }
 
 function LiveClassCard({ class: cls, isLive }: { class: any; isLive: boolean }) {
-  const config = getStatusConfig(cls.status)
+  const t = useTranslations("oversight");
+  const ts = useTranslations("status");
+  const config = getStatusConfig(cls.status, t)
   return (
     <div className="flex items-center justify-between rounded-xl border border-border p-4 hover:bg-muted/50 transition-colors">
       <div className="flex items-center gap-4">
@@ -239,9 +241,9 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   )
 }
 
-function getStatusConfig(status: string) {
-  switch (status) {
-    case "IN_PROGRESS": return { color: "bg-red-100 text-red-700", icon: <Play className="size-3" />, label: t("liveClasses.liveNow4") }
+function getStatusConfig(status: string, t: (key: string) => string) {
+switch (status) {
+case "IN_PROGRESS": return { color: "bg-red-100 text-red-700", icon: <Play className="size-3" />, label: t("liveClasses.liveNow4") }
     case "SCHEDULED": return { color: "bg-blue-100 text-blue-700", icon: <Clock className="size-3" />, label: "SCHEDULED" }
     case "COMPLETED": return { color: "bg-green-100 text-green-700", icon: <CheckCircle2 className="size-3" />, label: "COMPLETED" }
     case "CANCELLED": return { color: "bg-gray-100 text-gray-700", icon: <X className="size-3" />, label: "CANCELLED" }

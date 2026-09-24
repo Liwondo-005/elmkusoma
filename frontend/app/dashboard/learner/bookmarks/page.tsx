@@ -83,7 +83,7 @@ export default function LearnerBookmarksPage() {
     <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("marks.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("marks.subtitle")}
+        <p className="mt-1 text-sm text-muted-foreground">{t("marks.subtitle")}</p>
       </div>
 
       {error && (
@@ -171,7 +171,7 @@ export default function LearnerBookmarksPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">{t("marks.discover")}
+        <p className="text-sm text-muted-foreground">{t("marks.discover")}</p>
         <Link href="/dashboard/learner/resources" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           {t("marks.discoverLink")} <ArrowRight className="size-3" />
         </Link>

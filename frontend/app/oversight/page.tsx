@@ -85,7 +85,7 @@ export default function OversightOverviewPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-border bg-card p-6">
           <h1 className="text-2xl font-bold text-foreground">{t("overview.educationOversight")}</h1>
-          <p className="mt-2 text-muted-foreground">{t("overview.welcomeDashboardDataUnavailable", { p0: user?.name })}</p>
+          <p className="mt-2 text-muted-foreground">{t("overview.welcomeDashboardDataUnavailable", { p0: user?.name ?? "" })}</p>
         </div>
       </div>
     )

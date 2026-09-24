@@ -19,7 +19,7 @@ interface EvidenceItem {
 }
 
 
-const type{t("evidence.filters")} = ["All", "LESSON_COMPLETE", "PROJECT", "QUIZ_SCORE", "PORTFOLIO", "TEACHER_NOTE", "ATTENDANCE"]
+const typeFilters = ["All", "LESSON_COMPLETE", "PROJECT", "QUIZ_SCORE", "PORTFOLIO", "TEACHER_NOTE", "ATTENDANCE"]
 
 export default function EvidencePage() {
   const { user } = useRequireAuth()
@@ -40,7 +40,6 @@ export default function EvidencePage() {
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState("All")
   const [subjectFilter, setSubjectFilter] = useState("All")
-  const [show{t("evidence.filters")}, setShow{t("evidence.filters")}] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [newEvidence, setNewEvidence] = useState({ title: "", evidenceType: "LESSON_COMPLETE", description: "", subjectName: "" })
   const [submitting, setSubmitting] = useState(false)
@@ -151,14 +150,14 @@ export default function EvidencePage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("evidence.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("evidence.subtitle")}
+            <p className="text-sm text-muted-foreground">{t("evidence.subtitle")}</p>
           </div>
         </div>
         <button
           type="button"
-          onClick={() => setShow{t("evidence.filters")}(!show{t("evidence.filters")})}
+          onClick={() => setShowAddForm(!showAddForm)}
           className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-            show{t("evidence.filters")} ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted"
+            showAddForm ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted"
           }`}
         >
           <Filter className="size-4" />
@@ -174,7 +173,7 @@ export default function EvidencePage() {
         </button>
       </div>
 
-      {show{t("evidence.filters")} && (
+      {showAddForm && (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-foreground">{t("evidence.filterTitle")}</h3>
@@ -186,7 +185,7 @@ export default function EvidencePage() {
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("evidence.typeLabel")}</label>
               <div className="flex flex-wrap gap-1.5">
-                {type{t("evidence.filters")}.map((f) => (
+                {typeFilters.map((f) => (
                   <button
                     key={f}
                     type="button"
@@ -261,7 +260,7 @@ export default function EvidencePage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">{t("evidence.subjectLabel")}
+                <label className="mb-1.5 block text-sm font-medium text-foreground">{t("evidence.subjectLabel")}</label>
                 <select
                   value={newEvidence.subjectName}
                   onChange={(e) => setNewEvidence((prev) => ({ ...prev, subjectName: e.target.value }))}
@@ -313,21 +312,21 @@ export default function EvidencePage() {
           </div>
           <div>
             <p className="text-3xl font-extrabold text-foreground">{totalPoints}</p>
-            <p className="text-sm text-muted-foreground">{t("evidence.totalPoints")}
+            <p className="text-sm text-muted-foreground">{t("evidence.totalPoints")}</p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-4">
           <div className="text-center">
             <p className="text-xl font-bold text-foreground">{evidenceItems.length}</p>
-            <p className="text-xs text-muted-foreground">{t("evidence.totalItems")}
+            <p className="text-xs text-muted-foreground">{t("evidence.totalItems")}</p>
           </div>
           <div className="text-center">
             <p className="text-xl font-bold text-foreground">{badges.length}</p>
-            <p className="text-xs text-muted-foreground">{t("evidence.badges")}
+            <p className="text-xs text-muted-foreground">{t("evidence.badges")}</p>
           </div>
           <div className="text-center">
             <p className="text-xl font-bold text-foreground">{portfolioItems.length}</p>
-            <p className="text-xs text-muted-foreground">{t("evidence.creations")}
+            <p className="text-xs text-muted-foreground">{t("evidence.creations")}</p>
           </div>
         </div>
       </div>

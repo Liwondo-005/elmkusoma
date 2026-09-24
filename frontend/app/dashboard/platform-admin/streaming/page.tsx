@@ -7,6 +7,7 @@ import { Radio, RefreshCw, AlertCircle, Search, Users, Clock, Activity, HeartPul
 import { platformAdminApi, type LiveClassSummary, type PlatformHealth, type PageResponse } from "@/lib/platform-admin-api"
 
 function Stat({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string | number | null; sub: string }) {
+  const t = useTranslations("platformAdmin")
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></div>

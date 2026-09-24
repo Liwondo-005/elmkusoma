@@ -11,6 +11,7 @@ export default function DashboardMessagesPage() {
   const { user, loading: authLoading } = useAuth()
   const t = useTranslations("primary")
   const ts = useTranslations("status")
+  const tc = useTranslations("common")
   const [messages, setMessages] = useState<LearnerNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -54,7 +55,7 @@ export default function DashboardMessagesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("inbox.title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("inbox.subtitle")}
+          <p className="mt-1 text-sm text-muted-foreground">{t("inbox.subtitle")}</p>
         </div>
         {unreadCount > 0 && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">

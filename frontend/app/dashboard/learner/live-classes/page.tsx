@@ -118,7 +118,7 @@ export default function LearnerLiveClassesPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("lclasses.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("lclasses.subtitle")}
+        <p className="mt-1 text-sm text-muted-foreground">{t("lclasses.subtitle")}</p>
       </div>
 
       {error && (
@@ -222,7 +222,7 @@ export default function LearnerLiveClassesPage() {
 
           {upcomingClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">{t("lclasses.upcomingTitle")}
+              <h2 className="text-lg font-semibold text-foreground">{t("lclasses.upcomingTitle")}</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {upcomingClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -285,7 +285,7 @@ export default function LearnerLiveClassesPage() {
 
           {pastClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground text-muted-foreground">{t("lclasses.pastTitle")}
+              <h2 className="text-lg font-semibold text-foreground text-muted-foreground">{t("lclasses.pastTitle")}</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {pastClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs opacity-80">

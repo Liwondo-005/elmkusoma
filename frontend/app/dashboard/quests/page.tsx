@@ -334,13 +334,13 @@ export default function QuestsPage() {
                 <p className="text-sm font-medium text-foreground">{t("quests.locationLine", { location: selectedMission.location })}</p>
               </div>
               <div className="rounded-xl bg-muted/30 p-4">
-                <p className="text-sm font-medium text-foreground">{t("quests.instructions")}
+                <p className="text-sm font-medium text-foreground">{t("quests.instructions")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{selectedMission.instructions}</p>
               </div>
               {selectedMission.isCompleted ? (
                 <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
                   <CheckCircle className="mx-auto size-8 text-green-500" />
-                  <p className="mt-2 text-sm font-bold text-green-800">{t("quests.missionDone")}
+                  <p className="mt-2 text-sm font-bold text-green-800">{t("quests.missionDone")}</p>
                   {selectedMission.evidence && (
                     <p className="mt-1 text-xs text-green-700">{t("quests.evidenceLine", { text: selectedMission.evidence })}</p>
                   )}
@@ -348,7 +348,7 @@ export default function QuestsPage() {
               ) : (
                 <>
                   <div>
-                    <label className="text-sm font-medium text-foreground">{t("quests.evidenceLabel")}
+                    <label className="text-sm font-medium text-foreground">{t("quests.evidenceLabel")}</label>
                     <textarea
                       value={evidence}
                       onChange={(e) => setEvidence(e.target.value)}
@@ -364,9 +364,7 @@ export default function QuestsPage() {
                   >
                     {submittingMission ? (
                       <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                    ) : (
-                      {t("quests.completeMission")}
-                    )}
+                    ) : t("quests.completeMission")}
                   </button>
                 </>
               )}
@@ -390,7 +388,7 @@ export default function QuestsPage() {
       {missions.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-12 text-center">
           <MapPin className="size-10 text-muted-foreground/30" />
-          <h3 className="mt-3 text-sm font-semibold text-foreground">{t("quests.noMissions")}
+          <h3 className="mt-3 text-sm font-semibold text-foreground">{t("quests.noMissions")}</h3>
           <p className="mt-1 text-xs text-muted-foreground">{t("quests.noMissionsDesc")}</p>
         </div>
       ) : (

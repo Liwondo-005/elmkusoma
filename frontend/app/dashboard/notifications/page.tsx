@@ -48,7 +48,7 @@ export default function NotificationsPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("notifs.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("notifs.subtitle")}
+          <p className="text-sm text-muted-foreground">{t("notifs.subtitle")}</p>
         </div>
       </div>
 

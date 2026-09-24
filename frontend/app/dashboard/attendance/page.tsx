@@ -81,7 +81,7 @@ export default function AttendancePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("attend.title")}</h1>
-              <p className="text-sm text-muted-foreground">{t("attend.subtitle")}
+              <p className="text-sm text-muted-foreground">{t("attend.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -146,14 +146,14 @@ export default function AttendancePage() {
 
         {/* Attendance Records */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("attend.schoolDays")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("attend.schoolDays")}</h2>
           {!summary?.records || summary.records.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
                 <Calendar className="size-6 text-muted-foreground" />
               </div>
-              <p className="mt-3 text-sm font-medium text-foreground">{t("attend.emptyTitle")}
-              <p className="text-xs text-muted-foreground">{t("attend.emptyDesc")}
+              <p className="mt-3 text-sm font-medium text-foreground">{t("attend.emptyTitle")}</p>
+              <p className="text-xs text-muted-foreground">{t("attend.emptyDesc")}</p>
             </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -203,7 +203,7 @@ export default function AttendancePage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("attend.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("attend.monthDesc")}
+        <p className="mt-1 text-sm text-muted-foreground">{t("attend.monthDesc")}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -214,7 +214,7 @@ export default function AttendancePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{attendanceRate}%</p>
-              <p className="text-xs text-muted-foreground">{t("attend.rateLabel")}
+              <p className="text-xs text-muted-foreground">{t("attend.rateLabel")}</p>
             </div>
           </div>
         </div>
@@ -230,12 +230,12 @@ export default function AttendancePage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t("attend.recordsTitle")}
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("attend.recordsTitle")}</h2>
         {!summary?.records || summary.records.length === 0 ? (
           <div className="py-12 text-center">
             <BarChart3 className="mx-auto size-12 text-muted-foreground/50" />
-            <h3 className="mt-4 text-lg font-semibold text-foreground">{t("attend.noRecords")}
-            <p className="mt-2 text-sm text-muted-foreground">{t("attend.noRecordsDesc")}
+            <h3 className="mt-4 text-lg font-semibold text-foreground">{t("attend.noRecords")}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{t("attend.noRecordsDesc")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

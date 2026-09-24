@@ -140,7 +140,7 @@ export default function PassportPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("passport.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("passport.subtitle")}
+          <p className="text-sm text-muted-foreground">{t("passport.subtitle")}</p>
         </div>
       </div>
 
@@ -173,14 +173,14 @@ export default function PassportPage() {
             </div>
             <div>
               <p className="text-lg font-bold text-foreground">{earnedStampCount}</p>
-              <p className="text-xs text-muted-foreground">{t("journey.stampsEarned")}
+              <p className="text-xs text-muted-foreground">{t("journey.stampsEarned")}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t("passport.journeyTitle")}
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("passport.journeyTitle")}</h2>
         <div className="relative">
           <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-muted" />
           <div className="space-y-4">
@@ -245,7 +245,7 @@ export default function PassportPage() {
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">{t("passport.stampsTitle")}
+          <h2 className="text-lg font-semibold text-foreground">{t("passport.stampsTitle")}</h2>
           <span className="text-sm text-muted-foreground">
             {t("passport.collected", { done: milestoneStamps.filter((_, i) => isStampEarned(i)).length, total: milestoneStamps.length })}
           </span>
@@ -295,7 +295,7 @@ export default function PassportPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{earnedStampCount}</p>
-              <p className="text-xs text-muted-foreground">{t("passport.totalStamps")}
+              <p className="text-xs text-muted-foreground">{t("passport.totalStamps")}</p>
             </div>
           </div>
         </div>
@@ -317,7 +317,7 @@ export default function PassportPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{badges.length}</p>
-              <p className="text-xs text-muted-foreground">{t("passport.badgesEarned")}
+              <p className="text-xs text-muted-foreground">{t("passport.badgesEarned")}</p>
             </div>
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function PassportPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <Map className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("passport.emptyTitle")}
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("passport.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
             {t("passport.emptyDesc")}
           </p>

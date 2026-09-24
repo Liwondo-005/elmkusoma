@@ -65,7 +65,7 @@ export default function DashboardProgressPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("growth.title")}</h1>
-              <p className="text-sm text-muted-foreground">{t("growth.subtitle")}
+              <p className="text-sm text-muted-foreground">{t("growth.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function DashboardProgressPage() {
               </div>
               <div>
                 <p className="text-2xl font-extrabold text-foreground">{summary?.activeEnrollments ?? 0}</p>
-                <p className="text-xs text-muted-foreground">{t("growth.subjects")}
+                <p className="text-xs text-muted-foreground">{t("growth.subjects")}</p>
               </div>
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function DashboardProgressPage() {
               </div>
               <div>
                 <p className="text-2xl font-extrabold text-foreground">{summary?.overallAverage ?? 0}%</p>
-                <p className="text-xs text-muted-foreground">{t("growth.average")}
+                <p className="text-xs text-muted-foreground">{t("growth.average")}</p>
               </div>
             </div>
           </div>
@@ -120,7 +120,7 @@ export default function DashboardProgressPage() {
 
         {/* Overall Progress Bar */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.overall")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.overall")}</h2>
           <div className="flex items-center gap-4">
             <div className="h-5 flex-1 overflow-hidden rounded-full bg-muted">
               <div
@@ -137,7 +137,7 @@ export default function DashboardProgressPage() {
 
         {/* Learning Milestones */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.milestones")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.milestones")}</h2>
           <div className="space-y-3">
             {completedLessons >= 1 && (
               <div className="flex items-center gap-3 rounded-xl bg-green-50 p-3">
@@ -145,8 +145,8 @@ export default function DashboardProgressPage() {
                   <CheckCircle className="size-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{t("growth.firstDone")}
-                  <p className="text-xs text-muted-foreground">{t("growth.firstDoneDesc")}
+                  <p className="text-sm font-semibold text-foreground">{t("growth.firstDone")}</p>
+                  <p className="text-xs text-muted-foreground">{t("growth.firstDoneDesc")}</p>
                 </div>
               </div>
             )}
@@ -156,8 +156,8 @@ export default function DashboardProgressPage() {
                   <Star className="size-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{t("growth.fastLearner")}
-                  <p className="text-xs text-muted-foreground">{t("growth.fastLearnerDesc")}
+                  <p className="text-sm font-semibold text-foreground">{t("growth.fastLearner")}</p>
+                  <p className="text-xs text-muted-foreground">{t("growth.fastLearnerDesc")}</p>
                 </div>
               </div>
             )}
@@ -167,8 +167,8 @@ export default function DashboardProgressPage() {
                   <Trophy className="size-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{t("growth.champion")}
-                  <p className="text-xs text-muted-foreground">{t("growth.championDesc")}
+                  <p className="text-sm font-semibold text-foreground">{t("growth.champion")}</p>
+                  <p className="text-xs text-muted-foreground">{t("growth.championDesc")}</p>
                 </div>
               </div>
             )}
@@ -178,8 +178,8 @@ export default function DashboardProgressPage() {
                   <Target className="size-4 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{t("growth.halfway")}
-                  <p className="text-xs text-muted-foreground">{t("growth.halfwayDesc")}
+                  <p className="text-sm font-semibold text-foreground">{t("growth.halfway")}</p>
+                  <p className="text-xs text-muted-foreground">{t("growth.halfwayDesc")}</p>
                 </div>
               </div>
             )}
@@ -188,8 +188,8 @@ export default function DashboardProgressPage() {
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
                   <Star className="size-6 text-muted-foreground" />
                 </div>
-                <p className="mt-3 text-sm font-medium text-foreground">{t("growth.emptyTitle")}
-                <p className="text-xs text-muted-foreground">{t("growth.emptyDesc")}
+                <p className="mt-3 text-sm font-medium text-foreground">{t("growth.emptyTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("growth.emptyDesc")}</p>
               </div>
             )}
           </div>
@@ -197,11 +197,11 @@ export default function DashboardProgressPage() {
 
         {/* Attendance */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.attendance")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.attendance")}</h2>
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-3xl font-extrabold text-primary">{summary?.monthAttendanceRate ?? 0}%</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("growth.thisMonth")}
+              <p className="text-xs text-muted-foreground mt-1">{t("growth.thisMonth")}</p>
             </div>
             <div className="flex-1">
               <div className="h-4 overflow-hidden rounded-full bg-muted">
@@ -235,8 +235,8 @@ export default function DashboardProgressPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("growth.myProgress")}
-        <p className="mt-1 text-sm text-muted-foreground">{t("growth.myProgressDesc")}
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("growth.myProgress")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("growth.myProgressDesc")}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -249,7 +249,7 @@ export default function DashboardProgressPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.overallCompletion")}
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.overallCompletion")}</h2>
         <div className="flex items-center gap-4">
           <div className="h-4 flex-1 overflow-hidden rounded-full bg-muted">
             <div
@@ -266,7 +266,7 @@ export default function DashboardProgressPage() {
 
       <div className="rounded-2xl border border-border bg-card p-12 text-center">
         <BarChart3 className="mx-auto size-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-lg font-semibold text-foreground">{t("growth.detailed")}
+        <h3 className="mt-4 text-lg font-semibold text-foreground">{t("growth.detailed")}</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           {t("growth.detailedDesc")}
         </p>

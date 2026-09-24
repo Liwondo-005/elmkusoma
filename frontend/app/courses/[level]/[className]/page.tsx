@@ -11,7 +11,6 @@ import {
   levelSlugToEducationLevel,
   slugToClassName,
   classesByLevel,
-  classesByLevel,
   getSubjectsByLevelAndClass,
   categoriesByLevel,
 } from "@/lib/data"

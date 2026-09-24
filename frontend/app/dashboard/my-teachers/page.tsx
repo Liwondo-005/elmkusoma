@@ -61,7 +61,7 @@ export default function MyTeachersPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("teachers.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("teachers.subtitle")}
+            <p className="text-sm text-muted-foreground">{t("teachers.subtitle")}</p>
           </div>
         </div>
       </div>

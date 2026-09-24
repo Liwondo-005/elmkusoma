@@ -66,7 +66,7 @@ export default function ChallengeZonePage() {
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10"><Zap className="size-5 text-primary" /></div>
             <div>
               <h2 className="text-lg font-bold text-foreground">{selected.title}</h2>
-              <p className="text-xs text-muted-foreground">{selected.subjectName || t("challenge.fallbackSubject")}
+              <p className="text-xs text-muted-foreground">{selected.subjectName || t("challenge.fallbackSubject")}</p>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mb-4">{selected.description}</p>
@@ -118,12 +118,12 @@ export default function ChallengeZonePage() {
         <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-xs">
           <Star className="mx-auto size-6 text-yellow-500" />
           <p className="mt-1 text-2xl font-bold text-foreground">{totalPoints}</p>
-          <p className="text-xs text-muted-foreground">{t("challenge.points")}
+          <p className="text-xs text-muted-foreground">{t("challenge.points")}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-xs">
           <Target className="mx-auto size-6 text-primary" />
           <p className="mt-1 text-2xl font-bold text-foreground">{challenges.length}</p>
-          <p className="text-xs text-muted-foreground">{t("challenge.total")}
+          <p className="text-xs text-muted-foreground">{t("challenge.total")}</p>
         </div>
       </div>
 
@@ -160,9 +160,9 @@ export default function ChallengeZonePage() {
               <div className="mt-3 flex items-center justify-between">
                 <span className="text-xs font-medium text-amber-600">{t("quests.ptsCount", { count: c.totalPoints })}</span>
                 {c.isCompleted ? (
-                  <span className="text-xs font-medium text-green-600">{t("quests.scoreLine", { score: c.score, total: c.totalPoints })}
+                  <span className="text-xs font-medium text-green-600">{t("quests.scoreLine", { score: c.score, total: c.totalPoints })}</span>
                 ) : (
-                  <span className="text-xs font-medium text-primary">{t("challenge.start")}
+                  <span className="text-xs font-medium text-primary">{t("challenge.start")}</span>
                 )}
               </div>
             </button>

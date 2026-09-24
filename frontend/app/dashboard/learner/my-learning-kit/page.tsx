@@ -82,15 +82,15 @@ export default function MyLearningKitPage() {
       <LearnerHeader firstName={firstName} subtitle={t("kit.subtitle")} />
 
       <div className="flex items-center gap-4 border-b border-border">
-        {(["bookmarks", "resources"] as Tab[]).map((t) => (
+        {(["bookmarks", "resources"] as Tab[]).map((tabId) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabId}
+            onClick={() => setTab(tabId)}
             className={`border-b-2 pb-3 text-sm font-medium transition ${
-              tab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              tab === tabId ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t === "bookmarks" ? t("kit.tabBookmarks") : t("kit.tabResources")}
+            {tab === "bookmarks" ? t("kit.tabBookmarks") : t("kit.tabResources")}
           </button>
         ))}
       </div>

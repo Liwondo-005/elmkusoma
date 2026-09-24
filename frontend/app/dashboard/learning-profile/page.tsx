@@ -122,7 +122,7 @@ export default function LearningProfilePage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnProfile.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}
+            <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
@@ -146,7 +146,7 @@ export default function LearningProfilePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnProfile.title")}</h1>
-              <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}
+              <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -181,7 +181,7 @@ export default function LearningProfilePage() {
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 {profile ? t("learnProfile.editTitle") : t("learnProfile.createTitle")}
               </h1>
-              <p className="text-sm text-muted-foreground">{t("learnProfile.formSubtitle")}
+              <p className="text-sm text-muted-foreground">{t("learnProfile.formSubtitle")}</p>
             </div>
             {profile && (
               <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
@@ -293,9 +293,7 @@ export default function LearningProfilePage() {
           >
             {submitting ? (
               <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-            ) : (
-              {t("learnProfile.save")}
-            )}
+            ) : t("learnProfile.save")}
           </button>
         </form>
       </div>
@@ -315,7 +313,7 @@ export default function LearningProfilePage() {
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnProfile.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}
+            <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
@@ -334,7 +332,7 @@ export default function LearningProfilePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{profile?.level || 1}</p>
-              <p className="text-xs text-muted-foreground">{t("learnProfile.currentLevel")}
+              <p className="text-xs text-muted-foreground">{t("learnProfile.currentLevel")}</p>
             </div>
           </div>
         </div>
@@ -345,7 +343,7 @@ export default function LearningProfilePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{profile?.totalPoints || 0}</p>
-              <p className="text-xs text-muted-foreground">{t("learnProfile.totalPoints")}
+              <p className="text-xs text-muted-foreground">{t("learnProfile.totalPoints")}</p>
             </div>
           </div>
         </div>
@@ -353,7 +351,7 @@ export default function LearningProfilePage() {
 
       {styleInfo && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.styleTitle")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.styleTitle")}</h2>
           <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 ${styleColorMap[profile?.learningStyle || "VISUAL"]}`}>
             <BookOpen className="size-5" />
             <div>
@@ -366,7 +364,7 @@ export default function LearningProfilePage() {
 
       {strengthsArr.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.strengthsTitle")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.strengthsTitle")}</h2>
           <div className="flex flex-wrap gap-2">
             {strengthsArr.map((s) => (
               <span key={s} className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
@@ -379,7 +377,7 @@ export default function LearningProfilePage() {
 
       {interestsArr.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.interestsTitle")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.interestsTitle")}</h2>
           <div className="flex flex-wrap gap-2">
             {interestsArr.map((s) => (
               <span key={s} className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700">
@@ -392,7 +390,7 @@ export default function LearningProfilePage() {
 
       {profile?.goals && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.goalsTitle")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.goalsTitle")}</h2>
           <div className="rounded-xl bg-muted/30 p-4">
             <p className="text-sm text-foreground whitespace-pre-wrap">{profile.goals}</p>
           </div>
@@ -402,8 +400,8 @@ export default function LearningProfilePage() {
       {!styleInfo && strengthsArr.length === 0 && interestsArr.length === 0 && !profile?.goals && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-12 text-center">
           <Target className="size-10 text-muted-foreground/30" />
-          <h3 className="mt-3 text-sm font-semibold text-foreground">{t("learnProfile.noData")}
-          <p className="mt-1 text-xs text-muted-foreground">{t("learnProfile.noDataDesc")}
+          <h3 className="mt-3 text-sm font-semibold text-foreground">{t("learnProfile.noData")}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{t("learnProfile.noDataDesc")}</p>
         </div>
       )}
     </div>

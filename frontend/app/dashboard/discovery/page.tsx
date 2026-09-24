@@ -135,7 +135,7 @@ export default function DiscoveryPage() {
       {showForm && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("discovery.formTitle")}
+            <h2 className="text-lg font-semibold text-foreground">{t("discovery.formTitle")}</h2>
             <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="size-5" />
             </button>
@@ -177,7 +177,7 @@ export default function DiscoveryPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">{t("discovery.subjectLabel")}
+                <label className="text-sm font-medium text-foreground">{t("discovery.subjectLabel")}</label>
                 <select
                   value={form.subjectName}
                   onChange={(e) => setForm((f) => ({ ...f, subjectName: e.target.value }))}

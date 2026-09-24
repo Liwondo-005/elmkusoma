@@ -36,7 +36,7 @@ export default function DashboardProfilePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("profilePage.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("profilePage.subtitle")}
+        <p className="mt-1 text-sm text-muted-foreground">{t("profilePage.subtitle")}</p>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
@@ -96,7 +96,7 @@ export default function DashboardProfilePage() {
             <button type="submit" className="h-11 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90">
               {saving ? t("profilePage.saving") : t("profilePage.save")}
             </button>
-            {saved && <span className="text-sm text-teal font-medium">{t("profilePage.saved")}}
+            {saved && <span className="text-sm text-teal font-medium">{t("profilePage.saved")}</span>}
           </div>
         </form>
       </div>

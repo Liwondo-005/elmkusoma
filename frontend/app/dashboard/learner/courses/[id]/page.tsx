@@ -374,7 +374,7 @@ export default function CourseDetailPage() {
 
       {relatedCourses.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground">{t("course.relatedTitle")}
+          <h2 className="text-lg font-semibold text-foreground">{t("course.relatedTitle")}</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {relatedCourses.map((rc) => (
               <Link

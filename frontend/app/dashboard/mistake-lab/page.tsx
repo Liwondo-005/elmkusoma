@@ -93,7 +93,7 @@ export default function MistakeLabPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("mistakes.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("mistakes.subtitle")}
+            <p className="text-sm text-muted-foreground">{t("mistakes.subtitle")}</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
@@ -138,7 +138,7 @@ export default function MistakeLabPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{entries.length}</p>
-              <p className="text-xs text-muted-foreground">{t("mistakes.total")}
+              <p className="text-xs text-muted-foreground">{t("mistakes.total")}</p>
             </div>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function MistakeLabPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{reviewedCount}</p>
-              <p className="text-xs text-muted-foreground">{t("mistakes.reviewed")}
+              <p className="text-xs text-muted-foreground">{t("mistakes.reviewed")}</p>
             </div>
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function MistakeLabPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{entries.length - reviewedCount}</p>
-              <p className="text-xs text-muted-foreground">{t("mistakes.toReview")}
+              <p className="text-xs text-muted-foreground">{t("mistakes.toReview")}</p>
             </div>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function MistakeLabPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">{t("discovery.subjectLabel")}
+              <label className="text-sm font-medium text-foreground">{t("discovery.subjectLabel")}</label>
               <select
                 value={form.subjectName}
                 onChange={(e) => setForm((f) => ({ ...f, subjectName: e.target.value }))}
@@ -318,14 +318,14 @@ export default function MistakeLabPage() {
                   <p className="mt-1 text-sm text-red-700">{entry.wrongAnswer}</p>
                 </div>
                 <div className="rounded-xl bg-green-50 border border-green-200 p-3">
-                  <p className="text-[10px] font-bold text-green-600 uppercase">{t("mistakes.correctAnswer")}
+                  <p className="text-[10px] font-bold text-green-600 uppercase">{t("mistakes.correctAnswer")}</p>
                   <p className="mt-1 text-sm text-green-700">{entry.correctAnswer}</p>
                 </div>
               </div>
 
               {entry.explanation && (
                 <div className="mt-3 rounded-xl bg-blue-50 border border-blue-200 p-3">
-                  <p className="text-[10px] font-bold text-blue-600 uppercase">{t("mistakes.explainLabel")}
+                  <p className="text-[10px] font-bold text-blue-600 uppercase">{t("mistakes.explainLabel")}</p>
                   <p className="mt-1 text-sm text-blue-700">{entry.explanation}</p>
                 </div>
               )}

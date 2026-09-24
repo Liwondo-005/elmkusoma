@@ -361,7 +361,7 @@ export default function LessonViewerPage() {
           {enrollment && (
             <div className="flex-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{t("lesson.courseProgress")}
+                <span className="text-muted-foreground">{t("lesson.courseProgress")}</span>
                 <span className="font-semibold text-teal">{enrollment.progressPercentage}%</span>
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -408,7 +408,7 @@ export default function LessonViewerPage() {
 
       {allLessons.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-sm font-semibold text-foreground mb-3">{t("lesson.allLessons")}
+          <h2 className="text-sm font-semibold text-foreground mb-3">{t("lesson.allLessons")}</h2>
           <div className="space-y-1">
             {allLessons.map((lesson, idx) => (
               <button

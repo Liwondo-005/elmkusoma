@@ -93,6 +93,7 @@ export default function CalendarIntegrationPage() {
   const { user, loading: authLoading } = useAuth()
   const t = useTranslations("calendar")
   const tc = useTranslations("common")
+  const tl = useTranslations("learner")
 
   const EVENT_LABELS: Record<string, string> = {
     LIVE_SESSION: t("types.LIVE_SESSION"),
@@ -162,7 +163,7 @@ export default function CalendarIntegrationPage() {
             const d = new Date(project.dueDate)
             allEvents.push({
               id: `project-${project.id}`,
-              title: `${project.title} — Due`,
+              title: tl("calendarEventDue", { title: project.title }),
               date: formatDateKey(d),
               time: "23:59",
               type: "PROJECT",
@@ -173,7 +174,7 @@ export default function CalendarIntegrationPage() {
             const d = new Date(project.startDate)
             allEvents.push({
               id: `project-start-${project.id}`,
-              title: `${project.title} — Start`,
+              title: tl("calendarEventStart", { title: project.title }),
               date: formatDateKey(d),
               time: "09:00",
               type: "PROJECT",
@@ -201,7 +202,7 @@ export default function CalendarIntegrationPage() {
             const d = new Date(res.startDate)
             allEvents.push({
               id: `research-start-${res.id}`,
-              title: `${res.title} — Kickoff`,
+              title: tl("calendarEventKickoff", { title: res.title }),
               date: formatDateKey(d),
               time: "10:00",
               type: "RESEARCH",
@@ -218,7 +219,7 @@ export default function CalendarIntegrationPage() {
     } finally {
       setLoading(false)
     }
-  }, [user, t])
+  }, [user, t, tl])
 
   useEffect(() => {
     if (!user) return
@@ -562,7 +563,7 @@ export default function CalendarIntegrationPage() {
                               </span>
                             )}
                             {evt.duration && (
-                              <span className="text-xs text-muted-foreground">({evt.duration}min)</span>
+                              <span className="text-xs text-muted-foreground">({tc("durationShort", { count: evt.duration })})</span>
                             )}
                           </div>
                         </div>

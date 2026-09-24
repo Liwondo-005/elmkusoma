@@ -46,13 +46,13 @@ export default function DashboardSettingsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("settingsPage.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("settingsPage.subtitle")}
+        <p className="mt-1 text-sm text-muted-foreground">{t("settingsPage.subtitle")}</p>
       </div>
 
       <form className="space-y-6" onSubmit={handleSubmit}>
         {/* Notifications */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">{t("settingsPage.notifications")}
+          <h2 className="text-base font-semibold text-foreground">{t("settingsPage.notifications")}</h2>
           <div className="mt-4 space-y-4">
             <label className="flex items-center justify-between">
               <div>
@@ -87,18 +87,18 @@ export default function DashboardSettingsPage() {
 
         {/* Privacy */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">{t("settingsPage.privacy")}
+          <h2 className="text-base font-semibold text-foreground">{t("settingsPage.privacy")}</h2>
           <div className="mt-4 space-y-4">
             <label className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-foreground">{t("settingsPage.showProfile")}
+                <p className="text-sm font-medium text-foreground">{t("settingsPage.showProfile")}</p>
                 <p className="text-xs text-muted-foreground">{t("settingsPage.showProfileDesc")}</p>
               </div>
               <input type="checkbox" checked={settings.showProfile ?? true} onChange={() => handleToggle("showProfile")} className="size-4 rounded border-border accent-primary" />
             </label>
             <label className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-foreground">{t("settingsPage.showActivity")}
+                <p className="text-sm font-medium text-foreground">{t("settingsPage.showActivity")}</p>
                 <p className="text-xs text-muted-foreground">{t("settingsPage.showActivityDesc")}</p>
               </div>
               <input type="checkbox" checked={settings.showLearningActivity ?? false} onChange={() => handleToggle("showLearningActivity")} className="size-4 rounded border-border accent-primary" />
@@ -108,11 +108,11 @@ export default function DashboardSettingsPage() {
 
         {/* Danger Zone */}
         <div className="rounded-2xl border border-destructive/30 bg-card p-6 shadow-xs">
-          <h2 className="text-base font-semibold text-destructive">{t("settingsPage.danger")}
+          <h2 className="text-base font-semibold text-destructive">{t("settingsPage.danger")}</h2>
           <div className="mt-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">{t("settingsPage.deleteTitle")}
-              <p className="text-xs text-muted-foreground">{t("settingsPage.deleteDesc")}
+              <p className="text-sm font-medium text-foreground">{t("settingsPage.deleteTitle")}</p>
+              <p className="text-xs text-muted-foreground">{t("settingsPage.deleteDesc")}</p>
             </div>
             <button type="button" className="h-9 rounded-lg border border-destructive/30 px-4 text-xs font-medium text-destructive hover:bg-destructive/5">
               {t("settingsPage.deleteButton")}
@@ -124,7 +124,7 @@ export default function DashboardSettingsPage() {
           <button type="submit" className="h-11 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90">
             {t("settingsPage.save")}
           </button>
-          {saved && <span className="text-sm text-teal font-medium">{t("settingsPage.saved")}}
+          {saved && <span className="text-sm text-teal font-medium">{t("settingsPage.saved")}</span>}
         </div>
       </form>
     </div>

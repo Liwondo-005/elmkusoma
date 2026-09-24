@@ -21,6 +21,7 @@ function formatDuration(seconds: number, t: (k: string, p?: Record<string, numbe
   const s = seconds % 60
   if (m === 0) return t("speak.secs", { n: s })
   return t("speak.minsSecs", { m, s })
+}
 
 export default function SpeakCreatePage() {
   const { user } = useRequireAuth()
@@ -114,7 +115,7 @@ export default function SpeakCreatePage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("speak.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("speak.subtitle")}
+            <p className="text-sm text-muted-foreground">{t("speak.subtitle")}</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
@@ -137,7 +138,7 @@ export default function SpeakCreatePage() {
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("speak.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("speak.subtitle")}
+            <p className="text-sm text-muted-foreground">{t("speak.subtitle")}</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
@@ -156,7 +157,7 @@ export default function SpeakCreatePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{activities.length}</p>
-              <p className="text-xs text-muted-foreground">{t("speak.totalActivities")}
+              <p className="text-xs text-muted-foreground">{t("speak.totalActivities")}</p>
             </div>
           </div>
         </div>
@@ -178,7 +179,7 @@ export default function SpeakCreatePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{formatDuration(totalTime, t)}</p>
-              <p className="text-xs text-muted-foreground">{t("speak.totalTime")}
+              <p className="text-xs text-muted-foreground">{t("speak.totalTime")}</p>
             </div>
           </div>
         </div>
@@ -187,7 +188,7 @@ export default function SpeakCreatePage() {
       {showForm && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">{t("speak.formTitle")}
+            <h2 className="text-lg font-semibold text-foreground">{t("speak.formTitle")}</h2>
             <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="size-5" />
             </button>
@@ -254,9 +255,7 @@ export default function SpeakCreatePage() {
             >
               {submitting ? (
                 <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-              ) : (
-                {t("speak.save")}
-              )}
+              ) : t("speak.save")}
             </button>
           </form>
         </div>
@@ -322,12 +321,12 @@ export default function SpeakCreatePage() {
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Folder className="size-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">{t("speak.creationsTitle")}
+          <h2 className="text-lg font-semibold text-foreground">{t("speak.creationsTitle")}</h2>
         </div>
         {portfolio.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-12 text-center">
             <Palette className="size-10 text-muted-foreground/30" />
-            <h3 className="mt-3 text-sm font-semibold text-foreground">{t("speak.portfolioEmpty")}
+            <h3 className="mt-3 text-sm font-semibold text-foreground">{t("speak.portfolioEmpty")}</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {t("speak.portfolioEmptyDesc")}
             </p>

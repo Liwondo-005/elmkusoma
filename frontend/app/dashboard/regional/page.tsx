@@ -88,7 +88,7 @@ export default function RegionalDashboardPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t("regional.regionalEducationOversight")}</h1>
-            <p className="text-sm text-muted-foreground">{t("regional.welcome", { p0: user?.name })}</p>
+            <p className="text-sm text-muted-foreground">{t("regional.welcome", { p0: user?.name ?? "" })}</p>
           </div>
         </div>
       </div>

@@ -89,7 +89,7 @@ export default function ParentMessagesPage() {
             <div>
               <h2 className="text-lg font-semibold text-foreground">{selectedMessage.subject}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {activeTab === "inbox" ? t("messages.fromLabel", { name: selectedMessage.senderName }) : t("messages.toLabel", { name: selectedMessage.recipientName })}
+                {activeTab === "inbox" ? t("messages.fromLabel", { name: selectedMessage.senderName ?? "" }) : t("messages.toLabel", { name: selectedMessage.recipientName ?? "" })}
               </p>
               <p className="text-xs text-muted-foreground">
                 {new Date(selectedMessage.createdAt).toLocaleString()}
@@ -241,7 +241,7 @@ export default function ParentMessagesPage() {
                     {msg.subject}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {activeTab === "inbox" ? t("messages.fromLabel", { name: msg.senderName }) : t("messages.toLabel", { name: msg.recipientName })}
+                    {activeTab === "inbox" ? t("messages.fromLabel", { name: msg.senderName ?? "" }) : t("messages.toLabel", { name: msg.recipientName ?? "" })}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">

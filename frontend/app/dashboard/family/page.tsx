@@ -76,7 +76,7 @@ const familyActivities = [
 
       {activities.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">{t("family.recent")}
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("family.recent")}</h2>
           <div className="space-y-3">
             {activities.map(a => (
               <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border p-3">

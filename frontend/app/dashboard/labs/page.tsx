@@ -156,7 +156,7 @@ export default function LabsPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-foreground">{t("labs.steps")}
+              <h3 className="text-sm font-bold text-foreground">{t("labs.steps")}</h3>
               <ol className="mt-2 space-y-2">
                 {(selectedLab.steps || []).map((s, i) => (
                   <li key={i} className="flex gap-3 text-sm text-muted-foreground">
@@ -170,7 +170,7 @@ export default function LabsPage() {
             </div>
 
             <div className="rounded-xl bg-green-50 border border-green-200 p-4">
-              <h3 className="text-sm font-bold text-green-800">{t("labs.expected")}
+              <h3 className="text-sm font-bold text-green-800">{t("labs.expected")}</h3>
               <p className="mt-1 text-sm text-green-700">{selectedLab.expectedResult}</p>
             </div>
 
@@ -204,9 +204,7 @@ export default function LabsPage() {
                 >
                   {submitting ? (
                     <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                  ) : (
-                    {t("labs.markCompleted")}
-                  )}
+                  ) : t("labs.markCompleted")}
                 </button>
               )}
             </div>

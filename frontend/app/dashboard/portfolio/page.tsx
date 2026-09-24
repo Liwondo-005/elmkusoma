@@ -271,7 +271,7 @@ interface CreationActivity {
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("portfolioPage.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("portfolioPage.subtitle")}
+          <p className="text-sm text-muted-foreground">{t("portfolioPage.subtitle")}</p>
         </div>
       </div>
 

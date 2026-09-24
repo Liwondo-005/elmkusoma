@@ -11,6 +11,7 @@ function SkeletonCard() {
 }
 
 function Kpi({ icon: Icon, label, value, sub, available }: { icon: any; label: string; value: number | null; sub: string; available: boolean }) {
+  const t = useTranslations("platformAdmin")
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></div>

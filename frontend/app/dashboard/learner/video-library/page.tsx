@@ -123,7 +123,7 @@ export default function VideoLibraryPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">{t("vids.moreHint")}
+        <p className="text-sm text-muted-foreground">{t("vids.moreHint")}</p>
         <Link href="/dashboard/learner/resources" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           {t("vids.browseAll")} <ArrowRight className="size-3" />
         </Link>

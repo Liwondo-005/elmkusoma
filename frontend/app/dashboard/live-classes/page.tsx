@@ -98,7 +98,7 @@ export default function LiveClassesPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("live.title")}</h1>
-              <p className="text-sm text-muted-foreground">{t("live.subtitle")}
+              <p className="text-sm text-muted-foreground">{t("live.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function LiveClassesPage() {
             <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-muted">
               <Video className="size-8 text-muted-foreground" />
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-foreground">{t("live.emptyTitle")}
+            <h3 className="mt-4 text-lg font-semibold text-foreground">{t("live.emptyTitle")}</h3>
             <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
               {t("live.emptyDesc")}
             </p>
@@ -217,7 +217,7 @@ export default function LiveClassesPage() {
 
             {scheduledClasses.length > 0 && (
               <section>
-                <h2 className="text-lg font-semibold text-foreground">{t("live.comingUp")}
+                <h2 className="text-lg font-semibold text-foreground">{t("live.comingUp")}</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {scheduledClasses.map((cls) => (
                     <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md">
@@ -263,7 +263,7 @@ export default function LiveClassesPage() {
 
             {recentlyCompleted.length > 0 && (
               <section>
-                <h2 className="text-lg font-semibold text-foreground">{t("live.recentlyDone")}
+                <h2 className="text-lg font-semibold text-foreground">{t("live.recentlyDone")}</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {recentlyCompleted.map((cls) => (
                     <div key={cls.id} className="rounded-2xl border border-border bg-card p-5">
@@ -298,7 +298,7 @@ export default function LiveClassesPage() {
 
             {replays.length > 0 && (
               <section>
-                <h2 className="text-lg font-semibold text-foreground">{t("live.replays")}
+                <h2 className="text-lg font-semibold text-foreground">{t("live.replays")}</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {replays.map((cls) => (
                     <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 opacity-80">
@@ -338,14 +338,14 @@ export default function LiveClassesPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("live.classesTitle")}
-        <p className="mt-1 text-sm text-muted-foreground">{t("live.classesSubtitle")}
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("live.classesTitle")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("live.classesSubtitle")}</p>
       </div>
 
       {classes.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Video className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("live.emptyClassesTitle")}
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("live.emptyClassesTitle")}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             {t("live.emptyClassesDesc")}
           </p>
@@ -442,7 +442,7 @@ export default function LiveClassesPage() {
 
           {scheduledClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">{t("live.upcomingTitle")}
+              <h2 className="text-lg font-semibold text-foreground">{t("live.upcomingTitle")}</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {scheduledClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md">
@@ -485,7 +485,7 @@ export default function LiveClassesPage() {
 
           {recentlyCompleted.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">{t("live.recentlyDone")}
+              <h2 className="text-lg font-semibold text-foreground">{t("live.recentlyDone")}</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {recentlyCompleted.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5">
@@ -515,7 +515,7 @@ export default function LiveClassesPage() {
 
           {otherClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground text-muted-foreground">{t("live.pastTitle")}
+              <h2 className="text-lg font-semibold text-foreground text-muted-foreground">{t("live.pastTitle")}</h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {otherClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 opacity-70">
