@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { Target, Plus, Pencil, Trash2, Loader2, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -29,6 +31,9 @@ const defaultForm: FormData = {
 }
 
 export default function CompetenciesPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [competencies, setCompetencies] = useState<Competency[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +50,7 @@ export default function CompetenciesPage() {
       const res = await collegeApi.listCompetencies()
       setCompetencies((res.data as Competency[] | undefined) || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load competencies")
+      setError(err instanceof Error ? err.message : t("competencies.failedToLoadCompetencies"))
     } finally {
       setLoading(false)
     }
@@ -79,7 +84,7 @@ export default function CompetenciesPage() {
       resetForm()
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save competency")
+      setError(err instanceof Error ? err.message : t("competencies.failedToSaveCompetency"))
     } finally {
       setSaving(false)
     }
@@ -105,7 +110,7 @@ export default function CompetenciesPage() {
       setDeleteConfirm(null)
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete competency")
+      setError(err instanceof Error ? err.message : t("competencies.failedToDeleteCompetency"))
     }
   }
 
@@ -119,16 +124,15 @@ export default function CompetenciesPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Competency Framework</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Define and manage competencies for your programmes</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("competencies.competencyFramework")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("competencies.defineAndManageCompetencies")}</p>
         </div>
         <Button
           onClick={() => { resetForm(); setShowForm(true) }}
           className="gap-2"
         >
           <Plus className="size-4" />
-          Add Competency
-        </Button>
+          {t("competencies.addCompetency")}</Button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -136,13 +140,13 @@ export default function CompetenciesPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search competencies..."
+            placeholder={t("competencies.searchCompetencies")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <span className="text-sm text-muted-foreground">{filtered.length} competenc{filtered.length !== 1 ? "ies" : "y"}</span>
+        <span className="text-sm text-muted-foreground">{filtered.length !== 1 ? t("competencies.countPlural", { count: filtered.length }) : t("competencies.countSingle", { count: filtered.length })}</span>
       </div>
 
       {error && (
@@ -156,9 +160,9 @@ export default function CompetenciesPage() {
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Target className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No competencies found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("competencies.noCompetenciesFound")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {searchQuery ? "Try a different search term." : "Add your first competency to get started."}
+            {searchQuery ? t("competencies.tryADifferentSearch") : t("competencies.addYourFirstCompetency")}
           </p>
         </div>
       ) : (
@@ -167,12 +171,12 @@ export default function CompetenciesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Name</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Code</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Type</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Subject</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("competencies.name")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("competencies.code")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("competencies.type")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("competencies.subject")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("competencies.status")}</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">{t("competencies.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -201,7 +205,7 @@ export default function CompetenciesPage() {
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                         comp.isActive ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"
                       }`}>
-                        {comp.isActive ? "Active" : "Inactive"}
+                        {comp.isActive ? ts("active") : ts("inactive")}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
@@ -219,15 +223,13 @@ export default function CompetenciesPage() {
                               size="xs"
                               onClick={() => handleDelete(comp.id)}
                             >
-                              Delete
-                            </Button>
+                              {tc("delete")}</Button>
                             <Button
                               variant="outline"
                               size="xs"
                               onClick={() => setDeleteConfirm(null)}
                             >
-                              Cancel
-                            </Button>
+                              {tc("cancel")}</Button>
                           </div>
                         ) : (
                           <button
@@ -251,33 +253,33 @@ export default function CompetenciesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">{editing ? "Edit Competency" : "Add Competency"}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{editing ? t("competencies.editCompetency") : t("competencies.addCompetency2")}</h2>
               <button onClick={() => { setShowForm(false); resetForm() }} className="rounded-lg p-1 hover:bg-muted">
                 <X className="size-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">Name *</label>
+                <label className="mb-1 block text-sm font-medium">{t("competencies.name2")}</label>
                 <input
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. Problem Solving"
+                  placeholder={t("competencies.eGProblemSolving")}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Code</label>
+                <label className="mb-1 block text-sm font-medium">{t("competencies.code2")}</label>
                 <input
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value })}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. COMP-001"
+                  placeholder={t("competencies.eGComp")}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Description</label>
+                <label className="mb-1 block text-sm font-medium">{t("competencies.description")}</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -287,7 +289,7 @@ export default function CompetenciesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Competency Type *</label>
+                  <label className="mb-1 block text-sm font-medium">{t("competencies.competencyType")}</label>
                   <select
                     value={form.competencyType}
                     onChange={(e) => setForm({ ...form, competencyType: e.target.value as CompetencyType })}
@@ -297,28 +299,28 @@ export default function CompetenciesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Subject ID (optional)</label>
+                  <label className="mb-1 block text-sm font-medium">{t("competencies.subjectIdOptional")}</label>
                   <input
                     value={form.subjectId}
                     onChange={(e) => setForm({ ...form, subjectId: e.target.value })}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Optional subject ID"
+                    placeholder={t("competencies.optionalSubjectId")}
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Sort Order</label>
+                <label className="mb-1 block text-sm font-medium">{t("competencies.sortOrder")}</label>
                 <input
                   type="number"
                   min="0"
                   value={form.sortOrder}
                   onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. 1"
+                  placeholder={t("competencies.eG")}
                 />
               </div>
               <div className="flex items-center gap-3">
-                <label className="text-sm font-medium">Active</label>
+                <label className="text-sm font-medium">{ts("active")}</label>
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, isActive: !form.isActive })}
@@ -333,11 +335,10 @@ export default function CompetenciesPage() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setShowForm(false); resetForm() }}>
-                  Cancel
-                </Button>
+                  {tc("cancel")}</Button>
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="size-4 animate-spin" />}
-                  {editing ? "Save Changes" : "Create Competency"}
+                  {editing ? t("competencies.saveChanges") : t("competencies.createCompetency")}
                 </Button>
               </div>
             </form>

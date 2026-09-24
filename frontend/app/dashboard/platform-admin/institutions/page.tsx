@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Building2, Loader2, Search, MapPin } from "lucide-react"
@@ -15,6 +17,9 @@ const LIFECYCLE_OPTIONS: Record<string, string[]> = {
 }
 
 export default function PlatformInstitutionsPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const router = useRouter()
   const [data, setData] = useState<PageResponse<InstitutionSummary> | null>(null)
   const [loading, setLoading] = useState(true)
@@ -31,7 +36,7 @@ export default function PlatformInstitutionsPage() {
       const res = await platformAdminApi.listInstitutions(page, PAGE_SIZE, search || undefined)
       setData(res)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load institutions")
+      setError(err instanceof Error ? err.message : t("institutions.failedToLoadInstitutions"))
     } finally {
       setLoading(false)
     }
@@ -60,7 +65,7 @@ export default function PlatformInstitutionsPage() {
         }
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update institution status")
+      setError(err instanceof Error ? err.message : t("institutions.failedToUpdateInstitution"))
     }
   }
 
@@ -77,7 +82,7 @@ export default function PlatformInstitutionsPage() {
         }
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update lifecycle status")
+      setError(err instanceof Error ? err.message : t("institutions.failedToUpdateLifecycle"))
     } finally {
       setLifecycleBusy(null)
     }
@@ -86,15 +91,15 @@ export default function PlatformInstitutionsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Institutions</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage all education institutions on the platform.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("institutions.institutions")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("institutions.manageAllEducationInstitutions")}</p>
       </div>
 
       <form onSubmit={handleSearch} className="relative">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Search institutions by name, code, or city..."
+          placeholder={t("institutions.searchInstitutionsByName")}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -112,9 +117,9 @@ export default function PlatformInstitutionsPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Building2 className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No institutions found</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("institutions.noInstitutionsFound")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {search ? "Try a different search term." : "No institutions available."}
+            {search ? t("institutions.tryADifferentSearch") : t("institutions.noInstitutionsAvailable")}
           </p>
         </div>
       ) : (
@@ -136,7 +141,7 @@ export default function PlatformInstitutionsPage() {
                   </div>
                 </div>
                 <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${inst.isActive ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
-                  {inst.status ?? (inst.isActive ? "Active" : "Inactive")}
+                  {inst.status ?? (inst.isActive ? ts("active") : ts("inactive"))}
                 </span>
               </div>
 
@@ -155,7 +160,7 @@ export default function PlatformInstitutionsPage() {
                   onChange={(e) => { if (e.target.value) handleLifecycleChange(inst, e.target.value) }}
                   className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                 >
-                  <option value="">Change lifecycle…</option>
+                  <option value="">{t("institutions.changeLifecycle")}</option>
                   {(LIFECYCLE_OPTIONS[inst.status ?? "ACTIVE"] ?? []).map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -168,7 +173,7 @@ export default function PlatformInstitutionsPage() {
                       : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800"
                   }`}
                 >
-                  {inst.isActive ? "Deactivate" : "Activate"}
+                  {inst.isActive ? t("institutions.deactivate") : t("institutions.activate")}
                 </button>
               </div>
             </div>
@@ -183,18 +188,15 @@ export default function PlatformInstitutionsPage() {
             disabled={page === 0}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Prev
-          </button>
+            {t("institutions.prev")}</button>
           <span className="text-sm text-muted-foreground">
-            Page {page + 1} of {data.totalPages}
-          </span>
+            {t("institutions.pageOf", { p0: page + 1, p1: data.totalPages })}</span>
           <button
             onClick={() => setPage((p) => Math.min(data.totalPages - 1, p + 1))}
             disabled={page >= data.totalPages - 1}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Next
-          </button>
+            {tc("next")}</button>
         </div>
       )}
     </div>

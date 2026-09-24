@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
 import { collegeApi } from "@/lib/college-api"
 import { learnerApi } from "@/lib/learner-api"
@@ -48,24 +49,9 @@ const EVENT_COLORS: Record<string, { bg: string; text: string; dot: string }> = 
   CAREER: { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
 }
 
-const EVENT_LABELS: Record<string, string> = {
-  LIVE_SESSION: "Live Session",
-  DEADLINE: "Assignment Deadline",
-  PROJECT: "Project Milestone",
-  RESEARCH: "Research Meeting",
-  STUDY_TASK: "Study Task",
-  CAREER: "Career Event",
-}
 
-const FILTER_OPTIONS: { key: FilterType; label: string }[] = [
-  { key: "ALL", label: "All" },
-  { key: "LIVE_SESSION", label: "Live Sessions" },
-  { key: "DEADLINE", label: "Deadlines" },
-  { key: "PROJECT", label: "Projects" },
-  { key: "RESEARCH", label: "Research" },
-]
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const WEEKDAYS_FALLBACK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate()
@@ -98,16 +84,36 @@ function EventIcon({ type }: { type: string }) {
 }
 
 function EventTypeBadge({ type }: { type: string }) {
+  const t = useTranslations("learner")
   const colors = EVENT_COLORS[type] || { bg: "bg-muted", text: "text-muted-foreground" }
+  const labels: Record<string, string> = { LIVE_SESSION: t("cal.typeLive"), DEADLINE: t("cal.typeDeadline"), PROJECT: t("cal.typeProject"), RESEARCH: t("cal.typeResearch"), STUDY_TASK: t("cal.typeStudy"), CAREER: t("cal.typeCareer") }
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${colors.bg} ${colors.text}`}>
       <EventIcon type={type} />
-      {EVENT_LABELS[type] || type}
+      {labels[type] || type}
     </span>
   )
 }
 
 export default function CalendarIntegrationPage() {
+  const t = useTranslations("learner")
+  const FILTER_OPTIONS: { key: FilterType; label: string }[] = [
+  { key: "ALL", label: t("cal.filterAll") },
+  { key: "LIVE_SESSION", label: t("cal.filterLive") },
+  { key: "DEADLINE", label: t("cal.filterDeadlines") },
+  { key: "PROJECT", label: t("cal.filterProjects") },
+  { key: "RESEARCH", label: t("cal.filterResearch") },
+]
+  const EVENT_LABELS: Record<string, string> = {
+  LIVE_SESSION: t("cal.typeLive"),
+  DEADLINE: t("cal.typeDeadline"),
+  PROJECT: t("cal.typeProject"),
+  RESEARCH: t("cal.typeResearch"),
+  STUDY_TASK: t("cal.typeStudy"),
+  CAREER: t("cal.typeCareer"),
+}
+  const WEEKDAYS = [t("cal.wdMon"), t("cal.wdTue"), t("cal.wdWed"), t("cal.wdThu"), t("cal.wdFri"), t("cal.wdSat"), t("cal.wdSun")]
+  const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
 
@@ -160,7 +166,7 @@ export default function CalendarIntegrationPage() {
             const d = new Date(project.dueDate)
             allEvents.push({
               id: `project-${project.id}`,
-              title: `${project.title} — Due`,
+              title: t("cal.dueTitle", { title: project.title }),
               date: formatDateKey(d),
               time: "23:59",
               type: "PROJECT",
@@ -171,7 +177,7 @@ export default function CalendarIntegrationPage() {
             const d = new Date(project.startDate)
             allEvents.push({
               id: `project-start-${project.id}`,
-              title: `${project.title} — Start`,
+              title: t("cal.startTitle", { title: project.title }),
               date: formatDateKey(d),
               time: "09:00",
               type: "PROJECT",
@@ -199,7 +205,7 @@ export default function CalendarIntegrationPage() {
             const d = new Date(res.startDate)
             allEvents.push({
               id: `research-start-${res.id}`,
-              title: `${res.title} — Kickoff`,
+              title: t("cal.kickoffTitle", { title: res.title }),
               date: formatDateKey(d),
               time: "10:00",
               type: "RESEARCH",
@@ -211,7 +217,7 @@ export default function CalendarIntegrationPage() {
 
       setEvents(allEvents)
     } catch {
-      setError("Failed to load calendar events")
+      setError(t("cal.loadError"))
     } finally {
       setLoading(false)
     }
@@ -222,7 +228,7 @@ export default function CalendarIntegrationPage() {
     loadEvents()
   }, [user, loadEvents])
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || t("cal.learnerFallback")
 
   const today = new Date()
   const year = currentDate.getFullYear()
@@ -311,7 +317,7 @@ export default function CalendarIntegrationPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Your academic calendar — live sessions, deadlines, projects, and events" />
+      <LearnerHeader firstName={firstName} subtitle={t("cal.subtitle")} />
 
       {error && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
@@ -319,7 +325,7 @@ export default function CalendarIntegrationPage() {
             <AlertCircle className="size-4" />
             {error}
             <button onClick={() => { setError(null); loadEvents() }} className="ml-auto text-xs underline">
-              Retry
+              {tc("retry")}
             </button>
           </div>
         </div>
@@ -338,7 +344,7 @@ export default function CalendarIntegrationPage() {
                     }`}
                   >
                     <Grid3X3 className="size-3.5" />
-                    Month
+                    {t("cal.viewMonth")}
                   </button>
                   <button
                     onClick={() => setViewMode("week")}
@@ -347,7 +353,7 @@ export default function CalendarIntegrationPage() {
                     }`}
                   >
                     <List className="size-3.5" />
-                    Week
+                    {t("cal.viewWeek")}
                   </button>
                 </div>
               </div>
@@ -371,7 +377,7 @@ export default function CalendarIntegrationPage() {
                   className="ml-1 flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted"
                 >
                   <CalendarDays className="size-3.5" />
-                  Today
+                  {t("cal.todayBtn")}
                 </button>
               </div>
             </div>
@@ -425,7 +431,7 @@ export default function CalendarIntegrationPage() {
                     >
                       <span
                         className={`text-xs font-medium ${
-                          isToday
+                          is{t("cal.todayBtn")}
                             ? "flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground"
                             : "text-foreground"
                         }`}
@@ -443,7 +449,7 @@ export default function CalendarIntegrationPage() {
                           )
                         })}
                         {dayEvents.length > 3 && (
-                          <span className="text-[10px] font-medium text-muted-foreground">+{dayEvents.length - 3} more</span>
+                          <span className="text-[10px] font-medium text-muted-foreground">{t("cal.moreCount", { count: dayEvents.length - 3 })}</span>
                         )}
                       </div>
                     </button>
@@ -523,14 +529,14 @@ export default function CalendarIntegrationPage() {
                     {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    {selectedDateEvents.length} event{selectedDateEvents.length !== 1 ? "s" : ""}
+                    {t("cal.eventsCount", { count: selectedDateEvents.length })}
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedDate(null)}
                   className="rounded-lg p-1 text-muted-foreground transition hover:bg-muted"
                 >
-                  <span className="sr-only">Close</span>
+                  <span className="sr-only">{t("cal.closeLabel")}</span>
                   <AlertCircle className="size-4" />
                 </button>
               </div>
@@ -539,7 +545,7 @@ export default function CalendarIntegrationPage() {
                 {selectedDateEvents.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border py-6 text-center">
                     <Calendar className="mx-auto size-6 text-muted-foreground" />
-                    <p className="mt-2 text-xs text-muted-foreground">No events on this day</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{t("cal.emptyDay")}</p>
                   </div>
                 ) : (
                   selectedDateEvents.map((evt) => (
@@ -555,7 +561,7 @@ export default function CalendarIntegrationPage() {
                               </span>
                             )}
                             {evt.duration && (
-                              <span className="text-xs text-muted-foreground">({evt.duration}min)</span>
+                              <span className="text-xs text-muted-foreground">{t("cal.minsShort", { count: evt.duration })}</span>
                             )}
                           </div>
                         </div>
@@ -569,7 +575,7 @@ export default function CalendarIntegrationPage() {
                           href={evt.link}
                           className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                         >
-                          View Details →
+                          {t("cal.viewDetails")}
                         </a>
                       )}
                     </div>
@@ -579,7 +585,7 @@ export default function CalendarIntegrationPage() {
 
               <button className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition hover:bg-muted">
                 <Plus className="size-3.5" />
-                Add Event
+                {t("cal.addEvent")}
               </button>
             </div>
           )}
@@ -587,32 +593,32 @@ export default function CalendarIntegrationPage() {
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
             <div className="flex items-center gap-2">
               <Filter className="size-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold text-foreground">Event Legend</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("cal.legend")}
             </div>
             <div className="mt-3 space-y-2">
               {Object.entries(EVENT_COLORS).map(([type, colors]) => (
                 <div key={type} className="flex items-center gap-2">
                   <span className={`size-2.5 rounded-full ${colors.dot}`} />
-                  <span className="text-xs text-foreground">{EVENT_LABELS[type] || type}</span>
+                  <span className="text-xs text-foreground">{labels[type] || type}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <h3 className="text-sm font-semibold text-foreground">Upcoming Events</h3>
-            <p className="text-xs text-muted-foreground">Next 7 days</p>
+            <h3 className="text-sm font-semibold text-foreground">{t("cal.upcoming")}
+            <p className="text-xs text-muted-foreground">{t("cal.next7")}
             <div className="mt-3 space-y-2">
               {upcomingEvents.length === 0 ? (
-                <p className="py-4 text-center text-xs text-muted-foreground">No upcoming events</p>
+                <p className="py-4 text-center text-xs text-muted-foreground">{t("cal.emptyUpcoming")}</p>
               ) : (
                 upcomingEvents.map((evt) => {
                   const colors = EVENT_COLORS[evt.type] || { bg: "bg-muted", text: "text-muted-foreground", dot: "bg-muted-foreground" }
                   const eventDate = new Date(evt.date)
                   const dayLabel = isSameDay(eventDate, today)
-                    ? "Today"
+                    ? t("cal.todayLabel")
                     : isSameDay(eventDate, new Date(today.getTime() + 86400000))
-                      ? "Tomorrow"
+                      ? t("cal.tomorrowLabel")
                       : eventDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
 
                   return (
@@ -638,7 +644,7 @@ export default function CalendarIntegrationPage() {
                           href={evt.link}
                           className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
                         >
-                          Join / View →
+                          {t("cal.joinView")}
                         </a>
                       )}
                     </div>
@@ -649,32 +655,32 @@ export default function CalendarIntegrationPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <h3 className="text-sm font-semibold text-foreground">Quick Stats</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("cal.stats")}
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Total Events</span>
+                <span className="text-xs text-muted-foreground">{t("cal.totalEvents")}</span>
                 <span className="text-xs font-semibold text-foreground">{events.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Live Sessions</span>
+                <span className="text-xs text-muted-foreground">{t("cal.liveSessions")}</span>
                 <span className="text-xs font-semibold text-red-600">
                   {events.filter((e) => e.type === "LIVE_SESSION").length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Deadlines</span>
+                <span className="text-xs text-muted-foreground">{t("cal.deadlines")}
                 <span className="text-xs font-semibold text-amber-600">
                   {events.filter((e) => e.type === "DEADLINE").length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Projects</span>
+                <span className="text-xs text-muted-foreground">{t("cal.projectsLabel")}</span>
                 <span className="text-xs font-semibold text-cyan-600">
                   {events.filter((e) => e.type === "PROJECT").length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Research</span>
+                <span className="text-xs text-muted-foreground">{t("cal.researchLabel")}</span>
                 <span className="text-xs font-semibold text-purple-600">
                   {events.filter((e) => e.type === "RESEARCH").length}
                 </span>

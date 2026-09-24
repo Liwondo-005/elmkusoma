@@ -1,10 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Search, MessageSquare, Loader2, Send, ArrowLeft, Trash2, CheckCircle, Circle } from "lucide-react"
 import { parentApi, type MessageData, type ChildOverview } from "@/lib/parent-api"
 
 export default function ParentMessagesPage() {
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
   const [messages, setMessages] = useState<MessageData[]>([])
   const [sentMessages, setSentMessages] = useState<MessageData[]>([])
   const [children, setChildren] = useState<ChildOverview[]>([])
@@ -78,14 +82,14 @@ export default function ParentMessagesPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <button onClick={() => setSelectedMessage(null)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" /> Back to {activeTab}
+          <ArrowLeft className="size-4" /> {t("messages.backTo", { tab: activeTab === "inbox" ? t("messages.inbox") : t("messages.sent") })}
         </button>
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{selectedMessage.subject}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {activeTab === "inbox" ? `From: ${selectedMessage.senderName}` : `To: ${selectedMessage.recipientName}`}
+                {activeTab === "inbox" ? t("messages.fromLabel", { name: selectedMessage.senderName }) : t("messages.toLabel", { name: selectedMessage.recipientName })}
               </p>
               <p className="text-xs text-muted-foreground">
                 {new Date(selectedMessage.createdAt).toLocaleString()}
@@ -105,7 +109,7 @@ export default function ParentMessagesPage() {
               selectedMessage.isRead ? "bg-green-500/10 text-green-600" : "bg-blue-500/10 text-blue-600"
             }`}>
               {selectedMessage.isRead ? <CheckCircle className="size-3" /> : <Circle className="size-3" />}
-              {selectedMessage.isRead ? "Read" : "Unread"}
+              {selectedMessage.isRead ? t("messages.readStatus") : t("messages.unreadStatus")}
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5">{selectedMessage.messageType}</span>
           </div>
@@ -118,58 +122,58 @@ export default function ParentMessagesPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Messages</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Communicate with teachers and school staff.</p>
+          <h1 className="text-xl font-bold text-foreground">{tn("messages")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("messages.subtitle")}</p>
         </div>
         <button
           onClick={() => setComposing(true)}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          <Send className="size-4" /> New Message
+          <Send className="size-4" /> {t("messages.newMessage")}
         </button>
       </div>
 
       {composing && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-          <h2 className="text-base font-semibold text-foreground">New Message</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("messages.newMessage")}</h2>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Recipient</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("messages.recipientLabel")}</label>
             <select
               value={composeForm.recipientId}
               onChange={(e) => setComposeForm({ ...composeForm, recipientId: e.target.value })}
               className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
-              <option value="">Select recipient...</option>
+              <option value="">{t("messages.selectRecipient")}</option>
               {children.map((c) => (
                 <option key={c.studentId} value={c.studentId}>{c.studentName} ({c.className})</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Subject</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("messages.subjectLabel")}</label>
             <input
               type="text"
               value={composeForm.subject}
               onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })}
-              placeholder="Message subject"
+              placeholder={t("messages.subjectPlaceholder")}
               className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Message</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("messages.messageLabel")}</label>
             <textarea
               value={composeForm.body}
               onChange={(e) => setComposeForm({ ...composeForm, body: e.target.value })}
-              placeholder="Write your message..."
+              placeholder={t("messages.messagePlaceholder")}
               rows={5}
               className="mt-1 w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div className="flex gap-2">
             <button onClick={handleSend} disabled={sending} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-              {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} Send
+              {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} {t("messages.send")}
             </button>
-            <button onClick={() => setComposing(false)} className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">Cancel</button>
+            <button onClick={() => setComposing(false)} className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">{tc("cancel")}</button>
           </div>
         </div>
       )}
@@ -183,7 +187,7 @@ export default function ParentMessagesPage() {
               activeTab === tab ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "inbox" ? "Inbox" : "Sent"}
+            {tab === "inbox" ? t("messages.inbox") : t("messages.sent")}
             {tab === "inbox" && messages.filter((m) => !m.isRead).length > 0 && (
               <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
                 {messages.filter((m) => !m.isRead).length}
@@ -197,7 +201,7 @@ export default function ParentMessagesPage() {
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Search messages..."
+          placeholder={t("messages.searchPlaceholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -212,10 +216,10 @@ export default function ParentMessagesPage() {
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <MessageSquare className="mx-auto mb-3 size-8 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">
-            {searchQuery ? "No messages match your search." : activeTab === "inbox" ? "No messages in your inbox." : "No sent messages."}
+            {searchQuery ? t("messages.noMatchSearch") : activeTab === "inbox" ? t("messages.emptyInbox") : t("messages.emptySent")}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {activeTab === "inbox" ? "Messages from teachers and staff will appear here." : "Messages you send will appear here."}
+            {activeTab === "inbox" ? t("messages.emptyInboxDesc") : t("messages.emptySentDesc")}
           </p>
         </div>
       ) : (
@@ -237,7 +241,7 @@ export default function ParentMessagesPage() {
                     {msg.subject}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {activeTab === "inbox" ? `From: ${msg.senderName}` : `To: ${msg.recipientName}`}
+                    {activeTab === "inbox" ? t("messages.fromLabel", { name: msg.senderName }) : t("messages.toLabel", { name: msg.recipientName })}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">

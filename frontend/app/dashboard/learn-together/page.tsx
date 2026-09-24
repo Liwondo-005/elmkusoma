@@ -2,11 +2,21 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type LearningCollaboration } from "@/lib/api"
 import { Users, BookOpen, Trophy, Share2, MessageSquare } from "lucide-react"
 
 export default function LearnTogetherPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
+const activities = [
+    { title: t("together.studyGroups"), description: t("together.studyGroupsDesc"), icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { title: t("together.partnerReading"), description: t("together.partnerReadingDesc"), icon: BookOpen, color: "text-green-500", bg: "bg-green-500/10" },
+    { title: t("together.teamChallenges"), description: t("together.teamChallengesDesc"), icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
+    { title: t("together.shareWork"), description: t("together.shareWorkDesc"), icon: Share2, color: "text-purple-500", bg: "bg-purple-500/10" },
+  ]
+
   const [collaborations, setCollaborations] = useState<LearningCollaboration[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -25,12 +35,6 @@ export default function LearnTogetherPage() {
     }
   }
 
-  const activities = [
-    { title: "Study Groups", description: "Find study partners", icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { title: "Partner Reading", description: "Read together", icon: BookOpen, color: "text-green-500", bg: "bg-green-500/10" },
-    { title: "Team Challenges", description: "Compete as a team", icon: Trophy, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { title: "Share My Work", description: "Show your creations", icon: Share2, color: "text-purple-500", bg: "bg-purple-500/10" },
-  ]
 
   if (loading) {
     return <div className="flex min-h-[50vh] items-center justify-center"><div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>
@@ -42,8 +46,8 @@ export default function LearnTogetherPage() {
         <div className="flex items-center gap-3">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10"><Users className="size-6 text-blue-600" /></div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Learn Together</h1>
-            <p className="text-sm text-muted-foreground">Learning is more fun with friends!</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("together.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("together.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -59,12 +63,12 @@ export default function LearnTogetherPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">My Collaborations</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("together.myCollabs")}</h2>
         {collaborations.length === 0 ? (
           <div className="py-8 text-center">
             <Users className="mx-auto size-12 text-muted-foreground/50" />
-            <p className="mt-3 text-sm font-medium text-foreground">No collaborations yet</p>
-            <p className="text-xs text-muted-foreground">Invite a friend to learn together!</p>
+            <p className="mt-3 text-sm font-medium text-foreground">{t("together.emptyTitle")}</p>
+            <p className="text-xs text-muted-foreground">{t("together.emptyDesc")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -73,9 +77,9 @@ export default function LearnTogetherPage() {
                 <div className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10"><Users className="size-4 text-blue-500" /></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">{c.activity}</p>
-                  <p className="text-xs text-muted-foreground">with {c.partnerName}</p>
+                  <p className="text-xs text-muted-foreground">{t("together.withPartner", { name: c.partnerName })}</p>
                 </div>
-                {c.isCompleted && <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Done</span>}
+                {c.isCompleted && <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">{t("labs.doneBadge")}</span>}
                 {!c.isCompleted && <MessageSquare className="size-4 text-muted-foreground" />}
               </div>
             ))}

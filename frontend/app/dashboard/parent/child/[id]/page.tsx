@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { ArrowLeft, Clock, FileText, BarChart3, ChevronRight, Loader2, PenTool, Video, TrendingUp, BookOpen, Shield } from "lucide-react"
 import { parentApi, type ChildOverview, type LearningProgressData, type EntitlementItem } from "@/lib/parent-api"
 
 export default function ChildDetailPage() {
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
   const params = useParams()
   const studentId = params.id as string
   const [child, setChild] = useState<ChildOverview | null>(null)
@@ -37,7 +41,7 @@ export default function ChildDetailPage() {
   if (!child) {
     return (
       <div className="py-16 text-center">
-        <p className="text-sm text-muted-foreground">Child not found or not linked to your account.</p>
+        <p className="text-sm text-muted-foreground">{t("childDetail.notFound")}</p>
       </div>
     )
   }
@@ -45,7 +49,7 @@ export default function ChildDetailPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <Link href="/dashboard/parent" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft className="size-4" /> Back to Dashboard
+        <ArrowLeft className="size-4" /> {t("assignments.backToDashboard")}
       </Link>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
@@ -57,7 +61,7 @@ export default function ChildDetailPage() {
             </p>
           </div>
           {child.isPrimary && (
-            <span className="rounded bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">PRIMARY</span>
+            <span className="rounded bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{t("children.primaryBadge")}</span>
           )}
         </div>
 
@@ -66,28 +70,28 @@ export default function ChildDetailPage() {
             <p className="text-2xl font-bold text-foreground">
               {child.attendancePercentage !== null ? `${Math.round(child.attendancePercentage)}%` : "—"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Attendance</p>
+            <p className="mt-1 text-xs text-muted-foreground">{tn("attendance")}</p>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
             <p className="text-2xl font-bold text-foreground">{child.latestGrade || "—"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Latest Grade</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.latestGrade")}</p>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
             <p className="text-2xl font-bold text-foreground">{child.pendingAssignments}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Pending Tasks</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.pendingTasks")}</p>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
             <p className="text-2xl font-bold text-foreground">
               {child.learningProgress !== null ? `${Math.round(child.learningProgress)}%` : "—"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Learning Progress</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.learningProgress")}</p>
           </div>
         </div>
 
         {child.classRank && child.totalStudentsInClass && (
           <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4 text-center">
             <p className="text-sm text-muted-foreground">
-              Class Rank: <span className="font-bold text-foreground">{child.classRank}</span> of {child.totalStudentsInClass}
+              {t("childDetail.classRank", { rank: child.classRank, total: child.totalStudentsInClass })}
             </p>
           </div>
         )}
@@ -96,7 +100,7 @@ export default function ChildDetailPage() {
       {progress && progress.courses.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Learning Progress by Subject</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("childDetail.progressBySubject")}</h2>
             <span className="text-sm font-bold text-primary">{progress.overallProgress}%</span>
           </div>
           <div className="mt-4 space-y-3">
@@ -106,7 +110,7 @@ export default function ChildDetailPage() {
                   <div>
                     <p className="text-sm font-medium text-foreground">{course.courseName || course.subjectName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {course.completedLessons}/{course.totalLessons} lessons
+                      {t("reports.lessonsCount", { completed: course.completedLessons, total: course.totalLessons })}
                     </p>
                   </div>
                   <div className="text-right">
@@ -114,7 +118,7 @@ export default function ChildDetailPage() {
                     <p className={`text-[10px] font-semibold ${
                       course.status === "COMPLETED" ? "text-teal" : course.status === "IN_PROGRESS" ? "text-primary" : "text-muted-foreground"
                     }`}>
-                      {course.status === "COMPLETED" ? "DONE" : course.status === "IN_PROGRESS" ? "IN PROGRESS" : "NOT STARTED"}
+                      {course.status === "COMPLETED" ? ts("completed") : course.status === "IN_PROGRESS" ? ts("inProgress") : ts("notStarted")}
                     </p>
                   </div>
                 </div>
@@ -134,7 +138,7 @@ export default function ChildDetailPage() {
 
       {entitlements.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Active Entitlements</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("childDetail.activeEntitlements")}</h2>
           <div className="mt-3 space-y-2">
             {entitlements.map((ent) => (
               <div key={ent.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
@@ -142,8 +146,8 @@ export default function ChildDetailPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground">{ent.serviceType}</p>
                   <p className="text-xs text-muted-foreground">
-                    {ent.status === "ACTIVE" ? "Active" : ent.status}
-                    {ent.expiresAt && ` · Expires ${new Date(ent.expiresAt).toLocaleDateString("en-GB")}`}
+                    {ent.status === "ACTIVE" ? ts("active") : ent.status}
+                    {ent.expiresAt && ` · ${t("services.expiresLabel", { date: new Date(ent.expiresAt).toLocaleDateString("en-GB") })}`}
                   </p>
                 </div>
               </div>
@@ -159,8 +163,8 @@ export default function ChildDetailPage() {
         >
           <Clock className="size-8 shrink-0 text-primary" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">Attendance</p>
-            <p className="text-xs text-muted-foreground">{child.daysPresent} present, {child.daysAbsent} absent</p>
+            <p className="text-sm font-semibold text-foreground">{tn("attendance")}</p>
+            <p className="text-xs text-muted-foreground">{t("childDetail.attendanceSummary", { present: child.daysPresent, absent: child.daysAbsent })}</p>
           </div>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
@@ -170,8 +174,8 @@ export default function ChildDetailPage() {
         >
           <FileText className="size-8 shrink-0 text-primary" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">Assignments</p>
-            <p className="text-xs text-muted-foreground">{child.pendingAssignments} pending, {child.overdueAssignments} overdue</p>
+            <p className="text-sm font-semibold text-foreground">{tn("assignments")}</p>
+            <p className="text-xs text-muted-foreground">{t("childDetail.assignmentsSummary", { pending: child.pendingAssignments, overdue: child.overdueAssignments })}</p>
           </div>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
@@ -181,8 +185,8 @@ export default function ChildDetailPage() {
         >
           <PenTool className="size-8 shrink-0 text-primary" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">Assessments</p>
-            <p className="text-xs text-muted-foreground">Tests, quizzes, and exams</p>
+            <p className="text-sm font-semibold text-foreground">{tn("assessments")}</p>
+            <p className="text-xs text-muted-foreground">{t("childDetail.assessmentsDesc")}</p>
           </div>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
@@ -192,8 +196,8 @@ export default function ChildDetailPage() {
         >
           <BarChart3 className="size-8 shrink-0 text-primary" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">Results</p>
-            <p className="text-xs text-muted-foreground">View grades and report cards</p>
+            <p className="text-sm font-semibold text-foreground">{tn("results")}</p>
+            <p className="text-xs text-muted-foreground">{t("childDetail.resultsDesc")}</p>
           </div>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
@@ -203,8 +207,8 @@ export default function ChildDetailPage() {
         >
           <Video className="size-8 shrink-0 text-primary" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">Live Classes</p>
-            <p className="text-xs text-muted-foreground">Scheduled and upcoming sessions</p>
+            <p className="text-sm font-semibold text-foreground">{tn("liveClasses")}</p>
+            <p className="text-xs text-muted-foreground">{t("childDetail.liveClassesDesc")}</p>
           </div>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
@@ -214,8 +218,8 @@ export default function ChildDetailPage() {
         >
           <BookOpen className="size-8 shrink-0 text-primary" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground">Announcements</p>
-            <p className="text-xs text-muted-foreground">School and class announcements</p>
+            <p className="text-sm font-semibold text-foreground">{tn("announcements")}</p>
+            <p className="text-xs text-muted-foreground">{t("childDetail.announcementsDesc")}</p>
           </div>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>

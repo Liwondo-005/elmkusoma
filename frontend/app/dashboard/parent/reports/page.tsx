@@ -1,12 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { BarChart3, Loader2, TrendingUp, TrendingDown, Minus, BookOpen } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ChildOverview, type ParentSubjectPerformance, type ParentLearningProgress, type SubjectPerformanceItem, type CourseProgressItem } from "@/lib/parent-api"
 
 export default function ParentReportsPage() {
   const { user } = useAuth()
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [subjectPerf, setSubjectPerf] = useState<ParentSubjectPerformance | null>(null)
@@ -48,8 +51,8 @@ export default function ParentReportsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Subject performance and learning progress</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("reports")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("reports.subtitle")}</p>
       </div>
 
       {children.length > 1 && (
@@ -66,26 +69,26 @@ export default function ParentReportsPage() {
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Subjects</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("reports.subjectsLabel")}</p>
           <p className="mt-1 text-2xl font-extrabold text-foreground">{subjects.length}</p>
-          <p className="text-xs text-muted-foreground">Active subjects</p>
+          <p className="text-xs text-muted-foreground">{t("reports.activeSubjects")}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Average GPA</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("reports.avgGpaLabel")}</p>
           <p className="mt-1 text-2xl font-extrabold text-foreground">{avgGpa != null ? avgGpa.toFixed(2) : "—"}</p>
-          <p className="text-xs text-muted-foreground">Across all subjects</p>
+          <p className="text-xs text-muted-foreground">{t("reports.acrossSubjects")}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Courses</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("reports.coursesLabel")}</p>
           <p className="mt-1 text-2xl font-extrabold text-foreground">{courses.length}</p>
-          <p className="text-xs text-muted-foreground">Courses in progress</p>
+          <p className="text-xs text-muted-foreground">{t("reports.coursesInProgress")}</p>
         </div>
       </div>
 
       {/* Subject Performance */}
       {subjects.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Subject Performance</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("reports.subjectPerfTitle")}</h2>
           <div className="mt-4 space-y-3">
             {subjects.map((s) => (
               <SubjectRow key={s.subjectId} subject={s} />
@@ -97,7 +100,7 @@ export default function ParentReportsPage() {
       {/* Course Progress */}
       {courses.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Course Progress</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("reports.courseProgressTitle")}</h2>
           <div className="mt-4 space-y-3">
             {courses.map((c) => (
               <CourseRow key={c.courseId} course={c} />
@@ -109,8 +112,8 @@ export default function ParentReportsPage() {
       {subjects.length === 0 && courses.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <BarChart3 className="mx-auto mb-3 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No report data yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">Performance data will appear once assessments are completed.</p>
+          <p className="text-sm font-medium text-foreground">{t("reports.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("reports.emptyDesc")}</p>
         </div>
       )}
     </div>
@@ -149,6 +152,7 @@ function SubjectRow({ subject }: { subject: SubjectPerformanceItem }) {
 }
 
 function CourseRow({ course }: { course: CourseProgressItem }) {
+  const t = useTranslations("parent")
   const statusColor = course.status === "COMPLETED" ? "bg-green-100 text-green-700" :
     course.status === "IN_PROGRESS" ? "bg-blue-100 text-blue-700" :
     "bg-muted text-muted-foreground"
@@ -166,8 +170,8 @@ function CourseRow({ course }: { course: CourseProgressItem }) {
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${course.progressPercentage || 0}%` }} />
           </div>
           <div className="mt-1 flex items-center gap-3 text-[10px] text-muted-foreground">
-            <span>{course.completedLessons}/{course.totalLessons} lessons</span>
-            {course.currentLesson && <span>Current: {course.currentLesson}</span>}
+            <span>{t("reports.lessonsCount", { completed: course.completedLessons, total: course.totalLessons })}</span>
+            {course.currentLesson && <span>{t("reports.currentLesson", { lesson: course.currentLesson })}</span>}
           </div>
         </div>
         <span className="text-xs font-bold text-foreground">{Math.round(course.progressPercentage || 0)}%</span>

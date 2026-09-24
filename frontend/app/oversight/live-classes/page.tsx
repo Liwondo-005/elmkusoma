@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, Video, Play, Clock, AlertTriangle, Eye, Monitor, X, CheckCircle2, HelpCircle } from "lucide-react"
@@ -26,6 +28,8 @@ interface LiveClassMetrics {
 }
 
 export default function OversightLiveClassesPage() {
+  const t = useTranslations("oversight");
+  const ts = useTranslations("status");
   const { user, loading: authLoading } = useRequireAuth()
   const [metrics, setMetrics] = useState<LiveClassMetrics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -55,7 +59,7 @@ export default function OversightLiveClassesPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading live classes...</div>
+        <div className="text-muted-foreground">{t("liveClasses.loadingLiveClasses")}</div>
       </div>
     )
   }
@@ -64,8 +68,8 @@ export default function OversightLiveClassesPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h1 className="text-2xl font-bold text-foreground">Live Class Monitoring</h1>
-          <p className="mt-2 text-muted-foreground">Live class data unavailable.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("liveClasses.liveClassMonitoring")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("liveClasses.liveClassDataUnavailable")}</p>
         </div>
       </div>
     )
@@ -73,7 +77,7 @@ export default function OversightLiveClassesPage() {
 
   const getStatusConfig = (status: string) => {
     switch (status) {
-      case "IN_PROGRESS": return { color: "bg-red-100 text-red-700", icon: <Play className="size-3" />, label: "LIVE NOW" }
+      case "IN_PROGRESS": return { color: "bg-red-100 text-red-700", icon: <Play className="size-3" />, label: t("liveClasses.liveNow2") }
       case "SCHEDULED": return { color: "bg-blue-100 text-blue-700", icon: <Clock className="size-3" />, label: "SCHEDULED" }
       case "COMPLETED": return { color: "bg-green-100 text-green-700", icon: <CheckCircle2 className="size-3" />, label: "COMPLETED" }
       case "CANCELLED": return { color: "bg-gray-100 text-gray-700", icon: <X className="size-3" />, label: "CANCELLED" }
@@ -90,18 +94,18 @@ export default function OversightLiveClassesPage() {
               <Video className="size-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Live Class Monitoring</h1>
-              <p className="text-sm text-muted-foreground">Monitor live classes across your jurisdiction</p>
+              <h1 className="text-2xl font-bold text-foreground">{t("liveClasses.liveClassMonitoring2")}</h1>
+              <p className="text-sm text-muted-foreground">{t("liveClasses.monitorLiveClassesAcross")}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-              <span>Live Now: {metrics.liveNow}</span>
+              <span>{t("liveClasses.liveNow", { p0: metrics.liveNow })}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Video className="size-4" />
-              <span>This Week: {metrics.totalThisWeek}</span>
+              <span>{t("liveClasses.thisWeek", { p0: metrics.totalThisWeek })}</span>
             </div>
           </div>
         </div>
@@ -118,8 +122,7 @@ export default function OversightLiveClassesPage() {
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
           <h2 className="text-lg font-semibold text-red-700 mb-4 flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-            LIVE NOW
-          </h2>
+            {t("liveClasses.liveNow3")}</h2>
           <div className="space-y-3">
             {metrics.liveClasses.filter(c => c.status === "IN_PROGRESS").map((cls) => (
               <LiveClassCard key={cls.id} class={cls} isLive={true} />
@@ -131,20 +134,19 @@ export default function OversightLiveClassesPage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <Video className="size-5 text-muted-foreground" />
-          All Live Classes
-        </h2>
+          {t("liveClasses.allLiveClasses")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Class</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">School</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Subject</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Teacher</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Scheduled</th>
-                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Status</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Participants</th>
-                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("liveClasses.class")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("liveClasses.school")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("liveClasses.subject")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("liveClasses.teacher2")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{ts("scheduled")}</th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground">{t("liveClasses.status")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("liveClasses.participants")}</th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground">{t("liveClasses.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -175,8 +177,7 @@ export default function OversightLiveClassesPage() {
                           onClick={() => window.open(`/live-classes/${cls.id}`, "_blank")}
                         >
                           <Eye className="size-3" />
-                          Observe
-                        </button>
+                          {t("liveClasses.observe")}</button>
                       )}
                     </td>
                   </tr>
@@ -200,8 +201,8 @@ function LiveClassCard({ class: cls, isLive }: { class: any; isLive: boolean }) 
         </div>
         <div>
           <p className="font-medium text-foreground">{cls.title}</p>
-          <p className="text-sm text-muted-foreground">{cls.institutionName} • {cls.subjectName} • Teacher: {cls.teacherName}</p>
-          <p className="text-xs text-muted-foreground">{cls.participantCount} / {cls.maxParticipants} participants • {cls.durationMinutes} min</p>
+          <p className="text-sm text-muted-foreground">{t("liveClasses.teacher", { p0: cls.institutionName, p1: cls.subjectName, p2: cls.teacherName })}</p>
+          <p className="text-xs text-muted-foreground">{t("liveClasses.participantsMin", { p0: cls.participantCount, p1: cls.maxParticipants, p2: cls.durationMinutes })}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -215,8 +216,7 @@ function LiveClassCard({ class: cls, isLive }: { class: any; isLive: boolean }) 
             onClick={() => window.open(`/live-classes/${cls.id}`, "_blank")}
           >
             <Eye className="size-3" />
-            Observe
-          </button>
+            {t("liveClasses.observe2")}</button>
         )}
       </div>
     </div>
@@ -241,7 +241,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
 
 function getStatusConfig(status: string) {
   switch (status) {
-    case "IN_PROGRESS": return { color: "bg-red-100 text-red-700", icon: <Play className="size-3" />, label: "LIVE NOW" }
+    case "IN_PROGRESS": return { color: "bg-red-100 text-red-700", icon: <Play className="size-3" />, label: t("liveClasses.liveNow4") }
     case "SCHEDULED": return { color: "bg-blue-100 text-blue-700", icon: <Clock className="size-3" />, label: "SCHEDULED" }
     case "COMPLETED": return { color: "bg-green-100 text-green-700", icon: <CheckCircle2 className="size-3" />, label: "COMPLETED" }
     case "CANCELLED": return { color: "bg-gray-100 text-gray-700", icon: <X className="size-3" />, label: "CANCELLED" }

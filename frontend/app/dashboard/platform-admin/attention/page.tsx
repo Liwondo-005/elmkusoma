@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { AlertTriangle, Loader2, ExternalLink, Shield, Clock, CheckCircle2 } from "lucide-react"
 import { platformAdminApi, type AttentionItem, type IncidentSummary, type VerificationSummary, type SecurityEventItem } from "@/lib/platform-admin-api"
@@ -9,6 +11,7 @@ interface EnrichedAttention {
 }
 
 export default function AttentionCenterPage() {
+  const t = useTranslations("platformAdmin");
   const [items, setItems] = useState<EnrichedAttention[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +49,7 @@ export default function AttentionCenterPage() {
         verifications.value.forEach((v: VerificationSummary) => {
           all.push({
             severity: "MEDIUM",
-            title: `Pending Verification: ${v.verificationType}`,
+            title: t("attention.pendingVerification", { p0: v.verificationType }),
             description: `${v.entityType} submitted for review`,
             category: "VERIFICATION",
             actionUrl: "/dashboard/platform-admin/verifications",
@@ -58,8 +61,8 @@ export default function AttentionCenterPage() {
         security.value.forEach((e: SecurityEventItem) => {
           all.push({
             severity: e.severity || "MEDIUM",
-            title: `Security: ${e.eventType}`,
-            description: e.description || "Security event requires review",
+            title: t("attention.security", { p0: e.eventType }),
+            description: e.description || t("attention.securityEventFallback"),
             category: "SECURITY",
             actionUrl: "/dashboard/platform-admin/security",
           })
@@ -73,7 +76,7 @@ export default function AttentionCenterPage() {
 
       setItems(all)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load attention items")
+      setError(err instanceof Error ? err.message : t("attention.failedToLoadAttention"))
     } finally {
       setLoading(false)
     }
@@ -102,12 +105,11 @@ export default function AttentionCenterPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Attention Center</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Prioritized items requiring admin action across the platform</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("attention.attentionCenter")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("attention.prioritizedItemsRequiringAdmin")}</p>
         </div>
         <button onClick={loadData} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">
-          Refresh
-        </button>
+          {t("attention.refresh")}</button>
       </div>
 
       {error && (
@@ -121,8 +123,8 @@ export default function AttentionCenterPage() {
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <CheckCircle2 className="size-10 text-green-500" />
-          <p className="mt-4 text-sm font-medium text-foreground">All Clear</p>
-          <p className="mt-1 text-sm text-muted-foreground">No items requiring attention right now.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("attention.allClear")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("attention.noItemsRequiringAttention")}</p>
         </div>
       ) : (
         <div className="space-y-3">

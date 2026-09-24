@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { Settings, Database, Server, Shield, Globe, Zap, Loader2, Save, Flag, Rocket, AlertCircle, RefreshCw } from "lucide-react"
 import { platformAdminApi, type PlatformConfigItem, type FeatureStatus, type PolicyFlag } from "@/lib/platform-admin-api"
@@ -32,6 +34,7 @@ function SettingRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function PlatformSettingsPage() {
+  const t = useTranslations("platformAdmin");
   const [configs, setConfigs] = useState<PlatformConfigItem[]>([])
   const [loading, setLoading] = useState(true)
   const [edits, setEdits] = useState<Record<string, string>>({})
@@ -49,7 +52,7 @@ export default function PlatformSettingsPage() {
       ])
       setFeatures(f); setPolicies(p)
     } catch (e: any) {
-      setGovError(e.message || "Features/policies unavailable")
+      setGovError(e.message || t("settings.featuresPoliciesUnavailable"))
     }
   }, [])
 
@@ -76,7 +79,7 @@ export default function PlatformSettingsPage() {
       const updated = await platformAdminApi.updateFeatureStatus(key, status)
       setFeatures(prev => prev.map(f => (f.key === key ? updated : f)))
     } catch (e: any) {
-      setGovError(e.message || "Feature transition rejected")
+      setGovError(e.message || t("settings.featureTransitionRejected"))
     } finally { setBusyFeature(null) }
   }
 
@@ -87,7 +90,7 @@ export default function PlatformSettingsPage() {
       const updated = await platformAdminApi.updatePolicy(key, next)
       setPolicies(prev => prev.map(p => (p.key === key ? updated : p)))
     } catch (e: any) {
-      setGovError(e.message || "Policy update failed")
+      setGovError(e.message || t("settings.policyUpdateFailed"))
     }
   }
 
@@ -96,14 +99,14 @@ export default function PlatformSettingsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Platform Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Configuration, central policies, feature lifecycle, maintenance mode</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("settings.platformSettings")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("settings.configurationCentralPoliciesFeature")}</p>
       </div>
 
       {govError && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
           <span className="flex items-center gap-2"><AlertCircle className="size-4" />{govError}</span>
-          <button onClick={loadGov} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Retry</button>
+          <button onClick={loadGov} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">{t("settings.retry")}</button>
         </div>
       )}
 
@@ -118,13 +121,13 @@ export default function PlatformSettingsPage() {
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Flag className="size-4" /> Central Policies (§62)</h2>
-          <button onClick={loadGov} className="text-muted-foreground hover:text-foreground" aria-label="Refresh policies"><RefreshCw className="size-3.5" /></button>
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Flag className="size-4" /> {t("settings.centralPolicies")}</h2>
+          <button onClick={loadGov} className="text-muted-foreground hover:text-foreground" aria-label={t("settings.refreshPolicies")}><RefreshCw className="size-3.5" /></button>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">Defaults are permissive (true). Disabling a policy blocks the matching backend operation.</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("settings.defaultsArePermissiveTrue")}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {policies.length === 0 ? (
-            <p className="text-sm text-muted-foreground sm:col-span-2">Data unavailable — policy endpoint did not return flags.</p>
+            <p className="text-sm text-muted-foreground sm:col-span-2">{t("settings.dataUnavailablePolicyEndpoint")}</p>
           ) : policies.map(p => (
             <button key={p.key} onClick={() => togglePolicy(p.key, p.value)}
               className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left hover:bg-muted/40">
@@ -142,12 +145,12 @@ export default function PlatformSettingsPage() {
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Rocket className="size-4" /> Feature Lifecycle (§63)</h2>
-          <button onClick={loadGov} className="text-muted-foreground hover:text-foreground" aria-label="Refresh features"><RefreshCw className="size-3.5" /></button>
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Rocket className="size-4" /> {t("settings.featureLifecycle")}</h2>
+          <button onClick={loadGov} className="text-muted-foreground hover:text-foreground" aria-label={t("settings.refreshFeatures")}><RefreshCw className="size-3.5" /></button>
         </div>
         <div className="mt-3 space-y-2">
           {features.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Data unavailable — features not loaded.</p>
+            <p className="text-sm text-muted-foreground">{t("settings.dataUnavailableFeaturesNot")}</p>
           ) : features.map(f => (
             <div key={f.key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
               <div className="min-w-0">
@@ -164,7 +167,7 @@ export default function PlatformSettingsPage() {
                   onChange={(e) => { if (e.target.value) transitionFeature(f.key, e.target.value) }}
                   className="rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none"
                 >
-                  <option value="">Change…</option>
+                  <option value="">{t("settings.change")}</option>
                   {FEATURE_STATUSES.filter(s => s !== f.status).map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
@@ -174,7 +177,7 @@ export default function PlatformSettingsPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <h2 className="text-base font-semibold text-foreground mb-4">System Information</h2>
+        <h2 className="text-base font-semibold text-foreground mb-4">{t("settings.systemInformation")}</h2>
         <div className="space-y-2">
           <SettingRow label="Platform Name" value="ELMKUSOMA" />
           <SettingRow label="Backend" value="Spring Boot 3 / Java 21" />
@@ -190,7 +193,7 @@ export default function PlatformSettingsPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <h2 className="text-base font-semibold text-foreground mb-4">Security Configuration</h2>
+        <h2 className="text-base font-semibold text-foreground mb-4">{t("settings.securityConfiguration")}</h2>
         <div className="space-y-2">
           <SettingRow label="Authentication" value="JWT with refresh tokens (1h access / 7d refresh)" />
           <SettingRow label="Password Hashing" value="BCrypt" />
@@ -207,7 +210,7 @@ export default function PlatformSettingsPage() {
         <div className="flex justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
       ) : configs.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Live Configuration</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("settings.liveConfiguration")}</h2>
           {categories.map(cat => (
             <div key={cat} className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
               <div className="border-b border-border bg-muted/30 px-5 py-3">

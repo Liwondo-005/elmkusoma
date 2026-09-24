@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { Globe, Loader2, ChevronDown, ChevronUp, Gauge, Ban, CheckCircle2, AlertCircle, Users } from "lucide-react"
 import { platformAdminApi, type UserSummary, type ProviderQuota } from "@/lib/platform-admin-api"
@@ -16,27 +18,26 @@ function SponsorRow({ providerId, q, onDone }: { providerId: string; q: Provider
     setBusy(true); setMsg(null)
     try {
       const res = await platformAdminApi.grantSponsorSeats({ providerId, serviceId: q.serviceId, userId, studentId, seats: 1 })
-      setMsg(`Granted — seats ${res.seatsUsed}/${res.maxSeats ?? "∞"} used`)
+      setMsg(t("providers.grantedSeatsUsed", { p0: res.seatsUsed, p1: res.maxSeats ?? "∞" }))
       setUserId(""); setStudentId("")
       onDone()
     } catch (e: any) {
-      setMsg(e.message || "Failed to grant seat")
+      setMsg(e.message || t("providers.failedToGrantSeat"))
     } finally { setBusy(false) }
   }
 
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} className="ml-4 inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-medium hover:bg-muted">
-        <Users className="size-3" /> Sponsor seat
-      </button>
+        <Users className="size-3" /> {t("providers.sponsorSeat")}</button>
     )
   }
   return (
     <span className="ml-4 inline-flex flex-wrap items-center gap-1.5 align-middle">
-      <input value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="User ID" className="w-44 rounded-md border border-border bg-background px-2 py-1 text-[11px] outline-none focus:ring-1 focus:ring-ring" />
-      <input value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="Student ID" className="w-44 rounded-md border border-border bg-background px-2 py-1 text-[11px] outline-none focus:ring-1 focus:ring-ring" />
-      <button onClick={grant} disabled={busy} className="rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground disabled:opacity-50">{busy ? "…" : "Grant"}</button>
-      <button onClick={() => { setOpen(false); setMsg(null) }} className="rounded-md border border-border px-2 py-1 text-[11px]">Cancel</button>
+      <input value={userId} onChange={(e) => setUserId(e.target.value)} placeholder={t("providers.userId")} className="w-44 rounded-md border border-border bg-background px-2 py-1 text-[11px] outline-none focus:ring-1 focus:ring-ring" />
+      <input value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder={t("providers.studentId")} className="w-44 rounded-md border border-border bg-background px-2 py-1 text-[11px] outline-none focus:ring-1 focus:ring-ring" />
+      <button onClick={grant} disabled={busy} className="rounded-md bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground disabled:opacity-50">{busy ? "…" : t("providers.grant")}</button>
+      <button onClick={() => { setOpen(false); setMsg(null) }} className="rounded-md border border-border px-2 py-1 text-[11px]">{tc("cancel")}</button>
       {msg && <span className="text-[11px] text-muted-foreground">{msg}</span>}
     </span>
   )
@@ -57,19 +58,19 @@ function QuotaPanel({ providerId }: { providerId: string }) {
 
   useEffect(() => { load() }, [load])
 
-  if (loading) return <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Loading quotas...</div>
+  if (loading) return <div className="flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> {t("providers.loadingQuotas")}</div>
   if (error) return <div className="px-4 py-3 text-xs text-red-600">{error}</div>
-  if (!quotas || quotas.length === 0) return <div className="px-4 py-3 text-xs text-muted-foreground">No service entitlements for this provider yet.</div>
+  if (!quotas || quotas.length === 0) return <div className="px-4 py-3 text-xs text-muted-foreground">{t("providers.noServiceEntitlementsFor")}</div>
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border bg-muted/40">
-            <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Service</th>
-            <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Status</th>
-            <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Seats</th>
-            <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Expires</th>
+            <th className="px-4 py-2 text-left font-semibold text-muted-foreground">{t("providers.service")}</th>
+            <th className="px-4 py-2 text-left font-semibold text-muted-foreground">{t("providers.status")}</th>
+            <th className="px-4 py-2 text-left font-semibold text-muted-foreground">{t("providers.seats")}</th>
+            <th className="px-4 py-2 text-left font-semibold text-muted-foreground">{t("providers.expires")}</th>
           </tr>
         </thead>
         <tbody>
@@ -82,9 +83,9 @@ function QuotaPanel({ providerId }: { providerId: string }) {
                 <td className="px-4 py-2"><span className={`rounded-full px-2 py-0.5 font-medium ${q.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-amber-700"}`}>{q.status}</span></td>
                 <td className="px-4 py-2">
                   {q.maxSeats ? (
-                    <span className={near ? "font-semibold text-amber-600" : "text-muted-foreground"}>{q.seatsUsed ?? 0} / {q.maxSeats}{near ? " (near limit)" : ""}</span>
+                    <span className={near ? "font-semibold text-amber-600" : "text-muted-foreground"}>{near ? t("providers.quotaNearLimit", { used: q.seatsUsed ?? 0, max: q.maxSeats }) : t("providers.quotaUsage", { used: q.seatsUsed ?? 0, max: q.maxSeats })}</span>
                   ) : (
-                    <span className="text-muted-foreground">{q.seatsUsed ?? 0} / unlimited</span>
+                    <span className="text-muted-foreground">{t("providers.unlimited", { p0: q.seatsUsed ?? 0 })}</span>
                   )}
                   <SponsorRow providerId={providerId} q={q} onDone={load} />
                 </td>
@@ -99,6 +100,9 @@ function QuotaPanel({ providerId }: { providerId: string }) {
 }
 
 export default function ProvidersPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [providers, setProviders] = useState<UserSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -110,7 +114,7 @@ export default function ProvidersPage() {
     setError(null)
     platformAdminApi.listUsers(0, 100, "PROVIDER_ADMIN")
       .then((res) => setProviders(res.content))
-      .catch((e) => setError(e.message || "Failed to load providers"))
+      .catch((e) => setError(e.message || t("providers.failedToLoadProviders")))
       .finally(() => setLoading(false))
   }, [])
 
@@ -122,7 +126,7 @@ export default function ProvidersPage() {
       const updated = await platformAdminApi.updateUserStatus(p.id, !p.isActive)
       setProviders((prev) => prev.map((x) => (x.id === p.id ? { ...x, isActive: updated.isActive } : x)))
     } catch (e: any) {
-      setError(e.message || "Failed to update provider status")
+      setError(e.message || t("providers.failedToUpdateProvider"))
     } finally { setToggling(null) }
   }
 
@@ -135,8 +139,8 @@ export default function ProvidersPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Provider Ecosystem</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Organizations, content providers, and service providers — quotas, entitlements, and lifecycle</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("providers.providerEcosystem")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("providers.organizationsContentProvidersAnd")}</p>
       </div>
 
       {error && (
@@ -146,12 +150,9 @@ export default function ProvidersPage() {
       )}
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-base font-semibold text-foreground">About Providers</h2>
+        <h2 className="text-base font-semibold text-foreground">{t("providers.aboutProviders")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Providers are organizations beyond traditional schools that use ELMKUSOMA to deliver services.
-          This includes banks, companies, NGOs, government institutions, training organizations,
-          content creators, event organizers, and skills providers.
-        </p>
+          {t("providers.providersAreOrganizationsBeyond")}</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {["Banks & Financial", "Companies & Corporate", "NGOs & Non-Profit", "Government Institutions", "Training Organizations", "Content Creators"].map((type) => (
             <div key={type} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
@@ -163,22 +164,22 @@ export default function ProvidersPage() {
       </div>
 
       <div>
-        <h2 className="text-base font-semibold text-foreground mb-4">Registered Provider Admins</h2>
+        <h2 className="text-base font-semibold text-foreground mb-4">{t("providers.registeredProviderAdmins")}</h2>
         {providers.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border p-12 text-center">
             <Globe className="mx-auto size-10 text-muted-foreground" />
-            <p className="mt-4 text-sm font-medium text-foreground">No providers registered yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">Provider accounts will appear here once onboarded</p>
+            <p className="mt-4 text-sm font-medium text-foreground">{t("providers.noProvidersRegisteredYet")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("providers.providerAccountsWillAppear")}</p>
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("providers.name")}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("providers.email")}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("providers.status2")}</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("providers.actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -216,7 +217,7 @@ function ProviderRow({ provider, expanded, onToggleExpand, onToggleStatus, toggl
         <td className="px-5 py-3.5">
           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
             provider.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-          }`}>{provider.isActive ? "Active" : "Inactive"}</span>
+          }`}>{provider.isActive ? ts("active") : ts("inactive")}</span>
         </td>
         <td className="px-5 py-3.5 text-right">
           <div className="inline-flex gap-1.5">
@@ -224,7 +225,7 @@ function ProviderRow({ provider, expanded, onToggleExpand, onToggleStatus, toggl
               onClick={onToggleExpand}
               className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
             >
-              <Gauge className="size-3.5" /> Quotas {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+              <Gauge className="size-3.5" /> {t("providers.quotas")}{expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             </button>
             <button
               onClick={onToggleStatus}
@@ -236,7 +237,7 @@ function ProviderRow({ provider, expanded, onToggleExpand, onToggleStatus, toggl
               }`}
             >
               {toggling ? <Loader2 className="size-3.5 animate-spin" /> : provider.isActive ? <Ban className="size-3.5" /> : <CheckCircle2 className="size-3.5" />}
-              {provider.isActive ? "Suspend" : "Reactivate"}
+              {provider.isActive ? t("providers.suspend") : t("providers.reactivate")}
             </button>
           </div>
         </td>

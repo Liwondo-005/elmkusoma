@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { Shield, Loader2, Plus, Trash2, X } from "lucide-react"
 import { adminApi, getInstitutionId, type RoleResponse, type CreateRoleRequest } from "@/lib/api"
@@ -16,6 +18,9 @@ const PERMISSION_OPTIONS = [
 ]
 
 export default function AdminRolesPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [roles, setRoles] = useState<RoleResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,14 +36,14 @@ export default function AdminRolesPage() {
 
   useEffect(() => {
     if (!institutionId) {
-      setError("No institution context found.")
+      setError(t("roles.noInstitutionContextFound"))
       setLoading(false)
       return
     }
     adminApi
       .listRoles(institutionId)
       .then(setRoles)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load roles"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("roles.failedToLoadRoles")))
       .finally(() => setLoading(false))
   }, [institutionId])
 
@@ -60,7 +65,7 @@ export default function AdminRolesPage() {
       setNewDescription("")
       setNewPermissions([])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create role")
+      setError(err instanceof Error ? err.message : t("roles.failedToCreateRole"))
     } finally {
       setSaving(false)
     }
@@ -73,7 +78,7 @@ export default function AdminRolesPage() {
       await adminApi.deleteRole(institutionId, roleId)
       setRoles((prev) => prev.filter((r) => r.id !== roleId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete role")
+      setError(err instanceof Error ? err.message : t("roles.failedToDeleteRole"))
     } finally {
       setDeleting(null)
     }
@@ -87,15 +92,14 @@ export default function AdminRolesPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Roles</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage custom roles and permissions.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("roles.roles")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("roles.manageCustomRolesAnd")}</p>
         </div>
         <button
           onClick={() => setShowNew(true)}
           className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
-          <Plus className="size-3.5" /> New Role
-        </button>
+          <Plus className="size-3.5" /> {t("roles.newRole")}</button>
       </div>
 
       {loading && (
@@ -112,19 +116,19 @@ export default function AdminRolesPage() {
 
       {showNew && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">Create Role</h3>
+          <h3 className="mb-4 text-sm font-semibold text-foreground">{t("roles.createRole")}</h3>
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <input
                 type="text"
-                placeholder="Name (e.g. CLASS_TEACHER)"
+                placeholder={t("roles.nameEGClass")}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
               <input
                 type="text"
-                placeholder="Display Name (e.g. Class Teacher)"
+                placeholder={t("roles.displayNameEG")}
                 value={newDisplayName}
                 onChange={(e) => setNewDisplayName(e.target.value)}
                 className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
@@ -132,13 +136,13 @@ export default function AdminRolesPage() {
             </div>
             <input
               type="text"
-              placeholder="Description (optional)"
+              placeholder={t("roles.descriptionOptional")}
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
             />
             <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Permissions</p>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">{t("roles.permissions")}</p>
               <div className="flex flex-wrap gap-2">
                 {PERMISSION_OPTIONS.map((perm) => (
                   <button
@@ -161,14 +165,13 @@ export default function AdminRolesPage() {
                 disabled={saving || !newName.trim() || !newDisplayName.trim()}
                 className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
-                {saving ? "Creating..." : "Create Role"}
+                {saving ? t("roles.creating") : t("roles.createRole")}
               </button>
               <button
                 onClick={() => { setShowNew(false); setNewName(""); setNewDisplayName(""); setNewDescription(""); setNewPermissions([]) }}
                 className="flex h-9 items-center gap-2 rounded-lg border border-border px-4 text-xs font-medium text-foreground hover:bg-muted"
               >
-                <X className="size-3.5" /> Cancel
-              </button>
+                <X className="size-3.5" /> {tc("cancel")}</button>
             </div>
           </div>
         </div>
@@ -177,8 +180,8 @@ export default function AdminRolesPage() {
       {!loading && !error && roles.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Shield className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No custom roles</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create roles to manage permissions.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("roles.noCustomRoles")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("roles.createRolesToManage")}</p>
         </div>
       )}
 
@@ -195,13 +198,11 @@ export default function AdminRolesPage() {
                     </span>
                     {role.isSystemRole && (
                       <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                        System
-                      </span>
+                        {t("roles.system")}</span>
                     )}
                     {!role.isActive && (
                       <span className="rounded bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
-                        Inactive
-                      </span>
+                        {ts("inactive")}</span>
                     )}
                   </div>
                   {role.description && (

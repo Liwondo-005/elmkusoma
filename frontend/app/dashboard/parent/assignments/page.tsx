@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, AlertTriangle, CheckCircle, Clock } from "lucide-react"
 import { parentApi, type AssignmentData, type ChildOverview } from "@/lib/parent-api"
 
 export default function ParentAssignmentsPage() {
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
   const searchParams = useSearchParams()
   const childId = searchParams.get("child")
   const [children, setChildren] = useState<ChildOverview[]>([])
@@ -33,9 +37,9 @@ export default function ParentAssignmentsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <Link href="/dashboard/parent" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft className="size-4" /> Back to Dashboard
+        <ArrowLeft className="size-4" /> {t("assignments.backToDashboard")}
       </Link>
-      <h1 className="text-xl font-bold text-foreground">Assignments</h1>
+      <h1 className="text-xl font-bold text-foreground">{tn("assignments")}</h1>
 
       {children.length > 1 && (
         <div className="flex flex-wrap gap-2">
@@ -55,15 +59,15 @@ export default function ParentAssignmentsPage() {
 
       {assignments && (
         <div className="flex gap-1 rounded-lg border border-border bg-muted p-1">
-          {(["pending", "overdue", "completed"] as const).map((t) => (
+          {(["pending", "overdue", "completed"] as const).map((tabId) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabId}
+              onClick={() => setTab(tabId)}
               className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                tab === t ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                tab === tabId ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t.charAt(0).toUpperCase() + t.slice(1)} ({(assignments[t] || []).length})
+              {ts(tabId)} ({(assignments[tabId] || []).length})
             </button>
           ))}
         </div>
@@ -84,26 +88,26 @@ export default function ParentAssignmentsPage() {
                 </div>
                 {item.status === "OVERDUE" ? (
                   <span className="inline-flex items-center gap-1 rounded bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-500">
-                    <AlertTriangle className="size-3" /> OVERDUE
+                    <AlertTriangle className="size-3" /> {ts("overdue")}
                   </span>
                 ) : item.status === "COMPLETED" ? (
                   <span className="inline-flex items-center gap-1 rounded bg-teal/10 px-2 py-0.5 text-[10px] font-semibold text-teal">
-                    <CheckCircle className="size-3" /> DONE
+                    <CheckCircle className="size-3" /> {ts("completed")}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded bg-orange/10 px-2 py-0.5 text-[10px] font-semibold text-orange">
-                    <Clock className="size-3" /> PENDING
+                    <Clock className="size-3" /> {ts("pending")}
                   </span>
                 )}
               </div>
               {item.dueDate && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Due: {new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {t("assignments.dueLabel", { date: new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) })}
                 </p>
               )}
               {item.obtainedMarks != null && (
                 <p className="mt-1 text-xs font-medium text-foreground">
-                  Score: {item.obtainedMarks}/{item.totalMarks}
+                  {t("assignments.scoreLabel", { obtained: item.obtainedMarks, total: item.totalMarks })}
                 </p>
               )}
             </div>
@@ -113,11 +117,11 @@ export default function ParentAssignmentsPage() {
         <div className="rounded-2xl border border-dashed border-border py-12 text-center">
           <CheckCircle className="mx-auto mb-3 size-8 text-teal" />
           <p className="text-sm font-medium text-foreground">
-            {tab === "pending" ? "No pending assignments." : tab === "overdue" ? "No overdue assignments." : "No completed assignments yet."}
+            {tab === "pending" ? t("assignments.emptyPending") : tab === "overdue" ? t("assignments.emptyOverdue") : t("assignments.emptyCompleted")}
           </p>
         </div>
       ) : (
-        <p className="py-12 text-center text-sm text-muted-foreground">Select a child to view assignments.</p>
+        <p className="py-12 text-center text-sm text-muted-foreground">{t("assignments.selectChild")}</p>
       )}
     </div>
   )

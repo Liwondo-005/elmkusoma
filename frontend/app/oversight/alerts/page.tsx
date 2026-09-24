@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, AlertTriangle, Clock, Target, BookOpen, ClipboardList, Video, FileText, Award, Bell, Shield, CheckCircle, X, MoreHorizontal } from "lucide-react"
@@ -37,6 +39,7 @@ interface AlertsResponse {
 }
 
 export default function OversightAlertsPage() {
+  const t = useTranslations("oversight");
   const { user, loading: authLoading } = useRequireAuth()
   const [data, setData] = useState<AlertsResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -72,7 +75,7 @@ export default function OversightAlertsPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading alerts...</div>
+        <div className="text-muted-foreground">{t("alerts.loadingAlerts")}</div>
       </div>
     )
   }
@@ -81,8 +84,8 @@ export default function OversightAlertsPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h1 className="text-2xl font-bold text-foreground">Alerts & Attention</h1>
-          <p className="mt-2 text-muted-foreground">Alert data unavailable.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("alerts.alertsAttention")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("alerts.alertDataUnavailable")}</p>
         </div>
       </div>
     )
@@ -120,8 +123,8 @@ export default function OversightAlertsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Alerts & Attention</h1>
-          <p className="text-sm text-muted-foreground">Monitor issues requiring review across your jurisdiction</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("alerts.alertsAttention2")}</h1>
+          <p className="text-sm text-muted-foreground">{t("alerts.monitorIssuesRequiringReview")}</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -129,13 +132,13 @@ export default function OversightAlertsPage() {
             onChange={(e) => setFilter(e.target.value as typeof filter)}
             className="rounded-lg border border-border px-3 py-1.5 text-sm bg-background"
           >
-            <option value="all">All Alerts</option>
-            <option value="HIGH">High Severity</option>
-            <option value="MEDIUM">Medium Severity</option>
-            <option value="LOW">Low Severity</option>
-            <option value="NEW">New</option>
-            <option value="ACKNOWLEDGED">Acknowledged</option>
-            <option value="RESOLVED">Resolved</option>
+            <option value="all">{t("alerts.allAlerts")}</option>
+            <option value="HIGH">{t("alerts.highSeverity")}</option>
+            <option value="MEDIUM">{t("alerts.mediumSeverity")}</option>
+            <option value="LOW">{t("alerts.lowSeverity")}</option>
+            <option value="NEW">{t("alerts.new")}</option>
+            <option value="ACKNOWLEDGED">{t("alerts.acknowledged")}</option>
+            <option value="RESOLVED">{t("alerts.resolved")}</option>
           </select>
         </div>
       </div>
@@ -153,15 +156,15 @@ export default function OversightAlertsPage() {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-4 font-medium text-muted-foreground w-10"></th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Type</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Message</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">School</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Indicator</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Value / Threshold</th>
-                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-24">Severity</th>
-                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-24">Status</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Time</th>
-                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-10">Actions</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("alerts.type")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("alerts.message")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("alerts.school")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("alerts.indicator")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("alerts.valueThreshold")}</th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-24">{t("alerts.severity")}</th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-24">{t("alerts.status")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("alerts.time")}</th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-10">{t("alerts.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -203,13 +206,11 @@ export default function OversightAlertsPage() {
                     <td className="py-3 px-4 text-center">
                       {alert.status === "NEW" && (
                         <button className="text-primary hover:underline text-xs">
-                          Acknowledge
-                        </button>
+                          {t("alerts.acknowledge")}</button>
                       )}
                       {alert.status === "ACKNOWLEDGED" && (
                         <button className="text-green-600 hover:underline text-xs">
-                          Resolve
-                        </button>
+                          {t("alerts.resolve")}</button>
                       )}
                     </td>
                   </tr>

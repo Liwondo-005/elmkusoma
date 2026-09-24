@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { Users, ChevronRight, Loader2 } from "lucide-react"
 import { parentApi, type ChildOverview } from "@/lib/parent-api"
 
 export default function ParentChildrenPage() {
+  const t = useTranslations("parent")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -24,15 +26,15 @@ export default function ParentChildrenPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-foreground">My Children</h1>
-        <p className="mt-1 text-sm text-muted-foreground">All children linked to your account.</p>
+        <h1 className="text-xl font-bold text-foreground">{t("children.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("children.subtitle")}</p>
       </div>
 
       {children.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <Users className="mx-auto mb-3 size-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No children linked yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">Contact your school administrator to link your children.</p>
+          <p className="text-sm font-medium text-foreground">{t("children.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("children.emptyDesc")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -49,7 +51,7 @@ export default function ParentChildrenPage() {
                 <div className="flex items-center gap-2">
                   <p className="truncate text-sm font-semibold text-foreground">{child.studentName}</p>
                   {child.isPrimary && (
-                    <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">PRIMARY</span>
+                    <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">{t("children.primaryBadge")}</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -57,12 +59,12 @@ export default function ParentChildrenPage() {
                 </p>
                 <div className="mt-2 flex gap-4">
                   <span className="text-xs text-muted-foreground">
-                    Attendance: <span className="font-semibold text-foreground">
+                    {t("children.attendanceLabel")}: <span className="font-semibold text-foreground">
                       {child.attendancePercentage != null ? `${Math.round(child.attendancePercentage)}%` : "—"}
                     </span>
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Grade: <span className="font-semibold text-foreground">{child.latestGrade || "—"}</span>
+                    {t("children.gradeLabel")}: <span className="font-semibold text-foreground">{child.latestGrade || "—"}</span>
                   </span>
                 </div>
               </div>

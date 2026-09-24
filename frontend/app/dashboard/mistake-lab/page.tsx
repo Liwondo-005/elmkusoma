@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type MistakeLabEntry } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { AlertCircle, Plus, X, CheckCircle, Filter, BookOpen } from "lucide-react"
 
 export default function MistakeLabPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [entries, setEntries] = useState<MistakeLabEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -89,15 +92,15 @@ export default function MistakeLabPage() {
             <AlertCircle className="size-5 text-red-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Mistake Lab</h1>
-            <p className="text-sm text-muted-foreground">Learn from your mistakes</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("mistakes.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("mistakes.subtitle")}
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <AlertCircle className="size-12 text-muted-foreground/30" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Mistake Lab is for Primary learners</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("mistakes.primaryOnlyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Switch to a primary learner account to start learning from mistakes.
+            {t("mistakes.primaryOnlyDesc")}
           </p>
         </div>
       </div>
@@ -113,8 +116,8 @@ export default function MistakeLabPage() {
               <AlertCircle className="size-6 text-red-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Mistake Lab</h1>
-              <p className="text-sm text-muted-foreground">Mistakes help us learn! Review your mistakes and grow stronger.</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("mistakes.title")}</h1>
+              <p className="text-sm text-muted-foreground">{t("mistakes.tagline")}</p>
             </div>
           </div>
           <button
@@ -122,7 +125,7 @@ export default function MistakeLabPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="size-4" />
-            Add Mistake
+            {t("mistakes.addButton")}
           </button>
         </div>
       </div>
@@ -135,7 +138,7 @@ export default function MistakeLabPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{entries.length}</p>
-              <p className="text-xs text-muted-foreground">Total Mistakes</p>
+              <p className="text-xs text-muted-foreground">{t("mistakes.total")}
             </div>
           </div>
         </div>
@@ -146,7 +149,7 @@ export default function MistakeLabPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{reviewedCount}</p>
-              <p className="text-xs text-muted-foreground">Reviewed</p>
+              <p className="text-xs text-muted-foreground">{t("mistakes.reviewed")}
             </div>
           </div>
         </div>
@@ -157,7 +160,7 @@ export default function MistakeLabPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{entries.length - reviewedCount}</p>
-              <p className="text-xs text-muted-foreground">To Review</p>
+              <p className="text-xs text-muted-foreground">{t("mistakes.toReview")}
             </div>
           </div>
         </div>
@@ -166,18 +169,18 @@ export default function MistakeLabPage() {
       {showForm && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Add a Mistake to Learn From</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("mistakes.formTitle")}</h2>
             <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="size-5" />
             </button>
           </div>
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground">The Question / Problem</label>
+              <label className="text-sm font-medium text-foreground">{t("mistakes.questionLabel")}</label>
               <textarea
                 value={form.question}
                 onChange={(e) => setForm((f) => ({ ...f, question: e.target.value }))}
-                placeholder="What was the question?"
+                placeholder={t("mistakes.questionPlaceholder")}
                 rows={2}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
                 required
@@ -185,45 +188,45 @@ export default function MistakeLabPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-foreground">Your Wrong Answer</label>
+                <label className="text-sm font-medium text-foreground">{t("mistakes.wrongLabel")}</label>
                 <input
                   type="text"
                   value={form.wrongAnswer}
                   onChange={(e) => setForm((f) => ({ ...f, wrongAnswer: e.target.value }))}
-                  placeholder="What did you answer?"
+                  placeholder={t("mistakes.wrongPlaceholder")}
                   className="mt-1 h-10 w-full rounded-lg border border-red-200 bg-red-50 px-3 text-sm outline-none focus:border-red-400"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">The Correct Answer</label>
+                <label className="text-sm font-medium text-foreground">{t("mistakes.correctLabel")}</label>
                 <input
                   type="text"
                   value={form.correctAnswer}
                   onChange={(e) => setForm((f) => ({ ...f, correctAnswer: e.target.value }))}
-                  placeholder="What is the right answer?"
+                  placeholder={t("mistakes.correctPlaceholder")}
                   className="mt-1 h-10 w-full rounded-lg border border-green-200 bg-green-50 px-3 text-sm outline-none focus:border-green-400"
                   required
                 />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Explanation</label>
+              <label className="text-sm font-medium text-foreground">{t("mistakes.explainLabel")}</label>
               <textarea
                 value={form.explanation}
                 onChange={(e) => setForm((f) => ({ ...f, explanation: e.target.value }))}
-                placeholder="Why is this the correct answer?"
+                placeholder={t("mistakes.explainPlaceholder")}
                 rows={3}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Subject (optional)</label>
+              <label className="text-sm font-medium text-foreground">{t("discovery.subjectLabel")}
               <select
                 value={form.subjectName}
                 onChange={(e) => setForm((f) => ({ ...f, subjectName: e.target.value }))}
                 className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
-                <option value="">No specific subject</option>
+                <option value="">{t("discovery.noSubject")}</option>
                 {primarySubjects.map((s) => (
                   <option key={s.name} value={s.name}>{s.name}</option>
                 ))}
@@ -239,7 +242,7 @@ export default function MistakeLabPage() {
               ) : (
                 <Plus className="size-4" />
               )}
-              Add Mistake
+              {t("mistakes.addButton")}
             </button>
           </form>
         </div>
@@ -255,7 +258,7 @@ export default function MistakeLabPage() {
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
-          All
+          {t("reading.filterAll")}
         </button>
         <button
           onClick={() => setFilter("not_reviewed")}
@@ -265,7 +268,7 @@ export default function MistakeLabPage() {
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
-          Not Reviewed
+          {t("mistakes.filterUnreviewed")}
         </button>
         {primarySubjects.map((s) => (
           <button
@@ -287,15 +290,15 @@ export default function MistakeLabPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-green-50">
             <CheckCircle className="size-8 text-green-500" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No mistakes yet - you are doing great!</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("mistakes.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            But when you make one, it will help you learn and grow stronger.
+            {t("mistakes.emptyDesc")}
           </p>
           <button
             onClick={() => setShowForm(true)}
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            <Plus className="size-4" /> Add First Mistake
+            <Plus className="size-4" /> {t("mistakes.addFirst")}
           </button>
         </div>
       ) : (
@@ -305,24 +308,24 @@ export default function MistakeLabPage() {
               <div className="flex items-start justify-between">
                 <h3 className="text-sm font-bold text-foreground">{entry.question}</h3>
                 <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${entry.isReviewed ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
-                  {entry.isReviewed ? "Reviewed" : "To Review"}
+                  {entry.isReviewed ? t("mistakes.reviewed") : t("mistakes.toReview")}
                 </span>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-                  <p className="text-[10px] font-bold text-red-600 uppercase">Your Answer</p>
+                  <p className="text-[10px] font-bold text-red-600 uppercase">{t("mistakes.yourAnswer")}</p>
                   <p className="mt-1 text-sm text-red-700">{entry.wrongAnswer}</p>
                 </div>
                 <div className="rounded-xl bg-green-50 border border-green-200 p-3">
-                  <p className="text-[10px] font-bold text-green-600 uppercase">Correct Answer</p>
+                  <p className="text-[10px] font-bold text-green-600 uppercase">{t("mistakes.correctAnswer")}
                   <p className="mt-1 text-sm text-green-700">{entry.correctAnswer}</p>
                 </div>
               </div>
 
               {entry.explanation && (
                 <div className="mt-3 rounded-xl bg-blue-50 border border-blue-200 p-3">
-                  <p className="text-[10px] font-bold text-blue-600 uppercase">Explanation</p>
+                  <p className="text-[10px] font-bold text-blue-600 uppercase">{t("mistakes.explainLabel")}
                   <p className="mt-1 text-sm text-blue-700">{entry.explanation}</p>
                 </div>
               )}
@@ -338,7 +341,7 @@ export default function MistakeLabPage() {
                     onClick={() => handleReview(entry.id)}
                     className="text-[10px] font-medium text-primary hover:underline"
                   >
-                    Mark as Reviewed
+                    {t("mistakes.markReviewed")}
                   </button>
                 )}
               </div>

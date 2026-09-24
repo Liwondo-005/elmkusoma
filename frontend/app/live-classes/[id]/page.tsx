@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { learnerApi, type LiveClass } from "@/lib/learner-api"
 import { LiveClassroom } from "@/components/live/live-classroom"
 import { AuthGuard } from "@/components/auth/auth-guard"
@@ -10,6 +11,7 @@ import { SiteHeader } from "@/components/site-header"
 import { Loader2, AlertCircle } from "lucide-react"
 
 export default function ClassroomPage() {
+  const t = useTranslations("public")
   const params = useParams()
   const id = params.id as string
   const [liveClass, setLiveClass] = useState<LiveClass | null>(null)
@@ -22,7 +24,7 @@ export default function ClassroomPage() {
         const data = await learnerApi.getLiveClass(id)
         setLiveClass(data)
       } catch (e: any) {
-        setError(e.message || "Failed to load live class")
+        setError(e.message || t("classroom.loadError"))
       } finally {
         setLoading(false)
       }
@@ -44,7 +46,7 @@ export default function ClassroomPage() {
               <AlertCircle className="mx-auto size-12 text-destructive/40" />
               <p className="mt-4 text-lg font-medium">{error}</p>
               <Link href="/live-classes" className="mt-4 inline-block text-sm text-primary hover:underline">
-                Back to Live Classes
+                {t("classroom.backToLive")}
               </Link>
             </div>
           ) : liveClass ? (

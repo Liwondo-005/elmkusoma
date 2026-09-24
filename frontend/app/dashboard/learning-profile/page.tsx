@@ -2,16 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type LearningProfile } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { User, Edit3, X, Star, BookOpen, Target, Award, CheckCircle } from "lucide-react"
 
-const learningStyles = [
-  { value: "VISUAL", label: "Visual", description: "You learn best by seeing — charts, diagrams, videos", color: "bg-blue-100 text-blue-700", icon: "eyes" },
-  { value: "AUDITORY", label: "Auditory", description: "You learn best by hearing — discussions, lectures, music", color: "bg-purple-100 text-purple-700", icon: "ear" },
-  { value: "KINESTHETIC", label: "Kinesthetic", description: "You learn best by doing — hands-on activities, movement", color: "bg-green-100 text-green-700", icon: "hand" },
-  { value: "READING_WRITING", label: "Reading/Writing", description: "You learn best by reading and writing", color: "bg-amber-100 text-amber-700", icon: "book" },
-]
 
 const styleColorMap: Record<string, string> = {
   VISUAL: "bg-blue-100 text-blue-700",
@@ -22,6 +17,14 @@ const styleColorMap: Record<string, string> = {
 
 export default function LearningProfilePage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const learningStyles = [
+  { value: "VISUAL", label: t("learnProfile.styleVisual"), description: t("learnProfile.styleVisualDesc"), color: "bg-blue-100 text-blue-700", icon: "eyes" },
+  { value: "AUDITORY", label: t("learnProfile.styleAuditory"), description: t("learnProfile.styleAuditoryDesc"), color: "bg-purple-100 text-purple-700", icon: "ear" },
+  { value: "KINESTHETIC", label: t("learnProfile.styleKinesthetic"), description: t("learnProfile.styleKinestheticDesc"), color: "bg-green-100 text-green-700", icon: "hand" },
+  { value: "READING_WRITING", label: t("learnProfile.styleReading"), description: t("learnProfile.styleReadingDesc"), color: "bg-amber-100 text-amber-700", icon: "book" },
+]
+  const ts = useTranslations("status")
   const [profile, setProfile] = useState<LearningProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -118,15 +121,15 @@ export default function LearningProfilePage() {
             <User className="size-5 text-purple-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Learning Profile</h1>
-            <p className="text-sm text-muted-foreground">Your personalized learning style</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnProfile.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <User className="size-12 text-muted-foreground/30" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Learning Profile is for Primary learners</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("learnProfile.primaryOnlyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Switch to a primary learner account to set up your profile.
+            {t("learnProfile.primaryOnlyDesc")}
           </p>
         </div>
       </div>
@@ -142,8 +145,8 @@ export default function LearningProfilePage() {
               <User className="size-6 text-purple-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">My Learning Profile</h1>
-              <p className="text-sm text-muted-foreground">Your personalized learning style</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnProfile.title")}</h1>
+              <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}
             </div>
           </div>
         </div>
@@ -151,15 +154,15 @@ export default function LearningProfilePage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <User className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Tell us about yourself!</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("learnProfile.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Set up your learning profile to personalize your experience.
+            {t("learnProfile.emptyDesc")}
           </p>
           <button
             onClick={() => setShowForm(true)}
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            <Edit3 className="size-4" /> Create Profile
+            <Edit3 className="size-4" /> {t("learnProfile.createButton")}
           </button>
         </div>
       </div>
@@ -176,9 +179,9 @@ export default function LearningProfilePage() {
             </div>
             <div className="flex-1">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {profile ? "Edit Learning Profile" : "Create Learning Profile"}
+                {profile ? t("learnProfile.editTitle") : t("learnProfile.createTitle")}
               </h1>
-              <p className="text-sm text-muted-foreground">Tell us how you learn best</p>
+              <p className="text-sm text-muted-foreground">{t("learnProfile.formSubtitle")}
             </div>
             {profile && (
               <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
@@ -190,8 +193,8 @@ export default function LearningProfilePage() {
 
         <form onSubmit={handleSave} className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
           <div>
-            <label className="text-sm font-bold text-foreground">Learning Style</label>
-            <p className="text-xs text-muted-foreground mt-1">Choose the way you learn best</p>
+            <label className="text-sm font-bold text-foreground">{t("learnProfile.styleLabel")}</label>
+            <p className="text-xs text-muted-foreground mt-1">{t("learnProfile.styleHint")}</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {learningStyles.map((style) => (
                 <button
@@ -212,19 +215,19 @@ export default function LearningProfilePage() {
           </div>
 
           <div>
-            <label className="text-sm font-bold text-foreground">Strengths</label>
-            <p className="text-xs text-muted-foreground mt-1">What are you good at?</p>
+            <label className="text-sm font-bold text-foreground">{t("learnProfile.strengthsLabel")}</label>
+            <p className="text-xs text-muted-foreground mt-1">{t("learnProfile.strengthsHint")}</p>
             <div className="mt-2 flex gap-2">
               <input
                 type="text"
                 value={strengthInput}
                 onChange={(e) => setStrengthInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addStrength())}
-                placeholder="Add a strength..."
+                placeholder={t("learnProfile.strengthPlaceholder")}
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
               />
               <button type="button" onClick={addStrength} className="rounded-lg bg-muted px-3 py-2 text-sm font-medium hover:bg-muted/80 transition-colors">
-                Add
+                {t("learnProfile.addButton")}
               </button>
             </div>
             {strengthsList.length > 0 && (
@@ -242,19 +245,19 @@ export default function LearningProfilePage() {
           </div>
 
           <div>
-            <label className="text-sm font-bold text-foreground">Interests</label>
-            <p className="text-xs text-muted-foreground mt-1">What do you enjoy?</p>
+            <label className="text-sm font-bold text-foreground">{t("learnProfile.interestsLabel")}</label>
+            <p className="text-xs text-muted-foreground mt-1">{t("learnProfile.interestsHint")}</p>
             <div className="mt-2 flex gap-2">
               <input
                 type="text"
                 value={interestInput}
                 onChange={(e) => setInterestInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addInterest())}
-                placeholder="Add an interest..."
+                placeholder={t("learnProfile.interestPlaceholder")}
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
               />
               <button type="button" onClick={addInterest} className="rounded-lg bg-muted px-3 py-2 text-sm font-medium hover:bg-muted/80 transition-colors">
-                Add
+                {t("learnProfile.addButton")}
               </button>
             </div>
             {interestsList.length > 0 && (
@@ -272,12 +275,12 @@ export default function LearningProfilePage() {
           </div>
 
           <div>
-            <label className="text-sm font-bold text-foreground">Goals</label>
-            <p className="text-xs text-muted-foreground mt-1">What do you want to learn?</p>
+            <label className="text-sm font-bold text-foreground">{t("learnProfile.goalsLabel")}</label>
+            <p className="text-xs text-muted-foreground mt-1">{t("learnProfile.goalsHint")}</p>
             <textarea
               value={form.goals}
               onChange={(e) => setForm((prev) => ({ ...prev, goals: e.target.value }))}
-              placeholder="Write your learning goals..."
+              placeholder={t("learnProfile.goalsPlaceholder")}
               rows={4}
               className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
             />
@@ -291,7 +294,7 @@ export default function LearningProfilePage() {
             {submitting ? (
               <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
             ) : (
-              "Save Profile"
+              {t("learnProfile.save")}
             )}
           </button>
         </form>
@@ -311,14 +314,14 @@ export default function LearningProfilePage() {
             <User className="size-6 text-purple-500" />
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Learning Profile</h1>
-            <p className="text-sm text-muted-foreground">Your personalized learning style</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("learnProfile.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("learnProfile.subtitle")}
           </div>
           <button
             onClick={() => setShowForm(true)}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            <Edit3 className="size-4" /> Edit Profile
+            <Edit3 className="size-4" /> {t("learnProfile.editButton")}
           </button>
         </div>
       </div>
@@ -331,7 +334,7 @@ export default function LearningProfilePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{profile?.level || 1}</p>
-              <p className="text-xs text-muted-foreground">Current Level</p>
+              <p className="text-xs text-muted-foreground">{t("learnProfile.currentLevel")}
             </div>
           </div>
         </div>
@@ -342,7 +345,7 @@ export default function LearningProfilePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{profile?.totalPoints || 0}</p>
-              <p className="text-xs text-muted-foreground">Total Points</p>
+              <p className="text-xs text-muted-foreground">{t("learnProfile.totalPoints")}
             </div>
           </div>
         </div>
@@ -350,7 +353,7 @@ export default function LearningProfilePage() {
 
       {styleInfo && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Learning Style</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.styleTitle")}
           <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 ${styleColorMap[profile?.learningStyle || "VISUAL"]}`}>
             <BookOpen className="size-5" />
             <div>
@@ -363,7 +366,7 @@ export default function LearningProfilePage() {
 
       {strengthsArr.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Strengths</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.strengthsTitle")}
           <div className="flex flex-wrap gap-2">
             {strengthsArr.map((s) => (
               <span key={s} className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
@@ -376,7 +379,7 @@ export default function LearningProfilePage() {
 
       {interestsArr.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Interests</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.interestsTitle")}
           <div className="flex flex-wrap gap-2">
             {interestsArr.map((s) => (
               <span key={s} className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700">
@@ -389,7 +392,7 @@ export default function LearningProfilePage() {
 
       {profile?.goals && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Goals</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("learnProfile.goalsTitle")}
           <div className="rounded-xl bg-muted/30 p-4">
             <p className="text-sm text-foreground whitespace-pre-wrap">{profile.goals}</p>
           </div>
@@ -399,8 +402,8 @@ export default function LearningProfilePage() {
       {!styleInfo && strengthsArr.length === 0 && interestsArr.length === 0 && !profile?.goals && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-12 text-center">
           <Target className="size-10 text-muted-foreground/30" />
-          <h3 className="mt-3 text-sm font-semibold text-foreground">No profile data yet</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Edit your profile to add your learning preferences.</p>
+          <h3 className="mt-3 text-sm font-semibold text-foreground">{t("learnProfile.noData")}
+          <p className="mt-1 text-xs text-muted-foreground">{t("learnProfile.noDataDesc")}
         </div>
       )}
     </div>

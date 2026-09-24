@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -11,6 +12,7 @@ interface CarouselProps {
 }
 
 export function Carousel({ images, alt, className }: CarouselProps) {
+  const t = useTranslations("ui")
   const [current, setCurrent] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -62,7 +64,7 @@ export function Carousel({ images, alt, className }: CarouselProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={src}
-              alt={`${alt} - slide ${i + 1} of ${total}`}
+              alt={t("carousel.slideLabel", { alt, current: i + 1, total })}
               className="absolute inset-0 h-full w-full object-cover"
               loading={i === 0 ? "eager" : "lazy"}
             />
@@ -75,7 +77,7 @@ export function Carousel({ images, alt, className }: CarouselProps) {
         <>
           <button
             onClick={prev}
-            aria-label="Previous slide"
+            aria-label={t("carousel.prev")}
             className={cn(
               "absolute left-3 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full",
               "bg-background/80 text-foreground backdrop-blur-sm transition-colors hover:bg-background",
@@ -87,7 +89,7 @@ export function Carousel({ images, alt, className }: CarouselProps) {
           </button>
           <button
             onClick={next}
-            aria-label="Next slide"
+            aria-label={t("carousel.next")}
             className={cn(
               "absolute right-3 top-1/2 z-10 flex size-9 -translate-y-1/2 items-center justify-center rounded-full",
               "bg-background/80 text-foreground backdrop-blur-sm transition-colors hover:bg-background",
@@ -107,7 +109,7 @@ export function Carousel({ images, alt, className }: CarouselProps) {
             <button
               key={i}
               onClick={() => goTo(i)}
-              aria-label={`Go to slide ${i + 1}`}
+              aria-label={t("carousel.goTo", { index: i + 1 })}
               className={cn(
                 "size-2 rounded-full transition-all",
                 i === current

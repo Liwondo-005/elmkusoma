@@ -1,5 +1,6 @@
 ﻿"use client"
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react"
 import { Users, Search, UserPlus, Shield, GraduationCap, UserCheck, Loader2, Mail, Phone, CheckCircle, XCircle, ChevronDown } from "lucide-react"
 import { adminApi, getInstitutionId, type PeopleMemberResponse, type InvitationResponse } from "@/lib/api"
@@ -21,6 +22,9 @@ const roleIcons: Record<string, typeof Users> = {
 }
 
 export default function PeopleManagementPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [people, setPeople] = useState<PeopleMemberResponse[]>([])
   const [invitations, setInvitations] = useState<InvitationResponse[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,7 +41,7 @@ export default function PeopleManagementPage() {
 
   async function loadData() {
     const institutionId = getInstitutionId()
-    if (!institutionId) { setError("No institution context found"); setLoading(false); return }
+    if (!institutionId) { setError(t("people.noInstitutionContextFound")); setLoading(false); return }
     try {
       const [peopleData, invitationsData] = await Promise.all([
         adminApi.listPeople(institutionId),
@@ -46,7 +50,7 @@ export default function PeopleManagementPage() {
       setPeople(peopleData)
       setInvitations(invitationsData)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data")
+      setError(err instanceof Error ? err.message : tc("error.load"))
     } finally { setLoading(false) }
   }
 
@@ -57,7 +61,7 @@ export default function PeopleManagementPage() {
     try {
       await adminApi.inviteUser(institutionId, { email: inviteEmail, role: inviteRole })
       setShowInviteModal(false); setInviteEmail(""); setInviteRole("STUDENT"); loadData()
-    } catch (err) { setError(err instanceof Error ? err.message : "Failed to send invitation") }
+    } catch (err) { setError(err instanceof Error ? err.message : t("people.failedToSendInvitation")) }
     finally { setInviteLoading(false) }
   }
 
@@ -68,21 +72,21 @@ export default function PeopleManagementPage() {
       if (member.isActive) await adminApi.deactivateMember(institutionId, member.userId)
       else await adminApi.activateMember(institutionId, member.userId)
       loadData()
-    } catch (err) { setError(err instanceof Error ? err.message : "Failed to update member") }
+    } catch (err) { setError(err instanceof Error ? err.message : t("people.failedToUpdateMember")) }
   }
 
   async function handleRoleChange(member: PeopleMemberResponse, newRole: string) {
     const institutionId = getInstitutionId()
     if (!institutionId) return
     try { await adminApi.updateMemberRole(institutionId, member.userId, newRole); loadData() }
-    catch (err) { setError(err instanceof Error ? err.message : "Failed to update role") }
+    catch (err) { setError(err instanceof Error ? err.message : t("people.failedToUpdateRole")) }
   }
 
   async function handleCancelInvitation(inv: InvitationResponse) {
     const institutionId = getInstitutionId()
     if (!institutionId) return
     try { await adminApi.cancelInvitation(institutionId, inv.id); loadData() }
-    catch (err) { setError(err instanceof Error ? err.message : "Failed to cancel invitation") }
+    catch (err) { setError(err instanceof Error ? err.message : t("people.failedToCancelInvitation")) }
   }
 
   const filteredPeople = people.filter((p) => {
@@ -97,20 +101,18 @@ export default function PeopleManagementPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">People Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage users, roles, and invitations</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("people.peopleManagement")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("people.manageUsersRolesAnd")}</p>
         </div>
         <button onClick={() => setShowInviteModal(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/90">
-          <UserPlus className="size-4" /> Invite User
-        </button>
+          <UserPlus className="size-4" /> {t("people.inviteUser")}</button>
       </div>
 
       <div className="flex gap-1 rounded-xl border border-border bg-muted p-1">
         <button onClick={() => setActiveTab("members")} className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === "members" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}>
-          Members ({people.length})
-        </button>
+          {t("people.members", { p0: people.length })}</button>
         <button onClick={() => setActiveTab("invitations")} className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeTab === "invitations" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}>
-          Pending Invitations ({invitations.filter((i) => i.status === "PENDING").length})
+          {t("people.pendingInvitations")}{invitations.filter((i) => i.status === "PENDING").length})
         </button>
       </div>
 
@@ -133,18 +135,18 @@ export default function PeopleManagementPage() {
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input type="text" placeholder="Search by name or email..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            <input type="text" placeholder={t("people.searchByNameOr")} value={search} onChange={(e) => setSearch(e.target.value)} className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </div>
 
           <div className="rounded-2xl border border-border bg-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead><tr className="border-b border-border bg-muted/50">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Role</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("people.user")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("people.role")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("people.contact")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("people.status")}</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">{t("people.actions")}</th>
                 </tr></thead>
                 <tbody className="divide-y divide-border">
                   {filteredPeople.map((member) => (
@@ -163,14 +165,14 @@ export default function PeopleManagementPage() {
                         {member.phone && <span className="flex items-center gap-1"><Phone className="size-3" />{member.phone}</span>}
                       </div></td>
                       <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${member.isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-                        {member.isActive ? <CheckCircle className="size-3" /> : <XCircle className="size-3" />}{member.isActive ? "Active" : "Inactive"}
+                        {member.isActive ? <CheckCircle className="size-3" /> : <XCircle className="size-3" />}{member.isActive ? ts("active") : ts("inactive")}
                       </span></td>
                       <td className="px-4 py-3 text-right"><button onClick={() => handleToggleActive(member)} className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${member.isActive ? "text-red-600 hover:bg-red-50" : "text-emerald-600 hover:bg-emerald-50"}`}>
-                        {member.isActive ? "Deactivate" : "Activate"}
+                        {member.isActive ? t("people.deactivate") : t("people.activate")}
                       </button></td>
                     </tr>
                   ))}
-                  {filteredPeople.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">No members found</td></tr>}
+                  {filteredPeople.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">{t("people.noMembersFound")}</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -183,11 +185,11 @@ export default function PeopleManagementPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead><tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Expires</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("people.email")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("people.role2")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("people.status2")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("people.expires")}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">{t("people.actions2")}</th>
               </tr></thead>
               <tbody className="divide-y divide-border">
                 {invitations.map((inv) => (
@@ -196,10 +198,10 @@ export default function PeopleManagementPage() {
                     <td className="px-4 py-3"><span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border ${roleColors[inv.role] || "bg-gray-100"}`}>{inv.role}</span></td>
                     <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${inv.status === "PENDING" ? "bg-yellow-50 text-yellow-700 border border-yellow-200" : inv.status === "ACCEPTED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>{inv.status}</span></td>
                     <td className="px-4 py-3"><span className="text-xs text-muted-foreground">{new Date(inv.expiresAt).toLocaleDateString()}</span></td>
-                    <td className="px-4 py-3 text-right">{inv.status === "PENDING" && <button onClick={() => handleCancelInvitation(inv)} className="text-xs font-medium text-red-600 hover:text-red-700">Cancel</button>}</td>
+                    <td className="px-4 py-3 text-right">{inv.status === "PENDING" && <button onClick={() => handleCancelInvitation(inv)} className="text-xs font-medium text-red-600 hover:text-red-700">{tc("cancel")}</button>}</td>
                   </tr>
                 ))}
-                {invitations.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">No invitations yet</td></tr>}
+                {invitations.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">{t("people.noInvitationsYet")}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -209,19 +211,19 @@ export default function PeopleManagementPage() {
       {showInviteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-foreground">Invite User</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Send an invitation to join your institution</p>
+            <h3 className="text-lg font-bold text-foreground">{t("people.inviteUser2")}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{t("people.sendAnInvitationTo")}</p>
             <div className="mt-4 space-y-4">
-              <div><label className="block text-sm font-medium text-foreground mb-1">Email</label>
-                <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="user@example.com" className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></div>
-              <div><label className="block text-sm font-medium text-foreground mb-1">Role</label>
+              <div><label className="block text-sm font-medium text-foreground mb-1">{t("people.email2")}</label>
+                <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder={t("people.userExampleCom")} className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" /></div>
+              <div><label className="block text-sm font-medium text-foreground mb-1">{t("people.role3")}</label>
                 <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-                  <option value="STUDENT">Student</option><option value="TEACHER">Teacher</option><option value="PARENT">Parent</option><option value="ADMIN">Admin</option>
+                  <option value="STUDENT">{t("people.student")}</option><option value="TEACHER">{t("people.teacher")}</option><option value="PARENT">{t("people.parent")}</option><option value="ADMIN">{t("people.admin")}</option>
                 </select></div>
             </div>
             <div className="mt-6 flex gap-3">
-              <button onClick={() => setShowInviteModal(false)} className="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted">Cancel</button>
-              <button onClick={handleInvite} disabled={!inviteEmail || inviteLoading} className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50">{inviteLoading ? "Sending..." : "Send Invitation"}</button>
+              <button onClick={() => setShowInviteModal(false)} className="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted">{tc("cancel")}</button>
+              <button onClick={handleInvite} disabled={!inviteEmail || inviteLoading} className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50">{inviteLoading ? t("people.sending") : t("people.sendInvitation")}</button>
             </div>
           </div>
         </div>

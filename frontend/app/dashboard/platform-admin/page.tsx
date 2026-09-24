@@ -1,5 +1,6 @@
 ﻿"use client"
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
@@ -94,6 +95,8 @@ function HealthDot({ status }: { status: string }) {
 }
 
 export default function PlatformAdminDashboard() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [dash, setDash] = useState<EnhancedDashboard | null>(null)
   const [attention, setAttention] = useState<AttentionItem[]>([])
   const [activity, setActivity] = useState<ActivityFeed[]>([])
@@ -108,7 +111,7 @@ export default function PlatformAdminDashboard() {
         platformAdminApi.getEnhancedDashboard(), platformAdminApi.getAttention(),
         platformAdminApi.getActivity(0, 10), platformAdminApi.getHealth(),
       ])
-      if (d.status === "fulfilled") setDash(d.value); else setErr("Unable to load dashboard")
+      if (d.status === "fulfilled") setDash(d.value); else setErr(t("dashboard.unableToLoadDashboard"))
       if (a.status === "fulfilled") setAttention(a.value)
       if (act.status === "fulfilled") setActivity(act.value)
       if (h.status === "fulfilled") setHealth(h.value)
@@ -123,24 +126,24 @@ export default function PlatformAdminDashboard() {
         <div className="absolute -right-12 -top-12 size-40 rounded-full bg-white/10" />
         <div className="absolute -bottom-10 -left-10 size-32 rounded-full bg-white/10" />
         <div className="absolute right-6 top-6 hidden lg:flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 backdrop-blur">
-          <span className="size-2 animate-pulse rounded-full bg-emerald-300" /><span className="text-xs font-semibold">Operations & Governance</span>
+          <span className="size-2 animate-pulse rounded-full bg-emerald-300" /><span className="text-xs font-semibold">{t("dashboard.operationsGovernance")}</span>
         </div>
         <div className="relative">
-          <div className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-white/70"><Crown className="size-3.5" /> Platform Admin</div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">Platform Command Center</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/80">Real platform state, actionable signals, and governance controls — all from verified system data. No fabricated metrics.</p>
+          <div className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-white/70"><Crown className="size-3.5" /> {t("dashboard.platformAdmin")}</div>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">{t("dashboard.platformCommandCenter")}</h1>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/80">{t("dashboard.realPlatformStateActionable")}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button onClick={load} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-primary shadow-sm hover:bg-white/90 transition-colors"><RefreshCw className="size-4" /> Refresh</button>
-            <Link href="/dashboard/platform-admin/attention" className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-white/20 transition-colors"><AlertTriangle className="size-4" /> Attention ({attention.length})</Link>
+            <button onClick={load} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-primary shadow-sm hover:bg-white/90 transition-colors"><RefreshCw className="size-4" /> {t("dashboard.refresh")}</button>
+            <Link href="/dashboard/platform-admin/attention" className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-white/20 transition-colors"><AlertTriangle className="size-4" /> {t("dashboard.attention")}{attention.length})</Link>
           </div>
         </div>
       </div>
 
-      {err && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between"><span className="flex items-center gap-2"><XCircle className="size-4" />{err}</span><button onClick={load} className="rounded-lg bg-white px-3 py-1 text-xs font-semibold border">Retry</button></div>}
+      {err && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between"><span className="flex items-center gap-2"><XCircle className="size-4" />{err}</span><button onClick={load} className="rounded-lg bg-white px-3 py-1 text-xs font-semibold border">{t("dashboard.retry")}</button></div>}
 
       {/* Primary KPIs */}
       <div>
-        <h2 className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3">Platform Overview</h2>
+        <h2 className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3">{t("dashboard.platformOverview")}</h2>
         {loading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}</div> : dash ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <PrimaryKpi icon={Users} label="Total Users" value={dash.totalUsers} sub={`${dash.totalStudents} students · ${dash.totalTeachers} educators`} href="/dashboard/platform-admin/users" accent="#2563eb" />
@@ -148,7 +151,7 @@ export default function PlatformAdminDashboard() {
             <PrimaryKpi icon={Radio} label="Live Classes" value={dash.totalLiveClasses} sub={`${dash.activeLiveClasses} active now`} href="/dashboard/platform-admin/live-classes" accent="#7c3aed" />
             <PrimaryKpi icon={FileCheck} label="Certificates" value={dash.totalCertificates} sub="Issued & verified" href="/dashboard/platform-admin/certificates" accent="#d97706" />
           </div>
-        ) : <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Data unavailable</div>}
+        ) : <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">{t("dashboard.dataUnavailable")}</div>}
       </div>
 
       {/* Operational */}
@@ -164,17 +167,17 @@ export default function PlatformAdminDashboard() {
       {/* Attention — most prominent */}
       <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/50 to-white p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="flex items-center gap-2 text-base font-bold text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-amber-500 text-white"><AlertTriangle className="size-4" /></span> Attention Required</h2>
+          <h2 className="flex items-center gap-2 text-base font-bold text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-amber-500 text-white"><AlertTriangle className="size-4" /></span> {t("dashboard.attentionRequired")}</h2>
           <div className="flex items-center gap-2">
             {attention.length > 0 && <span className="rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white">{attention.length}</span>}
-            <Link href="/dashboard/platform-admin/attention" className="text-xs font-semibold text-primary hover:underline">View all →</Link>
+            <Link href="/dashboard/platform-admin/attention" className="text-xs font-semibold text-primary hover:underline">{t("dashboard.viewAll")} →</Link>
           </div>
         </div>
         {loading ? <SkeletonList /> : attention.length === 0 ? (
           <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 p-8 text-center">
             <CheckCircle2 className="mx-auto size-10 text-emerald-500" />
-            <p className="mt-3 text-sm font-semibold text-foreground">All Clear</p>
-            <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">No items requiring attention. Pending verifications, incidents and security events will surface here with evidence and action.</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("dashboard.allClear")}</p>
+            <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">{t("dashboard.noItemsRequiringAttention")}</p>
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">{attention.slice(0, 6).map((item, i) => <AttentionCard key={i} item={item} />)}</div>
@@ -185,11 +188,11 @@ export default function PlatformAdminDashboard() {
         {/* Activity */}
         <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground"><Activity className="size-4 text-primary" /> Platform Activity</h2>
-            <Link href="/dashboard/platform-admin/audit" className="text-xs font-semibold text-primary hover:underline">Audit logs →</Link>
+            <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground"><Activity className="size-4 text-primary" /> {t("dashboard.platformActivity")}</h2>
+            <Link href="/dashboard/platform-admin/audit" className="text-xs font-semibold text-primary hover:underline">{t("dashboard.auditLogs")} →</Link>
           </div>
           {loading ? <SkeletonList /> : activity.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-8 text-center"><Activity className="mx-auto size-8 text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">No recent activity</p><p className="mt-1 text-xs text-muted-foreground">Verified actions will appear here</p></div>
+            <div className="rounded-xl border border-dashed p-8 text-center"><Activity className="mx-auto size-8 text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">{t("dashboard.noRecentActivity")}</p><p className="mt-1 text-xs text-muted-foreground">{t("dashboard.verifiedActionsWillAppear")}</p></div>
           ) : (
             <div className="space-y-2">{activity.slice(0, 8).map(a => <ActivityRow key={a.id} a={a} />)}</div>
           )}
@@ -198,47 +201,47 @@ export default function PlatformAdminDashboard() {
         {/* Health + Ecosystem + Quick Actions */}
         <div className="space-y-4">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground mb-4"><Zap className="size-4 text-emerald-600" /> Platform Health</h2>
+            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground mb-4"><Zap className="size-4 text-emerald-600" /> {t("dashboard.platformHealth")}</h2>
             {health ? (
               <>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between rounded-xl border px-4 py-3 bg-muted/20"><span className="flex items-center gap-2 text-sm font-medium"><HealthDot status={health.databaseStatus} /> Database</span><span className="text-xs font-semibold">{health.databaseStatus}</span></div>
+                  <div className="flex items-center justify-between rounded-xl border px-4 py-3 bg-muted/20"><span className="flex items-center gap-2 text-sm font-medium"><HealthDot status={health.databaseStatus} /> {t("dashboard.database")}</span><span className="text-xs font-semibold">{health.databaseStatus}</span></div>
                   <div className="flex items-center justify-between rounded-xl border px-4 py-3 bg-muted/20"><span className="flex items-center gap-2 text-sm font-medium"><HealthDot status={health.apiStatus} /> API</span><span className="text-xs font-semibold">{health.apiStatus}</span></div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="rounded-xl bg-primary/5 border border-primary/10 p-3 text-center"><p className="text-lg font-bold text-primary tabular-nums">{health.activeUsers.toLocaleString()}</p><p className="text-xs text-muted-foreground">Active Users</p></div>
-                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center"><p className="text-lg font-bold text-emerald-700 tabular-nums">{health.activeInstitutions.toLocaleString()}</p><p className="text-xs text-muted-foreground">Active Institutions</p></div>
+                  <div className="rounded-xl bg-primary/5 border border-primary/10 p-3 text-center"><p className="text-lg font-bold text-primary tabular-nums">{health.activeUsers.toLocaleString()}</p><p className="text-xs text-muted-foreground">{t("dashboard.activeUsers")}</p></div>
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center"><p className="text-lg font-bold text-emerald-700 tabular-nums">{health.activeInstitutions.toLocaleString()}</p><p className="text-xs text-muted-foreground">{t("dashboard.activeInstitutions")}</p></div>
                 </div>
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Statuses are derived from verified counts, not fabricated uptime. Extend with LiveKit/Storage checks when telemetry available.</p>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t("dashboard.statusesAreDerivedFrom")}</p>
               </>
-            ) : loading ? <SkeletonList /> : <p className="text-sm text-muted-foreground">Health status unavailable.</p>}
+            ) : loading ? <SkeletonList /> : <p className="text-sm text-muted-foreground">{t("dashboard.healthStatusUnavailable")}</p>}
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="text-sm font-bold text-foreground mb-3">Ecosystem Overview</h2>
+            <h2 className="text-sm font-bold text-foreground mb-3">{t("dashboard.ecosystemOverview")}</h2>
             {dash ? (
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Institutions</span><span className="font-semibold">{dash.totalInstitutions}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Providers (pending)</span><span className="font-semibold">{dash.pendingVerifications}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Live · Certificates</span><span className="font-semibold">{dash.totalLiveClasses} · {dash.totalCertificates}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Commerce</span><span className="font-semibold">{dash.totalPayments} payments</span></div>
-                <div className="pt-3 border-t flex flex-wrap gap-1.5 text-xs"><span className="rounded-full bg-muted px-2 py-1">Institutions</span><span className="rounded-full bg-muted px-2 py-1">Providers</span><span className="rounded-full bg-muted px-2 py-1">Learning</span><span className="rounded-full bg-muted px-2 py-1">Live</span><span className="rounded-full bg-muted px-2 py-1">Commerce</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("dashboard.institutions")}</span><span className="font-semibold">{dash.totalInstitutions}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("dashboard.providersPending")}</span><span className="font-semibold">{dash.pendingVerifications}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("dashboard.liveCertificates")}</span><span className="font-semibold">{dash.totalLiveClasses} · {dash.totalCertificates}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("dashboard.commerce")}</span><span className="font-semibold">{t("dashboard.payments", { p0: dash.totalPayments })}</span></div>
+                <div className="pt-3 border-t flex flex-wrap gap-1.5 text-xs"><span className="rounded-full bg-muted px-2 py-1">{t("dashboard.institutions2")}</span><span className="rounded-full bg-muted px-2 py-1">{t("dashboard.providers")}</span><span className="rounded-full bg-muted px-2 py-1">{t("dashboard.learning")}</span><span className="rounded-full bg-muted px-2 py-1">{t("dashboard.live")}</span><span className="rounded-full bg-muted px-2 py-1">{t("dashboard.commerce2")}</span></div>
               </div>
-            ) : <p className="text-xs text-muted-foreground">Data unavailable</p>}
+            ) : <p className="text-xs text-muted-foreground">{t("dashboard.dataUnavailable2")}</p>}
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground mb-3"><Crown className="size-4 text-primary" /> Quick Actions</h2>
+            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground mb-3"><Crown className="size-4 text-primary" /> {t("dashboard.quickActions")}</h2>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "Users", href: "/dashboard/platform-admin/users", icon: Users },
-                { label: "Institutions", href: "/dashboard/platform-admin/institutions", icon: School },
-                { label: "Providers", href: "/dashboard/platform-admin/providers", icon: Globe },
-                { label: "Services", href: "/dashboard/platform-admin/services", icon: Package },
-                { label: "Verifications", href: "/dashboard/platform-admin/verifications", icon: Shield },
-                { label: "Live", href: "/dashboard/platform-admin/live-classes", icon: Video },
-                { label: "Incidents", href: "/dashboard/platform-admin/incidents", icon: AlertTriangle },
-                { label: "Search", href: "/dashboard/platform-admin/search", icon: Search },
+                { label: t("dashboard.users"), href: "/dashboard/platform-admin/users", icon: Users },
+                { label: t("dashboard.institutions3"), href: "/dashboard/platform-admin/institutions", icon: School },
+                { label: t("dashboard.providers2"), href: "/dashboard/platform-admin/providers", icon: Globe },
+                { label: t("dashboard.services"), href: "/dashboard/platform-admin/services", icon: Package },
+                { label: t("dashboard.verifications"), href: "/dashboard/platform-admin/verifications", icon: Shield },
+                { label: t("dashboard.live2"), href: "/dashboard/platform-admin/live-classes", icon: Video },
+                { label: t("dashboard.incidents"), href: "/dashboard/platform-admin/incidents", icon: AlertTriangle },
+                { label: tc("search"), href: "/dashboard/platform-admin/search", icon: Search },
               ].map(a => (
                 <Link key={a.href} href={a.href} className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-muted/20 p-3 text-xs font-semibold hover:bg-muted hover:border-primary/20 transition-colors">
                   <a.icon className="size-5 text-primary" />{a.label}
@@ -251,9 +254,9 @@ export default function PlatformAdminDashboard() {
 
       {/* Bottom nav cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Link href="/dashboard/platform-admin/security" className="group rounded-2xl border border-border bg-card p-5 hover:shadow-md transition-all"><div className="flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600"><Shield className="size-5" /></div><p className="mt-3 text-sm font-bold">Security Center</p><p className="text-xs text-muted-foreground">Events · Resolutions · Audit</p></Link>
-        <Link href="/dashboard/platform-admin/config" className="group rounded-2xl border border-border bg-card p-5 hover:shadow-md transition-all"><div className="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700"><Settings className="size-5" /></div><p className="mt-3 text-sm font-bold">Platform Configuration</p><p className="text-xs text-muted-foreground">Flags · Policies · Maintenance</p></Link>
-        <Link href="/dashboard/platform-admin/audit" className="group rounded-2xl border border-border bg-card p-5 hover:shadow-md transition-all"><div className="flex size-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600"><Eye className="size-5" /></div><p className="mt-3 text-sm font-bold">Audit & Compliance</p><p className="text-xs text-muted-foreground">Actor · Action · Resource · Result</p></Link>
+        <Link href="/dashboard/platform-admin/security" className="group rounded-2xl border border-border bg-card p-5 hover:shadow-md transition-all"><div className="flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600"><Shield className="size-5" /></div><p className="mt-3 text-sm font-bold">{t("dashboard.securityCenter")}</p><p className="text-xs text-muted-foreground">{t("dashboard.eventsResolutionsAudit")}</p></Link>
+        <Link href="/dashboard/platform-admin/config" className="group rounded-2xl border border-border bg-card p-5 hover:shadow-md transition-all"><div className="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700"><Settings className="size-5" /></div><p className="mt-3 text-sm font-bold">{t("dashboard.platformConfiguration")}</p><p className="text-xs text-muted-foreground">{t("dashboard.flagsPoliciesMaintenance")}</p></Link>
+        <Link href="/dashboard/platform-admin/audit" className="group rounded-2xl border border-border bg-card p-5 hover:shadow-md transition-all"><div className="flex size-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600"><Eye className="size-5" /></div><p className="mt-3 text-sm font-bold">{t("dashboard.auditCompliance")}</p><p className="text-xs text-muted-foreground">{t("dashboard.actorActionResourceResult")}</p></Link>
       </div>
     </div>
   )

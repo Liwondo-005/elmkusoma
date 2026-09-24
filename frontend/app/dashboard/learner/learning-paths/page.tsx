@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type Enrollment, type CourseSummary } from "@/lib/learner-api"
 import { LoadingState, EmptyState } from "@/components/learner/shared"
 import { Map, BookOpen, ArrowRight, AlertCircle, CheckCircle, Clock, Compass } from "lucide-react"
@@ -21,13 +22,13 @@ interface LearningPath {
   overallProgress: number
 }
 
-function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummary[]): LearningPath[] {
+function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummary[], t: (k: string, p?: Record<string, string | number>) => string): LearningPath[] {
   const paths: LearningPath[] = []
   const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId))
 
   const levelGroups: Record<string, CourseSummary[]> = {}
   for (const course of allCourses) {
-    const level = course.level || "General"
+    const level = course.level || t("paths.generalLevel")
     if (!levelGroups[level]) levelGroups[level] = []
     levelGroups[level].push(course)
   }
@@ -59,8 +60,8 @@ function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummar
 
     paths.push({
       id: `level-${level}`,
-      title: `${level} Learning Path`,
-      description: `A structured progression through ${level.toLowerCase()} level courses.`,
+      title: t("paths.levelTitle", { level }),
+      description: t("paths.levelDesc", { level: level.toLowerCase() }),
       courses: pathCourses,
       overallProgress,
     })
@@ -75,12 +76,12 @@ function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummar
     if (activeCourses.length >= 2) {
       paths.unshift({
         id: "active-focus",
-        title: "Active Learning Focus",
-        description: "Your currently active courses prioritized by progress.",
+        title: t("paths.activeTitle"),
+        description: t("paths.activeDesc"),
         courses: activeCourses.map((e) => ({
           courseId: e.courseId,
           courseTitle: e.courseTitle,
-          level: e.courseLevel || "General",
+          level: e.courseLevel || t("paths.generalLevel"),
           status: "in-progress" as const,
           progress: e.progressPercentage,
         })),
@@ -96,6 +97,8 @@ function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummar
 
 export default function LearningPathsPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [paths, setPaths] = useState<LearningPath[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
@@ -115,9 +118,9 @@ export default function LearningPathsPage() {
         learnerApi.getCourses().catch(() => []),
       ])
       setEnrollments(enrollmentsData)
-      setPaths(deriveLearningPaths(enrollmentsData, coursesData))
+      setPaths(deriveLearningPaths(enrollmentsData, coursesData, t))
     } catch {
-      setError("Failed to load learning paths")
+      setError(t("paths.loadError"))
     } finally {
       setLoading(false)
     }
@@ -130,8 +133,8 @@ export default function LearningPathsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Learning Paths</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Structured progressions through your learning journey.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("paths.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("paths.subtitle")}
       </div>
 
       {error && (
@@ -148,14 +151,14 @@ export default function LearningPathsPage() {
       ) : paths.length === 0 ? (
         <EmptyState
           icon={<Map className="size-8" />}
-          title="No learning paths yet"
-          description="Enroll in multiple courses to create structured learning paths."
+          title={t("paths.emptyTitle")}
+          description={t("paths.emptyDesc")}
           action={
             <Link
               href="/dashboard/learner/courses"
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Explore Courses <ArrowRight className="size-4" />
+              {t("exploreCourses")} <ArrowRight className="size-4" />
             </Link>
           }
         />
@@ -175,7 +178,7 @@ export default function LearningPathsPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-lg font-extrabold text-teal">{path.overallProgress}%</p>
-                  <p className="text-[10px] text-muted-foreground">overall</p>
+                  <p className="text-[10px] text-muted-foreground">{t("paths.overall")}</p>
                 </div>
               </div>
 
@@ -227,11 +230,11 @@ export default function LearningPathsPage() {
                     )}
                     {course.status === "completed" && (
                       <span className="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
-                        Done
+                        {t("paths.doneBadge")}
                       </span>
                     )}
                     {course.status === "not-started" && (
-                      <span className="shrink-0 text-[10px] text-muted-foreground">Not started</span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">{t("paths.notStarted")}</span>
                     )}
                   </Link>
                 ))}

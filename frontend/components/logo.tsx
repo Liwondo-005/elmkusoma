@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
 export function Logo({
@@ -10,8 +13,9 @@ export function Logo({
   href?: string
   showText?: boolean
 }) {
+  const t = useTranslations("ui")
   return (
-    <Link href={href} className={cn("flex items-center gap-2", className)} aria-label="ELMKUSOMA home">
+    <Link href={href} className={cn("flex items-center gap-2", className)} aria-label={t("logo.home")}>
       <span className="relative inline-flex h-9 w-9 items-center justify-center" aria-hidden="true">
         <svg viewBox="0 0 40 40" className="h-9 w-9" fill="none" xmlns="http://www.w3.org/2000/svg">
           {/* sprout leaves */}

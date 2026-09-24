@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
 interface LoadingSkeletonProps {
@@ -15,6 +16,7 @@ export function LoadingSkeleton({
   className,
   count = 1,
 }: LoadingSkeletonProps) {
+  const tc = useTranslations("common")
   const sizeClasses = {
     sm: { text: "h-3 w-24", avatar: "size-8", button: "h-8 w-20", card: "h-24 w-full" },
     md: { text: "h-4 w-48", avatar: "size-12", button: "h-10 w-28", card: "h-32 w-full" },
@@ -22,7 +24,7 @@ export function LoadingSkeleton({
   }
 
   return (
-    <div className="space-y-3" role="status" aria-label="Loading">
+    <div className="space-y-3" role="status" aria-label={tc("loading")}>
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
@@ -33,7 +35,7 @@ export function LoadingSkeleton({
           )}
         />
       ))}
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">{tc("loading")}</span>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { ChevronLeft, ChevronRight, Clock, Loader2, Video, FileText, AlertTriangle, BookOpen } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ChildOverview, type ParentCalendar } from "@/lib/parent-api"
@@ -33,6 +34,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 export default function ParentCalendarPage() {
   const { user } = useAuth()
+  const t = useTranslations("parent")
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
@@ -41,6 +43,16 @@ export default function ParentCalendarPage() {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [calendar, setCalendar] = useState<ParentCalendar | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const weekdays = [
+    t("calendar.weekdaySun"),
+    t("calendar.weekdayMon"),
+    t("calendar.weekdayTue"),
+    t("calendar.weekdayWed"),
+    t("calendar.weekdayThu"),
+    t("calendar.weekdayFri"),
+    t("calendar.weekdaySat"),
+  ]
 
   useEffect(() => {
     parentApi.getChildren().then((kids) => {
@@ -84,7 +96,7 @@ export default function ParentCalendarPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-xl font-bold text-foreground">School Calendar</h1>
+      <h1 className="text-xl font-bold text-foreground">{t("calendar.title")}</h1>
 
       {children.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -100,12 +112,12 @@ export default function ParentCalendarPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs lg:col-span-2">
           <div className="flex items-center justify-between">
-            <button onClick={prevMonth} className="rounded-lg p-2 hover:bg-muted"><ChevronLeft className="size-4" /></button>
+            <button onClick={prevMonth} aria-label={t("calendar.prevMonth")} className="rounded-lg p-2 hover:bg-muted"><ChevronLeft className="size-4" /></button>
             <h2 className="text-base font-semibold text-foreground">{monthName}</h2>
-            <button onClick={nextMonth} className="rounded-lg p-2 hover:bg-muted"><ChevronRight className="size-4" /></button>
+            <button onClick={nextMonth} aria-label={t("calendar.nextMonth")} className="rounded-lg p-2 hover:bg-muted"><ChevronRight className="size-4" /></button>
           </div>
           <div className="mt-4 grid grid-cols-7 gap-1 text-center">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            {weekdays.map((d) => (
               <div key={d} className="py-1 text-[10px] font-semibold uppercase text-muted-foreground">{d}</div>
             ))}
             {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
@@ -128,11 +140,11 @@ export default function ParentCalendarPage() {
 
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <h2 className="text-base font-semibold text-foreground">
-            {selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "Upcoming Events"}
+            {selectedDate ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : t("calendar.upcomingEvents")}
           </h2>
           <div className="mt-4 space-y-3">
             {(selectedDate ? selectedEvents : events.slice(0, 6)).length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">No events on this day.</p>
+              <p className="py-4 text-center text-xs text-muted-foreground">{t("calendar.noEventsDay")}</p>
             ) : (
               (selectedDate ? selectedEvents : events.slice(0, 6)).map((event) => {
                 const Icon = typeIcons[event.type] || Clock

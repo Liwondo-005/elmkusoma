@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Users, Loader2, Search, UserCheck, UserX } from "lucide-react"
@@ -9,6 +11,9 @@ const ROLES = ["", "STUDENT", "TEACHER", "PARENT", "OTHER_LEARNER", "ADMIN", "IN
 const PAGE_SIZE = 20
 
 export default function PlatformUsersPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const router = useRouter()
   const [data, setData] = useState<PageResponse<UserSummary> | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,7 +32,7 @@ export default function PlatformUsersPage() {
       const res = await platformAdminApi.listUsers(page, PAGE_SIZE, role || undefined, search || undefined)
       setData(res)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users")
+      setError(err instanceof Error ? err.message : t("users.failedToLoadUsers"))
     } finally {
       setLoading(false)
     }
@@ -58,7 +63,7 @@ export default function PlatformUsersPage() {
         }
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update user status")
+      setError(err instanceof Error ? err.message : t("users.failedToUpdateUser"))
     } finally {
       setToggling(null)
     }
@@ -69,8 +74,8 @@ export default function PlatformUsersPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Users</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage platform users across all institutions.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("users.users")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("users.managePlatformUsersAcross")}</p>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -78,7 +83,7 @@ export default function PlatformUsersPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by name or email..."
+            placeholder={t("users.searchByNameOr")}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -90,7 +95,7 @@ export default function PlatformUsersPage() {
           className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
         >
           {ROLES.map((r) => (
-            <option key={r} value={r}>{r || "All Roles"}</option>
+            <option key={r} value={r}>{r || t("users.allRoles")}</option>
           ))}
         </select>
       </div>
@@ -106,9 +111,9 @@ export default function PlatformUsersPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Users className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No users found</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("users.noUsersFound")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {search ? "Try a different search term." : "No users available."}
+            {search ? t("users.tryADifferentSearch") : t("users.noUsersAvailable")}
           </p>
         </div>
       ) : (
@@ -117,12 +122,12 @@ export default function PlatformUsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Name</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Email</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Role</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Created</th>
-                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("users.name")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("users.email")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("users.role")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("users.status")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("users.created")}</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">{t("users.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -141,27 +146,26 @@ export default function PlatformUsersPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${user.isActive ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
-                        {user.isActive ? "Active" : "Suspended"}
+                        {user.isActive ? ts("active") : t("users.suspended")}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{formatDate(user.createdAt)}</td>
                     <td className="px-5 py-3.5 text-right">
                       {confirmId === user.id ? (
                         <div className="inline-flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground">Confirm {user.isActive ? "suspend" : "activate"}?</span>
+                          <span className="text-xs text-muted-foreground">{tc("confirm")}{user.isActive ? t("users.suspend") : t("users.activate")}?</span>
                           <button
                             onClick={() => handleToggleStatus(user)}
                             disabled={toggling === user.id}
                             className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
                           >
-                            {toggling === user.id ? <Loader2 className="size-3 animate-spin" /> : "Yes"}
+                            {toggling === user.id ? <Loader2 className="size-3 animate-spin" /> : t("users.confirmYes")}
                           </button>
                           <button
                             onClick={() => setConfirmId(null)}
                             className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
                           >
-                            Cancel
-                          </button>
+                            {tc("cancel")}</button>
                         </div>
                       ) : (
                         <button
@@ -180,7 +184,7 @@ export default function PlatformUsersPage() {
                           ) : (
                             <UserCheck className="size-3.5" />
                           )}
-                          {user.isActive ? "Suspend" : "Activate"}
+                          {user.isActive ? t("users.suspend2") : t("users.activate2")}
                         </button>
                       )}
                     </td>
@@ -199,18 +203,15 @@ export default function PlatformUsersPage() {
             disabled={page === 0}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Prev
-          </button>
+            {t("users.prev")}</button>
           <span className="text-sm text-muted-foreground">
-            Page {page + 1} of {data.totalPages}
-          </span>
+            {t("users.pageOf", { p0: page + 1, p1: data.totalPages })}</span>
           <button
             onClick={() => setPage((p) => Math.min(data.totalPages - 1, p + 1))}
             disabled={page >= data.totalPages - 1}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Next
-          </button>
+            {tc("next")}</button>
         </div>
       )}
     </div>

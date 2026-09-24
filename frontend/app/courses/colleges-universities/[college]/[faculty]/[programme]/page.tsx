@@ -1,52 +1,23 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { notFound, useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import {
-  colleges,
   getCollegeBySlug,
   getFacultyBySlug,
   getProgrammeBySlug,
 } from "@/lib/data"
-import type { Metadata } from "next"
 
-export function generateStaticParams() {
-  const params: { college: string; faculty: string; programme: string }[] = []
-  for (const c of colleges) {
-    for (const f of c.faculties) {
-      for (const p of f.programmes) {
-        params.push({ college: c.id, faculty: f.id, programme: p.id })
-      }
-    }
-  }
-  return params
-}
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ college: string; faculty: string; programme: string }>
-}): Promise<Metadata> {
-  const { college, faculty, programme } = await params
-  const c = getCollegeBySlug(college)
-  if (!c) return { title: "Not Found — ELMKUSOMA" }
-  const f = getFacultyBySlug(c, faculty)
-  if (!f) return { title: "Not Found — ELMKUSOMA" }
-  const p = getProgrammeBySlug(f, programme)
-  if (!p) return { title: "Not Found — ELMKUSOMA" }
-  return {
-    title: `${p.name} — ${c.shortName} — ELMKUSOMA`,
-    description: p.description,
-  }
-}
-
-export default async function ProgrammePage({
-  params,
-}: {
-  params: Promise<{ college: string; faculty: string; programme: string }>
-}) {
-  const { college, faculty, programme } = await params
+export default function ProgrammePage() {
+  const t = useTranslations("public")
+  const params = useParams()
+  const college = params.college as string
+  const faculty = params.faculty as string
+  const programme = params.programme as string
   const collegeData = getCollegeBySlug(college)
   if (!collegeData) notFound()
 
@@ -63,10 +34,10 @@ export default async function ProgrammePage({
         <section className="border-b border-border bg-muted/40">
           <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Link href="/courses" className="transition-colors hover:text-foreground">Courses</Link>
+              <Link href="/courses" className="transition-colors hover:text-foreground">{t("coursesHome.title")}</Link>
               <span>/</span>
               <Link href="/courses/colleges-universities" className="transition-colors hover:text-foreground">
-                Colleges & Universities
+                {t("colleges.title")}
               </Link>
               <span>/</span>
               <Link
@@ -107,7 +78,7 @@ export default async function ProgrammePage({
 
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <h2 className="text-lg font-semibold text-foreground">
-            Courses ({programmeData.courses.length})
+            {t("programmeDetail.coursesTitle", { count: programmeData.courses.length })}
           </h2>
           <div className="mt-5 space-y-3">
             {programmeData.courses.map((course, index) => (
@@ -129,7 +100,7 @@ export default async function ProgrammePage({
                 </div>
                 <div className="shrink-0 text-right">
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    {course.credits} credits
+                    {t("programmeDetail.creditsCount", { count: course.credits })}
                   </span>
                 </div>
               </div>

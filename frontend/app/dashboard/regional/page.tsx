@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, ChevronRight } from "lucide-react"
@@ -22,6 +24,7 @@ interface RegionStats {
 }
 
 export default function RegionalDashboardPage() {
+  const t = useTranslations("oversight");
   const { user, loading: authLoading } = useRequireAuth()
   const [districts, setDistricts] = useState<District[]>([])
   const [stats, setStats] = useState<RegionStats | null>(null)
@@ -71,7 +74,7 @@ export default function RegionalDashboardPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading regional dashboard...</div>
+        <div className="text-muted-foreground">{t("regional.loadingRegionalDashboard")}</div>
       </div>
     )
   }
@@ -84,8 +87,8 @@ export default function RegionalDashboardPage() {
             <MapPin className="size-5 text-green-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Regional Education Oversight</h1>
-            <p className="text-sm text-muted-foreground">Welcome, {user?.name}</p>
+            <h1 className="text-2xl font-bold text-foreground">{t("regional.regionalEducationOversight")}</h1>
+            <p className="text-sm text-muted-foreground">{t("regional.welcome", { p0: user?.name })}</p>
           </div>
         </div>
       </div>
@@ -97,9 +100,9 @@ export default function RegionalDashboardPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Districts in Your Region</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("regional.districtsInYourRegion")}</h2>
         {districts.length === 0 ? (
-          <p className="text-muted-foreground">No districts found.</p>
+          <p className="text-muted-foreground">{t("regional.noDistrictsFound")}</p>
         ) : (
           <div className="space-y-3">
             {districts.map((district) => (
@@ -113,7 +116,7 @@ export default function RegionalDashboardPage() {
                   </div>
                   <div>
                     <p className="font-medium text-foreground">{district.name}</p>
-                    <p className="text-sm text-muted-foreground">{district.code} — {district.institutionCount} institutions</p>
+                    <p className="text-sm text-muted-foreground">{t("regional.institutions", { p0: district.code, p1: district.institutionCount })}</p>
                   </div>
                 </div>
                 <ChevronRight className="size-4 text-muted-foreground" />

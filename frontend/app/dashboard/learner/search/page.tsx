@@ -4,12 +4,22 @@ import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type SearchResult, type CourseSummary, type Resource, type LiveClass, type SearchFilters } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { Search, BookOpen, FileText, Video, AlertCircle, SlidersHorizontal, ChevronDown, Megaphone, ArrowRight } from "lucide-react"
 
 export default function LearnerSearchPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tabs = [
+    { key: "all" as const, label: t("find.tabAll"), count: results ? (results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0) : 0 },
+    { key: "courses" as const, label: t("find.tabCourses"), count: results?.courses?.length || 0 },
+    { key: "resources" as const, label: t("find.tabResources"), count: results?.resources?.length || 0 },
+    { key: "live-classes" as const, label: t("find.tabLive"), count: results?.liveClasses?.length || 0 },
+    { key: "announcements" as const, label: t("find.tabAnnounce"), count: results?.announcements?.length || 0 },
+  ]
+  const tc = useTranslations("common")
   const searchParams = useSearchParams()
   const router = useRouter()
   const [query, setQuery] = useState(searchParams.get("q") || "")
@@ -33,9 +43,9 @@ export default function LearnerSearchPage() {
   const levels = ["NURSERY", "PRIMARY", "SECONDARY", "COLLEGE", "VETA", "UNIVERSITY"]
   const categories = ["Mathematics", "Science", "English", "Kiswahili", "History", "Geography", "Computer Science", "Business", "Vocational"]
   const sortOptions = [
-    { value: "newest", label: "Newest First" },
-    { value: "oldest", label: "Oldest First" },
-    { value: "az", label: "A - Z" },
+    { value: "newest", label: t("find.sortNewest") },
+    { value: "oldest", label: t("find.sortOldest") },
+    { value: "az", label: t("find.sortAZ") },
   ]
 
   useEffect(() => {
@@ -73,7 +83,7 @@ export default function LearnerSearchPage() {
       const data = await learnerApi.search(q, searchType, searchFilters || filters, pageNum ?? page, 20)
       setResults(data)
     } catch {
-      setError("Search failed. Please try again.")
+      setError(t("find.loadError"))
     } finally {
       setLoading(false)
     }
@@ -139,13 +149,6 @@ export default function LearnerSearchPage() {
 
   const hasActiveFilters = filters.level || filters.category || filters.provider || filters.dateFrom || filters.dateTo || (filters.sort && filters.sort !== "newest")
 
-  const tabs = [
-    { key: "all" as const, label: "All", count: results ? (results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0) : 0 },
-    { key: "courses" as const, label: "Courses", count: results?.courses?.length || 0 },
-    { key: "resources" as const, label: "Resources", count: results?.resources?.length || 0 },
-    { key: "live-classes" as const, label: "Live Classes", count: results?.liveClasses?.length || 0 },
-    { key: "announcements" as const, label: "Announcements", count: results?.announcements?.length || 0 },
-  ]
 
   if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
@@ -154,8 +157,8 @@ export default function LearnerSearchPage() {
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Search</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Find courses, resources, and live classes.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("find.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("find.subtitle")}
       </div>
 
       <form onSubmit={handleSearch} className="relative">
@@ -164,15 +167,15 @@ export default function LearnerSearchPage() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search for anything..."
+          placeholder={t("find.searchPlaceholder")}
           className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-20 text-sm outline-none focus:border-ring"
-          aria-label="Search courses, resources, and live classes"
+          aria-label={t("find.searchLabel")}
         />
         <button
           type="submit"
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Search
+          {t("find.searchButton")}
         </button>
       </form>
 
@@ -182,7 +185,7 @@ export default function LearnerSearchPage() {
             <button
               key={tab.key}
               onClick={() => handleTabChange(tab.key)}
-              aria-label={`Filter by ${tab.label}`}
+              aria-label={t("find.filterBy", { label: tab.label })}
               className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === tab.key
                   ? "border-primary text-primary"
@@ -201,15 +204,15 @@ export default function LearnerSearchPage() {
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
-          aria-label="Toggle advanced filters"
+          aria-label={t("find.toggleFilters")}
           className={`ml-4 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-            showFilters || hasActiveFilters
+            showFilters || hasActive{t("find.filters")}
               ? "border-primary bg-primary/5 text-primary"
               : "border-border text-muted-foreground hover:text-foreground"
           }`}
         >
           <SlidersHorizontal className="size-3" />
-          Filters
+          {t("find.filters")}
           {hasActiveFilters && (
             <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] text-primary-foreground">
               {[filters.level, filters.category, filters.provider, filters.dateFrom, filters.dateTo, filters.sort !== "newest" ? filters.sort : null].filter(Boolean).length}
@@ -221,42 +224,42 @@ export default function LearnerSearchPage() {
       {showFilters && (
         <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-foreground">Advanced Filters</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("find.advanced")}
             {hasActiveFilters && (
               <button onClick={clearFilters} className="text-xs text-primary hover:underline">
-                Clear all
+                {t("find.clearAll")}
               </button>
             )}
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Level</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("find.levelLabel")}</label>
               <select
                 value={filters.level || ""}
                 onChange={(e) => handleFilterChange("level", e.target.value)}
                 className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-ring"
               >
-                <option value="">All Levels</option>
+                <option value="">{t("find.allLevels")}</option>
                 {levels.map((lvl) => (
-                  <option key={lvl} value={lvl}>{lvl}</option>
+                  <option key={lvl} value={lvl}>{t("find.levelName", { level: lvl })}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Category</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("find.categoryLabel")}</label>
               <select
                 value={filters.category || ""}
                 onChange={(e) => handleFilterChange("category", e.target.value)}
                 className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-ring"
               >
-                <option value="">All Categories</option>
+                <option value="">{t("find.allCategories")}</option>
                 {categories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
+                  <option key={cat} value={cat}>{t("find.categoryName", { name: cat })}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Sort By</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("find.sortLabel")}</label>
               <select
                 value={filters.sort || "newest"}
                 onChange={(e) => handleFilterChange("sort", e.target.value)}
@@ -280,7 +283,7 @@ export default function LearnerSearchPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Date From</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("find.dateFrom")}</label>
               <input
                 type="date"
                 value={filters.dateFrom || ""}
@@ -289,7 +292,7 @@ export default function LearnerSearchPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Date To</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("find.dateTo")}</label>
               <input
                 type="date"
                 value={filters.dateTo || ""}
@@ -316,15 +319,15 @@ export default function LearnerSearchPage() {
         <div role="status">
         <EmptyState
           icon={<Search className="size-8" />}
-          title="Start searching"
-          description="Enter a query to find courses, resources, and live classes."
+          title={t("find.startTitle")}
+          description={t("find.startDesc")}
         />
         </div>
       ) : (
         <div className="space-y-6" aria-live="polite">
           {(activeTab === "all" || activeTab === "courses") && results.courses && results.courses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">Courses</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("find.tabCourses")}</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {results.courses.map((course) => (
                   <Link
@@ -363,7 +366,7 @@ export default function LearnerSearchPage() {
 
           {(activeTab === "all" || activeTab === "resources") && results.resources && results.resources.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">Resources</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("find.tabResources")}</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {results.resources.map((resource) => (
                   <div key={resource.id} className="rounded-xl border border-border p-4">
@@ -388,7 +391,7 @@ export default function LearnerSearchPage() {
                               onClick={(e) => e.stopPropagation()}
                               className="text-[10px] font-medium text-primary hover:underline"
                             >
-                              Download
+                              {t("find.download")}
                             </a>
                           )}
                         </div>
@@ -402,7 +405,7 @@ export default function LearnerSearchPage() {
 
           {(activeTab === "all" || activeTab === "live-classes") && results.liveClasses && results.liveClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">Live Classes</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("find.tabLive")}</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {results.liveClasses.map((cls) => (
                   <div key={cls.id} className="rounded-xl border border-border p-4">
@@ -419,7 +422,7 @@ export default function LearnerSearchPage() {
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
                     )}
                     <div className="mt-2 text-xs text-muted-foreground">
-                      {new Date(cls.scheduledAt).toLocaleString()} · {cls.durationMinutes} min
+                      {new Date(cls.scheduledAt).toLocaleString()} · {t("find.minsCount", { count: cls.durationMinutes })}
                     </div>
                   </div>
                 ))}
@@ -429,7 +432,7 @@ export default function LearnerSearchPage() {
 
           {(activeTab === "all" || activeTab === "announcements") && results.announcements && results.announcements.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">Announcements</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("find.tabAnnounce")}</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {results.announcements.map((ann) => (
                   <div key={ann.id} className="rounded-xl border border-border p-4">
@@ -466,30 +469,30 @@ export default function LearnerSearchPage() {
             <div role="status">
             <EmptyState
               icon={<Search className="size-8" />}
-              title="No results found"
-              description={`No results for "${query}". Try different keywords or adjust your filters.`}
+              title={t("find.noResults")}
+              description={t("find.noResultsFor", { q: query })}
             />
             </div>
           )}
 
           {((results.courses?.length || 0) + (results.resources?.length || 0) + (results.liveClasses?.length || 0) + (results.announcements?.length || 0)) > 0 && (
             <div className="flex items-center justify-between pt-4 border-t border-border">
-              <span className="text-xs text-muted-foreground">Page {page}</span>
+              <span className="text-xs text-muted-foreground">{t("find.pageLabel", { n: page })}</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => { setPage((p) => Math.max(1, p - 1)); performSearch(query, activeTab, filters, Math.max(1, page - 1)) }}
                   disabled={page <= 1}
-                  aria-label="Previous page"
+                  aria-label={t("find.prevPage")}
                   className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Previous
+                  {t("find.prev")}
                 </button>
                 <button
                   onClick={() => { setPage((p) => p + 1); performSearch(query, activeTab, filters, page + 1) }}
-                  aria-label="Next page"
+                  aria-label={t("find.nextPage")}
                   className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                 >
-                  Next
+                  {t("find.next")}
                 </button>
               </div>
             </div>
@@ -498,9 +501,9 @@ export default function LearnerSearchPage() {
       )}
 
       <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">Want to browse curated content?</p>
+        <p className="text-sm text-muted-foreground">{t("find.browseHint")}
         <Link href="/dashboard/learner/resources" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          Explore our Resources <ArrowRight className="size-3" />
+          {t("find.browseLink")} <ArrowRight className="size-3" />
         </Link>
       </div>
     </div>

@@ -2,25 +2,27 @@
 
 import { useEffect, useState } from "react"
 import { Award, Loader2, CheckCircle, XCircle, Send, Ban } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { certificateApi, getInstitutionId, type CertificateResponse, type TemplateResponse } from "@/lib/api"
 
 type Tab = "generate" | "manage"
 
 export default function CertificateGeneratePage() {
+  const t = useTranslations("learner")
   const [activeTab, setActiveTab] = useState<Tab>("generate")
   const institutionId = getInstitutionId()
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Certificates</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Generate, issue, and manage certificates.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("certGenerate.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("certGenerate.subtitle")}</p>
       </div>
 
       <div className="flex gap-1 rounded-xl border border-border bg-muted p-1">
         {([
-          { key: "generate" as Tab, label: "Generate Certificate", icon: Award },
-          { key: "manage" as Tab, label: "Manage Certificates", icon: CheckCircle },
+          { key: "generate" as Tab, label: t("certGenerate.tabGenerate"), icon: Award },
+          { key: "manage" as Tab, label: t("certGenerate.tabManage"), icon: CheckCircle },
         ]).map((tab) => (
           <button
             key={tab.key}
@@ -37,7 +39,7 @@ export default function CertificateGeneratePage() {
 
       {!institutionId ? (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-10 text-center">
-          <p className="text-sm font-medium text-destructive">No institution context found.</p>
+          <p className="text-sm font-medium text-destructive">{t("certGenerate.noInstitution")}</p>
         </div>
       ) : activeTab === "generate" ? (
         <GenerateForm institutionId={institutionId} />
@@ -49,6 +51,7 @@ export default function CertificateGeneratePage() {
 }
 
 function GenerateForm({ institutionId }: { institutionId: string }) {
+  const t = useTranslations("learner")
   const [templates, setTemplates] = useState<TemplateResponse[]>([])
   const [templateId, setTemplateId] = useState("")
   const [studentId, setStudentId] = useState("")
@@ -79,7 +82,7 @@ function GenerateForm({ institutionId }: { institutionId: string }) {
       })
       setResult(cert)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate certificate")
+      setError(err instanceof Error ? err.message : t("certGenerate.generateFailed"))
     } finally {
       setSaving(false)
     }
@@ -89,14 +92,14 @@ function GenerateForm({ institutionId }: { institutionId: string }) {
     return (
       <div className="rounded-2xl border border-teal/20 bg-teal/5 p-6 text-center">
         <CheckCircle className="mx-auto size-10 text-teal" />
-        <h3 className="mt-3 text-sm font-semibold text-foreground">Certificate Generated</h3>
-        <p className="mt-1 text-xs text-muted-foreground">Serial: {result.serialNumber}</p>
-        <p className="text-xs text-muted-foreground">Status: {result.status}</p>
+        <h3 className="mt-3 text-sm font-semibold text-foreground">{t("certGenerate.generatedTitle")}</h3>
+        <p className="mt-1 text-xs text-muted-foreground">{t("certificatesPage.serial", { serial: result.serialNumber })}</p>
+        <p className="text-xs text-muted-foreground">{t("certGenerate.statusLine", { status: result.status })}</p>
         <button
           onClick={() => { setResult(null); setTitle(""); setStudentId(""); setTemplateId("") }}
           className="mt-4 flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 mx-auto"
         >
-          Generate Another
+          {t("certGenerate.generateAnother")}
         </button>
       </div>
     )
@@ -104,36 +107,37 @@ function GenerateForm({ institutionId }: { institutionId: string }) {
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-      <h3 className="text-sm font-semibold text-foreground">Generate a New Certificate</h3>
+      <h3 className="text-sm font-semibold text-foreground">{t("certGenerate.formTitle")}</h3>
 
       {error && (
         <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-2 text-xs text-destructive">{error}</div>
       )}
 
       <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring">
-        <option value="">Select template</option>
-        {templates.map((t) => (
-          <option key={t.id} value={t.id}>{t.name} ({t.templateType})</option>
+        <option value="">{t("certGenerate.selectTemplate")}</option>
+        {templates.map((tpl) => (
+          <option key={tpl.id} value={tpl.id}>{tpl.name} ({tpl.templateType})</option>
         ))}
       </select>
 
-      <input type="text" placeholder="Student ID" value={studentId} onChange={(e) => setStudentId(e.target.value)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring" />
-      <input type="text" placeholder="Certificate title (e.g. Best Performance Award)" value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring" />
-      <input type="date" placeholder="Completion date" value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring" />
-      <textarea placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring" />
+      <input type="text" placeholder={t("certGenerate.studentIdPlaceholder")} value={studentId} onChange={(e) => setStudentId(e.target.value)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring" />
+      <input type="text" placeholder={t("certGenerate.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring" />
+      <input type="date" placeholder={t("certGenerate.datePlaceholder")} value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring" />
+      <textarea placeholder={t("certGenerate.descriptionPlaceholder")} value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring" />
 
       <button
         onClick={handleGenerate}
         disabled={saving || !templateId || !studentId || !title.trim()}
         className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
-        <Award className="size-3.5" /> {saving ? "Generating..." : "Generate Certificate"}
+        <Award className="size-3.5" /> {saving ? t("certGenerate.generating") : t("certGenerate.generateButton")}
       </button>
     </div>
   )
 }
 
 function ManageCertificates({ institutionId }: { institutionId: string }) {
+  const t = useTranslations("learner")
   const [certs, setCerts] = useState<CertificateResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -143,7 +147,7 @@ function ManageCertificates({ institutionId }: { institutionId: string }) {
     certificateApi
       .list()
       .then(setCerts)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load certificates"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("certificatesPage.loadFailed")))
       .finally(() => setLoading(false))
   }, [institutionId])
 
@@ -153,21 +157,21 @@ function ManageCertificates({ institutionId }: { institutionId: string }) {
       const updated = await certificateApi.issue(id)
       setCerts((prev) => prev.map((c) => (c.id === id ? updated : c)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to issue certificate")
+      setError(err instanceof Error ? err.message : t("certGenerate.issueFailed"))
     } finally {
       setActingId(null)
     }
   }
 
   async function handleRevoke(id: string) {
-    const reason = prompt("Reason for revocation:")
+    const reason = prompt(t("certGenerate.revokeReasonPrompt"))
     if (!reason) return
     setActingId(id)
     try {
       const updated = await certificateApi.revoke(id, reason)
       setCerts((prev) => prev.map((c) => (c.id === id ? updated : c)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to revoke certificate")
+      setError(err instanceof Error ? err.message : t("certGenerate.revokeFailed"))
     } finally {
       setActingId(null)
     }
@@ -178,8 +182,8 @@ function ManageCertificates({ institutionId }: { institutionId: string }) {
   if (certs.length === 0) return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
       <Award className="size-10 text-muted-foreground/50" />
-      <p className="mt-4 text-sm font-medium text-foreground">No certificates yet</p>
-      <p className="mt-1 text-sm text-muted-foreground">Generate a certificate to get started.</p>
+      <p className="mt-4 text-sm font-medium text-foreground">{t("noCertificatesYet")}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{t("certGenerate.emptyManageHint")}</p>
     </div>
   )
 
@@ -197,9 +201,9 @@ function ManageCertificates({ institutionId }: { institutionId: string }) {
                     : "bg-muted text-muted-foreground"
                 }`}>{cert.status}</span>
               </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">Serial: {cert.serialNumber}</p>
-              {cert.studentName && <p className="text-xs text-muted-foreground">Student: {cert.studentName}</p>}
-              {cert.completionDate && <p className="text-xs text-muted-foreground">Date: {cert.completionDate}</p>}
+              <p className="mt-0.5 text-xs text-muted-foreground">{t("certificatesPage.serial", { serial: cert.serialNumber })}</p>
+              {cert.studentName && <p className="text-xs text-muted-foreground">{t("certGenerate.studentLine", { name: cert.studentName })}</p>}
+              {cert.completionDate && <p className="text-xs text-muted-foreground">{t("certGenerate.dateLine", { date: cert.completionDate })}</p>}
             </div>
             <div className="flex items-center gap-2">
               {cert.status === "DRAFT" && (
@@ -208,7 +212,7 @@ function ManageCertificates({ institutionId }: { institutionId: string }) {
                   disabled={actingId === cert.id}
                   className="flex h-7 items-center gap-1.5 rounded-lg bg-teal/10 px-2.5 text-[10px] font-medium text-teal hover:bg-teal/20 disabled:opacity-50"
                 >
-                  <Send className="size-3" /> Issue
+                  <Send className="size-3" /> {t("certGenerate.issue")}
                 </button>
               )}
               {cert.status === "ISSUED" && (
@@ -217,7 +221,7 @@ function ManageCertificates({ institutionId }: { institutionId: string }) {
                   disabled={actingId === cert.id}
                   className="flex h-7 items-center gap-1.5 rounded-lg border border-destructive/20 px-2.5 text-[10px] font-medium text-destructive hover:bg-destructive/5 disabled:opacity-50"
                 >
-                  <Ban className="size-3" /> Revoke
+                  <Ban className="size-3" /> {t("certGenerate.revoke")}
                 </button>
               )}
             </div>

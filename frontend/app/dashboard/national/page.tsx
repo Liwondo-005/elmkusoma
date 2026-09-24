@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, Activity, TrendingUp } from "lucide-react"
@@ -21,6 +23,7 @@ interface DashboardStats {
 }
 
 export default function NationalDashboardPage() {
+  const t = useTranslations("oversight");
   const { user, loading: authLoading } = useRequireAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -50,7 +53,7 @@ export default function NationalDashboardPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading national dashboard...</div>
+        <div className="text-muted-foreground">{t("national.loadingNationalDashboard")}</div>
       </div>
     )
   }
@@ -59,8 +62,8 @@ export default function NationalDashboardPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h1 className="text-2xl font-bold text-foreground">National Education Oversight</h1>
-          <p className="mt-2 text-muted-foreground">Welcome, {user?.name}. Dashboard data unavailable.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("national.nationalEducationOversight")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("national.welcomeDashboardDataUnavailable", { p0: user?.name })}</p>
         </div>
       </div>
     )
@@ -74,8 +77,8 @@ export default function NationalDashboardPage() {
             <Activity className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">National Education Oversight</h1>
-            <p className="text-sm text-muted-foreground">Welcome, {user?.name}</p>
+            <h1 className="text-2xl font-bold text-foreground">{t("national.nationalEducationOversight2")}</h1>
+            <p className="text-sm text-muted-foreground">{t("national.welcome", { p0: user?.name })}</p>
           </div>
         </div>
       </div>
@@ -96,15 +99,14 @@ export default function NationalDashboardPage() {
         <div className="rounded-2xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <TrendingUp className="size-5 text-muted-foreground" />
-            Top Regions by Institution Count
-          </h2>
+            {t("national.topRegionsByInstitution")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Region</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Code</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Institutions</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("national.region")}</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("national.code")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("national.institutions")}</th>
                 </tr>
               </thead>
               <tbody>

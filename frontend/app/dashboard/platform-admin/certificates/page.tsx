@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { Award, Loader2, Hash, Ban, AlertCircle } from "lucide-react"
 import { platformAdminApi, type CertificateSummary, type PageResponse } from "@/lib/platform-admin-api"
@@ -7,6 +9,8 @@ import { platformAdminApi, type CertificateSummary, type PageResponse } from "@/
 const PAGE_SIZE = 20
 
 export default function CertificatesPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [data, setData] = useState<PageResponse<CertificateSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +25,7 @@ export default function CertificatesPage() {
       const res = await platformAdminApi.listCertificates(page, PAGE_SIZE)
       setData(res)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load certificates")
+      setError(err instanceof Error ? err.message : t("certificates.failedToLoadCertificates"))
     } finally {
       setLoading(false)
     }
@@ -39,7 +43,7 @@ export default function CertificatesPage() {
       setRevokePrompt(null)
       await loadData()
     } catch (e: any) {
-      setError(e instanceof Error ? e.message : "Failed to revoke certificate")
+      setError(e instanceof Error ? e.message : t("certificates.failedToRevokeCertificate"))
     } finally { setRevoking(null) }
   }
 
@@ -61,8 +65,8 @@ export default function CertificatesPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Certificates</h1>
-        <p className="mt-1 text-sm text-muted-foreground">View and manage all issued certificates.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("certificates.certificates")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("certificates.viewAndManageAll")}</p>
       </div>
 
       {error && (
@@ -71,20 +75,19 @@ export default function CertificatesPage() {
 
       {revokePrompt && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 space-y-3">
-          <p className="text-sm font-semibold text-destructive">Revoke certificate (platform action)</p>
+          <p className="text-sm font-semibold text-destructive">{t("certificates.revokeCertificatePlatformAction")}</p>
           <input
             autoFocus
             value={revokePrompt.reason}
             onChange={(e) => setRevokePrompt({ ...revokePrompt, reason: e.target.value })}
-            placeholder="Reason (required for audit)"
+            placeholder={t("certificates.reasonRequiredForAudit")}
             className="w-full rounded-xl border border-destructive/30 bg-background px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-destructive/30"
           />
           <div className="flex gap-2">
             <button onClick={revoke} disabled={revoking === revokePrompt.id || !revokePrompt.reason.trim()}
               className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
-              {revoking === revokePrompt.id ? <Loader2 className="size-4 animate-spin" /> : <Ban className="size-4" />} Confirm revoke
-            </button>
-            <button onClick={() => setRevokePrompt(null)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">Cancel</button>
+              {revoking === revokePrompt.id ? <Loader2 className="size-4 animate-spin" /> : <Ban className="size-4" />} {t("certificates.confirmRevoke")}</button>
+            <button onClick={() => setRevokePrompt(null)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">{tc("cancel")}</button>
           </div>
         </div>
       )}
@@ -96,8 +99,8 @@ export default function CertificatesPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Award className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No certificates found</p>
-          <p className="mt-1 text-sm text-muted-foreground">No certificates have been issued yet.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("certificates.noCertificatesFound")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("certificates.noCertificatesHaveBeen")}</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
@@ -105,10 +108,10 @@ export default function CertificatesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Title</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Serial Number</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Issue Date</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.title")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.serialNumber")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.issueDate")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.status")}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -130,8 +133,7 @@ export default function CertificatesPage() {
                           onClick={() => setRevokePrompt({ id: cert.id, reason: "" })}
                           className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
                         >
-                          <Ban className="size-3" /> Revoke
-                        </button>
+                          <Ban className="size-3" /> {t("certificates.revoke")}</button>
                       )}
                     </td>
                   </tr>
@@ -149,18 +151,15 @@ export default function CertificatesPage() {
             disabled={page === 0}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Prev
-          </button>
+            {t("certificates.prev")}</button>
           <span className="text-sm text-muted-foreground">
-            Page {page + 1} of {data.totalPages}
-          </span>
+            {t("certificates.pageOf", { p0: page + 1, p1: data.totalPages })}</span>
           <button
             onClick={() => setPage((p) => Math.min(data.totalPages - 1, p + 1))}
             disabled={page >= data.totalPages - 1}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Next
-          </button>
+            {tc("next")}</button>
         </div>
       )}
     </div>

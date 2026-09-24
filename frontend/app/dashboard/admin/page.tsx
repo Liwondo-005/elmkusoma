@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import {
   Users, GraduationCap, UserCheck, Award, Clock, Loader2, BookOpen, FileText,
@@ -9,34 +11,39 @@ import {
 import Link from "next/link"
 import { adminApi, getInstitutionId, type EnhancedDashboardResponse } from "@/lib/api"
 
-const statCards = [
-  { key: "totalStudents" as const, label: "Total Students", icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-500/10", href: "/dashboard/admin/people" },
-  { key: "totalTeachers" as const, label: "Total Teachers", icon: Users, color: "text-teal-600", bg: "bg-teal-500/10", href: "/dashboard/admin/people" },
-  { key: "totalParents" as const, label: "Total Parents", icon: UserCheck, color: "text-purple-600", bg: "bg-purple-500/10", href: "/dashboard/admin/people" },
-  { key: "activeStudents" as const, label: "Active Students", icon: Users, color: "text-orange-600", bg: "bg-orange-500/10", href: "/dashboard/admin/people" },
-  { key: "certificatesIssued" as const, label: "Certificates", icon: Award, color: "text-amber-600", bg: "bg-amber-500/10", href: "/dashboard/admin" },
-  { key: "pendingImportJobs" as const, label: "Pending Imports", icon: Clock, color: "text-muted-foreground", bg: "bg-muted", href: "/dashboard/admin/import" },
-]
 
-const courseCards = [
-  { key: "totalCourses" as const, label: "Total Courses", icon: BookOpen, color: "text-indigo-600", bg: "bg-indigo-500/10" },
-  { key: "publishedCourses" as const, label: "Published", icon: BookMarked, color: "text-emerald-600", bg: "bg-emerald-500/10" },
-  { key: "draftCourses" as const, label: "Drafts", icon: FileText, color: "text-yellow-600", bg: "bg-yellow-500/10" },
-  { key: "totalModules" as const, label: "Modules", icon: BookOpen, color: "text-cyan-600", bg: "bg-cyan-500/10" },
-  { key: "totalLessons" as const, label: "Lessons", icon: FileText, color: "text-pink-600", bg: "bg-pink-500/10" },
-  { key: "liveClassesScheduled" as const, label: "Live Classes", icon: Video, color: "text-red-600", bg: "bg-red-500/10" },
-]
 
-const quickActions = [
-  { label: "People", href: "/dashboard/admin/people", icon: Users, color: "text-blue-600 bg-blue-500/10" },
-  { label: "Roles", href: "/dashboard/admin/roles", icon: Shield, color: "text-purple-600 bg-purple-500/10" },
-  { label: "Profile", href: "/dashboard/admin/profile", icon: School, color: "text-teal-600 bg-teal-500/10" },
-  { label: "Import", href: "/dashboard/admin/import", icon: Send, color: "text-orange-600 bg-orange-500/10" },
-  { label: "Settings", href: "/dashboard/admin/settings", icon: Settings, color: "text-gray-600 bg-gray-500/10" },
-  { label: "Audit", href: "/dashboard/admin/audit", icon: Eye, color: "text-red-600 bg-red-500/10" },
-]
+
+
+
 
 export default function AdminDashboardPage() {
+  const t = useTranslations("admin");
+  const statCards = [
+    { key: "totalStudents" as const, label: t("overview.totalStudents"), icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-500/10", href: "/dashboard/admin/people" },
+    { key: "totalTeachers" as const, label: t("overview.totalTeachers"), icon: Users, color: "text-teal-600", bg: "bg-teal-500/10", href: "/dashboard/admin/people" },
+    { key: "totalParents" as const, label: t("overview.totalParents"), icon: UserCheck, color: "text-purple-600", bg: "bg-purple-500/10", href: "/dashboard/admin/people" },
+    { key: "activeStudents" as const, label: t("overview.activeStudents"), icon: Users, color: "text-orange-600", bg: "bg-orange-500/10", href: "/dashboard/admin/people" },
+    { key: "certificatesIssued" as const, label: t("overview.certificates"), icon: Award, color: "text-amber-600", bg: "bg-amber-500/10", href: "/dashboard/admin" },
+    { key: "pendingImportJobs" as const, label: t("overview.pendingImports"), icon: Clock, color: "text-muted-foreground", bg: "bg-muted", href: "/dashboard/admin/import" },
+  ]
+  const courseCards = [
+    { key: "totalCourses" as const, label: t("overview.totalCourses"), icon: BookOpen, color: "text-indigo-600", bg: "bg-indigo-500/10" },
+    { key: "publishedCourses" as const, label: t("overview.published"), icon: BookMarked, color: "text-emerald-600", bg: "bg-emerald-500/10" },
+    { key: "draftCourses" as const, label: t("overview.drafts"), icon: FileText, color: "text-yellow-600", bg: "bg-yellow-500/10" },
+    { key: "totalModules" as const, label: t("overview.modules"), icon: BookOpen, color: "text-cyan-600", bg: "bg-cyan-500/10" },
+    { key: "totalLessons" as const, label: t("overview.lessons"), icon: FileText, color: "text-pink-600", bg: "bg-pink-500/10" },
+    { key: "liveClassesScheduled" as const, label: t("overview.liveClasses"), icon: Video, color: "text-red-600", bg: "bg-red-500/10" },
+  ]
+  const quickActions = [
+    { label: t("overview.people"), href: "/dashboard/admin/people", icon: Users, color: "text-blue-600 bg-blue-500/10" },
+    { label: t("overview.roles"), href: "/dashboard/admin/roles", icon: Shield, color: "text-purple-600 bg-purple-500/10" },
+    { label: t("overview.profile"), href: "/dashboard/admin/profile", icon: School, color: "text-teal-600 bg-teal-500/10" },
+    { label: t("overview.import"), href: "/dashboard/admin/import", icon: Send, color: "text-orange-600 bg-orange-500/10" },
+    { label: t("overview.settings"), href: "/dashboard/admin/settings", icon: Settings, color: "text-gray-600 bg-gray-500/10" },
+    { label: t("overview.audit"), href: "/dashboard/admin/audit", icon: Eye, color: "text-red-600 bg-red-500/10" },
+  ]
+
   const [data, setData] = useState<EnhancedDashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,14 +51,14 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const institutionId = getInstitutionId()
     if (!institutionId) {
-      setError("No institution context found. Please log in again.")
+      setError(t("overview.noInstitutionContextFound"))
       setLoading(false)
       return
     }
     adminApi
       .getEnhancedDashboard(institutionId)
       .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load dashboard"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("overview.failedToLoadDashboard")))
       .finally(() => setLoading(false))
   }, [])
 
@@ -59,11 +66,10 @@ export default function AdminDashboardPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Administration</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("overview.administration")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {data?.institutionName ? `${data.institutionName} — ` : ""}
-            Overview and management for your institution
-          </p>
+            {t("overview.overviewAndManagementFor")}</p>
         </div>
       </div>
 
@@ -86,7 +92,7 @@ export default function AdminDashboardPage() {
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
               <div className="mb-3 flex items-center gap-2">
                 <AlertTriangle className="size-4 text-amber-600" />
-                <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">Needs Attention</h3>
+                <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">{t("overview.needsAttention")}</h3>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {data.attentionItems.map((item) => (
@@ -110,7 +116,7 @@ export default function AdminDashboardPage() {
 
           {/* Quick Actions */}
           <div>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Quick Actions</h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("overview.quickActions")}</h2>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
               {quickActions.map((action) => (
                 <Link
@@ -129,7 +135,7 @@ export default function AdminDashboardPage() {
 
           {/* Institution Overview Stats */}
           <div>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Institution Overview</h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("overview.institutionOverview")}</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {statCards.map((card) => (
                 <Link
@@ -153,7 +159,7 @@ export default function AdminDashboardPage() {
 
           {/* Course Management */}
           <div>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Course Management</h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("overview.courseManagement")}</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {courseCards.map((card) => (
                 <div key={card.key} className="rounded-2xl border border-border bg-card p-6 shadow-xs">
@@ -176,7 +182,7 @@ export default function AdminDashboardPage() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
               <div className="mb-4 flex items-center gap-2">
                 <Activity className="size-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("overview.recentActivity")}</h2>
               </div>
               <div className="space-y-3">
                 {data.recentActivity.map((activity, i) => (
@@ -202,7 +208,7 @@ export default function AdminDashboardPage() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
               <div className="mb-4 flex items-center gap-2">
                 <Settings className="size-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold text-foreground">Enabled Services</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t("overview.enabledServices")}</h2>
               </div>
               <div className="flex flex-wrap gap-2">
                 {data.enabledServices.map((service) => (

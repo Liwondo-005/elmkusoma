@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Bell, Plus, Pencil, Trash2, Loader2, AlertCircle, ChevronDown } from "lucide-react"
@@ -14,13 +15,6 @@ interface Announcement {
   createdAt: string
 }
 
-const priorityConfig: Record<string, { label: string; className: string }> = {
-  LOW: { label: "Low", className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
-  NORMAL: { label: "Normal", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  HIGH: { label: "High", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
-  URGENT: { label: "Urgent", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-}
-
 const initialForm = {
   title: "",
   content: "",
@@ -29,6 +23,9 @@ const initialForm = {
 
 export default function TeacherAnnouncementsPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +34,13 @@ export default function TeacherAnnouncementsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
+
+  const priorityConfig: Record<string, { label: string; className: string }> = {
+    LOW: { label: t("announcements.priorityLow"), className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
+    NORMAL: { label: t("announcements.priorityNormal"), className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+    HIGH: { label: t("announcements.priorityHigh"), className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
+    URGENT: { label: t("announcements.priorityUrgent"), className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  }
 
   useEffect(() => {
     if (!user) return
@@ -50,7 +54,7 @@ export default function TeacherAnnouncementsPage() {
       const data = await teacherFetch<Announcement[]>("/v1/teachers/me/announcements")
       setAnnouncements(data)
     } catch {
-      setError("Failed to load announcements")
+      setError(t("announcements.loadError"))
     } finally {
       setLoading(false)
     }
@@ -74,7 +78,7 @@ export default function TeacherAnnouncementsPage() {
 
   async function handleSubmit() {
     if (!form.title.trim() || !form.content.trim()) {
-      setError("Title and content are required")
+      setError(t("announcements.requiredError"))
       return
     }
     try {
@@ -91,34 +95,34 @@ export default function TeacherAnnouncementsPage() {
           method: "PUT",
           body: JSON.stringify(payload),
         })
-        setSuccess("Announcement updated successfully")
+        setSuccess(t("announcements.updatedSuccess"))
       } else {
         await teacherFetch("/v1/teachers/me/announcements", {
           method: "POST",
           body: JSON.stringify(payload),
         })
-        setSuccess("Announcement created successfully")
+        setSuccess(t("announcements.createdSuccess"))
       }
       resetForm()
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save announcement")
+      setError(err instanceof Error ? err.message : t("announcements.saveError"))
     } finally {
       setSubmitting(false)
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this announcement?")) return
+    if (!confirm(t("announcements.deleteConfirm"))) return
     try {
       setError(null)
       await teacherFetch(`/v1/teachers/me/announcements/${id}`, { method: "DELETE" })
-      setSuccess("Announcement deleted")
+      setSuccess(t("announcements.deletedSuccess"))
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete announcement")
+      setError(err instanceof Error ? err.message : t("announcements.deleteError"))
     }
   }
 
@@ -147,8 +151,8 @@ export default function TeacherAnnouncementsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Announcements</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and manage announcements for your students.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("announcements")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("announcements.subtitle")}</p>
         </div>
         <Button
           className="gap-2"
@@ -158,7 +162,7 @@ export default function TeacherAnnouncementsPage() {
           }}
         >
           {showForm ? <Trash2 className="size-4" /> : <Plus className="size-4" />}
-          {showForm ? "Cancel" : "New Announcement"}
+          {showForm ? tc("cancel") : t("announcements.newAnnouncement")}
         </Button>
       </div>
 
@@ -183,50 +187,50 @@ export default function TeacherAnnouncementsPage() {
       {showForm && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
           <h2 className="text-base font-semibold text-foreground">
-            {editingId ? "Edit Announcement" : "New Announcement"}
+            {editingId ? t("announcements.editTitle") : t("announcements.newAnnouncement")}
           </h2>
           <div className="grid gap-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Title *</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("announcements.titleLabel")}</label>
               <input
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Announcement title"
+                placeholder={t("announcements.titlePlaceholder")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Content *</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("announcements.contentLabel")}</label>
               <textarea
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
-                placeholder="Write your announcement here..."
+                placeholder={t("announcements.contentPlaceholder")}
                 rows={5}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Priority</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("announcements.priorityLabel")}</label>
               <div className="relative">
                 <select
                   value={form.priority}
                   onChange={(e) => setForm({ ...form, priority: e.target.value })}
                   className="h-10 w-full appearance-none rounded-lg border border-border bg-background px-3 pr-10 text-sm outline-none focus:border-ring"
                 >
-                  <option value="LOW">Low</option>
-                  <option value="NORMAL">Normal</option>
-                  <option value="HIGH">High</option>
-                  <option value="URGENT">Urgent</option>
+                  <option value="LOW">{t("announcements.priorityLow")}</option>
+                  <option value="NORMAL">{t("announcements.priorityNormal")}</option>
+                  <option value="HIGH">{t("announcements.priorityHigh")}</option>
+                  <option value="URGENT">{t("announcements.priorityUrgent")}</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               </div>
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={resetForm}>Cancel</Button>
+            <Button variant="outline" onClick={resetForm}>{tc("cancel")}</Button>
             <Button onClick={handleSubmit} disabled={submitting || !form.title.trim() || !form.content.trim()}>
-              {submitting ? "Saving..." : editingId ? "Update" : "Publish"}
+              {submitting ? tc("saving") : editingId ? t("announcements.update") : t("announcements.publish")}
             </Button>
           </div>
         </div>
@@ -235,9 +239,9 @@ export default function TeacherAnnouncementsPage() {
       {sorted.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <Bell className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Announcements</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("announcements.emptyTitle")}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create your first announcement to notify your students.
+            {t("announcements.emptyDesc")}
           </p>
         </div>
       ) : (
@@ -265,7 +269,7 @@ export default function TeacherAnnouncementsPage() {
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => startEdit(ann)}
-                      title="Edit"
+                      title={tc("edit")}
                     >
                       <Pencil className="size-3.5" />
                     </Button>
@@ -273,7 +277,7 @@ export default function TeacherAnnouncementsPage() {
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => handleDelete(ann.id)}
-                      title="Delete"
+                      title={tc("delete")}
                       className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="size-3.5" />

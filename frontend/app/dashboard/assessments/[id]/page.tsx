@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { assessmentApi, type Assessment, type Question, type Attempt, type AssessmentResult } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Button } from "@/components/ui/button"
@@ -48,6 +49,7 @@ function PrimaryQuizView({
   onStart: () => void
   formatTime: (s: number) => string
 }) {
+  const t = useTranslations("primary")
   if (state === "ready" && assessment) {
     return (
       <div className="mx-auto max-w-lg space-y-6">
@@ -55,7 +57,7 @@ function PrimaryQuizView({
           href="/dashboard/assessments"
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="size-4" /> Back to Quizzes
+          <ArrowLeft className="size-4" /> {t("quiz.backToQuizzes")}
         </Link>
 
         <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8 text-center shadow-xs">
@@ -69,17 +71,17 @@ function PrimaryQuizView({
 
           <div className="mt-6 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-muted/50 p-4">
-              <p className="text-sm text-muted-foreground">Questions</p>
+              <p className="text-sm text-muted-foreground">{t("quiz.questionsLabel")}</p>
               <p className="mt-1 text-2xl font-bold text-foreground">{questions.length}</p>
             </div>
             <div className="rounded-xl bg-muted/50 p-4">
-              <p className="text-sm text-muted-foreground">Total Marks</p>
+              <p className="text-sm text-muted-foreground">{t("assessments.totalMarks")}</p>
               <p className="mt-1 text-2xl font-bold text-foreground">{assessment.totalMarks}</p>
             </div>
             {assessment.timeLimitMinutes && (
               <div className="col-span-2 rounded-xl bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Time Limit</p>
-                <p className="mt-1 text-2xl font-bold text-foreground">{assessment.timeLimitMinutes} minutes</p>
+                <p className="text-sm text-muted-foreground">{t("assessments.timeLimit")}</p>
+                <p className="mt-1 text-2xl font-bold text-foreground">{t("quiz.minutesCount", { count: assessment.timeLimitMinutes })}</p>
               </div>
             )}
           </div>
@@ -88,7 +90,7 @@ function PrimaryQuizView({
             onClick={onStart}
             className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-primary px-8 py-4 text-lg font-bold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl active:scale-95"
           >
-            <Play className="size-6" /> Start Quiz
+            <Play className="size-6" /> {t("assessments.startQuiz")}
           </button>
         </div>
       </div>
@@ -106,7 +108,7 @@ function PrimaryQuizView({
           href="/dashboard/assessments"
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="size-4" /> Back to Quizzes
+          <ArrowLeft className="size-4" /> {t("quiz.backToQuizzes")}
         </Link>
 
         <div className="rounded-2xl border-2 border-border bg-gradient-to-br from-amber-50 via-card to-orange-50 p-8 text-center shadow-xs">
@@ -119,12 +121,12 @@ function PrimaryQuizView({
           </div>
 
           <h1 className="mt-4 text-3xl font-bold text-foreground">
-            {result.isPassed ? "Great effort!" : "Keep trying!"}
+            {result.isPassed ? t("quiz.greatEffort") : t("quiz.keepTrying")}
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
             {result.isPassed
-              ? "You did an amazing job! Keep it up!"
-              : "Practice makes perfect. You will get better!"}
+              ? t("quiz.amazingJob")
+              : t("quiz.practiceMakesPerfect")}
           </p>
 
           <div className="mt-6 flex justify-center gap-2">
@@ -138,24 +140,24 @@ function PrimaryQuizView({
 
           <div className="mt-6 space-y-3">
             <div className="flex items-center justify-between rounded-xl bg-white/60 px-5 py-3">
-              <span className="text-base text-muted-foreground">Your Score</span>
+              <span className="text-base text-muted-foreground">{t("quiz.yourScore")}</span>
               <span className="text-xl font-bold text-foreground">{result.totalScore} / {assessment?.totalMarks}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl bg-white/60 px-5 py-3">
-              <span className="text-base text-muted-foreground">Percentage</span>
+              <span className="text-base text-muted-foreground">{t("quiz.percentage")}</span>
               <span className="text-xl font-bold text-foreground">{percentage}%</span>
             </div>
             <div className="flex items-center justify-between rounded-xl bg-white/60 px-5 py-3">
-              <span className="text-base text-muted-foreground">Status</span>
+              <span className="text-base text-muted-foreground">{t("quiz.statusLabel")}</span>
               <span className={`text-xl font-bold ${result.isPassed ? "text-emerald-600" : "text-rose-600"}`}>
-                {result.isPassed ? "PASSED" : "NOT PASSED"}
+                {result.isPassed ? t("quiz.passed") : t("quiz.notPassed")}
               </span>
             </div>
           </div>
 
           {result.feedback && (
             <div className="mt-4 rounded-xl bg-white/60 p-4 text-left">
-              <p className="text-sm font-semibold text-foreground">Teacher says:</p>
+              <p className="text-sm font-semibold text-foreground">{t("assignmentDetail.teacherSays")}</p>
               <p className="mt-1 text-base text-muted-foreground">{result.feedback}</p>
             </div>
           )}
@@ -164,7 +166,7 @@ function PrimaryQuizView({
             href="/dashboard/assessments"
             className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-primary px-8 py-3.5 text-base font-bold text-primary-foreground transition-all hover:bg-primary/90"
           >
-            Back to Quizzes
+            {t("quiz.backToQuizzes")}
           </Link>
         </div>
       </div>
@@ -182,7 +184,7 @@ function PrimaryQuizView({
             href="/dashboard/assessments"
             className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="size-4" /> Exit
+            <ArrowLeft className="size-4" /> {t("quiz.exit")}
           </Link>
           {assessment?.timeLimitMinutes && (
             <div className={`flex items-center gap-2 rounded-2xl px-5 py-2.5 text-lg font-mono font-bold ${timeLeft < 60 ? "bg-rose-100 text-rose-700" : "bg-primary/10 text-primary"}`}>
@@ -195,9 +197,9 @@ function PrimaryQuizView({
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-base font-semibold text-muted-foreground">
-              Question {currentQ + 1} of {questions.length}
+              {t("quiz.questionCount", { current: currentQ + 1, total: questions.length })}
             </span>
-            <span className="text-sm text-muted-foreground">{question.marks} mark{question.marks !== 1 ? "s" : ""}</span>
+            <span className="text-sm text-muted-foreground">{t("quiz.marksCount", { count: question.marks })}</span>
           </div>
           <div className="mt-3 h-2.5 w-full rounded-full bg-muted overflow-hidden">
             <div
@@ -239,7 +241,7 @@ function PrimaryQuizView({
             <div className="mt-6">
               <textarea
                 rows={4}
-                placeholder="Write your answer here..."
+                placeholder={t("assignmentDetail.answerPlaceholderShort")}
                 value={answers[question.id]?.textAnswer || ""}
                 onChange={(e) => {}}
                 className="w-full rounded-2xl border-2 border-border bg-muted/40 px-5 py-4 text-lg text-foreground outline-none focus:border-primary focus:bg-background resize-none transition-colors"
@@ -254,21 +256,21 @@ function PrimaryQuizView({
             disabled={currentQ === 0}
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 text-base font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <ArrowLeft className="size-4" /> Previous
+            <ArrowLeft className="size-4" /> {t("lessonDetail.previous")}
           </button>
           {currentQ < questions.length - 1 ? (
             <button
               onClick={onNext}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-bold text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              Next <ArrowRight className="size-4" />
+              {t("lessonDetail.next")} <ArrowRight className="size-4" />
             </button>
           ) : (
             <button
               onClick={onSubmit}
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-base font-bold text-white transition-colors hover:bg-emerald-700"
             >
-              <CheckCircle className="size-4" /> Submit Quiz
+              <CheckCircle className="size-4" /> {t("quiz.submitQuiz")}
             </button>
           )}
         </div>
@@ -283,6 +285,8 @@ export default function AssessmentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const level = user?.learningLevel as LearningLevel | null
   const isPrimary = level?.toUpperCase() === "PRIMARY"
 
@@ -404,11 +408,11 @@ export default function AssessmentDetailPage() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 size-4" /> Back
+          <ArrowLeft className="mr-2 size-4" /> {t("assignmentDetail.back")}
         </Button>
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <XCircle className="mx-auto size-12 text-destructive/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Assessment Not Found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("quiz.notFound")}</h3>
         </div>
       </div>
     )
@@ -438,7 +442,7 @@ export default function AssessmentDetailPage() {
     return (
       <div className="space-y-6">
         <Button variant="ghost" size="sm" onClick={() => router.back()} className="w-fit">
-          <ArrowLeft className="mr-2 size-4" /> Back
+          <ArrowLeft className="mr-2 size-4" /> {t("assignmentDetail.back")}
         </Button>
         <div className="mx-auto max-w-lg rounded-2xl border border-border bg-card p-8 text-center">
           <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10">
@@ -449,13 +453,13 @@ export default function AssessmentDetailPage() {
             <p className="mt-2 text-sm text-muted-foreground">{assessment.description}</p>
           )}
           <div className="mt-6 space-y-2 text-sm text-muted-foreground">
-            <p>Questions: {questions.length}</p>
-            <p>Total Marks: {assessment.totalMarks}</p>
-            <p>Pass Marks: {assessment.passMarks}</p>
-            {assessment.timeLimitMinutes && <p>Time Limit: {assessment.timeLimitMinutes} minutes</p>}
+            <p>{t("quiz.questionsLine", { count: questions.length })}</p>
+            <p>{t("quiz.totalMarksLine", { count: assessment.totalMarks })}</p>
+            <p>{t("quiz.passMarksLine", { count: assessment.passMarks })}</p>
+            {assessment.timeLimitMinutes && <p>{t("quiz.timeLimitLine", { count: assessment.timeLimitMinutes })}</p>}
           </div>
           <Button onClick={startQuiz} className="mt-8 gap-2">
-            Start Quiz <ArrowRight className="size-4" />
+            {t("assessments.startQuiz")} <ArrowRight className="size-4" />
           </Button>
         </div>
       </div>
@@ -467,7 +471,7 @@ export default function AssessmentDetailPage() {
     return (
       <div className="space-y-6">
         <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/assessments")} className="w-fit">
-          <ArrowLeft className="mr-2 size-4" /> Back to Assessments
+          <ArrowLeft className="mr-2 size-4" /> {t("quiz.backToAssessments")}
         </Button>
         <div className="mx-auto max-w-lg rounded-2xl border border-border bg-card p-8 text-center">
           <div className={`mx-auto flex size-14 items-center justify-center rounded-full ${result.isPassed ? "bg-primary/10" : "bg-destructive/10"}`}>
@@ -478,26 +482,26 @@ export default function AssessmentDetailPage() {
             )}
           </div>
           <h1 className="mt-4 text-2xl font-bold text-foreground">
-            {result.isPassed ? "Congratulations!" : "Keep Practicing"}
+            {result.isPassed ? t("quiz.congrats") : t("quiz.keepPracticing")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {result.isPassed
-              ? "You passed this assessment."
-              : "You didn't pass this time. Review the material and try again."}
+              ? t("quiz.passedDesc")
+              : t("quiz.failedDesc")}
           </p>
           <div className="mt-6 space-y-2">
             <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-2 text-sm">
-              <span className="text-muted-foreground">Score</span>
+              <span className="text-muted-foreground">{t("assignmentDetail.scoreLabel")}</span>
               <span className="font-bold text-foreground">{result.totalScore} / {assessment.totalMarks}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-2 text-sm">
-              <span className="text-muted-foreground">Pass Mark</span>
+              <span className="text-muted-foreground">{t("quiz.passMark")}</span>
               <span className="font-medium text-foreground">{assessment.passMarks}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-2 text-sm">
               <span className="text-muted-foreground">Status</span>
               <span className={`font-bold ${result.isPassed ? "text-primary" : "text-destructive"}`}>
-                {result.isPassed ? "PASSED" : "FAILED"}
+                {result.isPassed ? t("quiz.passed") : t("quiz.failed")}
               </span>
             </div>
           </div>
@@ -507,7 +511,7 @@ export default function AssessmentDetailPage() {
             </div>
           )}
           <Button onClick={() => router.push("/dashboard/assessments")} className="mt-6">
-            Back to Assessments
+            {t("quiz.backToAssessments")}
           </Button>
         </div>
       </div>
@@ -521,7 +525,7 @@ export default function AssessmentDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 size-4" /> Exit Quiz
+          <ArrowLeft className="mr-2 size-4" /> {t("quiz.exitQuiz")}
         </Button>
         {assessment.timeLimitMinutes && (
           <div className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-mono font-bold ${timeLeft < 60 ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground"}`}>
@@ -533,8 +537,8 @@ export default function AssessmentDetailPage() {
 
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Question {currentQ + 1} of {questions.length}</span>
-          <span>{question.marks} mark{question.marks !== 1 ? "s" : ""}</span>
+          <span>{t("quiz.questionCount", { current: currentQ + 1, total: questions.length })}</span>
+          <span>{t("quiz.marksCount", { count: question.marks })}</span>
         </div>
         <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
           <div
@@ -569,7 +573,7 @@ export default function AssessmentDetailPage() {
           ) : (
             <textarea
               rows={4}
-              placeholder="Type your answer here..."
+              placeholder={t("assignmentDetail.answerPlaceholderShort")}
               value={answers[question.id]?.textAnswer || ""}
               onChange={(e) => setTextAnswer(question.id, e.target.value)}
               className="w-full rounded-xl border border-border bg-muted/60 px-4 py-3 text-sm text-foreground outline-none focus:border-ring focus:bg-background resize-none"
@@ -584,12 +588,12 @@ export default function AssessmentDetailPage() {
           disabled={currentQ === 0}
           onClick={() => setCurrentQ((c) => c - 1)}
         >
-          Previous
+          {t("lessonDetail.previous")}
         </Button>
         <div className="flex gap-2">
           {currentQ < questions.length - 1 ? (
             <Button onClick={() => setCurrentQ((c) => c + 1)}>
-              Next <ArrowRight className="ml-2 size-4" />
+              {t("lessonDetail.next")} <ArrowRight className="ml-2 size-4" />
             </Button>
           ) : (
             <Button onClick={submitQuiz} disabled={state === "submitting"} className="gap-2">
@@ -598,7 +602,7 @@ export default function AssessmentDetailPage() {
               ) : (
                 <CheckCircle className="size-4" />
               )}
-              Submit Quiz
+              {t("quiz.submitQuiz")}
             </Button>
           )}
         </div>

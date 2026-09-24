@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 
@@ -28,14 +29,6 @@ interface MediaAsset {
   createdAt: string
 }
 
-const mediaTypeConfig: Record<string, { icon: typeof Video; label: string; color: string }> = {
-  VIDEO: { icon: Video, label: "Video", color: "text-red-500" },
-  DOCUMENT: { icon: FileText, label: "Document", color: "text-blue-500" },
-  AUDIO: { icon: Music, label: "Audio", color: "text-purple-500" },
-  IMAGE: { icon: Image, label: "Image", color: "text-green-500" },
-  RECORDING: { icon: Film, label: "Recording", color: "text-orange-500" },
-}
-
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "--:--"
   const h = Math.floor(seconds / 3600)
@@ -43,14 +36,6 @@ function formatDuration(seconds: number | null): string {
   const s = seconds % 60
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
   return `${m}:${String(s).padStart(2, "0")}`
-}
-
-function formatFileSize(bytes: number | null): string {
-  if (!bytes) return "Unknown"
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
 function formatDate(dateStr: string): string {
@@ -63,12 +48,30 @@ function formatDate(dateStr: string): string {
 
 export default function TeacherMediaLibraryPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("")
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const mediaTypeConfig: Record<string, { icon: typeof Video; label: string; color: string }> = {
+    VIDEO: { icon: Video, label: t("mediaLibrary.typeVideo"), color: "text-red-500" },
+    DOCUMENT: { icon: FileText, label: t("mediaLibrary.typeDocument"), color: "text-blue-500" },
+    AUDIO: { icon: Music, label: t("mediaLibrary.typeAudio"), color: "text-purple-500" },
+    IMAGE: { icon: Image, label: t("mediaLibrary.typeImage"), color: "text-green-500" },
+    RECORDING: { icon: Film, label: t("mediaLibrary.typeRecording"), color: "text-orange-500" },
+  }
+
+  function formatFileSize(bytes: number | null): string {
+    if (!bytes) return t("mediaLibrary.unknownSize")
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+  }
 
   const fetchMedia = async () => {
     try {
@@ -77,7 +80,7 @@ export default function TeacherMediaLibraryPage() {
       const data = await appFetch<MediaAsset[]>("/api/v1/media/my")
       setMedia(data || [])
     } catch (err: any) {
-      setError(err.message || "Failed to load media")
+      setError(err.message || t("mediaLibrary.loadError"))
     } finally {
       setLoading(false)
     }
@@ -88,13 +91,13 @@ export default function TeacherMediaLibraryPage() {
   }, [])
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this media asset?")) return
+    if (!confirm(t("mediaLibrary.deleteConfirm"))) return
     try {
       setDeletingId(id)
       await appFetch(`/api/v1/media/${id}`, { method: "DELETE" })
       setMedia((prev) => prev.filter((m) => m.id !== id))
     } catch (err: any) {
-      alert(err.message || "Failed to delete")
+      alert(err.message || t("mediaLibrary.deleteError"))
     } finally {
       setDeletingId(null)
     }
@@ -117,9 +120,9 @@ export default function TeacherMediaLibraryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Media Library</h1>
+          <h1 className="text-2xl font-bold">{tn("mediaLibrary")}</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your recordings, documents, and educational media
+            {t("mediaLibrary.subtitle")}
           </p>
         </div>
       </div>
@@ -128,21 +131,21 @@ export default function TeacherMediaLibraryPage() {
         <div className="rounded-lg border p-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Video className="h-4 w-4" />
-            Total Assets
+            {t("mediaLibrary.totalAssets")}
           </div>
           <p className="text-2xl font-bold mt-1">{media.length}</p>
         </div>
         <div className="rounded-lg border p-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Film className="h-4 w-4" />
-            Recordings
+            {t("mediaLibrary.recordings")}
           </div>
           <p className="text-2xl font-bold mt-1">{recordingCount}</p>
         </div>
         <div className="rounded-lg border p-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <HardDrive className="h-4 w-4" />
-            Total Size
+            {t("mediaLibrary.totalSize")}
           </div>
           <p className="text-2xl font-bold mt-1">{formatFileSize(totalSize)}</p>
         </div>
@@ -153,7 +156,7 @@ export default function TeacherMediaLibraryPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search media..."
+            placeholder={t("mediaLibrary.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pl-9"
@@ -167,7 +170,7 @@ export default function TeacherMediaLibraryPage() {
               size="sm"
               onClick={() => setTypeFilter(type)}
             >
-              {type || "All"}
+              {type || t("mediaLibrary.allFilter")}
             </Button>
           ))}
         </div>
@@ -176,7 +179,7 @@ export default function TeacherMediaLibraryPage() {
       {loading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading media...</span>
+          <span className="ml-2 text-muted-foreground">{t("mediaLibrary.loadingMedia")}</span>
         </div>
       )}
 
@@ -190,9 +193,9 @@ export default function TeacherMediaLibraryPage() {
       {!loading && !error && filtered.length === 0 && (
         <div className="text-center py-12">
           <Video className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No media found</h3>
+          <h3 className="text-lg font-medium">{t("mediaLibrary.emptyTitle")}</h3>
           <p className="text-muted-foreground mt-1">
-            {searchQuery ? "Try a different search term" : "Recordings from live classes will appear here"}
+            {searchQuery ? t("mediaLibrary.emptySearch") : t("mediaLibrary.emptyDesc")}
           </p>
         </div>
       )}
@@ -277,7 +280,7 @@ export default function TeacherMediaLibraryPage() {
                     onClick={() => window.open(item.fileUrl!, "_blank")}
                   >
                     <Play className="h-4 w-4 mr-1" />
-                    Open
+                    {t("mediaLibrary.open")}
                   </Button>
                 )}
               </div>

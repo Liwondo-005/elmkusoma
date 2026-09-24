@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, Award, FileText, ClipboardList, BookOpen } from "lucide-react"
@@ -29,6 +31,7 @@ interface PerformanceMetrics {
 }
 
 export default function OversightPerformancePage() {
+  const t = useTranslations("oversight");
   const { user, loading: authLoading } = useRequireAuth()
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,7 +61,7 @@ export default function OversightPerformancePage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading performance analytics...</div>
+        <div className="text-muted-foreground">{t("performance.loadingPerformanceAnalytics")}</div>
       </div>
     )
   }
@@ -67,8 +70,8 @@ export default function OversightPerformancePage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h1 className="text-2xl font-bold text-foreground">Performance Analytics</h1>
-          <p className="mt-2 text-muted-foreground">Performance data unavailable.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("performance.performanceAnalytics")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("performance.performanceDataUnavailable")}</p>
         </div>
       </div>
     )
@@ -82,10 +85,9 @@ export default function OversightPerformancePage() {
             <TrendingUp className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Performance Analytics</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("performance.performanceAnalytics2")}</h1>
             <p className="text-sm text-muted-foreground">
-              Academic performance overview across your jurisdiction
-            </p>
+              {t("performance.academicPerformanceOverviewAcross")}</p>
           </div>
         </div>
       </div>
@@ -100,18 +102,17 @@ export default function OversightPerformancePage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <Building2 className="size-5 text-muted-foreground" />
-          School Performance Comparison
-        </h2>
+          {t("performance.schoolPerformanceComparison")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">School</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Code</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Students</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Assessments</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Avg Score</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Pass Rate</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("performance.school")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("performance.code")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("performance.students")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("performance.assessments")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("performance.avgScore")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("performance.passRate")}</th>
               </tr>
             </thead>
             <tbody>
@@ -137,17 +138,16 @@ export default function OversightPerformancePage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <BookOpen className="size-5 text-muted-foreground" />
-          Subject Performance
-        </h2>
+          {t("performance.subjectPerformance")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Subject</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Code</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Assessments</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Avg Score</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Pass Rate</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("performance.subject")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("performance.code2")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("performance.assessments2")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("performance.avgScore2")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("performance.passRate2")}</th>
               </tr>
             </thead>
             <tbody>

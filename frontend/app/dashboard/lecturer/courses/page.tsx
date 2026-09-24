@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   BookOpen,
@@ -168,6 +169,7 @@ function CourseCard({
   onSelect: (course: Course) => void
   onNavigate: (path: string) => void
 }) {
+  const t = useTranslations("learner")
   const completionPct = course.modulesCount > 0
     ? Math.round((course.completedModules / course.modulesCount) * 100)
     : 0
@@ -193,21 +195,21 @@ function CourseCard({
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Users className="size-3" />
-              {course.enrolledStudents} students
+              {t("lecturerCourses.studentsCount", { count: course.enrolledStudents })}
             </span>
             <span className="flex items-center gap-1">
               <FileText className="size-3" />
-              {course.modulesCount} modules
+              {t("lecturerCourses.modulesCount", { count: course.modulesCount })}
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="size-3" />
-              {course.upcomingSessions} sessions
+              {t("lecturerCourses.sessionsCount", { count: course.upcomingSessions })}
             </span>
           </div>
 
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Module Completion</span>
+              <span className="text-muted-foreground">{t("lecturerCourses.moduleCompletion")}</span>
               <span className="font-semibold text-foreground">{completionPct}%</span>
             </div>
             <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -226,28 +228,28 @@ function CourseCard({
           className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
         >
           <FileText className="size-3" />
-          View Modules
+          {t("lecturerCourses.viewModules")}
         </button>
         <button
           onClick={() => onSelect(course)}
           className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
         >
           <Users className="size-3" />
-          View Students
+          {t("lecturerCourses.viewStudents")}
         </button>
         <button
           onClick={() => onNavigate("/dashboard/lecturer/live-dashboard")}
           className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
         >
           <Calendar className="size-3" />
-          Schedule Session
+          {t("lecturerCourses.scheduleSession")}
         </button>
         <button
           onClick={() => onNavigate("/dashboard/lecturer/analytics")}
           className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
         >
           <BarChart3 className="size-3" />
-          View Analytics
+          {t("lecturerCourses.viewAnalytics")}
         </button>
       </div>
     </div>
@@ -267,13 +269,15 @@ function ModulePanel({
   onPublish: (id: string) => void
   onEdit: (id: string) => void
 }) {
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   if (modules.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border py-8 text-center">
         <FileText className="mx-auto size-8 text-muted-foreground" />
-        <p className="mt-2 text-sm font-medium text-foreground">No modules yet</p>
+        <p className="mt-2 text-sm font-medium text-foreground">{t("lecturerCourses.noModulesYet")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Create your first module for this course.
+          {t("lecturerCourses.createFirstModuleHint")}
         </p>
       </div>
     )
@@ -295,7 +299,7 @@ function ModulePanel({
                   onClick={() => onMoveUp(idx)}
                   disabled={idx === 0}
                   className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Move up"
+                  title={t("lecturerCourses.moveUp")}
                 >
                   ▲
                 </button>
@@ -303,7 +307,7 @@ function ModulePanel({
                   onClick={() => onMoveDown(idx)}
                   disabled={idx === modules.length - 1}
                   className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Move down"
+                  title={t("lecturerCourses.moveDown")}
                 >
                   ▼
                 </button>
@@ -324,11 +328,11 @@ function ModulePanel({
                 <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <BookOpen className="size-3" />
-                    {mod.lessonCount} lessons
+                    {t("lecturerCourses.lessonsCount", { count: mod.lessonCount })}
                   </span>
                   <span className="flex items-center gap-1">
                     <Target className="size-3" />
-                    {mod.assessmentCount} assessments
+                    {t("lecturerCourses.assessmentsCount", { count: mod.assessmentCount })}
                   </span>
                 </div>
               </div>
@@ -337,13 +341,13 @@ function ModulePanel({
                 <button
                   onClick={() => onEdit(mod.id)}
                   className="inline-flex items-center justify-center size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  title="Edit"
+                  title={tc("edit")}
                 >
                   <Edit className="size-3.5" />
                 </button>
                 <button
                   className="inline-flex items-center justify-center size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  title="Preview"
+                  title={t("lecturerCourses.previewTitle")}
                 >
                   <Eye className="size-3.5" />
                 </button>
@@ -353,7 +357,7 @@ function ModulePanel({
                     className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-[10px] font-medium text-white hover:bg-green-700 transition-colors"
                   >
                     <Play className="size-2.5" />
-                    Publish
+                    {t("lecturerCourses.publish")}
                   </button>
                 )}
               </div>
@@ -373,6 +377,7 @@ function StudentRoster({
   searchQuery: string
   onSearchChange: (q: string) => void
 }) {
+  const t = useTranslations("learner")
   const filtered = students.filter(
     (s) =>
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -384,9 +389,9 @@ function StudentRoster({
     return (
       <div className="rounded-2xl border border-dashed border-border py-8 text-center">
         <Users className="mx-auto size-8 text-muted-foreground" />
-        <p className="mt-2 text-sm font-medium text-foreground">No students enrolled</p>
+        <p className="mt-2 text-sm font-medium text-foreground">{t("lecturerCourses.noStudentsEnrolled")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Students will appear here once they enroll.
+          {t("lecturerCourses.studentsAppearHint")}
         </p>
       </div>
     )
@@ -401,13 +406,13 @@ function StudentRoster({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search students by name, ID, or email..."
+            placeholder={t("lecturerCourses.searchStudentsPlaceholder")}
             className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-ring"
           />
         </div>
         <button className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors">
           <Award className="size-3.5" />
-          Export Grades
+          {t("lecturerCourses.exportGrades")}
         </button>
       </div>
 
@@ -415,12 +420,12 @@ function StudentRoster({
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50">
-              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">Student</th>
-              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">ID</th>
-              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">Email</th>
-              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">Grade</th>
-              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">Last Activity</th>
-              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground text-right">Actions</th>
+              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">{t("lecturerCourses.colStudent")}</th>
+              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">{t("lecturerCourses.colId")}</th>
+              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">{t("lecturerCourses.colEmail")}</th>
+              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">{t("lecturerCourses.colGrade")}</th>
+              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">{t("lecturerCourses.colLastActivity")}</th>
+              <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground text-right">{t("lecturerCourses.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -448,24 +453,24 @@ function StudentRoster({
                   <div className="flex items-center justify-end gap-1">
                     <button
                       className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-medium text-foreground hover:bg-muted transition-colors"
-                      title="View Progress"
+                      title={t("lecturerCourses.viewProgress")}
                     >
                       <BarChart3 className="size-2.5" />
-                      Progress
+                      {t("lecturerCourses.viewProgress")}
                     </button>
                     <button
                       className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-medium text-foreground hover:bg-muted transition-colors"
-                      title="Message"
+                      title={t("lecturerCourses.messageStudent")}
                     >
                       <FileText className="size-2.5" />
-                      Message
+                      {t("lecturerCourses.messageStudent")}
                     </button>
                     <button
                       className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-medium text-foreground hover:bg-muted transition-colors"
-                      title="Grade"
+                      title={t("lecturerCourses.gradeStudent")}
                     >
                       <Award className="size-2.5" />
-                      Grade
+                      {t("lecturerCourses.gradeStudent")}
                     </button>
                   </div>
                 </td>
@@ -477,7 +482,7 @@ function StudentRoster({
 
       {filtered.length === 0 && searchQuery && (
         <p className="text-center text-xs text-muted-foreground py-4">
-          No students match &quot;{searchQuery}&quot;
+          {t("lecturerCourses.noStudentsMatch", { query: searchQuery })}
         </p>
       )}
     </div>
@@ -485,34 +490,35 @@ function StudentRoster({
 }
 
 function QuickActionsGrid({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const t = useTranslations("learner")
   const actions = [
     {
-      label: "Create New Module",
-      description: "Build a new module with lessons and assessments",
+      label: t("lecturerCourses.actionCreateModule"),
+      description: t("lecturerCourses.actionCreateModuleDesc"),
       icon: Plus,
       color: "text-purple-600 dark:text-purple-400",
       bg: "bg-purple-50 dark:bg-purple-950/20",
       path: "/dashboard/learner/module-workspace",
     },
     {
-      label: "Schedule Live Session",
-      description: "Plan a lecture, tutorial, or workshop",
+      label: t("lecturerCourses.actionScheduleLive"),
+      description: t("lecturerCourses.actionScheduleLiveDesc"),
       icon: Video,
       color: "text-red-600 dark:text-red-400",
       bg: "bg-red-50 dark:bg-red-950/20",
       path: "/dashboard/lecturer/live-dashboard",
     },
     {
-      label: "View Analytics",
-      description: "Track course and student performance",
+      label: t("lecturerCourses.viewAnalytics"),
+      description: t("lecturerCourses.actionAnalyticsDesc"),
       icon: BarChart3,
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-950/20",
       path: "/dashboard/lecturer/analytics",
     },
     {
-      label: "Manage Resources",
-      description: "Upload and organize course materials",
+      label: t("lecturerCourses.actionManageResources"),
+      description: t("lecturerCourses.actionManageResourcesDesc"),
       icon: Settings,
       color: "text-orange-600 dark:text-orange-400",
       bg: "bg-orange-50 dark:bg-orange-950/20",
@@ -545,6 +551,7 @@ function QuickActionsGrid({ onNavigate }: { onNavigate: (path: string) => void }
 export default function LecturerCoursesPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const t = useTranslations("learner")
 
   const [courses, setCourses] = useState<Course[]>([])
   const [modules, setModules] = useState<Module[]>([])
@@ -567,7 +574,7 @@ export default function LecturerCoursesPage() {
       setCourses(coursesData)
       setModules(modulesData)
     } catch {
-      setError("Failed to load course data")
+      setError(t("lecturerCourses.loadFailed"))
     } finally {
       setLoading(false)
     }
@@ -614,7 +621,7 @@ export default function LecturerCoursesPage() {
       await reorderModule(sorted[idx].id, direction)
     } catch {
       setModules(sorted)
-      setError("Failed to reorder module")
+      setError(t("lecturerCourses.reorderFailed"))
       setTimeout(() => setError(null), 3000)
     }
   }
@@ -626,7 +633,7 @@ export default function LecturerCoursesPage() {
         prev.map((m) => (m.id === moduleId ? { ...m, status: "ACTIVE" } : m))
       )
     } catch {
-      setError("Failed to publish module")
+      setError(t("lecturerCourses.publishFailed"))
       setTimeout(() => setError(null), 3000)
     }
   }
@@ -649,28 +656,28 @@ export default function LecturerCoursesPage() {
 
   const summaryCards = [
     {
-      label: "My Courses",
+      label: t("lecturerCourses.summaryCourses"),
       value: courses.length,
       icon: BookOpen,
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-950/20",
     },
     {
-      label: "Active Modules",
+      label: t("lecturerCourses.summaryActiveModules"),
       value: activeModules,
       icon: FileText,
       color: "text-green-600 dark:text-green-400",
       bg: "bg-green-50 dark:bg-green-950/20",
     },
     {
-      label: "Total Students",
+      label: t("lecturerCourses.summaryTotalStudents"),
       value: totalStudents,
       icon: Users,
       color: "text-purple-600 dark:text-purple-400",
       bg: "bg-purple-50 dark:bg-purple-950/20",
     },
     {
-      label: "Upcoming Sessions",
+      label: t("lecturerCourses.summaryUpcomingSessions"),
       value: upcomingSessions,
       icon: Calendar,
       color: "text-orange-600 dark:text-orange-400",
@@ -683,8 +690,8 @@ export default function LecturerCoursesPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <LearnerHeader
-        firstName={user?.firstName || user?.name || "Lecturer"}
-        subtitle="Manage your courses, modules, and students"
+        firstName={user?.firstName || user?.name || t("lecturerCourses.lecturerFallback")}
+        subtitle={t("lecturerCourses.headerSubtitle")}
       />
 
       {error && (
@@ -711,7 +718,7 @@ export default function LecturerCoursesPage() {
                 onClick={() => setSelectedCourse(null)}
                 className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                ← Back to all courses
+                ← {t("lecturerCourses.backToAllCourses")}
               </button>
               <span className="text-muted-foreground">|</span>
               <h2 className="text-sm font-semibold text-foreground">
@@ -728,7 +735,7 @@ export default function LecturerCoursesPage() {
                 }`}
               >
                 <FileText className="mr-1 inline size-3" />
-                Modules ({courseModules.length})
+                {t("lecturerCourses.modulesTab", { count: courseModules.length })}
               </button>
               <button
                 onClick={() => setActiveTab("students")}
@@ -739,7 +746,7 @@ export default function LecturerCoursesPage() {
                 }`}
               >
                 <Users className="mr-1 inline size-3" />
-                Students ({selectedCourse.enrolledStudents})
+                {t("lecturerCourses.studentsTab", { count: selectedCourse.enrolledStudents })}
               </button>
             </div>
           </div>
@@ -748,14 +755,14 @@ export default function LecturerCoursesPage() {
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Course Modules
+                  {t("lecturerCourses.courseModules")}
                 </h3>
                 <button
                   onClick={() => handleNavigate("/dashboard/learner/module-workspace")}
                   className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
                   <Plus className="size-3" />
-                  Add Module
+                  {t("lecturerCourses.addModule")}
                 </button>
               </div>
               <ModulePanel
@@ -772,10 +779,10 @@ export default function LecturerCoursesPage() {
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Student Roster
+                  {t("lecturerCourses.studentRoster")}
                 </h3>
                 {loadingStudents && (
-                  <span className="text-xs text-muted-foreground">Loading students...</span>
+                  <span className="text-xs text-muted-foreground">{t("lecturerCourses.loadingStudents")}</span>
                 )}
               </div>
               <StudentRoster
@@ -791,10 +798,10 @@ export default function LecturerCoursesPage() {
       {!selectedCourse && (
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground">My Courses</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("lecturerCourses.summaryCourses")}</h2>
             <div className="flex items-center gap-2">
               <Filter className="size-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{courses.length} courses</span>
+              <span className="text-xs text-muted-foreground">{t("lecturerCourses.coursesCount", { count: courses.length })}</span>
             </div>
           </div>
 
@@ -812,8 +819,8 @@ export default function LecturerCoursesPage() {
           ) : (
             <EmptyState
               icon={<BookOpen className="size-10" />}
-              title="No Courses Assigned"
-              description="You don't have any courses assigned yet. Contact your administrator to get started."
+              title={t("lecturerCourses.noCoursesAssigned")}
+              description={t("lecturerCourses.noCoursesHint")}
             />
           )}
         </section>
@@ -822,7 +829,7 @@ export default function LecturerCoursesPage() {
       {!selectedCourse && courses.length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold text-foreground">
-            Recent Activity
+            {t("lecturerCourses.recentActivity")}
           </h2>
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
             <div className="space-y-3">
@@ -842,7 +849,7 @@ export default function LecturerCoursesPage() {
                         {mod.title}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {mod.lessonCount} lessons · {mod.assessmentCount} assessments
+                        {t("lecturerCourses.lessonAssessmentCounts", { lessons: mod.lessonCount, assessments: mod.assessmentCount })}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-green-50 dark:bg-green-950/20 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
@@ -852,7 +859,7 @@ export default function LecturerCoursesPage() {
                 ))}
               {modules.filter((m) => m.status === "ACTIVE").length === 0 && (
                 <p className="text-center text-xs text-muted-foreground py-4">
-                  No active modules yet. Publish a module to get started.
+                  {t("lecturerCourses.noActiveModules")}
                 </p>
               )}
             </div>

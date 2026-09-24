@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { dashboardApi } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Video, Calendar, Clock, Users, Play, CheckCircle, ArrowRight, User, AlertCircle } from "lucide-react"
@@ -42,6 +43,8 @@ function wasRecentlyCompleted(dateStr?: string): boolean {
 
 export default function LiveClassesPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [classes, setClasses] = useState<LiveClass[]>([])
   const [loading, setLoading] = useState(true)
   const level = user?.learningLevel as LearningLevel | null
@@ -94,8 +97,8 @@ export default function LiveClassesPage() {
               <Video className="size-6 text-red-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Live Learning</h1>
-              <p className="text-sm text-muted-foreground">Join your teacher for live lessons and learning activities.</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("live.title")}</h1>
+              <p className="text-sm text-muted-foreground">{t("live.subtitle")}
             </div>
           </div>
         </div>
@@ -105,9 +108,9 @@ export default function LiveClassesPage() {
             <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-muted">
               <Video className="size-8 text-muted-foreground" />
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-foreground">No live classes yet</h3>
+            <h3 className="mt-4 text-lg font-semibold text-foreground">{t("live.emptyTitle")}
             <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-              Your teacher will schedule live sessions soon. Check back later!
+              {t("live.emptyDesc")}
             </p>
           </div>
         ) : (
@@ -116,7 +119,7 @@ export default function LiveClassesPage() {
               <section>
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <span className="size-2.5 rounded-full bg-red-500 animate-pulse" />
-                  Live Now
+                  {t("live.liveNow")}
                 </h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {liveClasses.map((cls) => (
@@ -124,15 +127,15 @@ export default function LiveClassesPage() {
                       <div className="flex items-start justify-between">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white">
                           <span className="size-1.5 rounded-full bg-white animate-pulse" />
-                          LIVE
+                          {t("live.badgeLive")}
                         </span>
                         {cls.durationMinutes && (
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="size-3" /> {cls.durationMinutes} min
+                            <Clock className="size-3" /> {t("live.minsCount", { count: cls.durationMinutes })}
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-3 text-base font-semibold text-foreground">{cls.title || "Live Session"}</h3>
+                      <h3 className="mt-3 text-base font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
                       {cls.description && (
                         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
                       )}
@@ -146,11 +149,11 @@ export default function LiveClassesPage() {
                       </div>
                       {cls.canJoin === false ? (
                         <p className="mt-2 text-xs text-amber-600 font-medium flex items-center gap-1">
-                          <AlertCircle className="size-3" /> Waiting for class to go live
+                          <AlertCircle className="size-3" /> {t("live.waiting")}
                         </p>
                       ) : (
                         <p className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1">
-                          <CheckCircle className="size-3" /> You are eligible to join
+                          <CheckCircle className="size-3" /> {t("live.eligible")}
                         </p>
                       )}
                       <Link
@@ -158,7 +161,7 @@ export default function LiveClassesPage() {
                         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 transition-colors"
                       >
                         <Video className="size-4" />
-                        Join Now!
+                        {t("live.joinNow")}
                       </Link>
                     </div>
                   ))}
@@ -170,22 +173,22 @@ export default function LiveClassesPage() {
               <section>
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Calendar className="size-5 text-primary" />
-                  Today&apos;s Live
+                  {t("live.todayLive")}
                 </h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {todayLive.filter((c) => c.status === "SCHEDULED").map((cls) => (
                     <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md">
                       <div className="flex items-start justify-between">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                          <Calendar className="size-3" /> Today
+                          <Calendar className="size-3" /> {t("live.todayBadge")}
                         </span>
                         {cls.durationMinutes && (
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="size-3" /> {cls.durationMinutes} min
+                            <Clock className="size-3" /> {t("live.minsCount", { count: cls.durationMinutes })}
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-3 text-base font-semibold text-foreground">{cls.title || "Live Session"}</h3>
+                      <h3 className="mt-3 text-base font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
                       {cls.description && (
                         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
                       )}
@@ -214,21 +217,21 @@ export default function LiveClassesPage() {
 
             {scheduledClasses.length > 0 && (
               <section>
-                <h2 className="text-lg font-semibold text-foreground">Coming Up</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("live.comingUp")}
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {scheduledClasses.map((cls) => (
                     <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md">
                       <div className="flex items-start justify-between">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                          <Calendar className="size-3" /> Upcoming
+                          <Calendar className="size-3" /> {t("live.upcomingBadge")}
                         </span>
                         {cls.durationMinutes && (
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="size-3" /> {cls.durationMinutes} min
+                            <Clock className="size-3" /> {t("live.minsCount", { count: cls.durationMinutes })}
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-3 text-base font-semibold text-foreground">{cls.title || "Live Session"}</h3>
+                      <h3 className="mt-3 text-base font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
                       {cls.description && (
                         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
                       )}
@@ -260,16 +263,16 @@ export default function LiveClassesPage() {
 
             {recentlyCompleted.length > 0 && (
               <section>
-                <h2 className="text-lg font-semibold text-foreground">Recently Completed</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("live.recentlyDone")}
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {recentlyCompleted.map((cls) => (
                     <div key={cls.id} className="rounded-2xl border border-border bg-card p-5">
                       <div className="flex items-start justify-between">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                          <CheckCircle className="size-3" /> Just Ended
+                          <CheckCircle className="size-3" /> {t("live.justEnded")}
                         </span>
                       </div>
-                      <h3 className="mt-3 text-sm font-semibold text-foreground">{cls.title || "Live Session"}</h3>
+                      <h3 className="mt-3 text-sm font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
                       {cls.description && (
                         <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
                       )}
@@ -284,7 +287,7 @@ export default function LiveClassesPage() {
                           rel="noopener noreferrer"
                           className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                         >
-                          <Play className="size-3" /> Watch Replay
+                          <Play className="size-3" /> {t("live.watchReplay")}
                         </a>
                       )}
                     </div>
@@ -295,16 +298,16 @@ export default function LiveClassesPage() {
 
             {replays.length > 0 && (
               <section>
-                <h2 className="text-lg font-semibold text-foreground">Replays</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t("live.replays")}
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {replays.map((cls) => (
                     <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 opacity-80">
                       <div className="flex items-start justify-between">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
-                          <CheckCircle className="size-3" /> Completed
+                          <CheckCircle className="size-3" /> {ts("completed")}
                         </span>
                       </div>
-                      <h3 className="mt-3 text-sm font-semibold text-foreground">{cls.title || "Live Session"}</h3>
+                      <h3 className="mt-3 text-sm font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {cls.subjectName && <span>{cls.subjectName}</span>}
                         {cls.teacherName && <span className="flex items-center gap-1"><User className="size-3" /> {cls.teacherName}</span>}
@@ -316,7 +319,7 @@ export default function LiveClassesPage() {
                           rel="noopener noreferrer"
                           className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                         >
-                          <Play className="size-3" /> Watch Replay
+                          <Play className="size-3" /> {t("live.watchReplay")}
                         </a>
                       )}
                     </div>
@@ -335,16 +338,16 @@ export default function LiveClassesPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Live Classes</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Join scheduled live sessions with your teachers.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("live.classesTitle")}
+        <p className="mt-1 text-sm text-muted-foreground">{t("live.classesSubtitle")}
       </div>
 
       {classes.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Video className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Live Classes</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("live.emptyClassesTitle")}
           <p className="mt-2 text-sm text-muted-foreground">
-            No upcoming live classes scheduled. Check back later.
+            {t("live.emptyClassesDesc")}
           </p>
         </div>
       ) : (
@@ -353,14 +356,14 @@ export default function LiveClassesPage() {
             <section>
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <span className="size-2 rounded-full bg-green-500 animate-pulse" />
-                Live Now
+                {t("live.liveNow")}
               </h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {liveClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-green-500/30 bg-card p-5 shadow-xs">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-sm font-semibold text-foreground">{cls.title || "Live Session"}</h3>
-                      <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">LIVE</span>
+                      <h3 className="text-sm font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
+                      <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">{t("live.badgeLive")}</span>
                     </div>
                     {cls.description && (
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
@@ -378,7 +381,7 @@ export default function LiveClassesPage() {
                       )}
                       {cls.durationMinutes && (
                         <span className="flex items-center gap-1">
-                          <Clock className="size-3" /> {cls.durationMinutes} min
+                          <Clock className="size-3" /> {t("live.minsCount", { count: cls.durationMinutes })}
                         </span>
                       )}
                     </div>
@@ -387,7 +390,7 @@ export default function LiveClassesPage() {
                       className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
                     >
                       <Video className="size-4" />
-                      Join Now
+                      {t("live.joinNow")}
                     </a>
                   </div>
                 ))}
@@ -399,14 +402,14 @@ export default function LiveClassesPage() {
             <section>
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <Calendar className="size-5 text-primary" />
-                Today&apos;s Live
+                {t("live.todayLive")}
               </h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {todayLive.filter((c) => c.status === "SCHEDULED").map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-sm font-semibold text-foreground">{cls.title || "Live Session"}</h3>
-                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Today</span>
+                      <h3 className="text-sm font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">{t("live.todayBadge")}</span>
                     </div>
                     {cls.description && (
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
@@ -427,7 +430,7 @@ export default function LiveClassesPage() {
                       )}
                       {cls.durationMinutes && (
                         <span className="flex items-center gap-1">
-                          <Clock className="size-3" /> {cls.durationMinutes} min
+                          <Clock className="size-3" /> {t("live.minsCount", { count: cls.durationMinutes })}
                         </span>
                       )}
                     </div>
@@ -439,13 +442,13 @@ export default function LiveClassesPage() {
 
           {scheduledClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">Upcoming Classes</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("live.upcomingTitle")}
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {scheduledClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-sm font-semibold text-foreground">{cls.title || "Live Session"}</h3>
-                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Scheduled</span>
+                      <h3 className="text-sm font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">{t("live.scheduledBadge")}</span>
                     </div>
                     {cls.description && (
                       <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cls.description}</p>
@@ -464,13 +467,13 @@ export default function LiveClassesPage() {
                       {cls.durationMinutes && (
                         <div className="flex items-center gap-2">
                           <Clock className="size-3" />
-                          <span>{cls.durationMinutes} minutes</span>
+                          <span>{t("live.minutesCount", { count: cls.durationMinutes })}</span>
                         </div>
                       )}
                       {cls.maxParticipants && (
                         <div className="flex items-center gap-2">
                           <Users className="size-3" />
-                          <span>{cls.maxParticipants} max</span>
+                          <span>{t("live.maxCount", { count: cls.maxParticipants })}</span>
                         </div>
                       )}
                     </div>
@@ -482,13 +485,13 @@ export default function LiveClassesPage() {
 
           {recentlyCompleted.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">Recently Completed</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("live.recentlyDone")}
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {recentlyCompleted.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-sm font-semibold text-foreground">{cls.title || "Live Session"}</h3>
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Just Ended</span>
+                      <h3 className="text-sm font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{t("live.justEnded")}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       {cls.subjectName && <span>{cls.subjectName}</span>}
@@ -501,7 +504,7 @@ export default function LiveClassesPage() {
                         rel="noopener noreferrer"
                         className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                       >
-                        <Play className="size-3" /> Watch Replay
+                        <Play className="size-3" /> {t("live.watchReplay")}
                       </a>
                     )}
                   </div>
@@ -512,12 +515,12 @@ export default function LiveClassesPage() {
 
           {otherClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground text-muted-foreground">Past Classes</h2>
+              <h2 className="text-lg font-semibold text-foreground text-muted-foreground">{t("live.pastTitle")}
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {otherClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 opacity-70">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-sm font-semibold text-foreground">{cls.title || "Live Session"}</h3>
+                      <h3 className="text-sm font-semibold text-foreground">{cls.title || t("live.sessionFallback")}</h3>
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">{cls.status}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -534,7 +537,7 @@ export default function LiveClassesPage() {
                       {cls.durationMinutes && (
                         <div className="flex items-center gap-2">
                           <Clock className="size-3" />
-                          <span>{cls.durationMinutes} min</span>
+                          <span>{t("live.minsCount", { count: cls.durationMinutes })}</span>
                         </div>
                       )}
                     </div>

@@ -1,5 +1,8 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { notFound, useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -7,56 +10,19 @@ import {
   getCourseLevelBySlug,
   levelSlugToEducationLevel,
   slugToClassName,
+  classesByLevel,
+  classesByLevel,
   getSubjectsByLevelAndClass,
   categoriesByLevel,
 } from "@/lib/data"
 import { SubjectCard } from "@/components/courses/subject-card"
 import { ClassSubjectsBrowser } from "@/components/courses/class-subjects-browser"
-import type { Metadata } from "next"
 
-export function generateStaticParams() {
-  const { classesByLevel } = require("@/lib/data")
-  const params: { level: string; className: string }[] = []
-  const levelMap: Record<string, string> = {
-    Nursery: "nursery",
-    Primary: "primary",
-    "Lower Secondary": "lower-secondary",
-    "Advanced Secondary": "advanced-secondary",
-  }
-  for (const [level, classes] of Object.entries(classesByLevel) as [string, string[]][]) {
-    const slug = levelMap[level]
-    if (!slug) continue
-    for (const cls of classes) {
-      params.push({ level: slug, className: cls.toLowerCase().replace(/\s+/g, "-") })
-    }
-  }
-  return params
-}
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ level: string; className: string }>
-}): Promise<Metadata> {
-  const { level, className } = await params
-  const courseLevel = getCourseLevelBySlug(level)
-  if (!courseLevel) return { title: "Not Found — ELMKUSOMA" }
-  const educationLevel = levelSlugToEducationLevel(level)
-  if (!educationLevel) return { title: "Not Found — ELMKUSOMA" }
-  const displayName = slugToClassName(className, educationLevel)
-  if (!displayName) return { title: "Not Found — ELMKUSOMA" }
-  return {
-    title: `${displayName} — ${courseLevel.name} — ELMKUSOMA`,
-    description: `Browse all subjects in ${displayName} under ${courseLevel.name} education.`,
-  }
-}
-
-export default async function ClassPage({
-  params,
-}: {
-  params: Promise<{ level: string; className: string }>
-}) {
-  const { level, className } = await params
+export default function ClassDetailPage() {
+  const t = useTranslations("public")
+  const params = useParams()
+  const level = params.level as string
+  const className = params.className as string
   const courseLevel = getCourseLevelBySlug(level)
   if (!courseLevel) notFound()
 
@@ -77,7 +43,7 @@ export default async function ClassPage({
           <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Link href="/courses" className="transition-colors hover:text-foreground">
-                Courses
+                {t("coursesHome.title")}
               </Link>
               <span>/</span>
               <Link href={`/courses/${level}`} className="transition-colors hover:text-foreground">
@@ -90,7 +56,7 @@ export default async function ClassPage({
               {displayName}
             </h1>
             <p className="mt-2 text-muted-foreground">
-              {courseLevel.name} &middot; {subjects.length} {subjects.length === 1 ? "subject" : "subjects"}
+              {t("classDetail.summary", { level: courseLevel.name, count: subjects.length })}
             </p>
           </div>
         </section>

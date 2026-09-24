@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { assessmentApi, type Assessment } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Compass, Clock, CheckCircle, Play, Star, Globe, Leaf, Calculator, ClipboardList, ArrowRight } from "lucide-react"
@@ -15,31 +16,32 @@ function isAvailable(a: Assessment) {
   return now >= start && (!end || now <= end)
 }
 
-const discoveryAreas = [
+
+function PrimaryDiscoverView({ assessments }: { assessments: Assessment[] }) {
+  const t = useTranslations("primary")
+  const discoveryAreas = [
   {
-    title: "Tanzania Discovery",
+    title: t("assessments.areaTanzania"),
     icon: Leaf,
     color: "text-emerald-600 dark:text-emerald-400",
     bg: "bg-emerald-50 dark:bg-emerald-950/30",
-    topics: ["Wildlife & Nature", "Geography & Maps", "People & Culture", "Environment"],
+    topics: [t("assessments.topicWildlife"), t("assessments.topicGeography"), t("assessments.topicPeople"), t("assessments.topicEnvironment")],
   },
   {
-    title: "World Explorer",
+    title: t("assessments.areaWorld"),
     icon: Globe,
     color: "text-blue-600 dark:text-blue-400",
     bg: "bg-blue-50 dark:bg-blue-950/30",
-    topics: ["Africa & Continents", "Oceans & Seas", "Space & Planets", "World Cultures"],
+    topics: [t("assessments.topicAfrica"), t("assessments.topicOceans"), t("assessments.topicSpace"), t("assessments.topicWorldCultures")],
   },
   {
-    title: "Problem Solving",
+    title: t("assessments.areaProblem"),
     icon: Calculator,
     color: "text-amber-600 dark:text-amber-400",
     bg: "bg-amber-50 dark:bg-amber-950/30",
-    topics: ["Math Puzzles", "Logic Challenges", "Pattern Detective", "Real-Life Math"],
+    topics: [t("assessments.topicMathPuzzles"), t("assessments.topicLogic"), t("assessments.topicPatterns"), t("assessments.topicRealMath")],
   },
 ]
-
-function PrimaryDiscoverView({ assessments }: { assessments: Assessment[] }) {
   return (
     <div className="space-y-8">
       <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 border border-primary/10">
@@ -48,8 +50,8 @@ function PrimaryDiscoverView({ assessments }: { assessments: Assessment[] }) {
             <Compass className="size-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Discover</h1>
-            <p className="text-sm text-muted-foreground">Show what you know and explore new ideas!</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("assessments.discoverTitle")}</h1>
+            <p className="text-sm text-muted-foreground">{t("assessments.discoverSubtitle")}</p>
           </div>
         </div>
       </div>
@@ -79,15 +81,15 @@ function PrimaryDiscoverView({ assessments }: { assessments: Assessment[] }) {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Show Me What You Know</h2>
-        <p className="text-sm text-muted-foreground">Pick a quiz and have fun!</p>
+        <h2 className="text-lg font-semibold text-foreground">{t("assessments.showWhatYouKnow")}</h2>
+        <p className="text-sm text-muted-foreground">{t("assessments.pickQuiz")}</p>
       </div>
 
       {assessments.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-12 text-center">
           <ClipboardList className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Quizzes Yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground">New quizzes will appear here soon.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("assessments.emptyQuizTitle")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("assessments.emptyQuizDesc")}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -104,15 +106,15 @@ function PrimaryDiscoverView({ assessments }: { assessments: Assessment[] }) {
                   </div>
                   {available ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                      <Play className="size-3" /> Available
+                      <Play className="size-3" /> {t("assessments.available")}
                     </span>
                   ) : a.isPublished ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                      Upcoming
+                      {t("assessments.upcoming")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                      <CheckCircle className="size-3" /> Completed
+                      <CheckCircle className="size-3" /> {ts("completed")}
                     </span>
                   )}
                 </div>
@@ -123,17 +125,17 @@ function PrimaryDiscoverView({ assessments }: { assessments: Assessment[] }) {
                 <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                   {a.timeLimitMinutes && (
                     <span className="flex items-center gap-1">
-                      <Clock className="size-3" /> {a.timeLimitMinutes} min
+                      <Clock className="size-3" /> {t("assessments.minsCount", { count: a.timeLimitMinutes })}
                     </span>
                   )}
-                  <span>{a.totalMarks} marks</span>
+                  <span>{t("assignments.marksCount", { count: a.totalMarks })}</span>
                 </div>
                 {available && (
                   <Link
                     href={`/dashboard/assessments/${a.id}`}
                     className="mt-4 flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                   >
-                    Start Quiz <ArrowRight className="size-3.5" />
+                    {t("assessments.startQuiz")} <ArrowRight className="size-3.5" />
                   </Link>
                 )}
               </div>
@@ -147,6 +149,8 @@ function PrimaryDiscoverView({ assessments }: { assessments: Assessment[] }) {
 
 export default function AssessmentsPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -184,15 +188,15 @@ export default function AssessmentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Assessments</h1>
-        <p className="text-sm text-muted-foreground">Take quizzes and view your results.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("assessments.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("assessments.subtitle")}</p>
       </div>
 
       {assessments.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-12 text-center">
           <ClipboardList className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Assessments</h3>
-          <p className="mt-2 text-sm text-muted-foreground">No assessments have been published yet.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("assessments.emptyTitle")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("assessments.emptyDesc")}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -209,11 +213,11 @@ export default function AssessmentsPage() {
                   </div>
                   {available ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                      <Play className="size-3" /> Available
+                      <Play className="size-3" /> {t("assessments.available")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                      Upcoming
+                      {t("assessments.upcoming")}
                     </span>
                   )}
                 </div>
@@ -223,24 +227,24 @@ export default function AssessmentsPage() {
                 )}
                 <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                   <div className="flex items-center justify-between">
-                    <span>Total Marks</span>
+                    <span>{t("assessments.totalMarks")}</span>
                     <span className="font-medium text-foreground">{a.totalMarks}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Pass Marks</span>
+                    <span>{t("assessments.passMarks")}</span>
                     <span className="font-medium text-foreground">{a.passMarks}</span>
                   </div>
                   {a.timeLimitMinutes && (
                     <div className="flex items-center justify-between">
-                      <span>Time Limit</span>
-                      <span className="font-medium text-foreground">{a.timeLimitMinutes} min</span>
+                      <span>{t("assessments.timeLimit")}</span>
+                      <span className="font-medium text-foreground">{t("assessments.minsCount", { count: a.timeLimitMinutes })}</span>
                     </div>
                   )}
                 </div>
                 {available && (
                   <Link href={`/dashboard/assessments/${a.id}`} className="mt-4 block">
                     <div className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-                      Start Quiz <ArrowRight className="size-3.5" />
+                      {t("assessments.startQuiz")} <ArrowRight className="size-3.5" />
                     </div>
                   </Link>
                 )}

@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Trophy, Loader2, Star } from "lucide-react"
 import { parentApi, type ChildOverview, type AchievementItem } from "@/lib/parent-api"
 
 export default function ParentAchievementsPage() {
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [achievements, setAchievements] = useState<AchievementItem[]>([])
@@ -35,8 +38,8 @@ export default function ParentAchievementsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Achievements</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{total} achievements earned</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("achievements")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("achievements.subtitle", { count: total })}</p>
       </div>
 
       {children.length > 1 && (
@@ -53,8 +56,8 @@ export default function ParentAchievementsPage() {
       {achievements.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <Trophy className="mx-auto mb-3 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No achievements yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">Achievements will appear here as your child progresses.</p>
+          <p className="text-sm font-medium text-foreground">{t("achievements.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("achievements.emptyDesc")}</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">

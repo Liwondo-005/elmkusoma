@@ -1,8 +1,12 @@
+"use client"
+
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import type { VetaTrade } from "@/lib/data"
 
 export function VetaTradeCard({ trade }: { trade: VetaTrade }) {
+  const t = useTranslations("ui")
   const totalModules = trade.levels.reduce((acc, l) => acc + l.modules.length, 0)
 
   return (
@@ -22,10 +26,10 @@ export function VetaTradeCard({ trade }: { trade: VetaTrade }) {
 
       <div className="mt-auto flex items-center gap-4 pt-4 border-t border-border">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          {trade.levels.length} {trade.levels.length === 1 ? "level" : "levels"}
+          {t("vetaTradeCard.levelCount", { count: trade.levels.length })}
         </span>
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          {totalModules} {totalModules === 1 ? "module" : "modules"}
+          {t("vetaTradeCard.moduleCount", { count: totalModules })}
         </span>
       </div>
     </Link>

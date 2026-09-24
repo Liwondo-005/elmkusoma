@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type Announcement } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { Megaphone, AlertCircle, ArrowUpCircle, ArrowRightCircle, MinusCircle } from "lucide-react"
 
 export default function AnnouncementsPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +27,7 @@ export default function AnnouncementsPage() {
       const data = await learnerApi.getAnnouncements()
       setAnnouncements(data)
     } catch {
-      setError("Failed to load announcements")
+      setError(t("announce.loadError"))
     } finally {
       setLoading(false)
     }
@@ -60,8 +63,8 @@ export default function AnnouncementsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Announcements</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Stay updated with the latest news and updates.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("announce.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("announce.subtitle")}
       </div>
 
       {error && (
@@ -89,7 +92,7 @@ export default function AnnouncementsPage() {
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{ann.content}</p>
                   <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                    {ann.authorName && <span>By {ann.authorName}</span>}
+                    {ann.authorName && <span>{t("announce.byAuthor", { name: ann.authorName })}</span>}
                     <span>{new Date(ann.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -100,8 +103,8 @@ export default function AnnouncementsPage() {
       ) : (
         <EmptyState
           icon={<Megaphone className="size-8" />}
-          title="No announcements"
-          description="There are no announcements at the moment. Check back later."
+          title={t("announce.emptyTitle")}
+          description={t("announce.emptyDesc")}
         />
       )}
     </div>

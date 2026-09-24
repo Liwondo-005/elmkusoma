@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type StudentBadge, type PortfolioItem, type LearningEvidence } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { Award, Plus, BookOpen, Trophy, Star, Clock, CheckCircle, FileText, Palette, Wrench, Camera, Mic, GraduationCap, Send, Filter, ChevronDown, X, Loader2 } from "lucide-react"
@@ -17,26 +18,29 @@ interface EvidenceItem {
   importance: "low" | "medium" | "high"
 }
 
-const evidenceTypeConfig: Record<string, { icon: typeof Award; color: string; bgColor: string; label: string }> = {
-  LESSON_COMPLETE: { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-50", label: "Lesson Complete" },
-  PROJECT: { icon: Wrench, color: "text-blue-600", bgColor: "bg-blue-50", label: "Project" },
-  QUIZ_SCORE: { icon: Star, color: "text-amber-600", bgColor: "bg-amber-50", label: "Quiz Score" },
-  PORTFOLIO: { icon: Palette, color: "text-purple-600", bgColor: "bg-purple-50", label: "Portfolio" },
-  TEACHER_NOTE: { icon: GraduationCap, color: "text-teal-600", bgColor: "bg-teal-50", label: "Teacher Note" },
-  ATTENDANCE: { icon: Clock, color: "text-orange-600", bgColor: "bg-orange-50", label: "Attendance" },
-}
 
-const typeFilters = ["All", "LESSON_COMPLETE", "PROJECT", "QUIZ_SCORE", "PORTFOLIO", "TEACHER_NOTE", "ATTENDANCE"]
+const type{t("evidence.filters")} = ["All", "LESSON_COMPLETE", "PROJECT", "QUIZ_SCORE", "PORTFOLIO", "TEACHER_NOTE", "ATTENDANCE"]
 
 export default function EvidencePage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const evidenceTypeConfig: Record<string, { icon: typeof Award; color: string; bgColor: string; label: string }> = {
+  LESSON_COMPLETE: { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-50", label: t("evidence.typeLesson") },
+  PROJECT: { icon: Wrench, color: "text-blue-600", bgColor: "bg-blue-50", label: t("evidence.typeProject") },
+  QUIZ_SCORE: { icon: Star, color: "text-amber-600", bgColor: "bg-amber-50", label: t("evidence.typeQuiz") },
+  PORTFOLIO: { icon: Palette, color: "text-purple-600", bgColor: "bg-purple-50", label: t("evidence.typePortfolio") },
+  TEACHER_NOTE: { icon: GraduationCap, color: "text-teal-600", bgColor: "bg-teal-50", label: t("evidence.typeTeacher") },
+  ATTENDANCE: { icon: Clock, color: "text-orange-600", bgColor: "bg-orange-50", label: t("evidence.typeAttendance") },
+}
+  const ts = useTranslations("status")
+  const tc = useTranslations("common")
   const [badges, setBadges] = useState<StudentBadge[]>([])
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
   const [evidenceRecords, setEvidenceRecords] = useState<LearningEvidence[]>([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState("All")
   const [subjectFilter, setSubjectFilter] = useState("All")
-  const [showFilters, setShowFilters] = useState(false)
+  const [show{t("evidence.filters")}, setShow{t("evidence.filters")}] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [newEvidence, setNewEvidence] = useState({ title: "", evidenceType: "LESSON_COMPLETE", description: "", subjectName: "" })
   const [submitting, setSubmitting] = useState(false)
@@ -73,7 +77,7 @@ export default function EvidencePage() {
       type: record.evidenceType || "LESSON_COMPLETE",
       title: record.title,
       description: record.description || "",
-      subject: record.subjectName || "General",
+      subject: record.subjectName || t("evidence.generalSubject"),
       points: 20,
       date: record.createdAt || new Date().toISOString(),
       importance: "medium" as const,
@@ -83,7 +87,7 @@ export default function EvidencePage() {
       type: "LESSON_COMPLETE",
       title: badge.badgeName,
       description: badge.description,
-      subject: badge.badgeType || "General",
+      subject: badge.badgeType || t("evidence.generalSubject"),
       points: badge.points,
       date: badge.awardedAt,
       importance: badge.points >= 50 ? "high" as const : badge.points >= 20 ? "medium" as const : "low" as const,
@@ -93,7 +97,7 @@ export default function EvidencePage() {
       type: item.portfolioType === "PROJECT" ? "PROJECT" : "PORTFOLIO",
       title: item.title,
       description: item.description || "",
-      subject: item.subjectName || "General",
+      subject: item.subjectName || t("evidence.generalSubject"),
       points: item.portfolioType === "PROJECT" ? 30 : 15,
       date: item.createdAt,
       importance: item.isFeatured ? "high" as const : "medium" as const,
@@ -146,19 +150,19 @@ export default function EvidencePage() {
             <Award className="size-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Learning Evidence</h1>
-            <p className="text-sm text-muted-foreground">Proof of your amazing progress!</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("evidence.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("evidence.subtitle")}
           </div>
         </div>
         <button
           type="button"
-          onClick={() => setShowFilters(!showFilters)}
+          onClick={() => setShow{t("evidence.filters")}(!show{t("evidence.filters")})}
           className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-            showFilters ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted"
+            show{t("evidence.filters")} ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:bg-muted"
           }`}
         >
           <Filter className="size-4" />
-          Filters
+          {t("evidence.filters")}
         </button>
         <button
           type="button"
@@ -166,23 +170,23 @@ export default function EvidencePage() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="size-4" />
-          Add Evidence
+          {t("evidence.addButton")}
         </button>
       </div>
 
-      {showFilters && (
+      {show{t("evidence.filters")} && (
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-foreground">Filter Evidence</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("evidence.filterTitle")}</h3>
             <button type="button" onClick={() => { setTypeFilter("All"); setSubjectFilter("All") }} className="text-xs text-muted-foreground hover:text-foreground">
-              Reset
+              {t("evidence.reset")}
             </button>
           </div>
           <div className="space-y-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Type</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("evidence.typeLabel")}</label>
               <div className="flex flex-wrap gap-1.5">
-                {typeFilters.map((f) => (
+                {type{t("evidence.filters")}.map((f) => (
                   <button
                     key={f}
                     type="button"
@@ -193,17 +197,17 @@ export default function EvidencePage() {
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
-                    {f === "All" ? "All" : evidenceTypeConfig[f]?.label || f}
+                    {f === "All" ? t("evidence.filterAll") : evidenceTypeConfig[f]?.label || f}
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Subject</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("evidence.subjectLabel")}</label>
               <div className="flex flex-wrap gap-1.5">
                 {uniqueSubjects.map((s) => (
                   <button
-                    key={s}
+                    key={s === "All" ? t("evidence.filterAll") : s}
                     type="button"
                     onClick={() => setSubjectFilter(s)}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
@@ -212,7 +216,7 @@ export default function EvidencePage() {
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
                   >
-                    {s}
+                    {s === "All" ? t("evidence.filterAll") : s}
                   </button>
                 ))}
               </div>
@@ -224,46 +228,46 @@ export default function EvidencePage() {
       {showAddForm && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground">Add Learning Evidence</h3>
+            <h3 className="text-lg font-semibold text-foreground">{t("evidence.formTitle")}</h3>
             <button type="button" onClick={() => setShowAddForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="size-5" />
             </button>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Title *</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">{t("evidence.titleLabel")}</label>
               <input
                 type="text"
                 value={newEvidence.title}
                 onChange={(e) => setNewEvidence((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="What did you learn or create?"
+                placeholder={t("evidence.titlePlaceholder")}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">Evidence Type</label>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">{t("evidence.evidenceTypeLabel")}</label>
                 <select
                   value={newEvidence.evidenceType}
                   onChange={(e) => setNewEvidence((prev) => ({ ...prev, evidenceType: e.target.value }))}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
                 >
-                  <option value="LESSON_COMPLETE">Lesson Complete</option>
-                  <option value="PROJECT">Project</option>
-                  <option value="QUIZ_SCORE">Quiz Score</option>
-                  <option value="PORTFOLIO">Portfolio</option>
-                  <option value="TEACHER_NOTE">Teacher Note</option>
-                  <option value="ATTENDANCE">Attendance</option>
+                  <option value="LESSON_COMPLETE">{t("evidence.typeLesson")}</option>
+                  <option value="PROJECT">{t("evidence.typeProject")}</option>
+                  <option value="QUIZ_SCORE">{t("evidence.typeQuiz")}</option>
+                  <option value="PORTFOLIO">{t("evidence.typePortfolio")}</option>
+                  <option value="TEACHER_NOTE">{t("evidence.typeTeacher")}</option>
+                  <option value="ATTENDANCE">{t("evidence.typeAttendance")}</option>
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">Subject</label>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">{t("evidence.subjectLabel")}
                 <select
                   value={newEvidence.subjectName}
                   onChange={(e) => setNewEvidence((prev) => ({ ...prev, subjectName: e.target.value }))}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
                 >
-                  <option value="">General</option>
+                  <option value="">{t("evidence.generalSubject")}</option>
                   {primarySubjects.map((s) => (
                     <option key={s.name} value={s.name}>{s.name}</option>
                   ))}
@@ -271,11 +275,11 @@ export default function EvidencePage() {
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Description</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">{t("evidence.descLabel")}</label>
               <textarea
                 value={newEvidence.description}
                 onChange={(e) => setNewEvidence((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Describe what you did or learned..."
+                placeholder={t("evidence.descPlaceholder")}
                 rows={3}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
               />
@@ -286,7 +290,7 @@ export default function EvidencePage() {
                 onClick={() => setShowAddForm(false)}
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
               >
-                Cancel
+                {tc("cancel")}
               </button>
               <button
                 type="button"
@@ -295,7 +299,7 @@ export default function EvidencePage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                Submit Evidence
+                {t("evidence.submit")}
               </button>
             </div>
           </div>
@@ -309,21 +313,21 @@ export default function EvidencePage() {
           </div>
           <div>
             <p className="text-3xl font-extrabold text-foreground">{totalPoints}</p>
-            <p className="text-sm text-muted-foreground">Total Evidence Points</p>
+            <p className="text-sm text-muted-foreground">{t("evidence.totalPoints")}
           </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-4">
           <div className="text-center">
             <p className="text-xl font-bold text-foreground">{evidenceItems.length}</p>
-            <p className="text-xs text-muted-foreground">Total Items</p>
+            <p className="text-xs text-muted-foreground">{t("evidence.totalItems")}
           </div>
           <div className="text-center">
             <p className="text-xl font-bold text-foreground">{badges.length}</p>
-            <p className="text-xs text-muted-foreground">Badges</p>
+            <p className="text-xs text-muted-foreground">{t("evidence.badges")}
           </div>
           <div className="text-center">
             <p className="text-xl font-bold text-foreground">{portfolioItems.length}</p>
-            <p className="text-xs text-muted-foreground">Creations</p>
+            <p className="text-xs text-muted-foreground">{t("evidence.creations")}
           </div>
         </div>
       </div>
@@ -334,12 +338,12 @@ export default function EvidencePage() {
             <Award className="size-8 text-primary" />
           </div>
           <h3 className="mt-4 text-lg font-semibold text-foreground">
-            {evidenceItems.length === 0 ? "Start learning to collect your first evidence!" : "No evidence matches your filters"}
+            {evidenceItems.length === 0 ? t("evidence.emptyStart") : t("evidence.emptyFiltered")}
           </h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
             {evidenceItems.length === 0
-              ? "Complete lessons, create projects, and participate in class to build your evidence collection."
-              : "Try adjusting your filters to see more evidence."}
+              ? t("evidence.emptyStartDesc")
+              : t("evidence.emptyFilteredDesc")}
           </p>
         </div>
       ) : (
@@ -368,7 +372,7 @@ export default function EvidencePage() {
                       </div>
                       {item.importance === "high" && (
                         <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          Notable
+                          {t("evidence.notable")}
                         </span>
                       )}
                     </div>
@@ -383,7 +387,7 @@ export default function EvidencePage() {
                       )}
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">
                         <Star className="size-3" />
-                        {item.points} pts
+                        {t("quests.ptsCount", { count: item.points })}
                       </span>
                       <span className="text-[11px] text-muted-foreground">
                         {new Date(item.date).toLocaleDateString()}
@@ -393,7 +397,7 @@ export default function EvidencePage() {
                   <button
                     type="button"
                     className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-primary/5 hover:text-primary"
-                    title="Share with Teacher"
+                    title={t("evidence.shareTitle")}
                   >
                     <Send className="size-4" />
                   </button>

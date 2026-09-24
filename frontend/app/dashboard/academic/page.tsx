@@ -2,12 +2,23 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { academicApi, type AcademicYear, type Term, type Grade, type Subject, type ClassGroup } from "@/lib/api"
 
 type Tab = "years" | "terms" | "grades" | "subjects" | "classes"
 
 export default function AcademicPage() {
   const { user } = useAuth()
+  const t = useTranslations("primary")
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: "years", label: t("academicTab.years"), count: years.length },
+    { key: "terms", label: t("academicTab.terms"), count: terms.length },
+    { key: "grades", label: t("academicTab.grades"), count: grades.length },
+    { key: "subjects", label: t("academicTab.subjects"), count: subjects.length },
+    { key: "classes", label: t("academicTab.classes"), count: classes.length },
+  ]
+  const ts = useTranslations("status")
+  const tc = useTranslations("common")
   const [tab, setTab] = useState<Tab>("years")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -41,23 +52,16 @@ export default function AcademicPage() {
     }
 
     fetchers[tab]()
-      .catch((e) => setError(e.message || "Failed to load data"))
+      .catch((e) => setError(e.message || tc("error.load")))
       .finally(() => setLoading(false))
   }, [tab, institutionId])
 
-  const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "years", label: "Academic Years", count: years.length },
-    { key: "terms", label: "Terms", count: terms.length },
-    { key: "grades", label: "Grades", count: grades.length },
-    { key: "subjects", label: "Subjects", count: subjects.length },
-    { key: "classes", label: "Class Groups", count: classes.length },
-  ]
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Academic Management</h1>
-        <p className="text-muted-foreground">Manage academic years, terms, grades, subjects, and class groups.</p>
+        <h1 className="text-2xl font-bold">{t("academicTab.title")}</h1>
+        <p className="text-muted-foreground">{t("academicTab.subtitle")}</p>
       </div>
 
       <div className="flex gap-2 overflow-x-auto border-b border-border pb-px">
@@ -92,7 +96,7 @@ export default function AcademicPage() {
           {tab === "years" && (
             <div className="divide-y divide-border">
               {years.length === 0 ? (
-                <p className="p-6 text-center text-muted-foreground">No academic years found.</p>
+                <p className="p-6 text-center text-muted-foreground">{t("academicTab.emptyYears")}</p>
               ) : (
                 years.map((y) => (
                   <div key={y.id} className="flex items-center justify-between p-4">
@@ -103,7 +107,7 @@ export default function AcademicPage() {
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       y.isCurrent ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"
                     }`}>
-                      {y.isCurrent ? "Current" : "Inactive"}
+                      {y.isCurrent ? t("academicTab.current") : ts("inactive")}
                     </span>
                   </div>
                 ))
@@ -114,15 +118,15 @@ export default function AcademicPage() {
           {tab === "terms" && (
             <div className="divide-y divide-border">
               {terms.length === 0 ? (
-                <p className="p-6 text-center text-muted-foreground">No terms found.</p>
+                <p className="p-6 text-center text-muted-foreground">{t("academicTab.emptyTerms")}</p>
               ) : (
                 terms.map((t) => (
                   <div key={t.id} className="flex items-center justify-between p-4">
                     <div>
                       <p className="font-medium">{t.name}</p>
-                      <p className="text-sm text-muted-foreground">Term {t.termNumber} &middot; {t.startDate} to {t.endDate}</p>
+                      <p className="text-sm text-muted-foreground">{t("academicTab.termLine", { n: t.termNumber, start: t.startDate, end: t.endDate })}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">{t.isActive ? "Active" : "Inactive"}</span>
+                    <span className="text-xs text-muted-foreground">{t.isActive ? ts("active") : ts("inactive")}</span>
                   </div>
                 ))
               )}
@@ -132,7 +136,7 @@ export default function AcademicPage() {
           {tab === "grades" && (
             <div className="divide-y divide-border">
               {grades.length === 0 ? (
-                <p className="p-6 text-center text-muted-foreground">No grades found.</p>
+                <p className="p-6 text-center text-muted-foreground">{t("academicTab.emptyGrades")}</p>
               ) : (
                 grades.map((g) => (
                   <div key={g.id} className="flex items-center justify-between p-4">
@@ -140,7 +144,7 @@ export default function AcademicPage() {
                       <p className="font-medium">{g.name}</p>
                       <p className="text-sm text-muted-foreground">{g.educationLevel} {g.code ? `(${g.code})` : ""}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">Order: {g.sortOrder}</span>
+                    <span className="text-xs text-muted-foreground">{t("academicTab.orderLine", { n: g.sortOrder })}</span>
                   </div>
                 ))
               )}
@@ -150,7 +154,7 @@ export default function AcademicPage() {
           {tab === "subjects" && (
             <div className="divide-y divide-border">
               {subjects.length === 0 ? (
-                <p className="p-6 text-center text-muted-foreground">No subjects found.</p>
+                <p className="p-6 text-center text-muted-foreground">{t("academicTab.emptySubjects")}</p>
               ) : (
                 subjects.map((s) => (
                   <div key={s.id} className="flex items-center justify-between p-4">
@@ -167,17 +171,17 @@ export default function AcademicPage() {
           {tab === "classes" && (
             <div className="divide-y divide-border">
               {classes.length === 0 ? (
-                <p className="p-6 text-center text-muted-foreground">No class groups found.</p>
+                <p className="p-6 text-center text-muted-foreground">{t("academicTab.emptyClasses")}</p>
               ) : (
                 classes.map((c) => (
                   <div key={c.id} className="flex items-center justify-between p-4">
                     <div>
                       <p className="font-medium">{c.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {c.section ? `Section ${c.section}` : ""} {c.capacity ? `&middot; Capacity: ${c.capacity}` : ""}
+                        {c.section ? t("academicTab.sectionLine", { s: c.section }) : ""} {c.capacity ? t("academicTab.capacityLine", { n: c.capacity }) : ""}
                       </p>
                     </div>
-                    <span className="text-xs text-muted-foreground">{c.isActive ? "Active" : "Inactive"}</span>
+                    <span className="text-xs text-muted-foreground">{c.isActive ? ts("active") : ts("inactive")}</span>
                   </div>
                 ))
               )}

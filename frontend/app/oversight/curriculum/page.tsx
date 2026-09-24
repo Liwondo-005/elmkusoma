@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, BookOpen, Target, Clock, AlertTriangle, CheckCircle } from "lucide-react"
@@ -30,6 +32,9 @@ interface CurriculumMetrics {
 }
 
 export default function OversightCurriculumPage() {
+  const t = useTranslations("oversight");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const { user, loading: authLoading } = useRequireAuth()
   const [metrics, setMetrics] = useState<CurriculumMetrics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -59,7 +64,7 @@ export default function OversightCurriculumPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading curriculum analytics...</div>
+        <div className="text-muted-foreground">{t("curriculum.loadingCurriculumAnalytics")}</div>
       </div>
     )
   }
@@ -68,8 +73,8 @@ export default function OversightCurriculumPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h1 className="text-2xl font-bold text-foreground">Curriculum Monitoring</h1>
-          <p className="mt-2 text-muted-foreground">Curriculum data unavailable.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("curriculum.curriculumMonitoring")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("curriculum.curriculumDataUnavailable")}</p>
         </div>
       </div>
     )
@@ -92,10 +97,9 @@ export default function OversightCurriculumPage() {
             <BookOpen className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Curriculum Monitoring</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("curriculum.curriculumMonitoring2")}</h1>
             <p className="text-sm text-muted-foreground">
-              Curriculum progress tracking across your jurisdiction
-            </p>
+              {t("curriculum.curriculumProgressTrackingAcross")}</p>
           </div>
         </div>
       </div>
@@ -110,17 +114,16 @@ export default function OversightCurriculumPage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <BookOpen className="size-5 text-muted-foreground" />
-          Subject Progress Overview
-        </h2>
+          {t("curriculum.subjectProgressOverview")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Subject</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Code</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total Lessons</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Completed</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Progress</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("curriculum.subject")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("curriculum.code")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("curriculum.totalLessons")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{ts("completed")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{tc("progress")}</th>
               </tr>
             </thead>
             <tbody>
@@ -141,18 +144,17 @@ export default function OversightCurriculumPage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <Building2 className="size-5 text-muted-foreground" />
-          School Curriculum Progress
-        </h2>
+          {t("curriculum.schoolCurriculumProgress")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">School</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Code</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total Lessons</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Completed</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Progress</th>
-                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Status</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("curriculum.school")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("curriculum.code2")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("curriculum.totalLessons2")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{ts("completed")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{tc("progress")}</th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground">{t("curriculum.status")}</th>
               </tr>
             </thead>
             <tbody>

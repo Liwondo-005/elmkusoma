@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { dashboardApi, type AttendanceSummary } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { BarChart3, CheckCircle, XCircle, Clock, AlertTriangle, Calendar, Star, TrendingUp } from "lucide-react"
 
 export default function AttendancePage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [summary, setSummary] = useState<AttendanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const level = user?.learningLevel as LearningLevel | null
@@ -39,10 +42,10 @@ export default function AttendancePage() {
   }
 
   const stats = [
-    { label: "Present", value: summary?.present ?? 0, icon: CheckCircle, color: "bg-green-500/10 text-green-600", ringColor: "text-green-500" },
-    { label: "Absent", value: summary?.absent ?? 0, icon: XCircle, color: "bg-red-500/10 text-red-600", ringColor: "text-red-500" },
-    { label: "Late", value: summary?.late ?? 0, icon: Clock, color: "bg-yellow-500/10 text-yellow-600", ringColor: "text-yellow-500" },
-    { label: "Excused", value: summary?.excused ?? 0, icon: AlertTriangle, color: "bg-blue-500/10 text-blue-600", ringColor: "text-blue-500" },
+    { label: ts("present"), value: summary?.present ?? 0, icon: CheckCircle, color: "bg-green-500/10 text-green-600", ringColor: "text-green-500" },
+    { label: ts("absent"), value: summary?.absent ?? 0, icon: XCircle, color: "bg-red-500/10 text-red-600", ringColor: "text-red-500" },
+    { label: ts("late"), value: summary?.late ?? 0, icon: Clock, color: "bg-yellow-500/10 text-yellow-600", ringColor: "text-yellow-500" },
+    { label: ts("excused"), value: summary?.excused ?? 0, icon: AlertTriangle, color: "bg-blue-500/10 text-blue-600", ringColor: "text-blue-500" },
   ]
 
   function getStatusStyle(status: string) {
@@ -77,8 +80,8 @@ export default function AttendancePage() {
               <Calendar className="size-6 text-green-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">My Attendance</h1>
-              <p className="text-sm text-muted-foreground">Keep coming to school every day!</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("attend.title")}</h1>
+              <p className="text-sm text-muted-foreground">{t("attend.subtitle")}
             </div>
           </div>
         </div>
@@ -103,14 +106,14 @@ export default function AttendancePage() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-foreground">
-                {attendanceRate >= 90 ? "Excellent!" : attendanceRate >= 75 ? "Good job!" : "Let's improve!"}
+                {attendanceRate >= 90 ? t("attend.excellent") : attendanceRate >= 75 ? t("attend.good") : t("attend.improve")}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
                 {attendanceRate >= 90
-                  ? "You are attending school very regularly. Keep it up!"
+                  ? t("attend.excellentDesc")
                   : attendanceRate >= 75
-                    ? "You are doing well. Try to attend every day!"
-                    : "Coming to school every day helps you learn more. Let's work on it!"}
+                    ? t("attend.goodDesc")
+                    : t("attend.improveDesc")}
               </p>
               <div className="mt-2 flex items-center gap-1.5">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -143,14 +146,14 @@ export default function AttendancePage() {
 
         {/* Attendance Records */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">My School Days</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("attend.schoolDays")}
           {!summary?.records || summary.records.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
                 <Calendar className="size-6 text-muted-foreground" />
               </div>
-              <p className="mt-3 text-sm font-medium text-foreground">No attendance records yet</p>
-              <p className="text-xs text-muted-foreground">Your attendance will appear here.</p>
+              <p className="mt-3 text-sm font-medium text-foreground">{t("attend.emptyTitle")}
+              <p className="text-xs text-muted-foreground">{t("attend.emptyDesc")}
             </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -199,8 +202,8 @@ export default function AttendancePage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">My Attendance</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Track your attendance for this month.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("attend.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("attend.monthDesc")}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -211,7 +214,7 @@ export default function AttendancePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{attendanceRate}%</p>
-              <p className="text-xs text-muted-foreground">Attendance Rate</p>
+              <p className="text-xs text-muted-foreground">{t("attend.rateLabel")}
             </div>
           </div>
         </div>
@@ -227,23 +230,23 @@ export default function AttendancePage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Attendance Records</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("attend.recordsTitle")}
         {!summary?.records || summary.records.length === 0 ? (
           <div className="py-12 text-center">
             <BarChart3 className="mx-auto size-12 text-muted-foreground/50" />
-            <h3 className="mt-4 text-lg font-semibold text-foreground">No Records</h3>
-            <p className="mt-2 text-sm text-muted-foreground">No attendance records found for this month.</p>
+            <h3 className="mt-4 text-lg font-semibold text-foreground">{t("attend.noRecords")}
+            <p className="mt-2 text-sm text-muted-foreground">{t("attend.noRecordsDesc")}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Check In</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Check Out</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Remarks</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("attend.colDate")}</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("attend.colStatus")}</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("attend.colIn")}</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("attend.colOut")}</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("attend.colRemarks")}</th>
                 </tr>
               </thead>
               <tbody>

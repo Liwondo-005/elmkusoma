@@ -1,3 +1,6 @@
+"use client"
+
+import { useTranslations } from "next-intl"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { VetaTradeCard } from "@/components/courses/veta-trade-card"
@@ -5,12 +8,8 @@ import { vetaTrades } from "@/lib/data"
 import Link from "next/link"
 
 
-export const metadata = {
-  title: "VETA — Vocational Education — ELMKUSOMA",
-  description: "Explore VETA vocational trades and training programmes — Electrical Installation, Motor Vehicle Mechanics, Plumbing, and more.",
-}
-
 export default function VetaPage() {
+  const t = useTranslations("public")
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
@@ -21,16 +20,16 @@ export default function VetaPage() {
               href="/courses"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              All Levels
+              {t("coursesHome.allLevels")}
             </Link>
             <span className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
-              Vocational Education
+              {t("veta.badge")}
             </span>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              VETA / Vocational Education
+              {t("veta.title")}
             </h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">
-              Choose a trade or programme to explore training levels, modules, and lessons.
+              {t("veta.subtitle")}
             </p>
           </div>
         </section>

@@ -2,16 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type QuestChallenge, type RealWorldMission } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Swords, Calculator, FlaskConical, Brain, Compass, Trophy, Star, CheckCircle, Globe, MapPin, Target, X, BookOpen } from "lucide-react"
 
-const questCategories = [
-  { type: "MATH", name: "Math Quests", icon: Calculator, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
-  { type: "SCIENCE", name: "Science Quests", icon: FlaskConical, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
-  { type: "LOGIC", name: "Logic Quests", icon: Brain, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-  { type: "TANZANIA", name: "Tanzania Quests", icon: Compass, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
-]
 
 const difficultyColors: Record<string, string> = {
   Easy: "bg-green-100 text-green-700",
@@ -29,6 +24,14 @@ const missionTypeConfig: Record<string, { icon: typeof Compass; color: string; b
 
 export default function QuestsPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
+  const questCategories = [
+  { type: "MATH", name: t("quests.catMath"), icon: Calculator, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
+  { type: "SCIENCE", name: t("quests.catScience"), icon: FlaskConical, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
+  { type: "LOGIC", name: t("quests.catLogic"), icon: Brain, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
+  { type: "TANZANIA", name: t("quests.catTanzania"), icon: Compass, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
+]
   const [quests, setQuests] = useState<QuestChallenge[]>([])
   const [missions, setMissions] = useState<RealWorldMission[]>([])
   const [loading, setLoading] = useState(true)
@@ -111,15 +114,15 @@ export default function QuestsPage() {
             <Swords className="size-5 text-purple-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Problem Solving Quests</h1>
-            <p className="text-sm text-muted-foreground">Complete quests and earn rewards</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("quests.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("quests.subtitle")}</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Swords className="size-12 text-muted-foreground/30" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Quests is for Primary learners</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("quests.primaryOnlyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Switch to a primary learner account to start your quest journey.
+            {t("quests.primaryOnlyDesc")}
           </p>
         </div>
       </div>
@@ -135,7 +138,7 @@ export default function QuestsPage() {
           onClick={() => setSelectedQuest(null)}
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          Back to Quests
+          {t("quests.backToQuests")}
         </button>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-xs">
@@ -150,7 +153,7 @@ export default function QuestsPage() {
                   {selectedQuest.difficulty}
                 </span>
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Star className="size-3" /> {selectedQuest.totalPoints} points
+                  <Star className="size-3" /> {t("labs.pointsCount", { count: selectedQuest.totalPoints })}
                 </span>
               </div>
             </div>
@@ -164,13 +167,13 @@ export default function QuestsPage() {
             {selectedQuest.isCompleted ? (
               <div className="rounded-xl bg-green-50 border border-green-200 p-6 text-center">
                 <CheckCircle className="mx-auto size-10 text-green-500" />
-                <h3 className="mt-2 text-lg font-bold text-green-800">Quest Completed!</h3>
+                <h3 className="mt-2 text-lg font-bold text-green-800">{t("quests.completedTitle")}</h3>
                 <p className="mt-1 text-sm text-green-700">
-                  Score: {selectedQuest.score} / {selectedQuest.totalPoints}
+                  {t("quests.scoreLine", { score: selectedQuest.score, total: selectedQuest.totalPoints })}
                 </p>
                 {selectedQuest.completedAt && (
                   <p className="mt-1 text-xs text-green-600">
-                    Completed on {new Date(selectedQuest.completedAt).toLocaleDateString()}
+                    {t("quests.completedOn", { date: new Date(selectedQuest.completedAt).toLocaleDateString() })}
                   </p>
                 )}
               </div>
@@ -180,7 +183,7 @@ export default function QuestsPage() {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <Swords className="size-4" />
-                Start Quest
+                {t("quests.startQuest")}
               </button>
             )}
           </div>
@@ -197,8 +200,8 @@ export default function QuestsPage() {
             <Swords className="size-6 text-purple-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Problem Solving Quests</h1>
-            <p className="text-sm text-muted-foreground">Complete quests and earn rewards</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("quests.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("quests.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -211,7 +214,7 @@ export default function QuestsPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{completedCount}</p>
-              <p className="text-xs text-muted-foreground">Quests Completed</p>
+              <p className="text-xs text-muted-foreground">{t("quests.statCompleted")}</p>
             </div>
           </div>
         </div>
@@ -222,7 +225,7 @@ export default function QuestsPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{totalPoints}</p>
-              <p className="text-xs text-muted-foreground">Points Earned</p>
+              <p className="text-xs text-muted-foreground">{t("quests.statPoints")}</p>
             </div>
           </div>
         </div>
@@ -233,7 +236,7 @@ export default function QuestsPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{quests.length}</p>
-              <p className="text-xs text-muted-foreground">Total Quests</p>
+              <p className="text-xs text-muted-foreground">{t("quests.statTotal")}</p>
             </div>
           </div>
         </div>
@@ -248,7 +251,7 @@ export default function QuestsPage() {
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
-          All Quests
+          {t("quests.filterAll")}
         </button>
         {questCategories.map((cat) => (
           <button
@@ -270,9 +273,9 @@ export default function QuestsPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <Swords className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No quests yet</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("quests.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Your teacher will create quests for you. Check back soon for new challenges!
+            {t("quests.emptyDesc")}
           </p>
         </div>
       ) : (
@@ -300,11 +303,11 @@ export default function QuestsPage() {
                     {quest.difficulty}
                   </span>
                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Star className="size-3" /> {quest.totalPoints} pts
+                    <Star className="size-3" /> {t("quests.ptsCount", { count: quest.totalPoints })}
                   </span>
                   {quest.isCompleted && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                      <CheckCircle className="size-3" /> Done
+                      <CheckCircle className="size-3" /> {t("labs.doneBadge")}
                     </span>
                   )}
                 </div>
@@ -328,28 +331,28 @@ export default function QuestsPage() {
                 <p className="text-sm text-muted-foreground">{selectedMission.description}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">Location: {selectedMission.location}</p>
+                <p className="text-sm font-medium text-foreground">{t("quests.locationLine", { location: selectedMission.location })}</p>
               </div>
               <div className="rounded-xl bg-muted/30 p-4">
-                <p className="text-sm font-medium text-foreground">Instructions</p>
+                <p className="text-sm font-medium text-foreground">{t("quests.instructions")}
                 <p className="mt-1 text-sm text-muted-foreground">{selectedMission.instructions}</p>
               </div>
               {selectedMission.isCompleted ? (
                 <div className="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
                   <CheckCircle className="mx-auto size-8 text-green-500" />
-                  <p className="mt-2 text-sm font-bold text-green-800">Mission Completed!</p>
+                  <p className="mt-2 text-sm font-bold text-green-800">{t("quests.missionDone")}
                   {selectedMission.evidence && (
-                    <p className="mt-1 text-xs text-green-700">Evidence: {selectedMission.evidence}</p>
+                    <p className="mt-1 text-xs text-green-700">{t("quests.evidenceLine", { text: selectedMission.evidence })}</p>
                   )}
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Submit Evidence</label>
+                    <label className="text-sm font-medium text-foreground">{t("quests.evidenceLabel")}
                     <textarea
                       value={evidence}
                       onChange={(e) => setEvidence(e.target.value)}
-                      placeholder="Describe what you did for this mission..."
+                      placeholder={t("quests.evidencePlaceholder")}
                       rows={3}
                       className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
                     />
@@ -362,7 +365,7 @@ export default function QuestsPage() {
                     {submittingMission ? (
                       <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                     ) : (
-                      "Complete Mission"
+                      {t("quests.completeMission")}
                     )}
                   </button>
                 </>
@@ -378,8 +381,8 @@ export default function QuestsPage() {
             <MapPin className="size-6 text-amber-500" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground">Real World Missions</h2>
-            <p className="text-sm text-muted-foreground">Apply what you learn in the real world!</p>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">{t("quests.missionsTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t("quests.missionsSubtitle")}</p>
           </div>
         </div>
       </div>
@@ -387,8 +390,8 @@ export default function QuestsPage() {
       {missions.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-12 text-center">
           <MapPin className="size-10 text-muted-foreground/30" />
-          <h3 className="mt-3 text-sm font-semibold text-foreground">No missions yet</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Your teacher will create real world missions for you.</p>
+          <h3 className="mt-3 text-sm font-semibold text-foreground">{t("quests.noMissions")}
+          <p className="mt-1 text-xs text-muted-foreground">{t("quests.noMissionsDesc")}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -415,11 +418,11 @@ export default function QuestsPage() {
                     <MapPin className="size-3" /> {mission.location}
                   </span>
                   <span className="flex items-center gap-1 text-[10px] text-amber-600">
-                    <Star className="size-3" /> {mission.points} pts
+                    <Star className="size-3" /> {t("quests.ptsCount", { count: mission.points })}
                   </span>
                   {mission.isCompleted && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                      <CheckCircle className="size-3" /> Done
+                      <CheckCircle className="size-3" /> {t("labs.doneBadge")}
                     </span>
                   )}
                 </div>

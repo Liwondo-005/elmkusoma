@@ -1,12 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { PenTool, Loader2, CheckCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ChildOverview, type ParentAssessments, type AssessmentItem } from "@/lib/parent-api"
 
 export default function ParentAssessmentsPage() {
   const { user } = useAuth()
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [assessments, setAssessments] = useState<ParentAssessments | null>(null)
@@ -39,9 +43,9 @@ export default function ParentAssessmentsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Assessments</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("assessments")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {assessments ? `${assessments.studentName} · ${assessments.className}` : "Exam and test results"}
+          {assessments ? `${assessments.studentName} · ${assessments.className}` : t("assessments.defaultSubtitle")}
         </p>
       </div>
 
@@ -59,20 +63,20 @@ export default function ParentAssessmentsPage() {
       <div className="flex gap-1 rounded-lg border border-border bg-muted p-1">
         <button onClick={() => setTab("completed")}
           className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${tab === "completed" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}>
-          Completed ({completed.length})
+          {ts("completed")} ({completed.length})
         </button>
         <button onClick={() => setTab("upcoming")}
           className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${tab === "upcoming" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}>
-          Upcoming ({upcoming.length})
+          {t("assessments.upcoming")} ({upcoming.length})
         </button>
       </div>
 
       {currentList.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <PenTool className="mx-auto mb-3 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No {tab} assessments</p>
+          <p className="text-sm font-medium text-foreground">{tab === "completed" ? t("assessments.emptyCompletedTitle") : t("assessments.emptyUpcomingTitle")}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {tab === "completed" ? "Results will appear here after assessments." : "No upcoming assessments scheduled."}
+            {tab === "completed" ? t("assessments.emptyCompletedDesc") : t("assessments.emptyUpcomingDesc")}
           </p>
         </div>
       ) : (
@@ -87,6 +91,7 @@ export default function ParentAssessmentsPage() {
 }
 
 function AssessmentCard({ item, showScore }: { item: AssessmentItem; showScore: boolean }) {
+  const t = useTranslations("parent")
   const scoreColor = item.isPassed === true ? "text-green-600" : item.isPassed === false ? "text-red-500" : "text-muted-foreground"
 
   return (
@@ -118,13 +123,13 @@ function AssessmentCard({ item, showScore }: { item: AssessmentItem; showScore: 
       <div className="mt-3 grid grid-cols-3 gap-3">
         {item.totalMarks != null && (
           <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-xs text-muted-foreground">{t("assessments.totalLabel")}</p>
             <p className="text-sm font-bold text-foreground">{item.totalMarks}</p>
           </div>
         )}
         {item.score != null && (
           <div className="rounded-lg bg-muted/50 p-2.5 text-center">
-            <p className="text-xs text-muted-foreground">Score</p>
+            <p className="text-xs text-muted-foreground">{t("assessments.scoreLabel")}</p>
             <p className={`text-sm font-bold ${scoreColor}`}>{item.score}</p>
           </div>
         )}

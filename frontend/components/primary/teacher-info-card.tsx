@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { Mail } from "lucide-react"
 import type { TeacherInfo } from "@/lib/api"
 
@@ -23,6 +24,7 @@ function getColorClass(subject: string) {
 }
 
 export function TeacherInfoCard({ teacher }: { teacher: TeacherInfo }) {
+  const t = useTranslations("ui")
   const initials = getInitials(teacher)
   const colorClass = getColorClass(teacher.subjectName)
   const fullName = `${teacher.firstName} ${teacher.lastName}`
@@ -34,14 +36,14 @@ export function TeacherInfoCard({ teacher }: { teacher: TeacherInfo }) {
           {initials}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">My Teacher / Mwalimu Wangu</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">{t("teacherInfo.myTeacher")}</p>
           <p className="mt-1 truncate text-lg font-bold text-foreground">{fullName}</p>
           <p className="mt-0.5 text-sm text-muted-foreground">{teacher.subjectName}</p>
         </div>
       </div>
       {teacher.specialization && (
         <div className="mt-3 rounded-xl bg-muted/30 px-3 py-2">
-          <p className="text-xs font-medium text-muted-foreground">Specialization</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("teacherInfo.specialization")}</p>
           <p className="text-sm font-medium text-foreground">{teacher.specialization}</p>
         </div>
       )}

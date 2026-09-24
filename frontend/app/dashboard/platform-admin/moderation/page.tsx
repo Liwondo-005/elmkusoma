@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { ShieldCheck, AlertCircle, RefreshCw, Search, Clock, Flag, CheckCircle2, XCircle, Eye, Plus } from "lucide-react"
 import { platformAdminApi, type PageResponse, type ContentReport } from "@/lib/platform-admin-api"
@@ -20,6 +22,8 @@ function StatusBadge({ s }: { s: string }) {
 }
 
 export default function PlatformModerationPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [page, setPage] = useState<PageResponse<ContentReport> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +41,7 @@ export default function PlatformModerationPage() {
     try {
       setPage(await platformAdminApi.listContentReports(pageIndex, 20, status || undefined))
     } catch (e: any) {
-      setError(e.message || "Failed to load reports"); setPage(null)
+      setError(e.message || t("moderation.failedToLoadReports")); setPage(null)
     } finally { setLoading(false) }
   }, [pageIndex, status])
 
@@ -46,7 +50,7 @@ export default function PlatformModerationPage() {
   const act = async (id: string, action: string, notes?: string) => {
     setUpdating(id)
     try { await platformAdminApi.actOnContentReport(id, action, notes); await load() }
-    catch (e: any) { setError(e.message || "Action failed") }
+    catch (e: any) { setError(e.message || t("moderation.actionFailed")) }
     finally { setUpdating(null) }
   }
 
@@ -58,7 +62,7 @@ export default function PlatformModerationPage() {
       setShowForm(false)
       setForm({ entityType: "COURSE", entityId: "", entityTitle: "", reason: "INAPPROPRIATE", description: "" })
       await load()
-    } catch (e: any) { setFormError(e.message || "Failed to create report") }
+    } catch (e: any) { setFormError(e.message || t("moderation.failedToCreateReport")) }
     finally { setFormBusy(false) }
   }
 
@@ -71,49 +75,44 @@ export default function PlatformModerationPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-orange-500 text-white"><ShieldCheck className="size-4" /></span> Moderation</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Content report queue — reported courses, media, resources, events, and users. Actions: <span className="font-mono text-xs">OPEN → REVIEWING → RESOLVED | DISMISSED | APPEALED</span>.</p>
+            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-orange-500 text-white"><ShieldCheck className="size-4" /></span> {t("moderation.moderation")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("moderation.contentReportQueueReported")}<span className="font-mono text-xs">{t("moderation.openReviewingResolvedDismissed")}</span>.</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowForm(v => !v)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><Plus className="size-4" /> New report</button>
-            <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> Refresh</button>
+            <button onClick={() => setShowForm(v => !v)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><Plus className="size-4" /> {t("moderation.newReport")}</button>
+            <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> {t("moderation.refresh")}</button>
           </div>
         </div>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search reports..." className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("moderation.searchReports")} className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" />
           </div>
           <select value={status} onChange={(e) => { setStatus(e.target.value); setPageIndex(0) }} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring">
-            {STATUSES.map(s => <option key={s} value={s}>{s || "All statuses"}</option>)}
+            {STATUSES.map(s => <option key={s} value={s}>{s || t("moderation.allStatuses")}</option>)}
           </select>
         </div>
         {showForm && (
           <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4 space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-semibold text-foreground">Entity type
-                <select value={form.entityType} onChange={(e) => setForm(f => ({ ...f, entityType: e.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+              <label className="text-xs font-semibold text-foreground">{t("moderation.entityType")}<select value={form.entityType} onChange={(e) => setForm(f => ({ ...f, entityType: e.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
                   {ENTITY_TYPES.map(t => <option key={t}>{t}</option>)}
                 </select>
               </label>
-              <label className="text-xs font-semibold text-foreground">Reason
-                <select value={form.reason} onChange={(e) => setForm(f => ({ ...f, reason: e.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+              <label className="text-xs font-semibold text-foreground">{t("moderation.reason")}<select value={form.reason} onChange={(e) => setForm(f => ({ ...f, reason: e.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
                   {REASONS.map(t => <option key={t}>{t}</option>)}
                 </select>
               </label>
-              <label className="text-xs font-semibold text-foreground">Entity ID (UUID)
-                <input value={form.entityId} onChange={(e) => setForm(f => ({ ...f, entityId: e.target.value }))} placeholder="e.g. 3f2a…" className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
+              <label className="text-xs font-semibold text-foreground">{t("moderation.entityIdUuid")}<input value={form.entityId} onChange={(e) => setForm(f => ({ ...f, entityId: e.target.value }))} placeholder={t("moderation.eG3f2a")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
               </label>
-              <label className="text-xs font-semibold text-foreground">Entity title (optional)
-                <input value={form.entityTitle} onChange={(e) => setForm(f => ({ ...f, entityTitle: e.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+              <label className="text-xs font-semibold text-foreground">{t("moderation.entityTitleOptional")}<input value={form.entityTitle} onChange={(e) => setForm(f => ({ ...f, entityTitle: e.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               </label>
             </div>
-            <label className="block text-xs font-semibold text-foreground">Description
-              <textarea value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <label className="block text-xs font-semibold text-foreground">{t("moderation.description")}<textarea value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
             </label>
             {formError && <p className="flex items-center gap-1 text-xs text-red-600"><AlertCircle className="size-3.5" />{formError}</p>}
             <button onClick={submitReport} disabled={formBusy} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-              {formBusy ? "Submitting…" : "Submit report"}
+              {formBusy ? t("moderation.submitting") : t("moderation.submitReport")}
             </button>
           </div>
         )}
@@ -122,7 +121,7 @@ export default function PlatformModerationPage() {
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
           <span className="flex items-center gap-2"><AlertCircle className="size-4" />{error}</span>
-          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Retry</button>
+          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">{t("moderation.retry")}</button>
         </div>
       )}
 
@@ -130,8 +129,8 @@ export default function PlatformModerationPage() {
         {loading ? <div className="animate-pulse space-y-3"><div className="h-16 rounded-xl bg-muted" /><div className="h-16 rounded-xl bg-muted" /></div> : rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
             <ShieldCheck className="size-10 text-muted-foreground/50" />
-            <p className="mt-3 text-sm font-semibold text-foreground">Moderation queue is empty</p>
-            <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">No content reports match this filter. Reported courses, media, and user content will surface here — nothing is fabricated.</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("moderation.moderationQueueIsEmpty")}</p>
+            <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">{t("moderation.noContentReportsMatch")}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -147,25 +146,25 @@ export default function PlatformModerationPage() {
                   {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
                   <p className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1"><Clock className="size-3" />{new Date(r.createdAt).toLocaleString()}</span>
-                    {r.resolvedAt && <span>· Resolved {new Date(r.resolvedAt).toLocaleString()}</span>}
+                    {r.resolvedAt && <span>{t("moderation.resolved", { p0: new Date(r.resolvedAt).toLocaleString() })}</span>}
                     {r.resolutionNotes && <span>· {r.resolutionNotes}</span>}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   {r.status === "OPEN" && (
-                    <button disabled={updating === r.id} onClick={() => act(r.id, "REVIEWING")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><Eye className="size-3" /> Review</button>
+                    <button disabled={updating === r.id} onClick={() => act(r.id, "REVIEWING")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><Eye className="size-3" /> {tc("review")}</button>
                   )}
                   {(r.status === "OPEN" || r.status === "REVIEWING") && (
                     <>
-                      <button disabled={updating === r.id} onClick={() => act(r.id, "RESOLVED", "Actioned by platform admin")} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><CheckCircle2 className="size-3" /> Resolve</button>
-                      <button disabled={updating === r.id} onClick={() => act(r.id, "DISMISSED", "No violation found")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><XCircle className="size-3" /> Dismiss</button>
-                      <button disabled={updating === r.id} onClick={() => act(r.id, "APPEALED", "Reported party filed an appeal")} className="inline-flex items-center gap-1 rounded-lg border border-purple-200 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-50"><Flag className="size-3" /> Appeal</button>
+                      <button disabled={updating === r.id} onClick={() => act(r.id, "RESOLVED", "Actioned by platform admin")} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><CheckCircle2 className="size-3" /> {t("moderation.resolve")}</button>
+                      <button disabled={updating === r.id} onClick={() => act(r.id, "DISMISSED", "No violation found")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><XCircle className="size-3" /> {t("moderation.dismiss")}</button>
+                      <button disabled={updating === r.id} onClick={() => act(r.id, "APPEALED", "Reported party filed an appeal")} className="inline-flex items-center gap-1 rounded-lg border border-purple-200 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-50"><Flag className="size-3" /> {t("moderation.appeal")}</button>
                     </>
                   )}
                   {r.status === "APPEALED" && (
                     <>
-                      <button disabled={updating === r.id} onClick={() => act(r.id, "RESOLVED", "Appeal upheld after review")} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><CheckCircle2 className="size-3" /> Uphold</button>
-                      <button disabled={updating === r.id} onClick={() => act(r.id, "DISMISSED", "Appeal dismissed")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><XCircle className="size-3" /> Deny</button>
+                      <button disabled={updating === r.id} onClick={() => act(r.id, "RESOLVED", "Appeal upheld after review")} className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><CheckCircle2 className="size-3" /> {t("moderation.uphold")}</button>
+                      <button disabled={updating === r.id} onClick={() => act(r.id, "DISMISSED", "Appeal dismissed")} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"><XCircle className="size-3" /> {t("moderation.deny")}</button>
                     </>
                   )}
                 </div>
@@ -175,9 +174,9 @@ export default function PlatformModerationPage() {
         )}
         {page && page.totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between text-sm">
-            <button disabled={page.first} onClick={() => setPageIndex(i => i - 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">Previous</button>
-            <span className="text-xs text-muted-foreground">Page {page.page + 1} of {page.totalPages} · {page.totalElements} reports</span>
-            <button disabled={page.last} onClick={() => setPageIndex(i => i + 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">Next</button>
+            <button disabled={page.first} onClick={() => setPageIndex(i => i - 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">{tc("previous")}</button>
+            <span className="text-xs text-muted-foreground">{t("moderation.pageOfReports", { p0: page.page + 1, p1: page.totalPages, p2: page.totalElements })}</span>
+            <button disabled={page.last} onClick={() => setPageIndex(i => i + 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">{tc("next")}</button>
           </div>
         )}
       </div>

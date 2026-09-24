@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { appFetch } from "@/lib/fetch"
 import { Button } from "@/components/ui/button"
@@ -42,21 +43,13 @@ interface Participant {
   online: boolean
 }
 
-const statusConfig: Record<string, { label: string; className: string; description: string }> = {
-  SCHEDULED: { label: "Scheduled", className: "bg-blue-100 text-blue-700", description: "This class is scheduled and waiting to start." },
-  STARTING: { label: "Starting", className: "bg-amber-100 text-amber-700", description: "The class is about to begin." },
-  IN_PROGRESS: { label: "Live", className: "bg-green-100 text-green-700", description: "This class is currently live." },
-  LIVE: { label: "Live", className: "bg-green-100 text-green-700", description: "This class is currently live." },
-  ENDING: { label: "Ending", className: "bg-amber-100 text-amber-700", description: "The class is ending." },
-  COMPLETED: { label: "Completed", className: "bg-gray-100 text-gray-700", description: "This class has ended." },
-  ENDED: { label: "Ended", className: "bg-gray-100 text-gray-700", description: "This class has ended." },
-  CANCELLED: { label: "Cancelled", className: "bg-red-100 text-red-700", description: "This class has been cancelled." },
-}
-
 export default function LiveClassDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tc = useTranslations("common")
+  const ts = useTranslations("status")
   const id = params.id as string
   const [liveClass, setLiveClass] = useState<LiveClass | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -64,6 +57,17 @@ export default function LiveClassDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+
+  const statusConfig: Record<string, { label: string; className: string; description: string }> = {
+    SCHEDULED: { label: ts("scheduled"), className: "bg-blue-100 text-blue-700", description: t("liveClassDetail.descScheduled") },
+    STARTING: { label: t("liveClassDetail.statusStarting"), className: "bg-amber-100 text-amber-700", description: t("liveClassDetail.descStarting") },
+    IN_PROGRESS: { label: t("liveClassDetail.statusLive"), className: "bg-green-100 text-green-700", description: t("liveClassDetail.descLive") },
+    LIVE: { label: t("liveClassDetail.statusLive"), className: "bg-green-100 text-green-700", description: t("liveClassDetail.descLive") },
+    ENDING: { label: t("liveClassDetail.statusEnding"), className: "bg-amber-100 text-amber-700", description: t("liveClassDetail.descEnding") },
+    COMPLETED: { label: ts("completed"), className: "bg-gray-100 text-gray-700", description: t("liveClassDetail.descEnded") },
+    ENDED: { label: t("liveClassDetail.statusEnded"), className: "bg-gray-100 text-gray-700", description: t("liveClassDetail.descEnded") },
+    CANCELLED: { label: ts("cancelled"), className: "bg-red-100 text-red-700", description: t("liveClassDetail.descCancelled") },
+  }
 
   useEffect(() => {
     if (!id) return
@@ -77,7 +81,7 @@ export default function LiveClassDetailPage() {
       const data = await appFetch<LiveClass>(`/v1/teachers/me/live-classes/${id}`)
       setLiveClass(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load live class")
+      setError(err instanceof Error ? err.message : t("liveClassDetail.loadError"))
     } finally {
       setLoading(false)
     }
@@ -96,43 +100,43 @@ export default function LiveClassDetailPage() {
       setActionLoading(true)
       setError(null)
       await appFetch(`/v1/teachers/me/live-classes/${id}/start`, { method: "POST" })
-      setSuccess("Live class started!")
+      setSuccess(t("liveClassDetail.startedSuccess"))
       loadClass()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start live class")
+      setError(err instanceof Error ? err.message : t("liveClassDetail.startError"))
     } finally {
       setActionLoading(false)
     }
   }
 
   async function handleEndLive() {
-    if (!confirm("End this live class? Students will no longer be able to join.")) return
+    if (!confirm(t("liveClassDetail.endConfirm"))) return
     try {
       setActionLoading(true)
       setError(null)
       await appFetch(`/v1/teachers/me/live-classes/${id}/end`, { method: "POST" })
-      setSuccess("Live class ended")
+      setSuccess(t("liveClassDetail.endedSuccess"))
       loadClass()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to end live class")
+      setError(err instanceof Error ? err.message : t("liveClassDetail.endError"))
     } finally {
       setActionLoading(false)
     }
   }
 
   async function handleCancel() {
-    if (!confirm("Are you sure you want to cancel this live class? This cannot be undone.")) return
+    if (!confirm(t("liveClassDetail.cancelConfirm"))) return
     try {
       setActionLoading(true)
       setError(null)
       await appFetch(`/v1/teachers/me/live-classes/${id}`, { method: "DELETE" })
-      setSuccess("Live class cancelled")
+      setSuccess(t("liveClassDetail.cancelledSuccess"))
       loadClass()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to cancel live class")
+      setError(err instanceof Error ? err.message : t("liveClassDetail.cancelError"))
     } finally {
       setActionLoading(false)
     }
@@ -186,7 +190,7 @@ export default function LiveClassDetailPage() {
       <div className="mx-auto max-w-4xl space-y-6 p-6">
         <Link href="/dashboard/teacher/live-classes" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" />
-          Back to Live Classes
+          {t("liveClasses.backToList")}
         </Link>
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center">
           <AlertCircle className="mx-auto mb-3 size-10 text-destructive" />
@@ -207,7 +211,7 @@ export default function LiveClassDetailPage() {
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <Link href="/dashboard/teacher/live-classes" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" />
-        Back to Live Classes
+        {t("liveClasses.backToList")}
       </Link>
 
       {error && (
@@ -251,7 +255,7 @@ export default function LiveClassDetailPage() {
       {/* Details Grid */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Schedule</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("liveClassDetail.scheduleTitle")}</h2>
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="size-4 shrink-0 text-muted-foreground" />
@@ -265,7 +269,7 @@ export default function LiveClassDetailPage() {
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Clock className="size-4 shrink-0 text-muted-foreground" />
-              <span className="text-muted-foreground">{liveClass.durationMinutes} minutes</span>
+              <span className="text-muted-foreground">{t("liveClassDetail.minutesCount", { count: liveClass.durationMinutes })}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Timezone: Africa/Dar_es_Salaam (UTC+03:00)</span>
@@ -274,7 +278,7 @@ export default function LiveClassDetailPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Class Details</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("liveClassDetail.detailsTitle")}</h2>
           <div className="space-y-2">
             {liveClass.subjectName && (
               <div className="flex items-center gap-2 text-sm">
@@ -284,18 +288,18 @@ export default function LiveClassDetailPage() {
             )}
             <div className="flex items-center gap-2 text-sm">
               <Users className="size-4 shrink-0 text-muted-foreground" />
-              <span className="text-foreground">{liveClass.maxParticipants} max participants</span>
+              <span className="text-foreground">{t("liveClassDetail.maxParticipants", { count: liveClass.maxParticipants })}</span>
             </div>
             {liveClass.currentParticipants != null && (
               <div className="flex items-center gap-2 text-sm">
                 <User className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-foreground">{liveClass.currentParticipants} joined</span>
+                <span className="text-foreground">{t("liveClassDetail.joinedCount", { count: liveClass.currentParticipants })}</span>
               </div>
             )}
             <div className="flex items-center gap-2 text-sm">
               <Settings className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-muted-foreground">
-                Recording: {liveClass.recordingEnabled ? (liveClass.recordingUrl ? "Available" : "Enabled") : "Not enabled"}
+                {t("liveClassDetail.recordingLabel", { value: liveClass.recordingEnabled ? (liveClass.recordingUrl ? t("liveClassDetail.recAvailable") : t("liveClassDetail.recEnabled")) : t("liveClassDetail.recDisabled") })}
               </span>
             </div>
           </div>
@@ -304,7 +308,7 @@ export default function LiveClassDetailPage() {
 
       {liveClass.description && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-sm font-semibold text-foreground mb-2">Description</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-2">{t("liveClassDetail.descTitle")}</h2>
           <p className="text-sm text-muted-foreground whitespace-pre-line">{liveClass.description}</p>
         </div>
       )}
@@ -312,13 +316,13 @@ export default function LiveClassDetailPage() {
       {/* Participants */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground">Participants</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("liveClassDetail.participantsTitle")}</h2>
           <Button variant="outline" size="sm" onClick={loadParticipants}>
-            Load Participants
+            {t("liveClassDetail.loadParticipants")}
           </Button>
         </div>
         {participants.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No participants yet. Click &quot;Load Participants&quot; to view.</p>
+          <p className="text-xs text-muted-foreground">{t("liveClassDetail.noParticipants", { action: t("liveClassDetail.loadParticipants") })}</p>
         ) : (
           <div className="space-y-2">
             {participants.map((p) => (
@@ -331,8 +335,8 @@ export default function LiveClassDetailPage() {
                   </div>
                 </div>
                 <div className="text-right text-xs text-muted-foreground">
-                  {p.joinedAt && <p>Joined {formatShortDate(p.joinedAt)}</p>}
-                  {p.durationSeconds && <p>{Math.round(p.durationSeconds / 60)} min</p>}
+                  {p.joinedAt && <p>{t("liveClassDetail.joinedLabel", { date: formatShortDate(p.joinedAt) })}</p>}
+                  {p.durationSeconds && <p>{t("classDetail.minutesCount", { count: Math.round(p.durationSeconds / 60) })}</p>}
                 </div>
               </div>
             ))}
@@ -342,7 +346,7 @@ export default function LiveClassDetailPage() {
 
       {/* Actions */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <h2 className="text-sm font-semibold text-foreground mb-4">Actions</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-4">{t("liveClassDetail.actionsTitle")}</h2>
         <div className="flex flex-wrap gap-2">
           {isScheduled && (
             <>
@@ -352,7 +356,7 @@ export default function LiveClassDetailPage() {
                 disabled={actionLoading}
               >
                 {actionLoading ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-                Start Live
+                {t("liveClassDetail.startLive")}
               </Button>
               <Button
                 variant="outline"
@@ -360,7 +364,7 @@ export default function LiveClassDetailPage() {
                 onClick={() => window.open(`/dashboard/teacher/live-classes/${id}/prepare`, "_blank")}
               >
                 <Settings className="size-4" />
-                Prepare
+                {t("liveClassDetail.prepare")}
               </Button>
               <Button
                 variant="outline"
@@ -368,7 +372,7 @@ export default function LiveClassDetailPage() {
                 onClick={() => router.push(`/dashboard/teacher/live-classes?edit=${id}`)}
               >
                 <Edit className="size-4" />
-                Edit
+                {tc("edit")}
               </Button>
               <Button
                 variant="destructive"
@@ -377,7 +381,7 @@ export default function LiveClassDetailPage() {
                 disabled={actionLoading}
               >
                 <Trash2 className="size-4" />
-                Cancel
+                {tc("cancel")}
               </Button>
             </>
           )}
@@ -388,7 +392,7 @@ export default function LiveClassDetailPage() {
                 onClick={() => window.open(`/live-classes/${id}`, "_blank")}
               >
                 <ExternalLink className="size-4" />
-                Open Classroom
+                {t("liveClassDetail.openClassroom")}
               </Button>
               <Button
                 variant="destructive"
@@ -397,23 +401,23 @@ export default function LiveClassDetailPage() {
                 disabled={actionLoading}
               >
                 {actionLoading ? <Loader2 className="size-4 animate-spin" /> : <Square className="size-4" />}
-                End Class
+                {t("liveClassDetail.endClass")}
               </Button>
             </>
           )}
           {isEnded && (
-            <p className="text-sm text-muted-foreground">This class has {liveClass.status === "CANCELLED" ? "been cancelled" : "ended"}.</p>
+            <p className="text-sm text-muted-foreground">{liveClass.status === "CANCELLED" ? t("liveClassDetail.endedCancelled") : t("liveClassDetail.endedEnded")}</p>
           )}
         </div>
       </div>
 
       {/* Timestamps */}
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <h2 className="text-sm font-semibold text-foreground mb-2">Metadata</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-2">{t("liveClassDetail.metadataTitle")}</h2>
         <div className="space-y-1 text-xs text-muted-foreground">
-          <p>Session ID: {liveClass.id}</p>
-          <p>Created: {formatDate(liveClass.createdAt)}</p>
-          {liveClass.teacherName && <p>Teacher: {liveClass.teacherName}</p>}
+          <p>{t("liveClassDetail.sessionId", { id: liveClass.id })}</p>
+          <p>{t("liveClassDetail.createdLabel", { date: formatDate(liveClass.createdAt) })}</p>
+          {liveClass.teacherName && <p>{t("liveClassDetail.teacherLabel", { name: liveClass.teacherName })}</p>}
         </div>
       </div>
     </div>

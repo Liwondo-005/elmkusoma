@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Users, FileText, BookOpen, BarChart3, ClipboardCheck, School, Clock, TrendingUp, Loader2, AlertCircle } from "lucide-react"
 import { teacherFetch } from "@/lib/teacher-api"
@@ -29,6 +30,8 @@ interface AnalyticsData {
 
 export default function TeacherAnalyticsPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +48,7 @@ export default function TeacherAnalyticsPage() {
       const data = await teacherFetch<AnalyticsData>("/v1/teachers/me/analytics")
       setAnalytics(data)
     } catch {
-      setError("Failed to load analytics data")
+      setError(t("analytics.loadError"))
     } finally {
       setLoading(false)
     }
@@ -83,8 +86,8 @@ export default function TeacherAnalyticsPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics</h1>
-          <p className="mt-1 text-sm text-muted-foreground">View your teaching analytics and insights.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("analytics")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("analytics.subtitle")}</p>
         </div>
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 text-sm text-destructive">
@@ -98,42 +101,48 @@ export default function TeacherAnalyticsPage() {
 
   const stats = [
     {
-      label: "Total Students",
+      key: "students",
+      label: t("analytics.totalStudents"),
       value: analytics?.totalStudents ?? 0,
       icon: Users,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
     },
     {
-      label: "Total Assignments",
+      key: "assignments",
+      label: t("analytics.totalAssignments"),
       value: analytics?.totalAssignments ?? 0,
       icon: FileText,
       color: "text-purple-500",
       bg: "bg-purple-500/10",
     },
     {
-      label: "Total Lessons",
+      key: "lessons",
+      label: t("analytics.totalLessons"),
       value: analytics?.totalLessons ?? 0,
       icon: BookOpen,
       color: "text-teal-500",
       bg: "bg-teal-500/10",
     },
     {
-      label: "Avg Attendance",
+      key: "attendance",
+      label: t("analytics.avgAttendance"),
       value: `${analytics?.avgAttendancePercentage ?? 0}%`,
       icon: BarChart3,
       color: "text-green-500",
       bg: "bg-green-500/10",
     },
     {
-      label: "Pending Grading",
+      key: "grading",
+      label: t("analytics.pendingGrading"),
       value: analytics?.pendingGrading ?? 0,
       icon: ClipboardCheck,
       color: "text-orange-500",
       bg: "bg-orange-500/10",
     },
     {
-      label: "Classes",
+      key: "classes",
+      label: t("analytics.classes"),
       value: analytics?.totalClasses ?? 0,
       icon: School,
       color: "text-indigo-500",
@@ -144,13 +153,13 @@ export default function TeacherAnalyticsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics</h1>
-        <p className="mt-1 text-sm text-muted-foreground">View your teaching analytics and insights.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("analytics")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("analytics.subtitle")}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div key={stat.key} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
             <div className={`mb-3 inline-flex size-9 items-center justify-center rounded-xl ${stat.bg}`}>
               <stat.icon className={`size-5 ${stat.color}`} />
             </div>
@@ -163,12 +172,12 @@ export default function TeacherAnalyticsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Upcoming Deadlines</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("analytics.upcomingDeadlines")}</h2>
             <Clock className="size-4 text-muted-foreground" />
           </div>
           <div className="mt-4 space-y-3">
             {!analytics?.upcomingDeadlines?.length ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No upcoming deadlines</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">{t("analytics.noDeadlines")}</p>
             ) : (
               analytics.upcomingDeadlines.slice(0, 5).map((item) => (
                 <div key={item.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -195,12 +204,12 @@ export default function TeacherAnalyticsPage() {
 
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Recent Submissions</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("analytics.recentSubmissions")}</h2>
             <TrendingUp className="size-4 text-muted-foreground" />
           </div>
           <div className="mt-4 space-y-3">
             {!analytics?.recentSubmissions?.length ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No recent submissions</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">{t("analytics.noSubmissions")}</p>
             ) : (
               analytics.recentSubmissions.slice(0, 5).map((sub) => (
                 <div key={sub.id} className="flex items-center gap-3 rounded-xl border border-border p-3">

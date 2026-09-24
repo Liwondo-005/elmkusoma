@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learningApi, type Assignment, type AssignmentSubmission } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,8 @@ export default function AssignmentDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const level = user?.learningLevel as LearningLevel | null
   const isPrimary = level?.toUpperCase() === "PRIMARY"
 
@@ -89,7 +92,7 @@ export default function AssignmentDetailPage() {
       const mySub = subs.find((s) => s.studentId === user.id)
       if (mySub) setSubmission(mySub)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to submit"
+      const msg = err instanceof Error ? err.message : t("assignmentDetail.submitFailed")
       setSubmitError(msg)
     } finally {
       setSubmitting(false)
@@ -119,11 +122,11 @@ export default function AssignmentDetailPage() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 size-4" /> Back
+          <ArrowLeft className="mr-2 size-4" /> {t("assignmentDetail.back")}
         </Button>
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <BookOpen className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Assignment Not Found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("assignmentDetail.notFound")}</h3>
         </div>
       </div>
     )
@@ -140,7 +143,7 @@ export default function AssignmentDetailPage() {
           href="/dashboard/assignments"
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="size-4" /> Back to Practice
+          <ArrowLeft className="size-4" /> {t("assignmentDetail.backToPractice")}
         </Link>
 
         <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-50 via-card to-orange-50 p-6 shadow-xs">
@@ -154,13 +157,13 @@ export default function AssignmentDetailPage() {
                 {assignment.dueDate && (
                   <span className="flex items-center gap-1">
                     <Clock className="size-3.5" />
-                    Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                    {t("assignments.dueDate", { date: new Date(assignment.dueDate).toLocaleDateString() })}
                   </span>
                 )}
-                <span>{assignment.totalMarks} marks</span>
+                <span>{t("assignments.marksCount", { count: assignment.totalMarks })}</span>
                 {overdue && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
-                    <AlertTriangle className="size-3" /> Overdue
+                    <AlertTriangle className="size-3" /> {ts("overdue")}
                   </span>
                 )}
               </div>
@@ -170,18 +173,18 @@ export default function AssignmentDetailPage() {
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <FileText className="size-5 text-primary" /> What to do
+            <FileText className="size-5 text-primary" /> {t("assignmentDetail.whatToDo")}
           </h2>
           {assignment.description ? (
             <p className="mt-3 text-lg leading-relaxed text-muted-foreground whitespace-pre-wrap">{assignment.description}</p>
           ) : (
-            <p className="mt-3 text-lg text-muted-foreground">Read the instructions from your teacher and complete the work.</p>
+            <p className="mt-3 text-lg text-muted-foreground">{t("assignmentDetail.noInstructions")}</p>
           )}
         </div>
 
         {attachments.length > 0 && (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <h2 className="text-lg font-semibold text-foreground">Files from your teacher</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("assignmentDetail.teacherFiles")}</h2>
             <div className="mt-3 space-y-2">
               {attachments.map((att, i) => (
                 <a
@@ -206,15 +209,15 @@ export default function AssignmentDetailPage() {
                 <CheckCircle className="size-6 text-emerald-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-emerald-800">Your work has been graded!</h2>
+                <h2 className="text-lg font-bold text-emerald-800">{t("assignmentDetail.gradedTitle")}</h2>
                 <p className="text-sm text-emerald-700">
-                  You got <span className="font-bold text-xl">{submission.grade}</span> out of {assignment.totalMarks}
+                  {t("assignmentDetail.scoreLine", { grade: submission.grade, total: assignment.totalMarks })}
                 </p>
               </div>
             </div>
             {submission.feedback && (
               <div className="mt-4 rounded-xl bg-white/60 p-4">
-                <p className="text-sm font-semibold text-emerald-800">Teacher says:</p>
+                <p className="text-sm font-semibold text-emerald-800">{t("assignmentDetail.teacherSays")}</p>
                 <p className="mt-1 text-base text-emerald-900">{submission.feedback}</p>
               </div>
             )}
@@ -226,24 +229,24 @@ export default function AssignmentDetailPage() {
                 <CheckCircle className="size-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-blue-800">Work Submitted!</h2>
-                <p className="text-sm text-blue-700">Your teacher will check it soon. Great job!</p>
+                <h2 className="text-lg font-bold text-blue-800">{t("assignmentDetail.submittedTitle")}
+                <p className="text-sm text-blue-700">{t("assignmentDetail.submittedDesc")}</p>
               </div>
             </div>
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-5">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Star className="size-5 text-amber-500" /> Send your work
+              <Star className="size-5 text-amber-500" /> {t("assignmentDetail.sendWork")}
             </h2>
 
             <div>
               <label className="block text-base font-medium text-foreground mb-2">
-                Write your answer here
+                {t("assignmentDetail.answerLabel")}
               </label>
               <textarea
                 rows={6}
-                placeholder="Type your answer here... You can write as much as you need."
+                placeholder={t("assignmentDetail.answerPlaceholder")}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className="w-full rounded-xl border border-border bg-muted/60 px-4 py-3 text-lg text-foreground outline-none focus:border-ring focus:bg-background resize-none transition-colors"
@@ -252,7 +255,7 @@ export default function AssignmentDetailPage() {
 
             <div>
               <label className="block text-base font-medium text-foreground mb-2">
-                Upload a photo of your work
+                {t("assignmentDetail.uploadLabel")}
               </label>
               <div
                 onDragOver={(e) => e.preventDefault()}
@@ -263,12 +266,12 @@ export default function AssignmentDetailPage() {
                 {filePreview ? (
                   <div className="space-y-3">
                     {selectedFile?.type.startsWith("image/") ? (
-                      <img src={filePreview} alt="Preview" className="mx-auto max-h-40 rounded-xl object-contain" />
+                      <img src={filePreview} alt={t("assignmentDetail.previewAlt")} className="mx-auto max-h-40 rounded-xl object-contain" />
                     ) : (
                       <FileText className="mx-auto size-10 text-primary" />
                     )}
                     <p className="text-sm font-medium text-foreground">{selectedFile?.name}</p>
-                    <p className="text-xs text-muted-foreground">Click to change file</p>
+                    <p className="text-xs text-muted-foreground">{t("assignmentDetail.changeFile")}</p>
                   </div>
                 ) : (
                   <>
@@ -276,8 +279,8 @@ export default function AssignmentDetailPage() {
                       <Upload className="size-7 text-primary" />
                     </div>
                     <div>
-                      <p className="text-base font-medium text-foreground">Tap to upload a photo or file</p>
-                      <p className="mt-1 text-sm text-muted-foreground">Images and PDFs work best</p>
+                      <p className="text-base font-medium text-foreground">{t("assignmentDetail.tapUpload")}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{t("assignmentDetail.uploadHint")}</p>
                     </div>
                   </>
                 )}
@@ -307,7 +310,7 @@ export default function AssignmentDetailPage() {
               ) : (
                 <Send className="size-5" />
               )}
-              Submit My Work
+              {t("assignmentDetail.submitWork")}
             </button>
           </div>
         )}
@@ -318,7 +321,7 @@ export default function AssignmentDetailPage() {
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.back()} className="w-fit">
-        <ArrowLeft className="mr-2 size-4" /> Back to Assignments
+        <ArrowLeft className="mr-2 size-4" /> {t("assignmentDetail.backToAssignments")}
       </Button>
 
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -329,28 +332,28 @@ export default function AssignmentDetailPage() {
               {assignment.dueDate && (
                 <span className={`flex items-center gap-1 ${overdue ? "text-destructive" : ""}`}>
                   <Clock className="size-3.5" />
-                  Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                  {t("assignments.dueDate", { date: new Date(assignment.dueDate).toLocaleDateString() })}
                 </span>
               )}
-              <span>Total: {assignment.totalMarks} marks</span>
+              <span>{t("assignments.totalMarks", { count: assignment.totalMarks })}</span>
             </div>
           </div>
           <div>
             {status === "graded" ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                <CheckCircle className="size-3" /> Graded
+                <CheckCircle className="size-3" /> {t("assignmentDetail.graded")}
               </span>
             ) : status === "submitted" ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                <CheckCircle className="size-3" /> Submitted
+                <CheckCircle className="size-3" /> {t("assignmentDetail.submittedState")}
               </span>
             ) : overdue ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
-                <Clock className="size-3" /> Overdue
+                <Clock className="size-3" /> {ts("overdue")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                Not Started
+                {ts("notStarted")}
               </span>
             )}
           </div>
@@ -364,7 +367,7 @@ export default function AssignmentDetailPage() {
 
         {attachments.length > 0 && (
           <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-semibold text-foreground">Attachments</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("assignmentDetail.attachments")}
             <div className="mt-2 space-y-1">
               {attachments.map((att, i) => (
                 <a
@@ -385,15 +388,15 @@ export default function AssignmentDetailPage() {
 
       {status === "graded" && submission ? (
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
-          <h2 className="text-lg font-semibold text-foreground">Results</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("assignmentDetail.resultsTitle")}
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-2">
-              <span className="text-muted-foreground">Score</span>
+              <span className="text-muted-foreground">{t("assignmentDetail.scoreLabel")}</span>
               <span className="font-bold text-foreground">{submission.grade} / {assignment.totalMarks}</span>
             </div>
             {submission.feedback && (
               <div className="rounded-xl bg-muted/30 p-4">
-                <p className="text-xs font-semibold text-muted-foreground">Feedback</p>
+                <p className="text-xs font-semibold text-muted-foreground">{t("assignmentDetail.feedbackLabel")}</p>
                 <p className="mt-1 text-sm text-foreground">{submission.feedback}</p>
               </div>
             )}
@@ -402,18 +405,18 @@ export default function AssignmentDetailPage() {
       ) : status === "submitted" ? (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 text-center">
           <CheckCircle className="mx-auto size-10 text-blue-600" />
-          <h3 className="mt-3 text-lg font-semibold text-foreground">Submitted</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Your submission is pending review.</p>
+          <h3 className="mt-3 text-lg font-semibold text-foreground">{t("assignmentDetail.submittedStateTitle")}
+          <p className="mt-1 text-sm text-muted-foreground">{t("assignmentDetail.pendingReview")}
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Submit Your Work</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("assignmentDetail.submitTitle")}
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Written Answer</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">{t("assignmentDetail.writtenAnswer")}</label>
             <textarea
               rows={5}
-              placeholder="Type your answer here..."
+              placeholder={t("assignmentDetail.answerPlaceholderShort")}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="w-full rounded-xl border border-border bg-muted/60 px-4 py-3 text-sm text-foreground outline-none focus:border-ring focus:bg-background resize-none"
@@ -421,7 +424,7 @@ export default function AssignmentDetailPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Upload File (optional)</label>
+            <label className="block text-sm font-medium text-foreground mb-1.5">{t("assignmentDetail.uploadOptional")}</label>
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
@@ -431,7 +434,7 @@ export default function AssignmentDetailPage() {
               {filePreview ? (
                 <div className="space-y-2">
                   {selectedFile?.type.startsWith("image/") ? (
-                    <img src={filePreview} alt="Preview" className="mx-auto max-h-32 rounded-lg object-contain" />
+                    <img src={filePreview} alt={t("assignmentDetail.previewAlt")} className="mx-auto max-h-32 rounded-lg object-contain" />
                   ) : (
                     <FileText className="mx-auto size-8 text-primary" />
                   )}
@@ -440,7 +443,7 @@ export default function AssignmentDetailPage() {
               ) : (
                 <>
                   <Upload className="size-8 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">Drag and drop or click to upload</p>
+                  <p className="text-xs text-muted-foreground">{t("assignmentDetail.dragDrop")}
                 </>
               )}
               <input
@@ -467,7 +470,7 @@ export default function AssignmentDetailPage() {
             ) : (
               <Send className="size-4" />
             )}
-            Submit
+            {t("assignments.submit")}
           </Button>
         </div>
       )}

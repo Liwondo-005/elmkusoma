@@ -1,3 +1,6 @@
+"use client"
+
+import { useTranslations } from "next-intl"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { CollegeCard } from "@/components/courses/college-card"
@@ -5,12 +8,8 @@ import { colleges } from "@/lib/data"
 import Link from "next/link"
 
 
-export const metadata = {
-  title: "Colleges & Universities — ELMKUSOMA",
-  description: "Explore degree, diploma, and certificate programmes from partner colleges and universities in Tanzania.",
-}
-
 export default function CollegesPage() {
+  const t = useTranslations("public")
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
@@ -21,16 +20,16 @@ export default function CollegesPage() {
               href="/courses"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              All Levels
+              {t("coursesHome.allLevels")}
             </Link>
             <span className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">
-              Higher Education
+              {t("colleges.badge")}
             </span>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Colleges & Universities
+              {t("colleges.title")}
             </h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">
-              Browse degree, diploma, and certificate programmes from partner institutions.
+              {t("colleges.subtitle")}
             </p>
           </div>
         </section>

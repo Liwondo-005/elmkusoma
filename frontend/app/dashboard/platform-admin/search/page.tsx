@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { Search, Loader2, AlertCircle, RefreshCw, Users, Building2, Filter } from "lucide-react"
 import { platformAdminApi, type GlobalSearchResult } from "@/lib/platform-admin-api"
@@ -9,6 +11,8 @@ function Skeleton() {
 }
 
 export default function PlatformGlobalSearchPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [q, setQ] = useState("")
   const [type, setType] = useState<string>("")
   const [results, setResults] = useState<GlobalSearchResult[]>([])
@@ -16,14 +20,14 @@ export default function PlatformGlobalSearchPage() {
   const [error, setError] = useState<string | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
 
-  const doSearch = useCallback(async (query: string, t: string) => {
+  const doSearch = useCallback(async (query: string, searchType: string) => {
     if (!query.trim()) { setResults([]); setHasSearched(false); return }
     setLoading(true); setError(null); setHasSearched(true)
     try {
-      const res = await platformAdminApi.search(query.trim(), t || undefined)
+      const res = await platformAdminApi.search(query.trim(), searchType || undefined)
       setResults(Array.isArray(res) ? res : [])
     } catch (e: any) {
-      setError(e.message || "Search failed")
+      setError(e.message || t("search.searchFailed"))
       setResults([])
     } finally { setLoading(false) }
   }, [])
@@ -45,21 +49,21 @@ export default function PlatformGlobalSearchPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-blue-600 text-white"><Search className="size-4" /></span> Global Search</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Permission-aware search via <code className="rounded bg-muted px-1">platformAdminApi.search(q)</code> — results grouped by type USER / INSTITUTION. Scoped to caller’s platform-admin privileges.</p>
+        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-blue-600 text-white"><Search className="size-4" /></span> {t("search.globalSearch")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("search.permissionAwareSearchVia")}<code className="rounded bg-muted px-1">platformAdminApi.search(q)</code> {t("search.resultsGroupedByType")}</p>
         <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search users, institutions..." className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search.searchUsersInstitutions")} className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" />
           </div>
           <div className="flex items-center gap-2">
             <Filter className="size-4 text-muted-foreground" />
             <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring">
-              <option value="">All types</option>
+              <option value="">{t("search.allTypes")}</option>
               <option value="USER">USER</option>
               <option value="INSTITUTION">INSTITUTION</option>
             </select>
-            <button type="submit" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">Search</button>
+            <button type="submit" className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">{tc("search")}</button>
           </div>
         </form>
       </div>
@@ -67,7 +71,7 @@ export default function PlatformGlobalSearchPage() {
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
           <span className="flex items-center gap-2"><AlertCircle className="size-4" />{error}</span>
-          <button onClick={() => doSearch(q, type)} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Retry</button>
+          <button onClick={() => doSearch(q, type)} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">{t("search.retry")}</button>
         </div>
       )}
 
@@ -75,14 +79,14 @@ export default function PlatformGlobalSearchPage() {
         {loading ? <Skeleton /> : !hasSearched ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
             <Search className="size-10 text-muted-foreground/50" />
-            <p className="mt-3 text-sm font-semibold text-foreground">Search the platform</p>
-            <p className="mt-1 text-xs text-muted-foreground">Enter at least 2 characters to search. Results are permission-aware.</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("search.searchThePlatform")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("search.enterAtLeastCharacters")}</p>
           </div>
         ) : results.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
             <Search className="size-10 text-muted-foreground/50" />
-            <p className="mt-3 text-sm font-semibold text-foreground">No results for “{q}”</p>
-            <p className="mt-1 text-xs text-muted-foreground">Try a different query or change type filter. Verified search — no synthetic results.</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("search.noResultsFor", { p0: q })}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("search.tryADifferentQuery")}</p>
           </div>
         ) : (
           <div className="space-y-6">

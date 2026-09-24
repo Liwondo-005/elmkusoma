@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type LiveClass } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { Video, Calendar, Clock, Users, ExternalLink, Search, AlertCircle, Bookmark, BookmarkCheck, MessageSquare, Play } from "lucide-react"
 
 export default function LearnerLiveClassesPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +42,7 @@ export default function LearnerLiveClassesPage() {
         // Ignore bookmark check failure
       }
     } catch {
-      setError("Failed to load live classes")
+      setError(t("lclasses.loadError"))
     } finally {
       setLoading(false)
     }
@@ -81,10 +84,10 @@ export default function LearnerLiveClassesPage() {
 
   function getStatusLabel(status: string) {
     const labels: Record<string, string> = {
-      SCHEDULED: "Upcoming",
-      IN_PROGRESS: "Live Now",
-      COMPLETED: "Completed",
-      CANCELLED: "Cancelled",
+      SCHEDULED: t("lclasses.upcomingBadge"),
+      IN_PROGRESS: t("lclasses.liveBadge"),
+      COMPLETED: t("lclasses.doneBadge"),
+      CANCELLED: t("lclasses.cancelledBadge"),
     }
     return labels[status] || status
   }
@@ -105,8 +108,8 @@ export default function LearnerLiveClassesPage() {
     return (
       <EmptyState
         icon={<AlertCircle className="size-8" />}
-        title="Learners only"
-        description="Sign in with a learner account to view live classes."
+        title={t("lclasses.gateTitle")}
+        description={t("lclasses.gateDesc")}
       />
     )
   }
@@ -114,8 +117,8 @@ export default function LearnerLiveClassesPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Live Classes</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Join live sessions with teachers.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("lclasses.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("lclasses.subtitle")}
       </div>
 
       {error && (
@@ -131,7 +134,7 @@ export default function LearnerLiveClassesPage() {
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Search live classes..."
+          placeholder={t("lclasses.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-ring"
@@ -143,8 +146,8 @@ export default function LearnerLiveClassesPage() {
       ) : filteredClasses.length === 0 ? (
         <EmptyState
           icon={<Video className="size-8" />}
-          title="No live classes found"
-          description={search ? "Try adjusting your search." : "No live classes scheduled yet."}
+          title={t("lclasses.emptyTitle")}
+          description={search ? t("lclasses.emptySearch") : t("lclasses.emptyDefault")}
         />
       ) : (
         <div className="space-y-8">
@@ -152,7 +155,7 @@ export default function LearnerLiveClassesPage() {
             <section>
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                 <span className="size-2 rounded-full bg-green-500 animate-pulse" />
-                Live Now
+                {t("lclasses.liveNow")}
               </h2>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {liveNowClasses.map((cls) => (
@@ -167,12 +170,12 @@ export default function LearnerLiveClassesPage() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
-                          LIVE
+                          {t("lclasses.liveBadgeShort")}
                         </span>
                         <button
                           onClick={() => toggleBookmark(cls.id)}
                           className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          title={bookmarkedIds.has(cls.id) ? "Remove bookmark" : "Bookmark"}
+                          title={bookmarkedIds.has(cls.id) ? t("lclasses.removeBm") : t("lclasses.addBm")}
                         >
                           {bookmarkedIds.has(cls.id) ? (
                             <BookmarkCheck className="size-4 text-primary" />
@@ -192,7 +195,7 @@ export default function LearnerLiveClassesPage() {
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="size-3" />
-                        {cls.durationMinutes} minutes
+                        {t("lclasses.minutesCount", { count: cls.durationMinutes })}
                       </div>
                     </div>
                     {(cls.status === "IN_PROGRESS" || cls.status === "LIVE") && (
@@ -201,7 +204,7 @@ export default function LearnerLiveClassesPage() {
                         className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
                       >
                         <Video className="size-4" />
-                        Join Live Class
+                        {t("lclasses.joinLive")}
                       </a>
                     )}
                     <a
@@ -209,7 +212,7 @@ export default function LearnerLiveClassesPage() {
                       className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                     >
                       <MessageSquare className="size-4" />
-                      Join Chat
+                      {t("lclasses.joinChat")}
                     </a>
                   </div>
                 ))}
@@ -219,7 +222,7 @@ export default function LearnerLiveClassesPage() {
 
           {upcomingClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground">Upcoming Classes</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t("lclasses.upcomingTitle")}
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {upcomingClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -238,7 +241,7 @@ export default function LearnerLiveClassesPage() {
                         <button
                           onClick={() => toggleBookmark(cls.id)}
                           className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          title={bookmarkedIds.has(cls.id) ? "Remove bookmark" : "Bookmark"}
+                          title={bookmarkedIds.has(cls.id) ? t("lclasses.removeBm") : t("lclasses.addBm")}
                         >
                           {bookmarkedIds.has(cls.id) ? (
                             <BookmarkCheck className="size-4 text-primary" />
@@ -258,12 +261,12 @@ export default function LearnerLiveClassesPage() {
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="size-3" />
-                        {cls.durationMinutes} minutes
+                        {t("lclasses.minutesCount", { count: cls.durationMinutes })}
                       </div>
                       {cls.maxParticipants && (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Users className="size-3" />
-                          Max {cls.maxParticipants} participants
+                          {t("lclasses.maxLine", { count: cls.maxParticipants })}
                         </div>
                       )}
                     </div>
@@ -272,7 +275,7 @@ export default function LearnerLiveClassesPage() {
                       className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                     >
                       <MessageSquare className="size-4" />
-                      View Classroom
+                      {t("lclasses.viewClassroom")}
                     </a>
                   </div>
                 ))}
@@ -282,7 +285,7 @@ export default function LearnerLiveClassesPage() {
 
           {pastClasses.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-foreground text-muted-foreground">Past Classes</h2>
+              <h2 className="text-lg font-semibold text-foreground text-muted-foreground">{t("lclasses.pastTitle")}
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {pastClasses.map((cls) => (
                   <div key={cls.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs opacity-80">
@@ -295,7 +298,7 @@ export default function LearnerLiveClassesPage() {
                         <button
                           onClick={() => toggleBookmark(cls.id)}
                           className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          title={bookmarkedIds.has(cls.id) ? "Remove bookmark" : "Bookmark"}
+                          title={bookmarkedIds.has(cls.id) ? t("lclasses.removeBm") : t("lclasses.addBm")}
                         >
                           {bookmarkedIds.has(cls.id) ? (
                             <BookmarkCheck className="size-4 text-primary" />
@@ -312,7 +315,7 @@ export default function LearnerLiveClassesPage() {
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="size-3" />
-                        {cls.durationMinutes} minutes
+                        {t("lclasses.minutesCount", { count: cls.durationMinutes })}
                       </div>
                     </div>
                     <div className="mt-3 flex gap-2">
@@ -324,7 +327,7 @@ export default function LearnerLiveClassesPage() {
                           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                         >
                           <Play className="size-3" />
-                          Watch Recording
+                          {t("lclasses.watchRecording")}
                         </a>
                       ) : (
                         <a
@@ -332,7 +335,7 @@ export default function LearnerLiveClassesPage() {
                           className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                         >
                           <MessageSquare className="size-3" />
-                          View Details
+                          {t("lclasses.viewDetails")}
                         </a>
                       )}
                     </div>

@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { ScrollText, Loader2, User } from "lucide-react"
 import { platformAdminApi, type AuditLogEntry } from "@/lib/platform-admin-api"
@@ -7,6 +9,8 @@ import { platformAdminApi, type AuditLogEntry } from "@/lib/platform-admin-api"
 const PAGE_SIZE = 20
 
 export default function AuditLogsPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -19,7 +23,7 @@ export default function AuditLogsPage() {
       const data = await platformAdminApi.getAuditLogs(page, PAGE_SIZE)
       setLogs(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load audit logs")
+      setError(err instanceof Error ? err.message : t("audit.failedToLoadAudit"))
     } finally {
       setLoading(false)
     }
@@ -49,8 +53,8 @@ export default function AuditLogsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Audit Logs</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Track all actions performed across the platform.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("audit.auditLogs")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("audit.trackAllActionsPerformed")}</p>
       </div>
 
       {error && (
@@ -64,8 +68,8 @@ export default function AuditLogsPage() {
       ) : logs.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <ScrollText className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No audit logs</p>
-          <p className="mt-1 text-sm text-muted-foreground">No actions have been recorded yet.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("audit.noAuditLogs")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("audit.noActionsHaveBeen")}</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
@@ -73,10 +77,10 @@ export default function AuditLogsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Actor</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Action</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Entity</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Timestamp</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("audit.actor")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("audit.action")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("audit.entity")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("audit.timestamp")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -116,16 +120,14 @@ export default function AuditLogsPage() {
             disabled={page === 0}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Prev
-          </button>
-          <span className="text-sm text-muted-foreground">Page {page + 1}</span>
+            {t("audit.prev")}</button>
+          <span className="text-sm text-muted-foreground">{t("audit.page", { p0: page + 1 })}</span>
           <button
             onClick={() => setPage((p) => p + 1)}
             disabled={logs.length < PAGE_SIZE}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Next
-          </button>
+            {tc("next")}</button>
         </div>
       )}
     </div>

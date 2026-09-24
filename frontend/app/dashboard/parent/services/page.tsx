@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { School, Bus, BookOpen, Users, Calendar, MessageSquare, ChevronRight, Loader2, Shield } from "lucide-react"
 import Link from "next/link"
 import { parentApi, type EntitlementItem } from "@/lib/parent-api"
 
 interface ServiceItem {
+  key: string
   icon: typeof School
   label: string
   description: string
@@ -13,18 +15,21 @@ interface ServiceItem {
   available: boolean
 }
 
-const BASE_SERVICES: ServiceItem[] = [
-  { icon: Bus, label: "Transport", description: "Transport routes and schedules", href: "#", available: false },
-  { icon: BookOpen, label: "Library", description: "Borrowed resources and digital library", href: "/dashboard/parent/library", available: true },
-  { icon: Users, label: "Clubs & Activities", description: "Extracurricular activities and participation", href: "#", available: false },
-  { icon: Calendar, label: "School Events", description: "Upcoming events and meetings", href: "/dashboard/parent/calendar", available: true },
-  { icon: MessageSquare, label: "Announcements", description: "School announcements and notices", href: "/dashboard/parent/notifications", available: true },
-  { icon: School, label: "Parent Meetings", description: "Parent-teacher meeting schedule", href: "/dashboard/parent/calendar", available: true },
-]
-
 export default function ParentServicesPage() {
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
   const [entitlements, setEntitlements] = useState<EntitlementItem[]>([])
   const [loading, setLoading] = useState(true)
+
+  const BASE_SERVICES: ServiceItem[] = [
+    { key: "transport", icon: Bus, label: t("services.transport"), description: t("services.transportDesc"), href: "#", available: false },
+    { key: "library", icon: BookOpen, label: tn("library"), description: t("services.libraryDesc"), href: "/dashboard/parent/library", available: true },
+    { key: "clubs", icon: Users, label: t("services.clubs"), description: t("services.clubsDesc"), href: "#", available: false },
+    { key: "events", icon: Calendar, label: t("services.schoolEvents"), description: t("services.schoolEventsDesc"), href: "/dashboard/parent/calendar", available: true },
+    { key: "announcements", icon: MessageSquare, label: tn("announcements"), description: t("services.announcementsDesc"), href: "/dashboard/parent/notifications", available: true },
+    { key: "meetings", icon: School, label: t("services.parentMeetings"), description: t("services.parentMeetingsDesc"), href: "/dashboard/parent/calendar", available: true },
+  ]
 
   useEffect(() => {
     parentApi.getChildren().then(async (kids) => {
@@ -35,8 +40,8 @@ export default function ParentServicesPage() {
   }, [])
 
   const services: ServiceItem[] = BASE_SERVICES.map(s => {
-    if (s.label === "Transport" && entitlements.some(e => e.serviceType === "TRANSPORT")) return { ...s, available: true }
-    if (s.label === "Clubs & Activities" && entitlements.some(e => e.serviceType === "CLUB")) return { ...s, available: true }
+    if (s.key === "transport" && entitlements.some(e => e.serviceType === "TRANSPORT")) return { ...s, available: true }
+    if (s.key === "clubs" && entitlements.some(e => e.serviceType === "CLUB")) return { ...s, available: true }
     return s
   })
 
@@ -51,13 +56,13 @@ export default function ParentServicesPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">School Services</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Access available school services</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("services.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("services.subtitle")}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {services.map((service) => (
-          <div key={service.label} className={`rounded-2xl border border-border bg-card p-5 shadow-xs ${!service.available ? "opacity-60" : ""}`}>
+          <div key={service.key} className={`rounded-2xl border border-border bg-card p-5 shadow-xs ${!service.available ? "opacity-60" : ""}`}>
             <div className="flex items-start gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                 <service.icon className="size-5 text-primary" />
@@ -67,10 +72,10 @@ export default function ParentServicesPage() {
                 <p className="mt-1 text-xs text-muted-foreground">{service.description}</p>
                 {service.available ? (
                   <Link href={service.href} className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                    Access <ChevronRight className="size-3" />
+                    {t("services.access")} <ChevronRight className="size-3" />
                   </Link>
                 ) : (
-                  <p className="mt-3 text-xs text-muted-foreground italic">Not available at your institution</p>
+                  <p className="mt-3 text-xs text-muted-foreground italic">{t("services.notAvailable")}</p>
                 )}
               </div>
             </div>
@@ -80,7 +85,7 @@ export default function ParentServicesPage() {
 
       {entitlements.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Your Entitlements</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("services.entitlementsTitle")}</h2>
           <div className="mt-3 space-y-2">
             {entitlements.map((ent) => (
               <div key={ent.id} className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
@@ -88,8 +93,8 @@ export default function ParentServicesPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground">{ent.serviceType}</p>
                   <p className="text-xs text-muted-foreground">
-                    {ent.status === "ACTIVE" ? "Active" : ent.status}
-                    {ent.expiresAt && ` · Expires ${new Date(ent.expiresAt).toLocaleDateString("en-GB")}`}
+                    {ent.status === "ACTIVE" ? ts("active") : ent.status}
+                    {ent.expiresAt && ` · ${t("services.expiresLabel", { date: new Date(ent.expiresAt).toLocaleDateString("en-GB") })}`}
                   </p>
                 </div>
               </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type Enrollment, type Bookmark } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { History, BookOpen, Bookmark as BookmarkIcon, Clock, ArrowRight, AlertCircle, Search } from "lucide-react"
@@ -20,6 +21,8 @@ interface HistoryItem {
 
 export default function LearnerHistoryPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [items, setItems] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -43,8 +46,8 @@ export default function LearnerHistoryPage() {
       const enrollmentItems: HistoryItem[] = enrollments.map((e: Enrollment) => ({
         id: e.id,
         type: "enrollment" as const,
-        title: e.courseTitle || "Untitled Course",
-        subtitle: e.completedAt ? "Completed" : e.progressPercentage > 0 ? "In progress" : "Enrolled",
+        title: e.courseTitle || t("history.untitledCourse"),
+        subtitle: e.completedAt ? t("history.completed") : e.progressPercentage > 0 ? t("history.inProgress") : t("history.enrolled"),
         date: e.enrolledAt,
         link: `/dashboard/learner/courses/${e.courseId}`,
         status: e.completedAt ? "completed" : "in-progress",
@@ -54,7 +57,7 @@ export default function LearnerHistoryPage() {
       const bookmarkItems: HistoryItem[] = bookmarks.map((b: Bookmark) => ({
         id: b.id,
         type: "bookmark" as const,
-        title: b.targetTitle || "Saved Item",
+        title: b.targetTitle || t("history.savedFallback"),
         subtitle: b.targetType || "Item",
         date: b.createdAt,
         link: b.targetType?.toLowerCase() === "course"
@@ -68,7 +71,7 @@ export default function LearnerHistoryPage() {
       )
       setItems(allItems)
     } catch {
-      setError("Failed to load history")
+      setError(t("history.loadError"))
     } finally {
       setLoading(false)
     }
@@ -93,15 +96,15 @@ export default function LearnerHistoryPage() {
 
   function getStatusBadge(item: HistoryItem) {
     if (item.status === "completed") {
-      return <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">Completed</span>
+      return <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">{t("history.completed")}</span>
     }
     if (item.status === "in-progress") {
-      return <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-500">In Progress</span>
+      return <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-500">{t("history.inProgress")}</span>
     }
     if (item.status === "saved") {
-      return <span className="rounded-full bg-orange/10 px-2 py-0.5 text-[10px] font-semibold text-orange">Saved</span>
+      return <span className="rounded-full bg-orange/10 px-2 py-0.5 text-[10px] font-semibold text-orange">{t("history.savedBadge")}</span>
     }
-    return <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">Enrolled</span>
+    return <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{t("history.enrolled")}</span>
   }
 
   if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
@@ -111,8 +114,8 @@ export default function LearnerHistoryPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Learning History</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your learning activity and saved items.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("history.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("history.subtitle")}
       </div>
 
       {error && (
@@ -129,7 +132,7 @@ export default function LearnerHistoryPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search history..."
+            placeholder={t("history.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-ring"
@@ -142,7 +145,7 @@ export default function LearnerHistoryPage() {
               filter === "all" ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground hover:bg-muted"
             }`}
           >
-            All
+            {t("history.filterAll")}
           </button>
           <button
             onClick={() => setFilter("courses")}
@@ -150,7 +153,7 @@ export default function LearnerHistoryPage() {
               filter === "courses" ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground hover:bg-muted"
             }`}
           >
-            Courses
+            {t("history.filterCourses")}
           </button>
           <button
             onClick={() => setFilter("saved")}
@@ -158,7 +161,7 @@ export default function LearnerHistoryPage() {
               filter === "saved" ? "bg-primary text-primary-foreground" : "border border-border bg-background text-muted-foreground hover:bg-muted"
             }`}
           >
-            Saved
+            {t("history.filterSaved")}
           </button>
         </div>
       </div>
@@ -168,15 +171,15 @@ export default function LearnerHistoryPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<History className="size-8" />}
-          title={search || filter !== "all" ? "No matching history" : "No history yet"}
-          description={search || filter !== "all" ? "Try adjusting your search or filters." : "Your learning activity will appear here."}
+          title={search || filter !== "all" ? t("history.emptySearch") : t("history.emptyTitle")}
+          description={search || filter !== "all" ? t("history.emptySearchDesc") : t("history.emptyDesc")}
           action={
             !search && filter === "all" ? (
               <Link
                 href="/dashboard/learner/courses"
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Explore Courses <ArrowRight className="size-4" />
+                {t("exploreCourses")} <ArrowRight className="size-4" />
               </Link>
             ) : undefined
           }
