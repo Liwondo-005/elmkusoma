@@ -81,7 +81,7 @@ livekit:
   server:
     url: ${LIVEKIT_URL:ws://localhost:7880}
     api-key: ${LIVEKIT_API_KEY:devkey}
-    api-secret: ${LIVEKIT_API_SECRET:devsecret}
+    api-secret: ${LIVEKIT_API_SECRET:devsecret-devsecret-devsecret-dev01!}
   room:
     empty-timeout: 300
     max-participants: 10000

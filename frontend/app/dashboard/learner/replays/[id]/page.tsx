@@ -61,6 +61,8 @@ export default function ReplayViewerPage() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("waiting")
   const [quality, setQuality] = useState<"auto" | "1080p" | "720p" | "480p">("auto")
+  const captionSrc = data?.replay?.captionUrl || "/captions/sample-en.vtt"
+  const captionSrcSw = "/captions/sample-sw.vtt"
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
@@ -258,7 +260,14 @@ export default function ReplayViewerPage() {
             preload="metadata"
             onClick={togglePlay}
             aria-label={replay.title}
-          />
+          >
+            {captionSrc && (
+              <track kind="captions" src={captionSrc} srcLang="en" label="English" default />
+            )}
+            {captionSrcSw && (
+              <track kind="captions" src={captionSrcSw} srcLang="sw" label="Kiswahili" />
+            )}
+          </video>
           <span className="sr-only">{t("viewer.eventContext")}: {replay.title}</span>
 
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-10">

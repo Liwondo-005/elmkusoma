@@ -35,6 +35,9 @@ public class Replay extends BaseEntity {
     @Column(name = "recording_url")
     private String recordingUrl;
 
+    @Column(name = "caption_url")
+    private String captionUrl;
+
     @Column(name = "duration_seconds")
     private Integer durationSeconds;
 

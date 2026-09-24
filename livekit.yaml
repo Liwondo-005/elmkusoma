@@ -5,11 +5,8 @@ rtc:
   port_range_end: 60000
   use_external_ip: false
 
-redis:
-  address: redis:6379
-
 keys:
-  devkey: devsecret
+  devkey: devsecret-devsecret-devsecret-dev01!
 
 logging:
   level: info

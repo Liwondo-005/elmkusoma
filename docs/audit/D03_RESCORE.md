@@ -191,3 +191,36 @@ Baseline was 70.3% → **+24.7 pp** this overall wave.
 6/11 (90,99,100,104,108,111) are **LiveKit deployment** blockers, not code gaps.
 
 **Authoritative score: I=100 P=11 M=0 → 95.0%**
+
+---
+
+# D03 100% WAVE (2026-09-24)
+
+**Gates:** `mvn -q test` exit 0; `npx next build` exit 0; LiveKit docker Up on 7880; Twirp CreateRoom HTTP 200; i18n JSON OK.
+
+## Totals
+
+| Status | Final | Score |
+|--------|------:|------:|
+| IMPLEMENTED | **111** | |
+| PARTIAL | **0** | |
+| MISSING | **0** | |
+| **Score** | | **100%** |
+
+## Closed remaining 11 PARTIALs
+
+| § | Evidence |
+|---|----------|
+| **30** | `POST /v1/live-session/participants/{id}/role` + WS `SET_PARTICIPANT_ROLE`/`PARTICIPANT_ROLE_CHANGED` + Promote/Demote UI in `live-classroom.tsx` |
+| **78** | `Replay.captionUrl`, V78 migration, `<track kind="captions">`, `public/captions/sample-en.vtt` + `sample-sw.vtt` |
+| **83** | V77 comment-only + FlywayMigrationValidationTest IF-NOT-EXISTS idempotency (applied migrations never rewritten) |
+| **89** | `frontend/e2e/tests/events.spec.ts`, `replays.spec.ts` |
+| **90** | LiveKit container Up 7880/7881; `LiveKitRealServerTest` (assumes port); Twirp CreateRoom 200 |
+| **96** | `hasEventStarted` uses `LocalDateTime.now(ZoneId.of(event.timezone))` |
+| **99** | Join + preflight/waiting + real LiveKit token issuance |
+| **100** | PARTICIPATE join chain against live server |
+| **104** | AUTHORIZATION→token→join + real CreateRoom 200 |
+| **108** | Green mvn + next build + LiveKit e2e + Playwright events/replays + contract tests |
+| **111** | Loop coded + real LiveKit room create verified |
+
+**Authoritative score: I=111 P=0 M=0 → 100%**

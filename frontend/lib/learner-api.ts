@@ -376,6 +376,7 @@ export interface ReplayItem {
   relatedLessonTitle: string | null
   recordingStatus?: string | null
   status?: string | null
+  captionUrl?: string | null
 }
 
 export interface ReplayDetail {
@@ -448,6 +449,7 @@ function normalizeReplay(raw: Record<string, unknown>): ReplayItem {
     relatedCourseTitle: rec.relatedCourseTitle ?? null,
     relatedLessonId: rec.relatedLessonId ?? null,
     relatedLessonTitle: rec.relatedLessonTitle ?? null,
+    captionUrl: rec.captionUrl ?? rec.captionsUrl ?? null,
     recordingStatus: rec.recordingStatus ?? null,
     status: rec.status ?? null,
   }

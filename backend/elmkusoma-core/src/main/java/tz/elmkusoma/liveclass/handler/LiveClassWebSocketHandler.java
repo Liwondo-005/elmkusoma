@@ -125,6 +125,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             case "OBSERVER_JOIN" -> handleJoin(session, classId, payload, "OBSERVER");
             case "CHAT", "Q&A", "QA", "REACTION" -> handleChat(session, classId, payload, normalizeMessageType(type, payload));
             case "DELETE_MESSAGE" -> handleDeleteMessage(session, classId, payload);
+            case "SET_PARTICIPANT_ROLE" -> handleSetParticipantRole(session, classId, payload);
             case "LEAVE" -> handleLeave(session, classId);
             case "RAISE_HAND" -> handleRaiseHand(session, classId, payload);
             case "LOWER_HAND" -> handleLowerHand(session, classId);
@@ -566,6 +567,42 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         event.put("userName", displayName);
         event.put("timestamp", LocalDateTime.now().toString());
 
+        broadcastToClass(classId, event, null);
+    }
+
+    private void handleSetParticipantRole(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+        UUID actorId = (UUID) session.getAttributes().get("userId");
+        if (!isTeacher(actorId, classId)) {
+            sendError(session, "Only teachers can change participant roles");
+            return;
+        }
+        String targetUserId = (String) payload.get("userId");
+        String role = payload.get("role") != null ? String.valueOf(payload.get("role")).toUpperCase(Locale.ROOT) : null;
+        if (targetUserId == null || role == null) {
+            sendError(session, "Target userId and role required");
+            return;
+        }
+        Set<String> allowed = Set.of(
+                LiveClassParticipant.ROLE_LEARNER,
+                LiveClassParticipant.ROLE_TEACHER,
+                LiveClassParticipant.ROLE_MODERATOR,
+                LiveClassParticipant.ROLE_OBSERVER);
+        if (!allowed.contains(role)) {
+            sendError(session, "Invalid role");
+            return;
+        }
+        UUID targetId = UUID.fromString(targetUserId);
+        participantRepository.findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, targetId)
+                .ifPresent(p -> {
+                    p.setRole(role);
+                    participantRepository.save(p);
+                });
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "PARTICIPANT_ROLE_CHANGED");
+        event.put("userId", targetUserId);
+        event.put("role", role);
+        event.put("changedBy", actorId.toString());
+        event.put("timestamp", LocalDateTime.now().toString());
         broadcastToClass(classId, event, null);
     }
 
