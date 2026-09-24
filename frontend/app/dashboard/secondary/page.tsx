@@ -139,26 +139,26 @@ export default function SecondaryHomePage() {
   const nextStep: NextStep = continueItems.length > 0
     ? {
         type: "lesson",
-        title: `${t("secondary.continue")} ${continueItems[0].subjectName || t("secondary.learning")}`,
-        subtitle: continueItems[0].title || t("secondary.resumeWhereLeftOff"),
+        title: `${t("continue")} ${continueItems[0].subjectName || t("learning")}`,
+        subtitle: continueItems[0].title || t("resumeWhereLeftOff"),
         subjectName: continueItems[0].subjectName,
-        actionLabel: t("secondary.continueLearning"),
+        actionLabel: t("continueLearning"),
         actionHref: `/dashboard/lessons/${continueItems[0].lessonId}`,
       }
     : assessments.length > 0
       ? {
           type: "assessment",
-          title: `${t("secondary.prepareFor")} ${assessments[0].subjectName || t("secondary.assessment")}`,
+          title: `${t("prepareFor")} ${assessments[0].subjectName || t("assessment")}`,
           subtitle: assessments[0].title,
           subjectName: assessments[0].subjectName,
-          actionLabel: t("secondary.startRevision"),
+          actionLabel: t("startRevision"),
           actionHref: `/dashboard/assessments/${assessments[0].id}`,
         }
       : {
           type: "none",
-          title: t("secondary.learningSpaceReady"),
-          subtitle: t("secondary.chooseSubjectExplorChallenge"),
-          actionLabel: t("secondary.browseSubjects"),
+          title: t("learningSpaceReady"),
+          subtitle: t("chooseSubjectExplorChallenge"),
+          actionLabel: t("browseSubjects"),
           actionHref: "/dashboard/courses",
         }
 
@@ -169,8 +169,8 @@ export default function SecondaryHomePage() {
       subjectName: s.name,
       topicName: s.description,
       reason: s.averageScore !== undefined && s.averageScore < 60
-        ? t("secondary.practiceRecommended")
-        : t("secondary.reviewRecommended"),
+        ? t("practiceRecommended")
+        : t("reviewRecommended"),
       type: s.averageScore !== undefined && s.averageScore < 60 ? "practice" : "review",
       subjectId: s.id,
     }))
@@ -197,7 +197,7 @@ export default function SecondaryHomePage() {
           <div>
             <h1 className="text-xl font-bold">{greeting.text}, {firstName}</h1>
             <p className="mt-0.5 text-sm text-white/70">
-              {stageLabel ? `${stageLabel} · ${t("secondary.readyToContinue")}` : t("secondary.readyToContinue")}
+              {stageLabel ? `${stageLabel} · ${t("readyToContinue")}` : t("readyToContinue")}
             </p>
           </div>
         </div>
@@ -213,7 +213,7 @@ export default function SecondaryHomePage() {
       {/* Your Next Step */}
       <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          <Zap className="size-3.5" /> {t("secondary.yourNextStep")}
+          <Zap className="size-3.5" /> {t("yourNextStep")}
         </div>
         <div className="mt-3 flex items-start gap-4">
           <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
@@ -243,9 +243,9 @@ export default function SecondaryHomePage() {
         <div className="space-y-6 lg:col-span-2">
           {/* Today */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.today")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("today")}</h2>
             {todayItems.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-400">{t("secondary.dayClear")}</p>
+              <p className="mt-3 text-sm text-gray-400">{t("dayClear")}</p>
             ) : (
               <div className="mt-3 space-y-2">
                 {todayItems.map(item => (
@@ -279,9 +279,9 @@ export default function SecondaryHomePage() {
 
           {/* Continue Learning */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.continueWhereLeftOff")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("continueWhereLeftOff")}</h2>
             {continueItems.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-400">{t("secondary.noRecentActivity")}</p>
+              <p className="mt-3 text-sm text-gray-400">{t("noRecentActivity")}</p>
             ) : (
               <div className="mt-3 space-y-3">
                 {continueItems.slice(0, 3).map(item => (
@@ -289,13 +289,13 @@ export default function SecondaryHomePage() {
                     key={item.lessonId}
                     href={`/dashboard/lessons/${item.lessonId}`}
                     className="flex items-center gap-4 rounded-xl border border-gray-100 p-4 transition-all hover:border-indigo-200 hover:shadow-sm"
-                    aria-label={`${item.title || t("secondary.lesson")} - ${Math.round(item.completionPercentage)}%`}
+                    aria-label={`${item.title || t("lesson")} - ${Math.round(item.completionPercentage)}%`}
                   >
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50">
                       <BookOpen className="size-5 text-indigo-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-semibold text-gray-900">{item.title || t("secondary.lesson")}</p>
+                      <p className="truncate text-sm font-semibold text-gray-900">{item.title || t("lesson")}</p>
                       {item.subjectName && <p className="text-xs text-gray-400">{item.subjectName}</p>}
                     </div>
                     <div className="text-right">
@@ -321,23 +321,23 @@ export default function SecondaryHomePage() {
         <div className="space-y-6">
           {/* Academic Pulse */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.academicPulse")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("academicPulse")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-blue-50 p-3 text-center">
                 <p className="text-xl font-bold text-blue-600">{pulse.topicsCompleted}</p>
-                <p className="text-[10px] font-medium text-blue-700">{t("secondary.lessonsDone")}</p>
+                <p className="text-[10px] font-medium text-blue-700">{t("lessonsDone")}</p>
               </div>
               <div className="rounded-xl bg-amber-50 p-3 text-center">
                 <p className="text-xl font-bold text-amber-600">{pulse.assessmentsUpcoming}</p>
-                <p className="text-[10px] font-medium text-amber-700">{t("secondary.assessments")}</p>
+                <p className="text-[10px] font-medium text-amber-700">{t("assessments")}</p>
               </div>
               <div className="rounded-xl bg-orange-50 p-3 text-center">
                 <p className="text-xl font-bold text-orange-600">{pulse.practiceUnfinished}</p>
-                <p className="text-[10px] font-medium text-orange-700">{t("secondary.toComplete")}</p>
+                <p className="text-[10px] font-medium text-orange-700">{t("toComplete")}</p>
               </div>
               <div className="rounded-xl bg-green-50 p-3 text-center">
                 <p className="text-xl font-bold text-green-600">{pulse.attendanceRate > 0 ? `${Math.round(pulse.attendanceRate)}%` : "—"}</p>
-                <p className="text-[10px] font-medium text-green-700">{t("secondary.attendance")}</p>
+                <p className="text-[10px] font-medium text-green-700">{t("attendance")}</p>
               </div>
             </div>
           </section>
@@ -345,7 +345,7 @@ export default function SecondaryHomePage() {
           {/* Your Focus */}
           {focusItems.length > 0 && (
             <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.yourFocus")}</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("yourFocus")}</h2>
               <div className="mt-3 space-y-2">
                 {focusItems.map((item, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
@@ -367,13 +367,13 @@ export default function SecondaryHomePage() {
 
           {/* Quick Actions */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.quickLearn")}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("quickLearn")}</h2>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {[
-                { label: tc("common.learn"), href: "/dashboard/secondary/learn", color: "bg-blue-50 text-blue-600" },
-                { label: tc("common.practice"), href: "/dashboard/secondary/practice", color: "bg-green-50 text-green-600" },
-                { label: tc("common.revise"), href: "/dashboard/secondary/revision", color: "bg-purple-50 text-purple-600" },
-                { label: tc("common.live"), href: "/dashboard/secondary/live", color: "bg-red-50 text-red-600" },
+                { label: tc("learn"), href: "/dashboard/secondary/learn", color: "bg-blue-50 text-blue-600" },
+                { label: tc("practice"), href: "/dashboard/secondary/practice", color: "bg-green-50 text-green-600" },
+                { label: tc("revise"), href: "/dashboard/secondary/revision", color: "bg-purple-50 text-purple-600" },
+                { label: tc("live"), href: "/dashboard/secondary/live", color: "bg-red-50 text-red-600" },
               ].map(action => (
                 <Link
                   key={action.label}
@@ -393,9 +393,9 @@ export default function SecondaryHomePage() {
       {subjects.length > 0 && (
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.mySubjects")}</h2>
-            <Link href="/dashboard/secondary/learn" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("common.viewAll")}>
-              {tc("common.viewAll")}
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("mySubjects")}</h2>
+            <Link href="/dashboard/secondary/learn" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("viewAll")}>
+              {tc("viewAll")}
             </Link>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -412,13 +412,13 @@ export default function SecondaryHomePage() {
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-sm font-semibold text-gray-900">{subject.name}</p>
                   <p className="text-xs text-gray-400">
-                    {subject.totalLessons ? `${subject.totalLessons} ${t("secondary.topics")}` : ""}
-                    {subject.upcomingAssessments ? ` · ${subject.upcomingAssessments} ${t("secondary.assessment")}${subject.upcomingAssessments > 1 ? "s" : ""}` : ""}
+                    {subject.totalLessons ? `${subject.totalLessons} ${t("topics")}` : ""}
+                    {subject.upcomingAssessments ? ` · ${subject.upcomingAssessments} ${t("assessment")}${subject.upcomingAssessments > 1 ? "s" : ""}` : ""}
                   </p>
                 </div>
                 {subject.hasTeacherFeedback && (
                   <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-                    {t("secondary.feedback")}
+                    {t("feedback")}
                   </span>
                 )}
               </Link>
@@ -431,9 +431,9 @@ export default function SecondaryHomePage() {
       {liveClasses.length > 0 && (
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.liveLearning")}</h2>
-            <Link href="/dashboard/secondary/live" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("common.viewAll")}>
-              {tc("common.viewAll")}
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("liveLearning")}</h2>
+            <Link href="/dashboard/secondary/live" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("viewAll")}>
+              {tc("viewAll")}
             </Link>
           </div>
           <div className="mt-3 space-y-2">
@@ -467,9 +467,9 @@ export default function SecondaryHomePage() {
       {subjects.some(s => s.hasTeacherFeedback) && (
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.teacherFeedback")}</h2>
-            <Link href="/dashboard/secondary/teachers" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("common.viewAll")}>
-              {tc("common.viewAll")}
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("teacherFeedback")}</h2>
+            <Link href="/dashboard/secondary/teachers" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={tc("viewAll")}>
+              {tc("viewAll")}
             </Link>
           </div>
           <div className="mt-3 space-y-2">
@@ -478,14 +478,14 @@ export default function SecondaryHomePage() {
                 key={s.id}
                 href={`/dashboard/secondary/subjects/${s.id}`}
                 className="flex items-center gap-3 rounded-xl bg-green-50 p-3 transition-all hover:bg-green-100"
-                aria-label={`${s.name} - ${t("secondary.newFeedbackAvailable")}`}
+                aria-label={`${s.name} - ${t("newFeedbackAvailable")}`}
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green-100">
                   <Star className="size-4 text-green-600" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">{s.name}</p>
-                  <p className="text-xs text-green-600">{t("secondary.newFeedbackAvailable")}</p>
+                  <p className="text-xs text-green-600">{t("newFeedbackAvailable")}</p>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-gray-300" />
               </Link>
@@ -497,23 +497,23 @@ export default function SecondaryHomePage() {
       {/* Learning Journey */}
       <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.learningJourney")}</h2>
-          <Link href="/dashboard/secondary/progress" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.viewProgress")}>
-            {t("secondary.viewProgress")}
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("learningJourney")}</h2>
+          <Link href="/dashboard/secondary/progress" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("viewProgress")}>
+            {t("viewProgress")}
           </Link>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-3">
           <div className="rounded-xl bg-indigo-50 p-3 text-center">
             <p className="text-xl font-bold text-indigo-600">{subjects.length}</p>
-            <p className="text-[10px] font-medium text-indigo-700">{t("secondary.subjects")}</p>
+            <p className="text-[10px] font-medium text-indigo-700">{t("subjects")}</p>
           </div>
           <div className="rounded-xl bg-green-50 p-3 text-center">
             <p className="text-xl font-bold text-green-600">{subjects.reduce((sum, s) => sum + (s.completedLessons || 0), 0)}</p>
-            <p className="text-[10px] font-medium text-green-700">{t("secondary.completed")}</p>
+            <p className="text-[10px] font-medium text-green-700">{t("completed")}</p>
           </div>
           <div className="rounded-xl bg-amber-50 p-3 text-center">
             <p className="text-xl font-bold text-amber-600">{subjects.reduce((sum, s) => sum + ((s.totalLessons || 0) - (s.completedLessons || 0)), 0)}</p>
-            <p className="text-[10px] font-medium text-amber-700">{t("secondary.remaining")}</p>
+            <p className="text-[10px] font-medium text-amber-700">{t("remaining")}</p>
           </div>
         </div>
       </section>
@@ -521,30 +521,30 @@ export default function SecondaryHomePage() {
       {/* My Learning Evidence */}
       <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("secondary.myLearningEvidence")}</h2>
-          <Link href="/dashboard/secondary/projects/passport" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.viewPassport")}>
-            {t("secondary.viewPassport")}
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{t("myLearningEvidence")}</h2>
+          <Link href="/dashboard/secondary/projects/passport" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("viewPassport")}>
+            {t("viewPassport")}
           </Link>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-blue-50 p-3 text-center">
             <p className="text-xl font-bold text-blue-600">{attendance?.present || 0}</p>
-            <p className="text-[10px] font-medium text-blue-700">{t("secondary.daysPresent")}</p>
+            <p className="text-[10px] font-medium text-blue-700">{t("daysPresent")}</p>
           </div>
           <div className="rounded-xl bg-purple-50 p-3 text-center">
             <p className="text-xl font-bold text-purple-600">{subjects.reduce((sum, s) => sum + (s.completedLessons || 0), 0)}</p>
-            <p className="text-[10px] font-medium text-purple-700">{t("secondary.lessonsDone")}</p>
+            <p className="text-[10px] font-medium text-purple-700">{t("lessonsDone")}</p>
           </div>
         </div>
       </section>
 
       {/* Future World */}
-      <Link href="/dashboard/secondary/future" className="block rounded-2xl border border-gray-100 bg-gradient-to-r from-indigo-500 to-purple-500 p-5 text-white transition-all hover:shadow-md" aria-label={t("secondary.futureWorld")}>
+      <Link href="/dashboard/secondary/future" className="block rounded-2xl border border-gray-100 bg-gradient-to-r from-indigo-500 to-purple-500 p-5 text-white transition-all hover:shadow-md" aria-label={t("futureWorld")}>
         <div className="flex items-center gap-3">
           <Target className="size-8" />
           <div>
-            <h2 className="text-lg font-bold">{t("secondary.futureWorld")}</h2>
-            <p className="text-sm text-white/70">{t("secondary.exploreCareersUniversities")}</p>
+            <h2 className="text-lg font-bold">{t("futureWorld")}</h2>
+            <p className="text-sm text-white/70">{t("exploreCareersUniversities")}</p>
           </div>
           <ChevronRight className="size-5 shrink-0 text-white/50" />
         </div>

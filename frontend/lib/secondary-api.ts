@@ -189,7 +189,7 @@ export const secondaryApi = {
     secondaryFetch<AttendanceSummary>("/v1/student/dashboard/attendance"),
 
   getLiveClasses: () =>
-    secondaryFetch<LiveClassSummary[]>("/v1/student/dashboard/live-classes"),
+    secondaryFetch<LiveClassSummary[]>("/v1/student/live-classes?size=100"),
 
   getSubjects: (classGroupId: string) =>
     secondaryFetch<SubjectSummary[]>(`/v1/academic/subjects?classGroupId=${classGroupId}`),

@@ -56,22 +56,22 @@ export default function ConceptExplorerPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToLearn")}><ArrowLeft className="size-5 text-gray-600" /></Link>
+        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToLearn")}><ArrowLeft className="size-5 text-gray-600" /></Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{t("secondary.conceptExplorer")}</h1>
-          <p className="text-sm text-gray-500">{t("secondary.deepDiveIntoKeyConcepts")}</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("conceptExplorer")}</h1>
+          <p className="text-sm text-gray-500">{t("deepDiveIntoKeyConcepts")}</p>
         </div>
       </div>
 
       {selected && active ? (
         <div className="space-y-4">
-          <button onClick={() => setSelected(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.backToConcepts")}>{t("secondary.backToConcepts")}</button>
+          <button onClick={() => setSelected(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("backToConcepts")}>{t("backToConcepts")}</button>
           <div className="rounded-2xl border border-gray-100 bg-white p-6">
             <div className="flex items-center gap-2"><Lightbulb className="size-5 text-indigo-600" /><span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">{active.category}</span></div>
             <h2 className="mt-2 text-lg font-bold text-gray-900">{active.conceptName}</h2>
             <p className="mt-1 text-sm text-gray-600">{active.conceptDescription}</p>
             {active.examples && (
-              <div className="mt-4 rounded-xl bg-indigo-50 p-4"><p className="text-sm font-medium text-indigo-800">{t("secondary.examples")}</p><p className="mt-1 text-sm text-indigo-700">{active.examples}</p></div>
+              <div className="mt-4 rounded-xl bg-indigo-50 p-4"><p className="text-sm font-medium text-indigo-800">{t("examples")}</p><p className="mt-1 text-sm text-indigo-700">{active.examples}</p></div>
             )}
             <div className="mt-3"><span className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-bold text-gray-600">{active.difficultyLevel}</span></div>
           </div>

@@ -77,7 +77,7 @@ export default function SecondaryLivePage() {
                   <span className="size-2 animate-pulse rounded-full bg-red-500" /> LIVE
                 </span>
               </div>
-              {c.meetingUrl && (
+              {c.meetingUrl ? (
                 <a
                   href={c.meetingUrl}
                   target="_blank"
@@ -87,6 +87,14 @@ export default function SecondaryLivePage() {
                 >
                   {t("joinSession")}
                 </a>
+              ) : (
+                <Link
+                  href={`/live-classes/${c.id}`}
+                  className="mt-3 block w-full rounded-xl bg-red-500 py-3 text-center text-sm font-bold text-white hover:bg-red-600"
+                  aria-label={`${t("joinSession")} - ${c.title}`}
+                >
+                  {t("joinSession")}
+                </Link>
               )}
             </div>
           ))}
