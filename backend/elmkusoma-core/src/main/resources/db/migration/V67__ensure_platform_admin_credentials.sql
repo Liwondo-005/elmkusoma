@@ -17,5 +17,5 @@ ON CONFLICT (email) DO UPDATE
 INSERT INTO institution_memberships (user_id, institution_id, role, is_active, created_at, updated_at)
 VALUES
   ('b0000000-0000-0000-0000-000000000099', 'a0000000-0000-0000-0000-000000000001', 'ADMIN', true, NOW(), NOW())
-ON CONFLICT (user_id, institution_id) DO UPDATE
+ON CONFLICT (user_id, institution_id) WHERE is_active DO UPDATE
   SET role = 'ADMIN', is_active = true, updated_at = NOW();
