@@ -65,7 +65,7 @@ export default function StudyPlannerPage() {
       if (weekRes.status === "fulfilled") setWeekTasks(weekRes.value.data || [])
       if (allRes.status === "fulfilled") setAllTasks(allRes.value.data || [])
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }

@@ -2,12 +2,11 @@ package tz.elmkusoma.liveclass.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import tz.elmkusoma.liveclass.config.LiveKitConfig;
 
+import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -20,6 +19,8 @@ import java.util.*;
 @Service
 @Slf4j
 public class LiveKitService {
+
+    private static final long PARTICIPANT_TOKEN_TTL_MS = 15 * 60 * 1000;
 
     private final LiveKitConfig config;
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -36,23 +37,25 @@ public class LiveKitService {
     }
 
     public String generateToken(UUID classId, UUID userId, String identity, boolean isTeacher) {
+        return generateTokenForRoom(generateRoomName(classId), userId, identity, isTeacher);
+    }
+
+    public String generateEventToken(UUID eventId, UUID userId, String identity, boolean isTeacher) {
+        return generateTokenForRoom(generateRoomNameForEvent(eventId), userId, identity, isTeacher);
+    }
+
+    private String generateTokenForRoom(String roomName, UUID userId, String identity, boolean isTeacher) {
         if (!config.isConfigured()) {
             log.warn("LiveKit not configured, cannot generate token");
             return null;
         }
 
         try {
-            String roomName = "liveclass-" + classId;
             String apiKey = config.getServer().getApiKey();
             String apiSecret = config.getServer().getApiSecret();
 
-            SecretKeySpec keySpec = new SecretKeySpec(
-                    apiSecret.getBytes(StandardCharsets.UTF_8),
-                    SignatureAlgorithm.HS256.getJcaName()
-            );
-
             Date now = new Date();
-            Date expiry = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+            Date expiry = new Date(now.getTime() + PARTICIPANT_TOKEN_TTL_MS);
 
             Map<String, Object> videoGrants = new HashMap<>();
             videoGrants.put("roomJoin", true);
@@ -76,31 +79,30 @@ public class LiveKitService {
             }
 
             Map<String, Object> claims = new HashMap<>();
+            claims.put("iss", apiKey);
+            claims.put("sub", identity);
+            claims.put("iat", now.getTime() / 1000);
+            claims.put("nbf", now.getTime() / 1000);
+            claims.put("exp", expiry.getTime() / 1000);
             claims.put("video", videoGrants);
 
-            String jwt = Jwts.builder()
-                    .setHeaderParam("alg", "HS256")
-                    .setHeaderParam("typ", "JWT")
-                    .setIssuer(apiKey)
-                    .setSubject(identity)
-                    .setIssuedAt(now)
-                    .setNotBefore(now)
-                    .setExpiration(expiry)
-                    .addClaims(claims)
-                    .signWith(keySpec, SignatureAlgorithm.HS256)
-                    .compact();
+            String jwt = signHs256(claims, apiSecret);
 
-            log.info("Generated LiveKit token for class={}, user={}, teacher={}", classId, userId, isTeacher);
+            log.info("Generated LiveKit token for room={}, user={}, teacher={}", roomName, userId, isTeacher);
             return jwt;
 
         } catch (Exception e) {
-            log.error("Failed to generate LiveKit token for class={} user={}", classId, userId, e);
+            log.error("Failed to generate LiveKit token for room={} user={}", roomName, userId, e);
             return null;
         }
     }
 
     public String generateRoomName(UUID classId) {
         return "liveclass-" + classId;
+    }
+
+    public String generateRoomNameForEvent(UUID eventId) {
+        return "event-" + eventId;
     }
 
     public String getServerUrl() {
@@ -340,11 +342,6 @@ public class LiveKitService {
             String apiKey = config.getServer().getApiKey();
             String apiSecret = config.getServer().getApiSecret();
 
-            SecretKeySpec keySpec = new SecretKeySpec(
-                    apiSecret.getBytes(StandardCharsets.UTF_8),
-                    SignatureAlgorithm.HS256.getJcaName()
-            );
-
             Date now = new Date();
             Date expiry = new Date(now.getTime() + 60 * 1000);
 
@@ -357,25 +354,45 @@ public class LiveKitService {
             videoGrants.put("roomList", true);
 
             Map<String, Object> claims = new HashMap<>();
+            claims.put("iss", apiKey);
+            claims.put("sub", "server");
+            claims.put("iat", now.getTime() / 1000);
+            claims.put("nbf", now.getTime() / 1000);
+            claims.put("exp", expiry.getTime() / 1000);
             claims.put("video", videoGrants);
 
-            String jwt = Jwts.builder()
-                    .setHeaderParam("alg", "HS256")
-                    .setHeaderParam("typ", "JWT")
-                    .setIssuer(apiKey)
-                    .setSubject("server")
-                    .setIssuedAt(now)
-                    .setNotBefore(now)
-                    .setExpiration(expiry)
-                    .addClaims(claims)
-                    .signWith(keySpec, SignatureAlgorithm.HS256)
-                    .compact();
-
+            String jwt = signHs256(claims, apiSecret);
             return "Bearer " + jwt;
 
         } catch (Exception e) {
             log.error("Failed to generate server auth header", e);
             return null;
         }
+    }
+
+    /**
+     * Signs a JWT with HS256 using raw JCA Mac. Unlike jjwt, this accepts LiveKit's
+     * short API secrets (e.g. devsecret) — LiveKit server itself signs/verifies with
+     * the raw secret bytes with no minimum key size.
+     */
+    private String signHs256(Map<String, Object> claims, String apiSecret) throws Exception {
+        Map<String, Object> header = new HashMap<>();
+        header.put("alg", "HS256");
+        header.put("typ", "JWT");
+
+        String headerJson = objectMapper.writeValueAsString(header);
+        String payloadJson = objectMapper.writeValueAsString(claims);
+        String signingInput = base64UrlEncode(headerJson.getBytes(StandardCharsets.UTF_8))
+                + "." + base64UrlEncode(payloadJson.getBytes(StandardCharsets.UTF_8));
+
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(apiSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        byte[] signature = mac.doFinal(signingInput.getBytes(StandardCharsets.UTF_8));
+
+        return signingInput + "." + base64UrlEncode(signature);
+    }
+
+    private static String base64UrlEncode(byte[] data) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
     }
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type LearnerProfile, type ProfileUpdate } from "@/lib/learner-api"
+import { announce } from "@/lib/announce"
 import { LoadingState } from "@/components/learner/shared"
 import { useTranslations } from "next-intl"
 import { User, Save, AlertCircle, CheckCircle, Loader2, Shield, BookOpen, Lock, Eye, EyeOff } from "lucide-react"
@@ -67,8 +68,10 @@ export default function LearnerProfilePage() {
       const updated = await learnerApi.updateProfile(data)
       setProfile(updated)
       setSuccess(t("updateSuccess"))
+      announce(t("updateSuccess"))
     } catch (err: any) {
       setError(err.message || t("updateError"))
+      announce(err.message || t("updateError"))
     } finally {
       setSaving(false)
     }
@@ -105,11 +108,13 @@ export default function LearnerProfilePage() {
         throw new Error(body.error || body.message || t("passwordChangeError"))
       }
       setPasswordSuccess(t("passwordChangeSuccess"))
+      announce(t("passwordChangeSuccess"))
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
     } catch (err: any) {
       setPasswordError(err.message || t("passwordChangeError"))
+      announce(err.message || t("passwordChangeError"))
     } finally {
       setChangingPassword(false)
     }

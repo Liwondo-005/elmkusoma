@@ -16,12 +16,14 @@ interface EventSummary {
   title: string
   eventType: string
   status: string
+  eventStatus?: string
   startDate: string
   durationMinutes?: number
   timezone?: string
   presenterName?: string
   recordingEnabled?: boolean
   recordingUrl?: string
+  recordingStatus?: string
   maxCapacity?: number
   currentRegistrations?: number
   joinedCount?: number
@@ -104,6 +106,14 @@ export default function EventSummaryPage() {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  const replayStatus = (() => {
+    const s = (event?.eventStatus || event?.status || event?.recordingStatus || "").toUpperCase()
+    if (s === "REPLAY_AVAILABLE" || s === "AVAILABLE" || (event?.recordingUrl && s !== "PROCESSING")) return "available"
+    if (s === "PROCESSING" || s === "RECORDING") return "processing"
+    if (s === "CANCELLED") return "unavailable"
+    return event?.recordingUrl ? "available" : "unavailable"
+  })()
 
   if (loading) {
     return (
@@ -221,17 +231,29 @@ export default function EventSummaryPage() {
             <Play className="size-4 text-muted-foreground" />
             {t("admin.summary.replayAvailability")}
           </h3>
-          {event.recordingUrl ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 text-xs font-medium">
-              <CheckCircle className="size-3" />
-              {t("admin.summary.replayAvailable")}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 px-3 py-1 text-xs font-medium">
-              <XCircle className="size-3" />
-              {t("admin.summary.replayNotAvailable")}
-            </span>
-          )}
+          <div role="status" aria-live="polite" className="space-y-2">
+            {replayStatus === "available" ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 text-xs font-medium">
+                <CheckCircle className="size-3" />
+                {t("admin.summary.replayAvailable")}
+              </span>
+            ) : replayStatus === "processing" ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 text-xs font-medium">
+                <Loader2 className="size-3 animate-spin" />
+                {t("status.processing")}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 px-3 py-1 text-xs font-medium">
+                <XCircle className="size-3" />
+                {t("admin.summary.replayNotAvailable")}
+              </span>
+            )}
+            {event.eventStatus && (
+              <p className="text-[10px] text-muted-foreground">
+                {t("admin.summary.recordingStatus")}: {event.eventStatus}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -306,7 +328,7 @@ export default function EventSummaryPage() {
             </table>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No attendance data available</p>
+          <p className="text-sm text-muted-foreground" role="status">{t("admin.summary.noAttendance")}</p>
         )}
       </div>
 

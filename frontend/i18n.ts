@@ -8,6 +8,7 @@ export const defaultLocale: Locale = 'en';
 export default getRequestConfig(async ({ locale }) => {
   return {
     locale: locale || defaultLocale,
+    timeZone: "Africa/Dar_es_Salaam",
     messages: (await import(`./messages/${locale || defaultLocale}.json`)).default,
   };
 });

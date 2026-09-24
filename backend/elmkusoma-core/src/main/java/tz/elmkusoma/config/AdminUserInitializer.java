@@ -55,7 +55,6 @@ public class AdminUserInitializer implements ApplicationRunner {
                 }
             } else {
                 User admin = User.builder()
-                        .id(ADMIN_ID)
                         .email(ADMIN_EMAIL)
                         .passwordHash(passwordEncoder.encode(ADMIN_PASSWORD))
                         .firstName("Platform")
@@ -65,16 +64,20 @@ public class AdminUserInitializer implements ApplicationRunner {
                         .isEmailVerified(true)
                         .build();
                 admin.setInstitutionId(HQ_INSTITUTION_ID);
-                userRepository.save(admin);
-                log.info("Admin user created: {}", ADMIN_EMAIL);
+                admin = userRepository.save(admin);
+                log.info("Admin user created: {} ({})", ADMIN_EMAIL, admin.getId());
             }
 
+            User adminUser = userRepository.findByEmailAndIsDeletedFalse(ADMIN_EMAIL)
+                    .orElseThrow(() -> new IllegalStateException("Admin user missing after ensure"));
+            UUID adminId = adminUser.getId() != null ? adminUser.getId() : ADMIN_ID;
+
             boolean membershipExists = membershipRepository
-                    .existsByUserIdAndInstitutionIdAndIsActiveTrue(ADMIN_ID, HQ_INSTITUTION_ID);
+                    .existsByUserIdAndInstitutionIdAndIsActiveTrue(adminId, HQ_INSTITUTION_ID);
             if (!membershipExists) {
                 tz.elmkusoma.shared.domain.InstitutionMembership membership =
                         tz.elmkusoma.shared.domain.InstitutionMembership.builder()
-                                .userId(ADMIN_ID)
+                                .userId(adminId)
                                 .institutionId(HQ_INSTITUTION_ID)
                                 .role(tz.elmkusoma.shared.domain.InstitutionMembership.Role.ADMIN)
                                 .isActive(true)

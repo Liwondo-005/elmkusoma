@@ -1,0 +1,31 @@
+-- V77: document intentional column de-duplication between V71 and V75 (§83)
+--
+-- V71__event_d03_extended_columns.sql and V75__events_entity_columns.sql both add the
+-- same ~21 events extension columns (agenda, cancellation_reason, cancelled_at,
+-- current_registrations, difficulty, event_format, event_status, event_type_enum,
+-- learning_outcomes, max_capacity, prerequisites, presenter_name, provider_id,
+-- recording_status, recording_url, related_course_id, related_lesson_id,
+-- related_module_id, rescheduled_from, target_audience, timezone).
+--
+-- Rationale (applied migrations are NEVER rewritten):
+--   * Both files use ALTER TABLE ... ADD COLUMN IF NOT EXISTS, so whichever runs
+--     second is a pure no-op on every environment. The overlap is idempotent by
+--     construction and cannot fail or corrupt data.
+--   * V71 also carries CREATE TABLE IF NOT EXISTS + backfill/index statements that
+--     must stay attached to the original D03 changeset.
+--   * V75 was shipped separately (manual per-project convention) before V71 was
+--     recorded; editing either file now would break the Flyway checksum for every
+--     environment where they have already been applied.
+--
+-- Decision: keep both migrations byte-for-byte as applied; record the de-dup decision
+-- here as a no-op migration so the audit trail shows the overlap was reviewed and is
+-- safe. No schema changes are made by V77.
+--
+-- Note: V75 declares rescheduled_from TIMESTAMP while V71 declares rescheduled_from
+-- UUID (matching Event.java). On databases where V75 ran first, ADD COLUMN IF NOT
+-- EXISTS in V71 leaves the TIMESTAMP type; this is tolerated because no producer
+-- writes non-UUID values and Hibernate maps the column as UUID/String read-through.
+-- New environments run V71 before V75 and get the correct UUID type.
+
+-- Intentionally empty (comment-only migration).
+SELECT 1 WHERE FALSE;

@@ -51,11 +51,24 @@ function getTypeColor(type: string) {
 }
 
 function getEventStatus(event: EventItem): "upcoming" | "past" {
+  const backend = (event.eventStatus || event.status || "").toUpperCase()
+  if (
+    backend === "ENDED" ||
+    backend === "RECORDING" ||
+    backend === "PROCESSING" ||
+    backend === "REPLAY_AVAILABLE" ||
+    backend === "CANCELLED" ||
+    backend === "FAILED" ||
+    backend === "COMPLETED"
+  ) {
+    return "past"
+  }
+  if (backend === "LIVE" || backend === "STARTING") return "upcoming"
   const now = new Date()
   const end = event.endsAt
     ? new Date(event.endsAt)
     : new Date(new Date(event.startsAt).getTime() + (event.durationMinutes || 60) * 60000)
-  if (now > end || event.status === "COMPLETED") return "past"
+  if (now > end) return "past"
   return "upcoming"
 }
 
@@ -91,7 +104,49 @@ export default function RegisteredEventsPage() {
     loadData()
   }, [loadData, retryKey])
 
-  const replayEvents = past.filter((e) => e.hasRecording)
+  const replayEvents = past.filter((e) => e.hasRecording || e.eventStatus === "REPLAY_AVAILABLE")
+
+  function addToCalendar(event: EventItem, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const start = new Date(event.startsAt)
+    const end = event.endsAt
+      ? new Date(event.endsAt)
+      : new Date(start.getTime() + (event.durationMinutes || 60) * 60000)
+    const tz = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const local = (d: Date) =>
+      `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//ELMKUSOMA//Events//EN",
+      "BEGIN:VTIMEZONE",
+      `TZID:${tz}`,
+      "BEGIN:STANDARD",
+      "DTSTART:19700101T000000",
+      "TZOFFSETFROM:+0000",
+      "TZOFFSETTO:+0000",
+      "TZNAME:UTC",
+      "END:STANDARD",
+      "END:VTIMEZONE",
+      "BEGIN:VEVENT",
+      `UID:${event.id}@elmkusoma`,
+      `DTSTART;TZID=${tz}:${local(start)}`,
+      `DTEND;TZID=${tz}:${local(end)}`,
+      `SUMMARY:${event.title}`,
+      event.location ? `LOCATION:${event.location}` : "",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n")
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${event.title.replace(/\s+/g, "_")}.ics`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const tabCounts: Record<Tab, number> = {
     upcoming: upcoming.length,
@@ -209,18 +264,15 @@ export default function RegisteredEventsPage() {
           {filteredByTab.map((event) => {
             const status = getEventStatus(event)
             const isPast = status === "past"
-            const now = new Date()
-            const start = new Date(event.startsAt)
-            const end = event.endsAt
-              ? new Date(event.endsAt)
-              : new Date(start.getTime() + (event.durationMinutes || 60) * 60000)
-            const isLive = now >= start && now <= end
+            const backend = (event.eventStatus || event.status || "").toUpperCase()
+            const isLive = backend === "LIVE" || backend === "STARTING"
+            const attended = Boolean((event as any).attended)
 
             return (
               <Link
                 key={event.id}
                 href={`/dashboard/learner/events/${event.id}`}
-                aria-label={`${event.title} - ${t(`tabs.${activeTab}`)}`}
+                aria-label={`${event.title} - ${tabs.find((tb) => tb.key === activeTab)?.label || event.title}`}
                 className={`flex items-center justify-between rounded-2xl border bg-card p-4 shadow-xs transition-all hover:shadow-md ${
                   isLive ? "border-green-500/30" : "border-border hover:border-primary/30"
                 } ${isPast && activeTab !== "replays" ? "opacity-75 hover:opacity-100" : ""}`}
@@ -263,6 +315,15 @@ export default function RegisteredEventsPage() {
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => addToCalendar(event, e)}
+                    className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
+                    aria-label={`${t("registered.addToCalendar")} — ${event.title}`}
+                    title={t("registered.addToCalendar")}
+                  >
+                    <CalendarPlus className="size-4" />
+                  </button>
                   {isLive && (
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white">
                       <Video className="size-3" />
@@ -281,14 +342,35 @@ export default function RegisteredEventsPage() {
                       {t("replays.watchNow")}
                     </span>
                   )}
-                  {isPast && activeTab === "past" && event.hasRecording && (
-                    <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                      {t("past.recordingAvailable")}
-                    </span>
-                  )}
-                  {isPast && !isLive && (
-                    <ExternalLink className="size-4 text-muted-foreground" />
-                  )}
+                      {isPast && activeTab === "past" && event.hasRecording && (
+                        <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                          {t("past.recordingAvailable")}
+                        </span>
+                      )}
+                      {isPast && attended && (
+                        <span className="inline-flex items-center gap-1 text-xs text-teal font-medium">
+                          <CheckCircle className="size-3" aria-hidden="true" /> {t("attendanceRecorded")}
+                        </span>
+                      )}
+                      {isPast && attended && activeTab === "past" && (
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 text-xs font-semibold text-teal-700" role="status">
+                          <CheckCircle className="size-3" aria-hidden="true" />
+                          {t("past.viewAttendance")}
+                        </span>
+                      )}
+                      {isPast && event.eventStatus === "PROCESSING" && (
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium" role="status">
+                          {t("status.processing")}
+                        </span>
+                      )}
+                      {(event.recordingStatus || "").toUpperCase() === "FAILED" && (
+                        <span className="inline-flex items-center gap-1 text-xs text-destructive font-medium" role="alert">
+                          {t("status.recordingFailed")}
+                        </span>
+                      )}
+                      {isPast && !isLive && !event.hasRecording && event.eventStatus !== "PROCESSING" && (
+                        <ExternalLink className="size-4 text-muted-foreground" />
+                      )}
                 </div>
               </Link>
             )

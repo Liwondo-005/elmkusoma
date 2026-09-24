@@ -42,7 +42,7 @@ export default function FieldworkPage() {
       const res = await collegeApi.getStudentFieldwork(studentId)
       setPlacements(res.data || [])
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }

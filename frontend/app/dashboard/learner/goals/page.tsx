@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { useTranslations } from "next-intl"
-import { learnerApi, type Enrollment } from "@/lib/learner-api"
+import { learnerApi, type Enrollment, type LearningGoal } from "@/lib/learner-api"
+import { announce } from "@/lib/announce"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import {
   Target,
@@ -13,51 +13,25 @@ import {
   CheckCircle,
   Clock,
   ArrowRight,
-  BookOpen,
   AlertCircle,
   X,
   Pencil,
 } from "lucide-react"
 
-interface LearningGoal {
-  id: string
-  title: string
-  description: string
-  courseId: string | null
-  courseName: string | null
-  targetDate: string | null
-  status: "active" | "completed"
-  progress: number
-  createdAt: string
-}
-
-function getGoals(): LearningGoal[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem("elmkusoma_learning_goals")
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveGoals(goals: LearningGoal[]) {
-  localStorage.setItem("elmkusoma_learning_goals", JSON.stringify(goals))
-}
-
 export default function GoalsPage() {
   const { user, loading: authLoading } = useAuth()
-  const t = useTranslations("learner")
+  const t = useTranslations("goals")
   const tc = useTranslations("common")
   const [goals, setGoals] = useState<LearningGoal[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingGoal, setEditingGoal] = useState<LearningGoal | null>(null)
   const [formTitle, setFormTitle] = useState("")
   const [formDescription, setFormDescription] = useState("")
-  const [formCourseId, setFormCourseId] = useState("")
   const [formTargetDate, setFormTargetDate] = useState("")
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -67,10 +41,15 @@ export default function GoalsPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const enrollmentsData = await learnerApi.getEnrollments().catch(() => [])
+      setError(null)
+      const [enrollmentsData, goalsData] = await Promise.all([
+        learnerApi.getEnrollments().catch(() => []),
+        learnerApi.getGoals(),
+      ])
       setEnrollments(enrollmentsData)
-      setGoals(getGoals())
+      setGoals(goalsData)
     } catch {
+      setError(t("loadFailed"))
     } finally {
       setLoading(false)
     }
@@ -80,7 +59,6 @@ export default function GoalsPage() {
     setEditingGoal(null)
     setFormTitle("")
     setFormDescription("")
-    setFormCourseId("")
     setFormTargetDate("")
     setShowForm(true)
   }
@@ -88,104 +66,108 @@ export default function GoalsPage() {
   function openEditForm(goal: LearningGoal) {
     setEditingGoal(goal)
     setFormTitle(goal.title)
-    setFormDescription(goal.description)
-    setFormCourseId(goal.courseId || "")
+    setFormDescription(goal.description || "")
     setFormTargetDate(goal.targetDate || "")
     setShowForm(true)
   }
 
-  function handleSave() {
-    if (!formTitle.trim()) return
-    const enrolled = enrollments.find((e) => e.courseId === formCourseId)
-
-    if (editingGoal) {
-      const updated = goals.map((g) =>
-        g.id === editingGoal.id
-          ? {
-              ...g,
-              title: formTitle.trim(),
-              description: formDescription.trim(),
-              courseId: formCourseId || null,
-              courseName: enrolled?.courseTitle || null,
-              targetDate: formTargetDate || null,
-            }
-          : g
-      )
-      setGoals(updated)
-      saveGoals(updated)
-    } else {
-      const newGoal: LearningGoal = {
-        id: Date.now().toString(),
+  async function handleSave() {
+    if (!formTitle.trim() || saving) return
+    try {
+      setSaving(true)
+      setError(null)
+      const payload = {
         title: formTitle.trim(),
         description: formDescription.trim(),
-        courseId: formCourseId || null,
-        courseName: enrolled?.courseTitle || null,
         targetDate: formTargetDate || null,
-        status: "active",
-        progress: 0,
-        createdAt: new Date().toISOString(),
       }
-      const updated = [newGoal, ...goals]
-      setGoals(updated)
-      saveGoals(updated)
+      if (editingGoal) {
+        const updated = await learnerApi.updateGoal(editingGoal.id, payload)
+        setGoals((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
+        announce(t("updated"))
+      } else {
+        const created = await learnerApi.createGoal(payload)
+        setGoals((prev) => [created, ...prev])
+        announce(t("created"))
+      }
+      setShowForm(false)
+    } catch {
+      setError(t("saveFailed"))
+      announce(t("saveFailed"))
+    } finally {
+      setSaving(false)
     }
-    setShowForm(false)
   }
 
-  function toggleGoalStatus(goalId: string) {
-    const updated = goals.map((g) =>
-      g.id === goalId
-        ? {
-            ...g,
-            status: g.status === "active" ? ("completed" as const) : ("active" as const),
-            progress: g.status === "active" ? 100 : 0,
-          }
-        : g
-    )
-    setGoals(updated)
-    saveGoals(updated)
+  async function toggleGoalStatus(goal: LearningGoal) {
+    try {
+      setError(null)
+      const isCompleted = goal.status === "COMPLETED"
+      const updated = await learnerApi.updateGoal(goal.id, {
+        status: isCompleted ? "ACTIVE" : "COMPLETED",
+        progressPercentage: isCompleted ? 0 : 100,
+      })
+      setGoals((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
+      announce(isCompleted ? t("updated") : t("markComplete"))
+    } catch {
+      setError(t("saveFailed"))
+    }
   }
 
-  function deleteGoal(goalId: string) {
-    const updated = goals.filter((g) => g.id !== goalId)
-    setGoals(updated)
-    saveGoals(updated)
+  async function deleteGoal(goalId: string) {
+    try {
+      setError(null)
+      await learnerApi.deleteGoal(goalId)
+      setGoals((prev) => prev.filter((g) => g.id !== goalId))
+      announce(t("deleted"))
+    } catch {
+      setError(t("saveFailed"))
+    }
   }
 
   if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
   }
 
-  const activeGoals = goals.filter((g) => g.status === "active")
-  const completedGoals = goals.filter((g) => g.status === "completed")
+  const activeGoals = goals.filter((g) => g.status === "ACTIVE" || g.status === "active")
+  const completedGoals = goals.filter((g) => g.status === "COMPLETED" || g.status === "completed")
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("goals.title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("goals.subtitle")}
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <button
           onClick={openCreateForm}
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="size-4" />
-          {t("goals.newGoal")}
+          {t("newGoal")}
         </button>
       </div>
 
+      {error && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" />
+            {error}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">{t("goals.activeLabel")}</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("activeGoals")}</p>
           <p className="mt-1 text-2xl font-extrabold text-foreground">{activeGoals.length}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">{t("goals.completedLabel")}</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("completed")}</p>
           <p className="mt-1 text-2xl font-extrabold text-foreground">{completedGoals.length}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">{t("goals.enrolledLabel")}</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("enrolledCourses")}</p>
           <p className="mt-1 text-2xl font-extrabold text-foreground">{enrollments.length}</p>
         </div>
       </div>
@@ -195,7 +177,7 @@ export default function GoalsPage() {
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">
-                {editingGoal ? t("goals.editTitle") : t("goals.newTitle")}
+                {editingGoal ? t("editGoal") : t("newLearningGoal")}
               </h2>
               <button onClick={() => setShowForm(false)} className="rounded-lg p-1 hover:bg-muted">
                 <X className="size-4" />
@@ -203,42 +185,27 @@ export default function GoalsPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground">{t("goals.titleLabel")}</label>
+                <label className="block text-sm font-medium text-foreground">{t("goalTitle")} *</label>
                 <input
                   type="text"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder={t("goals.titlePlaceholder")}
+                  placeholder={t("goalTitlePlaceholder")}
                   className="mt-1.5 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground">{t("goals.descLabel")}</label>
+                <label className="block text-sm font-medium text-foreground">{t("description")}</label>
                 <textarea
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder={t("goals.descPlaceholder")}
+                  placeholder={t("descriptionPlaceholder")}
                   rows={3}
                   className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground">{t("goals.courseLabel")}</label>
-                <select
-                  value={formCourseId}
-                  onChange={(e) => setFormCourseId(e.target.value)}
-                  className="mt-1.5 h-10 w-full appearance-none rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
-                >
-                  <option value="">{t("goals.noneOption")}</option>
-                  {enrollments.map((e) => (
-                    <option key={e.courseId} value={e.courseId}>
-                      {e.courseTitle}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground">{t("goals.dateLabel")}</label>
+                <label className="block text-sm font-medium text-foreground">{t("targetDate")}</label>
                 <input
                   type="date"
                   value={formTargetDate}
@@ -251,14 +218,14 @@ export default function GoalsPage() {
                   onClick={() => setShowForm(false)}
                   className="flex-1 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
                 >
-                  {tc("cancel")}
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={!formTitle.trim()}
+                  disabled={!formTitle.trim() || saving}
                   className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {editingGoal ? t("goals.save") : t("goals.create")}
+                  {editingGoal ? t("saveChanges") : t("createGoal")}
                 </button>
               </div>
             </div>
@@ -271,14 +238,14 @@ export default function GoalsPage() {
       ) : goals.length === 0 ? (
         <EmptyState
           icon={<Target className="size-8" />}
-          title={t("goals.emptyTitle")}
-          description={t("goals.emptyDesc")}
+          title={t("noGoalsYet")}
+          description={t("noGoalsDesc")}
           action={
             <button
               onClick={openCreateForm}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              {t("goals.createFirst")} <ArrowRight className="size-4" />
+              {t("createFirstGoal")} <ArrowRight className="size-4" />
             </button>
           }
         />
@@ -286,7 +253,7 @@ export default function GoalsPage() {
         <div className="space-y-6">
           {activeGoals.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-foreground mb-3">{t("goals.activeTitle")}</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-3">{t("activeSection")}</h2>
               <div className="space-y-3">
                 {activeGoals.map((goal) => (
                   <div key={goal.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -300,14 +267,9 @@ export default function GoalsPage() {
                           <p className="mt-1 text-xs text-muted-foreground">{goal.description}</p>
                         )}
                         <div className="mt-2 flex items-center gap-3 flex-wrap">
-                          {goal.courseName && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                              <BookOpen className="size-3" /> {goal.courseName}
-                            </span>
-                          )}
                           {goal.targetDate && (
                             <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <Clock className="size-3" /> {t("goals.targetOn", { date: new Date(goal.targetDate).toLocaleDateString() })}
+                              <Clock className="size-3" /> {t("target", { date: new Date(goal.targetDate).toLocaleDateString() })}
                             </span>
                           )}
                         </div>
@@ -316,36 +278,26 @@ export default function GoalsPage() {
                         <button
                           onClick={() => openEditForm(goal)}
                           className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          title={t("goals.editTip")}
+                          title={t("edit")}
                         >
                           <Pencil className="size-3.5" />
                         </button>
                         <button
-                          onClick={() => toggleGoalStatus(goal.id)}
+                          onClick={() => toggleGoalStatus(goal)}
                           className="rounded-lg p-1.5 text-muted-foreground hover:bg-green-500/10 hover:text-green-600"
-                          title={t("goals.doneTip")}
+                          title={t("markComplete")}
                         >
                           <CheckCircle className="size-3.5" />
                         </button>
                         <button
                           onClick={() => deleteGoal(goal.id)}
                           className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          title={t("goals.deleteTip")}
+                          title={t("delete")}
                         >
                           <Trash2 className="size-3.5" />
                         </button>
                       </div>
                     </div>
-                    {goal.courseId && (
-                      <div className="mt-3">
-                        <Link
-                          href={`/dashboard/learner/courses/${goal.courseId}`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                        >
-                          {t("goals.viewCourse")} <ArrowRight className="size-3" />
-                        </Link>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -354,7 +306,7 @@ export default function GoalsPage() {
 
           {completedGoals.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-foreground mb-3">{t("goals.completedTitle")}</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-3">{t("completedSection")}</h2>
               <div className="space-y-3">
                 {completedGoals.map((goal) => (
                   <div key={goal.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs opacity-70">
@@ -370,16 +322,16 @@ export default function GoalsPage() {
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => toggleGoalStatus(goal.id)}
+                          onClick={() => toggleGoalStatus(goal)}
                           className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          title={t("goals.reopenTip")}
+                          title={t("reopen")}
                         >
                           <Clock className="size-3.5" />
                         </button>
                         <button
                           onClick={() => deleteGoal(goal.id)}
                           className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          title={t("goals.deleteTip")}
+                          title={t("delete")}
                         >
                           <Trash2 className="size-3.5" />
                         </button>

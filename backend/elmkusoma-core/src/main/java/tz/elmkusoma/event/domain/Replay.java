@@ -16,6 +16,10 @@ import java.util.UUID;
 @SuperBuilder
 public class Replay extends BaseEntity {
 
+    public static final String STATUS_PROCESSING = "PROCESSING";
+    public static final String STATUS_AVAILABLE = "AVAILABLE";
+    public static final String STATUS_FAILED = "FAILED";
+
     @Column(name = "event_id")
     private UUID eventId;
 
@@ -48,4 +52,22 @@ public class Replay extends BaseEntity {
 
     @Column(name = "last_position_seconds", nullable = false)
     private Integer lastPositionSeconds = 0;
+
+    @Transient
+    private Integer positionSeconds = 0;
+
+    @Transient
+    private Boolean completed = false;
+
+    @Transient
+    private String videoUrl;
+
+    @Transient
+    private String eventTitle;
+
+    @Transient
+    private String presenterName;
+
+    @Transient
+    private java.time.LocalDateTime recordedAt;
 }

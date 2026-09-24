@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
-import { useTranslations } from "next-intl"
 
 const nurseryNav: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "My World", labelKey: "myWorld", href: "/dashboard/nursery", icon: Home },
@@ -193,7 +193,7 @@ const collegeNavSections: CollegeNavSection[] = [
     items: [
       { label: "Academic Search", labelKey: "academicSearch", href: "/dashboard/learner/search", icon: Search, dotColor: "bg-slate-500" },
       { label: "Messages", labelKey: "messages", href: "/dashboard/messages", icon: MessageSquare, dotColor: "bg-blue-500" },
-      { label: "Notifications", labelKey: "notifications", href: "/dashboard/notifications", icon: Bell, dotColor: "bg-orange-500" },
+      { label: "Notifications", labelKey: "notifications", href: "/dashboard/learner/notifications-center", icon: Bell, dotColor: "bg-orange-500" },
     ],
   },
   {
@@ -695,7 +695,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Main navigation" role="navigation">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label={tc("mainNavigation")} role="navigation">
         {isTeacher ? (
           teacherNavSections.map((section, si) => (
             <div key={section.group}>

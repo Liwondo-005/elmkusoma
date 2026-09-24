@@ -300,14 +300,46 @@ public class LiveSessionController {
     @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Get recording download URL")
     public ResponseEntity<ApiResponse<Map<String, String>>> getRecordingDownload(
-            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "userId", required = false) UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String userRole,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId,
             @PathVariable UUID classId) {
+
+        // §41/§60/§98: institution + ownership check before any recording data is revealed
+        UUID callerInstitutionId = institutionId != null ? institutionId : headerInstitutionId;
 
         LiveClass liveClass = liveClassRepository.findById(classId)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
                 .orElse(null);
         if (liveClass == null) {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
+        }
+
+        if (callerInstitutionId == null || !liveClass.getInstitutionId().equals(callerInstitutionId)) {
+            // Cross-institution ID manipulation: deny without leaking existence (403)
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+
+        if (userId == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
+        }
+
+        boolean allowed;
+        if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole)) {
+            allowed = true;
+        } else if ("TEACHER".equals(userRole)) {
+            // teacher owns the class (teacherId may store either Teacher.id or User.id)
+            allowed = teacherRepository.findByUserIdAndInstitutionId(userId, callerInstitutionId)
+                    .map(t -> liveClass.getTeacherId() != null
+                            && (liveClass.getTeacherId().equals(t.getId()) || liveClass.getTeacherId().equals(userId)))
+                    .orElse(liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(userId));
+        } else {
+            // learner: must be an active member of the class's institution
+            allowed = membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, callerInstitutionId);
+        }
+        if (!allowed) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
 
         String recordingUrl = liveClass.getRecordingUrl();

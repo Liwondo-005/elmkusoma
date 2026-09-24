@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { learnerApi, type EventItem } from "@/lib/learner-api"
+import { learnerApi, isAlmostFull, type EventItem } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
+import { useLowBandwidth } from "@/components/primary/low-bandwidth-provider"
 import {
   CalendarDays,
   Clock,
@@ -20,7 +21,7 @@ import {
   RefreshCw,
 } from "lucide-react"
 
-type Tab = "live" | "upcoming" | "registered" | "past" | "replays"
+type Tab = "all" | "related" | "live" | "upcoming" | "registered" | "past" | "replays"
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", {
@@ -64,23 +65,41 @@ function getCountdown(startsAt: string): string {
 }
 
 function getEventStatus(event: EventItem): "live" | "upcoming" | "past" {
+  const backend = (event.eventStatus || event.status || "").toUpperCase()
+  if (backend === "LIVE" || backend === "STARTING" || backend === "ENDING") return "live"
+  if (
+    backend === "ENDED" ||
+    backend === "RECORDING" ||
+    backend === "PROCESSING" ||
+    backend === "REPLAY_AVAILABLE" ||
+    backend === "CANCELLED" ||
+    backend === "FAILED" ||
+    backend === "COMPLETED"
+  ) {
+    return "past"
+  }
+  if (backend === "PUBLISHED" || backend === "REGISTRATION_OPEN" || backend === "REGISTRATION_CLOSED" || backend === "PREPARING" || backend === "FULL") {
+    return "upcoming"
+  }
   const now = new Date()
   const start = new Date(event.startsAt)
   const end = event.endsAt
     ? new Date(event.endsAt)
     : new Date(start.getTime() + (event.durationMinutes || 60) * 60000)
   if (now >= start && now <= end) return "live"
-  if (now > end || event.status === "COMPLETED") return "past"
+  if (now > end) return "past"
   return "upcoming"
 }
 
 export default function EventsPage() {
   const t = useTranslations("events")
   const tc = useTranslations("common")
+  const { reducedAnimations } = useLowBandwidth()
 
   const [activeTab, setActiveTab] = useState<Tab>("upcoming")
   const [events, setEvents] = useState<EventItem[]>([])
   const [registeredEvents, setRegisteredEvents] = useState<EventItem[]>([])
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
@@ -90,12 +109,14 @@ export default function EventsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [allEvents, registered] = await Promise.all([
+      const [allEvents, registered, enrollments] = await Promise.all([
         learnerApi.getEvents().catch(() => []),
         learnerApi.getRegisteredEvents().catch(() => []),
+        learnerApi.getEnrollments().catch(() => []),
       ])
       setEvents(allEvents)
       setRegisteredEvents(registered)
+      setEnrolledCourseIds(new Set(enrollments.map((e) => e.courseId)))
     } catch {
       setError(t("error.loadFailed"))
     } finally {
@@ -110,7 +131,17 @@ export default function EventsPage() {
   const liveEvents = events.filter((e) => getEventStatus(e) === "live")
   const upcomingEvents = events.filter((e) => getEventStatus(e) === "upcoming")
   const pastEvents = events.filter((e) => getEventStatus(e) === "past")
-  const replayEvents = events.filter((e) => e.hasRecording)
+  const replayEvents = events.filter((e) => e.hasRecording || e.eventStatus === "REPLAY_AVAILABLE")
+  const relatedEvents = useMemo(
+    () =>
+      events.filter(
+        (e) =>
+          (e.relatedCourseId && enrolledCourseIds.has(e.relatedCourseId)) ||
+          (e.relatedCourseTitle && enrolledCourseIds.size > 0),
+      ),
+    [events, enrolledCourseIds],
+  )
+  const allEvents = events
 
   const filteredByTab = (() => {
     const list =
@@ -122,7 +153,11 @@ export default function EventsPage() {
             ? upcomingEvents
             : activeTab === "past"
               ? pastEvents
-              : replayEvents
+              : activeTab === "all"
+                ? allEvents
+                : activeTab === "related"
+                  ? relatedEvents
+                  : replayEvents
     if (!search) return list
     const q = search.toLowerCase()
     return list.filter(
@@ -134,6 +169,8 @@ export default function EventsPage() {
   })()
 
   const tabCounts: Record<Tab, number> = {
+    all: allEvents.length,
+    related: relatedEvents.length,
     live: liveEvents.length,
     upcoming: upcomingEvents.length,
     registered: registeredEvents.length,
@@ -142,6 +179,8 @@ export default function EventsPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: "all", label: t("tabs.allEvents") },
+    { key: "related", label: t("tabs.related") },
     { key: "live", label: t("tabs.liveNow") },
     { key: "upcoming", label: t("tabs.upcoming") },
     { key: "registered", label: t("tabs.registered") },
@@ -238,7 +277,11 @@ export default function EventsPage() {
                   ? t("empty.registered")
                   : activeTab === "past"
                     ? t("empty.past")
-                    : t("empty.replays")
+                    : activeTab === "all"
+                      ? t("empty.noEvents")
+                      : activeTab === "related"
+                        ? t("empty.related")
+                        : t("empty.replays")
           }
           description={
             activeTab === "live"
@@ -249,7 +292,11 @@ export default function EventsPage() {
                   ? t("empty.registeredDesc")
                   : activeTab === "past"
                     ? t("empty.pastDesc")
-                    : t("empty.replaysDesc")
+                    : activeTab === "all"
+                      ? t("empty.noEventsDesc")
+                      : activeTab === "related"
+                        ? t("empty.relatedDesc")
+                        : t("empty.replaysDesc")
           }
           action={
             activeTab !== "registered" ? (
@@ -270,16 +317,19 @@ export default function EventsPage() {
             const isLive = status === "live"
             const isPast = status === "past"
             const countdown = !isPast && !isLive ? getCountdown(event.startsAt) : ""
+            const cancelReason = event.eventStatus === "CANCELLED" ? event.cancellationReason : null
 
             return (
               <Link
                 key={event.id}
                 href={`/dashboard/learner/events/${event.id}`}
-                aria-label={`${event.title} - ${t(`tabs.${activeTab}`)}`}
+                aria-label={`${event.title} - ${tabs.find((tb) => tb.key === activeTab)?.label || event.title}`}
                 className={`group rounded-2xl border bg-card p-5 shadow-xs transition-all hover:shadow-md ${
                   isLive
                     ? "border-green-500/30"
-                    : "border-border hover:border-primary/30"
+                    : cancelReason
+                      ? "border-destructive/30"
+                      : "border-border hover:border-primary/30"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -289,9 +339,10 @@ export default function EventsPage() {
                     {event.eventType}
                   </span>
                   {isLive && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-green-600">
-                      <span className="size-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className={`inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-green-600${reducedAnimations ? "" : " "}`}>
+                      {!reducedAnimations && <span className="size-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />}
                       {t("live.badge")}
+                      <span className="sr-only">{t("live.badge")}</span>
                     </span>
                   )}
                   {isPast && (
@@ -299,20 +350,43 @@ export default function EventsPage() {
                       {t("past.badge")}
                     </span>
                   )}
-                  {event.isRegistered && !isLive && !isPast && (
+                  {event.eventStatus === "CANCELLED" && (
+                    <span className="inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-0.5 text-[10px] font-semibold text-destructive">
+                      {t("status.cancelled")}
+                    </span>
+                  )}
+                  {isAlmostFull(event) && !isPast && !isLive && event.eventStatus !== "CANCELLED" && (
+                    <span
+                      className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-amber-600"
+                      role="status"
+                      title={t("status.almostFull")}
+                    >
+                      {t("status.almostFull")}
+                    </span>
+                  )}
+                  {event.isRegistered && !isLive && !isPast && event.eventStatus !== "CANCELLED" && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-green-600">
                       {t("registered.badge")}
                     </span>
                   )}
                 </div>
+                <span className="sr-only" role="status">
+                  {event.eventStatus || event.status}
+                </span>
 
                 <h3 className="mt-3 text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                   {event.title}
                 </h3>
 
-                {event.organizerName && (
+                {(event.presenterName || event.organizerName) && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {t("card.presenter", { name: event.organizerName })}
+                    {t("card.presenter", { name: event.presenterName || event.organizerName || "" })}
+                  </p>
+                )}
+
+                {cancelReason && (
+                  <p className="mt-1 text-xs text-destructive">
+                    {t("status.cancelled")}{cancelReason ? `: ${cancelReason}` : ""}
                   </p>
                 )}
 
@@ -321,6 +395,7 @@ export default function EventsPage() {
                     <CalendarDays className="size-3 shrink-0" />
                     <span>{formatDate(event.startsAt)}</span>
                     <span className="text-muted-foreground/60">at {formatTime(event.startsAt)}</span>
+                    {event.timezone && <span className="text-[10px]">{event.timezone}</span>}
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="size-3 shrink-0" />
@@ -335,7 +410,7 @@ export default function EventsPage() {
                 </div>
 
                 <div className="mt-4 flex items-center gap-2">
-                  {isLive && (
+                  {(isLive || (event.isRegistered && event.eventStatus === "LIVE")) && (
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white">
                       <Video className="size-3" />
                       {t("live.joinNow")}

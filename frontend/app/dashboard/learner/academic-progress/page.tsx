@@ -36,7 +36,7 @@ export default function AcademicProgressPage() {
       if (enrollRes.status === "fulfilled") setEnrollments((enrollRes.value.data as StudentCourseEnrollment[]) || [])
       if (compRes.status === "fulfilled") setCompetencySummary((compRes.value.data as CompetencySummary) || null)
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }

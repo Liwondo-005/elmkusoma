@@ -26,10 +26,35 @@ public class StudentEventController {
     // Read-only, institution-scoped list also used by the dashboard sidebar badge for
     // every role - the class-level student-only restriction does not apply here.
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'TEACHER', 'ADMIN', 'INSTITUTION_ADMIN', 'PARENT')")
-    public ResponseEntity<ApiResponse<List<EventResponse>>> getUpcomingEvents(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<List<EventResponse>>> getUpcomingEvents(
+            HttpServletRequest request,
+            @RequestParam(required = false) Boolean personalized,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         UUID institutionId = getInstitutionId(request);
+        UUID userId = getUserId(request);
+        String role = getRole(request);
+
+        // §53: personal relevance ranking for learners
+        if (Boolean.TRUE.equals(personalized) && userId != null && isLearnerRole(role)) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    sanitizeMeetingUrls(eventService.getPersonalizedEvents(institutionId, userId), userId, role)));
+        }
+
+        // §81/§82: optional Pageable pagination (absent page/size keeps full list)
+        if (page != null || size != null) {
+            org.springframework.data.domain.Page<EventResponse> result =
+                    eventService.getEvents(institutionId, "PUBLISHED", null, null, null,
+                            org.springframework.data.domain.PageRequest.of(
+                                    page != null && page >= 0 ? page : 0,
+                                    size != null && size > 0 ? size : 20,
+                                    org.springframework.data.domain.Sort.by("startsAt").ascending()));
+            return ResponseEntity.ok()
+                    .header("X-Total-Count", String.valueOf(result.getTotalElements()))
+                    .body(ApiResponse.success(sanitizeMeetingUrls(result.getContent(), userId, role)));
+        }
         List<EventResponse> events = eventService.getUpcomingEvents(institutionId);
-        return ResponseEntity.ok(ApiResponse.success(events));
+        return ResponseEntity.ok(ApiResponse.success(sanitizeMeetingUrls(events, userId, role)));
     }
 
     @GetMapping("/{id}")
@@ -75,6 +100,34 @@ public class StudentEventController {
         Object userIdAttr = request.getAttribute("userId");
         if (userIdAttr instanceof UUID uuid) return uuid;
         return null;
+    }
+
+    private String getRole(HttpServletRequest request) {
+        Object roleAttr = request.getAttribute("userRole");
+        return roleAttr instanceof String role ? role : null;
+    }
+
+    private boolean isLearnerRole(String role) {
+        return "STUDENT".equals(role) || "OTHER_LEARNER".equals(role) || "LEARNER".equals(role);
+    }
+
+    /** §59: meeting/join URL only for registered learners (staff/admins keep full data). */
+    private List<EventResponse> sanitizeMeetingUrls(List<EventResponse> events, UUID userId, String role) {
+        if (events == null || !isLearnerRole(role)) {
+            return events;
+        }
+        for (EventResponse e : events) {
+            if (e.getMeetingUrl() == null) {
+                continue;
+            }
+            boolean registered = userId != null
+                    && (Boolean.TRUE.equals(e.getIsRegistered())
+                            || eventService.isUserRegistered(e.getId(), userId));
+            if (!registered) {
+                e.setMeetingUrl(null);
+            }
+        }
+        return events;
     }
 
     private UUID getInstitutionId(HttpServletRequest request) {
