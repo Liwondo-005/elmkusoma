@@ -32,6 +32,34 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     List<Event> findUpcomingPublished(@Param("instId") UUID institutionId, @Param("now") LocalDateTime now);
 
     @Query("SELECT e FROM Event e WHERE e.institutionId = :instId AND e.isDeleted = false " +
+           "AND e.status = 'PUBLISHED' AND e.startsAt > :now")
+    Page<Event> findUpcomingPublished(@Param("instId") UUID institutionId, @Param("now") LocalDateTime now,
+                                      Pageable pageable);
+
+    /** Paged, filterable list used by controllers that pass optional page/size (§81/§82). */
+    @Query("SELECT e FROM Event e WHERE e.isDeleted = false " +
+           "AND (:institutionId IS NULL OR e.institutionId = :institutionId) " +
+           "AND (:status IS NULL OR e.status = :status) " +
+           "AND (:eventType IS NULL OR e.eventType = :eventType) " +
+           "AND (:category IS NULL OR e.category = :category) " +
+           "AND (:providerId IS NULL OR e.providerId = :providerId)")
+    Page<Event> findFiltered(@Param("institutionId") UUID institutionId,
+                             @Param("status") String status,
+                             @Param("eventType") String eventType,
+                             @Param("category") String category,
+                             @Param("providerId") String providerId,
+                             Pageable pageable);
+
+    /** §97 — provider-scoped lookup (findByProviderId usage in getEvents filter). */
+    List<Event> findByInstitutionIdAndProviderIdAndIsDeletedFalse(UUID institutionId, String providerId);
+
+    /** Events about to start — used by the reminder scheduler (§18/19). */
+    @Query("SELECT e FROM Event e WHERE e.isDeleted = false " +
+           "AND e.startsAt > :from AND e.startsAt <= :to " +
+           "AND e.status IN ('PUBLISHED', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSED', 'PREPARING', 'STARTING')")
+    List<Event> findEventsStartingWithin(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT e FROM Event e WHERE e.institutionId = :instId AND e.isDeleted = false " +
            "AND e.status = 'PUBLISHED' AND e.startsAt <= :now " +
            "AND (e.endsAt IS NULL OR e.endsAt >= :windowStart) ORDER BY e.startsAt DESC")
     List<Event> findPastOrOngoing(@Param("instId") UUID institutionId, @Param("now") LocalDateTime now, @Param("windowStart") LocalDateTime windowStart);

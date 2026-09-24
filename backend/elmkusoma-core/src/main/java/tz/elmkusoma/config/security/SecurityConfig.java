@@ -41,6 +41,7 @@ public class SecurityConfig {
             "/v1/institutions",
             "/v1/institutions/{id}",
             "/v1/webhooks/livekit",
+            "/v1/webhooks/**",
             // WebSocket upgrade carries the JWT as a ?token= query param and is
             // authenticated by JwtHandshakeInterceptor, not by the header filter.
             "/ws/**"

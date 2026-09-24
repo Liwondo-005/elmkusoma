@@ -112,7 +112,7 @@ export function LocaleMessages({ children }: { children: ReactNode }) {
   const { locale } = useLocaleContext()
   const messages = useMemo(() => messagesForLocale(locale), [locale])
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
+    <NextIntlClientProvider locale={locale} messages={messages} timeZone="Africa/Dar_es_Salaam">
       {children}
     </NextIntlClientProvider>
   )

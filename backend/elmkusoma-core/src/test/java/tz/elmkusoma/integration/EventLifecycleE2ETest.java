@@ -10,8 +10,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
+import tz.elmkusoma.testutil.TestTokens;
 
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -26,11 +30,9 @@ class EventLifecycleE2ETest {
     private MockMvc mockMvc;
 
     private static final UUID INSTITUTION_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    private static final UUID ADMIN_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
-    private static final UUID STUDENT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000020");
 
-    private String createdEventId;
-    private String createdLiveClassId;
+    /** static: JUnit creates a new test instance per method, so instance fields do not carry across @Order phases. */
+    private static String createdEventId;
 
     // ==================== Phase 1: Provider Creates Event ====================
 
@@ -40,8 +42,6 @@ class EventLifecycleE2ETest {
         String adminToken = getAdminToken();
         MvcResult result = mockMvc.perform(post("/v1/events")
                 .header("Authorization", "Bearer " + adminToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", ADMIN_USER_ID)
                 .contentType("application/json")
                 .content("{\"title\":\"E2E Test Event\",\"eventType\":\"LECTURE\",\"startsAt\":\"2026-12-01T10:00:00\",\"description\":\"E2E lifecycle test event\",\"maxParticipants\":50}"))
             .andExpect(status().isCreated())
@@ -60,9 +60,7 @@ class EventLifecycleE2ETest {
     void adminViewsEventList() throws Exception {
         String adminToken = getAdminToken();
         mockMvc.perform(get("/v1/events")
-                .header("Authorization", "Bearer " + adminToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", ADMIN_USER_ID))
+                .header("Authorization", "Bearer " + adminToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").isArray());
@@ -75,15 +73,13 @@ class EventLifecycleE2ETest {
     void adminViewsEventDetails() throws Exception {
         String adminToken = getAdminToken();
         mockMvc.perform(get("/v1/events/" + createdEventId)
-                .header("Authorization", "Bearer " + adminToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", ADMIN_USER_ID))
+                .header("Authorization", "Bearer " + adminToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.title").value("E2E Test Event"));
     }
 
-    // ==================== Phase 4: Admin Updates Event ====================
+    // ==================== Phase 4: Admin Updates Event, then Publishes ====================
 
     @Test
     @Order(4)
@@ -91,13 +87,17 @@ class EventLifecycleE2ETest {
         String adminToken = getAdminToken();
         mockMvc.perform(put("/v1/events/" + createdEventId)
                 .header("Authorization", "Bearer " + adminToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", ADMIN_USER_ID)
                 .contentType("application/json")
                 .content("{\"title\":\"E2E Test Event Updated\",\"eventType\":\"LECTURE\",\"startsAt\":\"2026-12-01T11:00:00\",\"description\":\"Updated description\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.title").value("E2E Test Event Updated"));
+
+        mockMvc.perform(post("/v1/events/" + createdEventId + "/publish")
+                .header("Authorization", "Bearer " + adminToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.status").value("PUBLISHED"));
     }
 
     // ==================== Phase 5: Student Discovers Upcoming Events ====================
@@ -107,9 +107,7 @@ class EventLifecycleE2ETest {
     void studentDiscoversUpcomingEvents() throws Exception {
         String studentToken = getStudentToken();
         mockMvc.perform(get("/api/v1/student/events")
-                .header("Authorization", "Bearer " + studentToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", STUDENT_USER_ID))
+                .header("Authorization", "Bearer " + studentToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").isArray());
@@ -122,9 +120,7 @@ class EventLifecycleE2ETest {
     void studentViewsEventDetails() throws Exception {
         String studentToken = getStudentToken();
         mockMvc.perform(get("/api/v1/student/events/" + createdEventId)
-                .header("Authorization", "Bearer " + studentToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", STUDENT_USER_ID))
+                .header("Authorization", "Bearer " + studentToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
     }
@@ -136,9 +132,7 @@ class EventLifecycleE2ETest {
     void studentRegistersForEvent() throws Exception {
         String studentToken = getStudentToken();
         mockMvc.perform(post("/api/v1/student/events/" + createdEventId + "/register")
-                .header("Authorization", "Bearer " + studentToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", STUDENT_USER_ID))
+                .header("Authorization", "Bearer " + studentToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
     }
@@ -150,9 +144,7 @@ class EventLifecycleE2ETest {
     void duplicateRegistrationIsIdempotent() throws Exception {
         String studentToken = getStudentToken();
         mockMvc.perform(post("/api/v1/student/events/" + createdEventId + "/register")
-                .header("Authorization", "Bearer " + studentToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", STUDENT_USER_ID))
+                .header("Authorization", "Bearer " + studentToken))
             .andExpect(status().isOk());
     }
 
@@ -163,9 +155,7 @@ class EventLifecycleE2ETest {
     void studentViewsRegisteredEvents() throws Exception {
         String studentToken = getStudentToken();
         mockMvc.perform(get("/api/v1/student/events/registered")
-                .header("Authorization", "Bearer " + studentToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", STUDENT_USER_ID))
+                .header("Authorization", "Bearer " + studentToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").isArray());
@@ -178,9 +168,7 @@ class EventLifecycleE2ETest {
     void adminViewsEventRegistrations() throws Exception {
         String adminToken = getAdminToken();
         mockMvc.perform(get("/v1/events/" + createdEventId + "/registrations")
-                .header("Authorization", "Bearer " + adminToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", ADMIN_USER_ID))
+                .header("Authorization", "Bearer " + adminToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").isArray());
@@ -194,8 +182,6 @@ class EventLifecycleE2ETest {
         String learnerToken = getLearnerToken();
         mockMvc.perform(get("/v1/learner/events")
                 .header("Authorization", "Bearer " + learnerToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", UUID.fromString("00000000-0000-0000-0000-000000000030"))
                 .param("eventType", "LECTURE"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
@@ -207,11 +193,8 @@ class EventLifecycleE2ETest {
     @Order(12)
     void learnerRegistersForEvent() throws Exception {
         String learnerToken = getLearnerToken();
-        UUID learnerUserId = UUID.fromString("00000000-0000-0000-0000-000000000030");
         mockMvc.perform(post("/v1/learner/events/" + createdEventId + "/register")
-                .header("Authorization", "Bearer " + learnerToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", learnerUserId))
+                .header("Authorization", "Bearer " + learnerToken))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.success").value(true));
     }
@@ -223,9 +206,7 @@ class EventLifecycleE2ETest {
     void eventMaterialsAccessible() throws Exception {
         String studentToken = getStudentToken();
         mockMvc.perform(get("/api/v1/student/events/" + createdEventId + "/materials")
-                .header("Authorization", "Bearer " + studentToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", STUDENT_USER_ID))
+                .header("Authorization", "Bearer " + studentToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").isArray());
@@ -238,9 +219,7 @@ class EventLifecycleE2ETest {
     void studentCancelsRegistration() throws Exception {
         String studentToken = getStudentToken();
         mockMvc.perform(post("/api/v1/student/events/" + createdEventId + "/cancel-registration")
-                .header("Authorization", "Bearer " + studentToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", STUDENT_USER_ID))
+                .header("Authorization", "Bearer " + studentToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
     }
@@ -251,11 +230,8 @@ class EventLifecycleE2ETest {
     @Order(15)
     void learnerCancelsRegistration() throws Exception {
         String learnerToken = getLearnerToken();
-        UUID learnerUserId = UUID.fromString("00000000-0000-0000-0000-000000000030");
         mockMvc.perform(post("/v1/learner/events/" + createdEventId + "/cancel")
                 .header("Authorization", "Bearer " + learnerToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", learnerUserId)
                 .contentType("application/json")
                 .content("{\"reason\":\"Changed mind\"}"))
             .andExpect(status().isOk())
@@ -269,9 +245,7 @@ class EventLifecycleE2ETest {
     void adminDeletesEvent() throws Exception {
         String adminToken = getAdminToken();
         mockMvc.perform(delete("/v1/events/" + createdEventId)
-                .header("Authorization", "Bearer " + adminToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", ADMIN_USER_ID))
+                .header("Authorization", "Bearer " + adminToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
     }
@@ -283,9 +257,7 @@ class EventLifecycleE2ETest {
     void deletedEventReturns404() throws Exception {
         String adminToken = getAdminToken();
         mockMvc.perform(get("/v1/events/" + createdEventId)
-                .header("Authorization", "Bearer " + adminToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", ADMIN_USER_ID))
+                .header("Authorization", "Bearer " + adminToken))
             .andExpect(status().isNotFound());
     }
 
@@ -295,11 +267,8 @@ class EventLifecycleE2ETest {
     @Order(18)
     void crossStudentCannotSeeOtherRegistrationDetails() throws Exception {
         String otherStudentToken = getOtherStudentToken();
-        UUID otherUserId = UUID.fromString("00000000-0000-0000-0000-000000000040");
         mockMvc.perform(get("/v1/events/" + createdEventId + "/registrations")
-                .header("Authorization", "Bearer " + otherStudentToken)
-                .requestAttr("institutionId", INSTITUTION_ID)
-                .requestAttr("userId", otherUserId))
+                .header("Authorization", "Bearer " + otherStudentToken))
             .andExpect(result -> {
                 int status = result.getResponse().getStatus();
                 assert status == 403 || status == 404
@@ -312,9 +281,8 @@ class EventLifecycleE2ETest {
     @Test
     @Order(19)
     void liveKitWebhookHandlesRoomStarted() throws Exception {
-        mockMvc.perform(post("/v1/webhooks/livekit")
-                .contentType("application/json")
-                .content("{\"event\":\"room_started\",\"room\":{\"name\":\"liveclass-e2e-test\",\"sid\":\"test-sid\"}}"))
+        String body = "{\"event\":\"room_started\",\"room\":{\"name\":\"liveclass-e2e-test\",\"sid\":\"test-sid\"}}";
+        postSignedWebhook(body)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ok"));
     }
@@ -322,9 +290,8 @@ class EventLifecycleE2ETest {
     @Test
     @Order(20)
     void liveKitWebhookHandlesRecordingCompleted() throws Exception {
-        mockMvc.perform(post("/v1/webhooks/livekit")
-                .contentType("application/json")
-                .content("{\"event\":\"recording_completed\",\"egress\":{\"id\":\"test-egress-001\",\"roomName\":\"liveclass-e2e-test\",\"status\":\"EGRESS_COMPLETE\"}}"))
+        String body = "{\"event\":\"recording_completed\",\"egress\":{\"id\":\"test-egress-001\",\"roomName\":\"liveclass-e2e-test\",\"status\":\"EGRESS_COMPLETE\"}}";
+        postSignedWebhook(body)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ok"));
     }
@@ -332,9 +299,8 @@ class EventLifecycleE2ETest {
     @Test
     @Order(21)
     void liveKitWebhookHandlesParticipantJoined() throws Exception {
-        mockMvc.perform(post("/v1/webhooks/livekit")
-                .contentType("application/json")
-                .content("{\"event\":\"participant_joined\",\"participant\":{\"id\":\"user-participant-001\",\"identity\":\"student@test.com\"}}"))
+        String body = "{\"event\":\"participant_joined\",\"participant\":{\"id\":\"user-participant-001\",\"identity\":\"student@test.com\"}}";
+        postSignedWebhook(body)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ok"));
     }
@@ -342,7 +308,7 @@ class EventLifecycleE2ETest {
     // ==================== Phase 20: Replay Access ====================
 
     @Test
-    @Order(20)
+    @Order(22)
     void replayEndpointAccessibleWithAuth() throws Exception {
         String studentToken = getStudentToken();
         mockMvc.perform(get("/v1/replays")
@@ -354,32 +320,34 @@ class EventLifecycleE2ETest {
     // ==================== Helpers ====================
 
     private String getAdminToken() {
-        return "test-admin-token";
+        return TestTokens.adminToken();
     }
 
     private String getStudentToken() {
-        return "test-student-token";
+        return TestTokens.studentToken();
     }
 
     private String getLearnerToken() {
-        return "test-learner-token";
+        return TestTokens.learnerToken();
     }
 
     private String getOtherStudentToken() {
-        return "test-other-student-token";
+        return TestTokens.otherStudentToken();
+    }
+
+    private ResultActions postSignedWebhook(String body) throws Exception {
+        return mockMvc.perform(post("/v1/webhooks/livekit")
+                .contentType("application/json")
+                .header("Authorization", TestTokens.webhookAuthHeader(body))
+                .content(body));
     }
 
     private String extractIdFromResponse(MvcResult result) throws Exception {
         String content = result.getResponse().getContentAsString();
-        int dataIndex = content.indexOf("\"id\":\"");
-        if (dataIndex == -1) {
-            dataIndex = content.indexOf("\"id\": \"");
+        Matcher m = Pattern.compile("\"id\"\\s*:\\s*\"([0-9a-fA-F-]{36})\"").matcher(content);
+        if (m.find()) {
+            return m.group(1);
         }
-        if (dataIndex != -1) {
-            int start = content.indexOf("\"", dataIndex + 5) + 1;
-            int end = content.indexOf("\"", start);
-            return content.substring(start, end);
-        }
-        return "fallback-id";
+        throw new AssertionError("No event id in response: " + content);
     }
 }

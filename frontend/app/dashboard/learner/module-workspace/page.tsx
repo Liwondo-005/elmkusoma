@@ -53,7 +53,7 @@ export default function ModuleWorkspacePage() {
       }));
       setModules(mapped);
     } catch (err: any) {
-      setError(err?.message || tc("error"));
+      setError(err?.message || tc("error.generic"));
     } finally {
       setLoading(false);
     }

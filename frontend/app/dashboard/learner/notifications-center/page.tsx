@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { learnerApi, type LearnerNotification } from "@/lib/learner-api"
+import { announce } from "@/lib/announce"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   Bell,
@@ -37,41 +38,22 @@ type Notification = {
   link?: string
 }
 
-const NOTIFICATION_CONFIG: Record<
-  string,
-  { icon: typeof Bell; color: string; bg: string; label: string; emoji: string }
-> = {
-  LIVE: { icon: Bell, color: "text-red-500", bg: "bg-red-500/10", label: "Live", emoji: "\uD83D\uDD34" },
-  COURSE: { icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10", label: "Course", emoji: "\uD83D\uDCDA" },
-  ASSESSMENT: { icon: FileText, color: "text-amber-500", bg: "bg-amber-500/10", label: "Assessment", emoji: "\uD83D\uDCDD" },
-  RESEARCH: { icon: Award, color: "text-purple-500", bg: "bg-purple-500/10", label: "Research", emoji: "\uD83D\uDD2C" },
-  PROJECT: { icon: Target, color: "text-cyan-500", bg: "bg-cyan-500/10", label: "Project", emoji: "\uD83D\uDCC1" },
-  ACADEMIC: { icon: GraduationCap, color: "text-indigo-500", bg: "bg-indigo-500/10", label: "Academic", emoji: "\uD83C\uDF93" },
-  REPLAY: { icon: Video, color: "text-emerald-500", bg: "bg-emerald-500/10", label: "Replay", emoji: "\uD83D\uDCFA" },
-  CAREER: { icon: Briefcase, color: "text-pink-500", bg: "bg-pink-500/10", label: "Career", emoji: "\uD83D\uDCBC" },
-}
-
 const CATEGORIES = ["ALL", "LIVE", "COURSE", "ASSESSMENT", "RESEARCH", "PROJECT", "ACADEMIC", "CAREER"] as const
 type CategoryFilter = (typeof CATEGORIES)[number]
 
-function getTimeAgo(dateStr: string): string {
-  const now = Date.now()
-  const then = new Date(dateStr).getTime()
-  const diffMs = now - then
-  const diffMin = Math.floor(diffMs / 60000)
-  const diffHr = Math.floor(diffMs / 3600000)
-  const diffDay = Math.floor(diffMs / 86400000)
-
-  if (diffMin < 1) return "Just now"
-  if (diffMin < 60) return `${diffMin} minute${diffMin > 1 ? "s" : ""} ago`
-  if (diffHr < 24) return `${diffHr} hour${diffHr > 1 ? "s" : ""} ago`
-  if (diffDay === 1) return "Yesterday"
-  if (diffDay < 7) return `${diffDay} days ago`
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+const CATEGORY_ICONS: Record<string, { icon: typeof Bell; color: string; bg: string; emoji: string }> = {
+  LIVE: { icon: Bell, color: "text-red-500", bg: "bg-red-500/10", emoji: "\uD83D\uDD34" },
+  COURSE: { icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10", emoji: "\uD83D\uDCDA" },
+  ASSESSMENT: { icon: FileText, color: "text-amber-500", bg: "bg-amber-500/10", emoji: "\uD83D\uDCDD" },
+  RESEARCH: { icon: Award, color: "text-purple-500", bg: "bg-purple-500/10", emoji: "\uD83D\uDD2C" },
+  PROJECT: { icon: Target, color: "text-cyan-500", bg: "bg-cyan-500/10", emoji: "\uD83D\uDCC1" },
+  ACADEMIC: { icon: GraduationCap, color: "text-indigo-500", bg: "bg-indigo-500/10", emoji: "\uD83C\uDF93" },
+  REPLAY: { icon: Video, color: "text-emerald-500", bg: "bg-emerald-500/10", emoji: "\uD83D\uDCFA" },
+  CAREER: { icon: Briefcase, color: "text-pink-500", bg: "bg-pink-500/10", emoji: "\uD83D\uDCBC" },
 }
 
 function getCategoryConfig(type: string) {
-  return NOTIFICATION_CONFIG[type] || NOTIFICATION_CONFIG.COURSE
+  return CATEGORY_ICONS[type] || CATEGORY_ICONS.COURSE
 }
 
 function mapNotification(n: LearnerNotification): Notification {
@@ -103,10 +85,33 @@ function mapNotification(n: LearnerNotification): Notification {
   }
 }
 
+function useTimeAgo(t: ReturnType<typeof useTranslations>) {
+  return useCallback(
+    (dateStr: string): string => {
+      const now = Date.now()
+      const then = new Date(dateStr).getTime()
+      const diffMs = now - then
+      const diffMin = Math.floor(diffMs / 60000)
+      const diffHr = Math.floor(diffMs / 3600000)
+      const diffDay = Math.floor(diffMs / 86400000)
+
+      if (diffMin < 1) return t("justNow")
+      if (diffMin < 60) return t("minutesAgo", { count: diffMin, s: diffMin > 1 ? "s" : "" })
+      if (diffHr < 24) return t("hoursAgo", { count: diffHr, s: diffHr > 1 ? "s" : "" })
+      if (diffDay === 1) return t("yesterday")
+      if (diffDay < 7) return t("daysAgo", { count: diffDay })
+      return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    },
+    [t]
+  )
+}
+
 export default function NotificationsCenterPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const t = useTranslations("notifications")
   const tc = useTranslations("common")
+  const getTimeAgo = useTimeAgo(t)
 
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -126,7 +131,7 @@ export default function NotificationsCenterPage() {
       const data = await learnerApi.getNotifications()
       setNotifications(data.map(mapNotification))
     } catch {
-      setError(tc("error"))
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -144,12 +149,22 @@ export default function NotificationsCenterPage() {
 
   const unreadCount = notificationsWithRead.filter((n) => !n.read).length
 
+  const categoryLabel = useCallback(
+    (cat: string) => {
+      if (cat === "ALL") return t("all")
+      const key = `categories.${cat}` as const
+      try {
+        return t(key)
+      } catch {
+        return cat
+      }
+    },
+    [t]
+  )
+
   const toggleRead = useCallback(
     (id: string) => {
-      setReadState((prev) => {
-        const next = { ...prev, [id]: !prev[id] }
-        return next
-      })
+      setReadState((prev) => ({ ...prev, [id]: !prev[id] }))
       const isCurrentlyRead = readState[id] !== undefined ? readState[id] : notifications.find((n) => n.id === id)?.read
       if (!isCurrentlyRead) {
         learnerApi.markNotificationRead(id).catch(() => {})
@@ -165,23 +180,22 @@ export default function NotificationsCenterPage() {
     })
     setReadState(next)
     learnerApi.markAllRead().catch(() => {})
-  }, [notificationsWithRead])
+    announce(t("markAllRead"))
+  }, [notificationsWithRead, t])
 
-  const deleteNotification = useCallback(
-    (id: string) => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id))
-    },
-    []
-  )
+  const deleteNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    announce(t("deleteNotification"))
+  }, [t])
 
-  if (authLoading || !loading && (!user || (user.role !== "Other Learner" && user.role !== "Student"))) {
+  if (authLoading || (!loading && (!user || (user.role !== "Other Learner" && user.role !== "Student")))) {
     return <LoadingState />
   }
 
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl space-y-6 pb-12">
-        <LearnerHeader firstName={user?.firstName || "Student"} subtitle="Stay updated with your academic notifications" />
+        <LearnerHeader firstName={user?.firstName || "Student"} subtitle={t("subtitle")} />
         <div className="flex items-center justify-center py-20">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
           <span className="ml-2 text-sm text-muted-foreground">{tc("loading")}</span>
@@ -193,10 +207,10 @@ export default function NotificationsCenterPage() {
   if (error) {
     return (
       <div className="mx-auto max-w-4xl space-y-6 pb-12">
-        <LearnerHeader firstName={user?.firstName || "Student"} subtitle="Stay updated with your academic notifications" />
+        <LearnerHeader firstName={user?.firstName || "Student"} subtitle={t("subtitle")} />
         <EmptyState
           icon={<AlertCircle className="size-8" />}
-          title={tc("error")}
+          title={tc("error.load")}
           description={error}
         />
         <div className="flex justify-center">
@@ -216,14 +230,14 @@ export default function NotificationsCenterPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-12">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <LearnerHeader firstName={firstName} subtitle="Stay updated with your academic notifications" />
+        <LearnerHeader firstName={firstName} subtitle={t("subtitle")} />
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
             className="inline-flex items-center gap-2 self-start rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             <CheckCircle className="size-4" />
-            Mark All Read
+            {t("markAllRead")}
           </button>
         )}
       </div>
@@ -232,7 +246,7 @@ export default function NotificationsCenterPage() {
         <Filter className="size-4 text-muted-foreground" />
         {CATEGORIES.map((cat) => {
           const isActive = activeFilter === cat
-          const config = cat !== "ALL" ? NOTIFICATION_CONFIG[cat] : null
+          const config = cat !== "ALL" ? CATEGORY_ICONS[cat] : null
           const count =
             cat === "ALL"
               ? notificationsWithRead.length
@@ -248,7 +262,7 @@ export default function NotificationsCenterPage() {
               }`}
             >
               {config && <span>{config.emoji}</span>}
-              {cat === "ALL" ? "All" : config?.label || cat}
+              {categoryLabel(cat)}
               <span
                 className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                   isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
@@ -265,7 +279,9 @@ export default function NotificationsCenterPage() {
         <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
           <Bell className="size-4" />
           <span>
-            You have <strong>{unreadCount}</strong> unread notification{unreadCount > 1 ? "s" : ""}
+            {unreadCount === 1
+              ? t("unreadCountOne").replace(/<[^>]+>/g, "")
+              : t("unreadCount", { count: unreadCount, s: unreadCount > 1 ? "s" : "" }).replace(/<[^>]+>/g, "")}
           </span>
         </div>
       )}
@@ -276,13 +292,13 @@ export default function NotificationsCenterPage() {
             icon={<Bell className="size-8" />}
             title={
               activeFilter === "ALL"
-                ? "No notifications yet"
-                : `No ${NOTIFICATION_CONFIG[activeFilter]?.label || activeFilter.toLowerCase()} notifications`
+                ? t("noNotificationsYet")
+                : t("noCategoryNotifications", { category: categoryLabel(activeFilter) })
             }
             description={
               activeFilter === "ALL"
-                ? "You're all caught up! Academic notifications will appear here."
-                : `There are no notifications in the ${NOTIFICATION_CONFIG[activeFilter]?.label || activeFilter.toLowerCase()} category right now.`
+                ? t("noNotificationsDesc")
+                : t("noCategoryDesc", { category: categoryLabel(activeFilter) })
             }
           />
         </div>
@@ -291,6 +307,7 @@ export default function NotificationsCenterPage() {
           {filtered.map((notification) => {
             const config = getCategoryConfig(notification.type)
             const IconComponent = config.icon
+            const catLabel = categoryLabel(notification.type)
             return (
               <div
                 key={notification.id}
@@ -337,7 +354,7 @@ export default function NotificationsCenterPage() {
                       </span>
 
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${config.bg} ${config.color}`}>
-                        {config.emoji} {config.label}
+                        {config.emoji} {catLabel}
                       </span>
 
                       {notification.link && (
@@ -345,8 +362,8 @@ export default function NotificationsCenterPage() {
                           onClick={() => router.push(notification.link!)}
                           className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
                         >
-                          View Details
-                          <span className="text-xs">\u2192</span>
+                          {t("viewDetails")}
+                          <span className="text-xs">{"\u2192"}</span>
                         </button>
                       )}
                     </div>
@@ -355,14 +372,14 @@ export default function NotificationsCenterPage() {
                   <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       onClick={() => toggleRead(notification.id)}
-                      title={notification.read ? "Mark as unread" : "Mark as read"}
+                      title={notification.read ? t("markAsUnread") : t("markAsRead")}
                       className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
                       {notification.read ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
                     <button
                       onClick={() => deleteNotification(notification.id)}
-                      title="Delete notification"
+                      title={t("deleteNotification")}
                       className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                     >
                       <Trash2 className="size-4" />
@@ -377,15 +394,11 @@ export default function NotificationsCenterPage() {
 
       {filtered.length > 0 && (
         <div className="text-center text-xs text-muted-foreground">
-          Showing {filtered.length} notification{filtered.length !== 1 ? "s" : ""}
+          {filtered.length === 1
+            ? t("showingOne")
+            : t("showing", { count: filtered.length, s: filtered.length !== 1 ? "s" : "" })}
           {activeFilter !== "ALL" && (
-            <span>
-              {" "}
-              in{" "}
-              <span className="font-medium text-foreground">
-                {NOTIFICATION_CONFIG[activeFilter]?.label || activeFilter}
-              </span>
-            </span>
+            <span> {t("inCategory", { category: categoryLabel(activeFilter) }).replace(/<[^>]+>/g, "")}</span>
           )}
         </div>
       )}

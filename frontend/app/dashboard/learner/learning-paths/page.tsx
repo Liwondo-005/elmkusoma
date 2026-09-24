@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type Enrollment, type CourseSummary } from "@/lib/learner-api"
+import { useTranslations } from "next-intl"
+import { learnerApi, type Enrollment, type CourseSummary, type LearningPathItem } from "@/lib/learner-api"
+import { announce } from "@/lib/announce"
 import { LoadingState, EmptyState } from "@/components/learner/shared"
-import { Map, BookOpen, ArrowRight, AlertCircle, CheckCircle, Clock, Compass } from "lucide-react"
+import { Map as MapIcon, ArrowRight, AlertCircle, CheckCircle, Compass } from "lucide-react"
 
 interface LearningPath {
   id: string
@@ -23,7 +25,6 @@ interface LearningPath {
 
 function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummary[]): LearningPath[] {
   const paths: LearningPath[] = []
-  const enrolledCourseIds = new Set(enrollments.map((e) => e.courseId))
 
   const levelGroups: Record<string, CourseSummary[]> = {}
   for (const course of allCourses) {
@@ -51,8 +52,6 @@ function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummar
       }
     })
 
-    const completedCount = pathCourses.filter((c) => c.status === "completed").length
-    const inProgressCount = pathCourses.filter((c) => c.status === "in-progress").length
     const overallProgress = Math.round(
       pathCourses.reduce((sum, c) => sum + c.progress, 0) / pathCourses.length
     )
@@ -94,8 +93,47 @@ function deriveLearningPaths(enrollments: Enrollment[], allCourses: CourseSummar
   return paths
 }
 
+function mapApiPaths(
+  items: LearningPathItem[],
+  allCourses: CourseSummary[]
+): LearningPath[] {
+  const courseById = new Map(allCourses.map((c) => [c.id, c]))
+  const levelGroups: Record<
+    string,
+    { courseId: string; courseTitle: string; level: string; status: "completed" | "in-progress"; progress: number }[]
+  > = {}
+
+  for (const item of items) {
+    const course = courseById.get(item.courseId)
+    const level = course?.level || "General"
+    if (!levelGroups[level]) levelGroups[level] = []
+    levelGroups[level].push({
+      courseId: item.courseId,
+      courseTitle: course?.title || item.title,
+      level,
+      status: item.status === "COMPLETED" ? "completed" : "in-progress",
+      progress: item.progress ?? 0,
+    })
+  }
+
+  const paths: LearningPath[] = []
+  for (const [level, courses] of Object.entries(levelGroups)) {
+    if (courses.length === 0) continue
+    paths.push({
+      id: `api-level-${level}`,
+      title: `${level} Learning Path`,
+      description: `A structured progression through ${level.toLowerCase()} level courses.`,
+      courses,
+      overallProgress: Math.round(courses.reduce((s, c) => s + c.progress, 0) / courses.length),
+    })
+  }
+  return paths
+}
+
 export default function LearningPathsPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learningPaths")
+  const tc = useTranslations("common")
   const [paths, setPaths] = useState<LearningPath[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
@@ -115,9 +153,25 @@ export default function LearningPathsPage() {
         learnerApi.getCourses().catch(() => []),
       ])
       setEnrollments(enrollmentsData)
-      setPaths(deriveLearningPaths(enrollmentsData, coursesData))
+
+      let apiPaths: LearningPath[] | null = null
+      try {
+        const items = await learnerApi.getLearningPaths()
+        if (items.length > 0) {
+          apiPaths = mapApiPaths(items, coursesData)
+        }
+      } catch {
+        apiPaths = null
+      }
+
+      if (apiPaths && apiPaths.length > 0) {
+        setPaths(apiPaths)
+      } else {
+        setPaths(deriveLearningPaths(enrollmentsData, coursesData))
+      }
     } catch {
-      setError("Failed to load learning paths")
+      setError(t("loadFailed"))
+      announce(t("loadFailed"))
     } finally {
       setLoading(false)
     }
@@ -130,8 +184,8 @@ export default function LearningPathsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Learning Paths</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Structured progressions through your learning journey.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {error && (
@@ -147,15 +201,15 @@ export default function LearningPathsPage() {
         <LoadingState />
       ) : paths.length === 0 ? (
         <EmptyState
-          icon={<Map className="size-8" />}
-          title="No learning paths yet"
-          description="Enroll in multiple courses to create structured learning paths."
+          icon={<MapIcon className="size-8" />}
+          title={t("noPathsYet")}
+          description={t("noPathsDesc")}
           action={
             <Link
               href="/dashboard/learner/courses"
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Explore Courses <ArrowRight className="size-4" />
+              {t("exploreCourses")} <ArrowRight className="size-4" />
             </Link>
           }
         />
@@ -175,7 +229,7 @@ export default function LearningPathsPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-lg font-extrabold text-teal">{path.overallProgress}%</p>
-                  <p className="text-[10px] text-muted-foreground">overall</p>
+                  <p className="text-[10px] text-muted-foreground">{t("overall")}</p>
                 </div>
               </div>
 
@@ -227,11 +281,11 @@ export default function LearningPathsPage() {
                     )}
                     {course.status === "completed" && (
                       <span className="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
-                        Done
+                        {t("done")}
                       </span>
                     )}
                     {course.status === "not-started" && (
-                      <span className="shrink-0 text-[10px] text-muted-foreground">Not started</span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">{t("notStarted")}</span>
                     )}
                   </Link>
                 ))}

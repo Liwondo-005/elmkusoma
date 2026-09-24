@@ -21,14 +21,13 @@ interface AdminEvent {
   eventType: string
   category?: string
   status: EventStatus
-  startDate: string
+  startsAt: string
+  endsAt?: string
   durationMinutes?: number
-  timezone?: string
-  maxCapacity?: number
-  currentRegistrations?: number
-  accessLevel?: string
+  maxParticipants?: number
+  registeredCount?: number
+  availableSpots?: number
   presenterName?: string
-  recordingEnabled?: boolean
   recordingUrl?: string
   meetingUrl?: string
   institutionId?: string
@@ -329,12 +328,12 @@ export default function AdminEventsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-foreground">{new Date(event.startDate).toLocaleDateString()}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(event.startDate).toLocaleTimeString()}</p>
+                        <p className="text-sm text-foreground">{new Date(event.startsAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(event.startsAt).toLocaleTimeString()}</p>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-foreground">
-                          {event.currentRegistrations ?? 0}{event.maxCapacity ? `/${event.maxCapacity}` : ""}
+                          {event.registeredCount ?? 0}{event.maxParticipants ? `/${event.maxParticipants}` : ""}
                         </span>
                       </td>
                       <td className="px-4 py-3">

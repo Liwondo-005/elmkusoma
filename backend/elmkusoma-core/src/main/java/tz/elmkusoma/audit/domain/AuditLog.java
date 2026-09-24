@@ -82,7 +82,11 @@ public class AuditLog {
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
+        if (isDeleted == null) isDeleted = false;
     }
+
+    public Boolean getIsDeleted() { return isDeleted; }
+    public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -124,9 +128,7 @@ public class AuditLog {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getArchivedAt() { return archivedAt; }
     public void setArchivedAt(LocalDateTime archivedAt) { this.archivedAt = archivedAt; }
-    public Boolean getIsDeleted() { return isDeleted; }
-    public void setIsDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; }
-
+    
     public enum AuditAction {
         CREATE, UPDATE, DELETE, LOGIN, LOGOUT, LOGIN_FAILED,
         PASSWORD_CHANGE, ROLE_CHANGE, PERMISSION_CHANGE, EXPORT, IMPORT, VIEW

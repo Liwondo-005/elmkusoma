@@ -107,7 +107,7 @@ export default function WorkshopsPage() {
       const res = await collegeApi.getLearnerWorkshops(studentId)
       setSessions(res.data || [])
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }
@@ -142,7 +142,7 @@ export default function WorkshopsPage() {
       setShowForm(false)
       await loadSessions()
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setSubmitting(false)
     }
@@ -156,7 +156,7 @@ export default function WorkshopsPage() {
       await collegeApi.deleteWorkshop(id)
       setSessions((prev) => prev.filter((s) => s.id !== id))
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setDeletingId(null)
     }

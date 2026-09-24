@@ -60,20 +60,24 @@ interface EventDetail {
   eventType: string
   category?: string
   status: string
-  startDate: string
+  startsAt?: string
+  endsAt?: string
   durationMinutes?: number
-  timezone?: string
-  maxCapacity?: number
-  currentRegistrations?: number
-  accessLevel?: string
+  maxParticipants?: number
+  registeredCount?: number
+  availableSpots?: number
   presenterName?: string
-  recordingEnabled?: boolean
+  hasRecording?: boolean
   recordingUrl?: string
   meetingUrl?: string
   institutionId?: string
-  relatedCourseId?: string
-  relatedModuleId?: string
-  relatedLessonId?: string
+  eventFormat?: string
+  difficulty?: string
+  targetAudience?: string
+  prerequisites?: string
+  learningOutcomes?: string
+  agenda?: string
+  rescheduledFrom?: string | null
   createdAt: string
   statusHistory?: Array<{ status: string; timestamp: string; changedBy?: string }>
 }
@@ -84,6 +88,27 @@ const statusColors: Record<string, string> = {
   LIVE: "bg-green-100 text-green-700 border border-green-200 animate-pulse",
   ENDED: "bg-gray-100 text-gray-500 border border-gray-200",
   CANCELLED: "bg-red-100 text-red-700 border border-red-200",
+}
+
+function toDatetimeLocal(value?: string | null): string {
+  if (!value) return ""
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value
+  const match = value.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/)
+  if (match) return match[1]
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function computeEndsAt(startDate: string, durationMinutes: string): string | undefined {
+  if (!startDate) return undefined
+  const mins = parseInt(durationMinutes) || 60
+  const end = new Date(startDate)
+  if (isNaN(end.getTime())) return undefined
+  end.setMinutes(end.getMinutes() + mins)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
 }
 
 export default function EditEventPage() {
@@ -128,16 +153,16 @@ export default function EditEventPage() {
         description: data.description || "",
         eventType: data.eventType || "",
         category: data.category || "",
-        startDate: data.startDate ? new Date(data.startDate).toISOString().slice(0, 16) : "",
+        startDate: toDatetimeLocal(data.startsAt),
         durationMinutes: data.durationMinutes?.toString() || "60",
-        timezone: data.timezone || "Africa/Nairobi",
-        maxCapacity: data.maxCapacity?.toString() || "",
-        accessLevel: data.accessLevel || "PUBLIC",
+        timezone: "Africa/Nairobi",
+        maxCapacity: data.maxParticipants?.toString() || "",
+        accessLevel: "PUBLIC",
         presenterName: data.presenterName || "",
-        relatedCourseId: data.relatedCourseId || "",
-        relatedModuleId: data.relatedModuleId || "",
-        relatedLessonId: data.relatedLessonId || "",
-        recordingEnabled: data.recordingEnabled || false,
+        relatedCourseId: "",
+        relatedModuleId: "",
+        relatedLessonId: "",
+        recordingEnabled: data.hasRecording || false,
         eventFormat: data.eventFormat || "",
         difficulty: data.difficulty || "",
         targetAudience: data.targetAudience || "",
@@ -177,16 +202,10 @@ export default function EditEventPage() {
         description: form.description.trim() || undefined,
         eventType: form.eventType,
         category: form.category || undefined,
-        startDate: form.startDate,
+        startsAt: form.startDate,
+        endsAt: computeEndsAt(form.startDate, form.durationMinutes),
         durationMinutes: form.durationMinutes ? parseInt(form.durationMinutes) : undefined,
-        timezone: form.timezone,
-        maxCapacity: form.maxCapacity ? parseInt(form.maxCapacity) : undefined,
-        accessLevel: form.accessLevel,
-        presenterName: form.presenterName.trim() || undefined,
-        relatedCourseId: form.relatedCourseId || undefined,
-        relatedModuleId: form.relatedModuleId || undefined,
-        relatedLessonId: form.relatedLessonId || undefined,
-        recordingEnabled: form.recordingEnabled,
+        maxParticipants: form.maxCapacity ? parseInt(form.maxCapacity) : undefined,
         eventFormat: form.eventFormat || undefined,
         difficulty: form.difficulty || undefined,
         targetAudience: form.targetAudience || undefined,

@@ -123,7 +123,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         switch (type) {
             case "JOIN" -> handleJoin(session, classId, payload, "LEARNER");
             case "OBSERVER_JOIN" -> handleJoin(session, classId, payload, "OBSERVER");
-            case "CHAT" -> handleChat(session, classId, payload);
+            case "CHAT", "Q&A", "QA", "REACTION" -> handleChat(session, classId, payload, normalizeMessageType(type, payload));
+            case "DELETE_MESSAGE" -> handleDeleteMessage(session, classId, payload);
             case "LEAVE" -> handleLeave(session, classId);
             case "RAISE_HAND" -> handleRaiseHand(session, classId, payload);
             case "LOWER_HAND" -> handleLowerHand(session, classId);
@@ -285,9 +286,11 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             historyEvent.put("type", "CHAT_HISTORY");
             historyEvent.put("messages", recentMessages.stream().limit(50).map(m -> {
                 Map<String, Object> msg = new HashMap<>();
+                msg.put("id", m.getId() != null ? m.getId().toString() : null);
                 msg.put("userId", m.getUserId().toString());
                 msg.put("userName", m.getUserName());
                 msg.put("message", m.getMessage());
+                msg.put("messageType", m.getMessageType() != null ? m.getMessageType() : "CHAT");
                 msg.put("timestamp", m.getSentAt().toString());
                 return msg;
             }).toList());
@@ -297,7 +300,23 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         log.info("User {} joined live class {} (session: {})", userId, classId, session.getId());
     }
 
-    private void handleChat(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+    /**
+     * §26/§31: preserve the client-supplied message type (CHAT vs Q&A vs REACTION)
+     * on both broadcast and persist instead of hardcoding CHAT.
+     */
+    private String normalizeMessageType(String rawType, Map<String, Object> payload) {
+        Object declared = payload.get("messageType");
+        String candidate = declared != null ? declared.toString() : rawType;
+        if (candidate == null) return "CHAT";
+        String normalized = candidate.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "Q&A", "QA", "QUESTION" -> "Q&A";
+            case "REACTION" -> "REACTION";
+            default -> "CHAT";
+        };
+    }
+
+    private void handleChat(WebSocketSession session, UUID classId, Map<String, Object> payload, String messageType) throws IOException {
         UUID userId = sessionUserMap.get(session.getId());
         if (userId == null) {
             sendError(session, "You must join the session first");
@@ -324,18 +343,32 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             displayName = user != null ? user.getFullName() : "Unknown";
         }
 
+        // REACTION: broadcast as a reaction event without persisting chat spam (§26)
+        if ("REACTION".equals(messageType)) {
+            Map<String, Object> reactionEvent = new HashMap<>();
+            reactionEvent.put("type", "REACTION");
+            reactionEvent.put("messageType", "REACTION");
+            reactionEvent.put("userId", userId.toString());
+            reactionEvent.put("userName", displayName);
+            reactionEvent.put("message", msgContent);
+            reactionEvent.put("timestamp", LocalDateTime.now().toString());
+            broadcastToClass(classId, reactionEvent, null);
+            return;
+        }
+
         LiveClassChatMessage chatMessage = LiveClassChatMessage.builder()
                 .liveClassId(classId)
                 .userId(userId)
                 .userName(displayName)
                 .message(msgContent)
-                .messageType("CHAT")
+                .messageType(messageType)
                 .sentAt(LocalDateTime.now())
                 .build();
         chatMessageRepository.save(chatMessage);
 
         Map<String, Object> chatEvent = new HashMap<>();
         chatEvent.put("type", "CHAT_MESSAGE");
+        chatEvent.put("messageType", messageType);
         chatEvent.put("userId", userId.toString());
         chatEvent.put("userName", displayName);
         chatEvent.put("message", msgContent);
@@ -343,7 +376,50 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
 
         broadcastToClass(classId, chatEvent, null);
 
-        log.debug("Chat message in live class {} from {}: {}", classId, userId, msgContent);
+        log.debug("Chat message in live class {} from {} type={}: {}", classId, userId, messageType, msgContent);
+    }
+
+    /** §31: teacher moderation — soft-delete a chat message and notify the room. */
+    private void handleDeleteMessage(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+        UUID userId = (UUID) session.getAttributes().get("userId");
+        if (userId == null) {
+            sendError(session, "Authentication required");
+            return;
+        }
+        if (!isTeacher(userId, classId)) {
+            sendError(session, "Only teachers can delete messages");
+            return;
+        }
+        Object messageIdRaw = payload.get("messageId");
+        if (messageIdRaw == null) {
+            sendError(session, "messageId required");
+            return;
+        }
+        UUID messageId;
+        try {
+            messageId = UUID.fromString(messageIdRaw.toString());
+        } catch (IllegalArgumentException e) {
+            sendError(session, "Invalid messageId");
+            return;
+        }
+        Optional<LiveClassChatMessage> message = chatMessageRepository.findById(messageId)
+                .filter(m -> classId.equals(m.getLiveClassId()))
+                .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()));
+        if (message.isEmpty()) {
+            sendError(session, "Message not found");
+            return;
+        }
+        LiveClassChatMessage deleted = message.get();
+        deleted.setIsDeleted(true);
+        chatMessageRepository.save(deleted);
+
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "MESSAGE_DELETED");
+        event.put("messageId", messageId.toString());
+        event.put("deletedBy", userId.toString());
+        event.put("timestamp", LocalDateTime.now().toString());
+        broadcastToClass(classId, event, null);
+        log.info("Teacher {} deleted chat message {} in class {}", userId, messageId, classId);
     }
 
     private void handleLeave(WebSocketSession session, UUID classId) throws IOException {

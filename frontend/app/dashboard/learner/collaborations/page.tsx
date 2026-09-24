@@ -104,7 +104,7 @@ export default function CollaborationsPage() {
       const res = await collegeApi.getLearnerCollaborations(user.id);
       setCollaborations(res.data || []);
     } catch (err: any) {
-      setError(err?.message || tc("error"));
+      setError(err?.message || tc("error.generic"));
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ export default function CollaborationsPage() {
       setShowForm(false);
       await fetchCollaborations();
     } catch (err: any) {
-      setError(err?.message || tc("error"));
+      setError(err?.message || tc("error.generic"));
     } finally {
       setSubmitting(false);
     }
@@ -144,7 +144,7 @@ export default function CollaborationsPage() {
       await collegeApi.deleteCollaboration(id);
       await fetchCollaborations();
     } catch (err: any) {
-      setError(err?.message || tc("error"));
+      setError(err?.message || tc("error.generic"));
     }
   };
 

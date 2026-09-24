@@ -48,14 +48,14 @@ export default function CompetenciesPage() {
       const studentId = user?.id || ""
       const [allCompetencies, studentRecords, summaryData] = await Promise.all([
         collegeApi.listCompetencies(),
-        collegeApi.getStudentCompetencies(studentId).catch((err) => { setError(err?.message || tc("error")); return { success: true, data: [] } as const }),
-        collegeApi.getCompetencySummary(studentId).catch((err) => { setError(err?.message || tc("error")); return { success: true, data: null } as const }),
+        collegeApi.getStudentCompetencies(studentId).catch((err) => { setError(err?.message || tc("error.generic")); return { success: true, data: [] } as const }),
+        collegeApi.getCompetencySummary(studentId).catch((err) => { setError(err?.message || tc("error.generic")); return { success: true, data: null } as const }),
       ])
       setCompetencies((allCompetencies.data as Competency[] | undefined) || [])
       setRecords((studentRecords.data as CompetencyRecord[] | undefined) || [])
       setSummary((summaryData.data as CompetencySummary | undefined) || null)
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }

@@ -10,18 +10,20 @@
 
 | Domain | Owner | Description |
 |--------|-------|-------------|
-| Dashboard | D01 | Home page, notifications, analytics widgets |
-| **Events** | **D03** | Event CRUD, registration, materials |
-| **Live** | **D03** | LiveKit integration, token generation, webhooks |
-| **Attendance** | **D03** | Event registration, check-in, attendance tracking |
-| **Recordings** | **D03** | LiveKit recording lifecycle, storage |
-| **Media** | **D03** | Media library (event recordings, uploads) |
-| **Replay** | **D03** | On-demand replay playback, progress tracking |
-| Courses | D02 | Course CRUD, modules, enrollment |
-| Progress | D02 | Learning progress, completion tracking |
-| Resources | D04 | Document library, file uploads, categorization |
-| Search | D04 | Full-text search, indexing |
-| Certificates | D04 | Certificate generation, verification |
+| Dashboard | D01 | Home page, notifications, analytics widgets (rubric §87) |
+| **Events** | **D03** | Event discovery, details, types, registration, status, access, preparation, participation (§87) |
+| **Live** | **D03** | Live session integration, LiveKit, tokens, live room experience, realtime session state (§87) |
+| **Attendance** | **D03** | Event/live attendance state, evidence, synchronization (§8 D03 owns; general attendance module shared) |
+| **Recordings** | **D03** | Recording lifecycle, processing status, availability, access (§87) |
+| **Media** | **D03** | Event/live recordings integration, playback, media relationships (§87) |
+| **Replay** | **D03** | Replay availability, continue watching, learning return path (§87) |
+| Courses | D02 | Course CRUD, modules, enrollment (§87) |
+| Learning Progress | D02 | Learning progress, completion tracking (§87) |
+| Resources | D04 | Document library, file uploads, categorization (§87) |
+| Global Search | D04 | Full-text search, indexing (§87) |
+| Certificates | D04 | Certificate generation, verification (§87) |
+
+If repository evidence shows a different existing owner, it is documented in `D03_REPO_AUDIT.md` §5 before modification.
 
 ---
 
@@ -40,13 +42,24 @@
 | Event registration entity | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/EventRegistration.java` |
 | Event material entity | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/EventMaterial.java` |
 | Replay entity | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/Replay.java` |
+| Replay progress entity | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/domain/ReplayProgress.java` |
 | Replay repository | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/repository/ReplayRepository.java` |
 | Replay controller | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/controller/ReplayController.java` |
-| LiveKit controller | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/controller/LiveKitController.java` |
-| LiveKit webhook | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/controller/LiveKitWebhookController.java` |
-| Frontend event pages | `frontend/src/pages/events/` |
-| Frontend replay pages | `frontend/src/pages/replays/` |
-| Frontend provider pages | `frontend/src/pages/provider/` |
+| Learner replay controller | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/controller/LearnerReplayController.java` |
+| Learner event controller | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/event/controller/LearnerEventController.java` |
+| Live session controller (token generation) | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/controller/LiveSessionController.java` |
+| Live session health controller | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/controller/LiveSessionHealthController.java` |
+| LiveKit service | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/service/LiveKitService.java` |
+| LiveKit config | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/config/LiveKitConfig.java` |
+| LiveKit webhook controller | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/controller/LiveKitWebhookController.java` |
+| WebSocket config / handler | `backend/elmkusoma-core/src/main/java/tz/elmkusoma/liveclass/config/WebSocketConfig.java`, `liveclass/handler/LiveClassWebSocketHandler.java` |
+| Frontend learner event pages | `frontend/app/dashboard/learner/events/` (list, `[id]`, `[id]/preflight`, `[id]/waiting`, `registered`) |
+| Frontend learner replay pages | `frontend/app/dashboard/learner/replays/` (list, `[id]`) |
+| Frontend admin event pages | `frontend/app/dashboard/admin/events/` (list, `new`, `[id]/edit`, `[id]/summary`) |
+| Frontend live components | `frontend/components/live/` (`live-classroom.tsx` uses `livekit-client`) |
+| D03 Flyway migrations | `backend/elmkusoma-core/src/main/resources/db/migration/V71__event_d03_extended_columns.sql`, `V74__events_access_level.sql`, `V75__events_entity_columns.sql`, `V76__replay_tables.sql` |
+
+> **Corrections (2026-09-23):** There is **no** `LiveKitController.java` anywhere in the repository — token generation lives in `LiveSessionController` + `LiveKitService`, webhook lives in `LiveKitWebhookController` (both under `liveclass/`). There is **no** `frontend/src/` directory — the frontend is Next.js App Router (`frontend/app/...`). The Domain|Owner table above matches rubric §87.
 
 ---
 

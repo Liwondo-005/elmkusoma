@@ -32,11 +32,15 @@ interface Participant {
 }
 
 interface ChatMessage {
+  id?: string | null
   userId: string
   userName: string
   message: string
   timestamp: string
   system?: boolean
+  kind?: "CHAT" | "QA"
+  reactions?: Record<string, number>
+  deleted?: boolean
 }
 
 export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
@@ -59,6 +63,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [handRaised, setHandRaised] = useState(false)
   const [showMaterials, setShowMaterials] = useState(false)
   const [materials, setMaterials] = useState<Array<{ name: string; url: string }>>([])
+  const [sideTab, setSideTab] = useState<"chat" | "qa">("chat")
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -139,26 +144,41 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           case "PARTICIPANTS":
             if (data.participants) setParticipants(data.participants)
             break
-          case "CHAT_MESSAGE":
+          case "CHAT_MESSAGE": {
+            const raw = String(data.message || "")
+            const isQa = raw.startsWith("[Q&A]")
             setChat((prev) => [
               ...prev,
               {
+                id: data.id ?? data.messageId ?? null,
                 userId: data.userId,
                 userName: data.userName,
-                message: data.message,
+                message: isQa ? raw.slice(6).trim() : raw,
                 timestamp: data.timestamp,
+                kind: isQa ? "QA" : "CHAT",
               },
             ])
             break
+          }
           case "CHAT_HISTORY":
             if (data.messages) {
               const history: ChatMessage[] = data.messages.map((m: any) => ({
+                id: m.id ?? m.messageId ?? null,
                 userId: m.userId,
                 userName: m.userName,
                 message: m.message,
                 timestamp: m.timestamp,
+                kind: String(m.message || "").startsWith("[Q&A]") ? "QA" : "CHAT",
+                deleted: Boolean(m.deleted || m.isDeleted),
               }))
               setChat((prev) => [...history, ...prev])
+            }
+            break
+          case "MESSAGE_DELETED":
+            if (data.messageId) {
+              setChat((prev) =>
+                prev.map((m) => (m.id === data.messageId ? { ...m, deleted: true } : m)),
+              )
             }
             break
         }
@@ -190,14 +210,29 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
   const sendMessage = useCallback(() => {
     if (!message.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+    const trimmed = message.trim()
+    const isQa = sideTab === "qa"
     wsRef.current.send(
       JSON.stringify({
         type: "CHAT",
-        message: message.trim(),
-      })
+        message: isQa ? `[Q&A] ${trimmed}` : trimmed,
+        messageType: isQa ? "Q&A" : "CHAT",
+      }),
     )
+    if (isQa) {
+      setChat((prev) => [
+        ...prev,
+        {
+          userId: myUserId,
+          userName: "You",
+          message: trimmed,
+          timestamp: new Date().toISOString(),
+          kind: "QA",
+        },
+      ])
+    }
     setMessage("")
-  }, [message])
+  }, [message, sideTab, myUserId])
 
   const handleLeave = useCallback(() => {
     if (wsRef.current) {
@@ -391,20 +426,42 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           </div>
 
           <div className="border-t border-border bg-card p-4">
+            <div className="mb-2 flex gap-1" role="tablist" aria-label="Chat mode">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sideTab === "chat"}
+                onClick={() => setSideTab("chat")}
+                className={`rounded-lg px-3 py-1 text-xs font-medium ${sideTab === "chat" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+              >
+                Chat
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sideTab === "qa"}
+                onClick={() => setSideTab("qa")}
+                className={`rounded-lg px-3 py-1 text-xs font-medium ${sideTab === "qa" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+              >
+                Q&A
+              </button>
+            </div>
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder="Type a message..."
+                placeholder={sideTab === "qa" ? "Ask a question..." : "Type a message..."}
                 className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
                 disabled={!connected}
+                aria-label={sideTab === "qa" ? "Ask a question" : "Chat message"}
               />
               <button
                 onClick={sendMessage}
                 disabled={!message.trim() || !connected}
                 className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                aria-label="Send"
               >
                 <Send className="size-5" />
               </button>
@@ -412,7 +469,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           </div>
         </div>
 
-        <div className="hidden w-80 border-l border-border bg-card lg:flex lg:flex-col">
+        <div className="border-l border-border bg-card w-full lg:w-80 lg:flex lg:flex-col">
           {showActivities ? (
             <LiveInteractivePanel
               liveClassId={liveClass.id}
@@ -424,52 +481,123 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             <>
               <div className="border-b border-border px-4 py-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Chat
+                  {sideTab === "qa" ? "Q&A" : "Chat"}
                 </h3>
                 {isTeacher && (
-                  <button
-                    onClick={() => {
-                      const ws = wsRef.current
-                      if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: "CLEAR_CHAT" }))
-                      }
-                      setChat([])
-                    }}
-                    className="text-[10px] font-medium text-destructive hover:text-destructive/80"
-                  >
-                    Clear
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const socket = wsRef.current
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                          socket.send(JSON.stringify({ type: "CHAT", message: "[mod] pin latest" }))
+                        }
+                      }}
+                      className="text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      Pin
+                    </button>
+                    <button
+                      onClick={() => {
+                        const socket = wsRef.current
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                          socket.send(JSON.stringify({ type: "CLEAR_CHAT" }))
+                        }
+                        setChat([])
+                      }}
+                      className="text-[10px] font-medium text-destructive hover:text-destructive/80"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 )}
               </div>
-              <div className="flex-1 overflow-y-auto px-4 py-2">
-                {chat.length === 0 ? (
-                  <div className="flex flex-col items-center py-8 text-center">
-                    <MessageCircle className="size-8 text-muted-foreground/40" />
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      No messages yet. Say hello!
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {chat.map((msg, i) =>
-                      msg.system ? (
-                        <div key={i} className="text-center text-xs text-muted-foreground">
-                          {msg.message}
-                        </div>
-                      ) : (
-                        <div key={i}>
-                          <span className="text-xs font-semibold text-foreground">
-                            {msg.userId === myUserId ? "You" : msg.userName}
-                          </span>
-                          <p className="mt-0.5 text-sm text-muted-foreground">
-                            {msg.message}
-                          </p>
-                        </div>
-                      )
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-                )}
+              <div className="flex-1 overflow-y-auto px-4 py-2 max-h-72 lg:max-h-none">
+                {(() => {
+                  const visible = chat.filter((m) =>
+                    sideTab === "qa" ? m.kind === "QA" || (m.message || "").includes("[Q&A]") : m.kind !== "QA",
+                  )
+                  if (visible.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center py-8 text-center">
+                        <MessageCircle className="size-8 text-muted-foreground/40" />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {sideTab === "qa" ? "No questions yet." : "No messages yet. Say hello!"}
+                        </p>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {visible.map((msg, i) =>
+                        msg.system || msg.deleted ? (
+                          <div key={i} className="text-center text-xs text-muted-foreground">
+                            {msg.deleted ? "Message removed" : msg.message}
+                          </div>
+                        ) : (
+                          <div key={i}>
+                            <span className="text-xs font-semibold text-foreground">
+                              {msg.userId === myUserId ? "You" : msg.userName}
+                            </span>
+                            <p className="mt-0.5 text-sm text-muted-foreground">
+                              {msg.message}
+                            </p>
+                            <div className="mt-1 flex gap-1">
+                              {["👍", "❤️", "🎉"].map((r) => (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  aria-label={`React ${r}`}
+                                  onClick={() => {
+                                    setChat((prev) =>
+                                      prev.map((m) =>
+                                        m === msg
+                                          ? { ...m, reactions: { ...(m.reactions || {}), [r]: ((m.reactions || {})[r] || 0) + 1 } }
+                                          : m,
+                                      ),
+                                    )
+                                    const socket = wsRef.current
+                                    if (socket && socket.readyState === WebSocket.OPEN) {
+                                      socket.send(JSON.stringify({ type: "CHAT", message: `${r}` }))
+                                    }
+                                  }}
+                                  className="rounded px-1 text-xs hover:bg-muted"
+                                >
+                                  {r}
+                                  {msg.reactions?.[r] ? ` ${msg.reactions[r]}` : ""}
+                                </button>
+                              ))}
+                              {isTeacher && msg.userId !== myUserId && (
+                                <button
+                                  type="button"
+                                  aria-label="Remove message"
+                                  onClick={() => {
+                                    setChat((prev) =>
+                                      prev.map((m) => (m === msg ? { ...m, deleted: true } : m)),
+                                    )
+                                    const socket = wsRef.current
+                                    if (msg.id && socket && socket.readyState === WebSocket.OPEN) {
+                                      socket.send(
+                                        JSON.stringify({
+                                          type: "DELETE_MESSAGE",
+                                          messageType: "DELETE_MESSAGE",
+                                          messageId: msg.id,
+                                        }),
+                                      )
+                                    }
+                                  }}
+                                  className="rounded px-1 text-[10px] text-destructive hover:bg-destructive/10"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ),
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+                  )
+                })()}
               </div>
             </>
           )}

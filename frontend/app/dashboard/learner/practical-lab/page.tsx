@@ -45,7 +45,7 @@ export default function PracticalLabPage() {
       )
       setTasks(practicalTasks)
     } catch {
-      setError(tc("error"))
+      setError(tc("error.generic"))
     } finally {
       setLoading(false)
     }

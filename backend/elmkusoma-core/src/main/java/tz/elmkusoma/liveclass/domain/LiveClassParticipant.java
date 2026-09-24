@@ -49,4 +49,5 @@ public class LiveClassParticipant extends BaseEntity {
     public static final String ROLE_LEARNER = "LEARNER";
     public static final String ROLE_TEACHER = "TEACHER";
     public static final String ROLE_OBSERVER = "OBSERVER";
+    public static final String ROLE_MODERATOR = "MODERATOR";
 }

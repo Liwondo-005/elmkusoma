@@ -50,7 +50,7 @@ export default function PortfolioPage() {
         setPortfolio(data)
         setItems(data.items || [])
       }
-    } catch { setError(tc("error")) } finally { setLoading(false) }
+    } catch { setError(tc("error.generic")) } finally { setLoading(false) }
   }
 
   if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
@@ -93,7 +93,7 @@ export default function PortfolioPage() {
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30"><FileText className="size-5 text-blue-600 dark:text-blue-400" /></div>
-            <div><p className="text-xs font-medium text-muted-foreground">{t("evidence")}</p><p className="text-2xl font-extrabold text-foreground">{workSamples}</p></div>
+            <div><p className="text-xs font-medium text-muted-foreground">{t("evidence.label")}</p><p className="text-2xl font-extrabold text-foreground">{workSamples}</p></div>
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
