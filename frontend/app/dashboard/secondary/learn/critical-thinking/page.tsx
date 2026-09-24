@@ -80,12 +80,12 @@ export default function CriticalThinkingPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 pb-24" role="main">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("secondary.backToLearn")}>
+        <Link href="/dashboard/secondary/learn" className="flex size-10 items-center justify-center rounded-xl bg-gray-100" aria-label={t("backToLearn")}>
           <ArrowLeft className="size-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{t("secondary.criticalThinking")}</h1>
-          <p className="text-sm text-gray-500">{t("secondary.analyzeAndEvaluateArguments")}</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("criticalThinking")}</h1>
+          <p className="text-sm text-gray-500">{t("analyzeAndEvaluateArguments")}</p>
         </div>
       </div>
 
@@ -93,23 +93,23 @@ export default function CriticalThinkingPage() {
         <div className="flex gap-3">
           <div className="flex-1 rounded-xl bg-green-50 p-3 text-center">
             <p className="text-xl font-bold text-green-600">{score.correct}</p>
-            <p className="text-[10px] font-medium text-green-700">{t("secondary.correct")}</p>
+            <p className="text-[10px] font-medium text-green-700">{t("correct")}</p>
           </div>
           <div className="flex-1 rounded-xl bg-amber-50 p-3 text-center">
             <p className="text-xl font-bold text-amber-600">{score.answered - score.correct}</p>
-            <p className="text-[10px] font-medium text-amber-700">{t("secondary.incorrect")}</p>
+            <p className="text-[10px] font-medium text-amber-700">{t("incorrect")}</p>
           </div>
           <div className="flex-1 rounded-xl bg-indigo-50 p-3 text-center">
             <p className="text-xl font-bold text-indigo-600">{score.answered}/{score.total}</p>
-            <p className="text-[10px] font-medium text-indigo-700">{t("secondary.completed")}</p>
+            <p className="text-[10px] font-medium text-indigo-700">{t("completed")}</p>
           </div>
         </div>
       )}
 
       {selectedChallenge && activeChallenge ? (
         <div className="space-y-4">
-          <button onClick={() => setSelectedChallenge(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("secondary.backToChallenges")}>
-            {t("secondary.backToChallenges")}
+          <button onClick={() => setSelectedChallenge(null)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700" aria-label={t("backToChallenges")}>
+            {t("backToChallenges")}
           </button>
           <div className="rounded-2xl border border-gray-100 bg-white p-6">
             <div className="flex items-center gap-2">
@@ -160,13 +160,13 @@ export default function CriticalThinkingPage() {
                 onClick={() => handleSubmit(activeChallenge.id)}
                 disabled={!answers[activeChallenge.id]}
                 className="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-                aria-label={t("secondary.checkAnswer")}
+                aria-label={t("checkAnswer")}
               >
-                {t("secondary.checkAnswer")}
+                {t("checkAnswer")}
               </button>
             ) : (
               <div className="mt-4 rounded-xl bg-blue-50 p-4">
-                <p className="text-sm font-medium text-blue-800">{t("secondary.explanation")}</p>
+                <p className="text-sm font-medium text-blue-800">{t("explanation")}</p>
                 <p className="mt-1 text-sm text-blue-700">{activeChallenge.explanation}</p>
               </div>
             )}
@@ -186,7 +186,7 @@ export default function CriticalThinkingPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900">{challenge.title}</p>
-                <p className="text-xs text-gray-400">{challenge.difficulty} · 4 {t("secondary.options")}</p>
+                <p className="text-xs text-gray-400">{challenge.difficulty} · 4 {t("options")}</p>
               </div>
               {submitted[challenge.id] ? (
                 <CheckCircle className="size-5 shrink-0 text-green-500" />
