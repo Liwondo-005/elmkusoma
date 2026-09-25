@@ -31,7 +31,8 @@ public interface CertificateTemplateRepository extends JpaRepository<Certificate
 
     /** Platform-wide template search with optional filters (NULL = no restriction). */
     @Query("SELECT t FROM CertificateTemplate t WHERE t.isDeleted = false " +
-            "AND (:search IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            // :search must be '' (never NULL) - see the note in CertificateRepository.searchCertificates.
+            "AND (:search = '' OR LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "     OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:type IS NULL OR t.templateType = :type) " +
             "AND (:institutionId IS NULL OR t.institutionId = :institutionId)")

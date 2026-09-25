@@ -60,7 +60,10 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
      * unfiltered page as before.
      */
     @Query("SELECT c FROM Certificate c WHERE c.isDeleted = false " +
-            "AND (:search IS NULL OR LOWER(c.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            // :search is always bound as '' (never NULL): Hibernate cannot infer the type of an
+            // untyped NULL used only in LIKE/CONCAT, so a null bind is sent as JAVA_OBJECT ->
+            // pgjdbc declares the parameter bytea -> Postgres rejects lower(bytea) (error 42883).
+            "AND (:search = '' OR LOWER(c.title) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "     OR LOWER(c.serialNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "     OR LOWER(c.studentName) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "     OR LOWER(c.certificateNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +

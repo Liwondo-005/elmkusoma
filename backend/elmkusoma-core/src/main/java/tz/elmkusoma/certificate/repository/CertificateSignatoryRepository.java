@@ -18,7 +18,8 @@ public interface CertificateSignatoryRepository extends JpaRepository<Certificat
     Optional<CertificateSignatory> findByIdAndIsDeletedFalse(UUID id);
 
     @Query("SELECT s FROM CertificateSignatory s WHERE s.isDeleted = false " +
-            "AND (:search IS NULL OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            // :search must be '' (never NULL) - see the note in CertificateRepository.searchCertificates.
+            "AND (:search = '' OR LOWER(s.fullName) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "     OR LOWER(s.organization) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "     OR LOWER(s.positionTitle) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:status IS NULL OR s.status = :status) " +

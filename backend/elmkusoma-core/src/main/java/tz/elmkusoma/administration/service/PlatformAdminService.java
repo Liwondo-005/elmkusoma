@@ -585,7 +585,8 @@ public class PlatformAdminService {
                 typeEnum = null;
             }
         }
-        String searchTrim = (search == null || search.isBlank()) ? null : search.trim();
+        // '' (never null): an untyped null :search would reach Postgres as bytea and break LOWER/LIKE.
+        String searchTrim = (search == null || search.isBlank()) ? "" : search.trim();
 
         Page<Certificate> certs = certificateRepository.searchCertificates(
                 searchTrim, statusEnum, typeEnum, institutionId,
