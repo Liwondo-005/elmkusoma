@@ -1,5 +1,6 @@
 package tz.elmkusoma.liveclass.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.util.*;
 @Tag(name = "Live Class Interactions", description = "Quizzes, polls, breakout rooms, shared media, and attendance detail")
 public class LiveClassInteractionController {
 
+    private final ObjectMapper objectMapper;
     private final LiveClassRepository liveClassRepository;
     private final TeacherService teacherService;
     private final LiveClassQuizRepository quizRepository;
@@ -35,6 +37,15 @@ public class LiveClassInteractionController {
     private final LiveClassBreakoutAssignmentRepository breakoutAssignmentRepository;
     private final LiveClassSharedMediaRepository sharedMediaRepository;
     private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
+
+    /** Poll/quiz options live in JSONB columns — persist canonical JSON, never Object#toString. */
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
 
     // ==================== QUIZZES ====================
 
@@ -72,7 +83,7 @@ public class LiveClassInteractionController {
                         .quizId(saved.getId())
                         .questionText((String) q.get("questionText"))
                         .questionType((String) q.getOrDefault("questionType", "MULTIPLE_CHOICE"))
-                        .options(q.get("options") != null ? q.get("options").toString() : null)
+                        .options(q.get("options") != null ? toJson(q.get("options")) : null)
                         .correctAnswer((String) q.get("correctAnswer"))
                         .displayOrder(order++)
                         .build();
@@ -174,7 +185,7 @@ public class LiveClassInteractionController {
                 .liveClassId(classId)
                 .teacherId(userId)
                 .question(question)
-                .options(options != null ? options.toString() : "[]")
+                .options(options != null ? toJson(options) : "[]")
                 .status("ACTIVE")
                 .build();
         LiveClassPoll saved = pollRepository.save(poll);

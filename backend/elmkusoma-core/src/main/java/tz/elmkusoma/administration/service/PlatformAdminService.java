@@ -49,6 +49,29 @@ public class PlatformAdminService {
     /** Platform-scope audit rows must reference the national HQ institution (audit_logs.institution_id NOT NULL + FK). */
     static final UUID PLATFORM_INSTITUTION_ID = UUID.fromString("a0000000-0000-0000-0000-000000000001");
 
+    private static final com.fasterxml.jackson.databind.ObjectMapper PERMISSIONS_JSON =
+            new com.fasterxml.jackson.databind.ObjectMapper();
+
+    /**
+     * admin_delegations.permissions is JSONB NOT NULL. Whatever the API caller sends
+     * (bare token, comma list, or existing JSON), store a valid JSON document so the
+     * insert can never fail with an invalid jsonb input syntax.
+     */
+    static String normalizePermissions(String raw) {
+        if (raw == null || raw.isBlank()) return "[]";
+        String trimmed = raw.trim();
+        try {
+            PERMISSIONS_JSON.readTree(trimmed);
+            return trimmed;
+        } catch (Exception notJson) {
+            try {
+                return PERMISSIONS_JSON.writeValueAsString(trimmed);
+            } catch (Exception impossible) {
+                return "[]";
+            }
+        }
+    }
+
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
     private final LiveClassRepository liveClassRepository;
@@ -967,7 +990,7 @@ public class PlatformAdminService {
     public DelegationSummaryResponse createDelegation(DelegationCreateRequest req) {
         AdminDelegation del = AdminDelegation.builder()
                 .delegatorId(req.getDelegatorId()).delegateId(req.getDelegateId())
-                .permissions(req.getPermissions()).scope(req.getScope() != null ? req.getScope() : "PLATFORM")
+                .permissions(normalizePermissions(req.getPermissions())).scope(req.getScope() != null ? req.getScope() : "PLATFORM")
                 .status("ACTIVE").startsAt(LocalDateTime.now()).expiresAt(req.getExpiresAt()).build();
         delegationRepository.save(del);
         writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", del.getId(), String.valueOf(del.getScope()), "CREATE",

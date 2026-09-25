@@ -3,6 +3,8 @@ package tz.elmkusoma.liveclass.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.util.UUID;
@@ -25,6 +27,7 @@ public class LiveClassQuizQuestion extends BaseEntity {
     @Column(name = "question_type", length = 20)
     private String questionType = "MULTIPLE_CHOICE";
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "options", columnDefinition = "jsonb")
     private String options;
 
