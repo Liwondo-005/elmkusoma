@@ -73,9 +73,9 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<AuditLogResponse> getAuditLogsByUser(UUID userId, int page, int size) {
+    public org.springframework.data.domain.Page<AuditLogResponse> getAuditLogsByUser(UUID institutionId, UUID userId, int page, int size) {
         org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
-        return auditLogRepository.findByUserId(userId, pageable)
+        return auditLogRepository.findByInstitutionIdAndUserId(institutionId, userId, pageable)
                 .map(auditMapper::toAuditLogResponse);
     }
 
@@ -114,9 +114,9 @@ public class AuditService {
     }
 
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<ActivityFeedResponse> getActivityFeedByUser(UUID userId, int page, int size) {
+    public org.springframework.data.domain.Page<ActivityFeedResponse> getActivityFeedByUser(UUID institutionId, UUID userId, int page, int size) {
         org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
-        return activityFeedRepository.findByUserId(userId, pageable)
+        return activityFeedRepository.findByInstitutionIdAndUserId(institutionId, userId, pageable)
                 .map(auditMapper::toActivityFeedResponse);
     }
 
@@ -147,9 +147,13 @@ public class AuditService {
         return event;
     }
 
-    public SecurityEvent resolveSecurityEvent(UUID eventId, UUID resolvedBy) {
+    public SecurityEvent resolveSecurityEvent(UUID eventId, UUID institutionId, UUID resolvedBy) {
         SecurityEvent event = securityEventRepository.findById(eventId)
                 .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("SecurityEvent", "id", eventId));
+        if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
+            // Cross-tenant guard: another institution's event must be indistinguishable from missing.
+            throw new tz.elmkusoma.exception.ResourceNotFoundException("SecurityEvent", "id", eventId);
+        }
 
         event.setResolved(true);
         event.setResolvedAt(LocalDateTime.now());

@@ -28,6 +28,7 @@ import tz.elmkusoma.shared.repository.UserRepository;
 
 import tz.elmkusoma.course.repository.CourseRepository;
 import tz.elmkusoma.event.repository.EventRepository;
+import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
 import tz.elmkusoma.learning.repository.ResourceRepository;
 import tz.elmkusoma.parent.repository.PaymentRepository;
@@ -67,6 +68,7 @@ public class PlatformAdminService {
     private final CourseRepository courseRepository;
     private final EventRepository eventRepository;
     private final MediaAssetRepository mediaAssetRepository;
+    private final LiveClassParticipantRepository liveClassParticipantRepository;
     private final ResourceRepository resourceRepository;
     private final ProviderServiceEntitlementRepository providerEntitlementRepository;
     private final ContentReportRepository contentReportRepository;
@@ -176,9 +178,12 @@ public class PlatformAdminService {
     public PlatformHealthResponse getPlatformHealth() {
         String dbStatus = "Operational";
         long totalUsers = 0; long totalInstitutions = 0;
+        long activeUsers = 0; long activeInstitutions = 0;
         try {
             totalUsers = userRepository.countByIsDeletedFalse();
             totalInstitutions = institutionRepository.countByIsDeletedFalse();
+            activeUsers = userRepository.countByIsActiveAndIsDeletedFalse(true);
+            activeInstitutions = institutionRepository.countByIsActiveAndIsDeletedFalse(true);
         } catch (Exception e) {
             dbStatus = "Failing";
             log.warn("Health DB probe failed: {}", e.getMessage());
@@ -201,11 +206,11 @@ public class PlatformAdminService {
                 && java.time.LocalDateTime.parse(heartbeat.replace(" ", "T")).isAfter(LocalDateTime.now().minusMinutes(5));
         return PlatformHealthResponse.builder()
                 .databaseStatus(dbStatus)
-                .apiStatus("Operational")
+                .apiStatus("Operational".equals(dbStatus) ? "Operational" : "Degraded")
                 .totalUsers(totalUsers)
-                .activeUsers(totalUsers)
+                .activeUsers(activeUsers)
                 .totalInstitutions(totalInstitutions)
-                .activeInstitutions(totalInstitutions)
+                .activeInstitutions(activeInstitutions)
                 .livekitStatus(livekit)
                 .storageStatus(storage)
                 .backgroundJobsStatus(jobsOk ? "Operational" : (heartbeat == null ? "UNKNOWN" : "Stale"))
@@ -220,7 +225,7 @@ public class PlatformAdminService {
     // ── Users ──
 
     @Transactional(readOnly = true)
-    public PageResponse<UserSummaryResponse> listUsers(int page, int size, String role, String search, UUID institutionId) {
+    public PageResponse<UserSummaryResponse> listUsers(int page, int size, String role, String search) {
         Page<User> users;
         if (search != null && !search.isBlank()) {
             users = userRepository.findBySearchTermAndIsDeletedFalse(search, PageRequest.of(page, size, Sort.by("createdAt").descending()));
@@ -262,16 +267,9 @@ public class PlatformAdminService {
         }
         user.setIsActive(active);
         userRepository.save(user);
-        AuditLog al = new AuditLog();
-        al.setInstitutionId(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID);
-        al.setUserId(userId);
-        al.setEntityType("USER");
-        al.setEntityId(userId);
-        al.setEntityName(user.getEmail());
-        al.setAction(active ? AuditLog.AuditAction.UPDATE : AuditLog.AuditAction.UPDATE);
-        al.setOldValues(Map.of("isActive", !active));
-        al.setNewValues(Map.of("isActive", active));
-        auditLogRepository.save(al);
+        writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                "USER", userId, user.getEmail(), "UPDATE",
+                Map.of("isActive", !active), Map.of("isActive", active));
         log.info("User {} {} by platform admin", userId, active ? "activated" : "suspended");
         return toUserSummary(user);
     }
@@ -424,20 +422,63 @@ public class PlatformAdminService {
                             Map<String, Object> oldValues, Map<String, Object> newValues) {
         AuditLog al = new AuditLog();
         al.setInstitutionId(institutionId != null ? institutionId : PLATFORM_INSTITUTION_ID);
-        al.setUserId(null);
         al.setEntityType(entityType);
         al.setEntityId(entityId);
         al.setEntityName(entityName);
         al.setAction(AuditLog.AuditAction.valueOf(action));
         al.setOldValues(oldValues);
         al.setNewValues(newValues);
+        applyRequestActor(al);
         auditLogRepository.save(al);
+    }
+
+    /**
+     * Best-effort actor + request attribution for audit rows: the authenticated user
+     * (userId/userEmail/userRole set by {@code JwtRequestAttributeFilter}) plus request
+     * metadata. No-ops outside an HTTP request (unit tests, schedulers) so audits still record.
+     */
+    private void applyRequestActor(AuditLog al) {
+        try {
+            var attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra) {
+                if (al.getUserId() == null && attrs.getAttribute("userId",
+                        org.springframework.web.context.request.RequestAttributes.SCOPE_REQUEST) instanceof UUID uid) {
+                    al.setUserId(uid);
+                }
+                if (al.getUserEmail() == null && attrs.getAttribute("userEmail",
+                        org.springframework.web.context.request.RequestAttributes.SCOPE_REQUEST) instanceof String email) {
+                    al.setUserEmail(email);
+                }
+                if (al.getUserRole() == null && attrs.getAttribute("userRole",
+                        org.springframework.web.context.request.RequestAttributes.SCOPE_REQUEST) instanceof String role) {
+                    al.setUserRole(role);
+                }
+                jakarta.servlet.http.HttpServletRequest req = sra.getRequest();
+                al.setIpAddress(req.getRemoteAddr());
+                al.setUserAgent(req.getHeader("User-Agent"));
+                al.setRequestMethod(req.getMethod());
+                al.setRequestUrl(req.getRequestURI());
+            }
+            if (al.getUserEmail() == null) {
+                var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getPrincipal()
+                        instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
+                    al.setUserEmail(userDetails.getUsername());
+                    al.setUserRole(userDetails.getAuthorities().stream().findFirst().map(a -> {
+                        String s = a.getAuthority();
+                        return s.startsWith("ROLE_") ? s.substring(5) : s;
+                    }).orElse(null));
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Audit actor context unavailable: {}", e.getMessage());
+        }
     }
 
     // ── Live Classes ──
 
     @Transactional(readOnly = true)
-    public PageResponse<LiveClassSummaryResponse> listLiveClasses(int page, int size, String status, UUID institutionId) {
+    public PageResponse<LiveClassSummaryResponse> listLiveClasses(int page, int size, String status) {
         Page<LiveClass> classes;
         if (status != null && !status.isBlank()) {
             classes = liveClassRepository.findByStatusAndIsDeletedFalse(status.toUpperCase(), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "scheduledAt")));
@@ -453,7 +494,8 @@ public class PlatformAdminService {
                         .scheduledAt(lc.getScheduledAt())
                         .durationMinutes(lc.getDurationMinutes())
                         .maxParticipants(lc.getMaxParticipants())
-                        .currentParticipants(0)
+                        .currentParticipants((int) liveClassParticipantRepository
+                                .countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(lc.getId()))
                         .createdAt(lc.getCreatedAt())
                         .build())
                 .toList();
@@ -464,7 +506,7 @@ public class PlatformAdminService {
     // ── Payments ──
 
     @Transactional(readOnly = true)
-    public PageResponse<PaymentSummaryResponse> listPayments(int page, int size, String status, UUID institutionId) {
+    public PageResponse<PaymentSummaryResponse> listPayments(int page, int size, String status) {
         Page<tz.elmkusoma.parent.domain.Payment> payments;
         if (status != null && !status.isBlank()) {
             payments = paymentRepository.findByStatusAndIsDeletedFalse(status.toUpperCase(), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -491,7 +533,7 @@ public class PlatformAdminService {
     // ── Certificates ──
 
     @Transactional(readOnly = true)
-    public PageResponse<CertificateSummaryResponse> listCertificates(int page, int size, UUID institutionId) {
+    public PageResponse<CertificateSummaryResponse> listCertificates(int page, int size) {
         Page<Certificate> certs = certificateRepository.findAllByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
 
         List<CertificateSummaryResponse> content = certs.getContent().stream()
@@ -532,6 +574,9 @@ public class PlatformAdminService {
         event.setResolved(true);
         event.setResolvedAt(LocalDateTime.now());
         securityEventRepository.save(event);
+        writeAudit(event.getInstitutionId(), "SECURITY_EVENT", eventId,
+                event.getEventType() != null ? event.getEventType().name() : "SecurityEvent", "UPDATE",
+                Map.of("resolved", false), Map.of("resolved", true));
         log.info("Security event {} resolved by platform admin", eventId);
         return SecurityEventResponse.builder()
                 .id(event.getId())
@@ -728,6 +773,9 @@ public class PlatformAdminService {
                 .maxSeats(req.getMaxSeats()).monthlyPrice(req.getMonthlyPrice()).currency(req.getCurrency() != null ? req.getCurrency() : "TZS")
                 .build();
         platformServiceRepository.save(svc);
+        writeAudit(PLATFORM_INSTITUTION_ID, "SERVICE", svc.getId(), svc.getName(), "CREATE",
+                Map.of(), Map.of("code", String.valueOf(svc.getCode()),
+                        "category", String.valueOf(svc.getCategory())));
         log.info("Platform service created: {}", svc.getCode());
         return toServiceSummary(svc);
     }
@@ -735,6 +783,10 @@ public class PlatformAdminService {
     public ServiceSummaryResponse updateService(UUID id, ServiceCreateRequest req) {
         PlatformService svc = platformServiceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("PlatformService", "id", id));
+        Map<String, Object> oldVals = Map.of(
+                "name", String.valueOf(svc.getName()),
+                "category", String.valueOf(svc.getCategory()),
+                "isActive", String.valueOf(svc.getIsActive()));
         if (req.getName() != null) svc.setName(req.getName());
         if (req.getDescription() != null) svc.setDescription(req.getDescription());
         if (req.getCategory() != null) svc.setCategory(req.getCategory());
@@ -743,6 +795,10 @@ public class PlatformAdminService {
         if (req.getMaxSeats() != null) svc.setMaxSeats(req.getMaxSeats());
         if (req.getMonthlyPrice() != null) svc.setMonthlyPrice(req.getMonthlyPrice());
         platformServiceRepository.save(svc);
+        writeAudit(PLATFORM_INSTITUTION_ID, "SERVICE", id, svc.getName(), "UPDATE",
+                oldVals, Map.of("name", String.valueOf(svc.getName()),
+                        "category", String.valueOf(svc.getCategory()),
+                        "isActive", String.valueOf(svc.getIsActive())));
         return toServiceSummary(svc);
     }
 
@@ -844,9 +900,15 @@ public class PlatformAdminService {
     public PlatformConfigResponse updateConfig(String key, String value, String modifiedBy) {
         PlatformConfigEntry entry = configRepository.findByConfigKeyAndIsDeletedFalse(key)
                 .orElseThrow(() -> new ResourceNotFoundException("PlatformConfig", "key", key));
+        boolean sensitive = Boolean.TRUE.equals(entry.getIsSensitive());
+        String oldValue = sensitive ? "****" : String.valueOf(entry.getConfigValue());
+        String newValue = sensitive ? "****" : String.valueOf(value);
         entry.setConfigValue(value);
         entry.setLastModifiedBy(modifiedBy);
         configRepository.save(entry);
+        writeAudit(PLATFORM_INSTITUTION_ID, "PLATFORM_CONFIG", entry.getId(), key, "UPDATE",
+                Map.of("value", oldValue),
+                Map.of("value", newValue, "modifiedBy", String.valueOf(modifiedBy)));
         return PlatformConfigResponse.builder()
                 .id(entry.getId()).configKey(entry.getConfigKey())
                 .configValue(entry.getIsSensitive() ? "****" : entry.getConfigValue())
@@ -875,6 +937,10 @@ public class PlatformAdminService {
                 .targetAudience(req.getTargetAudience()).targetRole(req.getTargetRole())
                 .sentBy(sentBy).sentAt(LocalDateTime.now()).build();
         notificationRepository.save(notif);
+        writeAudit(PLATFORM_INSTITUTION_ID, "NOTIFICATION", notif.getId(), notif.getTitle(), "CREATE",
+                Map.of(), Map.of("notificationType", String.valueOf(notif.getNotificationType()),
+                        "targetAudience", String.valueOf(notif.getTargetAudience()),
+                        "sentBy", String.valueOf(sentBy)));
         log.info("Platform notification sent: {} by {}", notif.getTitle(), sentBy);
         return NotificationSummaryResponse.builder()
                 .id(notif.getId()).title(notif.getTitle()).message(notif.getMessage())
@@ -904,6 +970,10 @@ public class PlatformAdminService {
                 .permissions(req.getPermissions()).scope(req.getScope() != null ? req.getScope() : "PLATFORM")
                 .status("ACTIVE").startsAt(LocalDateTime.now()).expiresAt(req.getExpiresAt()).build();
         delegationRepository.save(del);
+        writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", del.getId(), String.valueOf(del.getScope()), "CREATE",
+                Map.of(), Map.of("delegatorId", String.valueOf(del.getDelegatorId()),
+                        "delegateId", String.valueOf(del.getDelegateId()),
+                        "permissions", String.valueOf(del.getPermissions())));
         log.info("Admin delegation created: {} -> {}", del.getDelegatorId(), del.getDelegateId());
         return DelegationSummaryResponse.builder()
                 .id(del.getId()).delegatorId(del.getDelegatorId()).delegateId(del.getDelegateId())
@@ -920,6 +990,10 @@ public class PlatformAdminService {
         del.setRevokedBy(revokedBy);
         del.setRevocationReason(reason);
         delegationRepository.save(del);
+        writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", id, String.valueOf(del.getScope()), "UPDATE",
+                Map.of("status", "ACTIVE"),
+                Map.of("status", "REVOKED", "revokedBy", String.valueOf(revokedBy),
+                        "reason", reason != null ? reason : ""));
         log.info("Admin delegation revoked: {}", id);
     }
 
@@ -1358,7 +1432,7 @@ public class PlatformAdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", institutionId));
         List<OffboardingChecklistResponse.OffboardingStep> steps = new ArrayList<>();
         long users = userRepository.findAllByInstitutionId(institutionId).size();
-        steps.add(step("Export user directory", users > 0 ? "DONE" : "DONE",
+        steps.add(step("Export user directory", users > 0 ? "PENDING" : "DONE",
                 users + " member(s) discoverable for export"));
         long courses = 0;
         try { courses = courseRepository.countByInstitutionIdAndIsDeletedFalse(institutionId); } catch (Exception e) { }
@@ -1375,8 +1449,9 @@ public class PlatformAdminService {
                 "Current status: " + lifecycle + " (target ARCHIVED)"));
         steps.add(step("Notify stakeholders", "PENDING",
                 "Send offboarding notice via platform notifications"));
+        long auditRecords = countInstitutionAudit(institutionId);
         steps.add(step("Audit trail review", "DONE",
-                "Institution audit logs retained per data retention policy"));
+                auditRecords + " audit record(s) retained per data retention policy"));
         return OffboardingChecklistResponse.builder()
                 .institutionId(institutionId).institutionName(inst.getName())
                 .lifecycleStatus(lifecycle).steps(steps).build();

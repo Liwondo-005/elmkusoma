@@ -67,9 +67,8 @@ public class PlatformAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String role,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) UUID institutionId) {
-        PageResponse<UserSummaryResponse> response = platformAdminService.listUsers(page, size, role, search, institutionId);
+            @RequestParam(required = false) String search) {
+        PageResponse<UserSummaryResponse> response = platformAdminService.listUsers(page, size, role, search);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -125,9 +124,8 @@ public class PlatformAdminController {
     public ResponseEntity<ApiResponse<PageResponse<LiveClassSummaryResponse>>> listLiveClasses(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) UUID institutionId) {
-        PageResponse<LiveClassSummaryResponse> response = platformAdminService.listLiveClasses(page, size, status, institutionId);
+            @RequestParam(required = false) String status) {
+        PageResponse<LiveClassSummaryResponse> response = platformAdminService.listLiveClasses(page, size, status);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -138,9 +136,8 @@ public class PlatformAdminController {
     public ResponseEntity<ApiResponse<PageResponse<PaymentSummaryResponse>>> listPayments(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) UUID institutionId) {
-        PageResponse<PaymentSummaryResponse> response = platformAdminService.listPayments(page, size, status, institutionId);
+            @RequestParam(required = false) String status) {
+        PageResponse<PaymentSummaryResponse> response = platformAdminService.listPayments(page, size, status);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -150,9 +147,8 @@ public class PlatformAdminController {
     @Operation(summary = "List certificates issued across the platform")
     public ResponseEntity<ApiResponse<PageResponse<CertificateSummaryResponse>>> listCertificates(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID institutionId) {
-        PageResponse<CertificateSummaryResponse> response = platformAdminService.listCertificates(page, size, institutionId);
+            @RequestParam(defaultValue = "20") int size) {
+        PageResponse<CertificateSummaryResponse> response = platformAdminService.listCertificates(page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

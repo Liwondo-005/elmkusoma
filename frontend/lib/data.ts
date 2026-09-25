@@ -113,46 +113,6 @@ export const liveClasses: LiveClass[] = [
   },
 ]
 
-export type Course = {
-  id: string
-  title: string
-  instructor: string
-  image: string
-  rating: number
-  reviews: string
-  tag: string
-}
-
-export const featuredCourses: Course[] = [
-  {
-    id: "web-development-bootcamp",
-    title: "Web Development Bootcamp",
-    instructor: "David O.",
-    image: "/images/class-webdev.png",
-    rating: 4.8,
-    reviews: "12.4k",
-    tag: "Popular Course",
-  },
-  {
-    id: "data-science-python",
-    title: "Data Science with Python",
-    instructor: "Grace N.",
-    image: "/images/class-datascience.png",
-    rating: 4.9,
-    reviews: "8.1k",
-    tag: "Trending",
-  },
-  {
-    id: "digital-marketing",
-    title: "Digital Marketing Strategy",
-    instructor: "Sarah K.",
-    image: "/images/class-marketing.png",
-    rating: 4.7,
-    reviews: "5.6k",
-    tag: "New",
-  },
-]
-
 export const levels = [
   { name: "Nursery", desc: "Games & interactive learning", href: "/schools/nursery" },
   { name: "Primary", desc: "Classes, subjects & quizzes", href: "/schools/primary" },
@@ -160,13 +120,6 @@ export const levels = [
   { name: "College", desc: "Departments & programs", href: "/schools/colleges" },
   { name: "Vocational", desc: "VETA training & modules", href: "/schools/vocational" },
   { name: "University", desc: "Faculties & degree programs", href: "/schools/universities" },
-]
-
-export const stats = [
-  { value: "8,500+", label: "Active Learners" },
-  { value: "500+", label: "Expert Instructors" },
-  { value: "1,200+", label: "Courses & Classes" },
-  { value: "50+", label: "Partner Institutions" },
 ]
 
 export type EducationLevel = "Nursery" | "Primary" | "Lower Secondary" | "Advanced Secondary"

@@ -109,7 +109,7 @@ export default function PlatformSettingsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <InfoCard icon={Globe} label="Platform" value="ELMKUSOMA" color="bg-blue-100 text-blue-700" />
-        <InfoCard icon={Server} label="Environment" value="Development" color="bg-amber-100 text-amber-700" />
+        <InfoCard icon={Server} label="Environment" value={process.env.NODE_ENV === "production" ? "Production" : "Development"} color="bg-amber-100 text-amber-700" />
         <InfoCard icon={Database} label="Database" value="PostgreSQL 18" color="bg-emerald-100 text-emerald-700" />
         <InfoCard icon={Shield} label="Auth" value="JWT + RBAC" color="bg-purple-100 text-purple-700" />
         <InfoCard icon={Zap} label="Realtime" value="WebSocket" color="bg-red-100 text-red-700" />
@@ -177,14 +177,14 @@ export default function PlatformSettingsPage() {
         <h2 className="text-base font-semibold text-foreground mb-4">System Information</h2>
         <div className="space-y-2">
           <SettingRow label="Platform Name" value="ELMKUSOMA" />
-          <SettingRow label="Backend" value="Spring Boot 3 / Java 21" />
-          <SettingRow label="Frontend" value="Next.js 16 / React" />
+          <SettingRow label="Backend" value="Spring Boot 3.4 / Java 17" />
+          <SettingRow label="Frontend" value="Next.js 16 / React 19" />
           <SettingRow label="Database" value="PostgreSQL 18" />
           <SettingRow label="Cache" value="Redis" />
           <SettingRow label="Message Queue" value="RabbitMQ" />
           <SettingRow label="Video" value="LiveKit" />
           <SettingRow label="Storage" value="MinIO" />
-          <SettingRow label="Migration" value="Flyway (70 migrations)" />
+          <SettingRow label="Migration" value="Flyway (78 migrations)" />
           <SettingRow label="ORM" value="Hibernate / JPA" />
         </div>
       </div>
@@ -195,10 +195,10 @@ export default function PlatformSettingsPage() {
           <SettingRow label="Authentication" value="JWT with refresh tokens (1h access / 7d refresh)" />
           <SettingRow label="Password Hashing" value="BCrypt" />
           <SettingRow label="Authorization" value="Role-Based Access Control (12 roles)" />
-          <SettingRow label="API Protection" value="@PreAuthorize on all admin endpoints" />
+          <SettingRow label="API Protection" value="Role-based @PreAuthorize on admin APIs" />
           <SettingRow label="Multi-Tenancy" value="Institution-scoped data isolation" />
           <SettingRow label="Soft Delete" value="Enabled (is_deleted flag)" />
-          <SettingRow label="Audit Logging" value="Enabled for all critical actions" />
+          <SettingRow label="Audit Logging" value="Enabled on admin, config & security writes" />
           <SettingRow label="IDOR Prevention" value="InstitutionScopeService validation" />
         </div>
       </div>

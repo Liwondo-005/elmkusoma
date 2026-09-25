@@ -23,15 +23,19 @@ export function ContactSection() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
   } = useForm<ContactValues>({
     resolver: zodResolver(contactSchema),
   })
 
-  async function onSubmit(_values: ContactValues) {
-    await new Promise((r) => setTimeout(r, 1500))
+  function onSubmit(values: ContactValues) {
+    // Honest handoff: no backend contact endpoint exists, so open the user's
+    // mail app pre-filled to the published support address instead of faking a send.
+    const subject = encodeURIComponent(values.subject)
+    const body = encodeURIComponent(
+      `${values.message}\n\n— ${values.name} (${values.email})`,
+    )
+    window.location.href = `mailto:info@elmkusoma.co.tz?subject=${subject}&body=${body}`
     setSubmitted(true)
-    reset()
   }
 
   return (
@@ -52,12 +56,16 @@ export function ContactSection() {
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
                 <CheckCircle className="size-7 text-teal" />
               </div>
-              <h3 className="mt-4 text-xl font-bold text-foreground">Message Sent!</h3>
+              <h3 className="mt-4 text-xl font-bold text-foreground">Your email app should be open</h3>
               <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">
-                Thank you for reaching out. We&apos;ll get back to you within 24 hours.
+                We&apos;ve prepared your message to{" "}
+                <a href="mailto:info@elmkusoma.co.tz" className="font-medium text-primary hover:underline">
+                  info@elmkusoma.co.tz
+                </a>
+                . Press send there to reach us — if nothing opened, email us directly.
               </p>
               <Button onClick={() => setSubmitted(false)} variant="outline" className="mt-6">
-                Send Another Message
+                Back to Form
               </Button>
             </div>
           ) : (

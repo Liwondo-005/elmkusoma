@@ -11,7 +11,9 @@ export default function OversightLayout({ children }: { children: ReactNode }) {
           <AuthoritySidebar />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
-          <DashboardTopbar />
+          <DashboardTopbar
+            renderSidebar={(onNavigate) => <AuthoritySidebar onNavigate={onNavigate} />}
+          />
           <main className="flex-1 p-4 sm:p-6">{children}</main>
         </div>
       </div>

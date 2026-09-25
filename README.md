@@ -20,7 +20,7 @@ ELMKUSOMA is an education management and learning platform for schools, colleges
 
 A role-based, institution-scoped education platform:
 
-- **Backend:** Spring Boot `3.4.1` API (`elmkusoma-core`) plus media (`:8083`), realtime (`:8081`), and workers (`:8082`) services; PostgreSQL 16 system of record migrated by Flyway (V01–V70); ~170 JPA entities; ~67 REST controllers (~500–550 endpoints).
+- **Backend:** Spring Boot `3.4.1` API (`elmkusoma-core`) plus media (`:8083`), realtime (`:8081`), and workers (`:8082`) services; PostgreSQL 16 system of record migrated by Flyway (V01–V78); ~170 JPA entities; ~67 REST controllers (~500–550 endpoints).
 - **Frontend:** Next.js `16.3.3` + React 19 + TypeScript + Tailwind CSS web app (`:3000`), English/Kiswahili internationalization, LiveKit-powered live classrooms.
 - **Realtime/media:** LiveKit/WebRTC for audio/video, Spring WebSocket/STOMP for application realtime, MinIO-compatible object storage for media, RabbitMQ + Redis for async and realtime infrastructure.
 
@@ -312,7 +312,7 @@ Primary: portfolio items, badges, evidence, quests/missions. HE: portfolios + it
 Browser (Next.js) ──HTTPS/JWT──▶ Nginx ──▶ core:8080 (/v1/*, /api/v1/*)
       │                                  ▶ media:8083 (/api/v1/media/*)
       └──── /ws ──▶ realtime:8081 ──▶ Redis / RabbitMQ
-Spring Boot ──JPA──▶ PostgreSQL 16 (Flyway V01–V70)
+Spring Boot ──JPA──▶ PostgreSQL 16 (Flyway V01–V78)
 LiveKit ◀── tokens/webhooks ──▶ core │ egress ─▶ Replay
 Workers ◀── RabbitMQ ──▶ mail, certificates (OpenPDF)
 ```
@@ -386,7 +386,7 @@ LiveKit (media server) · MinIO/S3-compatible storage · Gmail SMTP (mail) · Ge
 |---|---|
 | Frontend | Next.js `16.3.3`, React 19, TypeScript `5.7.3`, Tailwind `4.3.3` |
 | Backend | Spring Boot `3.4.1`, Java 17 (core) / 21 (media, realtime, workers), Maven |
-| Database | PostgreSQL 16, Flyway (V01–V70), Hibernate/JPA |
+| Database | PostgreSQL 16, Flyway (V01–V78), Hibernate/JPA |
 | Cache / Messaging | Redis 7, RabbitMQ 3.12 |
 | Realtime | Spring WebSocket/STOMP, LiveKit (external server) |
 | Media | MinIO (`8.5.7` SDK), OpenPDF `1.3.30` (workers) |
@@ -404,7 +404,7 @@ ELMKUSOMA/
 ├── backend/
 │   ├── elmkusoma-core/     # Main API (controllers/services/repos/entities)
 │   │   ├── src/main/java/tz/elmkusoma/  # identity, learner, course, event, ...
-│   │   ├── src/main/resources/          # application.yml, db/migration/ (V01–V70)
+│   │   ├── src/main/resources/          # application.yml, db/migration/ (V01–V78)
 │   │   ├── src/test/                    # 18 test classes
 │   │   ├── pom.xml  mvnw / mvnw.cmd
 │   ├── elmkusoma-media/    # File storage (:8083)
@@ -461,8 +461,8 @@ Payment webhook secret (`payment.webhook.secret`); mail SMTP (workers config); M
 ## 41. Database Setup
 
 1. Install PostgreSQL; create DB: `psql -U postgres -f backend/setup-db.sql` (or `backend\setup-db.ps1` on Windows). Database name MUST be `elmkusoma`.
-2. Flyway applies V01–V70 automatically on backend start (`ddl-auto: none`, `flyway.enabled: true`; prod validates).
-3. Verify: `psql -U postgres -d elmkusoma -c "SELECT version FROM flyway_schema_history ORDER BY installed_rank;"` — expect V01…V70 contiguous.
+2. Flyway applies V01–V78 automatically on backend start (`ddl-auto: none`, `flyway.enabled: true`; prod validates).
+3. Verify: `psql -U postgres -d elmkusoma -c "SELECT version FROM flyway_schema_history ORDER BY installed_rank;"` — expect V01…V78 contiguous.
 4. **V60 note:** exactly one V60 file exists (`V60__institution_admin_ecosystem.sql`); the secondary-stage/form migration is `V65__…`. No duplicates, no gaps. Never edit applied migrations — add new `V71__…` etc.
 5. Optional seeds: `seed_security*.sql`, `seed_audit*.sql`, `seed_oversight.sql` (test accounts), curriculum seeds under `db/seed/`.
 
@@ -511,7 +511,7 @@ Verify: frontend 200 at `/`, backend reachable (`/v1/certificates/verify/{code}`
 
 ## 45. Complete End-to-End Testing
 
-Infrastructure (DB/Redis/RabbitMQ up) → Database (Flyway V01–V70 applied) → Backend (`mvn test`, boot without errors) → LiveKit (separate stack if testing live) → Frontend (build passes) → Registration (4 public roles) → Login (tokens issued) → Role routing (correct workspace) → Learner workspace → Enrollment → Course/Learning (progress accrues) → Teacher (content/grading) → Live (schedule→join→interact→attendance→recording→replay). Mark LiveKit-dependent stages unsupported without the live stack.
+Infrastructure (DB/Redis/RabbitMQ up) → Database (Flyway V01–V78 applied) → Backend (`mvn test`, boot without errors) → LiveKit (separate stack if testing live) → Frontend (build passes) → Registration (4 public roles) → Login (tokens issued) → Role routing (correct workspace) → Learner workspace → Enrollment → Course/Learning (progress accrues) → Teacher (content/grading) → Live (schedule→join→interact→attendance→recording→replay). Mark LiveKit-dependent stages unsupported without the live stack.
 
 Two-browser live test (mandatory for live changes — Chrome + Incognito/Firefox): Browser A = Teacher (schedule → prepare → start at `/live-classes/{id}`), Browser B = Learner (see LIVE pill → join → verify teacher crown, A/V, chat, hand-raise with position). Verify both participant panes stay consistent, mute/kick flows work teacher-side, reconnect backoff appears on network drop, and chat-only banner (not a failure) appears when LiveKit is down.
 
@@ -543,7 +543,7 @@ Create (DRAFT) → publish → registration opens → learner registers → mate
 |---|---|
 | Password authentication failed | Wrong `DB_PASSWORD` in `backend/.env` |
 | Database does not exist | Run `backend/setup-db.sql` |
-| Flyway validation failed | Compare `flyway_schema_history` to V01–V70 files; never edit applied migrations |
+| Flyway validation failed | Compare `flyway_schema_history` to V01–V78 files; never edit applied migrations |
 | Connection refused (:5432/:6379/:5672) | Start backing services (`docker compose up -d`) |
 | Backend exits during startup | Read the log — invalid derived-query methods fail context init (see Known Issues) |
 | 401 on API calls | Missing/expired JWT — log in again; check `JWT_SECRET` consistency |
@@ -595,7 +595,7 @@ Backend: 18 test classes (unit + MockMvc integration + security), run `mvn test`
 | Certificates | IMPLEMENTED | Lifecycle + public verification |
 | Payments | IMPLEMENTED | Agnostic webhook + entitlements; gateway NOT VERIFIED |
 | Notifications | IMPLEMENTED | Service + preferences + realtime; SMS/push senders NOT VERIFIED |
-| Database | IMPLEMENTED | ~170 entities, V01–V70 |
+| Database | IMPLEMENTED | ~170 entities, V01–V78 |
 | Security | PARTIAL | Mechanisms verified; uniform coverage not claimed |
 | Testing | PARTIAL | Backend + e2e present; no CI; no frontend unit runner |
 
@@ -606,7 +606,7 @@ Backend: 18 test classes (unit + MockMvc integration + security), run `mvn test`
 | Issue | Area | Status | Evidence / Notes |
 |---|---|---|---|
 | Teacher student-list visibility concern | Teacher | DOCUMENTED (workaround known) | Students register but teacher list can show 0: missing class-group linking (see §11). Workaround via Admin → People; permanent enrollment-linking fix pending |
-| V60 duplicate-migration concern | Flyway | RESOLVED | Single V60 file; secondary-stage migration is V65; V01–V70 contiguous, no gaps/duplicates |
+| V60 duplicate-migration concern | Flyway | RESOLVED | Single V60 file; secondary-stage migration is V65; V01–V78 contiguous, no gaps/duplicates |
 | DB history vs files mismatch | Flyway | NOT VERIFIED | Requires live `flyway_schema_history` comparison; procedure in §41 |
 | No DB foreign keys | Database | KNOWN LIMITATION | Raw-UUID pattern; integrity is application-enforced |
 | Header-vs-JWT institution source | Multi-tenancy | KNOWN LIMITATION | Audit header-derived scoping endpoint-by-endpoint pre-production |
@@ -637,7 +637,7 @@ Do not deploy without: real `DB_PASSWORD`/`JWT_SECRET`/LiveKit/MinIO credentials
 | `docs/README-02-USER-FRONTEND-LIVE.md` | Developer 02 | COMPLETE | Frontend/user/live/testing runbook depth |
 | `docs/api/api-reference.md` | Pre-existing | NOT VERIFIED | Endpoint detail may have drifted; cross-check with controllers |
 | `docs/architecture/overview.md` | Pre-existing | NOT VERIFIED | Cross-check against §27 before relying on diagrams |
-| `docs/database/schema.md` | Pre-existing | NOT VERIFIED | Cross-check against V01–V70 migrations + entities |
+| `docs/database/schema.md` | Pre-existing | NOT VERIFIED | Cross-check against V01–V78 migrations + entities |
 | `docs/security/jwt-setup.md` | Pre-existing | NOT VERIFIED | Cross-check lifetimes/secrets handling against §31/§40 |
 
 Rule: this README is the primary entry point. Source docs (`README-01/02`) are complements, not prerequisites. Pre-existing detail docs are unverified against current code — treat them as secondary until re-audited.  

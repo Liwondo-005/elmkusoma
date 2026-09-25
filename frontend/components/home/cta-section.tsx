@@ -1,7 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { buttonVariants } from "@/components/ui/button"
-import { stats } from "@/lib/data"
+import { CtaStats } from "@/components/home/platform-stats"
 import { cn } from "@/lib/utils"
 
 export function CtaSection() {
@@ -35,14 +35,7 @@ export function CtaSection() {
                 </Link>
               </div>
 
-              <dl className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
-                {stats.map((s) => (
-                  <div key={s.label}>
-                    <dt className="text-2xl font-extrabold">{s.value}</dt>
-                    <dd className="mt-1 text-xs text-primary-foreground/70">{s.label}</dd>
-                  </div>
-                ))}
-              </dl>
+              <CtaStats />
             </div>
 
             <div className="relative hidden h-full min-h-80 lg:block">
