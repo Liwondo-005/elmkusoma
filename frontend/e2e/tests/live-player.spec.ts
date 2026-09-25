@@ -169,7 +169,7 @@ test("in-progress class connects to LiveKit and shows WAITING state with LIVE ba
 
   await expect(playerState(page)).toHaveAttribute("data-live-player-state", "waiting", { timeout: 60000 })
   await expect(playerState(page).getByText("LIVE", { exact: true })).toBeVisible()
-  await expect(playerState(page).getByText("Waiting for the teacher's video...").first()).toBeVisible()
+  await expect(playerState(page).getByText("Waiting for the teacher's live screen...").first()).toBeVisible()
 
   const box = await playerState(page).boundingBox()
   expect(box).not.toBeNull()
@@ -198,6 +198,8 @@ test("teacher publishes camera -> learner sees LIVE state with remote video", as
       /waiting|live/,
       { timeout: 60000 },
     )
+    await expect(teacherPage.getByText("Waiting for the teacher's live screen...")).toHaveCount(0)
+    await expect(teacherPage.getByText("Start your live screen")).toBeVisible()
 
     const camButton = teacherPage.getByRole("button", { name: "Turn on camera" })
     await expect(camButton).toBeVisible({ timeout: 30000 })
