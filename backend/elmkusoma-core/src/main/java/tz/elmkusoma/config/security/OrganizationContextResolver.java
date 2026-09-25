@@ -58,6 +58,17 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                      @NonNull HttpServletResponse response,
                                      @NonNull FilterChain filterChain) throws ServletException, IOException {
+        // This filter runs at HIGHEST_PRECEDENCE + 3, before DispatcherServlet
+        // activates the request scope, but OrganizationContextHolder is a
+        // request-scoped bean. Temporarily bind the scope so setContext() works;
+        // the scoped instance is cached as a request attribute and stays visible
+        // to everything running inside DispatcherServlet afterwards.
+        boolean scopeActivated = false;
+        if (org.springframework.web.context.request.RequestContextHolder.getRequestAttributes() == null) {
+            org.springframework.web.context.request.RequestContextHolder.setRequestAttributes(
+                    new org.springframework.web.context.request.ServletRequestAttributes(request));
+            scopeActivated = true;
+        }
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication != null && authentication.isAuthenticated()) {
@@ -143,6 +154,10 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
             }
         } catch (Exception ex) {
             log.error("Error resolving organization context: {}", ex.getMessage(), ex);
+        } finally {
+            if (scopeActivated) {
+                org.springframework.web.context.request.RequestContextHolder.resetRequestAttributes();
+            }
         }
 
         filterChain.doFilter(request, response);

@@ -1,6 +1,7 @@
 package tz.elmkusoma.config.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -70,6 +71,34 @@ public class SecurityConfig {
     @Bean
     public OrganizationContextResolver organizationContextResolver() {
         return new OrganizationContextResolver(jwtTokenProvider, userRepository, membershipRepository, contextHolder, entityManager, permissionService);
+    }
+
+    // These filters are declared as beans AND added to the SecurityFilterChain.
+    // Spring Boot would otherwise also auto-register them as standalone servlet
+    // filters, which run before the chain and cause OncePerRequestFilter to skip
+    // the in-chain copies — leaving SecurityContextHolder wiped by the chain's
+    // SecurityContextHolderFilter and producing 403 on every authenticated
+    // endpoint (regression of 12807f0). Disable the standalone registrations so
+    // they only run inside the chain where the security context persists.
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtRequestAttributeFilter> jwtRequestFilterRegistration(JwtRequestAttributeFilter filter) {
+        FilterRegistrationBean<JwtRequestAttributeFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<OrganizationContextResolver> organizationContextResolverRegistration(OrganizationContextResolver resolver) {
+        FilterRegistrationBean<OrganizationContextResolver> registration = new FilterRegistrationBean<>(resolver);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

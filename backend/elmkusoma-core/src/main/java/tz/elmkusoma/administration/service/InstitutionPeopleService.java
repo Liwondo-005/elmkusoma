@@ -198,7 +198,7 @@ public class InstitutionPeopleService {
     }
 
     public void acceptInvitation(String token, String password) {
-        InstitutionInvitation invitation = invitationRepository.findByToken(token)
+        InstitutionInvitation invitation = invitationRepository.findByTokenAndIsDeletedFalse(token)
                 .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
 
         if (!"PENDING".equals(invitation.getStatus())) {
@@ -259,6 +259,4 @@ public class InstitutionPeopleService {
 
         log.info("Invitation accepted for user {} in institution {}", user.getEmail(), invitation.getInstitutionId());
     }
-
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 }

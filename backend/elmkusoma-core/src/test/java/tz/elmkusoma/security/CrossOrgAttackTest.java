@@ -20,6 +20,9 @@ class CrossOrgAttackTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private tz.elmkusoma.certificate.repository.CertificateRepository certificateRepository;
+
     @Test
     void eventIdManipulation_CrossInstitution_Returns403() throws Exception {
         String adminToken = TestTokens.adminToken();
@@ -67,7 +70,28 @@ class CrossOrgAttackTest {
     void certificateIdManipulation_CrossInstitution_Returns403() throws Exception {
         String adminToken = TestTokens.adminToken();
 
-        mockMvc.perform(get("/v1/certificates/verify/00000000-0000-0000-0000-000000000066")
+        // /v1/certificates/verify/** is intentionally public (permitAll), so the
+        // tenant-isolation check lives on the authenticated detail endpoint:
+        // seed a certificate that belongs to a DIFFERENT institution than the
+        // admin token's (…0001) and expect 403 on /v1/certificates/{id}.
+        tz.elmkusoma.certificate.domain.Certificate foreign =
+                tz.elmkusoma.certificate.domain.Certificate.builder()
+                        .templateId(java.util.UUID.randomUUID())
+                        .studentId(java.util.UUID.randomUUID())
+                        .issuedBy(java.util.UUID.randomUUID())
+                        .serialNumber("XORG-TEST-066")
+                        .certificateType(tz.elmkusoma.certificate.domain.Certificate.CertificateType.COMPLETION)
+                        .title("Cross-org certificate")
+                        .studentName("Other Institution Student")
+                        .completionDate(java.time.LocalDate.now())
+                        .issueDate(java.time.LocalDateTime.now())
+                        .verificationCode("xorg-verify-066")
+                        .status(tz.elmkusoma.certificate.domain.Certificate.CertificateStatus.ISSUED)
+                        .build();
+        foreign.setInstitutionId(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        foreign = certificateRepository.save(foreign);
+
+        mockMvc.perform(get("/v1/certificates/" + foreign.getId())
                 .header("Authorization", "Bearer " + adminToken))
             .andExpect(status().isForbidden());
     }

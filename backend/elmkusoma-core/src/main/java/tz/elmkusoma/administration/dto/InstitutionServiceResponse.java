@@ -13,7 +13,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class InstitutionServiceResponse {
-    private Long id;
+    private UUID id;
     private UUID institutionId;
     private String featureKey;
     private String featureName;
