@@ -830,6 +830,20 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    /**
+     * REST→WS bridge: lets REST services publish typed interaction events (quiz/poll/
+     * breakout) over the single existing live-class socket instead of opening new
+     * transports. Broadcast failures are swallowed so a dead socket can never fail the
+     * REST call that triggered the event.
+     */
+    public void publishToClass(UUID classId, Map<String, Object> message) {
+        try {
+            broadcastToClass(classId, message, null);
+        } catch (Exception e) {
+            log.warn("Failed to publish {} to class {}", message != null ? message.get("type") : "?", classId, e);
+        }
+    }
+
     private void broadcastToClass(UUID classId, Map<String, Object> message, String excludeSessionId) {
         Set<String> sessionIds = classSessions.get(classId);
         if (sessionIds == null) return;

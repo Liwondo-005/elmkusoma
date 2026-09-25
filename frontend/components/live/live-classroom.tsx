@@ -74,6 +74,19 @@ interface QuizQuestion {
   questionType: string
   options: string
   displayOrder: number
+  // Teacher-only payload field (the backend strips it for students).
+  correctAnswer?: string
+  // Student's own submission — myAnswer always, isCorrect only after evaluation.
+  myAnswer?: string | null
+  isCorrect?: boolean
+}
+
+interface QuizUI {
+  questions: QuizQuestion[]
+  answers: Record<string, string>
+  submitted: boolean
+  loading: boolean
+  error: string
 }
 
 interface Poll {
@@ -81,6 +94,21 @@ interface Poll {
   question: string
   options: string
   status: string
+  myVote?: number | null
+  totalVotes?: number
+  closedAt?: string | null
+}
+
+// Server-side view returned by GET /classes/{id}/breakout-rooms (and refreshed on
+// every BREAKOUT_ROOMS_UPDATED event — assignedToMe is per-viewer server truth).
+interface BreakoutRoomView {
+  id: string
+  name: string
+  maxParticipants: number
+  status: string
+  assignedCount?: number
+  assignedUsers?: Array<{ userId: string; userName: string }>
+  assignedToMe?: boolean
 }
 
 export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
@@ -130,17 +158,26 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [handRaiseQueue, setHandRaiseQueue] = useState<HandRaiseEntry[]>([])
   const [showHandQueue, setShowHandQueue] = useState(false)
   const [activePolls, setActivePolls] = useState<Poll[]>([])
-  const [showPollModal, setShowPollModal] = useState(false)
   const [selectedPollOption, setSelectedPollOption] = useState<number | null>(null)
+  const [pollResultsById, setPollResultsById] = useState<Record<string, { results: Record<string, number>; totalVotes: number }>>({})
   const [activeQuizzes, setActiveQuizzes] = useState<Quiz[]>([])
-  const [showQuizModal, setShowQuizModal] = useState(false)
-  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([])
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({})
-  const [quizSubmitted, setQuizSubmitted] = useState(false)
+  const [focusedQuizId, setFocusedQuizId] = useState<string | null>(null)
+  const [quizUI, setQuizUI] = useState<Record<string, QuizUI>>({})
+  const [quizResultsById, setQuizResultsById] = useState<Record<string, { answeredCount: number; participantCount: number; totalResponses: number; totalCorrect: number }>>({})
   const [sharedMediaList, setSharedMediaList] = useState<Array<{title: string; url: string; mediaType: string}>>([])
-  const [breakoutRooms, setBreakoutRooms] = useState<Array<{id: string; name: string; maxParticipants: number; status: string}>>([])
+  const [breakoutRooms, setBreakoutRooms] = useState<BreakoutRoomView[]>([])
   const [showBreakoutModal, setShowBreakoutModal] = useState(false)
   const [newBreakoutName, setNewBreakoutName] = useState("")
+  // Live-interaction lifecycle flags (quiz/poll/breakout): every mutation reports
+  // its real outcome — errors surface inline, success only ever follows a server 2xx.
+  const [interactiveReady, setInteractiveReady] = useState(false)
+  const [interactiveLoading, setInteractiveLoading] = useState(false)
+  const [interactiveError, setInteractiveError] = useState("")
+  const [actionError, setActionError] = useState("")
+  const [actionBusy, setActionBusy] = useState(false)
+  const [pollVoting, setPollVoting] = useState(false)
+  const [quizSubmitting, setQuizSubmitting] = useState(false)
+  const [inBreakout, setInBreakout] = useState<{ roomId: string; roomName: string } | null>(null)
   const [sideTab, setSideTab] = useState<"chat" | "qa" | "people">("chat")
   const roomRef = useRef<Room | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
@@ -152,6 +189,18 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const retryCountRef = useRef(0)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const screenVideoRef = useRef<HTMLVideoElement>(null)
+  // Restore flag re-armed on every WS (re)connect so refresh/reconnect always
+  // re-reads quiz/poll/breakout state from the server after the JOIN ack.
+  const interactiveLoadedRef = useRef(false)
+  const quizLoadingRef = useRef<Set<string>>(new Set())
+  const quizLoadedRef = useRef<Set<string>>(new Set())
+  const inBreakoutRef = useRef<string | null>(null)
+  // Mirror of localStream for the LiveKit room effect (room switches happen when
+  // liveKitToken changes, which does not re-read state declared in the closure).
+  const mediaStateRef = useRef<MediaStream | null>(null)
+
+  useEffect(() => { mediaStateRef.current = localStream }, [localStream])
+  useEffect(() => { inBreakoutRef.current = inBreakout?.roomId ?? null }, [inBreakout])
 
   const isInProgress = sessionStatus === "IN_PROGRESS" || sessionStatus === "LIVE"
   const sessionEnded = sessionStatus === "COMPLETED" || sessionStatus === "ENDED" || sessionStatus === "CANCELLED"
@@ -185,6 +234,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   // participants → own screen → own camera).
   function isClassroomSource(identity?: string) {
     if (isTeacherClient || !teacherUserIdRef.current) return true
+    // Inside a breakout room every assigned participant is a legitimate source —
+    // the main-room "teacher's tracks only" rule does not apply there.
+    if (typeof roomName === "string" && roomName.startsWith("breakout-")) return true
     return identity === teacherUserIdRef.current
   }
 
@@ -212,6 +264,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     if (!isInProgress || !liveKitToken || !liveKitUrl || serviceMode !== "full") return
 
     setRoomState("connecting")
+    // A token swap tears this room down and builds a fresh one (main room →
+    // breakout → back). Remote publications belong to the previous room, so they
+    // must not linger on the stage while the new room connects.
+    setRemoteVideoTrack(null)
+    setRemoteAudioTrack(null)
+    setRemoteParticipants(new Map())
     const room = new Room({
       adaptiveStream: true,
       dynacast: true,
@@ -223,6 +281,18 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       setReconnecting(false)
       setRoomState("connected")
       retryCountRef.current = 0
+      // Re-publish local camera/mic captured in a previous room (breakout join or
+      // return switches rooms without touching the media stream).
+      const stream = mediaStateRef.current
+      if (stream) {
+        stream.getTracks().forEach((t) => {
+          const source = t.kind === "video" ? Track.Source.Camera : Track.Source.Microphone
+          if (room.localParticipant.getTrackPublication(source)) return
+          room.localParticipant
+            .publishTrack(t, { name: t.kind === "video" ? "camera" : "microphone" })
+            .catch(() => {})
+        })
+      }
     })
 
     room.on(RoomEvent.Disconnected, () => {
@@ -286,7 +356,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       room.disconnect()
       roomRef.current = null
     }
-  }, [isInProgress, liveKitToken, liveKitUrl, serviceMode])
+    // roomName: isClassroomSource reads it to relax source gating inside breakout rooms.
+  }, [isInProgress, liveKitToken, liveKitUrl, serviceMode, roomName])
 
   useEffect(() => {
     if (!isInProgress) return
@@ -342,6 +413,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
+      // Each (re)connect performs its own server-state restore after the JOIN ack.
+      interactiveLoadedRef.current = false
 
       ws.onopen = () => {
         setReconnecting(false)
@@ -387,6 +460,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               const teacher = data.participants.find((p: Participant) => p.role === "TEACHER")
               if (teacher) teacherUserIdRef.current = teacher.userId
               setParticipants(data.participants)
+            }
+            // JOIN ack ⇒ this client's participant row exists server-side, so the
+            // session-scoped reads below are authorized. Once per connection:
+            // restores quizzes/polls/breakouts after mount and after every reconnect.
+            if (!interactiveLoadedRef.current) {
+              interactiveLoadedRef.current = true
+              void refreshInteractiveState()
             }
             break
           case "CHAT_MESSAGE": {
@@ -497,8 +577,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           case "HAND_RAISE_QUEUE":
             if (data.queue) setHandRaiseQueue(data.queue)
             break
-          case "QUIZ_STARTED":
-            setActiveQuizzes((prev) => [...prev, { id: data.quizId, title: data.title, status: "ACTIVE" }])
+          case "QUIZ_STARTED": {
+            const quizId = String(data.quizId || "")
+            setActiveQuizzes((prev) =>
+              prev.some((q) => q.id === quizId)
+                ? prev
+                : [...prev, { id: quizId, title: data.title, status: "ACTIVE" }],
+            )
             setChat((prev) => [...prev, {
               userId: "system",
               userName: "System",
@@ -507,8 +592,41 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               system: true,
             }])
             break
-          case "POLL_STARTED":
-            setActivePolls((prev) => [...prev, { id: data.pollId, question: data.question, options: data.options, status: "ACTIVE" }])
+          }
+          case "QUIZ_CLOSED": {
+            const quizId = String(data.quizId || "")
+            setActiveQuizzes((prev) => prev.map((q) => (q.id === quizId ? { ...q, status: "CLOSED" } : q)))
+            if (!isTeacherClient) void ensureQuizLoaded(quizId, true) // evaluation done → refresh my score view
+            setChat((prev) => [...prev, {
+              userId: "system",
+              userName: "System",
+              message: `Quiz closed: ${data.title || "Untitled quiz"}`,
+              timestamp: data.timestamp || new Date().toISOString(),
+              system: true,
+            }])
+            break
+          }
+          case "QUIZ_RESULT": {
+            // Aggregate-only progress event (no identities, no answers).
+            const quizId = String(data.quizId || "")
+            setQuizResultsById((prev) => ({
+              ...prev,
+              [quizId]: {
+                answeredCount: Number(data.answeredCount ?? 0),
+                participantCount: Number(data.participantCount ?? 0),
+                totalResponses: Number(data.totalResponses ?? 0),
+                totalCorrect: Number(data.totalCorrect ?? 0),
+              },
+            }))
+            break
+          }
+          case "POLL_STARTED": {
+            const pollId = String(data.pollId || "")
+            setActivePolls((prev) =>
+              prev.some((p) => p.id === pollId)
+                ? prev
+                : [...prev, { id: pollId, question: data.question, options: data.options, status: "ACTIVE", myVote: null, totalVotes: 0 }],
+            )
             setChat((prev) => [...prev, {
               userId: "system",
               userName: "System",
@@ -516,6 +634,40 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               timestamp: data.timestamp || new Date().toISOString(),
               system: true,
             }])
+            break
+          }
+          case "POLL_CLOSED": {
+            const pollId = String(data.pollId || "")
+            setActivePolls((prev) => prev.map((p) => (p.id === pollId ? { ...p, status: "CLOSED" } : p)))
+            if (data.results) {
+              const results: Record<string, number> = data.results
+              setPollResultsById((prev) => ({
+                ...prev,
+                [pollId]: { results, totalVotes: Object.values(results).reduce((a, b) => a + Number(b || 0), 0) },
+              }))
+            }
+            setChat((prev) => [...prev, {
+              userId: "system",
+              userName: "System",
+              message: `Poll closed: ${data.question || ""}`.trim(),
+              timestamp: data.timestamp || new Date().toISOString(),
+              system: true,
+            }])
+            break
+          }
+          case "POLL_RESULT": {
+            const pollId = String(data.pollId || "")
+            const results: Record<string, number> = data.results || {}
+            setPollResultsById((prev) => ({
+              ...prev,
+              [pollId]: { results, totalVotes: Number(data.totalVotes ?? 0) },
+            }))
+            break
+          }
+          case "BREAKOUT_ROOMS_UPDATED":
+            // assignedToMe inside the event is computed for the acting user, so each
+            // client re-reads its own per-viewer view over REST — UI follows server state.
+            void refreshBreakoutRooms()
             break
           case "SHARED_MEDIA":
             setSharedMediaList((prev) => [...prev, { title: data.title || "Shared content", url: data.url, mediaType: data.mediaType || "VIDEO" }])
@@ -800,111 +952,531 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [newPollQuestion, setNewPollQuestion] = useState("")
   const [newPollOptions, setNewPollOptions] = useState("")
 
-  async function createQuiz() {
-    if (!newQuizTitle.trim() || !liveClass?.id || quizQuestionList.length === 0) return
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
+
+  function authHeaders(json = true): Record<string, string> {
+    const h: Record<string, string> = {
+      "Authorization": `Bearer ${token}`,
+      "X-Institution-Id": user?.institutionId || "",
+    }
+    if (json) h["Content-Type"] = "application/json"
+    return h
+  }
+
+  /** Server-reported failure reason (ApiResponse.error/message) or a safe fallback. */
+  async function apiErrorMessage(res: Response, fallback: string): Promise<string> {
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
-      const res = await fetch(`${apiBase}/v1/live-session/classes/${liveClass.id}/quizzes`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Institution-Id": user?.institutionId || "",
-          "Content-Type": "application/json",
+      const body = await res.json()
+      return body?.error || body?.message || fallback
+    } catch {
+      return fallback
+    }
+  }
+
+  /** Poll/quiz options may arrive as canonical JSON text or legacy "A,B,C" text. */
+  function parseOptionsList(raw: string): string[] {
+    if (!raw) return []
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed.map((v) => String(v))
+    } catch {
+      // legacy comma storage — fall through
+    }
+    return raw.split(",").map((s) => s.trim()).filter(Boolean)
+  }
+
+  // ==================== live-activity restore (server state) ====================
+
+  async function refreshBreakoutRooms(): Promise<void> {
+    if (!liveClass?.id || !token) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/breakout-rooms`, { headers: authHeaders(false) })
+      if (!res.ok) return // keep last known state; refreshInteractiveState surfaces persistent failures
+      const body = await res.json()
+      const rooms: BreakoutRoomView[] = Array.isArray(body?.data) ? body.data : []
+      setBreakoutRooms(rooms)
+      // The teacher ended my room (or my assignment moved) while I was in it —
+      // media must return to the main room rather than sit on a dead stream.
+      const mine = rooms.find((r) => r.id === inBreakoutRef.current)
+      if (inBreakoutRef.current && (!mine || mine.status !== "ACTIVE")) {
+        void returnToMainRoom()
+      }
+    } catch {
+      // transient — retried on the next event/reconnect
+    }
+  }
+
+  /** Loads one quiz's question payload (+ my submitted state for students) from the server. */
+  async function ensureQuizLoaded(quizId: string, force = false): Promise<void> {
+    if (!token || !quizId) return
+    if (!force && (quizLoadingRef.current.has(quizId) || quizLoadedRef.current.has(quizId))) return
+    quizLoadingRef.current.add(quizId)
+    setQuizUI((prev) => ({
+      ...prev,
+      [quizId]: {
+        questions: prev[quizId]?.questions ?? [],
+        answers: prev[quizId]?.answers ?? {},
+        submitted: prev[quizId]?.submitted ?? false,
+        loading: true,
+        error: "",
+      },
+    }))
+    try {
+      const qRes = await fetch(`${API_BASE}/v1/live-session/quizzes/${quizId}/questions`, { headers: authHeaders(false) })
+      if (!qRes.ok) {
+        const msg = await apiErrorMessage(qRes, "Could not load quiz questions")
+        setQuizUI((prev) => ({
+          ...prev,
+          [quizId]: { questions: [], answers: {}, submitted: false, loading: false, error: msg },
+        }))
+        return
+      }
+      const qBody = await qRes.json()
+      const questions: QuizQuestion[] = Array.isArray(qBody?.data) ? qBody.data : []
+      let submitted = false
+      const answers: Record<string, string> = {}
+      if (!isTeacherClient) {
+        const mRes = await fetch(`${API_BASE}/v1/live-session/quizzes/${quizId}/my-responses`, { headers: authHeaders(false) })
+        if (mRes.ok) {
+          const mBody = await mRes.json()
+          submitted = Boolean(mBody?.data?.submitted)
+          for (const q of questions) if (q.myAnswer) answers[q.id] = String(q.myAnswer)
+        }
+      }
+      setQuizUI((prev) => ({ ...prev, [quizId]: { questions, answers, submitted, loading: false, error: "" } }))
+      quizLoadedRef.current.add(quizId)
+    } catch {
+      setQuizUI((prev) => ({
+        ...prev,
+        [quizId]: { questions: [], answers: {}, submitted: false, loading: false, error: "Could not load quiz questions — check your connection." },
+      }))
+    } finally {
+      quizLoadingRef.current.delete(quizId)
+    }
+  }
+
+  /** Teacher aggregates: answered/not-answered/correct for one quiz. */
+  async function loadQuizResults(quizId: string): Promise<void> {
+    if (!token || !quizId) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/quizzes/${quizId}/results`, { headers: authHeaders(false) })
+      if (!res.ok) return // unauthorized/failed → counters stay unset, UI shows the honest waiting state
+      const body = await res.json()
+      const d = body?.data
+      if (!d) return
+      setQuizResultsById((prev) => ({
+        ...prev,
+        [quizId]: {
+          answeredCount: Number(d.answeredCount ?? 0),
+          participantCount: Number(d.participantCount ?? 0),
+          totalResponses: Number(d.totalResponses ?? 0),
+          totalCorrect: Number(d.totalCorrect ?? 0),
         },
+      }))
+    } catch {
+      // transient — QUIZ_RESULT events keep the counters fresh
+    }
+  }
+
+  /** Per-option poll tally (aggregate counts only). */
+  async function loadPollResults(pollId: string): Promise<void> {
+    if (!token || !pollId) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/polls/${pollId}/results`, { headers: authHeaders(false) })
+      if (!res.ok) return
+      const body = await res.json()
+      const d = body?.data
+      if (!d?.results) return
+      setPollResultsById((prev) => ({ ...prev, [pollId]: { results: d.results, totalVotes: Number(d.totalVotes ?? 0) } }))
+    } catch {
+      // transient — POLL_RESULT events keep the tally fresh
+    }
+  }
+
+  /** One restore pass per WS connection: quizzes, polls, rooms + role aggregates. */
+  async function refreshInteractiveState(): Promise<void> {
+    if (!liveClass?.id || !token) return
+    setInteractiveLoading(true)
+    setInteractiveError("")
+    try {
+      const [qRes, pRes, bRes] = await Promise.all([
+        fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/quizzes`, { headers: authHeaders(false) }),
+        fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/polls`, { headers: authHeaders(false) }),
+        fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/breakout-rooms`, { headers: authHeaders(false) }),
+      ])
+      if (!qRes.ok || !pRes.ok || !bRes.ok) {
+        setInteractiveError("Couldn't load live activities — the server refused access. Rejoin the class and try again.")
+        return
+      }
+      const [qBody, pBody, bBody] = await Promise.all([qRes.json(), pRes.json(), bRes.json()])
+      const quizzes: Quiz[] = Array.isArray(qBody?.data) ? qBody.data : []
+      const polls: Poll[] = Array.isArray(pBody?.data) ? pBody.data : []
+      const rooms: BreakoutRoomView[] = Array.isArray(bBody?.data) ? bBody.data : []
+      setActiveQuizzes(quizzes)
+      setActivePolls(polls)
+      setBreakoutRooms(rooms)
+
+      const latestActiveQuiz = [...quizzes].reverse().find((q) => q.status === "ACTIVE")
+      const latestAnyQuiz = quizzes.length ? quizzes[quizzes.length - 1] : null
+      setFocusedQuizId((prev) =>
+        prev && quizzes.some((q) => q.id === prev) ? prev : (latestActiveQuiz || latestAnyQuiz)?.id ?? null)
+
+      // Restore my own choice for the poll currently on screen (refresh/reconnect).
+      const openPoll = [...polls].reverse().find((p) => p.status === "ACTIVE")
+      setSelectedPollOption(openPoll && typeof openPoll.myVote === "number" ? openPoll.myVote : null)
+
+      const latestClosedPoll = [...polls].reverse().find((p) => p.status === "CLOSED")
+      const latestClosedQuiz = [...quizzes].reverse().find((q) => q.status === "CLOSED")
+
+      if (isTeacherClient) {
+        await Promise.all([
+          ...quizzes.filter((q) => q.status === "ACTIVE").map((q) => loadQuizResults(q.id)),
+          ...polls.filter((p) => p.status === "ACTIVE").map((p) => loadPollResults(p.id)),
+          ...(latestClosedPoll ? [loadPollResults(latestClosedPoll.id)] : []),
+        ])
+      } else {
+        await Promise.all([
+          ...quizzes
+            .filter((q) => q.status === "ACTIVE" || q.id === latestClosedQuiz?.id)
+            .map((q) => ensureQuizLoaded(q.id)),
+          ...(latestClosedPoll ? [loadPollResults(latestClosedPoll.id)] : []),
+        ])
+      }
+      setInteractiveReady(true)
+    } catch {
+      setInteractiveError("Couldn't load live activities — check your connection; they reload on every reconnect.")
+    } finally {
+      setInteractiveLoading(false)
+    }
+  }
+
+  // ==================== teacher mutations ====================
+
+  async function createQuiz() {
+    if (!newQuizTitle.trim() || !liveClass?.id || quizQuestionList.length === 0 || actionBusy) return
+    setActionBusy(true)
+    setActionError("")
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/quizzes`, {
+        method: "POST",
+        headers: authHeaders(),
         body: JSON.stringify({ title: newQuizTitle.trim(), questions: quizQuestionList }),
       })
-      if (res.ok) {
-        setChat(prev => [...prev, { userId: "system", userName: "System", message: `Quiz "${newQuizTitle.trim()}" launched!`, timestamp: new Date().toISOString(), system: true }])
-        setNewQuizTitle("")
-        setQuizQuestionList([])
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "Quiz could not be launched"))
+        return
       }
-    } catch {}
+      const body = await res.json()
+      const created = body?.data
+      if (created?.id) {
+        // Server state in, no optimistic chat line: the QUIZ_STARTED event (which
+        // reaches this client too) announces it, and the id keeps duplicates out.
+        setActiveQuizzes((prev) =>
+          prev.some((q) => q.id === created.id)
+            ? prev
+            : [...prev, { id: created.id, title: created.title, status: created.status || "ACTIVE" }])
+        setFocusedQuizId(created.id)
+        if (isTeacherClient) void ensureQuizLoaded(created.id)
+      } else {
+        await refreshInteractiveState()
+      }
+      setNewQuizTitle("")
+      setQuizQuestionList([])
+    } catch {
+      setActionError("Network error — the quiz was not launched")
+    } finally {
+      setActionBusy(false)
+    }
   }
 
   async function createPoll() {
-    if (!newPollQuestion.trim() || !liveClass?.id || !newPollOptions.trim()) return
+    if (!newPollQuestion.trim() || !liveClass?.id || !newPollOptions.trim() || actionBusy) return
     const options = newPollOptions.split(",").map(o => o.trim()).filter(Boolean)
+    if (options.length < 2) {
+      setActionError("A poll needs at least two options")
+      return
+    }
+    setActionBusy(true)
+    setActionError("")
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
-      const res = await fetch(`${apiBase}/v1/live-session/classes/${liveClass.id}/polls`, {
+      const res = await fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/polls`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Institution-Id": user?.institutionId || "",
-          "Content-Type": "application/json",
-        },
+        headers: authHeaders(),
         body: JSON.stringify({ question: newPollQuestion.trim(), options: JSON.stringify(options) }),
       })
-      if (res.ok) {
-        setChat(prev => [...prev, { userId: "system", userName: "System", message: `Poll: "${newPollQuestion.trim()}"`, timestamp: new Date().toISOString(), system: true }])
-        setNewPollQuestion("")
-        setNewPollOptions("")
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "Poll could not be launched"))
+        return
       }
-    } catch {}
+      const body = await res.json()
+      const created = body?.data
+      if (created?.id) {
+        setActivePolls((prev) =>
+          prev.some((p) => p.id === created.id)
+            ? prev
+            : [...prev, { id: created.id, question: created.question, options: created.options, status: created.status || "ACTIVE", myVote: null, totalVotes: 0 }])
+        setSelectedPollOption(null)
+      } else {
+        await refreshInteractiveState()
+      }
+      setNewPollQuestion("")
+      setNewPollOptions("")
+    } catch {
+      setActionError("Network error — the poll was not launched")
+    } finally {
+      setActionBusy(false)
+    }
   }
 
   async function createBreakoutRoom() {
-    if (!newBreakoutName.trim() || !liveClass?.id) return
+    if (!newBreakoutName.trim() || !liveClass?.id || actionBusy) return
+    setActionBusy(true)
+    setActionError("")
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
-      const res = await fetch(`${apiBase}/v1/live-session/classes/${liveClass.id}/breakout-rooms`, {
+      const res = await fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/breakout-rooms`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "X-Institution-Id": user?.institutionId || "",
-          "Content-Type": "application/json",
-        },
+        headers: authHeaders(),
         body: JSON.stringify({ name: newBreakoutName.trim(), maxParticipants: 10 }),
       })
-      if (res.ok) {
-        const data = await res.json()
-        setBreakoutRooms(prev => [...prev, data.data])
-        setNewBreakoutName("")
-        setShowBreakoutModal(false)
-        setChat(prev => [...prev, { userId: "system", userName: "System", message: `Breakout room "${newBreakoutName.trim()}" created`, timestamp: new Date().toISOString(), system: true }])
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "Breakout room could not be created"))
+        return
       }
-    } catch {}
+      await refreshBreakoutRooms()
+      setNewBreakoutName("")
+      setShowBreakoutModal(false)
+    } catch {
+      setActionError("Network error — the breakout room was not created")
+    } finally {
+      setActionBusy(false)
+    }
   }
 
   async function startBreakoutRoom(roomId: string) {
+    if (actionBusy) return
+    setActionBusy(true)
+    setActionError("")
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
-      await fetch(`${apiBase}/v1/live-session/breakout-rooms/${roomId}/start`, {
+      const res = await fetch(`${API_BASE}/v1/live-session/breakout-rooms/${roomId}/start`, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
+        headers: authHeaders(false),
       })
-      setBreakoutRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: "ACTIVE" } : r))
-    } catch {}
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "The room could not be opened"))
+        return
+      }
+      await refreshBreakoutRooms()
+    } catch {
+      setActionError("Network error — the room was not opened")
+    } finally {
+      setActionBusy(false)
+    }
   }
 
   async function endBreakoutRoom(roomId: string) {
+    if (actionBusy) return
+    setActionBusy(true)
+    setActionError("")
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
-      await fetch(`${apiBase}/v1/live-session/breakout-rooms/${roomId}/end`, {
+      const res = await fetch(`${API_BASE}/v1/live-session/breakout-rooms/${roomId}/end`, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
+        headers: authHeaders(false),
       })
-      setBreakoutRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: "ENDED" } : r))
-    } catch {}
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "The room could not be closed"))
+        return
+      }
+      await refreshBreakoutRooms()
+    } catch {
+      setActionError("Network error — the room was not closed")
+    } finally {
+      setActionBusy(false)
+    }
   }
 
-  async function assignToBreakout(roomId: string, userId: string) {
+  async function assignParticipantToRoom(roomId: string, userId: string) {
+    if (actionBusy || !userId) return
+    setActionBusy(true)
+    setActionError("")
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
-      const endpoint = user?.role === "Teacher"
-        ? `${apiBase}/v1/live-session/breakout-rooms/${roomId}/assign`
-        : `${apiBase}/v1/live-session/breakout-rooms/${roomId}/join`
-      await fetch(endpoint, {
+      const res = await fetch(`${API_BASE}/v1/live-session/breakout-rooms/${roomId}/assign`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: authHeaders(),
         body: JSON.stringify({ userId }),
       })
-      setChat(prev => [...prev, { userId: "system", userName: "System", message: user?.role === "Teacher" ? `A participant was assigned to a breakout room` : `You joined a breakout room`, timestamp: new Date().toISOString(), system: true }])
-    } catch {}
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "The participant could not be assigned"))
+        return
+      }
+      await refreshBreakoutRooms()
+    } catch {
+      setActionError("Network error — the participant was not assigned")
+    } finally {
+      setActionBusy(false)
+    }
   }
+
+  async function closeQuiz(quizId: string) {
+    if (actionBusy) return
+    setActionBusy(true)
+    setActionError("")
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/quizzes/${quizId}/close`, {
+        method: "POST",
+        headers: authHeaders(false),
+      })
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "The quiz could not be closed"))
+        return
+      }
+      const body = await res.json()
+      const id = String(body?.data?.id || quizId)
+      setActiveQuizzes((prev) => prev.map((q) => (q.id === id ? { ...q, status: "CLOSED" } : q)))
+      void loadQuizResults(quizId)
+    } catch {
+      setActionError("Network error — the quiz was not closed")
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  // ==================== student actions ====================
+
+  async function votePollOption(pollId: string, optionIndex: number) {
+    if (pollVoting || selectedPollOption !== null) return
+    setPollVoting(true)
+    setActionError("")
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/polls/${pollId}/vote`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ optionIndex }),
+      })
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "Your vote could not be recorded"))
+        return
+      }
+      // Selected only after the server accepted the vote — never optimistic.
+      setSelectedPollOption(optionIndex)
+    } catch {
+      setActionError("Network error — your vote was not recorded")
+    } finally {
+      setPollVoting(false)
+    }
+  }
+
+  async function submitQuiz(quizId: string) {
+    const ui = quizUI[quizId]
+    if (!ui || quizSubmitting || ui.submitted) return
+    const responses = ui.questions.map((q) => ({ questionId: q.id, answer: ui.answers[q.id] ?? null }))
+    if (responses.length === 0) return
+    setQuizSubmitting(true)
+    setActionError("")
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/quizzes/${quizId}/respond`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(responses),
+      })
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "Your answers could not be submitted"))
+      }
+      // Reload server truth in both cases: submitted / already-submitted / closed
+      // all render from what the server says, never from a local flag flip.
+      await ensureQuizLoaded(quizId, true)
+    } catch {
+      setActionError("Network error — your answers were not submitted")
+    } finally {
+      setQuizSubmitting(false)
+    }
+  }
+
+  async function joinBreakoutRoom(roomId: string) {
+    if (actionBusy) return
+    setActionBusy(true)
+    setActionError("")
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/breakout-rooms/${roomId}/join`, {
+        method: "POST",
+        headers: authHeaders(false),
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) {
+        setActionError(await apiErrorMessage(res, "You could not join this room"))
+        await refreshBreakoutRooms()
+        return
+      }
+      const body = await res.json()
+      const d = body?.data || {}
+      setInBreakout({ roomId, roomName: String(d.roomName || "breakout room") })
+      if (d.liveKitAvailable && d.liveKitToken && d.liveKitUrl) {
+        // Room switch: swapping the token tears down the main room and connects
+        // the breakout room through the existing LiveKit effect (no new socket).
+        setServiceMode("full")
+        setRoomName(String(d.breakoutLiveKitRoom || d.roomName || ""))
+        setLiveKitToken(d.liveKitToken)
+        setLiveKitUrl(d.liveKitUrl)
+      }
+      setChat(prev => [...prev, {
+        userId: "system",
+        userName: "System",
+        message: `You joined breakout room "${d.roomName || ""}"`,
+        timestamp: new Date().toISOString(),
+        system: true,
+      }])
+      await refreshBreakoutRooms()
+    } catch {
+      setActionError("Network error — you did not join the room")
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  /** Back to the main room: re-fetches a fresh main-room token (cached one may have expired). */
+  async function returnToMainRoom() {
+    setInBreakout(null)
+    setActionError("")
+    setRoomState("connecting")
+    setServiceMode("unknown")
+    setLiveKitToken(null)
+    try {
+      const res = await fetch(`/v1/live-session/join/${liveClass.id}`, {
+        method: "POST",
+        headers: authHeaders(),
+      })
+      const data = await res.json()
+      if (data?.data?.liveKitAvailable) {
+        setServiceMode("full")
+        setLiveKitToken(data.data.liveKitToken)
+        setLiveKitUrl(data.data.liveKitUrl)
+        setRoomName(data.data.roomName)
+      } else {
+        setServiceMode("chat-only")
+        setRoomState("error")
+        setConnected(true)
+      }
+    } catch {
+      setServiceMode("chat-only")
+      setRoomState("error")
+      setConnected(true)
+    }
+  }
+
+  // Keep student question payloads and teacher result counters in sync with the
+  // server-reported quiz list (covers QUIZ_STARTED events and restores).
+  useEffect(() => {
+    if (!isInProgress || !token) return
+    if (isTeacherClient) {
+      for (const q of activeQuizzes) {
+        if (q.status === "ACTIVE" && !quizResultsById[q.id]) void loadQuizResults(q.id)
+      }
+    } else {
+      for (const q of activeQuizzes) {
+        if (q.status === "ACTIVE" || q.status === "CLOSED") void ensureQuizLoaded(q.id)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeQuizzes, isInProgress, token, isTeacherClient, quizResultsById])
 
   function handleLeave() {
     retryCountRef.current = 10
@@ -1045,6 +1617,26 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-center justify-between">
           <span>{joinError}</span>
           <button onClick={() => setJoinError("")} className="text-red-500 hover:text-red-700"><XCircle className="size-3.5" /></button>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-center justify-between">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError("")} className="text-red-500 hover:text-red-700"><XCircle className="size-3.5" /></button>
+        </div>
+      )}
+
+      {interactiveLoading && !interactiveReady && (
+        <div className="mb-3 rounded-lg border border-border bg-card p-2 text-xs text-muted-foreground">
+          Loading live activities…
+        </div>
+      )}
+
+      {interactiveError && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 flex items-center justify-between">
+          <span>{interactiveError}</span>
+          <button onClick={() => { interactiveLoadedRef.current = false; void refreshInteractiveState() }} className="font-medium text-amber-600 underline">Retry</button>
         </div>
       )}
 
@@ -1219,51 +1811,175 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             </div>
           )}
 
-          {activePolls.filter(p => p.status === "ACTIVE").length > 0 && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-              <h2 className="text-xs font-semibold text-blue-700 flex items-center gap-1 mb-2">
-                <ClipboardList className="size-3" /> Active Poll
-              </h2>
-              {activePolls.filter(p => p.status === "ACTIVE").slice(-1).map(poll => (
-                <div key={poll.id}>
-                  <p className="text-xs font-medium text-blue-900 mb-2">{poll.question}</p>
-                  <div className="space-y-1.5">
-                    {(() => {
-                      try {
-                        const options = JSON.parse(poll.options)
-                        return Array.isArray(options) ? options.map((opt: string, i: number) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              if (selectedPollOption === null) {
-                                setSelectedPollOption(i)
-                                fetch(`/v1/live-session/polls/${poll.id}/vote`, {
-                                  method: "POST",
-                                  headers: {
-                                    "Authorization": `Bearer ${token}`,
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify({ optionIndex: i }),
-                                })
-                              }
-                            }}
-                            className={cn(
-                              "w-full text-left rounded-lg border px-3 py-1.5 text-xs transition-colors",
-                              selectedPollOption === i
-                                ? "border-blue-400 bg-blue-100 text-blue-800 font-medium"
-                                : "border-blue-200 bg-white text-blue-700 hover:bg-blue-100"
-                            )}
-                          >
-                            {opt}
-                          </button>
-                        )) : null
-                      } catch { return null }
-                    })()}
-                  </div>
+          {(() => {
+            if (!isInProgress || activePolls.length === 0) return null
+            const active = activePolls.filter(p => p.status === "ACTIVE")
+            const poll = active.length > 0 ? active[active.length - 1] : activePolls[activePolls.length - 1]
+            const isActive = poll.status === "ACTIVE"
+            const options = parseOptionsList(poll.options)
+            const tally = pollResultsById[poll.id]
+            const myVote = typeof poll.myVote === "number" ? poll.myVote : selectedPollOption
+            const showCounts = Boolean(tally) && (!isActive || isTeacherClient || myVote !== null)
+            return (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                <h2 className="text-xs font-semibold text-blue-700 flex items-center gap-1 mb-2">
+                  <ClipboardList className="size-3" /> {isActive ? "Active Poll" : "Poll closed"}
+                </h2>
+                <p className="text-xs font-medium text-blue-900 mb-2">{poll.question}</p>
+                <div className="space-y-1.5">
+                  {options.map((opt, i) => {
+                    const count = tally?.results?.[String(i)]
+                    const total = tally?.totalVotes ?? 0
+                    const pct = tally && total > 0 && typeof count === "number" ? Math.round((count / total) * 100) : null
+                    const canVote = isActive && !isTeacherClient && myVote === null && !pollVoting
+                    const chosen = myVote === i
+                    return (
+                      <button
+                        key={i}
+                        onClick={canVote ? () => void votePollOption(poll.id, i) : undefined}
+                        disabled={!canVote}
+                        className={cn(
+                          "relative w-full overflow-hidden rounded-lg border px-3 py-1.5 text-left text-xs transition-colors",
+                          canVote ? "border-blue-200 bg-white text-blue-700 hover:bg-blue-100" : "border-blue-200 bg-white/70",
+                          chosen && "border-blue-400 bg-blue-100 text-blue-800 font-medium",
+                        )}
+                      >
+                        {showCounts && pct !== null && (
+                          <span className="absolute inset-y-0 left-0 bg-blue-200/60" style={{ width: `${pct}%` }} aria-hidden />
+                        )}
+                        <span className="relative flex items-center justify-between gap-2">
+                          <span>{opt}</span>
+                          <span className="text-[10px] text-blue-600">
+                            {chosen ? "✓ " : ""}
+                            {showCounts && typeof count === "number" ? `${count} (${pct ?? 0}%)` : ""}
+                          </span>
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
-              ))}
-            </div>
-          )}
+                {!isActive && (
+                  <p className="mt-2 text-[10px] text-blue-700">
+                    {tally ? `Final result · ${tally.totalVotes} vote${tally.totalVotes === 1 ? "" : "s"}` : "Poll closed — voting has ended."}
+                  </p>
+                )}
+                {isActive && isTeacherClient && (
+                  <p className="mt-2 text-[10px] text-blue-700">
+                    {tally ? `Live results · ${tally.totalVotes} vote${tally.totalVotes === 1 ? "" : "s"}` : "Waiting for votes…"}
+                  </p>
+                )}
+                {isActive && !isTeacherClient && myVote === null && pollVoting && (
+                  <p className="mt-2 text-[10px] text-blue-600">Recording your vote…</p>
+                )}
+                {isActive && !isTeacherClient && myVote !== null && (
+                  <p className="mt-2 text-[10px] text-blue-700">✓ Your response has been submitted.</p>
+                )}
+              </div>
+            )
+          })()}
+
+          {isInProgress && !isTeacherClient && (() => {
+            const relevant = activeQuizzes.filter(q => q.status === "ACTIVE" || q.status === "CLOSED")
+            if (relevant.length === 0) return null
+            const focus = focusedQuizId && relevant.some(q => q.id === focusedQuizId)
+              ? focusedQuizId
+              : (relevant[relevant.length - 1]?.id ?? null)
+            const quiz = relevant.find(q => q.id === focus)
+            if (!quiz) return null
+            const ui = quizUI[quiz.id]
+            const isActive = quiz.status === "ACTIVE"
+            const allAnswered = Boolean(ui && ui.questions.length > 0 && ui.questions.every(q => typeof ui.answers[q.id] === "string"))
+            return (
+              <div className={cn("rounded-xl border p-4 shadow-sm", isActive ? "border-teal-200 bg-teal-50" : "border-border bg-card")}>
+                <h2 className={cn("mb-1 flex items-center gap-1 text-xs font-semibold", isActive ? "text-teal-700" : "text-foreground")}>
+                  <ListOrdered className="size-3" /> Live Quiz {isActive ? "" : "· closed"}
+                </h2>
+                {relevant.length > 1 && (
+                  <div className="mb-2 flex flex-wrap gap-1">
+                    {relevant.map(q => (
+                      <button
+                        key={q.id}
+                        onClick={() => setFocusedQuizId(q.id)}
+                        className={cn(
+                          "rounded border px-1.5 py-0.5 text-[10px]",
+                          q.id === quiz.id ? "border-teal-400 bg-teal-100 text-teal-800" : "border-border text-muted-foreground",
+                        )}
+                      >
+                        {q.title || "Untitled"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="mb-2 text-xs font-medium text-foreground">{quiz.title || "Untitled quiz"}</p>
+                {ui?.loading && <p className="text-[10px] text-muted-foreground">Loading questions…</p>}
+                {ui?.error && <p className="text-[10px] text-red-600">{ui.error}</p>}
+                {ui && !ui.loading && !ui.error && ui.questions.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground">This quiz has no questions yet.</p>
+                )}
+                {ui && !ui.loading && ui.questions.length > 0 && (
+                  <div className="space-y-3">
+                    {ui.questions.map((q, qi) => {
+                      const opts = parseOptionsList(q.options)
+                      const canAnswer = isActive && !ui.submitted && !quizSubmitting
+                      return (
+                        <div key={q.id} className="rounded-lg border border-teal-100 bg-white p-2">
+                          <p className="text-[11px] font-medium text-foreground">Q{qi + 1}. {q.questionText}</p>
+                          <div className="mt-1.5 space-y-1">
+                            {opts.map((opt) => {
+                              const chosen = ui.answers[q.id] === opt
+                              return (
+                                <button
+                                  key={opt}
+                                  disabled={!canAnswer}
+                                  onClick={() => setQuizUI(prev => ({
+                                    ...prev,
+                                    [quiz.id]: { ...prev[quiz.id], answers: { ...prev[quiz.id].answers, [q.id]: opt } },
+                                  }))}
+                                  className={cn(
+                                    "w-full rounded border px-2 py-1 text-left text-[11px] transition-colors",
+                                    chosen ? "border-teal-400 bg-teal-100 text-teal-800 font-medium" : "border-teal-100 bg-white text-foreground hover:bg-teal-50",
+                                  )}
+                                >
+                                  {opt}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {ui.submitted && (
+                            <p className="mt-1 text-[10px] text-teal-700">
+                              Your answer: {ui.answers[q.id] ?? q.myAnswer ?? "—"}
+                              {!isActive && typeof q.isCorrect === "boolean" && (q.isCorrect ? " · ✓ Correct" : " · ✗ Incorrect")}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
+                    {isActive && !ui.submitted && (
+                      <>
+                        <Button
+                          size="sm"
+                          className="h-7 w-full text-[10px]"
+                          disabled={quizSubmitting || !allAnswered}
+                          onClick={() => void submitQuiz(quiz.id)}
+                        >
+                          {quizSubmitting ? "Submitting…" : "Submit answers"}
+                        </Button>
+                        {!allAnswered && (
+                          <p className="text-[10px] text-muted-foreground">Answer every question to submit.</p>
+                        )}
+                      </>
+                    )}
+                    {ui.submitted && (
+                      <p className="text-[10px] font-medium text-teal-700">✓ Your response has been submitted.</p>
+                    )}
+                    {!isActive && !ui.submitted && (
+                      <p className="text-[10px] text-muted-foreground">This quiz is closed — submissions are no longer accepted.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {sharedMediaList.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -1339,13 +2055,59 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               <Button
                 size="sm"
                 className="h-7 text-[10px] w-full"
-                disabled={!newQuizTitle.trim() || quizQuestionList.length === 0}
+                disabled={actionBusy || !newQuizTitle.trim() || quizQuestionList.length === 0}
                 onClick={createQuiz}
               >
                 Launch Quiz ({quizQuestionList.length} questions)
               </Button>
             </div>
           )}
+
+          {isInProgress && user?.role === "Teacher" && (() => {
+            const actives = activeQuizzes.filter(q => q.status === "ACTIVE")
+            const lastClosed = [...activeQuizzes].reverse().find(q => q.status === "CLOSED")
+            const list = lastClosed && !actives.some(q => q.id === lastClosed.id) ? [...actives, lastClosed] : actives
+            if (list.length === 0) return null
+            return (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-2">
+                <h2 className="text-xs font-semibold text-foreground flex items-center gap-1">
+                  <Zap className="size-3" /> Live Quizzes
+                </h2>
+                {list.map(q => {
+                  const r = quizResultsById[q.id]
+                  const isActive = q.status === "ACTIVE"
+                  const accuracy = r && r.totalResponses > 0 ? Math.round((r.totalCorrect / r.totalResponses) * 100) : 0
+                  return (
+                    <div key={q.id} className="rounded-lg border border-border p-2 space-y-1">
+                      <p className="text-[11px] font-medium text-foreground">
+                        {q.title || "Untitled quiz"}
+                        {!isActive && <span className="ml-1 text-muted-foreground">· closed</span>}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {r
+                          ? `Answered ${r.answeredCount}/${r.participantCount || r.answeredCount} · Correct ${r.totalCorrect}/${r.totalResponses}${r.totalResponses > 0 ? ` (${accuracy}%)` : ""}`
+                          : "Waiting for responses…"}
+                      </p>
+                      {isActive ? (
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" className="h-5 flex-1 text-[10px]" disabled={actionBusy} onClick={() => void loadQuizResults(q.id)}>
+                            Refresh
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-5 flex-1 text-[10px] text-destructive" disabled={actionBusy} onClick={() => void closeQuiz(q.id)}>
+                            Close quiz
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-5 w-full text-[10px]" disabled={actionBusy} onClick={() => void loadQuizResults(q.id)}>
+                          View results
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
 
           {isInProgress && user?.role === "Teacher" && (
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
@@ -1369,7 +2131,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               <Button
                 size="sm"
                 className="h-7 text-[10px] w-full"
-                disabled={!newPollQuestion.trim() || !newPollOptions.trim()}
+                disabled={actionBusy || !newPollQuestion.trim() || !newPollOptions.trim()}
                 onClick={createPoll}
               >
                 Launch Poll
@@ -1389,37 +2151,89 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   </Button>
                 )}
               </div>
+              {inBreakout && (
+                <div className="mb-2 space-y-1 rounded-lg border border-teal-200 bg-teal-50 p-2 text-[10px] text-teal-800">
+                  <p className="font-medium">In breakout room: {inBreakout.roomName}</p>
+                  <Button size="sm" variant="outline" className="h-5 text-[10px]" onClick={() => void returnToMainRoom()}>
+                    Return to main room
+                  </Button>
+                </div>
+              )}
               {breakoutRooms.length === 0 ? (
                 <p className="text-[10px] text-muted-foreground">No breakout rooms yet</p>
               ) : (
                 <div className="space-y-1.5">
-                  {breakoutRooms.map(room => (
-                    <div key={room.id} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs">
-                      <div className={cn(
-                        "size-2 rounded-full",
-                        room.status === "ACTIVE" ? "bg-teal animate-pulse" : room.status === "ENDED" ? "bg-gray-400" : "bg-amber-400"
-                      )} />
-                      <span className="font-medium text-foreground flex-1">{room.name}</span>
-                      {user?.role === "Teacher" && (
-                        <div className="flex gap-1">
-                          {room.status === "WAITING" && (
-                            <Button size="sm" variant="ghost" className="h-5 text-[10px] text-teal" onClick={() => startBreakoutRoom(room.id)}>Start</Button>
+                  {breakoutRooms.map(room => {
+                    const assigned = room.assignedUsers || []
+                    // §33: a student assigned elsewhere may only join their own room.
+                    const iAmAssignedElsewhere = room.assignedToMe ? false : breakoutRooms.some(r => r.assignedToMe)
+                    const canJoin = !isTeacherClient && room.status === "ACTIVE" && !iAmAssignedElsewhere
+                    return (
+                      <div key={room.id} className="space-y-1.5 rounded-lg border border-border px-3 py-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "size-2 rounded-full",
+                            room.status === "ACTIVE" ? "bg-teal animate-pulse" : room.status === "ENDED" ? "bg-gray-400" : "bg-amber-400"
+                          )} />
+                          <span className="flex-1 font-medium text-foreground">{room.name}</span>
+                          <span className="text-[10px] text-muted-foreground">{room.assignedCount ?? assigned.length}/{room.maxParticipants} assigned</span>
+                          {user?.role === "Teacher" && (
+                            <div className="flex gap-1">
+                              {room.status === "WAITING" && (
+                                <Button size="sm" variant="ghost" className="h-5 text-[10px] text-teal" disabled={actionBusy} onClick={() => void startBreakoutRoom(room.id)}>Start</Button>
+                              )}
+                              {room.status === "ACTIVE" && (
+                                <Button size="sm" variant="ghost" className="h-5 text-[10px] text-destructive" disabled={actionBusy} onClick={() => void endBreakoutRoom(room.id)}>End</Button>
+                              )}
+                            </div>
                           )}
-                          {room.status === "ACTIVE" && (
-                            <Button size="sm" variant="ghost" className="h-5 text-[10px] text-destructive" onClick={() => endBreakoutRoom(room.id)}>End</Button>
+                          {canJoin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 text-[10px] text-teal"
+                              disabled={actionBusy}
+                              onClick={() => void joinBreakoutRoom(room.id)}
+                            >{room.assignedToMe ? "Join room" : "Join"}</Button>
                           )}
                         </div>
-                      )}
-                      {user?.role !== "Teacher" && room.status === "ACTIVE" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-5 text-[10px] text-teal"
-                          onClick={() => assignToBreakout(room.id, user?.id || "")}
-                        >Join</Button>
-                      )}
-                    </div>
-                  ))}
+                        {!isTeacherClient && room.assignedToMe && room.status === "WAITING" && (
+                          <p className="text-[10px] text-amber-600">You are assigned here — waiting for the teacher to open it.</p>
+                        )}
+                        {!isTeacherClient && room.assignedToMe && room.status === "ENDED" && (
+                          <p className="text-[10px] text-muted-foreground">This room has ended.</p>
+                        )}
+                        {!isTeacherClient && iAmAssignedElsewhere && (
+                          <p className="text-[10px] text-muted-foreground">You are assigned to another room.</p>
+                        )}
+                        {assigned.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {assigned.map(a => (
+                              <span key={a.userId} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground">{a.userName}</span>
+                            ))}
+                          </div>
+                        )}
+                        {user?.role === "Teacher" && room.status !== "ENDED" && (
+                          <select
+                            className="h-6 w-full rounded border border-border bg-muted/60 px-1 text-[10px] outline-none"
+                            value=""
+                            disabled={actionBusy}
+                            onChange={e => {
+                              const targetId = e.target.value
+                              if (targetId) void assignParticipantToRoom(room.id, targetId)
+                            }}
+                          >
+                            <option value="">Assign participant…</option>
+                            {participants
+                              .filter(p => p.role !== "TEACHER" && !assigned.some(a => a.userId === p.userId))
+                              .map(p => (
+                                <option key={p.userId} value={p.userId}>{p.userName}</option>
+                              ))}
+                          </select>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1437,7 +2251,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   className="h-8 flex-1 rounded border border-border bg-muted/60 px-2 text-xs outline-none"
                   onKeyDown={e => { if (e.key === "Enter") createBreakoutRoom() }}
                 />
-                <Button size="sm" className="h-8 text-xs" onClick={createBreakoutRoom} disabled={!newBreakoutName.trim()}>Create</Button>
+                <Button size="sm" className="h-8 text-xs" onClick={createBreakoutRoom} disabled={actionBusy || !newBreakoutName.trim()}>Create</Button>
                 <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setShowBreakoutModal(false); setNewBreakoutName("") }}>Cancel</Button>
               </div>
             </div>

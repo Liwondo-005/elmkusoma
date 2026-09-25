@@ -101,6 +101,21 @@ public class LiveKitService {
         return "liveclass-" + classId;
     }
 
+    /**
+     * Breakout rooms are real LiveKit rooms, one per breakout room. The "breakout-"
+     * prefix is deliberate: webhook room handlers only act on "liveclass-*" /
+     * "event-*" names (extractLiveClassIdFromRoomName returns null for anything
+     * else), so breakout rooms never touch recording/webhook flows for the main class.
+     */
+    public String generateBreakoutRoomName(UUID classId, UUID roomId) {
+        return "breakout-" + classId + "-" + roomId;
+    }
+
+    /** Participant token for a breakout room, granted the same publish rights as the main room. */
+    public String generateBreakoutToken(UUID classId, UUID roomId, UUID userId, String identity, boolean isTeacher) {
+        return generateTokenForRoom(generateBreakoutRoomName(classId, roomId), userId, identity, isTeacher);
+    }
+
     public String generateRoomNameForEvent(UUID eventId) {
         return "event-" + eventId;
     }
