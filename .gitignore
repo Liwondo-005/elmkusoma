@@ -54,3 +54,5 @@ dump.rdb
 database_full.sql
 database_schema.sql
 elmkusoma_dump.sql
+frontend/e2e/test-results/
+frontend/e2e/playwright-report/
