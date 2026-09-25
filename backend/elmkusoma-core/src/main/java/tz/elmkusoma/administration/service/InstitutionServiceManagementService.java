@@ -32,8 +32,10 @@ public class InstitutionServiceManagementService {
 
     @Transactional(readOnly = true)
     public InstitutionServiceResponse getService(UUID institutionId, String featureKey) {
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey)
-                .orElseThrow(() -> new ResourceNotFoundException("InstitutionService", "featureKey", featureKey));
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey);
+        if (service == null) {
+            throw new ResourceNotFoundException("InstitutionService", "featureKey", featureKey);
+        }
         return toResponse(service);
     }
 
@@ -43,11 +45,13 @@ public class InstitutionServiceManagementService {
         platformFeatureRepository.findByFeatureKeyAndIsDeletedFalse(request.getFeatureKey())
                 .orElseThrow(() -> new ResourceNotFoundException("PlatformFeature", "featureKey", request.getFeatureKey()));
 
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, request.getFeatureKey())
-                .orElseGet(() -> InstitutionService.builder()
-                        .institutionId(institutionId)
-                        .featureKey(request.getFeatureKey())
-                        .build());
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, request.getFeatureKey());
+        if (service == null) {
+            service = InstitutionService.builder()
+                    .institutionId(institutionId)
+                    .featureKey(request.getFeatureKey())
+                    .build();
+        }
 
         service.setEnabled(true);
         service.setEnabledAt(LocalDateTime.now());
@@ -63,8 +67,10 @@ public class InstitutionServiceManagementService {
 
     @Transactional
     public InstitutionServiceResponse disableService(UUID institutionId, String featureKey) {
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey)
-                .orElseThrow(() -> new ResourceNotFoundException("InstitutionService", "featureKey", featureKey));
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey);
+        if (service == null) {
+            throw new ResourceNotFoundException("InstitutionService", "featureKey", featureKey);
+        }
 
         service.setEnabled(false);
         service.setEnabledAt(null);
@@ -77,8 +83,10 @@ public class InstitutionServiceManagementService {
 
     @Transactional
     public InstitutionServiceResponse updateService(UUID institutionId, String featureKey, InstitutionServiceRequest request) {
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey)
-                .orElseThrow(() -> new ResourceNotFoundException("InstitutionService", "featureKey", featureKey));
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey);
+        if (service == null) {
+            throw new ResourceNotFoundException("InstitutionService", "featureKey", featureKey);
+        }
 
         if (request.getConfiguration() != null) {
             service.setConfiguration(request.getConfiguration());
@@ -98,8 +106,10 @@ public class InstitutionServiceManagementService {
 
     @Transactional
     public void deleteService(UUID institutionId, String featureKey) {
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey)
-                .orElseThrow(() -> new ResourceNotFoundException("InstitutionService", "featureKey", featureKey));
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey);
+        if (service == null) {
+            throw new ResourceNotFoundException("InstitutionService", "featureKey", featureKey);
+        }
 
         service.setIsDeleted(true);
         institutionServiceRepository.save(service);

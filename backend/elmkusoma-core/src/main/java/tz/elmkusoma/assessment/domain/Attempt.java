@@ -31,15 +31,4 @@ public class Attempt extends BaseEntity {
 
     @Column(name = "is_completed", nullable = false)
     private Boolean isCompleted = false;
-
-    public UUID getAssessmentId() { return assessmentId; }
-    public void setAssessmentId(UUID assessmentId) { this.assessmentId = assessmentId; }
-    public UUID getStudentId() { return studentId; }
-    public void setStudentId(UUID studentId) { this.studentId = studentId; }
-    public LocalDateTime getStartedAt() { return startedAt; }
-    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
-    public LocalDateTime getSubmittedAt() { return submittedAt; }
-    public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }
-    public Boolean getIsCompleted() { return isCompleted; }
-    public void setIsCompleted(Boolean isCompleted) { this.isCompleted = isCompleted; }
 }

@@ -3,6 +3,7 @@ package tz.elmkusoma.administration.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import tz.elmkusoma.administration.domain.InstitutionInvitation;
 import tz.elmkusoma.administration.dto.*;
@@ -28,7 +29,7 @@ public class InstitutionPeopleService {
     private final InstitutionScopeService scopeService;
     private final PlatformPolicyService platformPolicyService;
     private final PermissionCacheService permissionCacheService;
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
     public List<PeopleMemberResponse> listPeople(UUID institutionId, int page, int size) {
         List<User> users = scopeService.getUsersInInstitution(institutionId);
