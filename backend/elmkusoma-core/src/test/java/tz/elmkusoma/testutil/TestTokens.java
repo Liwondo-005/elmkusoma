@@ -29,17 +29,26 @@ public final class TestTokens {
     private static final String LIVEKIT_API_KEY = "devkey";
     private static final String LIVEKIT_API_SECRET = "devsecret-devsecret-devsecret-dev01!";
 
+    private static final String INSTITUTION_ID = "00000000-0000-0000-0000-000000000001";
+
     private TestTokens() {
     }
 
     public static String userToken(String email) {
         byte[] keyBytes = Decoders.BASE64.decode(JWT_SECRET_B64);
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(email)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 3_600_000L))
-                .signWith(Keys.hmacShaKeyFor(keyBytes))
-                .compact();
+                .expiration(new Date(System.currentTimeMillis() + 3_600_000L));
+
+        // Add institutionId claim for known test users
+        if (ADMIN_EMAIL.equals(email) || TEACHER_EMAIL.equals(email) 
+                || STUDENT_EMAIL.equals(email) || LEARNER_EMAIL.equals(email)
+                || OTHER_STUDENT_EMAIL.equals(email)) {
+            builder.claim("institutionId", INSTITUTION_ID);
+        }
+
+        return builder.signWith(Keys.hmacShaKeyFor(keyBytes)).compact();
     }
 
     public static String adminToken() {

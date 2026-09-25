@@ -17,6 +17,7 @@ import tz.elmkusoma.event.repository.ReplayRepository;
 import tz.elmkusoma.learner.domain.LearnerNotification;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.testutil.TestDataSeeder;
+import org.springframework.context.annotation.Import;
 import tz.elmkusoma.testutil.TestTokens;
 
 import java.time.LocalDateTime;
@@ -47,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestDataSeeder.class)
 @TestPropertySource(locations = "classpath:application-test.properties")
 class EventD03ComplianceTest {
 

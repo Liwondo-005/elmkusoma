@@ -38,6 +38,10 @@ public class AssessmentResult extends BaseEntity {
     @Column(name = "graded_at")
     private LocalDateTime gradedAt;
 
+    public void setGradedAt(LocalDateTime gradedAt) {
+        this.gradedAt = gradedAt;
+    }
+
     @Column(name = "feedback", columnDefinition = "TEXT")
     private String feedback;
 }

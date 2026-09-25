@@ -39,6 +39,20 @@ public class InstitutionMembership {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
 
+    @Column(name = "department_id")
+    private UUID departmentId;
+
+    @Column(name = "campus_id")
+    private UUID campusId;
+
+    public UUID getDepartmentId() {
+        return departmentId;
+    }
+
+    public UUID getCampusId() {
+        return campusId;
+    }
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

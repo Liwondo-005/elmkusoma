@@ -35,10 +35,12 @@ public class AdministrationController {
     }
 
     @GetMapping("/dashboard/enhanced")
-    @Operation(summary = "Get enhanced dashboard with attention items and activity feed")
+    @Operation(summary = "Get enhanced role-aware dashboard with attention items, activity feed, quick actions, and health")
     public ResponseEntity<ApiResponse<EnhancedDashboardResponse>> getEnhancedDashboard(
-            @RequestAttribute UUID institutionId) {
-        EnhancedDashboardResponse response = administrationService.getEnhancedDashboard(institutionId);
+            @RequestAttribute UUID institutionId,
+            @RequestAttribute("userRole") String userRole,
+            @RequestAttribute("userPermissions") List<String> userPermissions) {
+        EnhancedDashboardResponse response = administrationService.getEnhancedDashboard(institutionId, userRole, userPermissions);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
