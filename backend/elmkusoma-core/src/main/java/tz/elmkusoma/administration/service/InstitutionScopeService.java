@@ -28,7 +28,8 @@ public class InstitutionScopeService {
         return memberships.stream()
                 .filter(m -> m.getInstitutionId().equals(institutionId))
                 .anyMatch(m -> m.getRole() == InstitutionMembership.Role.OWNER
-                        || m.getRole() == InstitutionMembership.Role.ADMIN);
+                        || m.getRole() == InstitutionMembership.Role.ADMIN
+                        || m.getRole() == InstitutionMembership.Role.INSTITUTION_ADMIN);
     }
 
     public boolean isUserOwnerOfInstitution(UUID userId, UUID institutionId) {
@@ -43,6 +44,13 @@ public class InstitutionScopeService {
         return memberships.stream()
                 .filter(m -> m.getInstitutionId().equals(institutionId))
                 .map(InstitutionMembership::getRole)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public InstitutionMembership getMembership(UUID userId, UUID institutionId) {
+        return membershipRepository.findByUserIdAndIsActiveTrue(userId).stream()
+                .filter(m -> m.getInstitutionId().equals(institutionId))
                 .findFirst()
                 .orElse(null);
     }
@@ -62,6 +70,18 @@ public class InstitutionScopeService {
                 List.of(institutionId), role);
     }
 
+    public boolean hasScopeAccess(UUID userId, UUID institutionId, UUID scopeId, String scopeType) {
+        InstitutionMembership membership = getMembership(userId, institutionId);
+        if (membership == null) return false;
+
+        if ("department".equals(scopeType)) {
+            return membership.getDepartmentId() != null && membership.getDepartmentId().equals(scopeId);
+        } else if ("campus".equals(scopeType)) {
+            return membership.getCampusId() != null && membership.getCampusId().equals(scopeId);
+        }
+        return false;
+    }
+
     public void validateAccess(UUID userId, UUID institutionId, String operation) {
         if (!isUserMemberOfInstitution(userId, institutionId)) {
             log.warn("IDOR prevention: User {} attempted {} on institution {} without membership",
@@ -75,6 +95,14 @@ public class InstitutionScopeService {
             log.warn("IDOR prevention: User {} attempted admin operation '{}' on institution {} without admin role",
                     userId, operation, institutionId);
             throw new SecurityException("Access denied: admin privileges required for this operation");
+        }
+    }
+
+    public void validateScopeAccess(UUID userId, UUID institutionId, UUID scopeId, String scopeType, String operation) {
+        if (!hasScopeAccess(userId, institutionId, scopeId, scopeType)) {
+            log.warn("Scope violation: User {} attempted {} on {} {} in institution {} without scope access",
+                    userId, operation, scopeType, scopeId, institutionId);
+            throw new SecurityException("Access denied: insufficient scope permissions for this operation");
         }
     }
 }

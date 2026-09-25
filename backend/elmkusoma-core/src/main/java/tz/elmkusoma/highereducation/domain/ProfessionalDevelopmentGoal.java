@@ -2,7 +2,6 @@ package tz.elmkusoma.highereducation.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.time.LocalDate;
@@ -13,7 +12,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@SuperBuilder
+@AllArgsConstructor
+@Builder
 public class ProfessionalDevelopmentGoal extends BaseEntity {
 
     @Column(name = "student_id", nullable = false)
@@ -53,4 +53,32 @@ public class ProfessionalDevelopmentGoal extends BaseEntity {
 
     @Column(name = "category", length = 100)
     private String category;
+
+    // Explicit setters/getters for Lombok compatibility
+    public UUID getStudentId() { return studentId; }
+    public void setStudentId(UUID studentId) { this.studentId = studentId; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public DevGoalType getGoalType() { return goalType; }
+    public void setGoalType(DevGoalType goalType) { this.goalType = goalType; }
+    public LocalDate getTargetDate() { return targetDate; }
+    public void setTargetDate(LocalDate targetDate) { this.targetDate = targetDate; }
+    public LocalDate getCompletedDate() { return completedDate; }
+    public void setCompletedDate(LocalDate completedDate) { this.completedDate = completedDate; }
+    public DevGoalStatus getStatus() { return status; }
+    public void setStatus(DevGoalStatus status) { this.status = status; }
+    public Integer getProgressPercent() { return progressPercent; }
+    public void setProgressPercent(Integer progressPercent) { this.progressPercent = progressPercent; }
+    public String getEvidenceUrl() { return evidenceUrl; }
+    public void setEvidenceUrl(String evidenceUrl) { this.evidenceUrl = evidenceUrl; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+
+    // Explicit getId for BaseEntity inheritance
+    public UUID getId() { return getIdDirect(); }
+    public void setId(UUID id) { setIdDirect(id); }
 }

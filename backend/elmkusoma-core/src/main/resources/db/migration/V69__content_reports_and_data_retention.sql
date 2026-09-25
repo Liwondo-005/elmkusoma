@@ -24,10 +24,10 @@ CREATE INDEX IF NOT EXISTS idx_content_reports_status ON content_reports(status)
 CREATE INDEX IF NOT EXISTS idx_content_reports_entity ON content_reports(entity_type, entity_id);
 
 -- Data governance retention configuration (editable via /v1/platform-admin/config)
-INSERT INTO platform_config (id, config_key, config_value, config_type, description, category, is_public, created_at, is_deleted)
+INSERT INTO platform_config (id, config_key, config_value, config_type, description, category, is_public, is_sensitive, created_at, is_deleted)
 VALUES
-    (gen_random_uuid(), 'data.retention.days.audit', '3650', 'INTEGER', 'Audit log retention in days (floor)', 'DATA', false, NOW(), false),
-    (gen_random_uuid(), 'data.retention.days.media', '1825', 'INTEGER', 'Media retention in days (floor)', 'DATA', false, NOW(), false),
-    (gen_random_uuid(), 'data.retention.days.security_events', '730', 'INTEGER', 'Security event retention in days', 'DATA', false, NOW(), false),
-    (gen_random_uuid(), 'data.export.enabled', 'true', 'BOOLEAN', 'Allow platform data exports', 'DATA', false, NOW(), false)
+    (gen_random_uuid(), 'data.retention.days.audit', '3650', 'INTEGER', 'Audit log retention in days (floor)', 'DATA', false, false, NOW(), false),
+    (gen_random_uuid(), 'data.retention.days.media', '1825', 'INTEGER', 'Media retention in days (floor)', 'DATA', false, false, NOW(), false),
+    (gen_random_uuid(), 'data.retention.days.security_events', '730', 'INTEGER', 'Security event retention in days', 'DATA', false, false, NOW(), false),
+    (gen_random_uuid(), 'data.export.enabled', 'true', 'BOOLEAN', 'Allow platform data exports', 'DATA', false, false, NOW(), false)
 ON CONFLICT (config_key) DO NOTHING;

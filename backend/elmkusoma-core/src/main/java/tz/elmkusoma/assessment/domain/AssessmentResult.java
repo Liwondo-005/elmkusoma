@@ -40,4 +40,25 @@ public class AssessmentResult extends BaseEntity {
 
     @Column(name = "feedback", columnDefinition = "TEXT")
     private String feedback;
+
+    public UUID getAssessmentId() { return assessmentId; }
+    public void setAssessmentId(UUID assessmentId) { this.assessmentId = assessmentId; }
+    public UUID getStudentId() { return studentId; }
+    public void setStudentId(UUID studentId) { this.studentId = studentId; }
+    public UUID getAttemptId() { return attemptId; }
+    public void setAttemptId(UUID attemptId) { this.attemptId = attemptId; }
+    public Integer getTotalScore() { return totalScore; }
+    public void setTotalScore(Integer totalScore) { this.totalScore = totalScore; }
+    public Boolean getIsPassed() { return isPassed; }
+    public void setIsPassed(Boolean isPassed) { this.isPassed = isPassed; }
+    public UUID getGradedBy() { return gradedBy; }
+    public void setGradedBy(UUID gradedBy) { this.gradedBy = gradedBy; }
+    public LocalDateTime getGradedAt() { return gradedAt; }
+    public void setGradedAt(LocalDateTime gradedAt) { this.gradedAt = gradedAt; }
+    public String getFeedback() { return feedback; }
+    public void setFeedback(String feedback) { this.feedback = feedback; }
+
+    // Explicit getId for BaseEntity inheritance
+    public UUID getId() { return getIdDirect(); }
+    public void setId(UUID id) { setIdDirect(id); }
 }

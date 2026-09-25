@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import tz.elmkusoma.administration.domain.InstitutionInvitation;
 import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.repository.InstitutionInvitationRepository;
+import tz.elmkusoma.config.security.PermissionCacheService;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
@@ -26,6 +27,8 @@ public class InstitutionPeopleService {
     private final InstitutionInvitationRepository invitationRepository;
     private final InstitutionScopeService scopeService;
     private final PlatformPolicyService platformPolicyService;
+    private final PermissionCacheService permissionCacheService;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public List<PeopleMemberResponse> listPeople(UUID institutionId, int page, int size) {
         List<User> users = scopeService.getUsersInInstitution(institutionId);
@@ -89,6 +92,10 @@ public class InstitutionPeopleService {
         membership.setRole(role);
         membershipRepository.save(membership);
 
+        permissionCacheService.invalidateUserPermissions(memberUserId, institutionId);
+        permissionCacheService.invalidateUserRole(memberUserId, institutionId);
+        permissionCacheService.invalidateMembership(memberUserId, institutionId);
+
         User user = userRepository.findById(memberUserId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -117,6 +124,10 @@ public class InstitutionPeopleService {
                     m.setIsActive(false);
                     membershipRepository.save(m);
                 });
+
+        permissionCacheService.invalidateUserPermissions(memberUserId, institutionId);
+        permissionCacheService.invalidateUserRole(memberUserId, institutionId);
+        permissionCacheService.invalidateMembership(memberUserId, institutionId);
     }
 
     public void activateMember(UUID institutionId, UUID memberUserId) {
@@ -128,6 +139,10 @@ public class InstitutionPeopleService {
                     m.setIsActive(true);
                     membershipRepository.save(m);
                 });
+
+        permissionCacheService.invalidateUserPermissions(memberUserId, institutionId);
+        permissionCacheService.invalidateUserRole(memberUserId, institutionId);
+        permissionCacheService.invalidateMembership(memberUserId, institutionId);
     }
 
     public InvitationResponse inviteUser(UUID institutionId, InviteUserRequest request, UUID invitedBy) {
@@ -181,4 +196,69 @@ public class InstitutionPeopleService {
         invitation.setIsDeleted(true);
         invitationRepository.save(invitation);
     }
+
+    public void acceptInvitation(String token, String password) {
+        InstitutionInvitation invitation = invitationRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+
+        if (!"PENDING".equals(invitation.getStatus())) {
+            throw new IllegalStateException("Invitation is not pending");
+        }
+
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("Invitation has expired");
+        }
+
+        // Create or find user
+        User user = userRepository.findByEmailAndIsDeletedFalse(invitation.getEmail())
+                .orElseGet(() -> {
+                    User newUser = User.builder()
+                            .email(invitation.getEmail())
+                            .passwordHash(passwordEncoder.encode(password))
+                            .firstName("New")
+                            .lastName("User")
+                            .role(User.Role.STUDENT)
+                            .isActive(true)
+                            .isEmailVerified(true)
+                            .build();
+                    newUser.setInstitutionId(invitation.getInstitutionId());
+                    return userRepository.save(newUser);
+                });
+
+        // Update existing user if needed
+        if (!user.getIsEmailVerified()) {
+            user.setIsEmailVerified(true);
+        }
+        if (!user.getIsActive()) {
+            user.setIsActive(true);
+        }
+        user.setInstitutionId(invitation.getInstitutionId());
+        userRepository.save(user);
+
+        // Create membership
+        InstitutionMembership.Role membershipRole = switch (invitation.getRole()) {
+            case "TEACHER" -> InstitutionMembership.Role.TEACHER;
+            case "ADMIN", "INSTITUTION_ADMIN" -> InstitutionMembership.Role.ADMIN;
+            case "PARENT" -> InstitutionMembership.Role.PARENT;
+            default -> InstitutionMembership.Role.STUDENT;
+        };
+
+        InstitutionMembership membership = InstitutionMembership.builder()
+                .userId(user.getId())
+                .institutionId(invitation.getInstitutionId())
+                .role(InstitutionMembership.Role.valueOf(invitation.getRole()))
+                .isActive(true)
+                .isDeleted(false)
+                .build();
+        membershipRepository.save(membership);
+
+        // Update invitation
+        invitation.setStatus("ACCEPTED");
+        invitation.setAcceptedAt(LocalDateTime.now());
+        invitationRepository.save(invitation);
+
+        log.info("Invitation accepted for user {} in institution {}", user.getEmail(), invitation.getInstitutionId());
+    }
+
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 }
