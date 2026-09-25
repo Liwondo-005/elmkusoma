@@ -12,7 +12,7 @@ const COLORS = [
 
 const BRUSH_SIZES = [4, 8, 12, 20]
 
-const STAMPS = ["\u2B50", "\u2764\uFE0F", "\u{1F338}", "\u{1F98B}", "\u{1F308}", "\u{1F3B5}", "\u2B50", "\u{1F431}", "\u{1F436}", "\u{1F33B}", "\u{1F34E}", "\u{1F388}"]
+const STAMPS = ["\u2B50", "\u2764\uFE0F", "\u{1F338}", "\u{1F98B}", "\u{1F308}", "\u{1F3B5}", "\u{1F31F}", "\u{1F431}", "\u{1F436}", "\u{1F33B}", "\u{1F34E}", "\u{1F388}"]
 
 const MUSICAL_NOTES = ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti"]
 

@@ -28,6 +28,7 @@ public class DeepLearningContent extends BaseEntity {
     private String title;
 
     @Column(name = "content_type", length = 30, nullable = false)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private DeepContentType contentType = DeepContentType.ARTICLE;
 

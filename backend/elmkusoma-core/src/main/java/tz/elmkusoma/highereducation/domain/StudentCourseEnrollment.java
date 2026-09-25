@@ -35,6 +35,7 @@ public class StudentCourseEnrollment extends BaseEntity {
     private Integer creditHours;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private EnrollmentStatus status = EnrollmentStatus.ENROLLED;
 

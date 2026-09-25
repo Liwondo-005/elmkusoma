@@ -79,7 +79,8 @@ public class User extends BaseEntity {
         INSTITUTION_ADMIN,
         NATIONAL_ADMIN,
         REGIONAL_ADMIN,
-        DISTRICT_ADMIN
+        DISTRICT_ADMIN,
+        INSTRUCTOR
     }
 
     public enum LearningLevel {

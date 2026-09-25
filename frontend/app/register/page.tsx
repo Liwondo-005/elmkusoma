@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
@@ -41,7 +41,10 @@ export default function RegisterPage() {
   const router = useRouter()
 
   const [captchaKey, setCaptchaKey] = useState(0)
-  const captchaCode = useMemo(() => generateCaptchaCode(), [captchaKey])
+  const [captchaCode, setCaptchaCode] = useState("")
+  useEffect(() => {
+    setCaptchaCode(generateCaptchaCode())
+  }, [captchaKey])
   const [userCaptchaInput, setUserCaptchaInput] = useState("")
   const [captchaError, setCaptchaError] = useState("")
 
@@ -100,7 +103,7 @@ export default function RegisterPage() {
 
   async function onSubmit(values: RegisterValues) {
     setServerError("")
-    if (userCaptchaInput !== captchaCode) {
+    if (!captchaCode || userCaptchaInput !== captchaCode) {
       setCaptchaError(t("captchaIncorrect"))
       refreshCaptcha()
       return

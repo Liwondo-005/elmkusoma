@@ -83,12 +83,12 @@ export default function ProgressPage() {
         <div className="nursery-card rounded-2xl bg-yellow-50 p-4 text-center">
           <Trophy className="mx-auto size-8 text-yellow-500" />
           <div className="mt-2 text-2xl font-bold text-yellow-600">{achieved}</div>
-          <div className="text-[10px] font-bold text-yellow-700">{t("progress.milestonesAchieved")}</div>
+          <div className="text-[10px] font-bold text-yellow-700">{t("stats.achieved")}</div>
         </div>
         <div className="nursery-card rounded-2xl bg-blue-50 p-4 text-center">
           <Star className="mx-auto size-8 text-blue-500" />
           <div className="mt-2 text-2xl font-bold text-blue-600">{inProgress}</div>
-          <div className="text-[10px] font-bold text-blue-700">{t("progress.missionsDone")}</div>
+          <div className="text-[10px] font-bold text-blue-700">{t("filters.inProgress")}</div>
         </div>
         <div className="nursery-card rounded-2xl bg-green-50 p-4 text-center">
           <CheckCircle className="mx-auto size-8 text-green-500" />

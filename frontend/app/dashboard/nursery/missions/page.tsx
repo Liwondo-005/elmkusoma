@@ -71,8 +71,7 @@ export default function MissionsPage() {
         <div className="flex items-center gap-3">
           <Trophy className="size-8" />
           <div>
-            <h2 className="text-lg font-bold">{t("progress.missionsDone")}</h2>
-            <p className="text-sm text-white/70">{completed.size} of {allMissions.length} missions done</p>
+            <h2 className="text-lg font-bold">{t("progress.missionsDone", { n: completed.size, m: allMissions.length })}</h2>
           </div>
         </div>
       </div>
