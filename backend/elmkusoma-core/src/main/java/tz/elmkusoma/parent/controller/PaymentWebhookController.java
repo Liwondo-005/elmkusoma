@@ -27,7 +27,8 @@ public class PaymentWebhookController {
     private final ParentPaymentService paymentService;
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
 
-    @Value("${payment.webhook.secret:elmkusoma-dev-webhook-secret}")
+    /** No default secret: an unset property must fail closed, never accept a guessable value. */
+    @Value("${payment.webhook.secret:}")
     private String webhookSecret;
 
     public static class PaymentWebhookPayload {
@@ -43,6 +44,11 @@ public class PaymentWebhookController {
             @RequestHeader(value = "X-Webhook-Secret", required = false) String secret,
             @RequestBody PaymentWebhookPayload payload) {
 
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            log.error("Payment webhook rejected: payment.webhook.secret is not configured (fail-closed)");
+            integrationService.recordWebhook("PAYMENT", "rejected", "FAILED", "FAILED", "Webhook secret not configured");
+            return ResponseEntity.status(503).body(ApiResponse.error("Payment webhook is not configured"));
+        }
         if (secret == null || !webhookSecret.equals(secret)) {
             log.warn("Payment webhook rejected: invalid secret");
             integrationService.recordWebhook("PAYMENT", "rejected", "FAILED", "FAILED", "Invalid webhook secret");

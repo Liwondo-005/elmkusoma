@@ -1,18 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { CertificateCard } from "@/components/certificates/certificate-card"
 import { certificateApi, type CertificateVerificationResponse } from "@/lib/api"
 import { AlertTriangle, BadgeCheck, XCircle } from "lucide-react"
 
-export function CertificateVerifier() {
+export function CertificateVerifier({ initialCode }: { initialCode?: string }) {
   const tc = useTranslations("common")
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(initialCode ?? "")
   const [result, setResult] = useState<CertificateVerificationResponse | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const autoVerified = useRef(false)
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault()
@@ -34,6 +35,35 @@ export function CertificateVerifier() {
       setLoading(false)
     }
   }
+
+  // Deep link support: /certificates/verify?code=XXXX verifies once on mount.
+  // The ref guard keeps React StrictMode's double-effect from calling twice.
+  useEffect(() => {
+    const code = initialCode?.trim()
+    if (!code || autoVerified.current) return
+    autoVerified.current = true
+
+    let mounted = true
+    setLoading(true)
+    setError(null)
+    setResult(undefined)
+    certificateApi
+      .verify(code)
+      .then((response) => {
+        if (mounted) setResult(response)
+      })
+      .catch((err: unknown) => {
+        if (!mounted) return
+        setError(err instanceof Error ? err.message : "Verification failed")
+        setResult(null)
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => {
+      mounted = false
+    }
+  }, [initialCode])
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">

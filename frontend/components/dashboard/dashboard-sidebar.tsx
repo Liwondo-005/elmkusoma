@@ -493,7 +493,9 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [badges, setBadges] = useState<Record<string, number>>({})
 
   const fetchBadges = useCallback(async () => {
-    if (!user?.id) return
+    // Admin workspaces render no badged learner items — skip student-only
+    // badge polling (previously fired student endpoints with an admin token).
+    if (!user?.id || user.role === "Admin" || user.role === "Institution Admin") return
     const newBadges: Record<string, number> = {}
     try {
       const token = localStorage.getItem("elmkusoma_access_token") || ""
@@ -716,6 +718,23 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               {renderNavItems(section.items)}
             </div>
           ))
+        ) : isAdmin ? (
+          // Admin workspaces get administration nav only — learner/secondary
+          // items must never render for admin roles (spec §10 workspace model).
+          <div>
+            <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("administration")}
+            </p>
+            {renderNavItems(
+              user?.role === "Admin"
+                ? adminNav
+                : adminNav.filter((item) => item.href !== "/dashboard/platform-admin"),
+            )}
+          </div>
+        ) : isParent ? (
+          // Parent workspace nav (parentNav was previously defined but never
+          // rendered — parents fell through the chain to an empty sidebar).
+          renderNavItems(parentNav)
         ) : isPrimary && !isParent ? (
           renderPrimarySections(primaryNavSections)
         ) : (user?.learningLevel || "").toUpperCase() === "UNIVERSITY" ? (
@@ -730,20 +749,9 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               {renderNavItems(section.items)}
             </div>
           ))
-        ) : (
-          <>
-            {universityFlat && renderNavItems(universityFlat)}
-            {isAdmin && (
-              <>
-                <div className="my-2 border-t border-border" />
-                <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("administration")}
-                </p>
-                {renderNavItems(adminNav)}
-              </>
-            )}
-          </>
-        )}
+        ) : universityFlat ? (
+          renderNavItems(universityFlat)
+        ) : null}
       </nav>
 
       <div className="border-t border-border p-3">

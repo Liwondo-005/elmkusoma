@@ -50,10 +50,11 @@ public class AuditController {
     @GetMapping("/logs/user/{userId}")
     @Operation(summary = "Get audit logs by user")
     public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getAuditLogsByUser(
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AuditLogResponse> response = auditService.getAuditLogsByUser(userId, page, size);
+        Page<AuditLogResponse> response = auditService.getAuditLogsByUser(institutionId, userId, page, size);
         return ResponseEntity.ok(ApiResponse.success(response.getContent()));
     }
 
@@ -82,10 +83,11 @@ public class AuditController {
     @GetMapping("/activity/user/{userId}")
     @Operation(summary = "Get activity feed for a specific user")
     public ResponseEntity<ApiResponse<List<ActivityFeedResponse>>> getActivityFeedByUser(
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ActivityFeedResponse> response = auditService.getActivityFeedByUser(userId, page, size);
+        Page<ActivityFeedResponse> response = auditService.getActivityFeedByUser(institutionId, userId, page, size);
         return ResponseEntity.ok(ApiResponse.success(response.getContent()));
     }
 
@@ -113,8 +115,9 @@ public class AuditController {
     @Operation(summary = "Resolve a security event")
     public ResponseEntity<ApiResponse<SecurityEventResponse>> resolveSecurityEvent(
             @PathVariable UUID eventId,
+            @RequestAttribute UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
-        var event = auditService.resolveSecurityEvent(eventId, userId);
+        var event = auditService.resolveSecurityEvent(eventId, institutionId, userId);
         return ResponseEntity.ok(ApiResponse.success("Security event resolved", auditMapper.toSecurityEventResponse(event)));
     }
 

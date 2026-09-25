@@ -9,11 +9,31 @@ const _inter = V0_Font_Inter({ subsets: ['latin'], weight: ["100","200","300","4
 const _geistMono = V0_Font_Geist_Mono({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"] })
 const _sourceSerif_4 = V0_Font_Source_Serif_4({ subsets: ['latin'], weight: ["200","300","400","500","600","700","800","900"] })
 
+// Canonical site URL (shared with app/sitemap.ts and app/robots.ts).
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://elmkusoma.co.tz'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'ELMKUSOMA — Learn. Connect. Succeed, Live.',
   description:
     'ELMKUSOMA is a modern African EdTech platform for live classes, courses, recorded lessons and a digital library — learn from expert teachers and connect with students across Africa.',
   generator: 'v0.app',
+  applicationName: 'ELMKUSOMA',
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    siteName: 'ELMKUSOMA',
+    title: 'ELMKUSOMA — Learn. Connect. Succeed, Live.',
+    description:
+      'A modern African EdTech platform for live classes, courses, recorded lessons and a digital library.',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'ELMKUSOMA — Learn. Connect. Succeed, Live.',
+    description:
+      'A modern African EdTech platform for live classes, courses, recorded lessons and a digital library.',
+  },
   icons: {
     icon: [
       {

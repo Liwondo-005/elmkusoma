@@ -3,7 +3,6 @@ package tz.elmkusoma.liveclass.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.event.domain.Event;
@@ -48,7 +47,6 @@ public class LiveKitWebhookController {
     private final ReplayRepository replayRepository;
     private final EventRegistrationRepository registrationRepository;
     private final LiveKitConfig liveKitConfig;
-    private final Environment environment;
     private final UserRepository userRepository;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
@@ -135,11 +133,9 @@ public class LiveKitWebhookController {
     private String verifyWebhookSignature(String authHeader, byte[] rawBody) {
         String apiSecret = liveKitConfig.getServer().getApiSecret();
         if (apiSecret == null || apiSecret.isBlank()) {
-            if (environment.matchesProfiles("prod", "production")) {
-                log.error("LiveKit webhook rejected: no api-secret configured in production");
-                return "FAILED";
-            }
-            return "UNVERIFIED";
+            // Fail closed in every profile: an unverifiable webhook must never be processed.
+            log.error("LiveKit webhook rejected: no api-secret configured (fail-closed)");
+            return "FAILED";
         }
         try {
             if (authHeader == null || authHeader.isBlank()) {

@@ -85,7 +85,7 @@ const NAV_SECTIONS: NavSection[] = [
   ]},
 ]
 
-export function PlatformAdminSidebar() {
+export function PlatformAdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const t = useTranslations("nav")
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(NAV_SECTIONS.map(s => s.title)))
@@ -121,7 +121,7 @@ export function PlatformAdminSidebar() {
                   {section.items.map(item => {
                     const isActiveItem = pathname === item.href || pathname.startsWith(item.href + "/")
                     return (
-                      <Link key={item.href} href={item.href} className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all", isActiveItem ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
+                      <Link key={item.href} href={item.href} onClick={onNavigate} className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all", isActiveItem ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
                         <item.icon className="size-4 shrink-0" />{item.labelKey ? t(item.labelKey) : item.label}
                       </Link>
                     )

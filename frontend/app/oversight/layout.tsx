@@ -1,3 +1,7 @@
+"use client"
+
+// Client layout: renderSidebar passes a closure into DashboardTopbar (a client
+// component), which is only legal when created inside the client bundle.
 import type { ReactNode } from "react"
 import { AuthoritySidebar } from "@/components/dashboard/authority-sidebar"
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar"
@@ -11,7 +15,9 @@ export default function OversightLayout({ children }: { children: ReactNode }) {
           <AuthoritySidebar />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
-          <DashboardTopbar />
+          <DashboardTopbar
+            renderSidebar={(onNavigate) => <AuthoritySidebar onNavigate={onNavigate} />}
+          />
           <main className="flex-1 p-4 sm:p-6">{children}</main>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { useRequireAuth } from "@/lib/auth"
 import { dashboardApi, primaryApi, type DashboardSummary, type ContinueLearningItem, type RecentActivity } from "@/lib/api"
 import { BookOpen, FileText, Loader2, PenTool, BarChart3, ArrowRight, Award, Users, TrendingUp, Clock, CheckCircle, Compass, Play, Star, Calendar, Video, ChevronRight, Sparkles, Lightbulb, Target, Map, GraduationCap } from "lucide-react"
 import { getDashboardConfig, getLevelLabel, type LearningLevel, primarySubjects } from "@/lib/learner-config"
+import { resolveWorkspace } from "@/lib/workspace"
 import { LearnerHeader, ContinueLearningCard, LearningItemCard, AssignmentCard, ProgressCard, EmptyState, LoadingState } from "@/components/learner/shared"
 import { GamificationBar } from "@/components/primary/gamification-bar"
 
@@ -17,7 +18,6 @@ interface DashboardData {
   certificates: number
   recentLessons: { title: string; subject: string; progress: number; id?: string }[]
   pendingWork: { title: string; subject?: string; dueDate?: string; status: string; id?: string }[]
-  recentActivity: { label: string; detail: string; time: string }[]
   liveClasses: { title: string; subject?: string; scheduledAt?: string; status: string; id?: string }[]
   subjects: { name: string; lessonCount: number; progress: number }[]
 }
@@ -40,38 +40,21 @@ export default function DashboardPage() {
     certificates: 0,
     recentLessons: [],
     pendingWork: [],
-    recentActivity: [],
     liveClasses: [],
     subjects: [],
   })
   const [gamification, setGamification] = useState({ streak: 0, points: 0, badgeCount: 0, loading: true })
 
   useEffect(() => {
-    if (!authLoading && user?.role === "Parent") {
-      router.replace("/dashboard/parent")
-    } else if (!authLoading && (user?.role === "Teacher" || user?.role === "Instructor")) {
-      router.replace("/dashboard/teacher")
-    } else if (!authLoading && (user?.role === "Admin" || user?.role === "Institution Admin")) {
-      router.replace("/dashboard/admin")
-    } else if (!authLoading && user?.role === "Other Learner") {
-      router.replace("/dashboard/learner")
-    } else if (!authLoading && user?.role === "National Admin") {
-      router.replace("/dashboard/national")
-    } else if (!authLoading && user?.role === "Regional Admin") {
-      router.replace("/dashboard/regional")
-    } else if (!authLoading && user?.role === "District Admin") {
-      router.replace("/dashboard/district")
-    } else if (!authLoading && user?.role === "Student" && (user?.learningLevel || "").toUpperCase() === "NURSERY") {
-      router.replace("/dashboard/nursery")
-    } else if (!authLoading && user?.role === "Student" && (user?.learningLevel || "").toUpperCase() === "SECONDARY") {
-      router.replace("/dashboard/secondary")
-    } else if (!authLoading && user?.role === "Student" && ((user?.learningLevel || "").toUpperCase() === "COLLEGE" || (user?.learningLevel || "").toUpperCase() === "UNIVERSITY" || (user?.learningLevel || "").toUpperCase() === "VETA")) {
-      router.replace("/dashboard/learner")
-    }
+    if (authLoading || !user) return
+    const workspace = resolveWorkspace(user)
+    if (workspace) router.replace(workspace)
   }, [user, authLoading, router])
 
   useEffect(() => {
-    if (!user || user.role === "Parent" || user.role === "Teacher" || user.role === "Admin" || user.role === "Institution Admin") return
+    // Skip student dashboard loads for any role that is being routed to a
+    // dedicated workspace (prevents student API calls with admin/teacher tokens).
+    if (!user || resolveWorkspace(user) !== null) return
     loadDashboard()
   }, [user])
 
@@ -88,10 +71,12 @@ export default function DashboardPage() {
       setActivities(activityData)
 
       try {
-        const { studentApi, learningApi, assessmentApi, certificateApi, academicApi } = await import("@/lib/api")
-        const institutionId = localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
+        const { studentApi, learningApi, assessmentApi, certificateApi, academicApi, getInstitutionId } =
+          await import("@/lib/api")
+        // Real stored institution id only — never a fabricated fallback UUID.
+        const institutionId = getInstitutionId()
 
-        const students = await studentApi.getStudents(institutionId).catch(() => [])
+        const students = institutionId ? await studentApi.getStudents(institutionId).catch(() => []) : []
         const student = students.find((s: any) => s.userId === user?.id || s.email === user?.email)
 
         if ((student as any)?.classGroupId) {
@@ -146,11 +131,6 @@ export default function DashboardPage() {
           certificates: Array.isArray(certificates) ? certificates.length : 0,
           recentLessons: lessonList.slice(0, 6),
           pendingWork: assignmentList,
-          recentActivity: lessonList.slice(0, 3).map((l) => ({
-            label: "Lesson available",
-            detail: l.title,
-            time: "",
-          })),
           liveClasses: liveClassList,
           subjects: [],
         })
@@ -178,9 +158,27 @@ export default function DashboardPage() {
     }
   }
 
-  if (authLoading || loading || user?.role === "Parent" || user?.role === "Teacher" || user?.role === "Admin" || user?.role === "Institution Admin" || user?.role === "National Admin" || user?.role === "Regional Admin" || user?.role === "District Admin") {
-    return <LoadingState />
+  if (authLoading) return <LoadingState />
+
+  // Roles with a dedicated workspace are being redirected (effect above).
+  // Render an actionable state instead of an endless spinner so a stalled
+  // navigation can never trap the user here.
+  const workspace = user ? resolveWorkspace(user) : null
+  if (workspace) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="text-center">
+          <Loader2 className="mx-auto size-8 animate-spin text-primary" />
+          <p className="mt-4 text-sm text-muted-foreground">Opening your workspace…</p>
+          <Link href={workspace} className="mt-2 inline-block text-sm font-medium text-primary hover:underline">
+            Continue
+          </Link>
+        </div>
+      </div>
+    )
   }
+
+  if (loading) return <LoadingState />
 
   const levelLabel = getLevelLabel(level)
 
@@ -461,10 +459,10 @@ function PrimaryDashboard({
         </div>
       )}
 
-      {/* My Subjects */}
+      {/* Subjects */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">My Subjects</h2>
+          <h2 className="text-lg font-semibold text-foreground">Subjects</h2>
           <Link href="/dashboard/lessons" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
             View all <ChevronRight className="size-3" />
           </Link>
@@ -601,10 +599,7 @@ function PrimaryDashboard({
           <h3 className="text-base font-semibold text-foreground">Learning Passport</h3>
           <p className="text-xs text-muted-foreground">Your learning adventure around the world!</p>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-bold text-amber-600">Tanzania</p>
-          <p className="text-[10px] text-muted-foreground">Current Stage</p>
-        </div>
+        <span className="text-xs font-medium text-amber-600">View stages</span>
         <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
       </Link>
 

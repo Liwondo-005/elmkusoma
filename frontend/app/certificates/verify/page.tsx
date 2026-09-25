@@ -1,9 +1,18 @@
 "use client"
 
+import { Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { CertificateVerifier } from "@/components/certificates/certificate-verifier"
+
+// useSearchParams requires a Suspense boundary on prerendered pages (Next 16).
+function VerifyContent() {
+  const params = useSearchParams()
+  const code = params.get("code") ?? undefined
+  return <CertificateVerifier initialCode={code} />
+}
 
 export default function VerifyCertificatePage() {
   const t = useTranslations("common")
@@ -24,7 +33,9 @@ export default function VerifyCertificatePage() {
             </p>
           </div>
         </section>
-        <CertificateVerifier />
+        <Suspense fallback={null}>
+          <VerifyContent />
+        </Suspense>
       </main>
       <SiteFooter />
     </div>

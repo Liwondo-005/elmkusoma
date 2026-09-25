@@ -130,6 +130,8 @@ public class Institution {
         CONTENT_PROVIDER,
         EVENT_PROVIDER,
         COMMUNITY_SCHOOL,
-        ADULT_EDUCATION
+        ADULT_EDUCATION,
+        NATIONAL,
+        SCHOOL
     }
 }
