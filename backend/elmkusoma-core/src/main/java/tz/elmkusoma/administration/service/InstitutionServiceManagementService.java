@@ -32,7 +32,7 @@ public class InstitutionServiceManagementService {
 
     @Transactional(readOnly = true)
     public InstitutionServiceResponse getService(UUID institutionId, String featureKey) {
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey);
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey).orElse(null);
         if (service == null) {
             throw new ResourceNotFoundException("InstitutionService", "featureKey", featureKey);
         }
@@ -45,7 +45,7 @@ public class InstitutionServiceManagementService {
         platformFeatureRepository.findByFeatureKeyAndIsDeletedFalse(request.getFeatureKey())
                 .orElseThrow(() -> new ResourceNotFoundException("PlatformFeature", "featureKey", request.getFeatureKey()));
 
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, request.getFeatureKey());
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, request.getFeatureKey()).orElse(null);
         if (service == null) {
             service = InstitutionService.builder()
                     .institutionId(institutionId)
@@ -67,7 +67,7 @@ public class InstitutionServiceManagementService {
 
     @Transactional
     public InstitutionServiceResponse disableService(UUID institutionId, String featureKey) {
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey);
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey).orElse(null);
         if (service == null) {
             throw new ResourceNotFoundException("InstitutionService", "featureKey", featureKey);
         }
@@ -83,7 +83,7 @@ public class InstitutionServiceManagementService {
 
     @Transactional
     public InstitutionServiceResponse updateService(UUID institutionId, String featureKey, InstitutionServiceRequest request) {
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey);
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey).orElse(null);
         if (service == null) {
             throw new ResourceNotFoundException("InstitutionService", "featureKey", featureKey);
         }
@@ -106,7 +106,7 @@ public class InstitutionServiceManagementService {
 
     @Transactional
     public void deleteService(UUID institutionId, String featureKey) {
-        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey);
+        InstitutionService service = institutionServiceRepository.findByInstitutionIdAndFeatureKey(institutionId, featureKey).orElse(null);
         if (service == null) {
             throw new ResourceNotFoundException("InstitutionService", "featureKey", featureKey);
         }
