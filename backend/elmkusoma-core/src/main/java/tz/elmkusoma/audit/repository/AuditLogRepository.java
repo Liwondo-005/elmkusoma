@@ -46,6 +46,13 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     Page<AuditLog> findByEntityTypeAndIsDeletedFalse(String entityType, Pageable pageable);
     Page<AuditLog> findByActionAndEntityTypeAndIsDeletedFalse(tz.elmkusoma.audit.domain.AuditLog.AuditAction action, String entityType, Pageable pageable);
 
+    Page<AuditLog> findByEntityIdAndIsDeletedFalse(UUID entityId, Pageable pageable);
+
+    @Query("SELECT COUNT(a) FROM AuditLog a WHERE a.entityType = :entityType AND a.action = :action AND a.isDeleted = false AND a.createdAt >= :since")
+    long countByEntityTypeAndActionSince(@Param("entityType") String entityType,
+                                         @Param("action") tz.elmkusoma.audit.domain.AuditLog.AuditAction action,
+                                         @Param("since") LocalDateTime since);
+
     long countByArchivedAtIsNotNull();
 
     @Modifying

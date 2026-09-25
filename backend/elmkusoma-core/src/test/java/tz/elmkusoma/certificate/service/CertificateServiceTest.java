@@ -48,6 +48,8 @@ class CertificateServiceTest {
     private StudentRepository studentRepository;
     @Mock
     private LearnerNotificationRepository learnerNotificationRepository;
+    @Mock
+    private tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
 
     @InjectMocks
     private CertificateService certificateService;

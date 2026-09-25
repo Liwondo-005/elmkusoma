@@ -45,6 +45,17 @@ public class CertificateTemplate extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    /** Current content version; incremented (and the previous content archived) on every edit. */
+    @Column(name = "version", nullable = false)
+    private Integer version = 1;
+
+    /** Guard: version/active must be present for the NOT NULL columns regardless of build path. */
+    @PrePersist
+    void onCreate() {
+        if (version == null) version = 1;
+        if (isActive == null) isActive = true;
+    }
+
     public enum TemplateType {
         COMPLETION,
         ACHIEVEMENT,

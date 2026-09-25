@@ -6,6 +6,11 @@ import { platformAdminApi, type ServiceSummary, type PageResponse } from "@/lib/
 
 const CATEGORIES = ["LEARNING", "LIVE", "EVENTS", "MEDIA", "RESOURCES", "CERTIFICATES", "COMMERCE", "ANALYTICS", "COMMUNICATION", "SERVICES"]
 
+function errorMessage(e: unknown, fallback: string): string {
+  if (e instanceof Error && e.message) return e.message
+  return fallback
+}
+
 export default function ServicesPage() {
   const [data, setData] = useState<PageResponse<ServiceSummary> | null>(null)
   const [loading, setLoading] = useState(true)
@@ -13,10 +18,18 @@ export default function ServicesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ name: "", code: "", description: "", category: "LEARNING" })
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const load = (p = 0) => {
     setLoading(true)
-    platformAdminApi.listServices(p, 50, category || undefined).then(setData).finally(() => setLoading(false))
+    setError(null)
+    platformAdminApi.listServices(p, 50, category || undefined)
+      .then(setData)
+      .catch((e) => {
+        setData(null)
+        setError(errorMessage(e, "Could not load services"))
+      })
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [category])
@@ -24,17 +37,27 @@ export default function ServicesPage() {
   async function handleCreate() {
     if (!form.name || !form.code) return
     setSaving(true)
+    setError(null)
     try {
       await platformAdminApi.createService(form)
       setForm({ name: "", code: "", description: "", category: "LEARNING" })
       setShowCreate(false)
       load()
-    } finally { setSaving(false) }
+    } catch (e) {
+      setError(errorMessage(e, "Could not create the service"))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function toggleService(svc: ServiceSummary) {
-    await platformAdminApi.updateService(svc.id, { isActive: !svc.isActive })
-    load()
+    setError(null)
+    try {
+      await platformAdminApi.updateService(svc.id, { isActive: !svc.isActive })
+      load()
+    } catch (e) {
+      setError(errorMessage(e, "Could not update the service"))
+    }
   }
 
   return (
@@ -48,6 +71,12 @@ export default function ServicesPage() {
           <Plus className="size-4" /> Add Service
         </button>
       </div>
+
+      {error && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setCategory("")} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${!category ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>All</button>
@@ -81,7 +110,9 @@ export default function ServicesPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-10 text-center">
           <Package className="mx-auto size-10 text-muted-foreground/50" />
-          <p className="mt-3 text-sm text-muted-foreground">No services configured yet</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {error ? "Services could not be loaded." : "No services configured yet"}
+          </p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

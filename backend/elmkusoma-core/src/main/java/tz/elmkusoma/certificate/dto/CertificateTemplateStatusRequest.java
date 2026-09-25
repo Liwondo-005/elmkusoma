@@ -1,0 +1,15 @@
+package tz.elmkusoma.certificate.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/** Activate/deactivate a certificate template. */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class CertificateTemplateStatusRequest {
+    private Boolean isActive;
+}

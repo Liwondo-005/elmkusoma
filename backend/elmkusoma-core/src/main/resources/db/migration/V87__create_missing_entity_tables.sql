@@ -1,9 +1,11 @@
-﻿-- V82: Create 28 tables whose entities were mapped in JPA but never created by
+-- V87: Create 28 tables whose entities were mapped in JPA but never created by
 -- any migration (pre-existing drift after the DB recreate; discovered when
 -- GET /v1/primary/me/discovery failed with relation "discovery_entries" does
 -- not exist). DDL captured from Hibernate schema-update output via pg_dump so
 -- it matches the entity mappings exactly (incl. BaseEntity columns).
 -- NOTE: guard with IF NOT EXISTS so re-apply on an already-repaired DB is a no-op.
+-- Constraint statements are DO-guarded below (PG has no IF NOT EXISTS for constraints),
+-- so re-apply stays a no-op even when the table already has its PK/UNIQUE.
 CREATE TABLE IF NOT EXISTS public.announcements (
     id uuid NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
@@ -656,232 +658,377 @@ CREATE TABLE IF NOT EXISTS public.verification_codes (
 -- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.announcements
-    ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.announcements'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.announcements
+        ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: curriculum_topics curriculum_topics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.curriculum_topics
-    ADD CONSTRAINT curriculum_topics_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.curriculum_topics'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.curriculum_topics
+        ADD CONSTRAINT curriculum_topics_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: discovery_entries discovery_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.discovery_entries
-    ADD CONSTRAINT discovery_entries_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.discovery_entries'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.discovery_entries
+        ADD CONSTRAINT discovery_entries_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: elmkusoma_labs elmkusoma_labs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.elmkusoma_labs
-    ADD CONSTRAINT elmkusoma_labs_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.elmkusoma_labs'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.elmkusoma_labs
+        ADD CONSTRAINT elmkusoma_labs_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: learner_goals learner_goals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.learner_goals
-    ADD CONSTRAINT learner_goals_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.learner_goals'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.learner_goals
+        ADD CONSTRAINT learner_goals_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: learning_evidence learning_evidence_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.learning_evidence
-    ADD CONSTRAINT learning_evidence_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.learning_evidence'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.learning_evidence
+        ADD CONSTRAINT learning_evidence_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: learning_passports learning_passports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.learning_passports
-    ADD CONSTRAINT learning_passports_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.learning_passports'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.learning_passports
+        ADD CONSTRAINT learning_passports_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: learning_profiles learning_profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.learning_profiles
-    ADD CONSTRAINT learning_profiles_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.learning_profiles'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.learning_profiles
+        ADD CONSTRAINT learning_profiles_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: live_class_activities live_class_activities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.live_class_activities
-    ADD CONSTRAINT live_class_activities_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.live_class_activities'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.live_class_activities
+        ADD CONSTRAINT live_class_activities_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: live_class_responses live_class_responses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.live_class_responses
-    ADD CONSTRAINT live_class_responses_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.live_class_responses'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.live_class_responses
+        ADD CONSTRAINT live_class_responses_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: mistake_lab_entries mistake_lab_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.mistake_lab_entries
-    ADD CONSTRAINT mistake_lab_entries_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.mistake_lab_entries'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.mistake_lab_entries
+        ADD CONSTRAINT mistake_lab_entries_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: nfe_assessments nfe_assessments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.nfe_assessments
-    ADD CONSTRAINT nfe_assessments_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.nfe_assessments'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.nfe_assessments
+        ADD CONSTRAINT nfe_assessments_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: nfe_attendance nfe_attendance_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.nfe_attendance
-    ADD CONSTRAINT nfe_attendance_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.nfe_attendance'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.nfe_attendance
+        ADD CONSTRAINT nfe_attendance_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: nfe_certificates nfe_certificates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.nfe_certificates
-    ADD CONSTRAINT nfe_certificates_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.nfe_certificates'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.nfe_certificates
+        ADD CONSTRAINT nfe_certificates_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: nfe_education_providers nfe_education_providers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.nfe_education_providers
-    ADD CONSTRAINT nfe_education_providers_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.nfe_education_providers'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.nfe_education_providers
+        ADD CONSTRAINT nfe_education_providers_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: nfe_learners nfe_learners_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.nfe_learners
-    ADD CONSTRAINT nfe_learners_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.nfe_learners'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.nfe_learners
+        ADD CONSTRAINT nfe_learners_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: nfe_materials nfe_materials_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.nfe_materials
-    ADD CONSTRAINT nfe_materials_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.nfe_materials'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.nfe_materials
+        ADD CONSTRAINT nfe_materials_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: nfe_programs nfe_programs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.nfe_programs
-    ADD CONSTRAINT nfe_programs_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.nfe_programs'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.nfe_programs
+        ADD CONSTRAINT nfe_programs_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: nfe_sessions nfe_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.nfe_sessions
-    ADD CONSTRAINT nfe_sessions_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.nfe_sessions'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.nfe_sessions
+        ADD CONSTRAINT nfe_sessions_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: parent_messages parent_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.parent_messages
-    ADD CONSTRAINT parent_messages_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.parent_messages'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.parent_messages
+        ADD CONSTRAINT parent_messages_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: primary_learning_collaborations primary_learning_collaborations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.primary_learning_collaborations
-    ADD CONSTRAINT primary_learning_collaborations_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.primary_learning_collaborations'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.primary_learning_collaborations
+        ADD CONSTRAINT primary_learning_collaborations_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: quest_challenges quest_challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.quest_challenges
-    ADD CONSTRAINT quest_challenges_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.quest_challenges'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.quest_challenges
+        ADD CONSTRAINT quest_challenges_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: reading_adventures reading_adventures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.reading_adventures
-    ADD CONSTRAINT reading_adventures_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.reading_adventures'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.reading_adventures
+        ADD CONSTRAINT reading_adventures_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: real_world_missions real_world_missions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.real_world_missions
-    ADD CONSTRAINT real_world_missions_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.real_world_missions'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.real_world_missions
+        ADD CONSTRAINT real_world_missions_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: speaking_activities speaking_activities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.speaking_activities
-    ADD CONSTRAINT speaking_activities_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.speaking_activities'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.speaking_activities
+        ADD CONSTRAINT speaking_activities_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: student_badges student_badges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.student_badges
-    ADD CONSTRAINT student_badges_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.student_badges'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.student_badges
+        ADD CONSTRAINT student_badges_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: student_streaks student_streaks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.student_streaks
-    ADD CONSTRAINT student_streaks_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.student_streaks'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.student_streaks
+        ADD CONSTRAINT student_streaks_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --
 -- Name: learning_profiles uk31adyb2icx3270ufx4brx2thv; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.learning_profiles
-    ADD CONSTRAINT uk31adyb2icx3270ufx4brx2thv UNIQUE (student_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.learning_profiles'::regclass AND contype = 'u' AND conname = 'uk31adyb2icx3270ufx4brx2thv') THEN
+    ALTER TABLE ONLY public.learning_profiles
+        ADD CONSTRAINT uk31adyb2icx3270ufx4brx2thv UNIQUE (student_id);
+  END IF;
+END $$;
 
 
 --
 -- Name: verification_codes verification_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.verification_codes
-    ADD CONSTRAINT verification_codes_pkey PRIMARY KEY (id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.verification_codes'::regclass AND contype = 'p') THEN
+    ALTER TABLE ONLY public.verification_codes
+        ADD CONSTRAINT verification_codes_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
 
 
 --

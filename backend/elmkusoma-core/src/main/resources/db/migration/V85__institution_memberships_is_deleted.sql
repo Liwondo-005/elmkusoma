@@ -1,4 +1,4 @@
--- V80: Entity/schema drift repairs.
+-- V85: Entity/schema drift repairs.
 -- BaseEntity maps institution_id, created_at, updated_at, created_by, updated_by,
 -- is_deleted, but several tables created by earlier migrations lack some of them.
 -- Hibernate then generates SELECTs with columns that do not exist (SQLState 42703),
@@ -8,8 +8,8 @@
 -- institution_memberships: standalone entity maps is_deleted
 ALTER TABLE institution_memberships ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
 
--- platform_config: V63 omitted BaseEntity.institution_id (see V79)
--- (kept here only as a comment; V79 owns that change)
+-- platform_config: V63 omitted BaseEntity.institution_id (see V84)
+-- (kept here only as a comment; V84 owns that change)
 
 -- BaseEntity columns for tables whose entities extend BaseEntity
 DO $$

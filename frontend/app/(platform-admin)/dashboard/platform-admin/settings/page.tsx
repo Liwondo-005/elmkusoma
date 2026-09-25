@@ -184,7 +184,7 @@ export default function PlatformSettingsPage() {
           <SettingRow label="Message Queue" value="RabbitMQ" />
           <SettingRow label="Video" value="LiveKit" />
           <SettingRow label="Storage" value="MinIO" />
-          <SettingRow label="Migration" value="Flyway (81 migrations)" />
+          <SettingRow label="Migration" value="Flyway (87 migrations)" />
           <SettingRow label="ORM" value="Hibernate / JPA" />
         </div>
       </div>

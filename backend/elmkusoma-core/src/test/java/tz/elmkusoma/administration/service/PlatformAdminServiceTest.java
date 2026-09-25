@@ -368,4 +368,43 @@ class PlatformAdminServiceTest {
         assertThrows(IllegalStateException.class,
                 () -> service.updateSupportTicketStatus(TEST_ID, "RESOLVED"));
     }
+
+    @Test
+    void listCertificates_withFilters_mapsEnrichedSummary() {
+        tz.elmkusoma.certificate.domain.Certificate cert = tz.elmkusoma.certificate.domain.Certificate.builder()
+                .serialNumber("CERT-CMP-2026-000001")
+                .certificateNumber("CERT-ABC123")
+                .certificateType(tz.elmkusoma.certificate.domain.Certificate.CertificateType.COMPLETION)
+                .title("Course Completion")
+                .studentName("John Doe")
+                .courseOrProgramme("Mathematics")
+                .status(tz.elmkusoma.certificate.domain.Certificate.CertificateStatus.ISSUED)
+                .issueDate(java.time.LocalDateTime.now())
+                .completionDate(java.time.LocalDate.of(2026, 1, 1))
+                .verificationCode("ABC123")
+                .build();
+        cert.setId(TEST_ID);
+        cert.setInstitutionId(TEST_ID);
+
+        when(certificateRepository.searchCertificates(eq("john"),
+                eq(tz.elmkusoma.certificate.domain.Certificate.CertificateStatus.ISSUED),
+                isNull(), isNull(),
+                eq(tz.elmkusoma.administration.service.PlatformAdminService.FILTER_FROM_SENTINEL),
+                eq(tz.elmkusoma.administration.service.PlatformAdminService.FILTER_TO_SENTINEL),
+                any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(cert)));
+        when(institutionRepository.findById(TEST_ID))
+                .thenReturn(Optional.of(tz.elmkusoma.shared.domain.Institution.builder().name("ELMKUSOMA HQ").build()));
+
+        tz.elmkusoma.common.PageResponse<tz.elmkusoma.administration.dto.CertificateSummaryResponse> out =
+                service.listCertificates(0, 20, "john", "ISSUED", null, null, null, null);
+
+        assertEquals(1, out.getContent().size());
+        tz.elmkusoma.administration.dto.CertificateSummaryResponse summary = out.getContent().get(0);
+        assertEquals("John Doe", summary.getStudentName());
+        assertEquals("ELMKUSOMA HQ", summary.getInstitutionName());
+        assertEquals("COMPLETION", summary.getCertificateType());
+        assertEquals("Mathematics", summary.getCourseOrProgramme());
+        assertEquals("ISSUED", summary.getStatus());
+    }
 }
