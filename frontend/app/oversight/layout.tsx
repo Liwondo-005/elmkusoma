@@ -1,3 +1,7 @@
+"use client"
+
+// Client layout: renderSidebar passes a closure into DashboardTopbar (a client
+// component), which is only legal when created inside the client bundle.
 import type { ReactNode } from "react"
 import { AuthoritySidebar } from "@/components/dashboard/authority-sidebar"
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar"

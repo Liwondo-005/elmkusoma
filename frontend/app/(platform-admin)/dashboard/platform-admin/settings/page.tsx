@@ -184,7 +184,7 @@ export default function PlatformSettingsPage() {
           <SettingRow label="Message Queue" value="RabbitMQ" />
           <SettingRow label="Video" value="LiveKit" />
           <SettingRow label="Storage" value="MinIO" />
-          <SettingRow label="Migration" value="Flyway (78 migrations)" />
+          <SettingRow label="Migration" value="Flyway (81 migrations)" />
           <SettingRow label="ORM" value="Hibernate / JPA" />
         </div>
       </div>
@@ -194,7 +194,7 @@ export default function PlatformSettingsPage() {
         <div className="space-y-2">
           <SettingRow label="Authentication" value="JWT with refresh tokens (1h access / 7d refresh)" />
           <SettingRow label="Password Hashing" value="BCrypt" />
-          <SettingRow label="Authorization" value="Role-Based Access Control (12 roles)" />
+          <SettingRow label="Authorization" value="Role-Based Access Control (13 roles)" />
           <SettingRow label="API Protection" value="Role-based @PreAuthorize on admin APIs" />
           <SettingRow label="Multi-Tenancy" value="Institution-scoped data isolation" />
           <SettingRow label="Soft Delete" value="Enabled (is_deleted flag)" />
