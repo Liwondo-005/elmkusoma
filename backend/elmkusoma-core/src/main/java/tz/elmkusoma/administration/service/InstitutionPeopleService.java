@@ -3,6 +3,7 @@ package tz.elmkusoma.administration.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import tz.elmkusoma.administration.domain.InstitutionInvitation;
 import tz.elmkusoma.administration.dto.*;
@@ -28,7 +29,7 @@ public class InstitutionPeopleService {
     private final InstitutionScopeService scopeService;
     private final PlatformPolicyService platformPolicyService;
     private final PermissionCacheService permissionCacheService;
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
     public List<PeopleMemberResponse> listPeople(UUID institutionId, int page, int size) {
         List<User> users = scopeService.getUsersInInstitution(institutionId);
@@ -198,7 +199,7 @@ public class InstitutionPeopleService {
     }
 
     public void acceptInvitation(String token, String password) {
-        InstitutionInvitation invitation = invitationRepository.findByToken(token)
+        InstitutionInvitation invitation = invitationRepository.findByTokenAndIsDeletedFalse(token)
                 .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
 
         if (!"PENDING".equals(invitation.getStatus())) {
@@ -259,6 +260,4 @@ public class InstitutionPeopleService {
 
         log.info("Invitation accepted for user {} in institution {}", user.getEmail(), invitation.getInstitutionId());
     }
-
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 }

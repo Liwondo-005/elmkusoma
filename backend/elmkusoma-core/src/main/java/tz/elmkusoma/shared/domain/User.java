@@ -63,9 +63,6 @@ public class User extends BaseEntity {
     @Column(name = "district_id")
     private java.util.UUID districtId;
 
-    @Column(name = "institution_id")
-    private java.util.UUID institutionId;
-
     public Role getRole() {
         return role;
     }

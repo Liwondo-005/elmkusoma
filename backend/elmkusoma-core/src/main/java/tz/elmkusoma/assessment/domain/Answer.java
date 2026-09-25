@@ -43,26 +43,4 @@ public class Answer extends BaseEntity {
 
     @Column(name = "graded_at")
     private LocalDateTime gradedAt;
-
-    public UUID getAttemptId() { return attemptId; }
-    public void setAttemptId(UUID attemptId) { this.attemptId = attemptId; }
-    public UUID getQuestionId() { return questionId; }
-    public void setQuestionId(UUID questionId) { this.questionId = questionId; }
-    public UUID getSelectedOptionId() { return selectedOptionId; }
-    public void setSelectedOptionId(UUID selectedOptionId) { this.selectedOptionId = selectedOptionId; }
-    public String getTextAnswer() { return textAnswer; }
-    public void setTextAnswer(String textAnswer) { this.textAnswer = textAnswer; }
-    public Boolean getIsCorrect() { return isCorrect; }
-    public void setIsCorrect(Boolean isCorrect) { this.isCorrect = isCorrect; }
-    public Integer getMarksObtained() { return marksObtained; }
-    public void setMarksObtained(Integer marksObtained) { this.marksObtained = marksObtained; }
-    public String getFeedback() { return feedback; }
-    public void setFeedback(String feedback) { this.feedback = feedback; }
-    public UUID getGradedBy() { return gradedBy; }
-    public void setGradedBy(UUID gradedBy) { this.gradedBy = gradedBy; }
-    public LocalDateTime getGradedAt() { return gradedAt; }
-    public void setGradedAt(LocalDateTime gradedAt) { this.gradedAt = gradedAt; }
-    // Explicit getId for BaseEntity inheritance
-    public UUID getId() { return getIdDirect(); }
-    public void setId(UUID id) { setIdDirect(id); }
 }

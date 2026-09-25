@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface InstitutionServiceRepository extends JpaRepository<InstitutionService, Long> {
+public interface InstitutionServiceRepository extends JpaRepository<InstitutionService, UUID> {
 
     List<InstitutionService> findByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
