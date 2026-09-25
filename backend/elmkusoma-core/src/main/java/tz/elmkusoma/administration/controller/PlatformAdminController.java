@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.administration.dto.*;
@@ -26,6 +27,22 @@ public class PlatformAdminController {
 
     private final PlatformAdminService platformAdminService;
     private final tz.elmkusoma.administration.service.PlatformCommerceService platformCommerceService;
+    private final tz.elmkusoma.certificate.service.CertificateGovernanceService certificateGovernanceService;
+
+    private static UUID actorId(HttpServletRequest request) {
+        Object id = request.getAttribute("userId");
+        return id instanceof UUID uuid ? uuid : null;
+    }
+
+    private static String actorEmail(HttpServletRequest request) {
+        Object email = request.getAttribute("userEmail");
+        return email != null ? email.toString() : "admin";
+    }
+
+    private static String actorRole(HttpServletRequest request) {
+        Object role = request.getAttribute("userRole");
+        return role != null ? role.toString() : "ADMIN";
+    }
 
     // ── Command Center ──
 
@@ -144,12 +161,34 @@ public class PlatformAdminController {
     // ── Certificates ──
 
     @GetMapping("/certificates")
-    @Operation(summary = "List certificates issued across the platform")
+    @Operation(summary = "List certificates issued across the platform (search + filters)")
     public ResponseEntity<ApiResponse<PageResponse<CertificateSummaryResponse>>> listCertificates(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        PageResponse<CertificateSummaryResponse> response = platformAdminService.listCertificates(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) UUID institutionId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate to) {
+        java.time.LocalDateTime fromDate = from != null ? from.atStartOfDay() : null;
+        java.time.LocalDateTime toDate = to != null ? to.plusDays(1).atStartOfDay().minusNanos(1) : null;
+        PageResponse<CertificateSummaryResponse> response = platformAdminService.listCertificates(
+                page, size, search, status, type, institutionId, fromDate, toDate);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/certificates/overview")
+    @Operation(summary = "Real certificate counts by status/type + verification activity (last 30 days)")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.certificate.dto.CertificateOverviewResponse>> certificateOverview() {
+        return ResponseEntity.ok(ApiResponse.success(certificateGovernanceService.overview()));
+    }
+
+    @GetMapping("/certificates/{certificateId}")
+    @Operation(summary = "Full certificate detail: recipient, issuer, template and signatories")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.certificate.dto.CertificateDetailResponse>> certificateDetail(
+            @PathVariable UUID certificateId) {
+        return ResponseEntity.ok(ApiResponse.success(certificateGovernanceService.getCertificateDetail(certificateId)));
     }
 
     // ── Security ──
@@ -171,13 +210,14 @@ public class PlatformAdminController {
     // ── Audit ──
 
     @GetMapping("/audit/logs")
-    @Operation(summary = "Get platform-wide audit logs")
+    @Operation(summary = "Get platform-wide audit logs (optionally filtered by a specific entity id)")
     public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getAuditLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String action,
-            @RequestParam(required = false) String entityType) {
-        List<AuditLogResponse> response = platformAdminService.getAuditLogs(page, size, action, entityType);
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) UUID entityId) {
+        List<AuditLogResponse> response = platformAdminService.getAuditLogs(page, size, action, entityType, entityId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -648,5 +688,118 @@ public class PlatformAdminController {
         String reason = body != null ? body.get("reason") : null;
         return ResponseEntity.ok(ApiResponse.success("Certificate revoked",
                 platformAdminService.revokeCertificatePlatform(certificateId, reason, actor)));
+    }
+
+    // ── Certificate Template Governance ──
+
+    @GetMapping("/certificate-templates")
+    @Operation(summary = "List certificate templates across the platform (with usage and signatories)")
+    public ResponseEntity<ApiResponse<PageResponse<tz.elmkusoma.certificate.dto.PlatformTemplateResponse>>> listCertificateTemplates(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) UUID institutionId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                certificateGovernanceService.listTemplates(search, type, institutionId, page, size)));
+    }
+
+    @PostMapping("/certificate-templates")
+    @Operation(summary = "Create a certificate template for an institution")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.certificate.dto.PlatformTemplateResponse>> createCertificateTemplate(
+            @RequestBody tz.elmkusoma.certificate.dto.CertificateTemplateRequest body,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Template created",
+                certificateGovernanceService.createTemplate(body, actorId(request), actorEmail(request), actorRole(request))));
+    }
+
+    @PutMapping("/certificate-templates/{templateId}")
+    @Operation(summary = "Update a template (previous content archived as a version)")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.certificate.dto.PlatformTemplateResponse>> updateCertificateTemplate(
+            @PathVariable UUID templateId,
+            @RequestBody tz.elmkusoma.certificate.dto.CertificateTemplateRequest body,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Template updated",
+                certificateGovernanceService.updateTemplate(templateId, body, actorId(request), actorEmail(request), actorRole(request))));
+    }
+
+    @PutMapping("/certificate-templates/{templateId}/status")
+    @Operation(summary = "Activate/deactivate a certificate template")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.certificate.dto.PlatformTemplateResponse>> setCertificateTemplateStatus(
+            @PathVariable UUID templateId,
+            @RequestBody tz.elmkusoma.certificate.dto.CertificateTemplateStatusRequest body,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Template status updated",
+                certificateGovernanceService.setTemplateStatus(templateId, body.getIsActive(),
+                        actorId(request), actorEmail(request), actorRole(request))));
+    }
+
+    @GetMapping("/certificate-templates/{templateId}/signatories")
+    @Operation(summary = "Authorised signatories linked to a template (display order)")
+    public ResponseEntity<ApiResponse<List<tz.elmkusoma.certificate.dto.SignatoryResponse>>> getTemplateSignatories(
+            @PathVariable UUID templateId) {
+        return ResponseEntity.ok(ApiResponse.success(certificateGovernanceService.getTemplateSignatories(templateId)));
+    }
+
+    @PutMapping("/certificate-templates/{templateId}/signatories")
+    @Operation(summary = "Replace a template's authorised signatories (validates authorisation rules)")
+    public ResponseEntity<ApiResponse<List<tz.elmkusoma.certificate.dto.SignatoryResponse>>> replaceTemplateSignatories(
+            @PathVariable UUID templateId,
+            @RequestBody tz.elmkusoma.certificate.dto.TemplateSignatoriesRequest body,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Template signatories updated",
+                certificateGovernanceService.replaceTemplateSignatories(templateId, body,
+                        actorId(request), actorEmail(request), actorRole(request))));
+    }
+
+    @GetMapping("/certificate-templates/{templateId}/versions")
+    @Operation(summary = "Archived versions of a template (content coexistence)")
+    public ResponseEntity<ApiResponse<List<tz.elmkusoma.certificate.dto.TemplateVersionResponse>>> getTemplateVersions(
+            @PathVariable UUID templateId) {
+        return ResponseEntity.ok(ApiResponse.success(certificateGovernanceService.getTemplateVersions(templateId)));
+    }
+
+    // ── Certificate Signatories ──
+
+    @GetMapping("/certificate-signatories")
+    @Operation(summary = "List signatory profiles with authorisation scope")
+    public ResponseEntity<ApiResponse<PageResponse<tz.elmkusoma.certificate.dto.SignatoryResponse>>> listSignatories(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID institutionId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                certificateGovernanceService.listSignatories(search, status, institutionId, page, size)));
+    }
+
+    @PostMapping("/certificate-signatories")
+    @Operation(summary = "Create a signatory profile with authorisation scope")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.certificate.dto.SignatoryResponse>> createSignatory(
+            @RequestBody tz.elmkusoma.certificate.dto.SignatoryRequest body,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Signatory created",
+                certificateGovernanceService.createSignatory(body, actorId(request), actorEmail(request), actorRole(request))));
+    }
+
+    @PutMapping("/certificate-signatories/{signatoryId}")
+    @Operation(summary = "Update a signatory profile / authorisation")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.certificate.dto.SignatoryResponse>> updateSignatory(
+            @PathVariable UUID signatoryId,
+            @RequestBody tz.elmkusoma.certificate.dto.SignatoryRequest body,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Signatory updated",
+                certificateGovernanceService.updateSignatory(signatoryId, body,
+                        actorId(request), actorEmail(request), actorRole(request))));
+    }
+
+    @DeleteMapping("/certificate-signatories/{signatoryId}")
+    @Operation(summary = "Soft-delete a signatory (links removed, audit preserved)")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> deleteSignatory(
+            @PathVariable UUID signatoryId,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Signatory removed",
+                certificateGovernanceService.deleteSignatory(signatoryId,
+                        actorId(request), actorEmail(request), actorRole(request))));
     }
 }

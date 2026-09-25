@@ -1,5 +1,7 @@
 package tz.elmkusoma.certificate.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,4 +28,15 @@ public interface CertificateTemplateRepository extends JpaRepository<Certificate
     List<CertificateTemplate> findActiveByInstitutionId(@Param("institutionId") UUID institutionId);
 
     boolean existsByNameAndInstitutionIdAndIsDeletedFalse(String name, UUID institutionId);
+
+    /** Platform-wide template search with optional filters (NULL = no restriction). */
+    @Query("SELECT t FROM CertificateTemplate t WHERE t.isDeleted = false " +
+            "AND (:search IS NULL OR LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "     OR LOWER(t.description) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "AND (:type IS NULL OR t.templateType = :type) " +
+            "AND (:institutionId IS NULL OR t.institutionId = :institutionId)")
+    Page<CertificateTemplate> searchTemplates(@Param("search") String search,
+                                              @Param("type") CertificateTemplate.TemplateType type,
+                                              @Param("institutionId") UUID institutionId,
+                                              Pageable pageable);
 }

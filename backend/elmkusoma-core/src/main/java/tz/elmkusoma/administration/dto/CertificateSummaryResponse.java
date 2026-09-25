@@ -16,7 +16,15 @@ public class CertificateSummaryResponse {
     private UUID id;
     private UUID studentId;
     private String serialNumber;
+    private String certificateNumber;
     private String title;
+    private String studentName;
+    private String certificateType;
+    private String courseOrProgramme;
+    private UUID institutionId;
+    private String institutionName;
     private LocalDateTime issueDate;
+    private java.time.LocalDate expiryDate;
     private String status;
+    private LocalDateTime createdAt;
 }

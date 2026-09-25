@@ -85,6 +85,7 @@
     "verifyFieldInstructor": "Instructor",
     "verifyFieldGrade": "Grade",
     "verifyFieldCompletionDate": "Completion Date",
+    "verifyFieldIssueDate": "Issue Date",
     "verifyFieldSerial": "Serial Number",
     "verifyFieldInstitution": "Institution",
     "verifyFieldSkills": "Skills",

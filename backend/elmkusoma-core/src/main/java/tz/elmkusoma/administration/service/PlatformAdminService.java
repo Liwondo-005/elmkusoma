@@ -555,18 +555,68 @@ public class PlatformAdminService {
 
     // ── Certificates ──
 
+    /**
+     * Range sentinels for the platform certificate search. Postgres cannot infer the type of a
+     * parameter that only appears in an IS NULL check (error 42P18), so omitted date filters are
+     * bound as this wide inclusive range instead of NULL. certificates.issue_date is NOT NULL,
+     * therefore no row can be excluded by the sentinels.
+     */
+    static final LocalDateTime FILTER_FROM_SENTINEL = LocalDateTime.of(1000, 1, 1, 0, 0);
+    static final LocalDateTime FILTER_TO_SENTINEL = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+
     @Transactional(readOnly = true)
-    public PageResponse<CertificateSummaryResponse> listCertificates(int page, int size) {
-        Page<Certificate> certs = certificateRepository.findAllByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+    public PageResponse<CertificateSummaryResponse> listCertificates(int page, int size,
+                                                                     String search, String status, String type,
+                                                                     UUID institutionId,
+                                                                     LocalDateTime fromDate, LocalDateTime toDate) {
+        Certificate.CertificateStatus statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                statusEnum = Certificate.CertificateStatus.valueOf(status.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                statusEnum = null; // unknown status -> treated as no filter (matches previous behaviour)
+            }
+        }
+        Certificate.CertificateType typeEnum = null;
+        if (type != null && !type.isBlank()) {
+            try {
+                typeEnum = Certificate.CertificateType.valueOf(type.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                typeEnum = null;
+            }
+        }
+        String searchTrim = (search == null || search.isBlank()) ? null : search.trim();
+
+        Page<Certificate> certs = certificateRepository.searchCertificates(
+                searchTrim, statusEnum, typeEnum, institutionId,
+                fromDate != null ? fromDate : FILTER_FROM_SENTINEL,
+                toDate != null ? toDate : FILTER_TO_SENTINEL,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+
+        Map<UUID, String> institutionNames = new HashMap<>();
+        certs.getContent().stream()
+                .map(Certificate::getInstitutionId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .forEach(id -> institutionRepository.findById(id)
+                        .ifPresent(inst -> institutionNames.put(id, inst.getName())));
 
         List<CertificateSummaryResponse> content = certs.getContent().stream()
                 .map(c -> CertificateSummaryResponse.builder()
                         .id(c.getId())
                         .studentId(c.getStudentId())
                         .serialNumber(c.getSerialNumber())
+                        .certificateNumber(c.getCertificateNumber())
                         .title(c.getTitle())
+                        .studentName(c.getStudentName())
+                        .certificateType(c.getCertificateType() != null ? c.getCertificateType().name() : null)
+                        .courseOrProgramme(c.getCourseOrProgramme())
+                        .institutionId(c.getInstitutionId())
+                        .institutionName(institutionNames.get(c.getInstitutionId()))
                         .issueDate(c.getIssueDate())
+                        .expiryDate(c.getExpiryDate())
                         .status(c.getStatus() != null ? c.getStatus().name() : null)
+                        .createdAt(c.getCreatedAt())
                         .build())
                 .toList();
 
@@ -616,13 +666,16 @@ public class PlatformAdminService {
     // ── Audit ──
 
     @Transactional(readOnly = true)
-    public List<AuditLogResponse> getAuditLogs(int page, int size, String action, String entityType) {
+    public List<AuditLogResponse> getAuditLogs(int page, int size, String action, String entityType, UUID entityId) {
         Page<AuditLog> logs;
         PageRequest pr = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         boolean hasAction = action != null && !action.isBlank();
         boolean hasEntity = entityType != null && !entityType.isBlank();
         try {
-            if (hasAction && hasEntity) {
+            if (entityId != null) {
+                // Filter by a specific resource (e.g. one certificate's audit trail)
+                logs = auditLogRepository.findByEntityIdAndIsDeletedFalse(entityId, pr);
+            } else if (hasAction && hasEntity) {
                 AuditLog.AuditAction act = AuditLog.AuditAction.valueOf(action.toUpperCase());
                 logs = auditLogRepository.findByActionAndEntityTypeAndIsDeletedFalse(act, entityType.toUpperCase(), pr);
             } else if (hasAction) {
@@ -1699,6 +1752,8 @@ public class PlatformAdminService {
         }
         String old = cert.getStatus() != null ? cert.getStatus().name() : "ISSUED";
         cert.setStatus(Certificate.CertificateStatus.REVOKED);
+        cert.setRevokedReason(reason != null && !reason.isBlank() ? reason.trim() : null);
+        cert.setRevokedAt(LocalDateTime.now());
         certificateRepository.save(cert);
         writeAudit(cert.getInstitutionId(), "CERTIFICATE", certificateId, cert.getSerialNumber(), "UPDATE",
                 Map.of("status", old), Map.of("status", "REVOKED", "reason", reason != null ? reason : "",
