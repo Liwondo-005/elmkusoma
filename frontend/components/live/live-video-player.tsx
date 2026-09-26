@@ -187,10 +187,10 @@ export function LiveVideoPlayer({
         </div>
       )}
 
-      {state === "waiting" && (
+      {state === "waiting" && !showTeacherLocal && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-white">
           <Video className="size-10 mb-1 opacity-40" />
-          <p className="text-xs opacity-60">Waiting for the teacher&apos;s video...</p>
+          <p className="text-xs opacity-60">Waiting for the teacher&apos;s live screen...</p>
         </div>
       )}
 
@@ -233,7 +233,11 @@ export function LiveVideoPlayer({
         <div className="absolute inset-0 flex items-center justify-center text-center text-white">
           <div>
             <Video className="mx-auto mb-2 size-10 opacity-40" />
-            <p className="text-xs opacity-60">Camera off</p>
+            <p className="text-xs opacity-60">
+              {state === "waiting"
+                ? "Start your live screen — turn on your camera or share your screen"
+                : "Camera off"}
+            </p>
           </div>
         </div>
       )}
@@ -245,10 +249,10 @@ export function LiveVideoPlayer({
         </div>
       )}
 
-      {state === "waiting" && showLiveBadge && (
+      {state === "waiting" && showLiveBadge && !isTeacher && (
         <div className="absolute inset-x-0 top-14 z-10 text-center">
           <span className="rounded bg-black/60 px-2 py-1 text-[11px] text-white/90">
-            Waiting for the teacher&apos;s video...
+            Waiting for the teacher&apos;s live screen...
           </span>
         </div>
       )}

@@ -132,4 +132,12 @@ public class InstitutionPeopleController {
                 "INVITATION", invitationId.toString(), "Invitation cancelled", null);
         return ResponseEntity.ok(ApiResponse.success("Invitation cancelled", null));
     }
+
+    @PostMapping("/invitations/accept")
+    @Operation(summary = "Accept an invitation")
+    public ResponseEntity<ApiResponse<Void>> acceptInvitation(
+            @Valid @RequestBody AcceptInvitationRequest request) {
+        peopleService.acceptInvitation(request.getToken(), request.getPassword());
+        return ResponseEntity.ok(ApiResponse.success("Invitation accepted", null));
+    }
 }

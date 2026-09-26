@@ -37,7 +37,8 @@ spring:
     # History contains intentional checksum-0 "pre-existing migration" seed rows
     # (V48-V66) and V08 was edited after apply; validation must stay off (as it
     # was historically since 037ae99) or boot fails. Migrate still runs.
-    validate-on-migrate: false
+    # validate-on-migrate: false  -- NOW ENABLED after checksum repair
+    validate-on-migrate: true
 
   data:
     redis:

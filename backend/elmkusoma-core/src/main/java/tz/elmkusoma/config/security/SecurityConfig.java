@@ -1,9 +1,9 @@
 package tz.elmkusoma.config.security;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import jakarta.persistence.EntityManager;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
@@ -28,11 +29,15 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
+@Import(PermissionConfig.class)
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final InstitutionMembershipRepository membershipRepository;
+    private final OrganizationContextHolder contextHolder;
+    private final EntityManager entityManager;
+    private final PermissionService permissionService;
 
     private static final String[] PUBLIC_URLS = {
             "/v1/auth/**",
@@ -42,8 +47,6 @@ public class SecurityConfig {
             "/v1/institutions/{id}",
             "/v1/webhooks/livekit",
             "/v1/webhooks/**",
-            // WebSocket upgrade carries the JWT as a ?token= query param and is
-            // authenticated by JwtHandshakeInterceptor, not by the header filter.
             "/ws/**"
     };
 
@@ -65,6 +68,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    public OrganizationContextResolver organizationContextResolver() {
+        return new OrganizationContextResolver(jwtTokenProvider, userRepository, membershipRepository, contextHolder, entityManager, permissionService);
+    }
+
+    @Bean
     public org.springframework.security.core.userdetails.UserDetailsService userDetailsService() {
         return email -> {
             tz.elmkusoma.shared.domain.User user = userRepository.findByEmailAndIsDeletedFalse(email)
@@ -79,19 +87,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
-        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(filter);
-        registration.setEnabled(false);
-        return registration;
-    }
-
-    @Bean
-    public FilterRegistrationBean<JwtRequestAttributeFilter> jwtRequestFilterRegistration(JwtRequestAttributeFilter filter) {
-        FilterRegistrationBean<JwtRequestAttributeFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(filter);
-        registration.setEnabled(false);
-        return registration;
+    public OrganizationContextHolder organizationContextHolder() {
+        return new OrganizationContextHolder();
     }
 
     @Bean
@@ -106,6 +103,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(organizationContextResolver(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtRequestAttributeFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -55,4 +55,8 @@ public abstract class BaseEntity {
 
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
+
+    // Protected getter for inheritance
+    protected UUID getIdDirect() { return id; }
+    protected void setIdDirect(UUID id) { this.id = id; }
 }
