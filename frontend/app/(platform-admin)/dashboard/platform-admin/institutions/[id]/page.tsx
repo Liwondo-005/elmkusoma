@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Building2, Loader2, ArrowLeft, Users, GraduationCap, BookOpen, MapPin, Phone, Mail, Calendar, Shield, ShieldOff, ListChecks, CheckCircle2, Circle, AlertCircle, RefreshCw } from "lucide-react"
+import { Building2, Loader2, ArrowLeft, Users, GraduationCap, BookOpen, MapPin, Phone, Mail, Calendar, Shield, ShieldOff, ListChecks, CheckCircle2, Circle, AlertCircle, RefreshCw, Pencil, Trash2 } from "lucide-react"
 import { platformAdminApi, type InstitutionDetail, type OffboardingChecklist } from "@/lib/platform-admin-api"
+import { InstitutionFormModal } from "@/components/platform-admin/institution-form-modal"
 
 export default function InstitutionDetailPage() {
   const params = useParams()
@@ -15,6 +16,8 @@ export default function InstitutionDetailPage() {
   const [toggling, setToggling] = useState(false)
   const [offboarding, setOffboarding] = useState<OffboardingChecklist | null>(null)
   const [offboardingError, setOffboardingError] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const loadOffboarding = useCallback(async (institutionId: string) => {
     setOffboardingError(null)
@@ -46,6 +49,29 @@ export default function InstitutionDetailPage() {
       setError(err instanceof Error ? err.message : "Failed to update status")
     } finally {
       setToggling(false)
+    }
+  }
+
+  const handleEditSaved = async () => {
+    try {
+      const fresh = await platformAdminApi.getInstitution(id)
+      setInst(fresh)
+    } catch {
+      // keep current data; the list page will reflect changes
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!inst) return
+    if (!window.confirm(`Delete "${inst.name}"? This will remove it from the platform.`)) return
+    setDeleting(true)
+    setError(null)
+    try {
+      await platformAdminApi.deleteInstitution(inst.id)
+      router.push("/dashboard/platform-admin/institutions")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete institution")
+      setDeleting(false)
     }
   }
 
@@ -91,18 +117,33 @@ export default function InstitutionDetailPage() {
               </div>
             </div>
           </div>
-          <button
-            onClick={handleToggleStatus}
-            disabled={toggling}
-            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-              inst.isActive
-                ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800"
-                : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800"
-            }`}
-          >
-            {toggling ? <Loader2 className="size-4 animate-spin" /> : inst.isActive ? <ShieldOff className="size-4" /> : <Shield className="size-4" />}
-            {inst.isActive ? "Deactivate" : "Activate"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setEditOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              <Pencil className="size-4" /> Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800"
+            >
+              {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} Delete
+            </button>
+            <button
+              onClick={handleToggleStatus}
+              disabled={toggling}
+              className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
+                inst.isActive
+                  ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800"
+                  : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800"
+              }`}
+            >
+              {toggling ? <Loader2 className="size-4 animate-spin" /> : inst.isActive ? <ShieldOff className="size-4" /> : <Shield className="size-4" />}
+              {inst.isActive ? "Deactivate" : "Activate"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -212,6 +253,13 @@ export default function InstitutionDetailPage() {
           </ul>
         )}
       </div>
+
+      <InstitutionFormModal
+        open={editOpen}
+        institution={inst}
+        onClose={() => setEditOpen(false)}
+        onSaved={handleEditSaved}
+      />
     </div>
   )
 }

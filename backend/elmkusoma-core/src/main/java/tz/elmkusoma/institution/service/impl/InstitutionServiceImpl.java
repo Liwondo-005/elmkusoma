@@ -62,8 +62,9 @@ public class InstitutionServiceImpl implements InstitutionService {
                 .phone(request.getPhone())
                 .address(request.getAddress())
                 .city(request.getCity())
-                .country(request.getCountry())
+                .country(request.getCountry() != null && !request.getCountry().isBlank() ? request.getCountry() : "Tanzania")
                 .isActive(true)
+                .isDeleted(false)
                 .build();
 
         institution = institutionRepository.save(institution);
@@ -77,6 +78,7 @@ public class InstitutionServiceImpl implements InstitutionService {
                 .institutionId(institution.getId())
                 .role(InstitutionMembership.Role.OWNER)
                 .isActive(true)
+                .isDeleted(false)
                 .build();
         membershipRepository.save(membership);
 

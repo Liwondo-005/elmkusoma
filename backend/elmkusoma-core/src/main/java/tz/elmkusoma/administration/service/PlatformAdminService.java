@@ -22,7 +22,9 @@ import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.shared.domain.Institution;
+import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
@@ -102,6 +104,8 @@ public class PlatformAdminService {
     private final tz.elmkusoma.learner.repository.LearnerNotificationRepository learnerNotificationRepository;
     private final PlatformIntegrationService integrationService;
     private final BackupStatusService backupStatusService;
+    private final InstitutionMembershipRepository membershipRepository;
+    private final tz.elmkusoma.config.security.PermissionCacheService permissionCacheService;
 
     // ── Command Center ──
 
@@ -1770,6 +1774,68 @@ public class PlatformAdminService {
     @Transactional(readOnly = true)
     public BackupStatusResponse backupStatus() {
         return backupStatusService.getBackupStatus();
+    }
+
+    // ── Organization Members & Roles ──
+
+    public List<OrgMemberResponse> listInstitutionMembers(UUID institutionId) {
+        if (!institutionRepository.existsById(institutionId)) {
+            throw new ResourceNotFoundException("Institution", "id", institutionId);
+        }
+        return membershipRepository.findByInstitutionIdAndIsActiveTrue(institutionId).stream()
+                .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                .map(this::toOrgMember)
+                .toList();
+    }
+
+    public OrgMemberResponse updateInstitutionMemberRole(UUID institutionId, UUID userId, String newRole) {
+        InstitutionMembership.Role role;
+        try {
+            role = InstitutionMembership.Role.valueOf(newRole.trim().toUpperCase());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid role: " + newRole);
+        }
+        InstitutionMembership membership = membershipRepository.findByUserIdAndIsActiveTrue(userId).stream()
+                .filter(m -> institutionId.equals(m.getInstitutionId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Institution membership", "userId", userId));
+
+        String oldRole = membership.getRole() != null ? membership.getRole().name() : null;
+        membership.setRole(role);
+        membershipRepository.save(membership);
+
+        try {
+            permissionCacheService.invalidateUserPermissions(userId, institutionId);
+            permissionCacheService.invalidateUserRole(userId, institutionId);
+            permissionCacheService.invalidateMembership(userId, institutionId);
+        } catch (Exception cacheEx) {
+            log.warn("Permission cache invalidation skipped (cache unavailable): {}", cacheEx.getMessage());
+        }
+
+        Map<String, Object> oldVals = new HashMap<>();
+        oldVals.put("membershipRole", oldRole != null ? oldRole : "");
+        Map<String, Object> newVals = new HashMap<>();
+        newVals.put("membershipRole", role.name());
+        writeAudit(institutionId, "USER", userId, "Organization member role", "UPDATE", oldVals, newVals);
+        log.info("Organization member role changed: user {} in institution {} : {} -> {}",
+                userId, institutionId, oldRole, role.name());
+
+        return toOrgMember(membership);
+    }
+
+    private OrgMemberResponse toOrgMember(InstitutionMembership m) {
+        User u = userRepository.findById(m.getUserId()).orElse(null);
+        return OrgMemberResponse.builder()
+                .userId(m.getUserId())
+                .fullName(u != null ? u.getFullName() : null)
+                .email(u != null ? u.getEmail() : null)
+                .phone(u != null ? u.getPhone() : null)
+                .userRole(u != null && u.getRole() != null ? u.getRole().name() : null)
+                .membershipRole(m.getRole() != null ? m.getRole().name() : null)
+                .isActive(m.getIsActive())
+                .userActive(u != null ? u.getIsActive() : null)
+                .joinedAt(m.getCreatedAt())
+                .build();
     }
 
     // ── Mappers ──

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,6 +15,9 @@ import tz.elmkusoma.administration.service.PlatformAdminService;
 import tz.elmkusoma.audit.dto.ActivityFeedResponse;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
+import tz.elmkusoma.institution.dto.request.CreateInstitutionRequest;
+import tz.elmkusoma.institution.dto.request.UpdateInstitutionRequest;
+import tz.elmkusoma.institution.dto.response.InstitutionResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +32,7 @@ public class PlatformAdminController {
     private final PlatformAdminService platformAdminService;
     private final tz.elmkusoma.administration.service.PlatformCommerceService platformCommerceService;
     private final tz.elmkusoma.certificate.service.CertificateGovernanceService certificateGovernanceService;
+    private final tz.elmkusoma.institution.service.InstitutionService institutionService;
 
     private static UUID actorId(HttpServletRequest request) {
         Object id = request.getAttribute("userId");
@@ -132,6 +137,54 @@ public class PlatformAdminController {
             @RequestParam boolean active) {
         InstitutionSummaryResponse response = platformAdminService.updateInstitutionStatus(institutionId, active);
         return ResponseEntity.ok(ApiResponse.success("Institution status updated", response));
+    }
+
+    @PostMapping("/institutions")
+    @Operation(summary = "Create a new institution")
+    public ResponseEntity<ApiResponse<InstitutionResponse>> createInstitution(
+            HttpServletRequest request,
+            @Valid @RequestBody CreateInstitutionRequest req) {
+        UUID ownerUserId = actorId(request);
+        if (ownerUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authenticated user not found", "UNAUTHORIZED"));
+        }
+        InstitutionResponse response = institutionService.createInstitution(req, ownerUserId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Institution created successfully", response));
+    }
+
+    @PutMapping("/institutions/{institutionId}")
+    @Operation(summary = "Update institution details")
+    public ResponseEntity<ApiResponse<InstitutionResponse>> updateInstitution(
+            @PathVariable UUID institutionId,
+            @Valid @RequestBody UpdateInstitutionRequest req) {
+        InstitutionResponse response = institutionService.updateInstitution(institutionId, req);
+        return ResponseEntity.ok(ApiResponse.success("Institution updated successfully", response));
+    }
+
+    @DeleteMapping("/institutions/{institutionId}")
+    @Operation(summary = "Soft-delete an institution")
+    public ResponseEntity<ApiResponse<Void>> deleteInstitution(@PathVariable UUID institutionId) {
+        institutionService.deleteInstitution(institutionId);
+        return ResponseEntity.ok(ApiResponse.success("Institution deleted successfully", null));
+    }
+
+    @GetMapping("/institutions/{institutionId}/members")
+    @Operation(summary = "List organization members and their roles")
+    public ResponseEntity<ApiResponse<List<OrgMemberResponse>>> listInstitutionMembers(
+            @PathVariable UUID institutionId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.listInstitutionMembers(institutionId)));
+    }
+
+    @PutMapping("/institutions/{institutionId}/members/{userId}/role")
+    @Operation(summary = "Change a member's role within the organization")
+    public ResponseEntity<ApiResponse<OrgMemberResponse>> updateInstitutionMemberRole(
+            @PathVariable UUID institutionId,
+            @PathVariable UUID userId,
+            @RequestParam String role) {
+        OrgMemberResponse response = platformAdminService.updateInstitutionMemberRole(institutionId, userId, role);
+        return ResponseEntity.ok(ApiResponse.success("Member role updated", response));
     }
 
     // ── Live Classes ──

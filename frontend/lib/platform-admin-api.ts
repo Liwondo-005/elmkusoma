@@ -112,6 +112,63 @@ export interface InstitutionDetail extends InstitutionSummary {
   totalTeachers: number
 }
 
+export interface InstitutionFormPayload {
+  name: string
+  type: string
+  description?: string
+  logoUrl?: string
+  website?: string
+  email?: string
+  phone?: string
+  address?: string
+  city?: string
+  country?: string
+}
+
+export const INSTITUTION_TYPES = [
+  "NATIONAL",
+  "NURSERY",
+  "PRIMARY",
+  "SECONDARY",
+  "SCHOOL",
+  "COLLEGE",
+  "VOCATIONAL",
+  "UNIVERSITY",
+  "TRAINING_PROVIDER",
+  "PROFESSIONAL_BODY",
+  "COMPANY",
+  "NGO",
+  "GOVERNMENT",
+  "CONTENT_PROVIDER",
+  "EVENT_PROVIDER",
+  "COMMUNITY_SCHOOL",
+  "ADULT_EDUCATION",
+] as const
+
+export interface OrgMember {
+  userId: string
+  fullName: string | null
+  email: string | null
+  phone: string | null
+  userRole: string | null
+  membershipRole: string | null
+  isActive: boolean | null
+  userActive: boolean | null
+  joinedAt: string | null
+}
+
+export const ORG_MEMBER_ROLES = [
+  "OWNER",
+  "INSTITUTION_ADMIN",
+  "ADMIN",
+  "NATIONAL_ADMIN",
+  "TEACHER",
+  "INSTRUCTOR",
+  "STUDENT",
+  "PARENT",
+  "OTHER_LEARNER",
+] as const
+
 export interface LiveClassSummary {
   id: string
   title: string
@@ -454,6 +511,19 @@ export const platformAdminApi = {
     platformFetch<InstitutionSummary>(`/v1/platform-admin/institutions/${id}/status?active=${active}`, { method: "PUT" }),
   updateInstitutionLifecycle: (id: string, status: string) =>
     platformFetch<InstitutionSummary>(`/v1/platform-admin/institutions/${id}/lifecycle`, { method: "PUT", body: JSON.stringify({ status }) }),
+  createInstitution: (payload: InstitutionFormPayload) =>
+    platformFetch<InstitutionDetail>(`/v1/platform-admin/institutions`, { method: "POST", body: JSON.stringify(payload) }),
+  updateInstitution: (id: string, payload: InstitutionFormPayload) =>
+    platformFetch<InstitutionDetail>(`/v1/platform-admin/institutions/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteInstitution: (id: string) =>
+    platformFetch<null>(`/v1/platform-admin/institutions/${id}`, { method: "DELETE" }),
+  listOrgMembers: (institutionId: string) =>
+    platformFetch<OrgMember[]>(`/v1/platform-admin/institutions/${institutionId}/members`),
+  updateOrgMemberRole: (institutionId: string, userId: string, role: string) =>
+    platformFetch<OrgMember>(
+      `/v1/platform-admin/institutions/${institutionId}/members/${userId}/role?role=${encodeURIComponent(role)}`,
+      { method: "PUT" }
+    ),
 
   getProviderQuotas: (providerId: string) =>
     platformFetch<ProviderQuota[]>(`/v1/platform-admin/providers/${providerId}/quotas`),
