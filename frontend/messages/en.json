@@ -5349,7 +5349,10 @@
       "noOrganizationsAvailableOrganizations": "No organizations available. Organizations are sourced from institutions + providers; use type filter COMPANY / NGO.",
       "dataUnavailablePerSpec": "Data unavailable per spec §13 when empty.",
       "prev": "Prev",
-      "allTypes": "All types"
+      "allTypes": "All types",
+      "addOrganization": "Add Organization",
+      "deactivate": "Deactivate",
+      "activate": "Activate"
     },
     "packages": {
       "pageOfPackages": "Page {p0} of {p1} · {p2} packages",

@@ -5233,7 +5233,10 @@
       "noOrganizationsAvailableOrganizations": "Hakuna mashirika inapatikana. Mashirika are sourced from taasisi + watoa huduma; use type chuja COMPANY / NGO.",
       "dataUnavailablePerSpec": "Data haipatikani per spec §13 when empty.",
       "prev": "Prev",
-      "allTypes": "Aina zote"
+      "allTypes": "Aina zote",
+      "addOrganization": "Ongeza Mshirika",
+      "deactivate": "Futa Mshirika",
+      "activate": "Faulu Mshirika"
     },
     "packages": {
       "pageOfPackages": "Ukurasa {p0} kati ya {p1} · vifurushi {p2}",
