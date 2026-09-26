@@ -83,10 +83,12 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public CourseResponse getCourseById(UUID courseId, UUID institutionId) {
-        Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+        Course course = courseRepository.findById(courseId).orElse(null);
 
-        if (!course.getInstitutionId().equals(institutionId)) {
+        // Deny-by-scope: an unknown course or one outside the caller's institution is
+        // reported as forbidden so cross-institution probing cannot use 404-vs-403 as
+        // an existence oracle (same contract as the media and event detail endpoints).
+        if (course == null || !course.getInstitutionId().equals(institutionId)) {
             throw new ForbiddenException("course", "access");
         }
 
