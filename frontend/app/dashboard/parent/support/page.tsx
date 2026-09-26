@@ -1,20 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { LifeBuoy, Loader2, Plus, Send, ChevronDown, ChevronUp } from "lucide-react"
 import { parentApi, type SupportTicketItem } from "@/lib/parent-api"
 
-const CATEGORIES = [
-  { value: "LEARNING", label: "Learning" },
-  { value: "PAYMENT", label: "Payment" },
-  { value: "LIVE_CLASS", label: "Live Class" },
-  { value: "TECHNICAL", label: "Technical Problem" },
-  { value: "TEACHER_COMMUNICATION", label: "Teacher Communication" },
-  { value: "ACCOUNT", label: "Account" },
-  { value: "OTHER", label: "Other" },
-]
-
 export default function ParentSupportPage() {
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
   const [tickets, setTickets] = useState<SupportTicketItem[]>([])
   const [openCount, setOpenCount] = useState(0)
   const [resolvedCount, setResolvedCount] = useState(0)
@@ -25,6 +19,23 @@ export default function ParentSupportPage() {
   const [newMessage, setNewMessage] = useState("")
   const [form, setForm] = useState({ subject: "", description: "", category: "LEARNING", priority: "NORMAL" })
   const [submitting, setSubmitting] = useState(false)
+
+  const CATEGORIES = [
+    { value: "LEARNING", label: tn("learning") },
+    { value: "PAYMENT", label: tn("payments") },
+    { value: "LIVE_CLASS", label: tn("liveClasses") },
+    { value: "TECHNICAL", label: t("support.catTechnical") },
+    { value: "TEACHER_COMMUNICATION", label: t("support.catTeacherComm") },
+    { value: "ACCOUNT", label: tn("account") },
+    { value: "OTHER", label: t("support.catOther") },
+  ]
+
+  const PRIORITIES = [
+    { value: "LOW", label: t("support.priorityLow") },
+    { value: "NORMAL", label: t("support.priorityNormal") },
+    { value: "HIGH", label: t("support.priorityHigh") },
+    { value: "URGENT", label: t("support.priorityUrgent") },
+  ]
 
   useEffect(() => {
     loadTickets()
@@ -76,51 +87,48 @@ export default function ParentSupportPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Support Center</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{openCount} open &middot; {resolvedCount} resolved</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("support.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("support.subtitle", { open: openCount, resolved: resolvedCount })}</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-          <Plus className="size-4" /> New Ticket
+          <Plus className="size-4" /> {t("support.newTicket")}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleCreate} className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">Subject</label>
+            <label className="text-sm font-medium text-foreground">{t("support.subjectLabel")}</label>
             <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Brief description of your issue" />
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder={t("support.subjectPlaceholder")} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-foreground">Category</label>
+              <label className="text-sm font-medium text-foreground">{t("support.categoryLabel")}</label>
               <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
                 {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Priority</label>
+              <label className="text-sm font-medium text-foreground">{t("support.priorityLabel")}</label>
               <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                <option value="LOW">Low</option>
-                <option value="NORMAL">Normal</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
+                {PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Description</label>
+            <label className="text-sm font-medium text-foreground">{t("support.descLabel")}</label>
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required rows={4}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Describe your issue in detail" />
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder={t("support.descPlaceholder")} />
           </div>
           <div className="flex gap-2">
             <button type="submit" disabled={submitting} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-              {submitting ? "Submitting..." : "Submit Ticket"}
+              {submitting ? t("support.submitting") : t("support.submitTicket")}
             </button>
             <button type="button" onClick={() => setShowForm(false)} className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">
-              Cancel
+              {tc("cancel")}
             </button>
           </div>
         </form>
@@ -129,8 +137,8 @@ export default function ParentSupportPage() {
       {tickets.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <LifeBuoy className="mx-auto mb-3 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No support tickets</p>
-          <p className="mt-1 text-xs text-muted-foreground">Create a ticket if you need help.</p>
+          <p className="text-sm font-medium text-foreground">{t("support.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("support.emptyDesc")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -164,8 +172,8 @@ export default function ParentSupportPage() {
                   {ticket.status === "OPEN" && (
                     <div className="mt-3 flex gap-2">
                       <input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSendMessage(ticket.id)}
-                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Type a message..." />
-                      <button onClick={() => handleSendMessage(ticket.id)} className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder={t("support.messagePlaceholder")} />
+                      <button onClick={() => handleSendMessage(ticket.id)} aria-label={t("support.sendMessage")} className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                         <Send className="size-4" />
                       </button>
                     </div>

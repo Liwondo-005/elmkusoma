@@ -105,6 +105,27 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
                             }
                         }
 
+                        // Cross-institution header denial: an authenticated request that
+                        // explicitly names an institution the caller has no membership in
+                        // must be rejected outright instead of silently falling back to the
+                        // caller's own institution (which would let IDOR probing succeed).
+                        String requestedHeader = request.getHeader(HEADER_INSTITUTION_ID);
+                        if (requestedHeader == null) {
+                            requestedHeader = request.getHeader(HEADER_INSTITUTION_ID_ALT);
+                        }
+                        if (StringUtils.hasText(requestedHeader)
+                                && (targetInstitutionId == null
+                                    || !requestedHeader.equalsIgnoreCase(targetInstitutionId.toString()))) {
+                            log.warn("Cross-institution header denied for user {}: header={} resolved={}",
+                                    user.getId(), requestedHeader, targetInstitutionId);
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+                            response.setCharacterEncoding("UTF-8");
+                            response.getWriter().write(
+                                    "{\"success\":false,\"message\":\"Access to the requested institution is not permitted\"}");
+                            return;
+                        }
+
                         if (targetInstitutionId != null) {
                             // Ensure we have an activeMembership for the context
                             if (activeMembership == null) {

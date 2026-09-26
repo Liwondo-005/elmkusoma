@@ -5,22 +5,29 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { useTranslations } from "next-intl"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
 import { Mail, Clock, MapPin, CheckCircle } from "lucide-react"
 
-const contactSchema = z.object({
-  name: z.string().min(1, "Name is required").min(2, "Name must be at least 2 characters"),
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
-  subject: z.string().min(1, "Subject is required").min(3, "Subject must be at least 3 characters"),
-  message: z.string().min(1, "Message is required").min(10, "Message must be at least 10 characters"),
-})
-
-type ContactValues = z.infer<typeof contactSchema>
+type ContactValues = {
+  name: string
+  email: string
+  subject: string
+  message: string
+}
 
 export default function ContactPage() {
+  const t = useTranslations("public")
   const [submitted, setSubmitted] = useState(false)
+
+  const contactSchema = z.object({
+    name: z.string().min(1, t("contact.nameRequired")).min(2, t("contact.nameTooShort")),
+    email: z.string().min(1, t("contact.emailRequired")).email(t("contact.emailInvalid")),
+    subject: z.string().min(1, t("contact.subjectRequired")).min(3, t("contact.subjectTooShort")),
+    message: z.string().min(1, t("contact.messageRequired")).min(10, t("contact.messageTooShort")),
+  })
 
   const {
     register,
@@ -50,11 +57,10 @@ export default function ContactPage() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <h1 className="text-balance text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
-                Get in touch
+                {t("contact.title")}
               </h1>
               <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground">
-                Have a question, suggestion or partnership inquiry? We&apos;d love to hear from you.
-                Our team typically responds within 24 hours.
+                {t("contact.subtitle")}
               </p>
             </div>
           </div>
@@ -66,17 +72,17 @@ export default function ContactPage() {
               {/* Contact details */}
               <div>
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                  Contact Information
+                  {t("contact.infoTitle")}
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  Reach out to us through any of the channels below, or fill out the form and we&apos;ll get back to you.
+                  {t("contact.infoDesc")}
                 </p>
 
                 <div className="mt-8 space-y-6">
                   <div className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-center gap-2">
                       <Mail className="size-4 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold text-foreground">Email</h3>
+                      <h3 className="text-sm font-semibold text-foreground">{t("contact.emailTitle")}</h3>
                     </div>
                     <a
                       href="mailto:info@elmkusoma.co.tz"
@@ -85,24 +91,24 @@ export default function ContactPage() {
                       info@elmkusoma.co.tz
                     </a>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      For general inquiries, support and partnerships
+                      {t("contact.emailDesc")}
                     </p>
                   </div>
 
                   <div className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-center gap-2">
                       <Clock className="size-4 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold text-foreground">Response Time</h3>
+                      <h3 className="text-sm font-semibold text-foreground">{t("contact.responseTitle")}</h3>
                     </div>
                     <p className="mt-1.5 text-sm text-muted-foreground">
-                      We aim to respond within 24 hours on business days.
+                      {t("contact.responseDesc")}
                     </p>
                   </div>
 
                   <div className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-center gap-2">
                       <MapPin className="size-4 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold text-foreground">Location</h3>
+                      <h3 className="text-sm font-semibold text-foreground">{t("contact.locationTitle")}</h3>
                     </div>
                     <p className="mt-1.5 text-sm text-muted-foreground">
                       Dar es Salaam, Tanzania
@@ -118,37 +124,37 @@ export default function ContactPage() {
                     <div className="flex size-14 items-center justify-center rounded-full bg-teal/10">
                       <CheckCircle className="size-7 text-teal" />
                     </div>
-                    <h2 className="mt-4 text-xl font-bold text-foreground">Your email app should be open</h2>
+                    <h2 className="mt-4 text-xl font-bold text-foreground">{t("contact.mailtoTitle")}</h2>
                     <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                      We&apos;ve prepared your message to{" "}
+                      {t("contact.mailtoDescPrefix")}{" "}
                       <a href="mailto:info@elmkusoma.co.tz" className="font-medium text-primary hover:underline">
                         info@elmkusoma.co.tz
                       </a>
-                      . Press send there to reach us — if nothing opened, email us directly.
+                      {t("contact.mailtoDescSuffix")}
                     </p>
                     <Button onClick={() => setSubmitted(false)} variant="outline" className="mt-6">
-                      Back to Form
+                      {t("contact.backToForm")}
                     </Button>
                   </div>
                 ) : (
                   <>
                     <h2 className="text-xl font-bold tracking-tight text-foreground">
-                      Send us a message
+                      {t("contact.formTitle")}
                     </h2>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Fill out the form below and we&apos;ll respond as soon as possible.
+                      {t("contact.formDesc")}
                     </p>
 
                     <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)}>
                       <div className="grid gap-5 sm:grid-cols-2">
                         <div>
                           <label htmlFor="name" className="block text-sm font-medium text-foreground">
-                            Your Name
+                            {t("contact.nameLabel")}
                           </label>
                           <input
                             id="name"
                             type="text"
-                            placeholder="Enter your name"
+                            placeholder={t("contact.namePlaceholder")}
                             {...register("name")}
                             className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                           />
@@ -159,7 +165,7 @@ export default function ContactPage() {
 
                         <div>
                           <label htmlFor="email" className="block text-sm font-medium text-foreground">
-                            Email Address
+                            {t("contact.emailLabel")}
                           </label>
                           <input
                             id="email"
@@ -176,12 +182,12 @@ export default function ContactPage() {
 
                       <div>
                         <label htmlFor="subject" className="block text-sm font-medium text-foreground">
-                          Subject
+                          {t("contact.subjectLabel")}
                         </label>
                         <input
                           id="subject"
                           type="text"
-                          placeholder="How can we help?"
+                          placeholder={t("contact.subjectPlaceholder")}
                           {...register("subject")}
                           className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                         />
@@ -192,12 +198,12 @@ export default function ContactPage() {
 
                       <div>
                         <label htmlFor="message" className="block text-sm font-medium text-foreground">
-                          Message
+                          {t("contact.messageLabel")}
                         </label>
                         <textarea
                           id="message"
                           rows={5}
-                          placeholder="Tell us more about your inquiry..."
+                          placeholder={t("contact.messagePlaceholder")}
                           {...register("message")}
                           className="mt-1.5 w-full rounded-lg border border-border bg-muted/60 px-3.5 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background resize-none"
                         />
@@ -207,7 +213,7 @@ export default function ContactPage() {
                       </div>
 
                       <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
-                        {isSubmitting ? "Sending..." : "Send Message"}
+                        {isSubmitting ? t("contact.submitting") : t("contact.submit")}
                       </Button>
                     </form>
                   </>

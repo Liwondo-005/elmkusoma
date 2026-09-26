@@ -2,17 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type ELmkusomaLab } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { FlaskConical, Leaf, Droplets, Zap, Bug, ArrowLeft, Beaker, CheckCircle, Star } from "lucide-react"
 
-const labTypes = [
-  { value: "All", name: "All", icon: FlaskConical, color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200" },
-  { value: "NATURE", name: "Nature", icon: Leaf, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
-  { value: "MATERIALS", name: "Materials", icon: Droplets, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-  { value: "FORCES", name: "Forces", icon: Zap, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" },
-  { value: "LIVING_THINGS", name: "Living Things", icon: Bug, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
-]
 
 const typeColorMap: Record<string, string> = {
   NATURE: "bg-green-100 text-green-700",
@@ -30,6 +24,15 @@ const typeIconMap: Record<string, typeof FlaskConical> = {
 
 export default function LabsPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
+  const labTypes = [
+  { value: "All", name: t("labs.filterAll"), icon: FlaskConical, color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200" },
+  { value: "NATURE", name: t("labs.typeNature"), icon: Leaf, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
+  { value: "MATERIALS", name: t("labs.typeMaterials"), icon: Droplets, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
+  { value: "FORCES", name: t("labs.typeForces"), icon: Zap, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" },
+  { value: "LIVING_THINGS", name: t("labs.typeLiving"), icon: Bug, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
+]
   const [labs, setLabs] = useState<ELmkusomaLab[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedType, setSelectedType] = useState<string>("All")
@@ -92,15 +95,15 @@ export default function LabsPage() {
             <FlaskConical className="size-5 text-teal-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">ELMKUSOMA Labs</h1>
-            <p className="text-sm text-muted-foreground">Explore, experiment, and discover!</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("labs.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("labs.subtitle")}</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <FlaskConical className="size-12 text-muted-foreground/30" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Labs is for Primary learners</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("labs.primaryOnlyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Switch to a primary learner account to start experimenting.
+            {t("labs.primaryOnlyDesc")}
           </p>
         </div>
       </div>
@@ -116,7 +119,7 @@ export default function LabsPage() {
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-4" />
-          Back to Labs
+          {t("labs.backToLabs")}
         </button>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-xs">
@@ -134,13 +137,13 @@ export default function LabsPage() {
 
           <div className="mt-6 space-y-6">
             <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
-              <h3 className="text-sm font-bold text-amber-800">Hypothesis</h3>
+              <h3 className="text-sm font-bold text-amber-800">{t("labs.hypothesis")}</h3>
               <p className="mt-1 text-sm text-amber-700">{selectedLab.hypothesis}</p>
             </div>
 
             <div>
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Beaker className="size-4" /> Materials Needed
+                <Beaker className="size-4" /> {t("labs.materials")}
               </h3>
               <ul className="mt-2 space-y-1">
                 {(selectedLab.materialsList || []).map((m, i) => (
@@ -153,7 +156,7 @@ export default function LabsPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-foreground">Steps</h3>
+              <h3 className="text-sm font-bold text-foreground">{t("labs.steps")}</h3>
               <ol className="mt-2 space-y-2">
                 {(selectedLab.steps || []).map((s, i) => (
                   <li key={i} className="flex gap-3 text-sm text-muted-foreground">
@@ -167,16 +170,16 @@ export default function LabsPage() {
             </div>
 
             <div className="rounded-xl bg-green-50 border border-green-200 p-4">
-              <h3 className="text-sm font-bold text-green-800">Expected Result</h3>
+              <h3 className="text-sm font-bold text-green-800">{t("labs.expected")}</h3>
               <p className="mt-1 text-sm text-green-700">{selectedLab.expectedResult}</p>
             </div>
 
             <div>
-              <label className="text-sm font-bold text-foreground">What I Learned</label>
+              <label className="text-sm font-bold text-foreground">{t("labs.learnedLabel")}</label>
               <textarea
                 value={selectedLab.isAttempted ? selectedLab.studentNotes : notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Write down what you discovered..."
+                placeholder={t("labs.learnedPlaceholder")}
                 rows={4}
                 disabled={selectedLab.isAttempted}
                 className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none disabled:opacity-60"
@@ -187,10 +190,10 @@ export default function LabsPage() {
               {selectedLab.isAttempted ? (
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-2 rounded-lg bg-green-100 px-5 py-2.5 text-sm font-medium text-green-700">
-                    <CheckCircle className="size-4" /> Completed
+                    <CheckCircle className="size-4" /> {ts("completed")}
                   </span>
                   <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600">
-                    <Star className="size-4" /> {selectedLab.score} points
+                    <Star className="size-4" /> {t("labs.pointsCount", { count: selectedLab.score })}
                   </span>
                 </div>
               ) : (
@@ -201,9 +204,7 @@ export default function LabsPage() {
                 >
                   {submitting ? (
                     <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                  ) : (
-                    "Mark as Completed"
-                  )}
+                  ) : t("labs.markCompleted")}
                 </button>
               )}
             </div>
@@ -221,8 +222,8 @@ export default function LabsPage() {
             <FlaskConical className="size-6 text-teal-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">ELMKUSOMA Labs</h1>
-            <p className="text-sm text-muted-foreground">Explore, experiment, and discover!</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("labs.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("labs.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -235,7 +236,7 @@ export default function LabsPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{labs.length}</p>
-              <p className="text-xs text-muted-foreground">Total Labs</p>
+              <p className="text-xs text-muted-foreground">{t("labs.totalLabs")}</p>
             </div>
           </div>
         </div>
@@ -246,7 +247,7 @@ export default function LabsPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{completedCount}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
+              <p className="text-xs text-muted-foreground">{ts("completed")}</p>
             </div>
           </div>
         </div>
@@ -257,7 +258,7 @@ export default function LabsPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{avgScore}</p>
-              <p className="text-xs text-muted-foreground">Avg Score</p>
+              <p className="text-xs text-muted-foreground">{t("labs.avgScore")}</p>
             </div>
           </div>
         </div>
@@ -288,9 +289,9 @@ export default function LabsPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <FlaskConical className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No labs available yet</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("labs.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Check with your teacher! They will create labs for you to explore.
+            {t("labs.emptyDesc")}
           </p>
         </div>
       ) : (
@@ -319,7 +320,7 @@ export default function LabsPage() {
                 <div className="mt-3 flex items-center gap-2">
                   {lab.isAttempted && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                      <CheckCircle className="size-3" /> Done
+                      <CheckCircle className="size-3" /> {t("labs.doneBadge")}
                     </span>
                   )}
                   {lab.isAttempted && (

@@ -1,5 +1,8 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { notFound, useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -10,29 +13,11 @@ import {
   getSubjectsByLevel,
   classNameToSlug,
 } from "@/lib/data"
-import type { Metadata } from "next"
 
-export function generateStaticParams() {
-  return [
-    { level: "nursery" },
-    { level: "primary" },
-    { level: "lower-secondary" },
-    { level: "advanced-secondary" },
-  ]
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ level: string }> }): Promise<Metadata> {
-  const { level } = await params
-  const courseLevel = getCourseLevelBySlug(level)
-  if (!courseLevel) return { title: "Level Not Found — ELMKUSOMA" }
-  return {
-    title: `${courseLevel.name} — ELMKUSOMA`,
-    description: courseLevel.description,
-  }
-}
-
-export default async function LevelPage({ params }: { params: Promise<{ level: string }> }) {
-  const { level } = await params
+export default function CourseLevelPage() {
+  const t = useTranslations("public")
+  const params = useParams()
+  const level = params.level as string
   const courseLevel = getCourseLevelBySlug(level)
   if (!courseLevel) notFound()
 
@@ -52,14 +37,14 @@ export default async function LevelPage({ params }: { params: Promise<{ level: s
               href="/courses"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              All Levels
+              {t("coursesHome.allLevels")}
             </Link>
             <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               {courseLevel.name}
             </h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">{courseLevel.description}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {classes.length} {classes.length === 1 ? "class" : "classes"} &middot; {subjects.length} subjects
+              {t("levelIndex.summary", { classes: classes.length, subjects: subjects.length })}
             </p>
           </div>
         </section>
@@ -79,7 +64,7 @@ export default async function LevelPage({ params }: { params: Promise<{ level: s
                     {className}
                   </h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {count} {count === 1 ? "subject" : "subjects"}
+                    {t("levelIndex.subjectsCount", { count })}
                   </p>
                 </Link>
               )

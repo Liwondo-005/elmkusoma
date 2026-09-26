@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type ReadingAdventure } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { BookOpen, Heart, Clock, Eye, Filter, Star, ArrowLeft } from "lucide-react"
@@ -14,6 +15,8 @@ const levelColors: Record<string, string> = {
 
 export default function ReadingPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [adventures, setAdventures] = useState<ReadingAdventure[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "favorites" | string>("all")
@@ -88,15 +91,15 @@ export default function ReadingPage() {
             <BookOpen className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Reading Adventures</h1>
-            <p className="text-sm text-muted-foreground">Explore stories and grow your mind</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("reading.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("reading.subtitle")}</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <BookOpen className="size-12 text-muted-foreground/30" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Reading Adventures is for Primary learners</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("reading.primaryOnlyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Switch to a primary learner account to start reading.
+            {t("reading.primaryOnlyDesc")}
           </p>
         </div>
       </div>
@@ -111,7 +114,7 @@ export default function ReadingPage() {
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-4" />
-          Back to Adventures
+          {t("reading.backToAdventures")}
         </button>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-xs">
@@ -128,7 +131,7 @@ export default function ReadingPage() {
                   {selectedAdventure.readingLevel}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {selectedAdventure.wordCount} words - {selectedAdventure.readTimeMinutes} min read
+                  {t("reading.metaLine", { words: selectedAdventure.wordCount, mins: selectedAdventure.readTimeMinutes })}
                 </span>
               </div>
             </div>
@@ -154,10 +157,10 @@ export default function ReadingPage() {
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <BookOpen className="size-4" />
-              I finished reading
+              {t("reading.finishedButton")}
             </button>
             <span className="text-sm text-muted-foreground">
-              Read {selectedAdventure.timesRead} {selectedAdventure.timesRead === 1 ? "time" : "times"}
+              {t("reading.timesRead", { count: selectedAdventure.timesRead })}
             </span>
           </div>
         </div>
@@ -173,8 +176,8 @@ export default function ReadingPage() {
             <BookOpen className="size-6 text-blue-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Reading Adventures</h1>
-            <p className="text-sm text-muted-foreground">Explore stories and grow your mind</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("reading.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("reading.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -187,7 +190,7 @@ export default function ReadingPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{totalRead}</p>
-              <p className="text-xs text-muted-foreground">Stories Read</p>
+              <p className="text-xs text-muted-foreground">{t("reading.storiesRead")}</p>
             </div>
           </div>
         </div>
@@ -198,7 +201,7 @@ export default function ReadingPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{totalTime}</p>
-              <p className="text-xs text-muted-foreground">Minutes Reading</p>
+              <p className="text-xs text-muted-foreground">{t("reading.minutesReading")}</p>
             </div>
           </div>
         </div>
@@ -209,7 +212,7 @@ export default function ReadingPage() {
             </div>
             <div>
               <p className="text-lg font-extrabold text-foreground truncate">{topSubject}</p>
-              <p className="text-xs text-muted-foreground">Favorite Subject</p>
+              <p className="text-xs text-muted-foreground">{t("reading.favoriteSubject")}</p>
             </div>
           </div>
         </div>
@@ -225,7 +228,7 @@ export default function ReadingPage() {
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
-          All
+          {t("reading.filterAll")}
         </button>
         <button
           onClick={() => setFilter("favorites")}
@@ -235,7 +238,7 @@ export default function ReadingPage() {
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
-          Favorites
+          {t("reading.filterFavorites")}
         </button>
         {primarySubjects.map((s) => (
           <button
@@ -257,11 +260,11 @@ export default function ReadingPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <BookOpen className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No adventures found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("reading.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
             {filter === "favorites"
-              ? "Mark stories as favorites to see them here."
-              : "New reading adventures will appear here soon. Check back later!"}
+              ? t("reading.emptyFav")
+              : t("reading.emptyDefault")}
           </p>
         </div>
       ) : (
@@ -303,10 +306,10 @@ export default function ReadingPage() {
 
                 <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <BookOpen className="size-3" /> {adventure.wordCount} words
+                    <BookOpen className="size-3" /> {t("reading.wordsCount", { count: adventure.wordCount })}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock className="size-3" /> {adventure.readTimeMinutes} min
+                    <Clock className="size-3" /> {t("reading.minsCount", { count: adventure.readTimeMinutes })}
                   </span>
                   <span className="flex items-center gap-1">
                     <Eye className="size-3" /> {adventure.timesRead}x

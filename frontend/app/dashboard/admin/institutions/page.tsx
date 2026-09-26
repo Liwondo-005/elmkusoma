@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { Building2, Plus, Pencil, Trash2, Loader2, X, Search, MapPin, Globe, Phone, Mail } from "lucide-react"
 import { institutionApi, type Institution, type CreateInstitutionRequest } from "@/lib/api"
@@ -7,6 +9,8 @@ import { institutionApi, type Institution, type CreateInstitutionRequest } from 
 const TYPES = ["PRIMARY", "SECONDARY", "COLLEGE", "UNIVERSITY", "VETA", "OTHER"]
 
 export default function InstitutionsPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [institutions, setInstitutions] = useState<Institution[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -37,7 +41,7 @@ export default function InstitutionsPage() {
       setInstitutions(res.content)
       setTotal(res.totalElements)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load institutions")
+      setError(err instanceof Error ? err.message : t("institutions.failedToLoadInstitutions"))
     } finally {
       setLoading(false)
     }
@@ -65,7 +69,7 @@ export default function InstitutionsPage() {
       resetForm()
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save institution")
+      setError(err instanceof Error ? err.message : t("institutions.failedToSaveInstitution"))
     } finally {
       setSaving(false)
     }
@@ -93,7 +97,7 @@ export default function InstitutionsPage() {
       setDeleteConfirm(null)
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete institution")
+      setError(err instanceof Error ? err.message : t("institutions.failedToDeleteInstitution"))
     }
   }
 
@@ -107,16 +111,15 @@ export default function InstitutionsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Institutions</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage schools and education institutions.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("institutions.institutions2")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("institutions.manageSchoolsAndEducation")}</p>
         </div>
         <button
           onClick={() => { resetForm(); setShowForm(true) }}
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="size-4" />
-          Add Institution
-        </button>
+          {t("institutions.addInstitution")}</button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -124,13 +127,13 @@ export default function InstitutionsPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search institutions..."
+            placeholder={t("institutions.searchInstitutions")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <span className="text-sm text-muted-foreground">{total} institutions</span>
+        <span className="text-sm text-muted-foreground">{t("institutions.institutions", { p0: total })}</span>
       </div>
 
       {error && (
@@ -144,9 +147,9 @@ export default function InstitutionsPage() {
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-12 text-center">
           <Building2 className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No institutions found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("institutions.noInstitutionsFound")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {searchQuery ? "Try a different search term." : "Add your first institution to get started."}
+            {searchQuery ? t("institutions.tryADifferentSearch") : t("institutions.addYourFirstInstitution")}
           </p>
         </div>
       ) : (
@@ -169,8 +172,8 @@ export default function InstitutionsPage() {
                   </button>
                   {deleteConfirm === inst.id ? (
                     <div className="flex items-center gap-1">
-                      <button onClick={() => handleDelete(inst.id)} className="rounded-lg bg-destructive px-2 py-1 text-xs text-destructive-foreground">Delete</button>
-                      <button onClick={() => setDeleteConfirm(null)} className="rounded-lg bg-muted px-2 py-1 text-xs">Cancel</button>
+                      <button onClick={() => handleDelete(inst.id)} className="rounded-lg bg-destructive px-2 py-1 text-xs text-destructive-foreground">{tc("delete")}</button>
+                      <button onClick={() => setDeleteConfirm(null)} className="rounded-lg bg-muted px-2 py-1 text-xs">{tc("cancel")}</button>
                     </div>
                   ) : (
                     <button onClick={() => setDeleteConfirm(inst.id)} className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
@@ -205,9 +208,9 @@ export default function InstitutionsPage() {
 
       {total > 20 && (
         <div className="flex items-center justify-center gap-2">
-          <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="rounded-lg border border-border px-3 py-1.5 text-sm disabled:opacity-50">Prev</button>
-          <span className="text-sm text-muted-foreground">Page {page + 1} of {Math.ceil(total / 20)}</span>
-          <button onClick={() => setPage((p) => p + 1)} disabled={(page + 1) * 20 >= total} className="rounded-lg border border-border px-3 py-1.5 text-sm disabled:opacity-50">Next</button>
+          <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="rounded-lg border border-border px-3 py-1.5 text-sm disabled:opacity-50">{t("institutions.prev")}</button>
+          <span className="text-sm text-muted-foreground">{t("institutions.pageOf", { p0: page + 1, p1: Math.ceil(total / 20) })}</span>
+          <button onClick={() => setPage((p) => p + 1)} disabled={(page + 1) * 20 >= total} className="rounded-lg border border-border px-3 py-1.5 text-sm disabled:opacity-50">{tc("next")}</button>
         </div>
       )}
 
@@ -215,57 +218,57 @@ export default function InstitutionsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{editing ? "Edit Institution" : "Add Institution"}</h2>
+              <h2 className="text-lg font-semibold">{editing ? t("institutions.editInstitution") : t("institutions.addInstitution2")}</h2>
               <button onClick={() => { setShowForm(false); resetForm() }} className="rounded-lg p-1 hover:bg-muted"><X className="size-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">Name *</label>
+                <label className="mb-1 block text-sm font-medium">{t("institutions.name")}</label>
                 <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Type *</label>
+                <label className="mb-1 block text-sm font-medium">{t("institutions.type")}</label>
                 <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring">
                   {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Description</label>
+                <label className="mb-1 block text-sm font-medium">{t("institutions.description")}</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Email</label>
+                  <label className="mb-1 block text-sm font-medium">{t("institutions.email")}</label>
                   <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Phone</label>
+                  <label className="mb-1 block text-sm font-medium">{t("institutions.phone")}</label>
                   <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Address</label>
+                <label className="mb-1 block text-sm font-medium">{t("institutions.address")}</label>
                 <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">City</label>
+                  <label className="mb-1 block text-sm font-medium">{t("institutions.city")}</label>
                   <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Country</label>
+                  <label className="mb-1 block text-sm font-medium">{t("institutions.country")}</label>
                   <input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Website</label>
+                <label className="mb-1 block text-sm font-medium">{t("institutions.website")}</label>
                 <input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">Cancel</button>
+                <button type="button" onClick={() => { setShowForm(false); resetForm() }} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{tc("cancel")}</button>
                 <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                   {saving && <Loader2 className="size-4 animate-spin" />}
-                  {editing ? "Save Changes" : "Create"}
+                  {editing ? t("institutions.saveChanges") : tc("create")}
                 </button>
               </div>
             </form>

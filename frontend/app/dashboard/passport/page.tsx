@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type StudentBadge, type PortfolioItem, type LearningPassport } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Map, Globe, Plane, Rocket, Flag, Star, Trophy, Compass } from "lucide-react"
@@ -14,36 +15,38 @@ const stages = [
   { name: "Space Explorer", flag: "SE", icon: Rocket, color: "text-red-600", bgColor: "bg-red-50", requiredStamps: 25 },
 ]
 
-const milestoneStamps = [
-  { id: "first-lesson", name: "First Lesson", description: "Complete your first lesson", threshold: 1 },
-  { id: "5-lessons", name: "5 Lessons Done", description: "Complete 5 lessons", threshold: 5 },
-  { id: "10-lessons", name: "Knowledge Seeker", description: "Complete 10 lessons", threshold: 10 },
-  { id: "25-lessons", name: "Star Learner", description: "Complete 25 lessons", threshold: 25 },
-  { id: "50-lessons", name: "Master Scholar", description: "Complete 50 lessons", threshold: 50 },
-  { id: "first-badge", name: "Badge Collector", description: "Earn your first badge", threshold: 1 },
-  { id: "5-badges", name: "Badge Master", description: "Earn 5 badges", threshold: 5 },
-  { id: "first-project", name: "Creator", description: "Submit your first project", threshold: 1 },
-  { id: "3-projects", name: "Builder", description: "Submit 3 projects", threshold: 3 },
-  { id: "perfect-score", name: "Perfect Score", description: "Get 100% on any lesson", threshold: 1 },
-  { id: "week-streak", name: "Week Warrior", description: "Maintain a 7-day streak", threshold: 7 },
-  { id: "month-streak", name: "Monthly Champion", description: "Maintain a 30-day streak", threshold: 30 },
-  { id: "all-subjects", name: "All-Rounder", description: "Try all 8 subjects", threshold: 8 },
-  { id: "100-questions", name: "Quiz Master", description: "Answer 100 questions", threshold: 100 },
-  { id: "first-essay", name: "Young Writer", description: "Write your first essay", threshold: 1 },
-  { id: "3-essays", name: "Storyteller", description: "Write 3 essays", threshold: 3 },
-  { id: "10-photos", name: "Photographer", description: "Upload 10 photos", threshold: 10 },
-  { id: "help-friend", name: "Helper", description: "Help a classmate", threshold: 1 },
-  { id: "attended-live", name: "Live Learner", description: "Attend a live class", threshold: 1 },
-  { id: "reading-1hr", name: "Bookworm", description: "Read for 1 hour total", threshold: 60 },
-  { id: "math-wizard", name: "Math Wizard", description: "Complete 10 math lessons", threshold: 10 },
-  { id: "science-explorer", name: "Science Explorer", description: "Complete 10 science lessons", threshold: 10 },
-  { id: "english-pro", name: "English Pro", description: "Complete 10 English lessons", threshold: 10 },
-  { id: "kiswahili-master", name: "Kiswahili Master", description: "Complete 10 Kiswahili lessons", threshold: 10 },
-  { id: "attendance-star", name: "Attendance Star", description: "Attend 30 days in a row", threshold: 30 },
-]
 
 export default function PassportPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const milestoneStamps = [
+  { id: "first-lesson", name: t("passport.ms0n"), description: t("passport.ms0d"), threshold: 1 },
+  { id: "5-lessons", name: t("passport.ms1n"), description: t("passport.ms1d"), threshold: 5 },
+  { id: "10-lessons", name: t("passport.ms2n"), description: t("passport.ms2d"), threshold: 10 },
+  { id: "25-lessons", name: t("passport.ms3n"), description: t("passport.ms3d"), threshold: 25 },
+  { id: "50-lessons", name: t("passport.ms4n"), description: t("passport.ms4d"), threshold: 50 },
+  { id: "first-badge", name: t("passport.ms5n"), description: t("passport.ms5d"), threshold: 1 },
+  { id: "5-badges", name: t("passport.ms6n"), description: t("passport.ms6d"), threshold: 5 },
+  { id: "first-project", name: t("passport.ms7n"), description: t("passport.ms7d"), threshold: 1 },
+  { id: "3-projects", name: t("passport.ms8n"), description: t("passport.ms8d"), threshold: 3 },
+  { id: "perfect-score", name: t("passport.ms9n"), description: t("passport.ms9d"), threshold: 1 },
+  { id: "week-streak", name: t("passport.ms10n"), description: t("passport.ms10d"), threshold: 7 },
+  { id: "month-streak", name: t("passport.ms11n"), description: t("passport.ms11d"), threshold: 30 },
+  { id: "all-subjects", name: t("passport.ms12n"), description: t("passport.ms12d"), threshold: 8 },
+  { id: "100-questions", name: t("passport.ms13n"), description: t("passport.ms13d"), threshold: 100 },
+  { id: "first-essay", name: t("passport.ms14n"), description: t("passport.ms14d"), threshold: 1 },
+  { id: "3-essays", name: t("passport.ms15n"), description: t("passport.ms15d"), threshold: 3 },
+  { id: "10-photos", name: t("passport.ms16n"), description: t("passport.ms16d"), threshold: 10 },
+  { id: "help-friend", name: t("passport.ms17n"), description: t("passport.ms17d"), threshold: 1 },
+  { id: "attended-live", name: t("passport.ms18n"), description: t("passport.ms18d"), threshold: 1 },
+  { id: "reading-1hr", name: t("passport.ms19n"), description: t("passport.ms19d"), threshold: 60 },
+  { id: "math-wizard", name: t("passport.ms20n"), description: t("passport.ms20d"), threshold: 10 },
+  { id: "science-explorer", name: t("passport.ms21n"), description: t("passport.ms21d"), threshold: 10 },
+  { id: "english-pro", name: t("passport.ms22n"), description: t("passport.ms22d"), threshold: 10 },
+  { id: "kiswahili-master", name: t("passport.ms23n"), description: t("passport.ms23d"), threshold: 10 },
+  { id: "attendance-star", name: t("passport.ms24n"), description: t("passport.ms24d"), threshold: 30 },
+]
+  const ts = useTranslations("status")
   const [badges, setBadges] = useState<StudentBadge[]>([])
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([])
   const [passport, setPassport] = useState<LearningPassport | null>(null)
@@ -136,8 +139,8 @@ export default function PassportPage() {
           <Map className="size-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Learning Passport</h1>
-          <p className="text-sm text-muted-foreground">Your learning adventure around the world!</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("passport.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("passport.subtitle")}</p>
         </div>
       </div>
 
@@ -147,17 +150,17 @@ export default function PassportPage() {
         <div className="relative p-8">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-amber-700">
             <Map className="size-4" />
-            Official Learning Passport
+            {t("passport.official")}
           </div>
           <h2 className="mt-3 text-3xl font-bold text-foreground">
-            {user?.name || "Student"}
+            {user?.name || t("passport.studentFallback")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Level: {level || "Primary"} Learner
+            {t("passport.levelLine", { level: level || t("passport.primaryFallback") })}
           </p>
           <div className="mt-4 flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Current Stage:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t("passport.currentStage")}</span>
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${activeStage.bgColor} ${activeStage.color}`}>
                 <activeStage.icon className="size-3" />
                 {activeStage.name}
@@ -170,14 +173,14 @@ export default function PassportPage() {
             </div>
             <div>
               <p className="text-lg font-bold text-foreground">{earnedStampCount}</p>
-              <p className="text-xs text-muted-foreground">Stamps Earned</p>
+              <p className="text-xs text-muted-foreground">{t("journey.stampsEarned")}</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Your Journey</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("passport.journeyTitle")}</h2>
         <div className="relative">
           <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-muted" />
           <div className="space-y-4">
@@ -207,17 +210,17 @@ export default function PassportPage() {
                       </span>
                       {isCompleted && (
                         <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                          Visited
+                          {t("passport.visited")}
                         </span>
                       )}
                       {isActive && (
                         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          Current
+                          {t("passport.current")}
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {stage.requiredStamps === 0 ? "Starting point" : `${stage.requiredStamps} stamps required`}
+                      {stage.requiredStamps === 0 ? t("passport.startingPoint") : t("passport.stampsRequired", { count: stage.requiredStamps })}
                     </p>
                     {isActive && nextStage && (
                       <div className="mt-2">
@@ -228,7 +231,7 @@ export default function PassportPage() {
                           />
                         </div>
                         <p className="mt-1 text-[10px] text-muted-foreground">
-                          {Math.round(progressToNext)}% to {nextStage.name}
+                          {t("passport.progressTo", { pct: Math.round(progressToNext), name: nextStage.name })}
                         </p>
                       </div>
                     )}
@@ -242,9 +245,9 @@ export default function PassportPage() {
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Stamp Collection</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("passport.stampsTitle")}</h2>
           <span className="text-sm text-muted-foreground">
-            {milestoneStamps.filter((_, i) => isStampEarned(i)).length} / {milestoneStamps.length} collected
+            {t("passport.collected", { done: milestoneStamps.filter((_, i) => isStampEarned(i)).length, total: milestoneStamps.length })}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
@@ -292,7 +295,7 @@ export default function PassportPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{earnedStampCount}</p>
-              <p className="text-xs text-muted-foreground">Total Stamps</p>
+              <p className="text-xs text-muted-foreground">{t("passport.totalStamps")}</p>
             </div>
           </div>
         </div>
@@ -303,7 +306,7 @@ export default function PassportPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{activeStage.name}</p>
-              <p className="text-xs text-muted-foreground">Current Stage</p>
+              <p className="text-xs text-muted-foreground">{t("passport.current")} Stage</p>
             </div>
           </div>
         </div>
@@ -314,7 +317,7 @@ export default function PassportPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{badges.length}</p>
-              <p className="text-xs text-muted-foreground">Badges Earned</p>
+              <p className="text-xs text-muted-foreground">{t("passport.badgesEarned")}</p>
             </div>
           </div>
         </div>
@@ -325,9 +328,9 @@ export default function PassportPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <Map className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Start your learning journey!</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("passport.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Complete lessons, earn badges, and collect stamps to fill your passport. Your adventure begins now!
+            {t("passport.emptyDesc")}
           </p>
         </div>
       )}

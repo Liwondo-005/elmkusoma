@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import {
   learnerApi,
   type CourseDetail,
@@ -34,6 +35,8 @@ import {
 
 export default function LessonViewerPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const params = useParams()
   const router = useRouter()
   const courseId = params.id as string
@@ -89,10 +92,10 @@ export default function LessonViewerPage() {
       setCurrentModule(foundModule)
 
       if (!foundLesson) {
-        setError("Lesson not found")
+        setError(t("lesson.notFound"))
       }
     } catch {
-      setError("Failed to load lesson")
+      setError(t("lesson.loadError"))
     } finally {
       setLoading(false)
     }
@@ -171,12 +174,12 @@ export default function LessonViewerPage() {
           href={`/dashboard/learner/courses/${courseId}`}
           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
         >
-          <ArrowLeft className="size-4" /> Back to course
+          <ArrowLeft className="size-4" /> {t("lesson.backLink")}
         </Link>
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="size-4" />
-            {error || "Lesson not found"}
+            {error || t("lesson.notFound")}
           </div>
         </div>
       </div>
@@ -201,7 +204,7 @@ export default function LessonViewerPage() {
           href={`/dashboard/learner/courses/${courseId}`}
           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
         >
-          <ArrowLeft className="size-4" /> {courseData?.course.title || "Course"}
+          <ArrowLeft className="size-4" /> {courseData?.course.title || t("lesson.courseFallback")}
         </Link>
         <div className="flex items-center gap-2">
           <button
@@ -210,11 +213,11 @@ export default function LessonViewerPage() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
           >
             {bookmarked ? <BookmarkCheck className="size-3.5 text-primary" /> : <Bookmark className="size-3.5" />}
-            {bookmarked ? "Saved" : "Save"}
+            {bookmarked ? t("course.saved") : t("course.save")}
           </button>
           {currentModule && (
             <span className="text-xs text-muted-foreground">
-              Module: {currentModule.title}
+              {t("lesson.moduleLine", { title: currentModule.title })}
             </span>
           )}
         </div>
@@ -229,11 +232,11 @@ export default function LessonViewerPage() {
             <h1 className="text-lg font-bold text-foreground">{currentLesson.title}</h1>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-xs text-muted-foreground">
-                Lesson {currentIndex + 1} of {allLessons.length}
+                {t("lesson.countLine", { current: currentIndex + 1, total: allLessons.length })}
               </span>
               {currentLesson.durationMinutes != null && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="size-3" /> {currentLesson.durationMinutes} min
+                  <Clock className="size-3" /> {t("lesson.minsCount", { count: currentLesson.durationMinutes })}
                 </span>
               )}
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
@@ -258,7 +261,7 @@ export default function LessonViewerPage() {
           return (
             <div className="mb-4 overflow-hidden rounded-xl bg-black">
               <video src={currentLesson.contentUrl} controls className="w-full" style={{ maxHeight: 480 }}>
-                Your browser does not support video playback.
+                {t("lesson.noVideo")}
               </video>
             </div>
           )
@@ -281,7 +284,7 @@ export default function LessonViewerPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
             >
               <FileText className="size-4 text-primary" />
-              Open Document
+              {t("lesson.openDoc")}
               <ExternalLink className="size-3 text-muted-foreground" />
             </a>
           </div>
@@ -296,7 +299,7 @@ export default function LessonViewerPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
             >
               <ExternalLink className="size-4 text-primary" />
-              Open External Resource
+              {t("lesson.openExternal")}
             </a>
           </div>
         )}
@@ -305,7 +308,7 @@ export default function LessonViewerPage() {
           <div className="mb-4 rounded-xl border border-border bg-muted/30 p-6 text-center">
             <FileText className="mx-auto size-8 text-primary/40 mb-2" />
             <p className="text-sm text-muted-foreground">
-              This lesson contains a quiz. Assessment features coming soon.
+              {t("lesson.quizSoon")}
             </p>
           </div>
         )}
@@ -314,7 +317,7 @@ export default function LessonViewerPage() {
           <div className="mb-4 rounded-xl border border-border bg-muted/30 p-6 text-center">
             <FileText className="mx-auto size-8 text-primary/40 mb-2" />
             <p className="text-sm text-muted-foreground">
-              This lesson contains an assignment. Submission features coming soon.
+              {t("lesson.assignSoon")}
             </p>
           </div>
         )}
@@ -323,7 +326,7 @@ export default function LessonViewerPage() {
           <div className="mb-4 rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center">
             <BookOpen className="mx-auto size-8 text-muted-foreground/40 mb-2" />
             <p className="text-sm text-muted-foreground">
-              Content is being prepared. Check back later.
+              {t("lesson.preparing")}
             </p>
           </div>
         )}
@@ -341,24 +344,24 @@ export default function LessonViewerPage() {
             {completed ? (
               <>
                 <CheckCircle className="size-4" />
-                Completed
+                {t("lesson.completedBtn")}
               </>
             ) : completing ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Saving...
+                {t("lesson.saving")}
               </>
             ) : (
               <>
                 <CheckCircle className="size-4" />
-                Mark as Complete
+                {t("lesson.markComplete")}
               </>
             )}
           </button>
           {enrollment && (
             <div className="flex-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Course progress</span>
+                <span className="text-muted-foreground">{t("lesson.courseProgress")}</span>
                 <span className="font-semibold text-teal">{enrollment.progressPercentage}%</span>
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -398,14 +401,14 @@ export default function LessonViewerPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition-colors"
           >
             <CheckCircle className="size-4" />
-            Back to Course
+            {t("lesson.backToCourse")}
           </Link>
         )}
       </div>
 
       {allLessons.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-sm font-semibold text-foreground mb-3">All Lessons</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-3">{t("lesson.allLessons")}</h2>
           <div className="space-y-1">
             {allLessons.map((lesson, idx) => (
               <button
@@ -429,7 +432,7 @@ export default function LessonViewerPage() {
                 <span className="truncate">{lesson.title}</span>
                 {lesson.durationMinutes != null && (
                   <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
-                    {lesson.durationMinutes}m
+                    {t("course.minsShort", { count: lesson.durationMinutes })}
                   </span>
                 )}
               </button>

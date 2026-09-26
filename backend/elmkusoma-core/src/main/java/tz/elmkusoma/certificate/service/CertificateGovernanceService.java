@@ -70,7 +70,8 @@ public class CertificateGovernanceService {
                 statusEnum = null;
             }
         }
-        String searchTrim = (search == null || search.isBlank()) ? null : search.trim();
+        // '' (never null): an untyped null :search would reach Postgres as bytea and break LOWER/LIKE.
+        String searchTrim = (search == null || search.isBlank()) ? "" : search.trim();
 
         Page<CertificateSignatory> result = signatoryRepository.search(
                 searchTrim, statusEnum, institutionId, PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "fullName")));
@@ -197,7 +198,8 @@ public class CertificateGovernanceService {
                 typeEnum = null;
             }
         }
-        String searchTrim = (search == null || search.isBlank()) ? null : search.trim();
+        // '' (never null): an untyped null :search would reach Postgres as bytea and break LOWER/LIKE.
+        String searchTrim = (search == null || search.isBlank()) ? "" : search.trim();
 
         Page<CertificateTemplate> result = templateRepository.searchTemplates(
                 searchTrim, typeEnum, institutionId, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));

@@ -1,27 +1,17 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { notFound, useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
-import { colleges, getCollegeBySlug } from "@/lib/data"
-import type { Metadata } from "next"
+import { getCollegeBySlug } from "@/lib/data"
 
-export function generateStaticParams() {
-  return colleges.map((c) => ({ college: c.id }))
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ college: string }> }): Promise<Metadata> {
-  const { college } = await params
-  const c = getCollegeBySlug(college)
-  if (!c) return { title: "Institution Not Found — ELMKUSOMA" }
-  return {
-    title: `${c.name} — Colleges & Universities — ELMKUSOMA`,
-    description: c.description,
-  }
-}
-
-export default async function CollegePage({ params }: { params: Promise<{ college: string }> }) {
-  const { college } = await params
+export default function CollegePage() {
+  const t = useTranslations("public")
+  const params = useParams()
+  const college = params.college as string
   const collegeData = getCollegeBySlug(college)
   if (!collegeData) notFound()
 
@@ -34,10 +24,10 @@ export default async function CollegePage({ params }: { params: Promise<{ colleg
         <section className="border-b border-border bg-muted/40">
           <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Link href="/courses" className="transition-colors hover:text-foreground">Courses</Link>
+              <Link href="/courses" className="transition-colors hover:text-foreground">{t("coursesHome.title")}</Link>
               <span>/</span>
               <Link href="/courses/colleges-universities" className="transition-colors hover:text-foreground">
-                Colleges & Universities
+                {t("colleges.title")}
               </Link>
               <span>/</span>
               <span className="text-foreground">{collegeData.name}</span>
@@ -49,17 +39,17 @@ export default async function CollegePage({ params }: { params: Promise<{ colleg
             <p className="mt-2 max-w-2xl text-muted-foreground">{collegeData.description}</p>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                {collegeData.faculties.length} faculties
+                {t("collegeDetail.facultiesCount", { count: collegeData.faculties.length })}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                {totalProgrammes} programmes
+                {t("collegeDetail.programmesCount", { count: totalProgrammes })}
               </span>
             </div>
           </div>
         </section>
 
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <h2 className="text-lg font-semibold text-foreground">Faculties & Schools</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("collegeDetail.facultiesTitle")}</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {collegeData.faculties.map((faculty) => (
               <Link
@@ -69,7 +59,7 @@ export default async function CollegePage({ params }: { params: Promise<{ colleg
               >
                 <div className="flex items-start justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {faculty.programmes.length} {faculty.programmes.length === 1 ? "programme" : "programmes"}
+                    {t("collegeDetail.programmesCount", { count: faculty.programmes.length })}
                   </span>
                 </div>
                 <h3 className="mt-3 text-base font-semibold text-foreground group-hover:text-primary">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Activity, Loader2, BookOpen, Video, FileText, CheckCircle, Award, Clock } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ChildOverview, type ParentActivity, type ActivityItem } from "@/lib/parent-api"
@@ -25,25 +26,26 @@ const typeColors: Record<string, string> = {
   RESOURCE_ACCESSED: "bg-indigo-100 text-indigo-700",
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "Just now"
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days === 1) return "Yesterday"
-  if (days < 7) return `${days} days ago`
-  return new Date(dateStr).toLocaleDateString("en-GB", { month: "short", day: "numeric" })
-}
-
 export default function ParentActivityPage() {
   const { user } = useAuth()
+  const t = useTranslations("parent")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [activity, setActivity] = useState<ParentActivity | null>(null)
   const [loading, setLoading] = useState(true)
+
+  function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return t("activity.timeJustNow")
+    if (mins < 60) return t("activity.timeMinutesAgo", { count: mins })
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return t("activity.timeHoursAgo", { count: hrs })
+    const days = Math.floor(hrs / 24)
+    if (days === 1) return t("activity.timeYesterday")
+    if (days < 7) return t("activity.timeDaysAgo", { count: days })
+    return new Date(dateStr).toLocaleDateString("en-GB", { month: "short", day: "numeric" })
+  }
 
   useEffect(() => {
     parentApi.getChildren().then((kids) => {
@@ -69,8 +71,8 @@ export default function ParentActivityPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Learning Activity</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Recent learning activity for your child</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("activity.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("activity.subtitle")}</p>
       </div>
 
       {children.length > 1 && (
@@ -87,8 +89,8 @@ export default function ParentActivityPage() {
       {activities.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <Activity className="mx-auto mb-3 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No activity recorded</p>
-          <p className="mt-1 text-xs text-muted-foreground">Activity will appear here as your child learns.</p>
+          <p className="text-sm font-medium text-foreground">{t("activity.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("activity.emptyDesc")}</p>
         </div>
       ) : (
         <div className="space-y-2">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -51,63 +52,66 @@ function getNotificationIcon(type: string) {
   }
 }
 
-function getNotificationTypeBadge(type: string) {
-  const map: Record<string, { label: string; className: string }> = {
-    ENROLLMENT: {
-      label: "Enrollment",
-      className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-    },
-    COURSE_COMPLETION: {
-      label: "Completion",
-      className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    },
-    COURSE_UPDATE: {
-      label: "Update",
-      className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-    },
-    COURSE_ANNOUNCEMENT: {
-      label: "Announcement",
-      className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-    },
-    ASSIGNMENT_GRADED: {
-      label: "Graded",
-      className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-    },
-    CERTIFICATE: {
-      label: "Certificate",
-      className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    },
-  }
-  return map[type?.toUpperCase()] || {
-    label: type?.replace(/_/g, " ") || "Notification",
-    className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400",
-  }
-}
-
-function relativeTime(iso: string) {
-  if (!iso) return ""
-  const now = Date.now()
-  const then = new Date(iso).getTime()
-  const diffSec = Math.floor((now - then) / 1000)
-  if (diffSec < 60) return "Just now"
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin} minute${diffMin > 1 ? "s" : ""} ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr} hour${diffHr > 1 ? "s" : ""} ago`
-  const diffDay = Math.floor(diffHr / 24)
-  if (diffDay === 1) return "Yesterday"
-  if (diffDay < 7) return `${diffDay} days ago`
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
-}
-
 export default function TeacherNotificationsPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
+  const te = useTranslations("emptyStates")
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [marking, setMarking] = useState<string | null>(null)
   const [filter, setFilter] = useState<"all" | "unread">("all")
   const [unreadCount, setUnreadCount] = useState(0)
+
+  function getNotificationTypeBadge(type: string) {
+    const map: Record<string, { label: string; className: string }> = {
+      ENROLLMENT: {
+        label: t("notifications.badgeEnrollment"),
+        className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      },
+      COURSE_COMPLETION: {
+        label: t("notifications.badgeCompletion"),
+        className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      },
+      COURSE_UPDATE: {
+        label: t("notifications.badgeUpdate"),
+        className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+      },
+      COURSE_ANNOUNCEMENT: {
+        label: t("notifications.badgeAnnouncement"),
+        className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+      },
+      ASSIGNMENT_GRADED: {
+        label: t("notifications.badgeGraded"),
+        className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      },
+      CERTIFICATE: {
+        label: t("notifications.badgeCertificate"),
+        className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+      },
+    }
+    return map[type?.toUpperCase()] || {
+      label: type?.replace(/_/g, " ") || t("notifications.typeFallback"),
+      className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400",
+    }
+  }
+
+  function relativeTime(iso: string) {
+    if (!iso) return ""
+    const now = Date.now()
+    const then = new Date(iso).getTime()
+    const diffSec = Math.floor((now - then) / 1000)
+    if (diffSec < 60) return t("notifications.timeJustNow")
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) return t("notifications.timeMinutes", { count: diffMin })
+    const diffHr = Math.floor(diffMin / 60)
+    if (diffHr < 24) return t("notifications.timeHours", { count: diffHr })
+    const diffDay = Math.floor(diffHr / 24)
+    if (diffDay === 1) return t("notifications.timeYesterday")
+    if (diffDay < 7) return t("notifications.timeDays", { count: diffDay })
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+  }
 
   useEffect(() => {
     if (!user) return
@@ -125,7 +129,7 @@ export default function TeacherNotificationsPage() {
       setNotifications(data)
       setUnreadCount(typeof unreadCount === "number" ? unreadCount : 0)
     } catch {
-      setError("Failed to load notifications")
+      setError(t("notifications.loadError"))
     } finally {
       setLoading(false)
     }
@@ -163,7 +167,7 @@ export default function TeacherNotificationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Notifications
+            {tn("notifications")}
             {unreadCount > 0 && (
               <span className="ml-2 inline-flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -172,14 +176,14 @@ export default function TeacherNotificationsPage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {unreadCount > 0
-              ? `You have ${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`
-              : "All caught up!"}
+              ? t("notifications.unreadSummary", { count: unreadCount })
+              : t("notifications.allCaughtUp")}
           </p>
         </div>
         {unreadCount > 0 && (
           <Button variant="outline" className="gap-2" onClick={markAllRead}>
             <CheckCheck className="size-4" />
-            Mark All Read
+            {t("notifications.markAllRead")}
           </Button>
         )}
       </div>
@@ -200,7 +204,7 @@ export default function TeacherNotificationsPage() {
             filter === "all" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          All ({notifications.length})
+          {t("notifications.filterAll", { count: notifications.length })}
         </button>
         <button
           onClick={() => setFilter("unread")}
@@ -208,7 +212,7 @@ export default function TeacherNotificationsPage() {
             filter === "unread" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Unread ({unreadCount})
+          {t("notifications.filterUnread", { count: unreadCount })}
         </button>
       </div>
 
@@ -220,12 +224,12 @@ export default function TeacherNotificationsPage() {
         <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <Bell className="mx-auto size-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-semibold text-foreground">
-            {filter === "unread" ? "No unread notifications" : "No notifications"}
+            {filter === "unread" ? t("notifications.emptyUnread") : te("noNotifications")}
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
             {filter === "unread"
-              ? "All your notifications have been read."
-              : "You're all caught up! Check back later for updates."}
+              ? t("notifications.emptyUnreadDesc")
+              : t("notifications.emptyDesc")}
           </p>
         </div>
       ) : (
@@ -270,7 +274,7 @@ export default function TeacherNotificationsPage() {
                     {notification.isRead && (
                       <span className="flex items-center gap-1 text-[10px] text-green-600">
                         <CheckCircle className="size-3" />
-                        Read
+                        {t("notifications.readBadge")}
                       </span>
                     )}
                   </div>

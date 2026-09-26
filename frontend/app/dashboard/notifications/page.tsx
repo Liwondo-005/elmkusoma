@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type StudentNotification } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Bell, BellOff, CheckCircle, AlertCircle, Info, Clock, Loader2 } from "lucide-react"
 
 export default function NotificationsPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [notifications, setNotifications] = useState<StudentNotification[]>([])
   const [loading, setLoading] = useState(true)
   const level = user?.learningLevel as LearningLevel | null
@@ -44,8 +47,8 @@ export default function NotificationsPage() {
           <Bell className="size-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Notifications</h1>
-          <p className="text-sm text-muted-foreground">Stay updated on your learning</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("notifs.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("notifs.subtitle")}</p>
         </div>
       </div>
 
@@ -54,9 +57,9 @@ export default function NotificationsPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-muted/50">
             <BellOff className="size-8 text-muted-foreground/50" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No notifications yet</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("notifs.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            You'll see updates about lessons, assignments, and live classes here.
+            {t("notifs.emptyDesc")}
           </p>
         </div>
       ) : (

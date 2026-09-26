@@ -1,20 +1,17 @@
 package tz.elmkusoma.liveclass.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
-import tz.elmkusoma.course.domain.LiveClass;
-import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.liveclass.domain.*;
 import tz.elmkusoma.liveclass.repository.*;
-import tz.elmkusoma.teacher.domain.Teacher;
-import tz.elmkusoma.teacher.service.TeacherService;
+import tz.elmkusoma.liveclass.service.LiveClassInteractionService;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -25,344 +22,193 @@ import java.util.*;
 @Tag(name = "Live Class Interactions", description = "Quizzes, polls, breakout rooms, shared media, and attendance detail")
 public class LiveClassInteractionController {
 
-    private final ObjectMapper objectMapper;
-    private final LiveClassRepository liveClassRepository;
-    private final TeacherService teacherService;
-    private final LiveClassQuizRepository quizRepository;
-    private final LiveClassQuizQuestionRepository quizQuestionRepository;
-    private final LiveClassQuizResponseRepository quizResponseRepository;
-    private final LiveClassPollRepository pollRepository;
-    private final LiveClassPollVoteRepository pollVoteRepository;
-    private final LiveClassBreakoutRoomRepository breakoutRoomRepository;
-    private final LiveClassBreakoutAssignmentRepository breakoutAssignmentRepository;
+    private final LiveClassInteractionService interactionService;
     private final LiveClassSharedMediaRepository sharedMediaRepository;
     private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
 
-    /** Poll/quiz options live in JSONB columns — persist canonical JSON, never Object#toString. */
-    private String toJson(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (Exception e) {
-            return "[]";
-        }
+    /** ROLE_TEACHER decides whether the question payload may carry the answer key. */
+    private boolean isTeacher(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities() != null
+                && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_TEACHER".equals(a.getAuthority()));
     }
 
     // ==================== QUIZZES ====================
 
     @PostMapping("/classes/{classId}/quizzes")
     @PreAuthorize("hasRole('TEACHER')")
-    @Operation(summary = "Create a quiz for a live class")
+    @Operation(summary = "Create and launch a quiz for a live class (validates, persists, broadcasts QUIZ_STARTED)")
     public ResponseEntity<ApiResponse<LiveClassQuiz>> createQuiz(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId,
             @RequestBody Map<String, Object> body) {
-
-        LiveClass liveClass = liveClassRepository.findById(classId).filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted())).orElse(null);
-        if (liveClass == null) return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
-        if (!liveClass.getInstitutionId().equals(institutionId)) return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
-
-        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
-        if (!liveClass.getTeacherId().equals(teacher.getId())) return ResponseEntity.status(403).body(ApiResponse.error("Only the teacher can create quizzes"));
-
-        String title = (String) body.getOrDefault("title", "Untitled Quiz");
-
-        LiveClassQuiz quiz = LiveClassQuiz.builder()
-                .liveClassId(classId)
-                .teacherId(userId)
-                .title(title)
-                .status("ACTIVE")
-                .build();
-        LiveClassQuiz saved = quizRepository.save(quiz);
-
-        List<Map<String, Object>> questions = (List<Map<String, Object>>) body.get("questions");
-        if (questions != null) {
-            int order = 0;
-            for (Map<String, Object> q : questions) {
-                LiveClassQuizQuestion question = LiveClassQuizQuestion.builder()
-                        .quizId(saved.getId())
-                        .questionText((String) q.get("questionText"))
-                        .questionType((String) q.getOrDefault("questionType", "MULTIPLE_CHOICE"))
-                        .options(q.get("options") != null ? toJson(q.get("options")) : null)
-                        .correctAnswer((String) q.get("correctAnswer"))
-                        .displayOrder(order++)
-                        .build();
-                quizQuestionRepository.save(question);
-            }
-        }
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(saved));
+        return interactionService.createQuiz(institutionId, userId, classId, body);
     }
 
     @GetMapping("/classes/{classId}/quizzes")
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
-    @Operation(summary = "Get quizzes for a live class")
+    @Operation(summary = "Get quizzes for a live class (session members only)")
     public ResponseEntity<ApiResponse<List<LiveClassQuiz>>> getQuizzes(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId) {
-        return ResponseEntity.ok(ApiResponse.success(quizRepository.findByLiveClassIdAndIsDeletedFalse(classId)));
+        return interactionService.getQuizzes(userId, classId);
     }
 
     @GetMapping("/quizzes/{quizId}/questions")
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
-    @Operation(summary = "Get quiz questions")
-    public ResponseEntity<ApiResponse<List<LiveClassQuizQuestion>>> getQuizQuestions(
-            @PathVariable UUID quizId) {
-        return ResponseEntity.ok(ApiResponse.success(quizQuestionRepository.findByQuizIdAndIsDeletedFalseOrderByDisplayOrderAsc(quizId)));
+    @Operation(summary = "Get quiz questions — the correct answer is included for the teacher only")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getQuizQuestions(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID quizId,
+            Authentication authentication) {
+        return interactionService.getQuizQuestions(userId, quizId, isTeacher(authentication));
     }
 
     @PostMapping("/quizzes/{quizId}/respond")
     @PreAuthorize("hasAnyRole('OTHER_LEARNER','STUDENT')")
-    @Operation(summary = "Submit quiz response")
-    public ResponseEntity<ApiResponse<String>> submitQuizResponse(
+    @Operation(summary = "Submit quiz responses (participants only, one submission per quiz, server-side scoring)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> submitQuizResponse(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID quizId,
             @RequestBody List<Map<String, Object>> responses) {
-
-        for (Map<String, Object> resp : responses) {
-            UUID questionId = UUID.fromString((String) resp.get("questionId"));
-            String answer = (String) resp.get("answer");
-
-            LiveClassQuizQuestion question = quizQuestionRepository.findById(questionId).orElse(null);
-            if (question == null) continue;
-
-            boolean isCorrect = answer != null && answer.equalsIgnoreCase(question.getCorrectAnswer());
-
-            LiveClassQuizResponse quizResponse = LiveClassQuizResponse.builder()
-                    .quizId(quizId)
-                    .questionId(questionId)
-                    .userId(userId)
-                    .answerText(answer)
-                    .isCorrect(isCorrect)
-                    .respondedAt(LocalDateTime.now())
-                    .build();
-            quizResponseRepository.save(quizResponse);
-        }
-
-        return ResponseEntity.ok(ApiResponse.success("Responses submitted", null));
+        return interactionService.submitQuizResponse(userId, quizId, responses);
     }
 
     @GetMapping("/quizzes/{quizId}/results")
     @PreAuthorize("hasRole('TEACHER')")
-    @Operation(summary = "Get quiz results (teacher only)")
+    @Operation(summary = "Get quiz results (teacher of that class only): participants, answered, correct")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getQuizResults(
+            @RequestAttribute("userId") UUID userId,
             @PathVariable UUID quizId) {
+        return interactionService.getQuizResults(userId, quizId);
+    }
 
-        List<LiveClassQuizResponse> responses = quizResponseRepository.findByQuizIdAndIsDeletedFalse(quizId);
-        long totalCorrect = responses.stream().filter(r -> Boolean.TRUE.equals(r.getIsCorrect())).count();
-        long totalResponses = responses.size();
+    @PostMapping("/quizzes/{quizId}/close")
+    @PreAuthorize("hasRole('TEACHER')")
+    @Operation(summary = "Close a quiz (teacher of that class only, broadcasts QUIZ_CLOSED)")
+    public ResponseEntity<ApiResponse<LiveClassQuiz>> closeQuiz(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID quizId) {
+        return interactionService.closeQuiz(userId, quizId);
+    }
 
-        Map<String, Object> results = new HashMap<>();
-        results.put("totalResponses", totalResponses);
-        results.put("totalCorrect", totalCorrect);
-        results.put("accuracy", totalResponses > 0 ? (double) totalCorrect / totalResponses * 100 : 0);
-        results.put("responses", responses);
-        return ResponseEntity.ok(ApiResponse.success(results));
+    @GetMapping("/quizzes/{quizId}/my-responses")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
+    @Operation(summary = "My own answers for one quiz (score only after the quiz is closed)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMyQuizResponses(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID quizId) {
+        return interactionService.getMyQuizResponses(userId, quizId);
     }
 
     // ==================== POLLS ====================
 
     @PostMapping("/classes/{classId}/polls")
     @PreAuthorize("hasRole('TEACHER')")
-    @Operation(summary = "Create a poll for a live class")
+    @Operation(summary = "Create and launch a poll for a live class (validates, persists, broadcasts POLL_STARTED)")
     public ResponseEntity<ApiResponse<LiveClassPoll>> createPoll(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId,
             @RequestBody Map<String, Object> body) {
+        return interactionService.createPoll(institutionId, userId, classId, body);
+    }
 
-        LiveClass liveClass = liveClassRepository.findById(classId).filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted())).orElse(null);
-        if (liveClass == null) return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
-        if (!liveClass.getInstitutionId().equals(institutionId)) return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
-
-        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
-        if (!liveClass.getTeacherId().equals(teacher.getId())) return ResponseEntity.status(403).body(ApiResponse.error("Only the teacher can create polls"));
-
-        String question = (String) body.get("question");
-        Object options = body.get("options");
-
-        LiveClassPoll poll = LiveClassPoll.builder()
-                .liveClassId(classId)
-                .teacherId(userId)
-                .question(question)
-                .options(options != null ? toJson(options) : "[]")
-                .status("ACTIVE")
-                .build();
-        LiveClassPoll saved = pollRepository.save(poll);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(saved));
+    @GetMapping("/classes/{classId}/polls")
+    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
+    @Operation(summary = "Get polls for a live class (with my own vote + aggregate totals)")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPolls(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID classId) {
+        return interactionService.getPolls(userId, classId);
     }
 
     @PostMapping("/polls/{pollId}/vote")
     @PreAuthorize("hasAnyRole('OTHER_LEARNER','STUDENT')")
-    @Operation(summary = "Vote on a poll")
-    public ResponseEntity<ApiResponse<String>> votePoll(
+    @Operation(summary = "Vote on a poll (participants only, option validated, broadcasts POLL_RESULT)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> votePoll(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID pollId,
             @RequestBody Map<String, Object> body) {
-
-        LiveClassPoll poll = pollRepository.findById(pollId).orElse(null);
-        if (poll == null) return ResponseEntity.status(404).body(ApiResponse.error("Poll not found"));
-        if (!"ACTIVE".equals(poll.getStatus())) return ResponseEntity.status(400).body(ApiResponse.error("Poll is no longer active"));
-
-        pollVoteRepository.findByPollIdAndIsDeletedFalse(pollId).stream()
-                .filter(v -> v.getUserId().equals(userId))
-                .findFirst()
-                .ifPresent(v -> {
-                    v.setOptionIndex((Integer) body.get("optionIndex"));
-                    v.setVotedAt(LocalDateTime.now());
-                    pollVoteRepository.save(v);
-                });
-
-        if (pollVoteRepository.findByPollIdAndIsDeletedFalse(pollId).stream().noneMatch(v -> v.getUserId().equals(userId))) {
-            LiveClassPollVote vote = LiveClassPollVote.builder()
-                    .pollId(pollId)
-                    .userId(userId)
-                    .optionIndex((Integer) body.get("optionIndex"))
-                    .votedAt(LocalDateTime.now())
-                    .build();
-            pollVoteRepository.save(vote);
-        }
-
-        return ResponseEntity.ok(ApiResponse.success("Vote recorded", null));
+        return interactionService.votePoll(userId, pollId, body);
     }
 
     @PostMapping("/polls/{pollId}/close")
     @PreAuthorize("hasRole('TEACHER')")
-    @Operation(summary = "Close a poll")
+    @Operation(summary = "Close a poll (teacher of that class only, broadcasts POLL_CLOSED)")
     public ResponseEntity<ApiResponse<String>> closePoll(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID pollId) {
-
-        LiveClassPoll poll = pollRepository.findById(pollId).orElse(null);
-        if (poll == null) return ResponseEntity.status(404).body(ApiResponse.error("Poll not found"));
-
-        poll.setStatus("CLOSED");
-        poll.setClosedAt(LocalDateTime.now());
-        pollRepository.save(poll);
-
-        return ResponseEntity.ok(ApiResponse.success("Poll closed", null));
+        return interactionService.closePoll(userId, pollId);
     }
 
     @GetMapping("/polls/{pollId}/results")
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
-    @Operation(summary = "Get poll results")
+    @Operation(summary = "Get poll results (real option count, aggregate counts only)")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPollResults(
+            @RequestAttribute("userId") UUID userId,
             @PathVariable UUID pollId) {
-
-        List<LiveClassPollVote> votes = pollVoteRepository.findByPollIdAndIsDeletedFalse(pollId);
-        Map<String, Integer> voteCounts = new LinkedHashMap<>();
-        for (int i = 0; i < 20; i++) voteCounts.put(String.valueOf(i), 0);
-        for (LiveClassPollVote vote : votes) {
-            voteCounts.merge(String.valueOf(vote.getOptionIndex()), 1, Integer::sum);
-        }
-
-        Map<String, Object> results = new HashMap<>();
-        results.put("totalVotes", votes.size());
-        results.put("results", voteCounts);
-        return ResponseEntity.ok(ApiResponse.success(results));
+        return interactionService.getPollResults(userId, pollId);
     }
 
     // ==================== BREAKOUT ROOMS ====================
 
     @PostMapping("/classes/{classId}/breakout-rooms")
     @PreAuthorize("hasRole('TEACHER')")
-    @Operation(summary = "Create a breakout room")
+    @Operation(summary = "Create a breakout room (teacher of that class only, broadcasts BREAKOUT_ROOMS_UPDATED)")
     public ResponseEntity<ApiResponse<LiveClassBreakoutRoom>> createBreakoutRoom(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId,
             @RequestBody Map<String, Object> body) {
-
-        LiveClass liveClass = liveClassRepository.findById(classId).filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted())).orElse(null);
-        if (liveClass == null) return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
-        if (!liveClass.getInstitutionId().equals(institutionId)) return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
-
-        String name = (String) body.getOrDefault("name", "Breakout Room");
-        Integer maxParticipants = body.get("maxParticipants") != null ? (Integer) body.get("maxParticipants") : 10;
-
-        LiveClassBreakoutRoom room = LiveClassBreakoutRoom.builder()
-                .liveClassId(classId)
-                .name(name)
-                .maxParticipants(maxParticipants)
-                .status("WAITING")
-                .build();
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(breakoutRoomRepository.save(room)));
+        return interactionService.createBreakoutRoom(institutionId, userId, classId, body);
     }
 
     @PostMapping("/breakout-rooms/{roomId}/assign")
     @PreAuthorize("hasRole('TEACHER')")
-    @Operation(summary = "Assign participant to breakout room")
+    @Operation(summary = "Assign a participant to a breakout room (capacity + one-room-per-class enforced)")
     public ResponseEntity<ApiResponse<String>> assignToBreakoutRoom(
+            @RequestAttribute("userId") UUID userId,
             @PathVariable UUID roomId,
             @RequestBody Map<String, String> body) {
-
-        UUID userId = UUID.fromString(body.get("userId"));
-        LiveClassBreakoutRoom room = breakoutRoomRepository.findById(roomId).orElse(null);
-        if (room == null) return ResponseEntity.status(404).body(ApiResponse.error("Breakout room not found"));
-
-        LiveClassBreakoutAssignment assignment = LiveClassBreakoutAssignment.builder()
-                .breakoutRoomId(roomId)
-                .userId(userId)
-                .assignedAt(LocalDateTime.now())
-                .build();
-        breakoutAssignmentRepository.save(assignment);
-
-        return ResponseEntity.ok(ApiResponse.success("Assigned", null));
+        return interactionService.assignToBreakoutRoom(userId, roomId, body);
     }
 
     @PostMapping("/breakout-rooms/{roomId}/join")
     @PreAuthorize("hasAnyRole('OTHER_LEARNER','STUDENT')")
-    @Operation(summary = "Self-join a breakout room")
-    public ResponseEntity<ApiResponse<String>> joinBreakoutRoom(
+    @Operation(summary = "Join your assigned breakout room (returns a breakout LiveKit token)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> joinBreakoutRoom(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID roomId) {
-
-        LiveClassBreakoutRoom room = breakoutRoomRepository.findById(roomId).orElse(null);
-        if (room == null) return ResponseEntity.status(404).body(ApiResponse.error("Breakout room not found"));
-        if (!"ACTIVE".equals(room.getStatus())) return ResponseEntity.status(400).body(ApiResponse.error("Breakout room is not active"));
-
-        boolean alreadyAssigned = breakoutAssignmentRepository.findByBreakoutRoomIdAndIsDeletedFalse(roomId).stream()
-                .anyMatch(a -> a.getUserId().equals(userId));
-        if (alreadyAssigned) return ResponseEntity.status(409).body(ApiResponse.error("Already joined this room"));
-
-        LiveClassBreakoutAssignment assignment = LiveClassBreakoutAssignment.builder()
-                .breakoutRoomId(roomId)
-                .userId(userId)
-                .assignedAt(LocalDateTime.now())
-                .build();
-        breakoutAssignmentRepository.save(assignment);
-
-        return ResponseEntity.ok(ApiResponse.success("Joined breakout room", null));
+        return interactionService.joinBreakoutRoom(userId, roomId);
     }
 
     @GetMapping("/classes/{classId}/breakout-rooms")
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
-    @Operation(summary = "Get breakout rooms for a live class")
-    public ResponseEntity<ApiResponse<List<LiveClassBreakoutRoom>>> getBreakoutRooms(
+    @Operation(summary = "Get breakout rooms with assignments and per-viewer assignment state")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getBreakoutRooms(
+            @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId) {
-        return ResponseEntity.ok(ApiResponse.success(breakoutRoomRepository.findByLiveClassIdAndIsDeletedFalse(classId)));
+        return interactionService.getBreakoutRooms(userId, classId);
     }
 
     @PostMapping("/breakout-rooms/{roomId}/start")
     @PreAuthorize("hasRole('TEACHER')")
-    @Operation(summary = "Start a breakout room")
-    public ResponseEntity<ApiResponse<String>> startBreakoutRoom(@PathVariable UUID roomId) {
-        LiveClassBreakoutRoom room = breakoutRoomRepository.findById(roomId).orElse(null);
-        if (room == null) return ResponseEntity.status(404).body(ApiResponse.error("Not found"));
-        room.setStatus("ACTIVE");
-        breakoutRoomRepository.save(room);
-        return ResponseEntity.ok(ApiResponse.success("Breakout room started", null));
+    @Operation(summary = "Open a breakout room (teacher of that class only)")
+    public ResponseEntity<ApiResponse<String>> startBreakoutRoom(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID roomId) {
+        return interactionService.startBreakoutRoom(userId, roomId);
     }
 
     @PostMapping("/breakout-rooms/{roomId}/end")
     @PreAuthorize("hasRole('TEACHER')")
-    @Operation(summary = "End a breakout room")
-    public ResponseEntity<ApiResponse<String>> endBreakoutRoom(@PathVariable UUID roomId) {
-        LiveClassBreakoutRoom room = breakoutRoomRepository.findById(roomId).orElse(null);
-        if (room == null) return ResponseEntity.status(404).body(ApiResponse.error("Not found"));
-        room.setStatus("ENDED");
-        breakoutRoomRepository.save(room);
-        return ResponseEntity.ok(ApiResponse.success("Breakout room ended", null));
+    @Operation(summary = "Close a breakout room (teacher of that class only)")
+    public ResponseEntity<ApiResponse<String>> endBreakoutRoom(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID roomId) {
+        return interactionService.endBreakoutRoom(userId, roomId);
     }
 
     // ==================== SHARED MEDIA ====================

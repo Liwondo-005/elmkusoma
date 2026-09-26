@@ -1,10 +1,13 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useRef } from "react"
 import { Upload, Loader2, CheckCircle, Clock, AlertTriangle, FileText } from "lucide-react"
 import { adminApi, getInstitutionId, type ImportJobResponse } from "@/lib/api"
 
 export default function AdminImportPage() {
+  const t = useTranslations("admin");
   const [jobs, setJobs] = useState<ImportJobResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -14,11 +17,11 @@ export default function AdminImportPage() {
   const institutionId = getInstitutionId()
 
   useEffect(() => {
-    if (!institutionId) { setError("No institution context found."); setLoading(false); return }
+    if (!institutionId) { setError(t("import.noInstitutionContextFound")); setLoading(false); return }
     adminApi
       .listImportJobs(institutionId)
       .then(setJobs)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load import jobs"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("import.failedToLoadImport")))
       .finally(() => setLoading(false))
   }, [institutionId])
 
@@ -33,7 +36,7 @@ export default function AdminImportPage() {
       const job = await adminApi.triggerImport(institutionId, importType, file.name)
       setJobs((prev) => [job, ...prev])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start import")
+      setError(err instanceof Error ? err.message : t("import.failedToStartImport"))
     } finally {
       setImporting(false)
       if (fileRef.current) fileRef.current.value = ""
@@ -62,13 +65,13 @@ export default function AdminImportPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Data Import</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Import students and teachers via CSV files.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("import.dataImport")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("import.importStudentsAndTeachers")}</p>
         </div>
         <label
           className={`flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 ${importing ? "pointer-events-none opacity-50" : ""}`}
         >
-          <Upload className="size-3.5" /> {importing ? "Uploading..." : "Upload CSV"}
+          <Upload className="size-3.5" /> {importing ? t("import.uploading") : t("import.uploadCsv")}
           <input
             ref={fileRef}
             type="file"
@@ -95,8 +98,8 @@ export default function AdminImportPage() {
       {!loading && jobs.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <FileText className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No import jobs yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Upload a CSV file to import students or teachers.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("import.noImportJobsYet")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("import.uploadACsvFile")}</p>
         </div>
       )}
 
@@ -117,14 +120,14 @@ export default function AdminImportPage() {
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
-                    {job.totalRows != null && <span>Total: {job.totalRows}</span>}
-                    {job.processedRows != null && <span>Processed: {job.processedRows}</span>}
+                    {job.totalRows != null && <span>{t("import.total", { p0: job.totalRows })}</span>}
+                    {job.processedRows != null && <span>{t("import.processed", { p0: job.processedRows })}</span>}
                     {job.failedRows != null && job.failedRows > 0 && (
-                      <span className="text-destructive">Failed: {job.failedRows}</span>
+                      <span className="text-destructive">{t("import.failed", { p0: job.failedRows })}</span>
                     )}
                   </div>
                   {job.errorLog && (
-                    <p className="mt-1 text-xs text-destructive">Import errors occurred. Check error log.</p>
+                    <p className="mt-1 text-xs text-destructive">{t("import.importErrorsOccurredCheck")}</p>
                   )}
                 </div>
                 <span className="shrink-0 text-xs text-muted-foreground">

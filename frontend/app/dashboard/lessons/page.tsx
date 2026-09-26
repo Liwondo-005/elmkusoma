@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learningApi, type Lesson, type LessonProgress } from "@/lib/api"
 import { getDashboardConfig, type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { BookOpen, Clock, CheckCircle, Play, ArrowRight, Search, Filter } from "lucide-react"
 
 export default function LessonsPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [progress, setProgress] = useState<LessonProgress[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,8 +64,8 @@ export default function LessonsPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Learn</h1>
-          <p className="text-sm text-muted-foreground">Choose a subject and start learning!</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("lessons.learnTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{t("lessons.learnSubtitle")}</p>
         </div>
 
         {/* Search */}
@@ -70,7 +73,7 @@ export default function LessonsPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search lessons..."
+            placeholder={t("lessons.searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-ring"
@@ -87,7 +90,7 @@ export default function LessonsPage() {
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            All Subjects
+            {t("lessons.allSubjects")}
           </button>
           {primarySubjects.map((subject) => (
             <button
@@ -113,11 +116,11 @@ export default function LessonsPage() {
             <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-primary/10">
               <BookOpen className="size-8 text-primary" />
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-foreground">No lessons yet</h3>
+            <h3 className="mt-4 text-lg font-semibold text-foreground">{t("lessons.emptyTitle")}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               {selectedSubject
-                ? `No lessons available for ${selectedSubject} yet.`
-                : "Your teacher will add lessons soon."}
+                ? t("lessons.emptySubject", { subject: selectedSubject })
+                : t("lessons.emptyDefault")}
             </p>
           </div>
         ) : selectedSubject ? (
@@ -149,7 +152,7 @@ export default function LessonsPage() {
                   )}
                   <div className="mt-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{pct >= 100 ? "Completed" : pct > 0 ? "In Progress" : "Not Started"}</span>
+                      <span>{pct >= 100 ? ts("completed") : pct > 0 ? ts("inProgress") : ts("notStarted")}</span>
                       <span>{Math.round(pct)}%</span>
                     </div>
                     <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">
@@ -183,7 +186,7 @@ export default function LessonsPage() {
                     <div className="flex-1">
                       <h2 className="text-lg font-semibold text-foreground">{group.name}</h2>
                       <p className="text-xs text-muted-foreground">
-                        {completedCount} of {totalLessons} lessons completed
+                        {t("lessons.groupSummary", { done: completedCount, total: totalLessons })}
                       </p>
                     </div>
                     <div className="text-right">
@@ -219,7 +222,7 @@ export default function LessonsPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">{lesson.title}</p>
                             <p className="text-xs text-muted-foreground">
-                              {pct >= 100 ? "Done" : pct > 0 ? `${Math.round(pct)}%` : "Start"}
+                              {pct >= 100 ? t("lessons.done") : pct > 0 ? `${Math.round(pct)}%` : t("lessons.start")}
                             </p>
                           </div>
                         </Link>
@@ -232,7 +235,7 @@ export default function LessonsPage() {
                       onClick={() => setSelectedSubject(group.name)}
                       className="mt-3 text-sm font-medium text-primary hover:underline"
                     >
-                      View all {group.lessons.length} lessons →
+                      {t("lessons.viewAll", { count: group.lessons.length })}
                     </button>
                   )}
                 </div>
@@ -248,8 +251,8 @@ export default function LessonsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Lessons</h1>
-        <p className="text-sm text-muted-foreground">Browse and complete lessons to track your learning progress.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("lessons.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("lessons.subtitle")}</p>
       </div>
 
       {loading ? (
@@ -259,8 +262,8 @@ export default function LessonsPage() {
       ) : lessons.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <BookOpen className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Lessons Available</h3>
-          <p className="mt-2 text-sm text-muted-foreground">Lessons will appear here once your teacher publishes them.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("lessons.emptyTitleGeneral")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("lessons.emptyGeneralDesc")}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -290,7 +293,7 @@ export default function LessonsPage() {
                 )}
                 <div className="mt-3">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{pct >= 100 ? "Completed" : pct > 0 ? "In Progress" : "Not Started"}</span>
+                    <span>{pct >= 100 ? ts("completed") : pct > 0 ? ts("inProgress") : ts("notStarted")}</span>
                     <span>{Math.round(pct)}%</span>
                   </div>
                   <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">

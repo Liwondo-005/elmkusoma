@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { FileText, AlertCircle, RefreshCw, Archive, ArchiveRestore, Loader2 } from "lucide-react"
 import { platformAdminApi, type PageResponse } from "@/lib/platform-admin-api"
@@ -17,6 +19,8 @@ function Skeleton() {
 }
 
 export default function PlatformResourcesPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [page, setPage] = useState<PageResponse<ResourceRow> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +33,7 @@ export default function PlatformResourcesPage() {
       const res = await platformAdminApi.listPlatformResources(pageIndex, 20)
       setPage(res)
     } catch (e: any) {
-      setError(e.message || "Failed to load resources")
+      setError(e.message || t("resources.failedToLoadResources"))
     } finally { setLoading(false) }
   }, [pageIndex])
 
@@ -41,7 +45,7 @@ export default function PlatformResourcesPage() {
       await platformAdminApi.bulkContentAction("RESOURCE", action, [id])
       await load()
     } catch (e: any) {
-      setError(e.message || `Failed to ${action.toLowerCase()} resource`)
+      setError(e.message || t("resources.failedToResource", { p0: action.toLowerCase() }))
     } finally { setActing(null) }
   }
 
@@ -52,17 +56,17 @@ export default function PlatformResourcesPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-amber-500 text-white"><FileText className="size-4" /></span> Platform Resources</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Documents, PDFs, and learning resources governance — access, retention, and compliance.</p>
+            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-amber-500 text-white"><FileText className="size-4" /></span> {t("resources.platformResources")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("resources.documentsPdfsAndLearning")}</p>
           </div>
-          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> Refresh</button>
+          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> {t("resources.refresh")}</button>
         </div>
       </div>
 
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
           <span className="flex items-center gap-2"><AlertCircle className="size-4" />{error}</span>
-          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Retry</button>
+          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">{t("resources.retry")}</button>
         </div>
       )}
 
@@ -70,13 +74,13 @@ export default function PlatformResourcesPage() {
         {loading ? <Skeleton /> : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
             <FileText className="size-10 text-muted-foreground/50" />
-            <p className="mt-3 text-sm font-semibold text-foreground">No resources yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">No resources exist yet for platform governance.</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("resources.noResourcesYet")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("resources.noResourcesExistYet")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-border bg-muted/50"><th className="px-4 py-3 text-left font-medium text-muted-foreground">Title</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Institution</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">Created</th><th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th></tr></thead>
+              <thead><tr className="border-b border-border bg-muted/50"><th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("resources.title")}</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("resources.type")}</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("resources.institution")}</th><th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("resources.created")}</th><th className="px-4 py-3 text-right font-medium text-muted-foreground">{t("resources.actions")}</th></tr></thead>
               <tbody>
                 {items.map((r) => (
                   <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30">
@@ -91,18 +95,17 @@ export default function PlatformResourcesPage() {
                         className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted disabled:opacity-50"
                         title="Archive resource"
                       >
-                        {acting === r.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} Archive
-                      </button>
+                        {acting === r.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} {t("resources.archive")}</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Page {pageIndex + 1} of {Math.max(page?.totalPages ?? 1, 1)}</span>
+              <span>{t("resources.pageOf", { p0: pageIndex + 1, p1: Math.max(page?.totalPages ?? 1, 1) })}</span>
               <div className="flex gap-2">
-                <button disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)} className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-50">Prev</button>
-                <button disabled={(page?.totalPages ?? 1) <= pageIndex + 1} onClick={() => setPageIndex(pageIndex + 1)} className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-50">Next</button>
+                <button disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)} className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-50">{t("resources.prev")}</button>
+                <button disabled={(page?.totalPages ?? 1) <= pageIndex + 1} onClick={() => setPageIndex(pageIndex + 1)} className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-50">{tc("next")}</button>
               </div>
             </div>
           </div>

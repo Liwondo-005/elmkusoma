@@ -1,12 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { teacherApi, type TeacherClassGroup } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, BookOpen, Users, AlertCircle, ChevronLeft, ChevronRight, Info } from "lucide-react"
-
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 const COLORS = [
   "bg-blue-500/10 text-blue-600",
@@ -24,7 +23,7 @@ function getWeekDates(offset: number): Date[] {
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
   const monday = new Date(now)
   monday.setDate(now.getDate() + mondayOffset + offset * 7)
-  return DAYS.map((_, i) => {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
     return d
@@ -46,10 +45,21 @@ function isWeekday(dayIndex: number): boolean {
 
 export default function TeacherSchedulePage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
   const [classes, setClasses] = useState<TeacherClassGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [weekOffset, setWeekOffset] = useState(0)
+
+  const days = [
+    t("schedule.dayMonday"),
+    t("schedule.dayTuesday"),
+    t("schedule.dayWednesday"),
+    t("schedule.dayThursday"),
+    t("schedule.dayFriday"),
+    t("schedule.daySaturday"),
+    t("schedule.daySunday"),
+  ]
 
   const weekDates = getWeekDates(weekOffset)
 
@@ -65,7 +75,7 @@ export default function TeacherSchedulePage() {
       const data = await teacherApi.getClasses()
       setClasses(data)
     } catch {
-      setError("Failed to load schedule data")
+      setError(t("schedule.loadError"))
     } finally {
       setLoading(false)
     }
@@ -82,15 +92,15 @@ export default function TeacherSchedulePage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Schedule</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Your weekly class schedule overview.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("schedule.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("schedule.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon-sm" onClick={() => setWeekOffset((p) => p - 1)}>
             <ChevronLeft className="size-4" />
           </Button>
           <Button variant="outline" size="icon-sm" onClick={() => setWeekOffset(0)}>
-            Today
+            {t("schedule.today")}
           </Button>
           <Button variant="outline" size="icon-sm" onClick={() => setWeekOffset((p) => p + 1)}>
             <ChevronRight className="size-4" />
@@ -115,7 +125,7 @@ export default function TeacherSchedulePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{loading ? "..." : classes.length}</p>
-              <p className="text-xs text-muted-foreground">Classes</p>
+              <p className="text-xs text-muted-foreground">{t("analytics.classes")}</p>
             </div>
           </div>
         </div>
@@ -126,7 +136,7 @@ export default function TeacherSchedulePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{loading ? "..." : totalStudents}</p>
-              <p className="text-xs text-muted-foreground">Total Students</p>
+              <p className="text-xs text-muted-foreground">{t("analytics.totalStudents")}</p>
             </div>
           </div>
         </div>
@@ -137,7 +147,7 @@ export default function TeacherSchedulePage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{loading ? "..." : `${totalLessons} / ${totalAssignments}`}</p>
-              <p className="text-xs text-muted-foreground">Lessons / Assignments</p>
+              <p className="text-xs text-muted-foreground">{t("schedule.lessonsAssignments")}</p>
             </div>
           </div>
         </div>
@@ -145,7 +155,7 @@ export default function TeacherSchedulePage() {
 
       {todayClasses.length > 0 && weekOffset === 0 && (
         <section className="rounded-2xl border border-primary/20 bg-primary/5 p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Today&apos;s Classes</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("schedule.todayClasses")}</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {todayClasses.map((cls, i) => (
               <div key={cls.classGroupId} className={`rounded-xl border border-border p-4 ${COLORS[i % COLORS.length]}`}>
@@ -153,7 +163,7 @@ export default function TeacherSchedulePage() {
                 <p className="mt-1 text-xs opacity-70 truncate">{cls.subjectName}</p>
                 <div className="mt-2 flex items-center gap-2 text-[10px] opacity-70">
                   <span className="flex items-center gap-0.5"><Users className="size-2.5" /> {cls.enrolledStudents}</span>
-                  <span className="flex items-center gap-0.5"><BookOpen className="size-2.5" /> {cls.totalLessons} lessons</span>
+                  <span className="flex items-center gap-0.5"><BookOpen className="size-2.5" /> {t("schedule.lessonsCount", { count: cls.totalLessons })}</span>
                 </div>
               </div>
             ))}
@@ -168,17 +178,17 @@ export default function TeacherSchedulePage() {
       ) : classes.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Calendar className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Classes Found</h3>
-          <p className="mt-2 text-sm text-muted-foreground">You don&apos;t have any classes assigned yet.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("schedule.emptyTitle")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("schedule.emptyDesc")}</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center gap-2 mb-4">
             <Info className="size-4 text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">Showing your assigned classes on weekdays. Exact class times are not yet configured.</p>
+            <p className="text-xs text-muted-foreground">{t("schedule.weekdayNote")}</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-7">
-            {DAYS.map((day, dayIndex) => {
+            {days.map((day, dayIndex) => {
               const date = weekDates[dayIndex]
               const dayClasses = isWeekday(dayIndex) ? classes : []
               const today = isToday(date)
@@ -192,7 +202,7 @@ export default function TeacherSchedulePage() {
                   <div className="space-y-2 min-h-[120px]">
                     {dayClasses.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-border p-3 text-center">
-                        <p className="text-xs text-muted-foreground">{isWeekday(dayIndex) ? "No classes" : "Weekend"}</p>
+                        <p className="text-xs text-muted-foreground">{isWeekday(dayIndex) ? t("schedule.noClasses") : t("schedule.weekend")}</p>
                       </div>
                     ) : (
                       dayClasses.map((cls, i) => (
@@ -215,7 +225,7 @@ export default function TeacherSchedulePage() {
 
       {classes.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">All Classes</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("schedule.allClasses")}</h2>
           <div className="mt-4 space-y-3">
             {classes.map((cls, i) => (
               <div key={cls.classGroupId} className="flex items-center gap-4 rounded-xl border border-border p-4 hover:bg-muted/30 transition-colors">
@@ -228,13 +238,13 @@ export default function TeacherSchedulePage() {
                 </div>
                 <div className="flex items-center gap-6 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <Users className="size-3" /> {cls.enrolledStudents} students
+                    <Users className="size-3" /> {t("courses.students", { count: cls.enrolledStudents })}
                   </span>
                   <span className="flex items-center gap-1">
-                    <BookOpen className="size-3" /> {cls.totalLessons} lessons
+                    <BookOpen className="size-3" /> {t("schedule.lessonsCount", { count: cls.totalLessons })}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock className="size-3" /> {cls.totalAssignments} assignments
+                    <Clock className="size-3" /> {t("courses.assignments", { count: cls.totalAssignments })}
                   </span>
                 </div>
               </div>

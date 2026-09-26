@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { BookOpen, Loader2, FileText, Video, Image, Link as LinkIcon } from "lucide-react"
 import { parentApi, type LibraryCategory } from "@/lib/parent-api"
 
@@ -14,6 +15,7 @@ const TYPE_ICONS: Record<string, typeof BookOpen> = {
 }
 
 export default function ParentLibraryPage() {
+  const t = useTranslations("parent")
   const [categories, setCategories] = useState<LibraryCategory[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -28,15 +30,15 @@ export default function ParentLibraryPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Family Learning Library</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Educational resources for family learning</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("library.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("library.subtitle")}</p>
       </div>
 
       {categories.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <BookOpen className="mx-auto mb-3 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No resources available</p>
-          <p className="mt-1 text-xs text-muted-foreground">Learning resources will appear here when available.</p>
+          <p className="text-sm font-medium text-foreground">{t("library.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("library.emptyDesc")}</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -60,7 +62,7 @@ export default function ParentLibraryPage() {
                       {item.fileUrl && (
                         <a href={item.fileUrl} target="_blank" rel="noopener noreferrer"
                           className="shrink-0 text-xs font-medium text-primary hover:underline">
-                          Open
+                          {t("library.open")}
                         </a>
                       )}
                     </div>

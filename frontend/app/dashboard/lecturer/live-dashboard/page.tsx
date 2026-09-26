@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import {
   Radio,
@@ -62,19 +63,6 @@ type ScheduleForm = {
   classGroupId: string
   timezone: string
 }
-
-const SESSION_TYPES = [
-  { value: "LECTURE", label: "Lecture" },
-  { value: "TUTORIAL", label: "Tutorial" },
-  { value: "WORKSHOP", label: "Workshop" },
-  { value: "SEMINAR", label: "Seminar" },
-  { value: "LAB_DEMO", label: "Lab Demonstration" },
-  { value: "WEBINAR", label: "Webinar" },
-  { value: "GUEST_SPEAKER", label: "Guest Speaker" },
-  { value: "RESEARCH_PRESENTATION", label: "Research Presentation" },
-  { value: "PROJECT_DEFENSE", label: "Project Defense" },
-  { value: "CONFERENCE", label: "Conference" },
-]
 
 const initialForm: ScheduleForm = {
   title: "",
@@ -212,14 +200,7 @@ function isToday(iso: string): boolean {
   )
 }
 
-function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    IN_PROGRESS: "LIVE NOW",
-    SCHEDULED: "UPCOMING",
-    COMPLETED: "COMPLETED",
-    CANCELLED: "CANCELLED",
-    ENDED: "COMPLETED",
-  }
+function getStatusLabel(status: string, labels: Record<string, string>): string {
   return labels[status] || status
 }
 
@@ -236,8 +217,29 @@ function SessionCard({
   onDelete: (id: string) => void
   onSelect: (session: LiveClassItem) => void
 }) {
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const style = statusStyles[session.status] || statusStyles.SCHEDULED
   const elapsed = session.status === "IN_PROGRESS" ? getElapsedMinutes(session.scheduledAt) : 0
+  const statusLabels: Record<string, string> = {
+    IN_PROGRESS: t("lecturerLive.statusLive"),
+    SCHEDULED: t("lecturerLive.statusUpcoming"),
+    COMPLETED: t("lecturerLive.statusCompleted"),
+    CANCELLED: t("lecturerLive.statusCancelled"),
+    ENDED: t("lecturerLive.statusCompleted"),
+  }
+  const sessionTypeLabels: Record<string, string> = {
+    LECTURE: t("lecturerLive.sessionLecture"),
+    TUTORIAL: t("lecturerLive.sessionTutorial"),
+    WORKSHOP: t("lecturerLive.sessionWorkshop"),
+    SEMINAR: t("lecturerLive.sessionSeminar"),
+    LAB_DEMO: t("lecturerLive.sessionLabDemo"),
+    WEBINAR: t("lecturerLive.sessionWebinar"),
+    GUEST_SPEAKER: t("lecturerLive.sessionGuestSpeaker"),
+    RESEARCH_PRESENTATION: t("lecturerLive.sessionResearchPresentation"),
+    PROJECT_DEFENSE: t("lecturerLive.sessionProjectDefense"),
+    CONFERENCE: t("lecturerLive.sessionConference"),
+  }
 
   return (
     <div
@@ -264,11 +266,11 @@ function SessionCard({
               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.bg} ${style.text}`}
             >
               <span className={`size-1.5 rounded-full ${style.dot}`} />
-              {getStatusLabel(session.status)}
+              {getStatusLabel(session.status, statusLabels)}
             </span>
             {session.sessionType && session.sessionType !== "LECTURE" && (
               <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                {session.sessionType.replace(/_/g, " ")}
+                {sessionTypeLabels[session.sessionType] ?? session.sessionType.replace(/_/g, " ")}
               </span>
             )}
           </div>
@@ -288,7 +290,7 @@ function SessionCard({
             </span>
             <span className="flex items-center gap-1">
               <Clock className="size-3" />
-              {session.durationMinutes} min
+              {t("lecturerLive.durationMin", { count: session.durationMinutes })}
             </span>
             <span className="flex items-center gap-1">
               <Users className="size-3" />
@@ -297,7 +299,7 @@ function SessionCard({
             {elapsed > 0 && (
               <span className="flex items-center gap-1 font-medium text-red-600 dark:text-red-400">
                 <Radio className="size-3" />
-                {elapsed} min elapsed
+                {t("lecturerLive.elapsedMin", { count: elapsed })}
               </span>
             )}
           </div>
@@ -313,7 +315,7 @@ function SessionCard({
               className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 transition-colors"
             >
               <Play className="size-3" />
-              Start
+              {t("lecturerLive.start")}
             </button>
           )}
           {session.status === "IN_PROGRESS" && (
@@ -323,14 +325,14 @@ function SessionCard({
                 className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
               >
                 <Eye className="size-3" />
-                View
+                {tc("view")}
               </button>
               <button
                 onClick={() => onEnd(session.id)}
                 className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
               >
                 <Square className="size-3" />
-                End
+                {t("lecturerLive.end")}
               </button>
             </>
           )}
@@ -340,14 +342,14 @@ function SessionCard({
               className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
             >
               <Video className="size-3" />
-              Recording
+              {t("lecturerLive.recording")}
             </button>
           )}
           {(session.status === "SCHEDULED" || session.status === "COMPLETED") && (
             <button
               onClick={() => onDelete(session.id)}
               className="inline-flex items-center justify-center size-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              title="Delete"
+              title={tc("delete")}
             >
               <Trash2 className="size-3.5" />
             </button>
@@ -371,9 +373,29 @@ function SessionDetailModal({
   onEnd: (id: string) => void
   onDelete: (id: string) => void
 }) {
+  const t = useTranslations("learner")
   const style = statusStyles[session.status] || statusStyles.SCHEDULED
   const elapsed =
     session.status === "IN_PROGRESS" ? getElapsedMinutes(session.scheduledAt) : 0
+  const statusLabels: Record<string, string> = {
+    IN_PROGRESS: t("lecturerLive.statusLive"),
+    SCHEDULED: t("lecturerLive.statusUpcoming"),
+    COMPLETED: t("lecturerLive.statusCompleted"),
+    CANCELLED: t("lecturerLive.statusCancelled"),
+    ENDED: t("lecturerLive.statusCompleted"),
+  }
+  const sessionTypeLabels: Record<string, string> = {
+    LECTURE: t("lecturerLive.sessionLecture"),
+    TUTORIAL: t("lecturerLive.sessionTutorial"),
+    WORKSHOP: t("lecturerLive.sessionWorkshop"),
+    SEMINAR: t("lecturerLive.sessionSeminar"),
+    LAB_DEMO: t("lecturerLive.sessionLabDemo"),
+    WEBINAR: t("lecturerLive.sessionWebinar"),
+    GUEST_SPEAKER: t("lecturerLive.sessionGuestSpeaker"),
+    RESEARCH_PRESENTATION: t("lecturerLive.sessionResearchPresentation"),
+    PROJECT_DEFENSE: t("lecturerLive.sessionProjectDefense"),
+    CONFERENCE: t("lecturerLive.sessionConference"),
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -386,7 +408,7 @@ function SessionDetailModal({
               className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${style.bg} ${style.text}`}
             >
               <span className={`size-1.5 rounded-full ${style.dot}`} />
-              {getStatusLabel(session.status)}
+              {getStatusLabel(session.status, statusLabels)}
             </span>
           </div>
           <button
@@ -400,46 +422,46 @@ function SessionDetailModal({
         <div className="mt-5 space-y-4">
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Session Type</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldSessionType")}</span>
               <p className="mt-0.5 text-foreground">
-                {session.sessionType?.replace(/_/g, " ") || "Lecture"}
+                {session.sessionType ? (sessionTypeLabels[session.sessionType] ?? session.sessionType.replace(/_/g, " ")) : t("lecturerLive.sessionLecture")}
               </p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Subject</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldSubject")}</span>
               <p className="mt-0.5 text-foreground">{session.subjectName || "—"}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Scheduled</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldScheduled")}</span>
               <p className="mt-0.5 text-foreground">{formatDateTime(session.scheduledAt)}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Duration</span>
-              <p className="mt-0.5 text-foreground">{session.durationMinutes} minutes</p>
+              <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldDuration")}</span>
+              <p className="mt-0.5 text-foreground">{t("lecturerLive.durationMinutes", { count: session.durationMinutes })}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Participants</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldParticipants")}</span>
               <p className="mt-0.5 text-foreground">
                 {session.currentParticipants ?? 0} / {session.maxParticipants ?? "∞"}
               </p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Recording</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldRecording")}</span>
               <p className="mt-0.5 text-foreground">
-                {session.recordingEnabled ? "Enabled" : "Disabled"}
+                {session.recordingEnabled ? t("lecturerLive.enabled") : t("lecturerLive.disabled")}
               </p>
             </div>
             {session.timezone && (
               <div>
-                <span className="text-xs font-medium text-muted-foreground">Timezone</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldTimezone")}</span>
                 <p className="mt-0.5 text-foreground">{session.timezone}</p>
               </div>
             )}
             {elapsed > 0 && (
               <div>
-                <span className="text-xs font-medium text-muted-foreground">Elapsed</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldElapsed")}</span>
                 <p className="mt-0.5 font-semibold text-red-600 dark:text-red-400">
-                  {elapsed} minutes
+                  {t("lecturerLive.durationMinutes", { count: elapsed })}
                 </p>
               </div>
             )}
@@ -447,7 +469,7 @@ function SessionDetailModal({
 
           {session.description && (
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Description</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldDescription")}</span>
               <p className="mt-1 text-sm text-foreground whitespace-pre-line">
                 {session.description}
               </p>
@@ -457,27 +479,27 @@ function SessionDetailModal({
           {session.status === "COMPLETED" && (
             <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800/40 dark:bg-green-950/20">
               <h4 className="text-sm font-semibold text-green-700 dark:text-green-400">
-                Session Analytics Summary
+                {t("lecturerLive.analyticsSummary")}
               </h4>
               <div className="mt-2 grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Total Participants</span>
+                  <span className="text-muted-foreground">{t("lecturerLive.totalParticipants")}</span>
                   <p className="font-semibold text-foreground">
                     {session.currentParticipants ?? 0}
                   </p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Duration</span>
-                  <p className="font-semibold text-foreground">{session.durationMinutes} min</p>
+                  <span className="text-muted-foreground">{t("lecturerLive.fieldDuration")}</span>
+                  <p className="font-semibold text-foreground">{t("lecturerLive.durationMin", { count: session.durationMinutes })}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Completion</span>
+                  <span className="text-muted-foreground">{t("lecturerLive.completion")}</span>
                   <p className="font-semibold text-foreground">100%</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Recording</span>
+                  <span className="text-muted-foreground">{t("lecturerLive.fieldRecording")}</span>
                   <p className="font-semibold text-foreground">
-                    {session.recordingUrl ? "Available" : "N/A"}
+                    {session.recordingUrl ? t("lecturerLive.available") : "N/A"}
                   </p>
                 </div>
               </div>
@@ -495,7 +517,7 @@ function SessionDetailModal({
               className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
             >
               <Play className="size-4" />
-              Start Session
+              {t("lecturerLive.startSession")}
             </button>
           )}
           {session.status === "IN_PROGRESS" && (
@@ -505,7 +527,7 @@ function SessionDetailModal({
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
               >
                 <Eye className="size-4" />
-                View Classroom
+                {t("lecturerLive.viewClassroom")}
               </button>
               <button
                 onClick={() => {
@@ -515,7 +537,7 @@ function SessionDetailModal({
                 className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
               >
                 <Square className="size-4" />
-                End Session
+                {t("lecturerLive.endSession")}
               </button>
             </>
           )}
@@ -525,7 +547,7 @@ function SessionDetailModal({
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <Video className="size-4" />
-              View Recording
+              {t("lecturerLive.viewRecording")}
             </button>
           )}
           {session.status === "COMPLETED" && (
@@ -536,7 +558,7 @@ function SessionDetailModal({
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <BarChart3 className="size-4" />
-              View Analytics
+              {t("lecturerLive.viewAnalytics")}
             </button>
           )}
           {(session.status === "SCHEDULED" || session.status === "COMPLETED") && (
@@ -548,7 +570,7 @@ function SessionDetailModal({
               className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors ml-auto"
             >
               <Trash2 className="size-4" />
-              Delete
+              {t("lecturerLive.deleteSession")}
             </button>
           )}
         </div>
@@ -570,10 +592,24 @@ function ScheduleSessionForm({
   onCancel: () => void
   submitting: boolean
 }) {
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
+  const sessionTypes = [
+    { value: "LECTURE", label: t("lecturerLive.sessionLecture") },
+    { value: "TUTORIAL", label: t("lecturerLive.sessionTutorial") },
+    { value: "WORKSHOP", label: t("lecturerLive.sessionWorkshop") },
+    { value: "SEMINAR", label: t("lecturerLive.sessionSeminar") },
+    { value: "LAB_DEMO", label: t("lecturerLive.sessionLabDemo") },
+    { value: "WEBINAR", label: t("lecturerLive.sessionWebinar") },
+    { value: "GUEST_SPEAKER", label: t("lecturerLive.sessionGuestSpeaker") },
+    { value: "RESEARCH_PRESENTATION", label: t("lecturerLive.sessionResearchPresentation") },
+    { value: "PROJECT_DEFENSE", label: t("lecturerLive.sessionProjectDefense") },
+    { value: "CONFERENCE", label: t("lecturerLive.sessionConference") },
+  ]
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-foreground">Schedule New Session</h2>
+        <h2 className="text-base font-semibold text-foreground">{t("lecturerLive.scheduleFormTitle")}</h2>
         <button
           onClick={onCancel}
           className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
@@ -584,44 +620,44 @@ function ScheduleSessionForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Title *</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldTitle")}</label>
           <input
             type="text"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="e.g. Introduction to Quantum Mechanics"
+            placeholder={t("lecturerLive.titlePlaceholder")}
             className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
           />
         </div>
 
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldDescription")}</label>
           <textarea
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="What will be covered in this session..."
+            placeholder={t("lecturerLive.descriptionPlaceholder")}
             rows={3}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Session Type *</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldSessionType")}</label>
           <select
             value={form.sessionType}
             onChange={(e) => setForm({ ...form, sessionType: e.target.value })}
             className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
           >
-            {SESSION_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
+            {sessionTypes.map((st) => (
+              <option key={st.value} value={st.value}>
+                {st.label}
               </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Date & Time *</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldDateTime")}</label>
           <input
             type="datetime-local"
             value={form.scheduledAt}
@@ -631,7 +667,7 @@ function ScheduleSessionForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Duration (minutes)</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldDurationMinutes")}</label>
           <input
             type="number"
             value={form.durationMinutes}
@@ -643,7 +679,7 @@ function ScheduleSessionForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Max Participants</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldMaxParticipants")}</label>
           <input
             type="number"
             value={form.maxParticipants}
@@ -654,7 +690,7 @@ function ScheduleSessionForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Timezone</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lecturerLive.fieldTimezone")}</label>
           <select
             value={form.timezone}
             onChange={(e) => setForm({ ...form, timezone: e.target.value })}
@@ -677,9 +713,9 @@ function ScheduleSessionForm({
               onChange={(e) => setForm({ ...form, recordingEnabled: e.target.checked })}
               className="size-4 rounded border-border"
             />
-            <span className="text-sm text-foreground">Enable recording</span>
+            <span className="text-sm text-foreground">{t("lecturerLive.enableRecording")}</span>
           </label>
-          <span className="text-xs text-muted-foreground">Record this session for replay</span>
+          <span className="text-xs text-muted-foreground">{t("lecturerLive.recordingHint")}</span>
         </div>
       </div>
 
@@ -688,14 +724,14 @@ function ScheduleSessionForm({
           onClick={onCancel}
           className="inline-flex items-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
         >
-          Cancel
+          {tc("cancel")}
         </button>
         <button
           onClick={onSubmit}
           disabled={submitting || !form.title.trim() || !form.scheduledAt}
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          {submitting ? "Scheduling..." : "Schedule Session"}
+          {submitting ? t("lecturerLive.scheduling") : t("lecturerLive.scheduleFormTitle")}
         </button>
       </div>
     </div>
@@ -704,6 +740,8 @@ function ScheduleSessionForm({
 
 export default function LecturerLiveDashboardPage() {
   const { user } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [sessions, setSessions] = useState<LiveClassItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -722,7 +760,7 @@ export default function LecturerLiveDashboardPage() {
       const data = await fetchTeacherLiveClasses()
       setSessions(data)
     } catch {
-      setError("Failed to load live classes")
+      setError(t("lecturerLive.loadFailed"))
     } finally {
       setLoading(false)
     }
@@ -745,13 +783,13 @@ export default function LecturerLiveDashboardPage() {
       setSubmitting(true)
       setError(null)
       await createLiveClass(form)
-      setSuccess("Session scheduled successfully")
+      setSuccess(t("lecturerLive.scheduledSuccess"))
       setForm(initialForm)
       setShowForm(false)
       loadSessions()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to schedule session")
+      setError(err instanceof Error ? err.message : t("lecturerLive.scheduleFailed"))
     } finally {
       setSubmitting(false)
     }
@@ -761,37 +799,37 @@ export default function LecturerLiveDashboardPage() {
     try {
       setError(null)
       await startLiveClass(id)
-      setSuccess("Session started!")
+      setSuccess(t("lecturerLive.startedSuccess"))
       loadSessions()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start session")
+      setError(err instanceof Error ? err.message : t("lecturerLive.startFailed"))
     }
   }
 
   const handleEndSession = async (id: string) => {
-    if (!confirm("End this live session? Participants will be disconnected.")) return
+    if (!confirm(t("lecturerLive.confirmEnd"))) return
     try {
       setError(null)
       await endLiveClass(id)
-      setSuccess("Session ended")
+      setSuccess(t("lecturerLive.endedSuccess"))
       loadSessions()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to end session")
+      setError(err instanceof Error ? err.message : t("lecturerLive.endFailed"))
     }
   }
 
   const handleDeleteSession = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this session?")) return
+    if (!confirm(t("lecturerLive.confirmDelete"))) return
     try {
       setError(null)
       await deleteLiveClass(id)
-      setSuccess("Session deleted")
+      setSuccess(t("lecturerLive.deletedSuccess"))
       loadSessions()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete session")
+      setError(err instanceof Error ? err.message : t("lecturerLive.deleteFailed"))
     }
   }
 
@@ -812,28 +850,28 @@ export default function LecturerLiveDashboardPage() {
 
   const summaryCards = [
     {
-      label: "Total Sessions",
+      label: t("lecturerLive.summaryTotal"),
       value: sessions.length,
       icon: Calendar,
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-950/20",
     },
     {
-      label: "Upcoming",
+      label: t("lecturerLive.summaryUpcoming"),
       value: upcoming.length,
       icon: Clock,
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-950/20",
     },
     {
-      label: "Live Now",
+      label: t("lecturerLive.summaryLiveNow"),
       value: liveNow.length,
       icon: Radio,
       color: "text-red-600 dark:text-red-400",
       bg: "bg-red-50 dark:bg-red-950/20",
     },
     {
-      label: "Completed",
+      label: t("lecturerLive.summaryCompleted"),
       value: allCompleted.length,
       icon: Video,
       color: "text-green-600 dark:text-green-400",
@@ -846,8 +884,8 @@ export default function LecturerLiveDashboardPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <LearnerHeader
-        firstName={user?.firstName || user?.name || "Lecturer"}
-        subtitle="Manage your live sessions — create, schedule, start, and monitor"
+        firstName={user?.firstName || user?.name || t("lecturerCourses.lecturerFallback")}
+        subtitle={t("lecturerLive.headerSubtitle")}
       />
 
       {error && (
@@ -892,10 +930,10 @@ export default function LecturerLiveDashboardPage() {
           <Filter className="size-4 text-muted-foreground" />
           <div className="flex items-center gap-1">
             {[
-              { key: "ALL", label: "All" },
-              { key: "LIVE", label: "Live" },
-              { key: "UPCOMING", label: "Upcoming" },
-              { key: "COMPLETED", label: "Completed" },
+              { key: "ALL", label: t("lecturerLive.filterAll") },
+              { key: "LIVE", label: t("lecturerLive.filterLive") },
+              { key: "UPCOMING", label: t("lecturerLive.filterUpcoming") },
+              { key: "COMPLETED", label: t("lecturerLive.filterCompleted") },
             ].map((f) => (
               <button
                 key={f.key}
@@ -922,12 +960,12 @@ export default function LecturerLiveDashboardPage() {
           {showForm ? (
             <>
               <Settings className="size-4" />
-              Cancel
+              {tc("cancel")}
             </>
           ) : (
             <>
               <Plus className="size-4" />
-              Schedule New Session
+              {t("lecturerLive.scheduleFormTitle")}
             </>
           )}
         </button>
@@ -950,7 +988,7 @@ export default function LecturerLiveDashboardPage() {
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
             <Radio className="size-4 text-red-500 animate-pulse" />
-            LIVE NOW
+            {t("lecturerLive.sectionLiveNow")}
           </h2>
           <div className="space-y-3">
             {liveNow.map((session) => (
@@ -972,7 +1010,7 @@ export default function LecturerLiveDashboardPage() {
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
             <Clock className="size-4 text-blue-500" />
-            UPCOMING SESSIONS
+            {t("lecturerLive.sectionUpcoming")}
           </h2>
           <div className="space-y-3">
             {upcoming
@@ -998,7 +1036,7 @@ export default function LecturerLiveDashboardPage() {
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
             <Video className="size-4 text-green-500" />
-            COMPLETED TODAY
+            {t("lecturerLive.sectionCompletedToday")}
           </h2>
           <div className="space-y-3">
             {completed.map((session) => (
@@ -1020,10 +1058,10 @@ export default function LecturerLiveDashboardPage() {
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
             <Filter className="size-4 text-muted-foreground" />
             {filterStatus === "LIVE"
-              ? "LIVE SESSIONS"
+              ? t("lecturerLive.sectionLive")
               : filterStatus === "UPCOMING"
-                ? "UPCOMING SESSIONS"
-                : "COMPLETED SESSIONS"}
+                ? t("lecturerLive.sectionUpcoming")
+                : t("lecturerLive.sectionCompleted")}
           </h2>
           <div className="space-y-3">
             {filteredSessions.map((session) => (
@@ -1043,15 +1081,15 @@ export default function LecturerLiveDashboardPage() {
       {sessions.length === 0 && (
         <EmptyState
           icon={<Radio className="size-10" />}
-          title="No Live Sessions"
-          description="Schedule your first live session to start engaging with learners in real time."
+          title={t("lecturerLive.emptyTitle")}
+          description={t("lecturerLive.emptyDescription")}
           action={
             <button
               onClick={() => setShowForm(true)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Plus className="size-4" />
-              Schedule Your First Session
+              {t("lecturerLive.emptyAction")}
             </button>
           }
         />

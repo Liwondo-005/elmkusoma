@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Target, Loader2 } from "lucide-react"
 import { parentApi, type ChildOverview, type GoalItem } from "@/lib/parent-api"
 
 export default function ParentGoalsPage() {
+  const t = useTranslations("parent")
+  const ts = useTranslations("status")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [goals, setGoals] = useState<GoalItem[]>([])
@@ -40,8 +43,8 @@ export default function ParentGoalsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Learning Goals</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{activeCount} active &middot; {completedCount} completed</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("goals.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("goals.subtitle", { active: activeCount, completed: completedCount })}</p>
       </div>
 
       {children.length > 1 && (
@@ -58,14 +61,14 @@ export default function ParentGoalsPage() {
       {goals.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <Target className="mx-auto mb-3 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No learning goals set yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">Goals will appear here once set by teachers or the system.</p>
+          <p className="text-sm font-medium text-foreground">{t("goals.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("goals.emptyDesc")}</p>
         </div>
       ) : (
         <>
           {activeGoals.length > 0 && (
             <section>
-              <h2 className="text-base font-semibold text-foreground mb-3">Active Goals</h2>
+              <h2 className="text-base font-semibold text-foreground mb-3">{t("goals.activeTitle")}</h2>
               <div className="space-y-3">
                 {activeGoals.map((goal) => (
                   <GoalCard key={goal.id} goal={goal} />
@@ -76,7 +79,7 @@ export default function ParentGoalsPage() {
 
           {completedGoals.length > 0 && (
             <section>
-              <h2 className="text-base font-semibold text-foreground mb-3">Completed</h2>
+              <h2 className="text-base font-semibold text-foreground mb-3">{ts("completed")}</h2>
               <div className="space-y-3">
                 {completedGoals.map((goal) => (
                   <GoalCard key={goal.id} goal={goal} />
@@ -91,6 +94,7 @@ export default function ParentGoalsPage() {
 }
 
 function GoalCard({ goal }: { goal: GoalItem }) {
+  const t = useTranslations("parent")
   const progress = goal.progressPercentage || 0
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -105,8 +109,8 @@ function GoalCard({ goal }: { goal: GoalItem }) {
             <div className={`h-full rounded-full transition-all ${goal.status === "COMPLETED" ? "bg-green-500" : "bg-primary"}`} style={{ width: `${progress}%` }} />
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{Math.round(progress)}% complete</span>
-            {goal.targetDate && <span>Target: {new Date(goal.targetDate).toLocaleDateString("en-GB", { month: "short", day: "numeric" })}</span>}
+            <span>{t("goals.progressComplete", { progress: Math.round(progress) })}</span>
+            {goal.targetDate && <span>{t("goals.targetLabel", { date: new Date(goal.targetDate).toLocaleDateString("en-GB", { month: "short", day: "numeric" }) })}</span>}
           </div>
         </div>
       </div>

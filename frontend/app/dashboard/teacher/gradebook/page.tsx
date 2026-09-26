@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import {
   teacherApi,
@@ -23,6 +24,8 @@ interface GradebookSubmission {
 
 export default function TeacherGradebookPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
   const [classes, setClasses] = useState<TeacherClassGroup[]>([])
   const [selectedClass, setSelectedClass] = useState<string | null>(null)
   const [loadingClasses, setLoadingClasses] = useState(true)
@@ -59,7 +62,7 @@ export default function TeacherGradebookPage() {
         setSelectedClass(data[0].classGroupId)
       }
     } catch {
-      setError("Failed to load classes")
+      setError(t("classes.loadError"))
       setClasses([])
     } finally {
       setLoadingClasses(false)
@@ -123,7 +126,7 @@ export default function TeacherGradebookPage() {
       }
       setAssessmentScores(resScores)
     } catch {
-      setError("Failed to load gradebook data")
+      setError(t("gradebook.loadError"))
     } finally {
       setLoading(false)
     }
@@ -157,10 +160,10 @@ export default function TeacherGradebookPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Gradebook
+          {tn("gradebook")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          View and track student grades across assignments and assessments.
+          {t("gradebook.subtitle")}
         </p>
       </div>
 
@@ -177,7 +180,7 @@ export default function TeacherGradebookPage() {
         {loadingClasses ? (
           <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         ) : classes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No classes found.</p>
+          <p className="text-sm text-muted-foreground">{t("gradebook.noClasses")}</p>
         ) : (
           <select
             value={selectedClass || ""}
@@ -201,30 +204,30 @@ export default function TeacherGradebookPage() {
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <BarChart3 className="mx-auto size-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-semibold text-foreground">
-            Select a Class
+            {t("gradebook.selectClass")}
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Choose a class to view the gradebook.
+            {t("gradebook.selectClassDesc")}
           </p>
         </div>
       ) : students.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Users className="mx-auto size-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-semibold text-foreground">
-            No Students
+            {t("gradebook.noStudents")}
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            No students are enrolled in this class.
+            {t("gradebook.noStudentsDesc")}
           </p>
         </div>
       ) : assignments.length === 0 && assessments.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <BookOpen className="mx-auto size-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-semibold text-foreground">
-            No Grade Data
+            {t("gradebook.noData")}
           </h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            No assignments or assessments found for this class.
+            {t("gradebook.noDataDesc")}
           </p>
         </div>
       ) : (
@@ -235,7 +238,7 @@ export default function TeacherGradebookPage() {
               <p className="text-2xl font-extrabold text-foreground">
                 {students.length}
               </p>
-              <p className="text-sm font-medium text-foreground">Students</p>
+              <p className="text-sm font-medium text-foreground">{t("grading.studentsLabel")}</p>
               <p className="text-xs text-muted-foreground">{selectedClassName}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -243,16 +246,16 @@ export default function TeacherGradebookPage() {
               <p className="text-2xl font-extrabold text-foreground">
                 {assignments.length}
               </p>
-              <p className="text-sm font-medium text-foreground">Assignments</p>
-              <p className="text-xs text-muted-foreground">Total created</p>
+              <p className="text-sm font-medium text-foreground">{tn("assignments")}</p>
+              <p className="text-xs text-muted-foreground">{t("gradebook.totalCreated")}</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <PenTool className="mb-2 size-5 text-muted-foreground" />
               <p className="text-2xl font-extrabold text-foreground">
                 {assessments.length}
               </p>
-              <p className="text-sm font-medium text-foreground">Assessments</p>
-              <p className="text-xs text-muted-foreground">Total created</p>
+              <p className="text-sm font-medium text-foreground">{tn("assessments")}</p>
+              <p className="text-xs text-muted-foreground">{t("gradebook.totalCreated")}</p>
             </div>
           </div>
 
@@ -262,7 +265,7 @@ export default function TeacherGradebookPage() {
                 <thead className="border-b border-border bg-muted/50">
                   <tr>
                     <th className="sticky left-0 z-10 bg-muted/50 px-4 py-3 font-medium text-muted-foreground min-w-[160px]">
-                      Student Name
+                      {t("gradebook.colStudent")}
                     </th>
                     {assignments.map((a) => (
                       <th
@@ -291,7 +294,7 @@ export default function TeacherGradebookPage() {
                       </th>
                     ))}
                     <th className="px-4 py-3 font-medium text-muted-foreground min-w-[80px] text-center">
-                      Average
+                      {t("grading.colAverage")}
                     </th>
                   </tr>
                 </thead>

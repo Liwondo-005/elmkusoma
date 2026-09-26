@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import {
   Users,
@@ -139,6 +140,9 @@ function getAttendanceBarColor(pct: number) {
 
 export default function TeacherLearnerSupportPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tc = useTranslations("common")
+  const ts = useTranslations("status")
 
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [allStudents, setAllStudents] = useState<StudentListItem[]>([])
@@ -182,7 +186,7 @@ export default function TeacherLearnerSupportPage() {
       setClasses(classesData)
       setAllStudents(studentsData)
     } catch {
-      setError("Failed to load data")
+      setError(tc("error.load"))
       setClasses([])
       setAllStudents([])
     } finally {
@@ -275,7 +279,7 @@ export default function TeacherLearnerSupportPage() {
       }
       setAssessmentResults(resResults)
     } catch {
-      setError("Failed to load student data")
+      setError(t("support.loadError"))
     } finally {
       setLoadingProfile(false)
     }
@@ -338,23 +342,23 @@ export default function TeacherLearnerSupportPage() {
 
   const weakAreas: string[] = []
   if (attendance && attendance.attendancePercentage < 75) {
-    weakAreas.push(`Attendance is low at ${attendance.attendancePercentage.toFixed(0)}%`)
+    weakAreas.push(t("support.attendanceLow", { pct: attendance.attendancePercentage.toFixed(0) }))
   }
   if (attendance && attendance.absentDays > attendance.presentDays) {
-    weakAreas.push(`More absences (${attendance.absentDays}) than present days (${attendance.presentDays})`)
+    weakAreas.push(t("support.moreAbsences", { absent: attendance.absentDays, present: attendance.presentDays }))
   }
   if (overallAvg !== null && overallAvg < 50) {
-    weakAreas.push(`Overall average is ${overallAvg.toFixed(0)}% — below passing`)
+    weakAreas.push(t("support.overallBelow", { avg: overallAvg.toFixed(0) }))
   }
   gradedAssignments.forEach((a) => {
     const pct = (a.submission!.grade! / a.totalMarks) * 100
     if (pct < 40) {
-      weakAreas.push(`Low assignment grade on "${a.title}" (${a.submission!.grade}/${a.totalMarks})`)
+      weakAreas.push(t("support.lowAssignment", { title: a.title, grade: a.submission!.grade!, total: a.totalMarks }))
     }
   })
   gradedAssessments.forEach((a) => {
     if (!a.result!.isPassed) {
-      weakAreas.push(`Failed assessment "${a.title}" (${a.result!.totalScore}/${a.totalMarks})`)
+      weakAreas.push(t("support.failedAssessment", { title: a.title, score: a.result!.totalScore, total: a.totalMarks }))
     }
   })
 
@@ -363,9 +367,9 @@ export default function TeacherLearnerSupportPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Learner Support</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("support.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          View detailed information about individual students in your classes.
+          {t("support.subtitle")}
         </p>
       </div>
 
@@ -383,7 +387,7 @@ export default function TeacherLearnerSupportPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search students by name, email, or admission #..."
+            placeholder={t("students.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-ring"
@@ -397,7 +401,7 @@ export default function TeacherLearnerSupportPage() {
             disabled={loadingStudents}
             className="h-10 rounded-lg border border-border bg-background pl-9 pr-8 text-sm outline-none focus:border-ring disabled:opacity-50"
           >
-            <option value="">Select a student</option>
+            <option value="">{t("support.selectStudent")}</option>
             {(search ? filteredStudents : allStudents).map((s) => (
               <option key={s.studentId} value={s.studentId}>
                 {s.fullName} — {s.className}
@@ -414,25 +418,25 @@ export default function TeacherLearnerSupportPage() {
       ) : allStudents.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Users className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Students Found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("students.emptyTitle")}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            No students are enrolled in your assigned classes yet.
+            {t("students.noStudents")}
           </p>
         </div>
       ) : !selectedStudentId ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <GraduationCap className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Select a Student</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("support.selectStudentTitle")}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Choose a student from the dropdown above to view their detailed profile and performance.
+            {t("support.selectStudentDesc")}
           </p>
         </div>
       ) : !selectedStudent ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <AlertCircle className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Student Not Found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("support.notFound")}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            The selected student could not be found.
+            {t("support.notFoundDesc")}
           </p>
         </div>
       ) : (
@@ -454,28 +458,28 @@ export default function TeacherLearnerSupportPage() {
                     <span className={`inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       selectedStudent.status === "ACTIVE" ? "bg-teal/10 text-teal" : "bg-muted text-muted-foreground"
                     }`}>
-                      {selectedStudent.status}
+                      {selectedStudent.status === "ACTIVE" ? ts("active") : selectedStudent.status === "INACTIVE" ? ts("inactive") : selectedStudent.status}
                     </span>
                   </div>
                   <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">Email:</span>
+                      <span className="text-muted-foreground">{t("email")}:</span>
                       <span className="font-medium text-foreground">{selectedStudent.email}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">Admission #:</span>
+                      <span className="text-muted-foreground">{t("support.admissionLabel")}:</span>
                       <span className="font-mono text-xs font-medium text-foreground">{selectedStudent.admissionNumber}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">Class:</span>
+                      <span className="text-muted-foreground">{t("support.classLabel")}:</span>
                       <span className="font-medium text-foreground">{selectedStudent.className}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">Subject:</span>
+                      <span className="text-muted-foreground">{t("subject")}:</span>
                       <span className="font-medium text-foreground">{selectedStudent.subjectName}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">Gender:</span>
+                      <span className="text-muted-foreground">{t("support.genderLabel")}:</span>
                       <span className="font-medium text-foreground">{selectedStudent.gender || "—"}</span>
                     </div>
                   </div>
@@ -488,7 +492,7 @@ export default function TeacherLearnerSupportPage() {
             {/* Attendance Overview */}
             <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">Attendance Overview</h2>
+                <h2 className="text-base font-semibold text-foreground">{t("support.attendanceTitle")}</h2>
                 <ClipboardCheck className="size-4 text-muted-foreground" />
               </div>
               {loadingAttendance ? (
@@ -496,14 +500,14 @@ export default function TeacherLearnerSupportPage() {
                   <Loader2 className="size-5 animate-spin text-muted-foreground" />
                 </div>
               ) : !attendance ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">No attendance data available</div>
+                <div className="py-6 text-center text-sm text-muted-foreground">{t("support.noAttendance")}</div>
               ) : (
                 <div className="mt-4 space-y-4">
                   <div className="flex items-end gap-3">
                     <span className="text-3xl font-extrabold text-foreground">
                       {attendance.attendancePercentage.toFixed(0)}%
                     </span>
-                    <span className="mb-1 text-sm text-muted-foreground">attendance rate</span>
+                    <span className="mb-1 text-sm text-muted-foreground">{t("support.attendanceRate")}</span>
                   </div>
                   <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -515,22 +519,22 @@ export default function TeacherLearnerSupportPage() {
                     <div className="rounded-xl border border-border p-3 text-center">
                       <CheckCircle className="mx-auto mb-1 size-4 text-teal" />
                       <p className="text-lg font-bold text-foreground">{attendance.presentDays}</p>
-                      <p className="text-xs text-muted-foreground">Present</p>
+                      <p className="text-xs text-muted-foreground">{ts("present")}</p>
                     </div>
                     <div className="rounded-xl border border-border p-3 text-center">
                       <XCircle className="mx-auto mb-1 size-4 text-destructive" />
                       <p className="text-lg font-bold text-foreground">{attendance.absentDays}</p>
-                      <p className="text-xs text-muted-foreground">Absent</p>
+                      <p className="text-xs text-muted-foreground">{ts("absent")}</p>
                     </div>
                     <div className="rounded-xl border border-border p-3 text-center">
                       <Clock className="mx-auto mb-1 size-4 text-amber-500" />
                       <p className="text-lg font-bold text-foreground">{attendance.lateDays}</p>
-                      <p className="text-xs text-muted-foreground">Late</p>
+                      <p className="text-xs text-muted-foreground">{ts("late")}</p>
                     </div>
                     <div className="rounded-xl border border-border p-3 text-center">
                       <AlertCircle className="mx-auto mb-1 size-4 text-primary" />
                       <p className="text-lg font-bold text-foreground">{attendance.excusedDays}</p>
-                      <p className="text-xs text-muted-foreground">Excused</p>
+                      <p className="text-xs text-muted-foreground">{ts("excused")}</p>
                     </div>
                   </div>
                 </div>
@@ -540,7 +544,7 @@ export default function TeacherLearnerSupportPage() {
             {/* Academic Performance */}
             <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">Academic Performance</h2>
+                <h2 className="text-base font-semibold text-foreground">{t("support.academicTitle")}</h2>
                 <BarChart3 className="size-4 text-muted-foreground" />
               </div>
               {loadingAssignments && loadingAssessments ? (
@@ -554,31 +558,31 @@ export default function TeacherLearnerSupportPage() {
                       <p className="text-lg font-bold text-foreground">
                         {overallAvg !== null ? `${overallAvg.toFixed(0)}%` : "—"}
                       </p>
-                      <p className="text-xs text-muted-foreground">Overall Average</p>
+                      <p className="text-xs text-muted-foreground">{t("support.overallAvg")}</p>
                     </div>
                     <div className="rounded-xl border border-border p-3 text-center">
                       <p className="text-lg font-bold text-foreground">
                         {avgAssignmentGrade !== null ? `${avgAssignmentGrade.toFixed(0)}%` : "—"}
                       </p>
-                      <p className="text-xs text-muted-foreground">Assignment Avg</p>
+                      <p className="text-xs text-muted-foreground">{t("support.assignmentAvg")}</p>
                     </div>
                     <div className="rounded-xl border border-border p-3 text-center">
                       <p className="text-lg font-bold text-foreground">
                         {avgAssessmentGrade !== null ? `${avgAssessmentGrade.toFixed(0)}%` : "—"}
                       </p>
-                      <p className="text-xs text-muted-foreground">Assessment Avg</p>
+                      <p className="text-xs text-muted-foreground">{t("support.assessmentAvg")}</p>
                     </div>
                   </div>
 
                   {gradedAssignments.length === 0 && gradedAssessments.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-muted-foreground">No graded work yet</p>
+                    <p className="py-4 text-center text-sm text-muted-foreground">{t("support.noGradedWork")}</p>
                   ) : (
                     <div className="space-y-2">
                       {studentAssignments.filter((a) => a.submission).slice(0, 4).map((a) => (
                         <div key={a.id} className="flex items-center justify-between rounded-xl border border-border p-2.5">
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium text-foreground">{a.title}</p>
-                            <p className="text-xs text-muted-foreground">Assignment</p>
+                            <p className="text-xs text-muted-foreground">{t("support.typeAssignment")}</p>
                           </div>
                           <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${getGradeColor(a.submission!.grade!, a.totalMarks)}`}>
                             {a.submission!.grade}/{a.totalMarks}
@@ -589,7 +593,7 @@ export default function TeacherLearnerSupportPage() {
                         <div key={a.id} className="flex items-center justify-between rounded-xl border border-border p-2.5">
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium text-foreground">{a.title}</p>
-                            <p className="text-xs text-muted-foreground">Assessment</p>
+                            <p className="text-xs text-muted-foreground">{t("support.typeAssessment")}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             {a.result!.isPassed ? (
@@ -614,7 +618,7 @@ export default function TeacherLearnerSupportPage() {
             {/* Recent Activity */}
             <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
+                <h2 className="text-base font-semibold text-foreground">{t("primaryProgress.recentActivity")}</h2>
                 <TrendingUp className="size-4 text-muted-foreground" />
               </div>
               <div className="mt-4 space-y-3">
@@ -623,7 +627,7 @@ export default function TeacherLearnerSupportPage() {
                     <Loader2 className="size-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : recentSubmissions.length === 0 && recentAssessments.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">No recent activity</p>
+                  <p className="py-4 text-center text-sm text-muted-foreground">{t("support.noActivity")}</p>
                 ) : (
                   <>
                     {recentSubmissions.map((sub) => (
@@ -633,10 +637,10 @@ export default function TeacherLearnerSupportPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-foreground">
-                            {assignments.find((a) => a.id === sub.assignmentId)?.title || "Assignment"}
+                            {assignments.find((a) => a.id === sub.assignmentId)?.title || t("support.typeAssignment")}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Submitted {formatDateTime(sub.submittedAt)}
+                            {t("support.submittedLabel", { date: formatDateTime(sub.submittedAt) })}
                           </p>
                         </div>
                         {sub.grade !== undefined && sub.grade !== null && (
@@ -653,10 +657,10 @@ export default function TeacherLearnerSupportPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-foreground">
-                            {assessments.find((a) => a.id === res.assessmentId)?.title || "Assessment"}
+                            {assessments.find((a) => a.id === res.assessmentId)?.title || t("support.typeAssessment")}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {res.gradedAt ? `Graded ${formatDateTime(res.gradedAt)}` : "Pending"}
+                            {res.gradedAt ? t("support.gradedLabel", { date: formatDateTime(res.gradedAt) }) : ts("pending")}
                           </p>
                         </div>
                         {res.isPassed ? (
@@ -677,7 +681,7 @@ export default function TeacherLearnerSupportPage() {
             {/* Learning Progress */}
             <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">Learning Progress</h2>
+                <h2 className="text-base font-semibold text-foreground">{t("support.learningTitle")}</h2>
                 <BookOpen className="size-4 text-muted-foreground" />
               </div>
               <div className="mt-4 space-y-3">
@@ -686,7 +690,7 @@ export default function TeacherLearnerSupportPage() {
                     <Loader2 className="size-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : progress.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">No learning progress recorded</p>
+                  <p className="py-4 text-center text-sm text-muted-foreground">{t("support.noProgress")}</p>
                 ) : (
                   <>
                     {(() => {
@@ -698,15 +702,15 @@ export default function TeacherLearnerSupportPage() {
                         <div className="grid grid-cols-3 gap-3">
                           <div className="rounded-xl border border-border p-3 text-center">
                             <p className="text-lg font-bold text-teal">{completed}</p>
-                            <p className="text-xs text-muted-foreground">Completed</p>
+                            <p className="text-xs text-muted-foreground">{ts("completed")}</p>
                           </div>
                           <div className="rounded-xl border border-border p-3 text-center">
                             <p className="text-lg font-bold text-primary">{inProgress}</p>
-                            <p className="text-xs text-muted-foreground">In Progress</p>
+                            <p className="text-xs text-muted-foreground">{ts("inProgress")}</p>
                           </div>
                           <div className="rounded-xl border border-border p-3 text-center">
                             <p className="text-lg font-bold text-muted-foreground">{notStarted}</p>
-                            <p className="text-xs text-muted-foreground">Not Started</p>
+                            <p className="text-xs text-muted-foreground">{ts("notStarted")}</p>
                           </div>
                         </div>
                       )
@@ -723,10 +727,10 @@ export default function TeacherLearnerSupportPage() {
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">Lesson Progress</p>
+                          <p className="truncate text-sm font-medium text-foreground">{t("support.lessonProgressItem")}</p>
                           <p className="text-xs text-muted-foreground">
-                            {p.completionPercentage}% complete
-                            {p.completedAt && ` · Completed ${formatDate(p.completedAt)}`}
+                            {t("support.percentComplete", { pct: p.completionPercentage })}
+                            {p.completedAt && t("support.completedOn", { date: formatDate(p.completedAt) })}
                           </p>
                         </div>
                         <div className="h-2 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
@@ -746,7 +750,7 @@ export default function TeacherLearnerSupportPage() {
           {/* Weak Areas */}
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Areas Needing Attention</h2>
+              <h2 className="text-base font-semibold text-foreground">{t("support.weakTitle")}</h2>
               <AlertTriangle className="size-4 text-muted-foreground" />
             </div>
             <div className="mt-4">
@@ -758,7 +762,7 @@ export default function TeacherLearnerSupportPage() {
                 <div className="flex items-center gap-3 rounded-xl border border-teal/20 bg-teal/5 p-4">
                   <CheckCircle className="size-5 shrink-0 text-teal" />
                   <p className="text-sm text-foreground">
-                    {selectedStudent?.fullName} is performing well across all areas. No immediate concerns.
+                    {t("support.doingWell", { name: selectedStudent?.fullName ?? "" })}
                   </p>
                 </div>
               ) : (

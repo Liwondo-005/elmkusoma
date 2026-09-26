@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/lib/auth"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { collegeApi } from "@/lib/college-api"
 import { learnerApi } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
@@ -56,6 +57,8 @@ interface StudentInfo {
 export default function StudentPortalPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -123,16 +126,16 @@ export default function StudentPortalPage() {
       setProjects(projectsList)
 
       setStudentInfo({
-        fullName: user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Student",
+        fullName: user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || t("studentPortal.studentFallback"),
         studentId: user.id,
         email: user.email || "",
         programmeName: recordData?.data?.programmeId || user.learningLevel || "N/A",
-        departmentName: "Academic Department",
+        departmentName: t("studentPortal.defaultDepartment"),
         enrollmentStatus: "ACTIVE",
         yearOfStudy: recordData?.data?.academicYear ? parseInt(recordData.data.academicYear) || 1 : 1,
         semester: recordData?.data?.semester || "1",
         enrollmentDate: enrollmentsList[0]?.enrolledDate || "",
-        academicAdvisor: "Academic Advisor",
+        academicAdvisor: t("studentPortal.defaultAdvisor"),
       })
 
       const semesterMap = new Map<string, SemesterGrades>()
@@ -160,7 +163,7 @@ export default function StudentPortalPage() {
         sem.courses.push({
           courseId: enrollment.courseId,
           courseCode,
-          courseTitle: `Course ${courseCode}`,
+          courseTitle: t("studentPortal.courseTitleFallback", { code: courseCode }),
           grade,
           gradePoints,
           creditHours,
@@ -196,11 +199,11 @@ export default function StudentPortalPage() {
       setCumulativeGpa(totalCreditHours > 0 ? Math.round((totalGpaPoints / totalCreditHours) * 100) / 100 : 0)
       setTotalCreditsEarned(earnedCredits)
     } catch (err: any) {
-      setError(err.message || "Failed to load student data")
+      setError(err.message || t("studentPortal.loadFailed"))
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, t])
 
   useEffect(() => {
     if (!user) return
@@ -260,10 +263,10 @@ export default function StudentPortalPage() {
   }
 
   const getStanding = (gpa: number) => {
-    if (gpa >= 3.5) return { label: "Dean's List", color: "text-emerald-600 bg-emerald-50" }
-    if (gpa >= 3.0) return { label: "Good Standing", color: "text-blue-600 bg-blue-50" }
-    if (gpa >= 2.0) return { label: "Satisfactory", color: "text-amber-600 bg-amber-50" }
-    return { label: "Academic Probation", color: "text-red-600 bg-red-50" }
+    if (gpa >= 3.5) return { label: t("studentPortal.standingDeansList"), color: "text-emerald-600 bg-emerald-50" }
+    if (gpa >= 3.0) return { label: t("studentPortal.standingGood"), color: "text-blue-600 bg-blue-50" }
+    if (gpa >= 2.0) return { label: t("studentPortal.standingSatisfactory"), color: "text-amber-600 bg-amber-50" }
+    return { label: t("studentPortal.standingProbation"), color: "text-red-600 bg-red-50" }
   }
 
   const progressPercentage = totalCreditsRequired > 0
@@ -285,10 +288,10 @@ export default function StudentPortalPage() {
   const standing = getStanding(cumulativeGpa)
 
   const quickActions = [
-    { label: "View Calendar", icon: Calendar, href: "/dashboard/learner/calendar-integration" },
-    { label: "My Research", icon: BookOpen, href: "/dashboard/learner/research" },
-    { label: "My Projects", icon: Briefcase, href: "/dashboard/learner/projects" },
-    { label: "Career Profile", icon: GraduationCap, href: "/dashboard/learner/career" },
+    { label: t("studentPortal.actionCalendar"), icon: Calendar, href: "/dashboard/learner/calendar-integration" },
+    { label: t("studentPortal.actionResearch"), icon: BookOpen, href: "/dashboard/learner/research" },
+    { label: t("studentPortal.actionProjects"), icon: Briefcase, href: "/dashboard/learner/projects" },
+    { label: t("studentPortal.actionCareer"), icon: GraduationCap, href: "/dashboard/learner/career" },
   ]
 
   if (authLoading || loading) return <LoadingState />
@@ -298,8 +301,8 @@ export default function StudentPortalPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <EmptyState
           icon={<User className="size-6" />}
-          title="Please log in"
-          description="You need to be logged in to access the student portal."
+          title={t("studentPortal.loginTitle")}
+          description={t("studentPortal.loginDescription")}
         />
       </div>
     )
@@ -308,8 +311,8 @@ export default function StudentPortalPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <LearnerHeader
-        firstName={studentInfo.fullName.split(" ")[0] || "Student"}
-        subtitle="Your academic profile, grades, and progress"
+        firstName={studentInfo.fullName.split(" ")[0] || t("studentPortal.studentFallback")}
+        subtitle={t("studentPortal.headerSubtitle")}
       />
 
       {error && (
@@ -330,39 +333,39 @@ export default function StudentPortalPage() {
             </div>
             <div className="sm:hidden">
               <h2 className="text-lg font-bold text-foreground">{studentInfo.fullName}</h2>
-              <p className="text-xs text-muted-foreground">ID: {studentInfo.studentId.slice(0, 8).toUpperCase()}</p>
+              <p className="text-xs text-muted-foreground">{t("studentPortal.idLabel", { id: studentInfo.studentId.slice(0, 8).toUpperCase() })}</p>
             </div>
           </div>
           <div className="flex-1 space-y-3">
             <div className="hidden sm:block">
               <h2 className="text-lg font-bold text-foreground">{studentInfo.fullName}</h2>
-              <p className="text-xs text-muted-foreground">ID: {studentInfo.studentId.slice(0, 8).toUpperCase()}</p>
+              <p className="text-xs text-muted-foreground">{t("studentPortal.idLabel", { id: studentInfo.studentId.slice(0, 8).toUpperCase() })}</p>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
               <div>
-                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="text-xs text-muted-foreground">{t("studentPortal.fieldEmail")}</p>
                 <p className="font-medium text-foreground">{studentInfo.email || "N/A"}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Programme</p>
+                <p className="text-xs text-muted-foreground">{t("studentPortal.fieldProgramme")}</p>
                 <p className="font-medium text-foreground">{studentInfo.programmeName}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Department</p>
+                <p className="text-xs text-muted-foreground">{t("studentPortal.fieldDepartment")}</p>
                 <p className="font-medium text-foreground">{studentInfo.departmentName}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Status</p>
+                <p className="text-xs text-muted-foreground">{t("studentPortal.fieldStatus")}</p>
                 <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusBadge(studentInfo.enrollmentStatus)}`}>
                   {studentInfo.enrollmentStatus}
                 </span>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Year / Semester</p>
-                <p className="font-medium text-foreground">Year {studentInfo.yearOfStudy}, Sem {studentInfo.semester}</p>
+                <p className="text-xs text-muted-foreground">{t("studentPortal.fieldYearSemester")}</p>
+                <p className="font-medium text-foreground">{t("studentPortal.yearSem", { year: studentInfo.yearOfStudy, semester: studentInfo.semester })}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Enrollment Date</p>
+                <p className="text-xs text-muted-foreground">{t("studentPortal.fieldEnrollmentDate")}</p>
                 <p className="font-medium text-foreground">
                   {studentInfo.enrollmentDate
                     ? new Date(studentInfo.enrollmentDate).toLocaleDateString()
@@ -370,11 +373,11 @@ export default function StudentPortalPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Academic Advisor</p>
+                <p className="text-xs text-muted-foreground">{t("studentPortal.fieldAdvisor")}</p>
                 <p className="font-medium text-foreground">{studentInfo.academicAdvisor}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Academic Standing</p>
+                <p className="text-xs text-muted-foreground">{t("studentPortal.fieldStanding")}</p>
                 <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${standing.color}`}>
                   {standing.label}
                 </span>
@@ -388,36 +391,36 @@ export default function StudentPortalPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
           <BarChart3 className="size-4 text-primary" />
-          Academic Progress
+          {t("studentPortal.progressTitle")}
         </h3>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <div className={`rounded-xl border p-4 ${getGpaBg(cumulativeGpa)}`}>
-            <p className="text-xs font-medium text-muted-foreground">Overall GPA</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("studentPortal.overallGpa")}</p>
             <p className={`mt-1 text-3xl font-extrabold ${getGpaColor(cumulativeGpa)}`}>
               {cumulativeGpa.toFixed(2)}
             </p>
-            <p className="mt-1 text-[10px] text-muted-foreground">out of 4.0</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">{t("studentPortal.outOfFour")}</p>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <p className="text-xs font-medium text-muted-foreground">Credits Completed</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("studentPortal.creditsCompleted")}</p>
             <p className="mt-1 text-3xl font-extrabold text-foreground">{totalCreditsEarned}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">of {totalCreditsRequired} required</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">{t("studentPortal.ofRequired", { total: totalCreditsRequired })}</p>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <p className="text-xs font-medium text-muted-foreground">Current Courses</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("studentPortal.currentCourses")}</p>
             <p className="mt-1 text-3xl font-extrabold text-foreground">{currentEnrollments.length}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">active enrollments</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">{t("studentPortal.activeEnrollments")}</p>
           </div>
           <div className="rounded-xl border border-border bg-muted/30 p-4">
-            <p className="text-xs font-medium text-muted-foreground">Completed Semesters</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("studentPortal.completedSemesters")}</p>
             <p className="mt-1 text-3xl font-extrabold text-foreground">{completedSemesters.length}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">semesters finished</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">{t("studentPortal.semestersFinished")}</p>
           </div>
         </div>
 
         <div className="mt-4">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Degree Progress</span>
+            <span className="text-muted-foreground">{t("studentPortal.degreeProgress")}</span>
             <span className="font-semibold text-foreground">{progressPercentage}%</span>
           </div>
           <div className="mt-1.5 h-3 w-full overflow-hidden rounded-full bg-muted">
@@ -427,21 +430,21 @@ export default function StudentPortalPage() {
             />
           </div>
           <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-            <span>{totalCreditsEarned} credits earned</span>
-            <span>{totalCreditsRequired - totalCreditsEarned} remaining</span>
+            <span>{t("studentPortal.creditsEarned", { count: totalCreditsEarned })}</span>
+            <span>{t("studentPortal.creditsRemaining", { count: totalCreditsRequired - totalCreditsEarned })}</span>
           </div>
         </div>
 
         {completedSemesters.length > 0 && (
           <div className="mt-4">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Completed Semesters</p>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">{t("studentPortal.completedSemesters")}</p>
             <div className="flex flex-wrap gap-2">
               {completedSemesters.map((sem, idx) => (
                 <span
                   key={idx}
                   className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-foreground"
                 >
-                  Year {sem.academicYear}, Sem {sem.semester} — GPA: {sem.semesterGpa.toFixed(2)}
+                  {t("studentPortal.semChip", { year: sem.academicYear, semester: sem.semester, gpa: sem.semesterGpa.toFixed(2) })}
                 </span>
               ))}
             </div>
@@ -453,13 +456,13 @@ export default function StudentPortalPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
           <Award className="size-4 text-primary" />
-          Grade Summary
+          {t("studentPortal.gradeSummary")}
         </h3>
         {semesterGrades.length === 0 ? (
           <EmptyState
             icon={<BookOpen className="size-5" />}
-            title="No grades available"
-            description="Your grades will appear here once courses are completed."
+            title={t("studentPortal.noGrades")}
+            description={t("studentPortal.noGradesHint")}
           />
         ) : (
           <div className="space-y-4">
@@ -467,14 +470,14 @@ export default function StudentPortalPage() {
               <div key={semIdx} className="rounded-xl border border-border bg-muted/20 p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-foreground">
-                    Year {sem.academicYear}, Semester {sem.semester}
+                    {t("studentPortal.semTitleYear", { year: sem.academicYear, semester: sem.semester })}
                   </h4>
                   <div className="flex items-center gap-3 text-xs">
                     <span className="text-muted-foreground">
-                      GPA: <span className={`font-bold ${getGpaColor(sem.semesterGpa)}`}>{sem.semesterGpa.toFixed(2)}</span>
+                      {t("studentPortal.gpaLabel")}: <span className={`font-bold ${getGpaColor(sem.semesterGpa)}`}>{sem.semesterGpa.toFixed(2)}</span>
                     </span>
                     <span className="text-muted-foreground">
-                      Credits: <span className="font-bold text-foreground">{sem.creditsEarned}</span>
+                      {t("studentPortal.creditsLabel")}: <span className="font-bold text-foreground">{sem.creditsEarned}</span>
                     </span>
                   </div>
                 </div>
@@ -482,11 +485,11 @@ export default function StudentPortalPage() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-muted-foreground">
-                        <th className="pb-2 pr-4 font-medium">Course</th>
-                        <th className="pb-2 pr-4 font-medium">Grade</th>
-                        <th className="pb-2 pr-4 font-medium">Points</th>
-                        <th className="pb-2 pr-4 font-medium">Credits</th>
-                        <th className="pb-2 font-medium">Status</th>
+                        <th className="pb-2 pr-4 font-medium">{t("studentPortal.colCourse")}</th>
+                        <th className="pb-2 pr-4 font-medium">{t("studentPortal.colGrade")}</th>
+                        <th className="pb-2 pr-4 font-medium">{t("studentPortal.colPoints")}</th>
+                        <th className="pb-2 pr-4 font-medium">{t("studentPortal.colCredits")}</th>
+                        <th className="pb-2 font-medium">{t("studentPortal.colStatus")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -516,13 +519,13 @@ export default function StudentPortalPage() {
 
             <div className="rounded-xl border border-border bg-muted/30 p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground">Cumulative Summary</span>
+                <span className="text-sm font-semibold text-foreground">{t("studentPortal.cumulativeSummary")}</span>
                 <div className="flex items-center gap-4 text-xs">
                   <span className="text-muted-foreground">
-                    GPA: <span className={`font-bold ${getGpaColor(cumulativeGpa)}`}>{cumulativeGpa.toFixed(2)}</span>
+                    {t("studentPortal.gpaLabel")}: <span className={`font-bold ${getGpaColor(cumulativeGpa)}`}>{cumulativeGpa.toFixed(2)}</span>
                   </span>
                   <span className="text-muted-foreground">
-                    Total Credits: <span className="font-bold text-foreground">{totalCreditsEarned}</span>
+                    {t("studentPortal.totalCreditsLabel")}: <span className="font-bold text-foreground">{totalCreditsEarned}</span>
                   </span>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${standing.color}`}>
                     {standing.label}
@@ -539,14 +542,14 @@ export default function StudentPortalPage() {
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
             <FileText className="size-4 text-primary" />
-            Academic Transcript
+            {t("studentPortal.transcriptTitle")}
           </h3>
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           >
             <Download className="size-3.5" />
-            Download
+            {tc("download")}
           </button>
         </div>
 
@@ -554,18 +557,18 @@ export default function StudentPortalPage() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="pb-2 pr-4 font-medium">Course</th>
-                <th className="pb-2 pr-4 font-medium">Credits</th>
-                <th className="pb-2 pr-4 font-medium">Grade</th>
-                <th className="pb-2 pr-4 font-medium">Points</th>
-                <th className="pb-2 font-medium">Semester</th>
+                <th className="pb-2 pr-4 font-medium">{t("studentPortal.colCourse")}</th>
+                <th className="pb-2 pr-4 font-medium">{t("studentPortal.colCredits")}</th>
+                <th className="pb-2 pr-4 font-medium">{t("studentPortal.colGrade")}</th>
+                <th className="pb-2 pr-4 font-medium">{t("studentPortal.colPoints")}</th>
+                <th className="pb-2 font-medium">{t("studentPortal.colSemester")}</th>
               </tr>
             </thead>
             <tbody>
               {semesterGrades.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-muted-foreground">
-                    No transcript data available.
+                    {t("studentPortal.noTranscriptData")}
                   </td>
                 </tr>
               ) : (
@@ -582,7 +585,7 @@ export default function StudentPortalPage() {
                       </td>
                       <td className="py-2 pr-4 text-foreground">{course.gradePoints.toFixed(1)}</td>
                       <td className="py-2 text-muted-foreground">
-                        Year {sem.academicYear}, Sem {sem.semester}
+                        {t("studentPortal.semTitleShort", { year: sem.academicYear, semester: sem.semester })}
                       </td>
                     </tr>
                   ))
@@ -592,11 +595,11 @@ export default function StudentPortalPage() {
             {semesterGrades.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-border">
-                  <td className="pt-3 pr-4 font-bold text-foreground">Cumulative GPA</td>
+                  <td className="pt-3 pr-4 font-bold text-foreground">{t("studentPortal.cumulativeGpa")}</td>
                   <td className="pt-3 pr-4 font-bold text-foreground">{totalCreditsEarned}</td>
                   <td className={`pt-3 pr-4 font-bold ${getGpaColor(cumulativeGpa)}`}>{cumulativeGpa.toFixed(2)}</td>
                   <td className="pt-3 pr-4 font-bold text-foreground">—</td>
-                  <td className="pt-3 text-muted-foreground">All Semesters</td>
+                  <td className="pt-3 text-muted-foreground">{t("studentPortal.allSemesters")}</td>
                 </tr>
               </tfoot>
             )}
@@ -608,13 +611,13 @@ export default function StudentPortalPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
           <BookOpen className="size-4 text-primary" />
-          Current Enrollments
+          {t("studentPortal.currentEnrollments")}
         </h3>
         {currentEnrollments.length === 0 ? (
           <EmptyState
             icon={<BookOpen className="size-5" />}
-            title="No active enrollments"
-            description="You are not currently enrolled in any courses."
+            title={t("studentPortal.noActiveEnrollments")}
+            description={t("studentPortal.noActiveEnrollmentsHint")}
           />
         ) : (
           <div className="space-y-3">
@@ -628,23 +631,23 @@ export default function StudentPortalPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">
-                    {enrollment.courseId?.slice(0, 8)?.toUpperCase() || "Course"}
+                    {enrollment.courseId?.slice(0, 8)?.toUpperCase() || t("studentPortal.courseFallback")}
                   </p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     {enrollment.instructorId && (
                       <span className="flex items-center gap-1">
                         <User className="size-3" />
-                        Instructor
+                        {t("studentPortal.instructorLabel")}
                       </span>
                     )}
                     {enrollment.creditHours && (
                       <span className="flex items-center gap-1">
                         <Clock className="size-3" />
-                        {enrollment.creditHours} credits
+                        {t("studentPortal.creditsValue", { count: enrollment.creditHours })}
                       </span>
                     )}
                     {enrollment.semester && (
-                      <span>Sem {enrollment.semester}</span>
+                      <span>{t("studentPortal.semShort", { semester: enrollment.semester })}</span>
                     )}
                   </div>
                 </div>
@@ -668,22 +671,22 @@ export default function StudentPortalPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
           <Star className="size-4 text-primary" />
-          Achievements & Awards
+          {t("studentPortal.achievementsTitle")}
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Dean's List */}
           <div className="rounded-xl border border-border bg-muted/20 p-4">
             <div className="mb-2 flex items-center gap-2">
               <Award className="size-4 text-amber-500" />
-              <span className="text-sm font-semibold text-foreground">Dean's List</span>
+              <span className="text-sm font-semibold text-foreground">{t("studentPortal.standingDeansList")}</span>
             </div>
             {cumulativeGpa >= 3.5 ? (
               <p className="text-xs text-muted-foreground">
-                You are on the Dean&apos;s List for maintaining a GPA of {cumulativeGpa.toFixed(2)}.
+                {t("studentPortal.deansListQualified", { gpa: cumulativeGpa.toFixed(2) })}
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Maintain a GPA of 3.5 or higher to qualify for the Dean&apos;s List.
+                {t("studentPortal.deansListHint")}
               </p>
             )}
           </div>
@@ -692,19 +695,19 @@ export default function StudentPortalPage() {
           <div className="rounded-xl border border-border bg-muted/20 p-4">
             <div className="mb-2 flex items-center gap-2">
               <CheckCircle className="size-4 text-emerald-500" />
-              <span className="text-sm font-semibold text-foreground">Certifications</span>
+              <span className="text-sm font-semibold text-foreground">{t("studentPortal.certifications")}</span>
             </div>
             {certificates.length > 0 ? (
               <ul className="space-y-1">
                 {certificates.slice(0, 3).map((cert, idx) => (
                   <li key={idx} className="text-xs text-muted-foreground">
-                    {cert.title || cert.name || "Certificate"}
+                    {cert.title || cert.name || t("studentPortal.certificateFallback")}
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="text-xs text-muted-foreground">
-                No certifications earned yet. Complete courses to earn certificates.
+                {t("studentPortal.noCertificationsHint")}
               </p>
             )}
           </div>
@@ -713,12 +716,12 @@ export default function StudentPortalPage() {
           <div className="rounded-xl border border-border bg-muted/20 p-4">
             <div className="mb-2 flex items-center gap-2">
               <TrendingUp className="size-4 text-blue-500" />
-              <span className="text-sm font-semibold text-foreground">Competency Badges</span>
+              <span className="text-sm font-semibold text-foreground">{t("studentPortal.competencyBadges")}</span>
             </div>
             {competencies.length > 0 ? (
               <div>
                 <p className="text-xs text-muted-foreground">
-                  {competentCount} of {competencies.length} competencies achieved
+                  {t("studentPortal.competenciesAchieved", { achieved: competentCount, total: competencies.length })}
                 </p>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
@@ -731,7 +734,7 @@ export default function StudentPortalPage() {
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                No competency records yet. Complete assessments to earn badges.
+                {t("studentPortal.noCompetenciesHint")}
               </p>
             )}
           </div>
@@ -740,7 +743,7 @@ export default function StudentPortalPage() {
           <div className="rounded-xl border border-border bg-muted/20 p-4">
             <div className="mb-2 flex items-center gap-2">
               <BookOpen className="size-4 text-purple-500" />
-              <span className="text-sm font-semibold text-foreground">Research Contributions</span>
+              <span className="text-sm font-semibold text-foreground">{t("studentPortal.researchContributions")}</span>
             </div>
             {research.length > 0 ? (
               <ul className="space-y-1">
@@ -752,7 +755,7 @@ export default function StudentPortalPage() {
               </ul>
             ) : (
               <p className="text-xs text-muted-foreground">
-                No research contributions yet. Start a research project to begin.
+                {t("studentPortal.noResearchHint")}
               </p>
             )}
           </div>
@@ -763,7 +766,7 @@ export default function StudentPortalPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
           <TrendingUp className="size-4 text-primary" />
-          Quick Actions
+          {t("studentPortal.quickActions")}
         </h3>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {quickActions.map((action) => (

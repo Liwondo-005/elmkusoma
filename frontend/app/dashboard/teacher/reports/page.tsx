@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import {
@@ -113,16 +114,10 @@ interface AssessmentResult {
 
 type ReportTab = "overview" | "students" | "attendance" | "assignments" | "assessments"
 
-const tabs: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
-  { id: "overview", label: "Class Overview", icon: BarChart3 },
-  { id: "students", label: "Student Performance", icon: Users },
-  { id: "attendance", label: "Attendance", icon: ClipboardCheck },
-  { id: "assignments", label: "Assignments", icon: FileText },
-  { id: "assessments", label: "Assessments", icon: PenTool },
-]
-
 export default function TeacherReportsPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [allStudents, setAllStudents] = useState<TeacherStudent[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
@@ -140,6 +135,14 @@ export default function TeacherReportsPage() {
   const [loadingAssessments, setLoadingAssessments] = useState(false)
   const [loadingResults, setLoadingResults] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const tabs: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
+    { id: "overview", label: t("reports.tabOverview"), icon: BarChart3 },
+    { id: "students", label: t("reports.tabStudents"), icon: Users },
+    { id: "attendance", label: tn("attendance"), icon: ClipboardCheck },
+    { id: "assignments", label: tn("assignments"), icon: FileText },
+    { id: "assessments", label: tn("assessments"), icon: PenTool },
+  ]
 
   useEffect(() => {
     if (!user) return
@@ -165,7 +168,7 @@ export default function TeacherReportsPage() {
       if (studentsData.status === "fulfilled") setAllStudents(studentsData.value)
       if (analyticsData.status === "fulfilled") setAnalytics(analyticsData.value)
     } catch {
-      setError("Failed to load initial data")
+      setError(t("reports.loadError"))
     } finally {
       setLoading(false)
     }
@@ -277,8 +280,8 @@ export default function TeacherReportsPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports</h1>
-          <p className="mt-1 text-sm text-muted-foreground">View comprehensive reports on your classes and students.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("reports")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("reports.subtitle")}</p>
         </div>
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 text-sm text-destructive">
@@ -294,12 +297,12 @@ export default function TeacherReportsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports</h1>
-          <p className="mt-1 text-sm text-muted-foreground">View comprehensive reports on your classes and students.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("reports")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("reports.subtitle")}</p>
         </div>
         <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
           <Download className="size-3.5" />
-          Export
+          {t("grading.exportCsv")}
         </Button>
       </div>
 
@@ -311,7 +314,7 @@ export default function TeacherReportsPage() {
             onChange={(e) => setSelectedClassId(e.target.value)}
             className="h-10 rounded-lg border border-border bg-background pl-9 pr-8 text-sm outline-none focus:border-ring"
           >
-            <option value="">All Classes</option>
+            <option value="">{t("students.allClasses")}</option>
             {classes.map((c) => (
               <option key={c.classGroupId} value={c.classGroupId}>
                 {c.className} — {c.subjectName}
@@ -406,12 +409,6 @@ function getPerformanceBg(rate: number): string {
   return "bg-destructive/10"
 }
 
-function getPerformanceLabel(rate: number): string {
-  if (rate >= 80) return "Excellent"
-  if (rate >= 60) return "Good"
-  return "Needs Improvement"
-}
-
 function StatCard({ label, value, icon: Icon, color, bg }: {
   label: string
   value: string | number
@@ -439,14 +436,18 @@ function ClassOverviewTab({ analytics, students, classes, selectedClassId, assig
   assessments: Assessment[]
   attendanceStats: { rate: number } | null
 }) {
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
   const cls = classes.find((c) => c.classGroupId === selectedClassId)
 
   const stats = [
-    { label: "Students", value: students.length, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { label: "Assignments", value: assignments.length, icon: FileText, color: "text-purple-500", bg: "bg-purple-500/10" },
-    { label: "Assessments", value: assessments.length, icon: PenTool, color: "text-teal-500", bg: "bg-teal-500/10" },
+    { key: "students", label: t("grading.studentsLabel"), value: students.length, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { key: "assignments", label: tn("assignments"), value: assignments.length, icon: FileText, color: "text-purple-500", bg: "bg-purple-500/10" },
+    { key: "assessments", label: tn("assessments"), value: assessments.length, icon: PenTool, color: "text-teal-500", bg: "bg-teal-500/10" },
     {
-      label: "Attendance Rate",
+      key: "attendance",
+      label: t("reports.attendanceRate"),
       value: attendanceStats ? `${attendanceStats.rate}%` : `${analytics?.avgAttendancePercentage ?? 0}%`,
       icon: BarChart3,
       color: "text-green-500",
@@ -457,32 +458,32 @@ function ClassOverviewTab({ analytics, students, classes, selectedClassId, assig
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+        {stats.map(({ key, ...rest }) => (
+          <StatCard key={key} {...rest} />
         ))}
       </div>
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">
-            {cls ? `${cls.className} — ${cls.subjectName}` : "All Classes"} — Student List
+            {cls ? t("reports.studentListTitle", { name: `${cls.className} — ${cls.subjectName}` }) : t("reports.studentListTitle", { name: t("students.allClasses") })}
           </h2>
-          <span className="text-sm text-muted-foreground">{students.length} students</span>
+          <span className="text-sm text-muted-foreground">{t("courses.students", { count: students.length })}</span>
         </div>
         {students.length === 0 ? (
           <div className="py-8 text-center">
             <Users className="mx-auto size-10 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">No students found</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("reports.noStudents")}</p>
           </div>
         ) : (
           <div className="mt-4 overflow-hidden rounded-xl border border-border">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Student</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Admission #</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Gender</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Status</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("gradebook.colStudent")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">{t("students.colAdmission")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">{t("reports.colGender")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">{t("students.colStatus")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -503,7 +504,7 @@ function ClassOverviewTab({ analytics, students, classes, selectedClassId, assig
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex items-center gap-1 rounded-full bg-teal/10 px-2 py-0.5 text-[10px] font-semibold text-teal">
                         <CheckCircle className="size-3" />
-                        Active
+                        {ts("active")}
                       </span>
                     </td>
                   </tr>
@@ -517,12 +518,12 @@ function ClassOverviewTab({ analytics, students, classes, selectedClassId, assig
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Upcoming Deadlines</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("analytics.upcomingDeadlines")}</h2>
             <Clock className="size-4 text-muted-foreground" />
           </div>
           <div className="mt-4 space-y-3">
             {!analytics?.upcomingDeadlines?.length ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No upcoming deadlines</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">{t("analytics.noDeadlines")}</p>
             ) : (
               analytics.upcomingDeadlines.slice(0, 5).map((item) => (
                 <div key={item.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -549,12 +550,12 @@ function ClassOverviewTab({ analytics, students, classes, selectedClassId, assig
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Recent Submissions</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("analytics.recentSubmissions")}</h2>
             <TrendingUp className="size-4 text-muted-foreground" />
           </div>
           <div className="mt-4 space-y-3">
             {!analytics?.recentSubmissions?.length ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No recent submissions</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">{t("analytics.noSubmissions")}</p>
             ) : (
               analytics.recentSubmissions.slice(0, 5).map((sub) => (
                 <div key={sub.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -590,6 +591,14 @@ function StudentPerformanceTab({ students, attendance, assignments, selectedClas
   assignments: Assignment[]
   selectedClassId: string
 }) {
+  const t = useTranslations("teacher")
+
+  function getPerformanceLabel(rate: number): string {
+    if (rate >= 80) return t("reports.perfExcellent")
+    if (rate >= 60) return t("reports.perfGood")
+    return t("reports.perfNeeds")
+  }
+
   const studentPerformance = useMemo(() => {
     return students.map((student) => {
       const att = attendance.find((a) => a.studentId === student.studentId)
@@ -617,23 +626,23 @@ function StudentPerformanceTab({ students, attendance, assignments, selectedClas
       {students.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Users className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Students</h3>
-          <p className="mt-2 text-sm text-muted-foreground">No students found for the selected class.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("gradebook.noStudents")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("reports.noStudentsClass")}</p>
         </div>
       ) : (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Student Performance Summary</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Overview of student performance across metrics.</p>
+          <h2 className="text-base font-semibold text-foreground">{t("reports.perfTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("reports.perfDesc")}</p>
 
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Student</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Admission #</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Attendance</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Completion</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Performance</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("gradebook.colStudent")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">{t("students.colAdmission")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{t("reports.colAttendance")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{t("reports.colCompletion")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">{t("reports.colPerformance")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -707,6 +716,9 @@ function AttendanceTab({ summaries, stats, loading, selectedClassId }: {
   loading: boolean
   selectedClassId: string
 }) {
+  const t = useTranslations("teacher")
+  const ts = useTranslations("status")
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -719,20 +731,20 @@ function AttendanceTab({ summaries, stats, loading, selectedClassId }: {
     <div className="space-y-6">
       {stats && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <StatCard label="Total Students" value={stats.totalStudents} icon={Users} color="text-blue-500" bg="bg-blue-500/10" />
-          <StatCard label="Present" value={stats.present} icon={CheckCircle} color="text-teal" bg="bg-teal/10" />
-          <StatCard label="Absent" value={stats.absent} icon={XCircle} color="text-destructive" bg="bg-destructive/10" />
-          <StatCard label="Late" value={stats.late} icon={Clock} color="text-amber-600" bg="bg-amber-500/10" />
-          <StatCard label="Excused" value={stats.excused} icon={AlertTriangle} color="text-primary" bg="bg-primary/10" />
+          <StatCard label={t("analytics.totalStudents")} value={stats.totalStudents} icon={Users} color="text-blue-500" bg="bg-blue-500/10" />
+          <StatCard label={ts("present")} value={stats.present} icon={CheckCircle} color="text-teal" bg="bg-teal/10" />
+          <StatCard label={ts("absent")} value={stats.absent} icon={XCircle} color="text-destructive" bg="bg-destructive/10" />
+          <StatCard label={ts("late")} value={stats.late} icon={Clock} color="text-amber-600" bg="bg-amber-500/10" />
+          <StatCard label={ts("excused")} value={stats.excused} icon={AlertTriangle} color="text-primary" bg="bg-primary/10" />
         </div>
       )}
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Attendance by Student</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("reports.attendanceByStudent")}</h2>
           {stats && (
             <span className="text-sm text-muted-foreground">
-              Overall Rate: <span className={`font-semibold ${getPerformanceColor(stats.rate)}`}>{stats.rate}%</span>
+              {t("reports.overallRate")} <span className={`font-semibold ${getPerformanceColor(stats.rate)}`}>{stats.rate}%</span>
             </span>
           )}
         </div>
@@ -740,19 +752,19 @@ function AttendanceTab({ summaries, stats, loading, selectedClassId }: {
         {summaries.length === 0 ? (
           <div className="py-8 text-center">
             <ClipboardCheck className="mx-auto size-10 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">No attendance data available</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("support.noAttendance")}</p>
           </div>
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Student</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Present</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Absent</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Late</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Excused</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Rate</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("gradebook.colStudent")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{ts("present")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{ts("absent")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{ts("late")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{ts("excused")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">{t("classDetail.colRate")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -819,6 +831,8 @@ function AssignmentsTab({ assignments, loading, selectedClassId }: {
   loading: boolean
   selectedClassId: string
 }) {
+  const t = useTranslations("teacher")
+
   const stats = useMemo(() => {
     if (assignments.length === 0) return null
     const totalSubmissions = assignments.reduce((sum, a) => sum + (a.submissionCount || 0), 0)
@@ -840,32 +854,32 @@ function AssignmentsTab({ assignments, loading, selectedClassId }: {
     <div className="space-y-6">
       {stats && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total Assignments" value={stats.total} icon={FileText} color="text-purple-500" bg="bg-purple-500/10" />
-          <StatCard label="Published" value={stats.published} icon={CheckCircle} color="text-teal" bg="bg-teal/10" />
-          <StatCard label="Total Submissions" value={stats.totalSubmissions} icon={Users} color="text-blue-500" bg="bg-blue-500/10" />
-          <StatCard label="Avg Completion" value={`${stats.avgCompletion}%`} icon={BarChart3} color="text-green-500" bg="bg-green-500/10" />
+          <StatCard label={t("analytics.totalAssignments")} value={stats.total} icon={FileText} color="text-purple-500" bg="bg-purple-500/10" />
+          <StatCard label={t("grading.publishedLabel")} value={stats.published} icon={CheckCircle} color="text-teal" bg="bg-teal/10" />
+          <StatCard label={t("reports.totalSubmissions")} value={stats.totalSubmissions} icon={Users} color="text-blue-500" bg="bg-blue-500/10" />
+          <StatCard label={t("reports.avgCompletion")} value={`${stats.avgCompletion}%`} icon={BarChart3} color="text-green-500" bg="bg-green-500/10" />
         </div>
       )}
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <h2 className="text-base font-semibold text-foreground">Assignment List</h2>
+        <h2 className="text-base font-semibold text-foreground">{t("reports.assignmentList")}</h2>
 
         {assignments.length === 0 ? (
           <div className="py-8 text-center">
             <FileText className="mx-auto size-10 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">No assignments found</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("reports.noAssignments")}</p>
           </div>
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Assignment</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Class</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Status</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Submissions</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">Completion</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Total Marks</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("reports.colAssignment")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">{t("reports.colClass")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{t("grading.colStatus")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{t("reports.colSubmissions")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-center">{t("reports.colCompletion")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">{t("reports.colTotalMarks")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -882,7 +896,7 @@ function AssignmentsTab({ assignments, loading, selectedClassId }: {
                           {a.dueDate && (
                             <>
                               <span className="text-border">·</span>
-                              <span>Due: {new Date(a.dueDate).toLocaleDateString()}</span>
+                              <span>{t("classDetail.dueLabel", { date: new Date(a.dueDate).toLocaleDateString() })}</span>
                             </>
                           )}
                         </div>
@@ -896,7 +910,7 @@ function AssignmentsTab({ assignments, loading, selectedClassId }: {
                             ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                             : "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400"
                         }`}>
-                          {a.status === "PUBLISHED" ? "Published" : a.status === "DRAFT" ? "Draft" : a.status || "Unknown"}
+                          {a.status === "PUBLISHED" ? t("lessons.published") : a.status === "DRAFT" ? t("lessons.draft") : a.status || t("mediaLibrary.unknownSize")}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center text-sm text-foreground">
@@ -938,6 +952,9 @@ function AssessmentsTab({ assessments, results, loading, loadingResults, selecte
   selectedClassId: string
   onLoadResults: (id: string) => void
 }) {
+  const t = useTranslations("teacher")
+  const ts = useTranslations("status")
+
   const stats = useMemo(() => {
     if (assessments.length === 0) return null
     const totalAttempts = assessments.reduce((sum, a) => sum + (a.attemptCount || 0), 0)
@@ -961,20 +978,20 @@ function AssessmentsTab({ assessments, results, loading, loadingResults, selecte
     <div className="space-y-6">
       {stats && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total Assessments" value={stats.total} icon={PenTool} color="text-teal" bg="bg-teal/10" />
-          <StatCard label="Total Attempts" value={stats.totalAttempts} icon={Users} color="text-blue-500" bg="bg-blue-500/10" />
-          <StatCard label="Graded Results" value={stats.totalGraded} icon={CheckCircle} color="text-purple-500" bg="bg-purple-500/10" />
-          <StatCard label="Pass Rate" value={`${stats.passRate}%`} icon={BarChart3} color="text-green-500" bg="bg-green-500/10" />
+          <StatCard label={t("reports.totalAssessments")} value={stats.total} icon={PenTool} color="text-teal" bg="bg-teal/10" />
+          <StatCard label={t("reports.totalAttempts")} value={stats.totalAttempts} icon={Users} color="text-blue-500" bg="bg-blue-500/10" />
+          <StatCard label={t("reports.gradedResults")} value={stats.totalGraded} icon={CheckCircle} color="text-purple-500" bg="bg-purple-500/10" />
+          <StatCard label={t("reports.passRate")} value={`${stats.passRate}%`} icon={BarChart3} color="text-green-500" bg="bg-green-500/10" />
         </div>
       )}
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <h2 className="text-base font-semibold text-foreground">Assessment List</h2>
+        <h2 className="text-base font-semibold text-foreground">{t("reports.assessmentList")}</h2>
 
         {assessments.length === 0 ? (
           <div className="py-8 text-center">
             <PenTool className="mx-auto size-10 text-muted-foreground/50" />
-            <p className="mt-2 text-sm text-muted-foreground">No assessments found</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("reports.noAssessmentsFound")}</p>
           </div>
         ) : (
           <div className="mt-4 space-y-3">
@@ -1003,10 +1020,10 @@ function AssessmentsTab({ assessments, results, loading, loadingResults, selecte
                         <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{a.description}</p>
                       )}
                       <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                        <span>Pass: {a.passMarks}/{a.totalMarks}</span>
-                        {a.timeLimitMinutes && <span>{a.timeLimitMinutes} min</span>}
+                        <span>{t("reports.passMarks", { pass: a.passMarks, total: a.totalMarks })}</span>
+                        {a.timeLimitMinutes && <span>{t("classDetail.minutesCount", { count: a.timeLimitMinutes })}</span>}
                         {a.attemptCount !== undefined && (
-                          <span>Attempts: {a.attemptCount}/{a.totalStudents || "—"}</span>
+                          <span>{t("reports.attemptsLabel", { done: a.attemptCount, total: a.totalStudents || "—" })}</span>
                         )}
                       </div>
                     </div>
@@ -1017,7 +1034,7 @@ function AssessmentsTab({ assessments, results, loading, loadingResults, selecte
                       className="gap-1 shrink-0"
                     >
                       <BarChart3 className="size-3" />
-                      Results
+                      {t("assessments.resultsBtn")}
                     </Button>
                   </div>
 
@@ -1026,10 +1043,10 @@ function AssessmentsTab({ assessments, results, loading, loadingResults, selecte
                       <table className="w-full text-left text-sm">
                         <thead className="border-b border-border bg-muted/50">
                           <tr>
-                            <th className="px-4 py-2 font-medium text-muted-foreground">Student</th>
-                            <th className="px-4 py-2 font-medium text-muted-foreground text-center">Score</th>
-                            <th className="px-4 py-2 font-medium text-muted-foreground text-center">Status</th>
-                            <th className="px-4 py-2 font-medium text-muted-foreground text-right">Graded</th>
+                            <th className="px-4 py-2 font-medium text-muted-foreground">{t("gradebook.colStudent")}</th>
+                            <th className="px-4 py-2 font-medium text-muted-foreground text-center">{t("assessments.colScore")}</th>
+                            <th className="px-4 py-2 font-medium text-muted-foreground text-center">{t("grading.colStatus")}</th>
+                            <th className="px-4 py-2 font-medium text-muted-foreground text-right">{t("assessments.colGraded")}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -1046,14 +1063,14 @@ function AssessmentsTab({ assessments, results, loading, loadingResults, selecte
                                     : "bg-destructive/10 text-destructive"
                                 }`}>
                                   {r.isPassed ? (
-                                    <><CheckCircle className="size-3" /> Passed</>
+                                    <><CheckCircle className="size-3" /> {t("assessments.passedStatus")}</>
                                   ) : (
-                                    <><XCircle className="size-3" /> Failed</>
+                                    <><XCircle className="size-3" /> {t("assessments.failedStatus")}</>
                                   )}
                                 </span>
                               </td>
                               <td className="px-4 py-2 text-right text-muted-foreground">
-                                {r.gradedAt ? new Date(r.gradedAt).toLocaleDateString() : "Pending"}
+                                {r.gradedAt ? new Date(r.gradedAt).toLocaleDateString() : ts("pending")}
                               </td>
                             </tr>
                           ))}
@@ -1064,9 +1081,9 @@ function AssessmentsTab({ assessments, results, loading, loadingResults, selecte
 
                   {assessmentResults && assessmentResults.length > 0 && (
                     <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>Graded: {gradedCount}</span>
-                      <span>Passed: {passedCount}</span>
-                      <span className={`font-semibold ${getPerformanceColor(passRate)}`}>Pass Rate: {passRate}%</span>
+                      <span>{t("reports.gradedCount", { count: gradedCount })}</span>
+                      <span>{t("reports.passedCount", { count: passedCount })}</span>
+                      <span className={`font-semibold ${getPerformanceColor(passRate)}`}>{t("reports.passRateLabel", { rate: passRate })}</span>
                     </div>
                   )}
                 </div>

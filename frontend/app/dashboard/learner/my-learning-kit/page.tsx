@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type Bookmark, type Resource } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import { Bookmark as BookmarkIcon, FileText, Video, BookOpen, Search, AlertCircle } from "lucide-react"
@@ -11,6 +12,8 @@ type Tab = "bookmarks" | "resources"
 
 export default function MyLearningKitPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [tab, setTab] = useState<Tab>("bookmarks")
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [resources, setResources] = useState<Resource[]>([])
@@ -33,7 +36,7 @@ export default function MyLearningKitPage() {
       setBookmarks(bookmarksRes)
       setResources(resourcesRes)
     } catch {
-      setError("Failed to load learning kit")
+      setError(t("kit.loadError"))
     } finally {
       setLoading(false)
     }
@@ -60,34 +63,34 @@ export default function MyLearningKitPage() {
   if (error) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
-        <LearnerHeader firstName={user?.firstName || "Learner"} subtitle="Your personal collection of saved resources and bookmarks." />
+        <LearnerHeader firstName={user?.firstName || t("kit.learnerFallback")} subtitle={t("kit.subtitle")} />
         <div className="rounded-2xl border border-border bg-card p-4 text-sm text-red-600 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadData() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadData() }} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       </div>
     )
   }
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || t("kit.learnerFallback")
   const filteredBookmarks = bookmarks.filter((b) => b.targetTitle?.toLowerCase().includes(search.toLowerCase()))
   const filteredResources = resources.filter((r) => r.title?.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <LearnerHeader firstName={firstName} subtitle="Your personal collection of saved resources and bookmarks." />
+      <LearnerHeader firstName={firstName} subtitle={t("kit.subtitle")} />
 
       <div className="flex items-center gap-4 border-b border-border">
-        {(["bookmarks", "resources"] as Tab[]).map((t) => (
+        {(["bookmarks", "resources"] as Tab[]).map((tabId) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabId}
+            onClick={() => setTab(tabId)}
             className={`border-b-2 pb-3 text-sm font-medium transition ${
-              tab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              tab === tabId ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t === "bookmarks" ? "Bookmarks" : "Resources"}
+            {tab === "bookmarks" ? t("kit.tabBookmarks") : t("kit.tabResources")}
           </button>
         ))}
       </div>
@@ -96,7 +99,7 @@ export default function MyLearningKitPage() {
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
-          placeholder={`Search ${tab}...`}
+          placeholder={t("kit.searchPlaceholder", { tab })}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/20"
@@ -107,8 +110,8 @@ export default function MyLearningKitPage() {
         filteredBookmarks.length === 0 ? (
           <EmptyState
             icon={<BookmarkIcon className="size-8" />}
-            title="No bookmarks yet"
-            description="Save courses and resources for quick access later."
+            title={t("marks.emptyTitle")}
+            description={t("kit.marksDesc")}
           />
         ) : (
           <div className="space-y-3">
@@ -118,9 +121,9 @@ export default function MyLearningKitPage() {
                   {getResourceIcon(b.targetType)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{b.targetTitle || "Untitled"}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{b.targetTitle || t("marks.untitled")}</p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    Saved {new Date(b.createdAt).toLocaleDateString()}
+                    {t("marks.savedOn", { date: new Date(b.createdAt).toLocaleDateString() })}
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -136,8 +139,8 @@ export default function MyLearningKitPage() {
         filteredResources.length === 0 ? (
           <EmptyState
             icon={<FileText className="size-8" />}
-            title="No resources available"
-            description="Learning resources will appear here once published by your instructors."
+            title={t("kit.noResources")}
+            description={t("kit.noResourcesDesc")}
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,11 +1,16 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, UserCheck, UserX, Mail, Calendar, Shield, Building2 } from "lucide-react"
 import { platformAdminApi, type UserSummary } from "@/lib/platform-admin-api"
 
 export default function UserDetailPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
@@ -20,7 +25,7 @@ export default function UserDetailPage() {
     setLoading(true)
     platformAdminApi.getUser(id)
       .then(setUser)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load user"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("userDetail.failedToLoadUser")))
       .finally(() => setLoading(false))
   }, [id])
 
@@ -32,7 +37,7 @@ export default function UserDetailPage() {
       setUser(updated)
       setConfirmAction(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update user status")
+      setError(err instanceof Error ? err.message : t("userDetail.failedToUpdateUser"))
     } finally {
       setToggling(false)
     }
@@ -64,8 +69,7 @@ export default function UserDetailPage() {
   if (error) return (
     <div className="mx-auto max-w-4xl space-y-6 py-10">
       <button onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> Back
-      </button>
+        <ArrowLeft className="size-4" /> {tc("back")}</button>
       <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-4 text-sm text-destructive">{error}</div>
     </div>
   )
@@ -75,8 +79,7 @@ export default function UserDetailPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <button onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> Back to Users
-      </button>
+        <ArrowLeft className="size-4" /> {t("userDetail.backToUsers")}</button>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-start justify-between">
@@ -94,7 +97,7 @@ export default function UserDetailPage() {
                   {user.role}
                 </span>
                 <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${user.isActive ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
-                  {user.isActive ? "Active" : "Suspended"}
+                  {user.isActive ? ts("active") : t("userDetail.suspended")}
                 </span>
               </div>
             </div>
@@ -110,26 +113,25 @@ export default function UserDetailPage() {
                 }`}
               >
                 {user.isActive ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
-                {user.isActive ? "Suspend" : "Activate"}
+                {user.isActive ? t("userDetail.suspend2") : t("userDetail.activate2")}
               </button>
             ) : (
               <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-2">
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {confirmAction === "suspend" ? "Suspend this user?" : "Activate this user?"}
+                  {confirmAction === "suspend" ? t("userDetail.suspendThisUser") : t("userDetail.activateThisUser")}
                 </span>
                 <button
                   onClick={handleToggleStatus}
                   disabled={toggling}
                   className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
                 >
-                  {toggling ? <Loader2 className="size-3 animate-spin" /> : "Confirm"}
+                  {toggling ? <Loader2 className="size-3 animate-spin" /> : tc("confirm")}
                 </button>
                 <button
                   onClick={() => setConfirmAction(null)}
                   className="rounded-md border border-border px-3 py-1 text-xs font-medium hover:bg-muted"
                 >
-                  Cancel
-                </button>
+                  {tc("cancel")}</button>
               </div>
             )}
           </div>
@@ -143,7 +145,7 @@ export default function UserDetailPage() {
               <Shield className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Role</p>
+              <p className="text-xs text-muted-foreground">{t("userDetail.role")}</p>
               <p className="font-bold text-foreground">{user.role}</p>
             </div>
           </div>
@@ -154,8 +156,8 @@ export default function UserDetailPage() {
               <Building2 className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Institution</p>
-              <p className="font-bold text-foreground">{user.institutionId ? user.institutionId.slice(0, 8) + "..." : "None"}</p>
+              <p className="text-xs text-muted-foreground">{t("userDetail.institution")}</p>
+              <p className="font-bold text-foreground">{user.institutionId ? user.institutionId.slice(0, 8) + "..." : t("userDetail.none")}</p>
             </div>
           </div>
         </div>
@@ -165,7 +167,7 @@ export default function UserDetailPage() {
               <Calendar className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Joined</p>
+              <p className="text-xs text-muted-foreground">{t("userDetail.joined")}</p>
               <p className="font-bold text-foreground">{formatDate(user.createdAt)}</p>
             </div>
           </div>
@@ -173,15 +175,14 @@ export default function UserDetailPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <h2 className="text-base font-semibold text-foreground mb-4">Account Actions</h2>
+        <h2 className="text-base font-semibold text-foreground mb-4">{t("userDetail.accountActions")}</h2>
         <div className="space-y-2">
           <button
             onClick={() => router.push("/dashboard/platform-admin/audit")}
             className="flex w-full items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
           >
             <Calendar className="size-4 text-muted-foreground" />
-            View Audit Trail for This User
-          </button>
+            {t("userDetail.viewAuditTrailFor")}</button>
         </div>
       </div>
     </div>

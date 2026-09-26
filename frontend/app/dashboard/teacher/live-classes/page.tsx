@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap, CheckCircle2, Circle } from "lucide-react"
@@ -39,20 +40,6 @@ interface SubjectOption {
   code: string
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  SCHEDULED: { label: "Scheduled", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  STARTING: { label: "Starting", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  IN_PROGRESS: { label: "Live", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  LIVE: { label: "Live", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  ENDING: { label: "Ending", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  COMPLETED: { label: "Completed", className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
-  ENDED: { label: "Ended", className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
-  CANCELLED: { label: "Cancelled", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-  SERVICE_DEGRADED: { label: "Degraded", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  SERVICE_UNAVAILABLE: { label: "Unavailable", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-  RECOVERING: { label: "Recovering", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-}
-
 const initialForm = {
   title: "",
   description: "",
@@ -73,6 +60,10 @@ const initialForm = {
 export default function TeacherLiveClassesPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
+  const ts = useTranslations("status")
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [subjects, setSubjects] = useState<SubjectOption[]>([])
@@ -84,6 +75,37 @@ export default function TeacherLiveClassesPage() {
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
   const [reviewMode, setReviewMode] = useState(false)
+
+  const statusConfig: Record<string, { label: string; className: string }> = {
+    SCHEDULED: { label: ts("scheduled"), className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+    STARTING: { label: t("liveClassDetail.statusStarting"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+    IN_PROGRESS: { label: t("liveClassDetail.statusLive"), className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+    LIVE: { label: t("liveClassDetail.statusLive"), className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+    ENDING: { label: t("liveClassDetail.statusEnding"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+    COMPLETED: { label: ts("completed"), className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
+    ENDED: { label: t("liveClassDetail.statusEnded"), className: "bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-400" },
+    CANCELLED: { label: ts("cancelled"), className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+    SERVICE_DEGRADED: { label: t("liveClasses.statusDegraded"), className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+    SERVICE_UNAVAILABLE: { label: t("liveClasses.statusUnavailable"), className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+    RECOVERING: { label: t("liveClasses.statusRecovering"), className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  }
+
+  const sessionTypeOptions = [
+    { value: "LECTURE", label: t("liveClasses.sessionLecture") },
+    { value: "TUTORIAL", label: t("liveClasses.sessionTutorial") },
+    { value: "WORKSHOP", label: t("liveClasses.sessionWorkshop") },
+    { value: "SEMINAR", label: t("liveClasses.sessionSeminar") },
+    { value: "LAB_DEMO", label: t("liveClasses.sessionLabDemo") },
+    { value: "COMPETENCY_ASSESSMENT", label: t("liveClasses.sessionCompetency") },
+    { value: "WEBINAR", label: t("liveClasses.sessionWebinar") },
+    { value: "GUEST_SPEAKER", label: t("liveClasses.sessionGuest") },
+    { value: "RESEARCH_PRESENTATION", label: t("liveClasses.sessionResearch") },
+    { value: "PROJECT_DEFENSE", label: t("liveClasses.sessionDefense") },
+    { value: "CONFERENCE", label: t("liveClasses.sessionConference") },
+    { value: "PROFESSIONAL_TRAINING", label: t("liveClasses.sessionTraining") },
+    { value: "CAREER_EVENT", label: t("liveClasses.sessionCareer") },
+    { value: "INSTITUTION_EVENT", label: t("liveClasses.sessionInstitution") },
+  ]
 
   useEffect(() => {
     if (!user) return
@@ -101,7 +123,7 @@ export default function TeacherLiveClassesPage() {
       if (liveClassesData.status === "fulfilled") {
         setLiveClasses(liveClassesData.value)
       } else {
-        setError("Failed to load live classes")
+        setError(t("liveClasses.loadError"))
       }
       if (classesData.status === "fulfilled") {
         setClasses(classesData.value)
@@ -118,7 +140,7 @@ export default function TeacherLiveClassesPage() {
         setSubjects(Array.from(uniqueSubjects.values()))
       }
     } catch {
-      setError("Failed to load data")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -156,12 +178,12 @@ export default function TeacherLiveClassesPage() {
 
   function handleProceedToReview() {
     if (!form.title.trim() || !form.scheduledAt) {
-      setError("Title and scheduled date/time are required")
+      setError(t("liveClasses.requiredError"))
       return
     }
     const scheduledDate = new Date(form.scheduledAt)
     if (scheduledDate < new Date()) {
-      setError("Scheduled time must be in the future")
+      setError(t("liveClasses.futureError"))
       return
     }
     setError(null)
@@ -199,7 +221,7 @@ export default function TeacherLiveClassesPage() {
           method: "PUT",
           body: JSON.stringify(payload),
         })
-        setSuccess("Live class updated successfully")
+        setSuccess(t("liveClasses.updatedSuccess"))
         resetForm()
         loadData()
         setTimeout(() => setSuccess(null), 3000)
@@ -213,22 +235,22 @@ export default function TeacherLiveClassesPage() {
         router.push(`/dashboard/teacher/live-classes/${result.id}`)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save live class")
+      setError(err instanceof Error ? err.message : t("liveClasses.saveError"))
     } finally {
       setSubmitting(false)
     }
   }
 
   async function handleCancel(id: string) {
-    if (!confirm("Are you sure you want to cancel this live class?")) return
+    if (!confirm(t("liveClasses.cancelConfirm"))) return
     try {
       setError(null)
       await appFetch(`/v1/teachers/me/live-classes/${id}`, { method: "DELETE" })
-      setSuccess("Live class cancelled")
+      setSuccess(t("liveClassDetail.cancelledSuccess"))
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to cancel live class")
+      setError(err instanceof Error ? err.message : t("liveClasses.cancelError"))
     }
   }
 
@@ -236,24 +258,24 @@ export default function TeacherLiveClassesPage() {
     try {
       setError(null)
       await appFetch(`/v1/teachers/me/live-classes/${id}/start`, { method: "POST" })
-      setSuccess("Live class started!")
+      setSuccess(t("liveClassDetail.startedSuccess"))
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start live class")
+      setError(err instanceof Error ? err.message : t("liveClassDetail.startError"))
     }
   }
 
   async function handleEndLive(id: string) {
-    if (!confirm("End this live class? Students will no longer be able to join.")) return
+    if (!confirm(t("liveClassDetail.endConfirm"))) return
     try {
       setError(null)
       await appFetch(`/v1/teachers/me/live-classes/${id}/end`, { method: "POST" })
-      setSuccess("Live class ended")
+      setSuccess(t("liveClassDetail.endedSuccess"))
       loadData()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to end live class")
+      setError(err instanceof Error ? err.message : t("liveClassDetail.endError"))
     }
   }
 
@@ -293,8 +315,8 @@ export default function TeacherLiveClassesPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Live Classes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Schedule and manage your live classes.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("liveClasses")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("liveClasses.subtitle")}</p>
         </div>
         <Button
           className="gap-2"
@@ -304,7 +326,7 @@ export default function TeacherLiveClassesPage() {
           }}
         >
           {showForm ? <XCircle className="size-4" /> : <Plus className="size-4" />}
-          {showForm ? "Cancel" : "Schedule Class"}
+          {showForm ? tc("cancel") : t("liveClasses.scheduleClass")}
         </Button>
       </div>
 
@@ -329,36 +351,25 @@ export default function TeacherLiveClassesPage() {
       {showForm && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
           <h2 className="text-base font-semibold text-foreground">
-            {editingId ? "Edit Live Class" : "Schedule New Live Class"}
+            {editingId ? t("liveClasses.editTitle") : t("liveClasses.scheduleTitle")}
           </h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Session Type</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("liveClasses.sessionTypeLabel")}</label>
               <select
                 value={form.sessionType}
                 onChange={(e) => setForm({ ...form, sessionType: e.target.value })}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
-                <option value="LECTURE">Lecture</option>
-                <option value="TUTORIAL">Tutorial</option>
-                <option value="WORKSHOP">Workshop</option>
-                <option value="SEMINAR">Seminar</option>
-                <option value="LAB_DEMO">Lab Demonstration</option>
-                <option value="COMPETENCY_ASSESSMENT">Competency Assessment</option>
-                <option value="WEBINAR">Webinar</option>
-                <option value="GUEST_SPEAKER">Guest Speaker</option>
-                <option value="RESEARCH_PRESENTATION">Research Presentation</option>
-                <option value="PROJECT_DEFENSE">Project Defense</option>
-                <option value="CONFERENCE">Conference</option>
-                <option value="PROFESSIONAL_TRAINING">Professional Training</option>
-                <option value="CAREER_EVENT">Career Event</option>
-                <option value="INSTITUTION_EVENT">Institution Event</option>
+                {sessionTypeOptions.map((st) => (
+                  <option key={st.value} value={st.value}>{st.label}</option>
+                ))}
               </select>
             </div>
 
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Title *</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("announcements.titleLabel")}</label>
               <input
                 type="text"
                 value={form.title}
@@ -371,14 +382,14 @@ export default function TeacherLiveClassesPage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 <GraduationCap className="mr-1 inline size-3" />
-                Class / Group
+                {t("liveClasses.classLabel")}
               </label>
               <select
                 value={form.classGroupId}
                 onChange={(e) => setForm({ ...form, classGroupId: e.target.value })}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
-                <option value="">Select class (optional)</option>
+                <option value="">{t("liveClasses.selectClassOptional")}</option>
                 {classes.map((c) => (
                   <option key={c.classGroupId} value={c.classGroupId}>
                     {c.className} {c.subjectName ? `— ${c.subjectName}` : ""}
@@ -390,14 +401,14 @@ export default function TeacherLiveClassesPage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 <BookOpen className="mr-1 inline size-3" />
-                Subject
+                {t("subject")}
               </label>
               <select
                 value={form.subjectId}
                 onChange={(e) => setForm({ ...form, subjectId: e.target.value })}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
-                <option value="">Select subject (optional)</option>
+                <option value="">{t("liveClasses.selectSubjectOptional")}</option>
                 {subjects.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -407,18 +418,18 @@ export default function TeacherLiveClassesPage() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("lessons.descLabel")}</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="What will be covered in this session..."
+                placeholder={t("liveClasses.descPlaceholder")}
                 rows={3}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Date & Time *</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("liveClasses.datetimeLabel")}</label>
               <input
                 type="datetime-local"
                 value={form.scheduledAt}
@@ -427,7 +438,7 @@ export default function TeacherLiveClassesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Duration (minutes)</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("liveClasses.durationLabel")}</label>
               <input
                 type="number"
                 value={form.durationMinutes}
@@ -438,7 +449,7 @@ export default function TeacherLiveClassesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Max Participants</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("liveClasses.maxParticipantsLabel")}</label>
               <input
                 type="number"
                 value={form.maxParticipants}
@@ -457,9 +468,9 @@ export default function TeacherLiveClassesPage() {
                 onChange={(e) => setForm({ ...form, enableRecording: e.target.checked })}
                 className="size-4 rounded border-border"
               />
-              <span className="text-sm text-foreground">Enable recording</span>
+              <span className="text-sm text-foreground">{t("liveClasses.enableRecording")}</span>
             </label>
-            <span className="text-xs text-muted-foreground">Record this session for replay</span>
+            <span className="text-xs text-muted-foreground">{t("liveClasses.recordingHint")}</span>
           </div>
 
           <div className="flex items-center gap-4 rounded-lg border border-border bg-background p-3">
@@ -470,13 +481,13 @@ export default function TeacherLiveClassesPage() {
                 onChange={(e) => setForm({ ...form, lobbyEnabled: e.target.checked })}
                 className="size-4 rounded border-border"
               />
-              <span className="text-sm text-foreground">Enable pre-start lobby</span>
+              <span className="text-sm text-foreground">{t("liveClasses.enableLobby")}</span>
             </label>
-            <span className="text-xs text-muted-foreground">Teachers can prepare before students join</span>
+            <span className="text-xs text-muted-foreground">{t("liveClasses.lobbyHint")}</span>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Timezone</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("liveClasses.timezoneLabel")}</label>
             <select
               value={form.timezone}
               onChange={(e) => setForm({ ...form, timezone: e.target.value })}
@@ -505,29 +516,29 @@ export default function TeacherLiveClassesPage() {
                 onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
                 className="size-4 rounded border-border"
               />
-              <span className="text-sm text-foreground">Recurring class</span>
+              <span className="text-sm text-foreground">{t("liveClasses.recurringLabel")}</span>
             </label>
-            <span className="text-xs text-muted-foreground">Automatically create repeated sessions</span>
+            <span className="text-xs text-muted-foreground">{t("liveClasses.recurringHint")}</span>
           </div>
 
           {form.isRecurring && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Repeat pattern</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("liveClasses.repeatLabel")}</label>
                 <select
                   value={form.recurrencePattern}
                   onChange={(e) => setForm({ ...form, recurrencePattern: e.target.value })}
                   className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
                 >
-                  <option value="">Select pattern</option>
-                  <option value="DAILY">Daily</option>
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="BIWEEKLY">Bi-weekly</option>
-                  <option value="MONTHLY">Monthly</option>
+                  <option value="">{t("liveClasses.selectPattern")}</option>
+                  <option value="DAILY">{t("liveClasses.patternDaily")}</option>
+                  <option value="WEEKLY">{t("liveClasses.patternWeekly")}</option>
+                  <option value="BIWEEKLY">{t("liveClasses.patternBiweekly")}</option>
+                  <option value="MONTHLY">{t("liveClasses.patternMonthly")}</option>
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Recurrence end date</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("liveClasses.recurrenceEndLabel")}</label>
                 <input
                   type="date"
                   value={form.recurrenceEndDate}
@@ -539,14 +550,14 @@ export default function TeacherLiveClassesPage() {
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={resetForm}>Cancel</Button>
+            <Button variant="outline" onClick={resetForm}>{tc("cancel")}</Button>
             {editingId ? (
               <Button onClick={handleSubmit} disabled={submitting || !form.title.trim() || !form.scheduledAt}>
-                {submitting ? "Saving..." : "Update Class"}
+                {submitting ? tc("saving") : t("liveClasses.updateClass")}
               </Button>
             ) : (
               <Button onClick={handleProceedToReview} disabled={!form.title.trim() || !form.scheduledAt}>
-                Review & Schedule
+                {t("liveClasses.reviewSchedule")}
               </Button>
             )}
           </div>
@@ -557,66 +568,66 @@ export default function TeacherLiveClassesPage() {
         <div className="rounded-2xl border border-primary/30 bg-card p-5 shadow-xs space-y-4">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="size-5 text-primary" />
-            <h2 className="text-base font-semibold text-foreground">Review Live Class</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("liveClasses.reviewTitle")}</h2>
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Title</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewRowTitle")}</span>
               <p className="text-foreground">{form.title}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Date & Time</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewDatetime")}</span>
               <p className="text-foreground">{form.scheduledAt ? new Date(form.scheduledAt).toLocaleString() : "—"}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Duration</span>
-              <p className="text-foreground">{form.durationMinutes} minutes</p>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewDuration")}</span>
+              <p className="text-foreground">{t("liveClassDetail.minutesCount", { count: form.durationMinutes })}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Max Participants</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewMax")}</span>
               <p className="text-foreground">{form.maxParticipants}</p>
             </div>
             {form.classGroupId && (
               <div>
-                <span className="text-xs font-medium text-muted-foreground">Class</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewClass")}</span>
                 <p className="text-foreground">{getClassName(form.classGroupId) || form.classGroupId}</p>
               </div>
             )}
             {form.subjectId && (
               <div>
-                <span className="text-xs font-medium text-muted-foreground">Subject</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewSubject")}</span>
                 <p className="text-foreground">{subjects.find((s) => s.id === form.subjectId)?.name || form.subjectId}</p>
               </div>
             )}
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Recording</span>
-              <p className="text-foreground">{form.enableRecording ? "Enabled" : "Disabled"}</p>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewRecording")}</span>
+              <p className="text-foreground">{form.enableRecording ? t("liveClasses.enabledLabel") : t("liveClasses.disabledLabel")}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Timezone</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewTimezone")}</span>
               <p className="text-foreground">{form.timezone}</p>
             </div>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Lobby</span>
-              <p className="text-foreground">{form.lobbyEnabled ? "Enabled" : "Disabled"}</p>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewLobby")}</span>
+              <p className="text-foreground">{form.lobbyEnabled ? t("liveClasses.enabledLabel") : t("liveClasses.disabledLabel")}</p>
             </div>
             {form.isRecurring && (
               <div>
-                <span className="text-xs font-medium text-muted-foreground">Recurring</span>
-                <p className="text-foreground">{form.recurrencePattern} until {form.recurrenceEndDate}</p>
+                <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewRecurring")}</span>
+                <p className="text-foreground">{t("liveClasses.recurringValue", { pattern: form.recurrencePattern, end: form.recurrenceEndDate })}</p>
               </div>
             )}
           </div>
           {form.description && (
             <div>
-              <span className="text-xs font-medium text-muted-foreground">Description</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewDesc")}</span>
               <p className="mt-1 text-sm text-foreground whitespace-pre-line">{form.description}</p>
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setReviewMode(false)}>Back to Edit</Button>
+            <Button variant="outline" onClick={() => setReviewMode(false)}>{t("liveClasses.backToEdit")}</Button>
             <Button onClick={handleSubmit} disabled={submitting} className="gap-1 bg-green-600 hover:bg-green-700 text-white">
-              {submitting ? "Scheduling..." : "Confirm & Schedule"}
+              {submitting ? t("liveClasses.scheduling") : t("liveClasses.confirmSchedule")}
             </Button>
           </div>
         </div>
@@ -625,9 +636,9 @@ export default function TeacherLiveClassesPage() {
       {sortedClasses.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <Video className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Live Classes</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("liveClasses.emptyTitle")}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Schedule your first live class to get started.
+            {t("liveClasses.emptyDesc")}
           </p>
         </div>
       ) : (
@@ -677,11 +688,11 @@ export default function TeacherLiveClassesPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="size-3" />
-                        {lc.durationMinutes} min
+                        {t("classDetail.minutesCount", { count: lc.durationMinutes })}
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="size-3" />
-                        {lc.currentParticipants != null ? `${lc.currentParticipants}/` : ""}{lc.maxParticipants} max
+                        {t("liveClasses.participantsMax", { current: lc.currentParticipants != null ? `${lc.currentParticipants}/` : "", max: lc.maxParticipants })}
                       </span>
                     </div>
                   </div>
@@ -694,7 +705,7 @@ export default function TeacherLiveClassesPage() {
                           className="gap-1"
                           onClick={() => window.open(`/dashboard/teacher/live-classes/${lc.id}/prepare`, "_blank")}
                         >
-                          Prepare
+                          {t("liveClassDetail.prepare")}
                         </Button>
                         <Button
                           size="sm"
@@ -702,13 +713,13 @@ export default function TeacherLiveClassesPage() {
                           onClick={() => handleStartLive(lc.id)}
                         >
                           <Play className="size-3" />
-                          Start Live
+                          {t("liveClassDetail.startLive")}
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => startEdit(lc)}
-                          title="Edit"
+                          title={tc("edit")}
                         >
                           <Edit className="size-3.5" />
                         </Button>
@@ -716,7 +727,7 @@ export default function TeacherLiveClassesPage() {
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => handleCancel(lc.id)}
-                          title="Cancel"
+                          title={tc("cancel")}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="size-3.5" />
@@ -731,7 +742,7 @@ export default function TeacherLiveClassesPage() {
                           onClick={() => window.open(`/live-classes/${lc.id}`, "_blank")}
                         >
                           <ExternalLink className="size-3" />
-                          Open Classroom
+                          {t("liveClassDetail.openClassroom")}
                         </Button>
                         <Button
                           size="sm"
@@ -740,7 +751,7 @@ export default function TeacherLiveClassesPage() {
                           onClick={() => handleEndLive(lc.id)}
                         >
                           <Square className="size-3" />
-                          End
+                          {t("liveClasses.endBtn")}
                         </Button>
                       </>
                     )}
@@ -754,14 +765,14 @@ export default function TeacherLiveClassesPage() {
                             onClick={() => window.open(`/live-classes/${lc.id}`, "_blank")}
                           >
                             <ExternalLink className="size-3" />
-                            View Recording
+                            {t("liveClasses.viewRecording")}
                           </Button>
                         )}
                         <Button
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => handleCancel(lc.id)}
-                          title="Delete"
+                          title={tc("delete")}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="size-3.5" />

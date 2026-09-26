@@ -1,6 +1,7 @@
 package tz.elmkusoma.config.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -72,6 +73,21 @@ public class SecurityConfig {
         return new OrganizationContextResolver(jwtTokenProvider, userRepository, membershipRepository, contextHolder, entityManager, permissionService);
     }
 
+    /**
+     * Same standalone-registration guard as the JWT filters: the resolver is
+     * already wired into the security chain via addFilterBefore; a second
+     * servlet-container registration would run it pre-chain (unauthenticated,
+     * no-op) and OncePerRequestFilter would then skip the in-chain execution,
+     * leaving every request without an organization context.
+     */
+    @Bean
+    public FilterRegistrationBean<OrganizationContextResolver> organizationContextResolverFilterRegistration(OrganizationContextResolver filter) {
+        FilterRegistrationBean<OrganizationContextResolver> registration = new FilterRegistrationBean<>();
+        registration.setFilter(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     @Bean
     public org.springframework.security.core.userdetails.UserDetailsService userDetailsService() {
         return email -> {
@@ -84,6 +100,31 @@ public class SecurityConfig {
                     .authorities("ROLE_" + user.getRole().name())
                     .build();
         };
+    }
+
+    /**
+     * Guard against servlet-container auto-registration of the JWT filters.
+     * Without this guard the filter also runs standalone before the security
+     * chain; OncePerRequestFilter then skips the in-chain invocation (same
+     * already-filtered attribute), the chain's SecurityContextRepository load
+     * wipes the standalone authentication, and every authenticated endpoint
+     * returns 403. The filters must run only inside the security chain.
+     * (Regression guard restored: 12807f0 -> 95f2cda -> removed in 046250a.)
+     */
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtRequestAttributeFilter> jwtRequestFilterRegistration(JwtRequestAttributeFilter filter) {
+        FilterRegistrationBean<JwtRequestAttributeFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
@@ -100,6 +141,22 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .requestMatchers(ADMIN_ONLY_URLS).hasRole("ADMIN")
+                        // Namespace fences mirroring the class-level @PreAuthorize of the
+                        // /v1/admin and /v1/platform-admin controllers, enforced at the URL
+                        // level so role denials return 403 before body validation (400) or
+                        // unmapped-route handling (404) can mask them.
+                        .requestMatchers("/v1/admin", "/v1/admin/**").hasAnyRole("ADMIN", "INSTITUTION_ADMIN")
+                        .requestMatchers("/v1/platform-admin", "/v1/platform-admin/**").hasRole("ADMIN")
+                        // The payment detail API is not exposed; deny explicitly so
+                        // cross-institution probing gets 403 instead of a 404 oracle.
+                        .requestMatchers("/v1/payments", "/v1/payments/**").denyAll()
+                        // Object-level fences mirroring the controllers' @PreAuthorize role
+                        // sets; running before @PathVariable/@Valid argument resolution
+                        // keeps denials from being masked by 400/500 argument errors.
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/v1/teachers/**")
+                            .hasAnyRole("ADMIN", "INSTITUTION_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/v1/students/**")
+                            .hasAnyRole("ADMIN", "INSTITUTION_ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)

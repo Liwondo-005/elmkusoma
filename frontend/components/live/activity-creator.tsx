@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import {
   Plus,
   Trash2,
@@ -23,18 +24,19 @@ interface ActivityCreatorProps {
 }
 
 const ACTIVITY_TYPES = [
-  { value: "POLL", label: "Poll", icon: BarChart3, color: "bg-blue-500" },
-  { value: "MCQ", label: "MCQ", icon: CheckCircle, color: "bg-indigo-500" },
-  { value: "QUIZ", label: "Quick Quiz", icon: Brain, color: "bg-purple-500" },
-  { value: "TRUE_FALSE", label: "True / False", icon: CheckCircle, color: "bg-green-500" },
-  { value: "MATCHING", label: "Matching", icon: Zap, color: "bg-orange-500" },
-  { value: "DRAWING", label: "Drawing", icon: Palette, color: "bg-pink-500" },
-  { value: "PREDICTION", label: "Prediction", icon: HelpCircle, color: "bg-cyan-500" },
-  { value: "QUESTION", label: "Open Question", icon: HelpCircle, color: "bg-teal-500" },
-  { value: "CHALLENGE", label: "Challenge", icon: Trophy, color: "bg-red-500" },
+  { value: "POLL", labelKey: "activityCreator.typePoll", icon: BarChart3, color: "bg-blue-500" },
+  { value: "MCQ", labelKey: "activityCreator.typeMcq", icon: CheckCircle, color: "bg-indigo-500" },
+  { value: "QUIZ", labelKey: "activityCreator.typeQuiz", icon: Brain, color: "bg-purple-500" },
+  { value: "TRUE_FALSE", labelKey: "activityCreator.typeTrueFalse", icon: CheckCircle, color: "bg-green-500" },
+  { value: "MATCHING", labelKey: "activityCreator.typeMatching", icon: Zap, color: "bg-orange-500" },
+  { value: "DRAWING", labelKey: "activityCreator.typeDrawing", icon: Palette, color: "bg-pink-500" },
+  { value: "PREDICTION", labelKey: "activityCreator.typePrediction", icon: HelpCircle, color: "bg-cyan-500" },
+  { value: "QUESTION", labelKey: "activityCreator.typeQuestion", icon: HelpCircle, color: "bg-teal-500" },
+  { value: "CHALLENGE", labelKey: "activityCreator.typeChallenge", icon: Trophy, color: "bg-red-500" },
 ]
 
 export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCreatorProps) {
+  const t = useTranslations("ui")
   const [activityType, setActivityType] = useState("POLL")
   const [title, setTitle] = useState("")
   const [question, setQuestion] = useState("")
@@ -65,11 +67,11 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
 
   const handleSend = async () => {
     if (!title.trim() || !question.trim()) {
-      setError("Title and question are required")
+      setError(t("activityCreator.errRequired"))
       return
     }
     if (needsOptions && options.some((o) => !o.trim())) {
-      setError("All options must be filled")
+      setError(t("activityCreator.errOptions"))
       return
     }
 
@@ -93,7 +95,7 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
       setOrderIndex(0)
       onActivityCreated?.()
     } catch {
-      setError("Failed to send activity")
+      setError(t("activityCreator.errSend"))
     } finally {
       setSending(false)
     }
@@ -103,7 +105,7 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-      <h4 className="text-sm font-semibold text-foreground">Create Activity</h4>
+      <h4 className="text-sm font-semibold text-foreground">{t("activityCreator.title")}</h4>
 
       <div className="relative">
         <button
@@ -115,7 +117,7 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
               <selectedType.icon className="size-3.5" />
             </span>
           )}
-          <span className="flex-1 font-medium text-foreground">{selectedType?.label}</span>
+          <span className="flex-1 font-medium text-foreground">{selectedType && t(selectedType.labelKey)}</span>
           <ChevronDown className="size-4 text-muted-foreground" />
         </button>
         {showTypeDropdown && (
@@ -135,7 +137,7 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
                 <span className={cn("flex size-5 items-center justify-center rounded-md text-white", type.color)}>
                   <type.icon className="size-3" />
                 </span>
-                <span className="font-medium text-foreground">{type.label}</span>
+                <span className="font-medium text-foreground">{t(type.labelKey)}</span>
               </button>
             ))}
           </div>
@@ -146,20 +148,20 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Activity title"
+        placeholder={t("activityCreator.titlePlaceholder")}
         className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
       />
 
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
-        placeholder="Question or prompt..."
+        placeholder={t("activityCreator.questionPlaceholder")}
         className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary min-h-[80px] resize-none"
       />
 
       {needsOptions && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">Options</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase">{t("activityCreator.options")}</p>
           {options.map((opt, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-bold text-muted-foreground">
@@ -169,7 +171,7 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
                 type="text"
                 value={opt}
                 onChange={(e) => updateOption(i, e.target.value)}
-                placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                placeholder={t("activityCreator.optionLabel", { letter: String.fromCharCode(65 + i) })}
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
               {options.length > 2 && (
@@ -188,7 +190,7 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
               className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
             >
               <Plus className="size-3.5" />
-              Add option
+              {t("activityCreator.addOption")}
             </button>
           )}
         </div>
@@ -196,13 +198,13 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
 
       {needsOptions && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase">Correct Answer</p>
+          <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase">{t("activityCreator.correctAnswer")}</p>
           <select
             value={correctAnswer}
             onChange={(e) => setCorrectAnswer(e.target.value)}
             className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
           >
-            <option value="">Select correct answer</option>
+            <option value="">{t("activityCreator.selectCorrect")}</option>
             {options.filter((o) => o.trim()).map((opt, i) => (
               <option key={i} value={opt}>{String.fromCharCode(65 + i)}. {opt}</option>
             ))}
@@ -212,21 +214,21 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
 
       {needsTimer && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase">Timer (seconds)</p>
+          <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase">{t("activityCreator.timer")}</p>
           <input
             type="number"
             value={timerSeconds}
             onChange={(e) => setTimerSeconds(parseInt(e.target.value) || 0)}
             min={0}
             max={300}
-            placeholder="0 = no timer"
+            placeholder={t("activityCreator.noTimer")}
             className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
           />
         </div>
       )}
 
       <div>
-        <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase">Order Index</p>
+        <p className="mb-1.5 text-xs font-semibold text-muted-foreground uppercase">{t("activityCreator.orderIndex")}</p>
         <input
           type="number"
           value={orderIndex}
@@ -246,7 +248,7 @@ export function ActivityCreator({ liveClassId, onActivityCreated }: ActivityCrea
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
       >
         <Send className="size-4" />
-        {sending ? "Sending..." : "Send to Class"}
+        {sending ? t("activityCreator.sending") : t("activityCreator.send")}
       </button>
     </div>
   )

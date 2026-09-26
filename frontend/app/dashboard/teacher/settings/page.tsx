@@ -1,12 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Settings, Save, Loader2, AlertCircle, GraduationCap, Plus, Trash2, Award } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { teacherFetch, type TeacherQualification } from "@/lib/teacher-api"
 
 export default function TeacherSettingsPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
@@ -38,6 +42,13 @@ export default function TeacherSettingsPage() {
   const [savingQual, setSavingQual] = useState(false)
   const [teacherId, setTeacherId] = useState<string | null>(null)
 
+  const notifItems = [
+    { label: t("settings.notifAttendance"), value: notifAttendance, onChange: setNotifAttendance },
+    { label: t("settings.notifAssignments"), value: notifAssignments, onChange: setNotifAssignments },
+    { label: t("settings.notifMessages"), value: notifMessages, onChange: setNotifMessages },
+    { label: t("settings.notifResults"), value: notifResults, onChange: setNotifResults },
+  ]
+
   useEffect(() => {
     if (activeTab === "qualifications") loadQualifications()
   }, [activeTab])
@@ -68,7 +79,7 @@ export default function TeacherSettingsPage() {
       const profileRes = await teacherFetch<{ content: Array<{ id: string; email: string }> }>("/v1/teachers?page=0&size=50")
       const teacher = profileRes.content?.find((t) => t.email === user?.email)
       if (!teacher) {
-        setError("Teacher profile not found.")
+        setError(t("settings.profileNotFound"))
         return
       }
       await teacherFetch(`/v1/teachers/${teacher.id}`, {
@@ -78,7 +89,7 @@ export default function TeacherSettingsPage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save.")
+      setError(err instanceof Error ? err.message : t("settings.saveError"))
     } finally {
       setSaving(false)
     }
@@ -100,7 +111,7 @@ export default function TeacherSettingsPage() {
       setShowQualForm(false)
       loadQualifications()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add qualification")
+      setError(err instanceof Error ? err.message : t("settings.qualError"))
     } finally {
       setSavingQual(false)
     }
@@ -110,8 +121,8 @@ export default function TeacherSettingsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage your profile and preferences.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("settings")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("settings.subtitle")}</p>
         </div>
         {activeTab === "profile" && (
           <button
@@ -120,7 +131,7 @@ export default function TeacherSettingsPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50"
           >
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            {saved ? "Saved!" : "Save Changes"}
+            {saved ? t("settings.saved") : t("settings.saveChanges")}
           </button>
         )}
       </div>
@@ -140,7 +151,7 @@ export default function TeacherSettingsPage() {
           }`}
         >
           <Settings className="mr-1.5 inline size-4" />
-          Profile
+          {t("settings.tabProfile")}
         </button>
         <button
           onClick={() => setActiveTab("qualifications")}
@@ -149,43 +160,38 @@ export default function TeacherSettingsPage() {
           }`}
         >
           <GraduationCap className="mr-1.5 inline size-4" />
-          Qualifications ({qualifications.length})
+          {t("settings.tabQualifications", { count: qualifications.length })}
         </button>
       </div>
 
       {activeTab === "profile" && (
         <div className="space-y-6">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Profile</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("settings.tabProfile")}</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">First Name</label>
+                <label className="text-xs font-medium text-muted-foreground">{t("settings.firstName")}</label>
                 <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Last Name</label>
+                <label className="text-xs font-medium text-muted-foreground">{t("settings.lastName")}</label>
                 <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Email</label>
+                <label className="text-xs font-medium text-muted-foreground">{t("settings.email")}</label>
                 <input value={user?.email || ""} disabled className="mt-1 w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                <label className="text-xs font-medium text-muted-foreground">{t("settings.phone")}</label>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder="+255..." />
               </div>
             </div>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Notification Preferences</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("settings.notifTitle")}</h3>
             <div className="space-y-3">
-              {[
-                { label: "Attendance alerts", value: notifAttendance, onChange: setNotifAttendance },
-                { label: "Assignment deadlines", value: notifAssignments, onChange: setNotifAssignments },
-                { label: "Messages from parents/students", value: notifMessages, onChange: setNotifMessages },
-                { label: "Grade publishing", value: notifResults, onChange: setNotifResults },
-              ].map((item) => (
+              {notifItems.map((item) => (
                 <label key={item.label} className="flex items-center justify-between">
                   <span className="text-sm text-foreground">{item.label}</span>
                   <button
@@ -210,23 +216,23 @@ export default function TeacherSettingsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              {qualifications.length} qualification{qualifications.length !== 1 ? "s" : ""} on file
+              {t("settings.qualCount", { count: qualifications.length })}
             </p>
             <button
               onClick={() => setShowQualForm(!showQualForm)}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="size-4" />
-              Add Qualification
+              {t("settings.addQualification")}
             </button>
           </div>
 
           {showQualForm && (
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">New Qualification</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("settings.newQualification")}</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground">Qualification Name *</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("settings.qualNameLabel")}</label>
                   <input
                     value={qualForm.qualificationName}
                     onChange={(e) => setQualForm({ ...qualForm, qualificationName: e.target.value })}
@@ -235,16 +241,16 @@ export default function TeacherSettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Institution</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("settings.institutionLabel")}</label>
                   <input
                     value={qualForm.institution}
                     onChange={(e) => setQualForm({ ...qualForm, institution: e.target.value })}
-                    placeholder="University name"
+                    placeholder={t("settings.institutionPlaceholder")}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Year Obtained</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("settings.yearLabel")}</label>
                   <input
                     type="number"
                     value={qualForm.yearObtained}
@@ -258,7 +264,7 @@ export default function TeacherSettingsPage() {
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowQualForm(false)} className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">
-                  Cancel
+                  {tc("cancel")}
                 </button>
                 <button
                   onClick={handleAddQualification}
@@ -266,7 +272,7 @@ export default function TeacherSettingsPage() {
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {savingQual ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                  Add
+                  {t("settings.add")}
                 </button>
               </div>
             </div>
@@ -279,8 +285,8 @@ export default function TeacherSettingsPage() {
           ) : qualifications.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border py-12 text-center">
               <Award className="mx-auto mb-3 size-8 text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">No qualifications on file</p>
-              <p className="mt-1 text-xs text-muted-foreground">Add your qualifications to keep your profile complete.</p>
+              <p className="text-sm font-medium text-foreground">{t("settings.emptyQuals")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("settings.emptyQualsDesc")}</p>
             </div>
           ) : (
             <div className="space-y-3">

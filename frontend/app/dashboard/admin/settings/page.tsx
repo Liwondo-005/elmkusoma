@@ -1,10 +1,14 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { Settings, Loader2, Plus, Save, X } from "lucide-react"
 import { adminApi, getInstitutionId, type SettingResponse, type SettingRequest } from "@/lib/api"
 
 export default function AdminSettingsPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [settings, setSettings] = useState<SettingResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -20,14 +24,14 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     if (!institutionId) {
-      setError("No institution context found.")
+      setError(t("settings.noInstitutionContextFound"))
       setLoading(false)
       return
     }
     adminApi
       .listSettings(institutionId)
       .then(setSettings)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load settings"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("settings.failedToLoadSettings")))
       .finally(() => setLoading(false))
   }, [institutionId])
 
@@ -54,7 +58,7 @@ export default function AdminSettingsPage() {
       })
       setEditingKey(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save setting")
+      setError(err instanceof Error ? err.message : t("settings.failedToSaveSetting"))
     } finally {
       setSaving(false)
     }
@@ -82,7 +86,7 @@ export default function AdminSettingsPage() {
       setNewValue("")
       setNewDescription("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create setting")
+      setError(err instanceof Error ? err.message : t("settings.failedToCreateSetting"))
     } finally {
       setSaving(false)
     }
@@ -92,15 +96,14 @@ export default function AdminSettingsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage institution settings.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("settings.settings")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("settings.manageInstitutionSettings")}</p>
         </div>
         <button
           onClick={() => setShowNew(true)}
           className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
-          <Plus className="size-3.5" /> Add Setting
-        </button>
+          <Plus className="size-3.5" /> {t("settings.addSetting")}</button>
       </div>
 
       {loading && (
@@ -117,24 +120,24 @@ export default function AdminSettingsPage() {
 
       {showNew && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">New Setting</h3>
+          <h3 className="mb-4 text-sm font-semibold text-foreground">{t("settings.newSetting")}</h3>
           <div className="space-y-3">
             <input
               type="text"
-              placeholder="Setting key (e.g. school_name)"
+              placeholder={t("settings.settingKeyEG")}
               value={newKey}
               onChange={(e) => setNewKey(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
             />
             <input
               type="text"
-              placeholder="Description (optional)"
+              placeholder={t("settings.descriptionOptional")}
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
             />
             <textarea
-              placeholder='Value (JSON or plain text, e.g. {"key": "value"} or "My School")'
+              placeholder={t("settings.valueJsonOrPlain")}
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
               rows={3}
@@ -146,14 +149,13 @@ export default function AdminSettingsPage() {
                 disabled={saving || !newKey.trim()}
                 className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
-                <Save className="size-3.5" /> {saving ? "Saving..." : "Save"}
+                <Save className="size-3.5" /> {saving ? tc("saving") : tc("save")}
               </button>
               <button
                 onClick={() => { setShowNew(false); setNewKey(""); setNewValue(""); setNewDescription("") }}
                 className="flex h-9 items-center gap-2 rounded-lg border border-border px-4 text-xs font-medium text-foreground hover:bg-muted"
               >
-                <X className="size-3.5" /> Cancel
-              </button>
+                <X className="size-3.5" /> {tc("cancel")}</button>
             </div>
           </div>
         </div>
@@ -162,8 +164,8 @@ export default function AdminSettingsPage() {
       {!loading && !error && settings.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Settings className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No settings configured</p>
-          <p className="mt-1 text-sm text-muted-foreground">Add settings to customize your institution.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("settings.noSettingsConfigured")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("settings.addSettingsToCustomize")}</p>
         </div>
       )}
 
@@ -181,7 +183,7 @@ export default function AdminSettingsPage() {
                       </span>
                     )}
                     {setting.isPublic && (
-                      <span className="rounded bg-teal/10 px-2 py-0.5 text-[10px] font-medium text-teal">Public</span>
+                      <span className="rounded bg-teal/10 px-2 py-0.5 text-[10px] font-medium text-teal">{t("settings.public")}</span>
                     )}
                   </div>
                   {setting.description && (
@@ -201,14 +203,12 @@ export default function AdminSettingsPage() {
                           disabled={saving}
                           className="flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                         >
-                          <Save className="size-3" /> Save
-                        </button>
+                          <Save className="size-3" /> {tc("save")}</button>
                         <button
                           onClick={() => setEditingKey(null)}
                           className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-foreground hover:bg-muted"
                         >
-                          Cancel
-                        </button>
+                          {tc("cancel")}</button>
                       </div>
                     </div>
                   ) : (
@@ -225,8 +225,7 @@ export default function AdminSettingsPage() {
                     }}
                     className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                   >
-                    Edit
-                  </button>
+                    {tc("edit")}</button>
                 )}
               </div>
             </div>

@@ -2,20 +2,28 @@
 
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type PortfolioItem } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { Hammer, Plus, Palette, BookOpen, Wrench, Camera, Mic, FileText, Star, Trash2, X, Loader2, FolderOpen, ChevronRight, ChevronLeft, Check, Circle, Disc, Eraser, Undo2 } from "lucide-react"
 
-const typeConfig: Record<string, { icon: typeof Palette; color: string; bgColor: string; label: string }> = {
-  DRAWING: { icon: Palette, color: "text-pink-600", bgColor: "bg-pink-50", label: "Drawing" },
-  STORY: { icon: BookOpen, color: "text-blue-600", bgColor: "bg-blue-50", label: "Story" },
-  PROJECT: { icon: Wrench, color: "text-green-600", bgColor: "bg-green-50", label: "Project" },
-  PHOTO: { icon: Camera, color: "text-amber-600", bgColor: "bg-amber-50", label: "Photo" },
-  VOICE_RECORDING: { icon: Mic, color: "text-purple-600", bgColor: "bg-purple-50", label: "Voice Recording" },
-  ESSAY: { icon: FileText, color: "text-teal-600", bgColor: "bg-teal-50", label: "Essay" },
-}
 
-const filterOptions = ["All", "Drawing", "Story", "Project", "Photo", "Voice Recording", "Essay"]
+
+
+const drawingColors = ["#000000", "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#ffffff"]
+
+export default function PortfolioPage() {
+  const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const creationActivities: CreationActivity[] = [
+  { type: "DRAWING", label: t("portfolioPage.actDraw"), icon: Palette, color: "text-pink-600", bgColor: "bg-pink-50", borderColor: "border-pink-200 hover:border-pink-400" },
+  { type: "STORY", label: t("portfolioPage.actStory"), icon: BookOpen, color: "text-blue-600", bgColor: "bg-blue-50", borderColor: "border-blue-200 hover:border-blue-400" },
+  { type: "PROJECT", label: t("portfolioPage.actProject"), icon: Wrench, color: "text-green-600", bgColor: "bg-green-50", borderColor: "border-green-200 hover:border-green-400" },
+  { type: "PHOTO", label: t("portfolioPage.actPhoto"), icon: Camera, color: "text-amber-600", bgColor: "bg-amber-50", borderColor: "border-amber-200 hover:border-amber-400" },
+  { type: "VOICE_RECORDING", label: t("portfolioPage.actVoice"), icon: Mic, color: "text-purple-600", bgColor: "bg-purple-50", borderColor: "border-purple-200 hover:border-purple-400" },
+  { type: "ESSAY", label: t("portfolioPage.actEssay"), icon: FileText, color: "text-teal-600", bgColor: "bg-teal-50", borderColor: "border-teal-200 hover:border-teal-400" },
+]
+  const filterOptions = ["All", t("create.drawing"), t("portfolioPage.typeStory"), t("portfolioPage.typeProject"), t("portfolioPage.typePhoto"), t("portfolioPage.typeVoice"), t("portfolioPage.typeEssay")]
 
 interface CreationActivity {
   type: string
@@ -25,20 +33,15 @@ interface CreationActivity {
   bgColor: string
   borderColor: string
 }
-
-const creationActivities: CreationActivity[] = [
-  { type: "DRAWING", label: "Draw Something", icon: Palette, color: "text-pink-600", bgColor: "bg-pink-50", borderColor: "border-pink-200 hover:border-pink-400" },
-  { type: "STORY", label: "Write a Story", icon: BookOpen, color: "text-blue-600", bgColor: "bg-blue-50", borderColor: "border-blue-200 hover:border-blue-400" },
-  { type: "PROJECT", label: "Build a Project", icon: Wrench, color: "text-green-600", bgColor: "bg-green-50", borderColor: "border-green-200 hover:border-green-400" },
-  { type: "PHOTO", label: "Take a Photo", icon: Camera, color: "text-amber-600", bgColor: "bg-amber-50", borderColor: "border-amber-200 hover:border-amber-400" },
-  { type: "VOICE_RECORDING", label: "Record Your Voice", icon: Mic, color: "text-purple-600", bgColor: "bg-purple-50", borderColor: "border-purple-200 hover:border-purple-400" },
-  { type: "ESSAY", label: "Write an Essay", icon: FileText, color: "text-teal-600", bgColor: "bg-teal-50", borderColor: "border-teal-200 hover:border-teal-400" },
-]
-
-const drawingColors = ["#000000", "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#ffffff"]
-
-export default function PortfolioPage() {
-  const { user } = useRequireAuth()
+  const typeConfig: Record<string, { icon: typeof Palette; color: string; bgColor: string; label: string }> = {
+  DRAWING: { icon: Palette, color: "text-pink-600", bgColor: "bg-pink-50", label: t("create.drawing") },
+  STORY: { icon: BookOpen, color: "text-blue-600", bgColor: "bg-blue-50", label: t("portfolioPage.typeStory") },
+  PROJECT: { icon: Wrench, color: "text-green-600", bgColor: "bg-green-50", label: t("portfolioPage.typeProject") },
+  PHOTO: { icon: Camera, color: "text-amber-600", bgColor: "bg-amber-50", label: t("portfolioPage.typePhoto") },
+  VOICE_RECORDING: { icon: Mic, color: "text-purple-600", bgColor: "bg-purple-50", label: t("portfolioPage.typeVoice") },
+  ESSAY: { icon: FileText, color: "text-teal-600", bgColor: "bg-teal-50", label: t("portfolioPage.typeEssay") },
+}
+  const ts = useTranslations("status")
   const [items, setItems] = useState<PortfolioItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("All")
@@ -227,7 +230,7 @@ export default function PortfolioPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error("Failed to save portfolio item:", msg)
-      alert("Failed to save: " + msg)
+      alert(t("portfolioPage.saveFailed", { msg }))
     } finally {
       setSubmitting(false)
     }
@@ -267,14 +270,14 @@ export default function PortfolioPage() {
           <Hammer className="size-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Create & Build</h1>
-          <p className="text-sm text-muted-foreground">Make something amazing today!</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("portfolioPage.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("portfolioPage.subtitle")}</p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-1">What would you like to create?</h2>
-        <p className="text-sm text-muted-foreground mb-4">Choose an activity to get started</p>
+        <h2 className="text-lg font-semibold text-foreground mb-1">{t("portfolioPage.chooseTitle")}</h2>
+        <p className="text-sm text-muted-foreground mb-4">{t("portfolioPage.chooseDesc")}</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {creationActivities.map((activity) => {
             const Icon = activity.icon
@@ -290,7 +293,7 @@ export default function PortfolioPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground">{activity.label}</p>
-                  <p className="text-xs text-muted-foreground">Click to start</p>
+                  <p className="text-xs text-muted-foreground">{t("portfolioPage.clickStart")}</p>
                 </div>
                 <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
               </button>
@@ -302,7 +305,7 @@ export default function PortfolioPage() {
       <div className="flex flex-wrap gap-2">
         {filterOptions.map((opt) => (
           <button
-            key={opt}
+            key={opt === "All" ? t("portfolioPage.filterAll") : opt}
             type="button"
             onClick={() => setFilter(opt)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
@@ -321,16 +324,16 @@ export default function PortfolioPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <FolderOpen className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Your backpack is empty</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("portfolioPage.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Start creating drawings, stories, projects, and more to build your learning collection.
+            {t("portfolioPage.emptyDesc")}
           </p>
           <button
             type="button"
             onClick={() => openWizard("DRAWING")}
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            <Plus className="size-4" /> Create Your First Item
+            <Plus className="size-4" /> {t("portfolioPage.createFirst")}
           </button>
         </div>
       ) : (
@@ -428,14 +431,14 @@ export default function PortfolioPage() {
             {wizardStep === 1 && (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">What is it about?</h3>
-                  <p className="text-sm text-muted-foreground">Give your creation a name</p>
+                  <h3 className="text-lg font-semibold text-foreground">{t("portfolioPage.step1Title")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("portfolioPage.step1Desc")}</p>
                 </div>
                 <input
                   type="text"
                   value={wizardTitle}
                   onChange={(e) => setWizardTitle(e.target.value)}
-                  placeholder="My amazing creation..."
+                  placeholder={t("portfolioPage.titlePlaceholder")}
                   autoFocus
                   className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   onKeyDown={(e) => {
@@ -448,13 +451,13 @@ export default function PortfolioPage() {
             {wizardStep === 2 && (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">Tell us more</h3>
-                  <p className="text-sm text-muted-foreground">Add a description (optional)</p>
+                  <h3 className="text-lg font-semibold text-foreground">{t("portfolioPage.step2Title")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("portfolioPage.step2Desc")}</p>
                 </div>
                 <textarea
                   value={wizardDescription}
                   onChange={(e) => setWizardDescription(e.target.value)}
-                  placeholder="What did you create? How did you make it?"
+                  placeholder={t("portfolioPage.descPlaceholder")}
                   rows={4}
                   className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                 />
@@ -464,8 +467,8 @@ export default function PortfolioPage() {
             {wizardStep === 3 && (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">Add your work</h3>
-                  <p className="text-sm text-muted-foreground">Show us what you created</p>
+                  <h3 className="text-lg font-semibold text-foreground">{t("portfolioPage.step3Title")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("portfolioPage.step3Desc")}</p>
                 </div>
 
                 {wizardType === "DRAWING" && (
@@ -473,10 +476,10 @@ export default function PortfolioPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-1">
                         <button type="button" onClick={() => setDrawTool("pencil")} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${drawTool === "pencil" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-background"}`}>
-                          <Palette className="size-3.5" /> Pencil
+                          <Palette className="size-3.5" /> {t("portfolioPage.pencil")}
                         </button>
                         <button type="button" onClick={() => setDrawTool("eraser")} className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${drawTool === "eraser" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-background"}`}>
-                          <Eraser className="size-3.5" /> Eraser
+                          <Eraser className="size-3.5" /> {t("portfolioPage.eraser")}
                         </button>
                       </div>
                       <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-1">
@@ -490,7 +493,7 @@ export default function PortfolioPage() {
                         <Undo2 className="size-3.5" />
                       </button>
                       <button type="button" onClick={clearCanvas} className="rounded-md border border-border bg-muted px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-background">
-                        Clear
+                        {t("portfolioPage.clear")}
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -521,7 +524,7 @@ export default function PortfolioPage() {
                       type="text"
                       value={wizardContent}
                       onChange={(e) => setWizardContent(e.target.value)}
-                      placeholder="Describe your drawing..."
+                      placeholder={t("portfolioPage.drawingPlaceholder")}
                       className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
@@ -531,7 +534,7 @@ export default function PortfolioPage() {
                   <textarea
                     value={wizardContent}
                     onChange={(e) => setWizardContent(e.target.value)}
-                    placeholder="Once upon a time..."
+                    placeholder={t("portfolioPage.storyPlaceholder")}
                     rows={8}
                     className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                   />
@@ -542,13 +545,13 @@ export default function PortfolioPage() {
                     <textarea
                       value={wizardContent}
                       onChange={(e) => setWizardContent(e.target.value)}
-                      placeholder="Describe your project..."
+                      placeholder={t("portfolioPage.projectPlaceholder")}
                       rows={5}
                       className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                     />
                     <div className="rounded-xl border-2 border-dashed border-border p-6 text-center">
                       <Wrench className="mx-auto size-8 text-muted-foreground/50" />
-                      <p className="mt-2 text-sm text-muted-foreground">Drop files here or click to upload (optional)</p>
+                      <p className="mt-2 text-sm text-muted-foreground">{t("portfolioPage.dropFiles")}</p>
                     </div>
                   </div>
                 )}
@@ -556,8 +559,8 @@ export default function PortfolioPage() {
                 {wizardType === "PHOTO" && (
                   <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
                     <Camera className="mx-auto size-10 text-muted-foreground/50" />
-                    <p className="mt-3 text-sm font-medium text-foreground">Take or upload a photo</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Click to select an image from your device</p>
+                    <p className="mt-3 text-sm font-medium text-foreground">{t("portfolioPage.photoTitle")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("portfolioPage.photoDesc")}</p>
                     <input
                       type="file"
                       accept="image/*"
@@ -583,7 +586,7 @@ export default function PortfolioPage() {
                       {isRecording ? <Disc className="size-8" /> : <Mic className="size-8" />}
                     </button>
                     <p className="text-sm font-medium text-foreground">
-                      {isRecording ? `Recording... ${Math.floor(recordingTimer / 60)}:${(recordingTimer % 60).toString().padStart(2, "0")}` : "Tap to start recording"}
+                      {isRecording ? t("portfolioPage.recording", { time: `${Math.floor(recordingTimer / 60)}:${(recordingTimer % 60).toString().padStart(2, "0")}` }) : t("portfolioPage.tapRecord")}
                     </p>
                     {isRecording && (
                       <div className="flex items-center gap-1">
@@ -606,7 +609,7 @@ export default function PortfolioPage() {
                   <textarea
                     value={wizardContent}
                     onChange={(e) => setWizardContent(e.target.value)}
-                    placeholder="Start writing your essay..."
+                    placeholder={t("portfolioPage.essayPlaceholder")}
                     rows={10}
                     className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                   />
@@ -617,8 +620,8 @@ export default function PortfolioPage() {
             {wizardStep === 4 && (
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">Which subject?</h3>
-                  <p className="text-sm text-muted-foreground">Choose a subject for this work</p>
+                  <h3 className="text-lg font-semibold text-foreground">{t("portfolioPage.step4Title")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("portfolioPage.step4Desc")}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {primarySubjects.map((subject) => {
@@ -647,7 +650,7 @@ export default function PortfolioPage() {
                   onClick={() => setWizardSubject("")}
                   className="text-sm text-muted-foreground hover:text-foreground"
                 >
-                  Skip this step
+                  {t("portfolioPage.skip")}
                 </button>
               </div>
             )}
@@ -658,8 +661,8 @@ export default function PortfolioPage() {
                   <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-green-100">
                     <Check className="size-8 text-green-600" />
                   </div>
-                  <h3 className="mt-4 text-lg font-semibold text-foreground">Save to My Backpack</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Ready to save your creation?</p>
+                  <h3 className="mt-4 text-lg font-semibold text-foreground">{t("portfolioPage.step5Title")}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("portfolioPage.step5Desc")}</p>
                   <div className="mt-4 rounded-xl bg-muted/50 p-4 text-left">
                     <p className="text-sm font-semibold text-foreground">{wizardTitle}</p>
                     {wizardDescription && (
@@ -688,7 +691,7 @@ export default function PortfolioPage() {
                   className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
                 >
                   <ChevronLeft className="size-4" />
-                  Back
+                  {t("portfolioPage.back")}
                 </button>
               ) : (
                 <div />
@@ -700,7 +703,7 @@ export default function PortfolioPage() {
                   disabled={wizardStep === 1 && !wizardTitle.trim()}
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
-                  Next
+                  {t("portfolioPage.next")}
                   <ChevronRight className="size-4" />
                 </button>
               ) : (
@@ -711,7 +714,7 @@ export default function PortfolioPage() {
                   className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
                 >
                   {submitting ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                  {submitting ? "Saving..." : "Save to Backpack"}
+                  {submitting ? t("portfolioPage.saving") : t("portfolioPage.save")}
                 </button>
               )}
             </div>

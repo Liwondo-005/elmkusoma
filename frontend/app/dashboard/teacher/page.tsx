@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import {
   type TeacherDashboard,
@@ -39,8 +40,9 @@ function SkeletonPulse({ className }: { className?: string }) {
 }
 
 function DashboardSkeleton() {
+  const t = useTranslations("teacher")
   return (
-    <div className="mx-auto max-w-6xl space-y-6" aria-busy="true" aria-label="Loading dashboard">
+    <div className="mx-auto max-w-6xl space-y-6" aria-busy="true" aria-label={t("dashboard.skeletonLabel")}>
       <div>
         <SkeletonPulse className="h-8 w-64 mb-2" />
         <SkeletonPulse className="h-4 w-48" />
@@ -86,7 +88,10 @@ function DashboardSkeleton() {
 
 export default function TeacherDashboardPage() {
   const { user } = useAuth()
-  const firstName = user?.name?.split(" ")[0] || "Teacher"
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
+  const firstName = user?.name?.split(" ")[0] || t("dashboard.teacherFallback")
   const [loading, setLoading] = useState(true)
   const [dashboard, setDashboard] = useState<TeacherDashboard | null>(null)
   const [analytics, setAnalytics] = useState<TeacherAnalytics | null>(null)
@@ -207,7 +212,7 @@ export default function TeacherDashboardPage() {
         /* dashboard loads with zero stats */
       }
     } catch {
-      setError("Failed to load dashboard data")
+      setError(t("dashboard.loadError"))
     } finally {
       setLoading(false)
     }
@@ -253,28 +258,28 @@ export default function TeacherDashboardPage() {
 
   const commandItems = [
     pendingGradingCount > 0 && {
-      label: `${pendingGradingCount} Assignment${pendingGradingCount !== 1 ? "s" : ""} to Grade`,
+      label: t("dashboard.toGrade", { count: pendingGradingCount }),
       icon: AlertTriangle,
       color: "text-orange",
       bg: "bg-orange/10",
       href: "/dashboard/teacher/grading",
     },
     pendingSubmissionsCount > 0 && {
-      label: `${pendingSubmissionsCount} Pending Submission${pendingSubmissionsCount !== 1 ? "s" : ""}`,
+      label: t("dashboard.pendingSubmissions", { count: pendingSubmissionsCount }),
       icon: Clock,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
       href: "/dashboard/teacher/assignments",
     },
     upcomingDeadlines.length > 0 && {
-      label: `${upcomingDeadlines.length} Upcoming Deadline${upcomingDeadlines.length !== 1 ? "s" : ""}`,
+      label: t("dashboard.upcomingDeadlines", { count: upcomingDeadlines.length }),
       icon: Calendar,
       color: "text-purple-500",
       bg: "bg-purple-500/10",
       href: "/dashboard/teacher/assignments",
     },
     todayLiveClasses.length > 0 && {
-      label: `${todayLiveClasses.length} Live Class${todayLiveClasses.length !== 1 ? "es" : ""} Today`,
+      label: t("dashboard.liveToday", { count: todayLiveClasses.length }),
       icon: Video,
       color: "text-green-600",
       bg: "bg-green-500/10",
@@ -282,7 +287,7 @@ export default function TeacherDashboardPage() {
     },
     stats.todayAttendance === 0 &&
       stats.totalStudents > 0 && {
-        label: "Attendance Not Taken",
+        label: t("dashboard.attendanceNotTaken"),
         icon: ClipboardList,
         color: "text-amber-600",
         bg: "bg-amber-500/10",
@@ -298,38 +303,42 @@ export default function TeacherDashboardPage() {
 
   const statCards = [
     {
-      label: "Students",
+      key: "students",
+      label: t("analytics.totalStudents"),
       value: stats.totalStudents || dashboard?.totalStudents || 0,
       icon: Users,
       color: "text-blue-500",
       detail:
         stats.totalClasses > 0
-          ? `Across ${stats.totalClasses} class${stats.totalClasses !== 1 ? "es" : ""}`
+          ? t("dashboard.acrossClasses", { count: stats.totalClasses })
           : undefined,
     },
     {
-      label: "Classes",
+      key: "classes",
+      label: t("analytics.classes"),
       value: stats.totalClasses || dashboard?.totalClasses || 0,
       icon: BookOpen,
       color: "text-teal",
       detail:
         stats.totalSubjects > 0
-          ? `${stats.totalSubjects} subject${stats.totalSubjects !== 1 ? "s" : ""}`
+          ? t("dashboard.subjectsCount", { count: stats.totalSubjects })
           : undefined,
     },
     {
-      label: "Assignments",
+      key: "assignments",
+      label: t("analytics.totalAssignments"),
       value: dashboard?.totalAssignments || 0,
       icon: FileText,
       color: "text-purple-500",
-      note: `${pendingSubmissionsCount} pending`,
+      note: t("dashboard.pendingNote", { count: pendingSubmissionsCount }),
     },
     {
-      label: "Pending Grading",
+      key: "grading",
+      label: t("analytics.pendingGrading"),
       value: stats.pendingGrading,
       icon: AlertTriangle,
       color: "text-orange",
-      note: pendingGradingCount > 0 ? "Action needed" : "All caught up",
+      note: pendingGradingCount > 0 ? t("dashboard.actionNeeded") : t("dashboard.allCaughtUpShort"),
     },
   ]
 
@@ -339,10 +348,10 @@ export default function TeacherDashboardPage() {
     const now = new Date()
     const diffMs = now.getTime() - d.getTime()
     const diffMins = Math.floor(diffMs / 60000)
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffMins < 1) return t("notifications.timeJustNow")
+    if (diffMins < 60) return t("messages.timeMinutes", { count: diffMins })
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffHours < 24) return t("messages.timeHours", { count: diffHours })
     return d.toLocaleDateString()
   }
 
@@ -350,10 +359,10 @@ export default function TeacherDashboardPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Welcome back, {firstName}!
+          {t("dashboard.welcome", { name: firstName })}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Here is your teaching overview for today.
+          {t("dashboard.subtitle")}
         </p>
       </div>
 
@@ -366,7 +375,7 @@ export default function TeacherDashboardPage() {
               onClick={loadData}
               className="ml-auto text-xs font-medium underline hover:no-underline"
             >
-              Retry
+              {tc("retry")}
             </button>
           </div>
         </div>
@@ -376,10 +385,10 @@ export default function TeacherDashboardPage() {
       <section className="rounded-2xl border border-primary/20 bg-primary/5 p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="size-4 text-primary" />
-          <h2 className="text-base font-semibold text-foreground">Command Center</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.commandTitle")}</h2>
           {commandItems.length > 0 && (
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {commandItems.length} action{commandItems.length !== 1 ? "s" : ""}
+              {t("dashboard.actionsCount", { count: commandItems.length })}
             </span>
           )}
         </div>
@@ -402,22 +411,22 @@ export default function TeacherDashboardPage() {
         ) : (
           <div className="rounded-xl border border-border bg-background p-6 text-center">
             <CheckCircle2 className="mx-auto mb-2 size-8 text-green-500" />
-            <p className="text-sm font-medium text-foreground">You&apos;re all caught up.</p>
+            <p className="text-sm font-medium text-foreground">{t("dashboard.allCaughtUp")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              No urgent teaching actions right now.
+              {t("dashboard.noUrgent")}
             </p>
             <div className="mt-4 flex items-center justify-center gap-3">
               <Link
                 href="/dashboard/teacher/schedule"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
               >
-                <Calendar className="size-3" /> View Schedule
+                <Calendar className="size-3" /> {t("dashboard.viewSchedule")}
               </Link>
               <Link
                 href="/dashboard/teacher/classes"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
-                <BookOpen className="size-3" /> View Classes
+                <BookOpen className="size-3" /> {t("dashboard.viewClasses")}
               </Link>
             </div>
           </div>
@@ -427,7 +436,7 @@ export default function TeacherDashboardPage() {
       {/* ── Key Metrics ── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
-          <div key={card.label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div key={card.key} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
             <card.icon className={`mb-2 size-5 ${card.color}`} />
             <p className="text-2xl font-extrabold text-foreground">{card.value}</p>
             <p className="text-sm font-medium text-foreground">{card.label}</p>
@@ -440,12 +449,12 @@ export default function TeacherDashboardPage() {
       {/* ── Today's Classes ── */}
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Today&apos;s Classes</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("schedule.todayClasses")}</h2>
           <Link
             href="/dashboard/teacher/schedule"
             className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
           >
-            Full Schedule <ArrowRight className="size-3" />
+            {t("dashboard.fullSchedule")} <ArrowRight className="size-3" />
           </Link>
         </div>
         {todayClasses.length > 0 ? (
@@ -464,14 +473,14 @@ export default function TeacherDashboardPage() {
                     href={`/dashboard/teacher/classes/${cls.classGroupId}`}
                     className="rounded-lg bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/20"
                   >
-                    Open
+                    {t("mediaLibrary.open")}
                   </Link>
                 ) : (
                   <Link
                     href="/dashboard/teacher/attendance"
                     className="rounded-lg bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/20"
                   >
-                    Take Attendance
+                    {t("dashboard.takeAttendance")}
                   </Link>
                 )}
               </div>
@@ -481,13 +490,13 @@ export default function TeacherDashboardPage() {
           <div className="mt-4 rounded-xl border border-border bg-background p-6 text-center">
             <Calendar className="mx-auto mb-2 size-8 text-muted-foreground/50" />
             <p className="text-sm font-medium text-foreground">
-              No classes scheduled for today.
+              {t("dashboard.noClassesToday")}
             </p>
             <Link
               href="/dashboard/teacher/schedule"
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <Calendar className="size-3" /> View Schedule
+              <Calendar className="size-3" /> {t("dashboard.viewSchedule")}
             </Link>
           </div>
         )}
@@ -497,12 +506,12 @@ export default function TeacherDashboardPage() {
       {dashboard?.classes && dashboard.classes.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">My Classes</h2>
+            <h2 className="text-base font-semibold text-foreground">{tn("myClasses")}</h2>
             <Link
               href="/dashboard/teacher/classes"
               className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              View All <ArrowRight className="size-3" />
+              {tc("viewAll")} <ArrowRight className="size-3" />
             </Link>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -526,7 +535,7 @@ export default function TeacherDashboardPage() {
                 </div>
                 <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <Users className="size-3" /> {cls.enrolledStudents} students
+                    <Users className="size-3" /> {t("courses.students", { count: cls.enrolledStudents })}
                   </span>
                 </div>
               </Link>
@@ -538,12 +547,12 @@ export default function TeacherDashboardPage() {
       {/* ── Live Learning ── */}
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Live Classes</h2>
+          <h2 className="text-base font-semibold text-foreground">{tn("liveClasses")}</h2>
           <Link
             href="/dashboard/teacher/live-classes"
             className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
           >
-            Manage <ArrowRight className="size-3" />
+            {t("dashboard.manage")} <ArrowRight className="size-3" />
           </Link>
         </div>
         {todayLiveClasses.length > 0 ? (
@@ -569,7 +578,7 @@ export default function TeacherDashboardPage() {
                       : "bg-blue-100 text-blue-700"
                   }`}
                 >
-                  {lc.status === "IN_PROGRESS" ? "LIVE NOW" : "UPCOMING"}
+                  {lc.status === "IN_PROGRESS" ? t("dashboard.liveNowBadge") : t("dashboard.upcomingBadge")}
                 </span>
               </div>
             ))}
@@ -578,13 +587,13 @@ export default function TeacherDashboardPage() {
           <div className="mt-4 rounded-xl border border-border bg-background p-6 text-center">
             <Video className="mx-auto mb-2 size-8 text-muted-foreground/50" />
             <p className="text-sm font-medium text-foreground">
-              No live classes scheduled for today.
+              {t("dashboard.noLiveToday")}
             </p>
             <Link
               href="/dashboard/teacher/live-classes"
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <Plus className="size-3" /> Schedule Live Class
+              <Plus className="size-3" /> {t("dashboard.scheduleLive")}
             </Link>
           </div>
         )}
@@ -593,7 +602,7 @@ export default function TeacherDashboardPage() {
       {/* ── Recent Activity ── */}
       {recentActivity.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.recentActivity")}</h2>
           <div className="mt-4 space-y-3">
             {recentActivity.slice(0, 5).map((activity, i) => (
               <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
@@ -622,13 +631,13 @@ export default function TeacherDashboardPage() {
       {/* ── Needs Grading ── */}
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Needs Grading</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.needsGrading")}</h2>
           {ungradedSubmissions.length > 0 && (
             <Link
               href="/dashboard/teacher/grading"
               className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              Grade Now <ArrowRight className="size-3" />
+              {t("dashboard.gradeNow")} <ArrowRight className="size-3" />
             </Link>
           )}
         </div>
@@ -650,7 +659,7 @@ export default function TeacherDashboardPage() {
                   href="/dashboard/teacher/grading"
                   className="shrink-0 rounded-lg bg-orange/10 px-2 py-1 text-xs font-medium text-orange hover:bg-orange/20"
                 >
-                  Grade
+                  {t("assignments.gradeBtn")}
                 </Link>
               </div>
             ))}
@@ -658,15 +667,15 @@ export default function TeacherDashboardPage() {
         ) : (
           <div className="mt-4 rounded-xl border border-border bg-background p-6 text-center">
             <CheckCircle2 className="mx-auto mb-2 size-8 text-green-500" />
-            <p className="text-sm font-medium text-foreground">You&apos;re all caught up.</p>
+            <p className="text-sm font-medium text-foreground">{t("dashboard.allCaughtUp")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              No submissions require grading right now.
+              {t("dashboard.noGrading")}
             </p>
             <Link
               href="/dashboard/teacher/gradebook"
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
             >
-              <BarChart3 className="size-3" /> Open Gradebook
+              <BarChart3 className="size-3" /> {t("dashboard.openGradebook")}
             </Link>
           </div>
         )}
@@ -675,7 +684,7 @@ export default function TeacherDashboardPage() {
       {/* ── Quick Actions + Recent Work ── */}
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs lg:col-span-2">
-          <h2 className="text-base font-semibold text-foreground">Quick Actions</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.quickActions")}</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Link
               href="/dashboard/teacher/assignments"
@@ -684,7 +693,7 @@ export default function TeacherDashboardPage() {
               <div className="flex size-8 items-center justify-center rounded-lg bg-purple-500/10">
                 <Plus className="size-4 text-purple-500" />
               </div>
-              <span className="flex-1">Create Assignment</span>
+              <span className="flex-1">{t("assignments.createAssignment")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
             <Link
@@ -694,7 +703,7 @@ export default function TeacherDashboardPage() {
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
                 <Plus className="size-4 text-primary" />
               </div>
-              <span className="flex-1">Create Lesson</span>
+              <span className="flex-1">{t("lessons.createLesson")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
             <Link
@@ -704,7 +713,7 @@ export default function TeacherDashboardPage() {
               <div className="flex size-8 items-center justify-center rounded-lg bg-teal/10">
                 <Plus className="size-4 text-teal" />
               </div>
-              <span className="flex-1">Create Assessment</span>
+              <span className="flex-1">{t("assessments.createAssessment")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
             <Link
@@ -714,7 +723,7 @@ export default function TeacherDashboardPage() {
               <div className="flex size-8 items-center justify-center rounded-lg bg-green-500/10">
                 <Video className="size-4 text-green-600" />
               </div>
-              <span className="flex-1">Start Live Class</span>
+              <span className="flex-1">{t("livePrepare.startLive")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
             <Link
@@ -722,7 +731,7 @@ export default function TeacherDashboardPage() {
               className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               <ClipboardList className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Take Attendance</span>
+              <span className="flex-1">{t("dashboard.takeAttendance")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
             <Link
@@ -730,7 +739,7 @@ export default function TeacherDashboardPage() {
               className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               <BarChart3 className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">Grade Submissions</span>
+              <span className="flex-1">{t("dashboard.gradeSubmissions")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
             <Link
@@ -738,7 +747,7 @@ export default function TeacherDashboardPage() {
               className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               <Calendar className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">View Schedule</span>
+              <span className="flex-1">{t("dashboard.viewSchedule")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
             <Link
@@ -746,7 +755,7 @@ export default function TeacherDashboardPage() {
               className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               <TrendingUp className="size-4 shrink-0 text-muted-foreground" />
-              <span className="flex-1">View Analytics</span>
+              <span className="flex-1">{t("dashboard.viewAnalytics")}</span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
           </div>
@@ -754,24 +763,24 @@ export default function TeacherDashboardPage() {
 
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Recent Assignments</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("dashboard.recentAssignments")}</h2>
             <Link
               href="/dashboard/teacher/assignments"
               className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              View All <ArrowRight className="size-3" />
+              {tc("viewAll")} <ArrowRight className="size-3" />
             </Link>
           </div>
           <div className="mt-4 space-y-3">
             {assignments.length === 0 ? (
               <div className="py-4 text-center">
                 <FileText className="mx-auto mb-2 size-6 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">No assignments yet</p>
+                <p className="text-sm text-muted-foreground">{t("dashboard.noAssignments")}</p>
                 <Link
                   href="/dashboard/teacher/assignments"
                   className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                 >
-                  <Plus className="size-3" /> Create Assignment
+                  <Plus className="size-3" /> {t("assignments.createAssignment")}
                 </Link>
               </div>
             ) : (
@@ -783,7 +792,7 @@ export default function TeacherDashboardPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{a.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      Due: {a.dueDate ? new Date(a.dueDate).toLocaleDateString() : "No due date"}
+                      {t("classDetail.dueLabel", { date: a.dueDate ? new Date(a.dueDate).toLocaleDateString() : t("dashboard.noDueDate") })}
                     </p>
                   </div>
                 </div>
@@ -797,12 +806,12 @@ export default function TeacherDashboardPage() {
       {assessments.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Recent Assessments</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("dashboard.recentAssessments")}</h2>
             <Link
               href="/dashboard/teacher/assessments"
               className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
             >
-              View All <ArrowRight className="size-3" />
+              {tc("viewAll")} <ArrowRight className="size-3" />
             </Link>
           </div>
           <div className="mt-4 space-y-3">
@@ -813,7 +822,7 @@ export default function TeacherDashboardPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{a.title}</p>
-                  <p className="text-xs text-muted-foreground">{a.totalMarks} marks</p>
+                  <p className="text-xs text-muted-foreground">{t("classDetail.marksCount", { count: a.totalMarks })}</p>
                 </div>
               </div>
             ))}
@@ -825,23 +834,23 @@ export default function TeacherDashboardPage() {
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center gap-2 mb-4">
           <Target className="size-4 text-primary" />
-          <h2 className="text-base font-semibold text-foreground">Teaching Insights</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.insightsTitle")}</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="size-4 text-teal" />
-              <span className="text-sm font-medium text-foreground">Attendance Rate</span>
+              <span className="text-sm font-medium text-foreground">{t("dashboard.attendanceRate")}</span>
             </div>
             <p className="text-2xl font-extrabold text-foreground">
               {stats.attendanceRate > 0 ? `${Math.round(stats.attendanceRate)}%` : "—"}
             </p>
-            <p className="text-xs text-muted-foreground">Average across your classes</p>
+            <p className="text-xs text-muted-foreground">{t("dashboard.avgAcross")}</p>
           </div>
           <div className="rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle2 className="size-4 text-green-600" />
-              <span className="text-sm font-medium text-foreground">Assignment Completion</span>
+              <span className="text-sm font-medium text-foreground">{t("dashboard.assignmentCompletion")}</span>
             </div>
             <p className="text-2xl font-extrabold text-foreground">
               {dashboard?.totalAssignments
@@ -852,20 +861,20 @@ export default function TeacherDashboardPage() {
                   )}%`
                 : "—"}
             </p>
-            <p className="text-xs text-muted-foreground">Submissions received</p>
+            <p className="text-xs text-muted-foreground">{t("dashboard.submissionsReceived")}</p>
           </div>
           <div className="rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="size-4 text-purple-500" />
-              <span className="text-sm font-medium text-foreground">Grading Progress</span>
+              <span className="text-sm font-medium text-foreground">{t("dashboard.gradingProgress")}</span>
             </div>
             <p className="text-2xl font-extrabold text-foreground">
-              {pendingGradingCount === 0 ? "Done" : `${pendingGradingCount} left`}
+              {pendingGradingCount === 0 ? t("dashboard.gradingDone") : t("dashboard.gradingLeft", { count: pendingGradingCount })}
             </p>
             <p className="text-xs text-muted-foreground">
               {pendingGradingCount === 0
-                ? "All submissions graded"
-                : "Pending submissions"}
+                ? t("dashboard.allGraded")
+                : t("dashboard.pendingSubmissionsNote")}
             </p>
           </div>
         </div>

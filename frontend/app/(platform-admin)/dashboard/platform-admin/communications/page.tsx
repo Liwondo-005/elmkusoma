@@ -1,10 +1,14 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { Bell, Send, Loader2, Inbox, RefreshCw, AlertCircle } from "lucide-react"
 import { platformAdminApi, type NotificationSummary, type PageResponse, type CommunicationDelivery } from "@/lib/platform-admin-api"
 
 export default function CommunicationsPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [data, setData] = useState<PageResponse<NotificationSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSend, setShowSend] = useState(false)
@@ -19,7 +23,7 @@ export default function CommunicationsPage() {
     try {
       setData(await platformAdminApi.listNotifications(p, 20))
     } catch (e: any) {
-      setDeliveryError(e.message || "Failed to load notifications")
+      setDeliveryError(e.message || t("communications.failedToLoadNotifications"))
       setData(null)
     } finally { setLoading(false) }
   }, [])
@@ -30,7 +34,7 @@ export default function CommunicationsPage() {
       setDelivery(await platformAdminApi.getCommunicationDelivery())
     } catch (e: any) {
       setDelivery(null)
-      setDeliveryError(e.message || "Delivery stats unavailable")
+      setDeliveryError(e.message || t("communications.deliveryStatsUnavailable"))
     }
   }, [])
 
@@ -52,45 +56,44 @@ export default function CommunicationsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Communications</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Platform-wide notifications and announcements</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("communications.communications")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("communications.platformWideNotificationsAnd")}</p>
         </div>
         <button onClick={() => setShowSend(!showSend)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-          <Send className="size-4" /> Send Notification
-        </button>
+          <Send className="size-4" /> {t("communications.sendNotification")}</button>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Inbox className="size-4" /> Delivery Stats</h2>
-          <button onClick={loadDelivery} className="text-muted-foreground hover:text-foreground" aria-label="Refresh delivery"><RefreshCw className="size-3.5" /></button>
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><Inbox className="size-4" /> {t("communications.deliveryStats")}</h2>
+          <button onClick={loadDelivery} className="text-muted-foreground hover:text-foreground" aria-label={t("communications.refreshDelivery")}><RefreshCw className="size-3.5" /></button>
         </div>
         {deliveryError && <p className="mt-2 flex items-center gap-1 text-xs text-red-600"><AlertCircle className="size-3.5" />{deliveryError}</p>}
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: "Platform notifications", value: delivery?.platformNotifications },
-            { label: "Learner notifications", value: delivery?.learnerNotifications },
-            { label: "Learner read", value: delivery?.learnerRead },
-            { label: "Learner unread", value: delivery?.learnerUnread },
+            { label: t("communications.platformNotifications"), value: delivery?.platformNotifications },
+            { label: t("communications.learnerNotifications"), value: delivery?.learnerNotifications },
+            { label: t("communications.learnerRead"), value: delivery?.learnerRead },
+            { label: t("communications.learnerUnread"), value: delivery?.learnerUnread },
           ].map(s => (
             <div key={s.label} className="rounded-xl border border-border bg-background p-4">
               <p className="text-xs text-muted-foreground">{s.label}</p>
               {s.value === null || s.value === undefined
-                ? <p className="mt-1 text-sm font-semibold text-muted-foreground">Data unavailable</p>
+                ? <p className="mt-1 text-sm font-semibold text-muted-foreground">{t("communications.dataUnavailable")}</p>
                 : <p className="mt-1 text-xl font-bold tabular-nums">{s.value.toLocaleString()}</p>}
             </div>
           ))}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Read rate {delivery?.learnerReadRate != null ? `${delivery.learnerReadRate}%` : "—"} · {delivery?.deliveryNote ?? "Data unavailable"}
+          {t("communications.readRate")}{delivery?.learnerReadRate != null ? `${delivery.learnerReadRate}%` : "—"} · {delivery?.deliveryNote ?? "Data unavailable"}
         </p>
       </div>
 
       {showSend && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Send Platform Notification</h2>
-          <input placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm" />
-          <textarea placeholder="Message" value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={3} className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm" />
+          <h2 className="text-base font-semibold text-foreground">{t("communications.sendPlatformNotification")}</h2>
+          <input placeholder={t("communications.title")} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm" />
+          <textarea placeholder={t("communications.message")} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={3} className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm" />
           <div className="grid grid-cols-3 gap-4">
             <select value={form.notificationType} onChange={e => setForm({ ...form, notificationType: e.target.value })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm">
               {["ANNOUNCEMENT", "SYSTEM", "SECURITY", "MAINTENANCE", "FEATURE"].map(t => <option key={t}>{t}</option>)}
@@ -104,9 +107,8 @@ export default function CommunicationsPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={handleSend} disabled={saving || !form.title || !form.message} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} Send
-            </button>
-            <button onClick={() => setShowSend(false)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">Cancel</button>
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />} {t("communications.send")}</button>
+            <button onClick={() => setShowSend(false)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">{tc("cancel")}</button>
           </div>
         </div>
       )}
@@ -116,7 +118,7 @@ export default function CommunicationsPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-10 text-center">
           <Bell className="mx-auto size-10 text-muted-foreground/50" />
-          <p className="mt-3 text-sm text-muted-foreground">No notifications sent yet</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t("communications.noNotificationsSentYet")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -131,8 +133,8 @@ export default function CommunicationsPage() {
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{n.message}</p>
                   <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>To: {n.targetAudience || "All"}</span>
-                    <span>Sent by: {n.sentBy || "System"}</span>
+                    <span>{t("communications.toAudience", { audience: n.targetAudience || t("communications.allAudiences") })}</span>
+                    <span>{t("communications.sentByUser", { user: n.sentBy || t("communications.systemUser") })}</span>
                     <span>{new Date(n.sentAt).toLocaleString("en-GB")}</span>
                   </div>
                 </div>
@@ -144,9 +146,9 @@ export default function CommunicationsPage() {
 
       {data && data.totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          <button disabled={pageIndex === 0} onClick={() => setPageIndex(i => i - 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">Previous</button>
-          <span className="text-xs text-muted-foreground">Page {pageIndex + 1} of {data.totalPages}</span>
-          <button disabled={data.last} onClick={() => setPageIndex(i => i + 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">Next</button>
+          <button disabled={pageIndex === 0} onClick={() => setPageIndex(i => i - 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">{tc("previous")}</button>
+          <span className="text-xs text-muted-foreground">{t("communications.pageOf", { p0: pageIndex + 1, p1: data.totalPages })}</span>
+          <button disabled={data.last} onClick={() => setPageIndex(i => i + 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">{tc("next")}</button>
         </div>
       )}
     </div>

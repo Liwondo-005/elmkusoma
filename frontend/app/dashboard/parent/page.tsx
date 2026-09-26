@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { Users, AlertTriangle, CheckCircle, Clock, FileText, BarChart3, ChevronRight, Loader2, Star, TrendingUp, Calendar, BookOpen, Video, Trophy, Target, AlertCircle, Info, PenTool, Activity } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type FamilyOverview, type ChildOverview, type ParentIntelligence, type AttentionItem, type PositiveSignal, type UpcomingItem } from "@/lib/parent-api"
@@ -29,7 +30,11 @@ const TYPE_ICONS: Record<string, typeof AlertTriangle> = {
 
 export default function ParentDashboardPage() {
   const { user } = useAuth()
-  const firstName = user?.name?.split(" ")[0] || "Parent"
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
+  const ts = useTranslations("status")
+  const firstName = user?.name?.split(" ")[0] || t("primaryProgress.parentFallback")
   const [overview, setOverview] = useState<FamilyOverview | null>(null)
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
@@ -51,7 +56,7 @@ export default function ParentDashboardPage() {
           setSelectedChildId(primary.studentId)
         }
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to load dashboard"
+        const msg = err instanceof Error ? err.message : t("dashboard.loadError")
         setError(msg)
       } finally {
         setLoading(false)
@@ -80,7 +85,7 @@ export default function ParentDashboardPage() {
       <div className="mx-auto max-w-4xl py-16 text-center">
         <p className="text-sm text-muted-foreground">{error}</p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Make sure your parent profile is set up and you have children linked to your account.
+          {t("primaryProgress.errorDesc")}
         </p>
       </div>
     )
@@ -88,6 +93,7 @@ export default function ParentDashboardPage() {
 
   const selectedChild = children.find((c) => c.studentId === selectedChildId)
   const brief = intelligence?.weeklyBrief
+  const period = getGreeting()
 
   const hasPrimaryChild = children.some((c) => c.isPrimary)
 
@@ -95,10 +101,10 @@ export default function ParentDashboardPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Good {getGreeting()}, {firstName}
+          {period === "morning" ? t("dashboard.greetingMorning", { name: firstName }) : period === "afternoon" ? t("dashboard.greetingAfternoon", { name: firstName }) : t("dashboard.greetingEvening", { name: firstName })}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Here&apos;s how your children are doing today.
+          {t("dashboard.subtitle")}
         </p>
       </div>
 
@@ -111,9 +117,9 @@ export default function ParentDashboardPage() {
             <BarChart3 className="size-6" />
           </div>
           <div className="flex-1">
-            <p className="text-base font-bold text-foreground">Primary School View</p>
+            <p className="text-base font-bold text-foreground">{t("dashboard.primaryViewTitle")}</p>
             <p className="text-sm text-muted-foreground">
-              See your child&apos;s progress with a kid-friendly dashboard, subject performance, and teacher info.
+              {t("dashboard.primaryViewDesc")}
             </p>
           </div>
           <ChevronRight className="size-5 shrink-0 text-primary" />
@@ -144,28 +150,28 @@ export default function ParentDashboardPage() {
       {selectedChild && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <p className="text-xs font-medium text-muted-foreground">Attendance</p>
+            <p className="text-xs font-medium text-muted-foreground">{tn("attendance")}</p>
             <p className="mt-1 text-2xl font-extrabold text-foreground">
               {selectedChild.attendancePercentage !== null ? `${Math.round(selectedChild.attendancePercentage)}%` : "—"}
             </p>
             <p className="text-xs text-muted-foreground">{selectedChild.className}</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <p className="text-xs font-medium text-muted-foreground">Learning Progress</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("dashboard.learningProgress")}</p>
             <p className="mt-1 text-2xl font-extrabold text-foreground">
               {selectedChild.learningProgress !== null ? `${Math.round(selectedChild.learningProgress)}%` : "—"}
             </p>
-            <p className="text-xs text-muted-foreground">Overall completion</p>
+            <p className="text-xs text-muted-foreground">{t("dashboard.overallCompletion")}</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <p className="text-xs font-medium text-muted-foreground">Pending Tasks</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("dashboard.pendingTasks")}</p>
             <p className="mt-1 text-2xl font-extrabold text-foreground">{selectedChild.pendingAssignments}</p>
-            <p className="text-xs text-muted-foreground">Assignments to complete</p>
+            <p className="text-xs text-muted-foreground">{t("dashboard.assignmentsToComplete")}</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <p className="text-xs font-medium text-muted-foreground">Latest Grade</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("dashboard.latestGrade")}</p>
             <p className="mt-1 text-2xl font-extrabold text-foreground">{selectedChild.latestGrade || "—"}</p>
-            <p className="text-xs text-muted-foreground">{selectedChild.latestAverage != null ? `Avg: ${Math.round(selectedChild.latestAverage)}%` : "No data yet"}</p>
+            <p className="text-xs text-muted-foreground">{selectedChild.latestAverage != null ? t("dashboard.avgValue", { value: Math.round(selectedChild.latestAverage) }) : t("dashboard.noData")}</p>
           </div>
         </div>
       )}
@@ -173,7 +179,7 @@ export default function ParentDashboardPage() {
       {/* Needs Your Attention */}
       {intelligence && intelligence.needsAttention.length > 0 && (
         <section className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-xs dark:border-red-900 dark:bg-red-950/30">
-          <h2 className="text-base font-semibold text-foreground">Needs Your Attention</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.needsAttention")}</h2>
           <div className="mt-3 space-y-2">
             {intelligence.needsAttention.slice(0, 5).map((item) => (
               <AttentionCard key={item.id} item={item} />
@@ -185,7 +191,7 @@ export default function ParentDashboardPage() {
       {/* Doing Well */}
       {intelligence && intelligence.doingWell.length > 0 && (
         <section className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-xs dark:border-green-900 dark:bg-green-950/30">
-          <h2 className="text-base font-semibold text-foreground">Doing Well</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.doingWell")}</h2>
           <div className="mt-3 space-y-2">
             {intelligence.doingWell.slice(0, 5).map((item) => (
               <PositiveCard key={item.id} item={item} />
@@ -197,12 +203,12 @@ export default function ParentDashboardPage() {
       {/* Weekly Brief */}
       {brief && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">This Week</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.thisWeek")}</h2>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="Lessons Completed" value={brief.lessonsCompleted} icon={BookOpen} />
-            <StatCard label="Assignments Done" value={brief.assignmentsCompleted} icon={FileText} />
-            <StatCard label="Live Classes" value={brief.liveClassesAttended} icon={Video} />
-            <StatCard label="Assessments" value={brief.assessmentsCompleted} icon={BarChart3} />
+            <StatCard label={t("dashboard.statLessons")} value={brief.lessonsCompleted} icon={BookOpen} />
+            <StatCard label={t("dashboard.statAssignments")} value={brief.assignmentsCompleted} icon={FileText} />
+            <StatCard label={tn("liveClasses")} value={brief.liveClassesAttended} icon={Video} />
+            <StatCard label={tn("assessments")} value={brief.assessmentsCompleted} icon={BarChart3} />
           </div>
           {brief.highlights.length > 0 && (
             <div className="mt-4 space-y-1">
@@ -220,7 +226,7 @@ export default function ParentDashboardPage() {
       {/* Upcoming */}
       {intelligence && intelligence.upcoming.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Upcoming</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("assessments.upcoming")}</h2>
           <div className="mt-3 space-y-2">
             {intelligence.upcoming.slice(0, 6).map((item) => (
               <UpcomingCard key={item.id} item={item} />
@@ -232,21 +238,21 @@ export default function ParentDashboardPage() {
       {/* Quick Actions */}
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs lg:col-span-2">
-          <h2 className="text-base font-semibold text-foreground">Quick Actions</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("dashboard.quickActions")}</h2>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <QuickAction href="/dashboard/parent/learning" icon={BookOpen} label="Learning" />
-            <QuickAction href="/dashboard/parent/reports" icon={BarChart3} label="Progress" />
-            <QuickAction href="/dashboard/parent/assessments" icon={PenTool} label="Assessments" />
-            <QuickAction href="/dashboard/parent/activity" icon={Activity} label="Activity" />
-            <QuickAction href="/dashboard/parent/teachers" icon={Users} label="Teachers" />
-            <QuickAction href="/dashboard/parent/calendar" icon={Calendar} label="Calendar" />
+            <QuickAction href="/dashboard/parent/learning" icon={BookOpen} label={tn("learning")} />
+            <QuickAction href="/dashboard/parent/reports" icon={BarChart3} label={tn("progress")} />
+            <QuickAction href="/dashboard/parent/assessments" icon={PenTool} label={tn("assessments")} />
+            <QuickAction href="/dashboard/parent/activity" icon={Activity} label={tn("activity")} />
+            <QuickAction href="/dashboard/parent/teachers" icon={Users} label={tn("teachers")} />
+            <QuickAction href="/dashboard/parent/calendar" icon={Calendar} label={tn("calendar")} />
           </div>
         </section>
 
         {/* Recommendations */}
         {intelligence && intelligence.recommendations.length > 0 && (
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <h2 className="text-base font-semibold text-foreground">How You Can Help</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("learning.helpTitle")}</h2>
             <div className="mt-3 space-y-3">
               {intelligence.recommendations.slice(0, 3).map((rec) => (
                 <div key={rec.id} className="rounded-xl border border-border bg-muted/30 p-3">
@@ -262,14 +268,14 @@ export default function ParentDashboardPage() {
       {/* Children Cards */}
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">My Children</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("children.title")}</h2>
         </div>
         {children.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-border py-12 text-center">
             <Users className="mx-auto mb-3 size-8 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">No children linked yet</p>
+            <p className="text-sm font-medium text-foreground">{t("children.emptyTitle")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Contact your school administrator to link your children.
+              {t("children.emptyDesc")}
             </p>
           </div>
         ) : (
@@ -289,7 +295,7 @@ export default function ParentDashboardPage() {
                   </div>
                   {child.isPrimary && (
                     <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                      PRIMARY
+                      {t("children.primaryBadge")}
                     </span>
                   )}
                 </div>
@@ -298,11 +304,11 @@ export default function ParentDashboardPage() {
                     <p className="text-lg font-bold text-foreground">
                       {child.attendancePercentage !== null ? `${Math.round(child.attendancePercentage)}%` : "—"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Attendance</p>
+                    <p className="text-[10px] text-muted-foreground">{tn("attendance")}</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold text-foreground">{child.latestGrade || "—"}</p>
-                    <p className="text-[10px] text-muted-foreground">Grade</p>
+                    <p className="text-[10px] text-muted-foreground">{t("children.gradeLabel")}</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold text-foreground">
@@ -312,11 +318,11 @@ export default function ParentDashboardPage() {
                         "0"
                       )}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Overdue</p>
+                    <p className="text-[10px] text-muted-foreground">{ts("overdue")}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-1 text-xs font-medium text-primary">
-                  View Details <ChevronRight className="size-3" />
+                  {tc("viewDetails")} <ChevronRight className="size-3" />
                 </div>
               </Link>
             ))}

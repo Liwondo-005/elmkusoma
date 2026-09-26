@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import type { CourseLevel } from "@/lib/data"
 import { cn } from "@/lib/utils"
@@ -13,6 +16,7 @@ const colorMap: Record<string, string> = {
 }
 
 export function LevelCard({ level }: { level: CourseLevel }) {
+  const t = useTranslations("ui")
   return (
     <Link
       href={level.comingSoon ? "/courses" : `/courses/${level.slug}`}
@@ -42,10 +46,10 @@ export function LevelCard({ level }: { level: CourseLevel }) {
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
         {level.comingSoon ? (
-          <span className="text-xs font-medium text-muted-foreground">Coming Soon</span>
+          <span className="text-xs font-medium text-muted-foreground">{t("levelCard.comingSoon")}</span>
         ) : (
           <span className="text-xs font-medium text-muted-foreground">
-            {level.subjectCount} {level.subjectCount === 1 ? "subject" : "subjects"}
+            {t("levelCard.subjectCount", { count: level.subjectCount })}
           </span>
         )}
       </div>

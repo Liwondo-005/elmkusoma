@@ -64,9 +64,9 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20" role="status" aria-label="Loading" aria-live="polite">
+      <div className="flex items-center justify-center py-20" role="status" aria-label={t("loading")} aria-live="polite">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <span className="sr-only">Loading...</span>
+        <span className="sr-only">{t("loading")}</span>
       </div>
     )
   }
@@ -74,7 +74,7 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
   if (!user) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">Access denied</p>
+        <p className="text-muted-foreground">{t("accessDenied")}</p>
       </div>
     )
   }
@@ -86,7 +86,7 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
   if (!isOtherLearner && !isCollegeStudent) {
     return (
       <div className="flex items-center justify-center py-20" role="alert" aria-live="assertive">
-        <p className="text-muted-foreground">Access denied</p>
+        <p className="text-muted-foreground">{t("accessDenied")}</p>
       </div>
     )
   }
@@ -97,9 +97,9 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-4 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
-        Skip to main content
+        {t("skipToMainContent")}
       </a>
-      <main id="main-content" role="main" aria-label="Learner Dashboard">
+      <main id="main-content" role="main" aria-label={t("learnerDashboard")}>
         <div aria-live="polite" aria-atomic="true" className="sr-only" id="dashboard-announcer" />
         {children}
       </main>

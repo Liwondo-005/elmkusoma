@@ -1,18 +1,16 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useTranslations } from "next-intl"
 import { studyMaterials } from "@/lib/data"
 import { MaterialCard } from "@/components/notes/material-card"
 import { cn } from "@/lib/utils"
 
-const levels: { id: string; label: string }[] = [
-  { id: "all", label: "All Levels" },
-  { id: "Nursery", label: "Nursery" },
-  { id: "Primary", label: "Primary" },
-  { id: "Secondary", label: "Secondary" },
-  { id: "College", label: "College" },
-  { id: "University", label: "University" },
-]
+const levelIds = ["all", "Nursery", "Primary", "Secondary", "College", "University"] as const
+
+function levelLabel(id: string, allLevels: string) {
+  return id === "all" ? allLevels : id
+}
 
 const subjects = [
   "All",
@@ -33,6 +31,9 @@ const subjects = [
 ]
 
 export function MaterialsBrowser() {
+  const t = useTranslations("ui")
+  const tc = useTranslations("common")
+  const tl = useTranslations("learner")
   const [search, setSearch] = useState("")
   const [level, setLevel] = useState("all")
   const [subject, setSubject] = useState("All")
@@ -57,7 +58,7 @@ export function MaterialsBrowser() {
           <div className="relative flex-1 sm:max-w-md">
             <input
               type="search"
-              placeholder="Search notes, subjects, instructors..."
+              placeholder={t("materialsBrowser.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-10 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
@@ -70,9 +71,9 @@ export function MaterialsBrowser() {
               onChange={(e) => setLevel(e.target.value)}
               className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
             >
-              {levels.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.label}
+              {levelIds.map((id) => (
+                <option key={id} value={id}>
+                  {levelLabel(id, tc("allLevels"))}
                 </option>
               ))}
             </select>
@@ -84,7 +85,7 @@ export function MaterialsBrowser() {
             >
               {subjects.map((s) => (
                 <option key={s} value={s}>
-                  {s === "All" ? "All Subjects" : s}
+                  {s === "All" ? t("materialsBrowser.allSubjects") : s}
                 </option>
               ))}
             </select>
@@ -99,9 +100,9 @@ export function MaterialsBrowser() {
           </div>
         ) : (
           <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/40 py-20 text-center">
-            <p className="mt-4 text-sm font-medium text-foreground">No materials found</p>
+            <p className="mt-4 text-sm font-medium text-foreground">{t("materialsBrowser.emptyTitle")}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Try adjusting your search or filters.
+              {tl("tryAdjusting")}
             </p>
           </div>
         )}

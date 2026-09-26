@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { FileText, Loader2, Plus, Trash2, X, Save } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { certificateApi, getInstitutionId, type TemplateResponse } from "@/lib/api"
 
 export default function CertificateTemplatesPage() {
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [templates, setTemplates] = useState<TemplateResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -18,11 +21,11 @@ export default function CertificateTemplatesPage() {
   const institutionId = getInstitutionId()
 
   useEffect(() => {
-    if (!institutionId) { setError("No institution context found."); setLoading(false); return }
+    if (!institutionId) { setError(t("certGenerate.noInstitution")); setLoading(false); return }
     certificateApi
       .listTemplates()
       .then(setTemplates)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load templates"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("certTemplates.loadFailed")))
       .finally(() => setLoading(false))
   }, [institutionId])
 
@@ -42,7 +45,7 @@ export default function CertificateTemplatesPage() {
       setNewType("COMPLETION")
       setNewDescription("")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create template")
+      setError(err instanceof Error ? err.message : t("certTemplates.createFailed"))
     } finally {
       setSaving(false)
     }
@@ -52,14 +55,14 @@ export default function CertificateTemplatesPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Certificate Templates</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage certificate templates for your institution.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("certTemplates.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("certTemplates.subtitle")}</p>
         </div>
         <button
           onClick={() => setShowNew(true)}
           className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
-          <Plus className="size-3.5" /> New Template
+          <Plus className="size-3.5" /> {t("certTemplates.newTemplate")}
         </button>
       </div>
 
@@ -77,11 +80,11 @@ export default function CertificateTemplatesPage() {
 
       {showNew && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">New Template</h3>
+          <h3 className="mb-4 text-sm font-semibold text-foreground">{t("certTemplates.newTemplate")}</h3>
           <div className="space-y-3">
             <input
               type="text"
-              placeholder="Template name"
+              placeholder={t("certTemplates.namePlaceholder")}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
@@ -91,19 +94,19 @@ export default function CertificateTemplatesPage() {
               onChange={(e) => setNewType(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
             >
-              <option value="COMPLETION">Completion</option>
-              <option value="ACHIEVEMENT">Achievement</option>
-              <option value="PARTICIPATION">Participation</option>
+              <option value="COMPLETION">{t("certTemplates.typeCompletion")}</option>
+              <option value="ACHIEVEMENT">{t("certTemplates.typeAchievement")}</option>
+              <option value="PARTICIPATION">{t("certTemplates.typeParticipation")}</option>
             </select>
             <input
               type="text"
-              placeholder="Description (optional)"
+              placeholder={t("certGenerate.descriptionPlaceholder")}
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
             />
             <textarea
-              placeholder="Template HTML"
+              placeholder={t("certTemplates.htmlPlaceholder")}
               value={newHtml}
               onChange={(e) => setNewHtml(e.target.value)}
               rows={6}
@@ -115,13 +118,13 @@ export default function CertificateTemplatesPage() {
                 disabled={saving || !newName.trim()}
                 className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
-                <Save className="size-3.5" /> {saving ? "Creating..." : "Create Template"}
+                <Save className="size-3.5" /> {saving ? t("certTemplates.creating") : t("certTemplates.createButton")}
               </button>
               <button
                 onClick={() => { setShowNew(false); setNewName(""); setNewDescription("") }}
                 className="flex h-9 items-center gap-2 rounded-lg border border-border px-4 text-xs font-medium text-foreground hover:bg-muted"
               >
-                <X className="size-3.5" /> Cancel
+                <X className="size-3.5" /> {tc("cancel")}
               </button>
             </div>
           </div>
@@ -131,28 +134,28 @@ export default function CertificateTemplatesPage() {
       {!loading && !error && templates.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <FileText className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No templates yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create a template to start issuing certificates.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("certTemplates.emptyTitle")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("certTemplates.emptyDescription")}</p>
         </div>
       )}
 
       {!loading && templates.length > 0 && (
         <div className="space-y-3">
-          {templates.map((t) => (
-            <div key={t.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          {templates.map((tpl) => (
+            <div key={tpl.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">{t.name}</span>
-                    <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{t.templateType}</span>
-                    {t.isActive && (
-                      <span className="rounded bg-teal/10 px-2 py-0.5 text-[10px] font-medium text-teal">Active</span>
-                    )}
+                    <span className="text-sm font-semibold text-foreground">{tpl.name}</span>
+                    <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{tpl.templateType}</span>
+                      {tpl.isActive && (
+                        <span className="rounded bg-teal/10 px-2 py-0.5 text-[10px] font-medium text-teal">{t("certTemplates.activeBadge")}</span>
+                      )}
                   </div>
-                  {t.description && <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>}
+                  {tpl.description && <p className="mt-1 text-xs text-muted-foreground">{tpl.description}</p>}
                 </div>
                 <span className="shrink-0 text-xs text-muted-foreground">
-                  {new Date(t.createdAt).toLocaleDateString()}
+                  {new Date(tpl.createdAt).toLocaleDateString()}
                 </span>
               </div>
             </div>

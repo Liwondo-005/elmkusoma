@@ -1,8 +1,12 @@
+"use client"
+
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import type { College } from "@/lib/data"
 
 export function CollegeCard({ college }: { college: College }) {
+  const t = useTranslations("ui")
   const totalProgrammes = college.faculties.reduce((a, f) => a + f.programmes.length, 0)
 
   return (
@@ -27,10 +31,10 @@ export function CollegeCard({ college }: { college: College }) {
 
       <div className="mt-auto flex items-center gap-4 pt-4 border-t border-border">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          {college.faculties.length} {college.faculties.length === 1 ? "faculty" : "faculties"}
+          {t("collegeCard.facultyCount", { count: college.faculties.length })}
         </span>
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          {totalProgrammes} {totalProgrammes === 1 ? "programme" : "programmes"}
+          {t("collegeCard.programmeCount", { count: totalProgrammes })}
         </span>
       </div>
     </Link>

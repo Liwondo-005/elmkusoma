@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { AlertTriangle, Plus, Loader2, Clock, CheckCircle2 } from "lucide-react"
 import { platformAdminApi, type IncidentSummary, type PageResponse } from "@/lib/platform-admin-api"
@@ -29,6 +31,8 @@ const INCIDENT_NEXT: Record<string, string[]> = {
 }
 
 export default function IncidentsPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [data, setData] = useState<PageResponse<IncidentSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("")
@@ -63,27 +67,26 @@ export default function IncidentsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Incident Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Track and resolve platform incidents</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("incidents.incidentManagement")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("incidents.trackAndResolvePlatform")}</p>
         </div>
         <button onClick={() => setShowCreate(!showCreate)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-          <Plus className="size-4" /> Report Incident
-        </button>
+          <Plus className="size-4" /> {t("incidents.reportIncident")}</button>
       </div>
 
       <div className="flex gap-2">
         {["", "DETECTED", "INVESTIGATING", "CONTAINED", "RESOLVED", "REVIEWED"].map(s => (
           <button key={s} onClick={() => setFilter(s)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${filter === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-            {s || "All"}
+            {s || t("incidents.all")}
           </button>
         ))}
       </div>
 
       {showCreate && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Report Incident</h2>
-          <input placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm" />
-          <textarea placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm" />
+          <h2 className="text-base font-semibold text-foreground">{t("incidents.reportIncident2")}</h2>
+          <input placeholder={t("incidents.title")} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm" />
+          <textarea placeholder={t("incidents.description")} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-xl border border-border bg-background px-4 py-2 text-sm" />
           <div className="grid grid-cols-2 gap-4">
             <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm">
               {["PLATFORM", "SECURITY", "PAYMENT", "LIVE", "DATABASE", "MEDIA", "NOTIFICATION", "API", "PERFORMANCE", "INTEGRATION"].map(c => <option key={c}>{c}</option>)}
@@ -94,9 +97,8 @@ export default function IncidentsPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={handleCreate} disabled={saving || !form.title} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50">
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Create
-            </button>
-            <button onClick={() => setShowCreate(false)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">Cancel</button>
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} {tc("create")}</button>
+            <button onClick={() => setShowCreate(false)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">{tc("cancel")}</button>
           </div>
         </div>
       )}
@@ -106,7 +108,7 @@ export default function IncidentsPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-10 text-center">
           <CheckCircle2 className="mx-auto size-10 text-green-500/50" />
-          <p className="mt-3 text-sm text-muted-foreground">No incidents reported</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t("incidents.noIncidentsReported")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -126,7 +128,7 @@ export default function IncidentsPage() {
                       {inc.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{inc.description}</p>}
                       <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                         <span>{inc.category}</span>
-                        {inc.affectedService && <span>Affected: {inc.affectedService}</span>}
+                        {inc.affectedService && <span>{t("incidents.affected", { p0: inc.affectedService })}</span>}
                         <span>{new Date(inc.detectedAt).toLocaleString("en-GB")}</span>
                       </div>
                     </div>
@@ -142,7 +144,7 @@ export default function IncidentsPage() {
                                 ? "border-blue-200 text-blue-600 hover:bg-blue-50"
                                 : "border-border text-muted-foreground hover:bg-muted"
                           }`}>
-                          {s === "INVESTIGATING" ? "Investigate" : s === "CONTAINED" ? "Contain" : s === "RESOLVED" ? "Resolve" : s === "REVIEWED" ? "Review" : s}
+                          {s === "INVESTIGATING" ? t("incidents.investigate") : s === "CONTAINED" ? t("incidents.contain") : s === "RESOLVED" ? t("incidents.resolve") : s === "REVIEWED" ? t("incidents.review") : s}
                         </button>
                       ))}
                     </div>

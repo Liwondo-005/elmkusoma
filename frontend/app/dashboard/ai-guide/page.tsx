@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi } from "@/lib/api"
 import { Brain, Send, Loader2, Sparkles, ArrowLeft, BookOpen, HelpCircle, Lightbulb, RefreshCw } from "lucide-react"
 import Link from "next/link"
@@ -13,36 +14,32 @@ interface ChatMessage {
   timestamp: Date
 }
 
-const SUGGESTIONS = [
-  "Help me understand fractions",
-  "What should I study next?",
-  "Explain the water cycle",
-  "Give me a practice problem",
-  "How do I improve my writing?",
-  "What did I learn today?",
-]
 
-function getLocalResponse(message: string): string {
+function getLocalResponse(message: string, t?: (k: string) => string): string {
+  const tr = (k: string) => (t ? t(k) : k);
   const lower = message.toLowerCase()
-  if (lower.includes("fraction")) return "Fractions represent parts of a whole! For example, 1/2 means one part out of two equal parts. Think of a pizza cut into 2 slices — if you eat 1, you ate 1/2 of the pizza. Would you like me to give you a practice problem?"
-  if (lower.includes("water cycle")) return "The water cycle is how water moves around our planet! It goes: Evaporation (sun heats water) → Condensation (forms clouds) → Precipitation (rain/snow) → Collection (rivers, lakes). It never stops!"
-  if (lower.includes("what should i study") || (lower.includes("next") && lower.includes("study"))) return "Based on your learning journey, I'd suggest reviewing your recent lessons and trying a practice quiz. Check your Progress page to see where you can improve!"
-  if (lower.includes("practice problem") || lower.includes("quiz me")) return "Here's a fun one: If you have 3/4 of a pizza and give away 1/4, how much do you have left? Think about it and type your answer!"
-  if (lower.includes("writing") || lower.includes("essay")) return "Great writing tips: 1) Start with a clear main idea. 2) Use describing words. 3) Read your work out loud. 4) Check your spelling. Practice makes perfect!"
-  if (lower.includes("today") || lower.includes("learn")) return "Check your Learning Evidence page to see a summary of everything you've done today! You can also look at your Learning Passport for your progress stamps."
-  if (lower.includes("math")) return "Math is all about patterns! Start with what you know, take it step by step, and don't be afraid to make mistakes — that's how we learn!"
-  if (lower.includes("science")) return "Science is about asking questions and finding answers through experiments! What topic are you curious about?"
-  if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) return `Hello! I'm your AI Learning Guide. I can help you understand subjects, give practice problems, and suggest what to study. What would you like to learn about?`
-  return "That's a great question! I'm here to help you learn. Try asking me about a specific subject like Math, Science, or English, or ask me to explain a topic or give you a practice problem."
+  if (lower.includes("fraction")) return tr("aiGuide.respFractions")
+  if (lower.includes("water cycle")) return tr("aiGuide.respWater")
+  if (lower.includes("what should i study") || (lower.includes("next") && lower.includes("study"))) return tr("aiGuide.respStudy")
+  if (lower.includes("practice problem") || lower.includes("quiz me")) return tr("aiGuide.respPractice")
+  if (lower.includes("writing") || lower.includes("essay")) return tr("aiGuide.respWriting")
+  if (lower.includes("today") || lower.includes("learn")) return tr("aiGuide.respToday")
+  if (lower.includes("math")) return tr("aiGuide.respMath")
+  if (lower.includes("science")) return tr("aiGuide.respScience")
+  if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) return tr("aiGuide.respHello")
+  return tr("aiGuide.respFallback")
 }
 
 export default function AIGuidePage() {
   const { user, loading: authLoading } = useRequireAuth()
+  const t = useTranslations("primary")
+  const SUGGESTIONS = [t("aiGuide.suggestFractions"), t("aiGuide.suggestNext"), t("aiGuide.suggestWater"), t("aiGuide.suggestPractice"), t("aiGuide.suggestWriting"), t("aiGuide.suggestToday")]
+  const ts = useTranslations("status")
   const firstName = user?.name?.split(" ")[0] || "Student"
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: `Hello ${firstName}! I'm your AI Learning Guide. Ask me anything about your schoolwork, and I'll help you understand it better. What would you like to learn about today?`,
+      content: t("aiGuide.greeting", { name: firstName }),
       timestamp: new Date(),
     },
   ])
@@ -67,14 +64,14 @@ export default function AIGuidePage() {
       const response = await primaryApi.askAI(content)
       const assistantMsg: ChatMessage = {
         role: "assistant",
-        content: response.answer || getLocalResponse(content),
+        content: response.answer || getLocalResponse(content, t),
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, assistantMsg])
     } catch {
       const assistantMsg: ChatMessage = {
         role: "assistant",
-        content: getLocalResponse(content),
+        content: getLocalResponse(content, t),
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, assistantMsg])
@@ -100,12 +97,12 @@ export default function AIGuidePage() {
               <Brain className="size-5 text-purple-600" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-foreground">AI Learning Guide</h1>
-              <p className="text-xs text-muted-foreground">Ask me anything about your schoolwork</p>
+              <h1 className="text-lg font-bold tracking-tight text-foreground">{t("aiGuide.title")}</h1>
+              <p className="text-xs text-muted-foreground">{t("aiGuide.subtitle")}</p>
             </div>
           </div>
           <Link href="/dashboard" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="size-3" /> Dashboard
+            <ArrowLeft className="size-3" /> {t("aiGuide.dashboard")}
           </Link>
         </div>
       </div>
@@ -140,7 +137,7 @@ export default function AIGuidePage() {
                 {msg.role === "assistant" && (
                   <div className="mb-1 flex items-center gap-1.5">
                     <Sparkles className="size-3 text-purple-500" />
-                    <span className="text-[10px] font-semibold text-purple-600">AI Guide</span>
+                    <span className="text-[10px] font-semibold text-purple-600">{t("aiGuide.aiLabel")}</span>
                   </div>
                 )}
                 <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -151,7 +148,7 @@ export default function AIGuidePage() {
             <div className="flex justify-start">
               <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
-                Thinking...
+                {t("aiGuide.thinking")}
               </div>
             </div>
           )}
@@ -165,7 +162,7 @@ export default function AIGuidePage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Ask a question about your schoolwork..."
+          placeholder={t("aiGuide.inputPlaceholder")}
           className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
           disabled={loading}
         />

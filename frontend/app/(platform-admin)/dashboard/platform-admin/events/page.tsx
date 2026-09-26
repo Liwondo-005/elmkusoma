@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { CalendarDays, Search, AlertCircle, RefreshCw, Filter, Clock, Users, Archive, Loader2 } from "lucide-react"
 import { platformAdminApi, type PageResponse } from "@/lib/platform-admin-api"
@@ -19,6 +21,9 @@ function Skeleton() {
 }
 
 export default function PlatformEventsPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [page, setPage] = useState<PageResponse<PlatformEvent> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +38,7 @@ export default function PlatformEventsPage() {
       const res = await platformAdminApi.listPlatformEvents(pageIndex, 20, search || undefined)
       setPage(res)
     } catch (e: any) {
-      setError(e.message || "Failed to load events")
+      setError(e.message || t("events.failedToLoadEvents"))
     } finally { setLoading(false) }
   }, [pageIndex, search])
 
@@ -45,7 +50,7 @@ export default function PlatformEventsPage() {
       await platformAdminApi.bulkContentAction("EVENT", "ARCHIVE", [id])
       await load()
     } catch (e: any) {
-      setError(e.message || "Failed to archive event")
+      setError(e.message || t("events.failedToArchiveEvent"))
     } finally { setActing(null) }
   }
 
@@ -59,24 +64,24 @@ export default function PlatformEventsPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-blue-500 text-white"><CalendarDays className="size-4" /></span> Platform Events</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Events across the platform — institution, provider and platform-wide calendar. Governance and oversight.</p>
+            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-blue-500 text-white"><CalendarDays className="size-4" /></span> {t("events.platformEvents")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("events.eventsAcrossThePlatform")}</p>
           </div>
-          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> Refresh</button>
+          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> {t("events.refresh")}</button>
         </div>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search events by title..." className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("events.searchEventsByTitle")} className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" />
           </div>
           <div className="flex items-center gap-2">
             <Filter className="size-4 text-muted-foreground" />
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring">
-              <option value="all">All status</option>
-              <option value="published">Published</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="completed">Completed</option>
+              <option value="all">{t("events.allStatus")}</option>
+              <option value="published">{t("events.published")}</option>
+              <option value="scheduled">{ts("scheduled")}</option>
+              <option value="cancelled">{ts("cancelled")}</option>
+              <option value="completed">{ts("completed")}</option>
             </select>
           </div>
         </div>
@@ -85,7 +90,7 @@ export default function PlatformEventsPage() {
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
           <span className="flex items-center gap-2"><AlertCircle className="size-4" />{error}</span>
-          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Retry</button>
+          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">{t("events.retry")}</button>
         </div>
       )}
 
@@ -93,8 +98,8 @@ export default function PlatformEventsPage() {
         {loading ? <Skeleton /> : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
             <CalendarDays className="size-10 text-muted-foreground/50" />
-            <p className="mt-3 text-sm font-semibold text-foreground">No platform events yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">{search || statusFilter !== "all" ? "Try a different search or filter." : "No events exist yet for platform governance."}</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("events.noPlatformEventsYet")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{search || statusFilter !== "all" ? t("events.tryADifferentSearch") : t("events.noEventsExistYet")}</p>
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
@@ -110,8 +115,7 @@ export default function PlatformEventsPage() {
                       className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-0.5 text-[11px] font-semibold hover:bg-muted disabled:opacity-50"
                       title="Archive event"
                     >
-                      {acting === ev.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} Archive
-                    </button>
+                      {acting === ev.id ? <Loader2 className="size-3 animate-spin" /> : <Archive className="size-3" />} {t("events.archive")}</button>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
@@ -124,10 +128,10 @@ export default function PlatformEventsPage() {
           </div>
         )}
         <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Page {pageIndex + 1} of {Math.max(page?.totalPages ?? 1, 1)}</span>
+          <span>{t("events.pageOf", { p0: pageIndex + 1, p1: Math.max(page?.totalPages ?? 1, 1) })}</span>
           <div className="flex gap-2">
-            <button disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)} className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-50">Prev</button>
-            <button disabled={(page?.totalPages ?? 1) <= pageIndex + 1} onClick={() => setPageIndex(pageIndex + 1)} className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-50">Next</button>
+            <button disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)} className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-50">{t("events.prev")}</button>
+            <button disabled={(page?.totalPages ?? 1) <= pageIndex + 1} onClick={() => setPageIndex(pageIndex + 1)} className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-50">{tc("next")}</button>
           </div>
         </div>
       </div>

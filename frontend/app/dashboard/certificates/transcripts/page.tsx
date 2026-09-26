@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { FileText, Loader2, CheckCircle } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { certificateApi, type TranscriptResponse } from "@/lib/api"
 
 export default function TranscriptsPage() {
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [transcripts, setTranscripts] = useState<TranscriptResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +23,7 @@ export default function TranscriptsPage() {
       const data = await certificateApi.listTranscripts(sid.trim())
       setTranscripts(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load transcripts")
+      setError(err instanceof Error ? err.message : t("transcriptsPage.loadFailed"))
     } finally {
       setLoading(false)
       setSearching(false)
@@ -34,14 +37,14 @@ export default function TranscriptsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Transcripts</h1>
-        <p className="mt-1 text-sm text-muted-foreground">View and manage student transcripts.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("transcriptsPage.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("transcriptsPage.subtitle")}</p>
       </div>
 
       <div className="flex gap-2">
         <input
           type="text"
-          placeholder="Student ID"
+          placeholder={t("certGenerate.studentIdPlaceholder")}
           value={studentId}
           onChange={(e) => setStudentId(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -53,7 +56,7 @@ export default function TranscriptsPage() {
           className="flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {searching ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
-          Search
+          {tc("search")}
         </button>
       </div>
 
@@ -72,39 +75,39 @@ export default function TranscriptsPage() {
       {!loading && transcripts.length === 0 && studentId && !error && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <FileText className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No transcripts found</p>
-          <p className="mt-1 text-sm text-muted-foreground">No transcripts exist for this student.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("transcriptsPage.emptyTitle")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("transcriptsPage.emptyDescription")}</p>
         </div>
       )}
 
       {!loading && transcripts.length > 0 && (
         <div className="space-y-3">
-          {transcripts.map((t) => (
-            <div key={t.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          {transcripts.map((tr) => (
+            <div key={tr.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">Transcript — {t.serialNumber}</span>
+                    <span className="text-sm font-semibold text-foreground">{t("transcriptsPage.transcriptTitle", { serial: tr.serialNumber })}</span>
                     <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${
-                      t.status === "ISSUED" ? "bg-teal/10 text-teal" : "bg-muted text-muted-foreground"
-                    }`}>{t.status}</span>
+                      tr.status === "ISSUED" ? "bg-teal/10 text-teal" : "bg-muted text-muted-foreground"
+                    }`}>{tr.status}</span>
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Serial: {t.serialNumber}</p>
-                  <p className="text-xs text-muted-foreground">Period: {t.academicYear ?? "N/A"} — {t.term ?? "N/A"}</p>
-                  {t.averageScore != null && (
-                    <p className="text-xs text-muted-foreground">Average Score: {t.averageScore}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t("certificatesPage.serial", { serial: tr.serialNumber })}</p>
+                  <p className="text-xs text-muted-foreground">{t("transcriptsPage.period", { year: tr.academicYear ?? "N/A", term: tr.term ?? "N/A" })}</p>
+                  {tr.averageScore != null && (
+                    <p className="text-xs text-muted-foreground">{t("transcriptsPage.averageScore", { score: tr.averageScore })}</p>
                   )}
-                  {t.classRank != null && (
-                    <p className="text-xs text-muted-foreground">Class Rank: #{t.classRank}</p>
+                  {tr.classRank != null && (
+                    <p className="text-xs text-muted-foreground">{t("transcriptsPage.classRank", { rank: tr.classRank })}</p>
                   )}
-                  {t.entries && t.entries.length > 0 && (
+                  {tr.entries && tr.entries.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      {t.entries.map((e, i) => (
+                      {tr.entries.map((e, i) => (
                         <div key={i} className="flex items-center gap-3 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground">{e.subjectName}</span>
                           {e.subjectCode && <span className="text-muted-foreground/70">({e.subjectCode})</span>}
-                          <span>Grade: {e.grade ?? "N/A"}</span>
-                          {e.score != null && <span>Score: {e.score}</span>}
+                          <span>{t("transcriptsPage.grade", { grade: e.grade ?? "N/A" })}</span>
+                          {e.score != null && <span>{t("transcriptsPage.score", { score: e.score })}</span>}
                           {e.remarks && <span className="italic">— {e.remarks}</span>}
                         </div>
                       ))}
@@ -112,7 +115,7 @@ export default function TranscriptsPage() {
                   )}
                 </div>
                 <span className="shrink-0 text-xs text-muted-foreground">
-                  {new Date(t.createdAt).toLocaleDateString()}
+                  {new Date(tr.createdAt).toLocaleDateString()}
                 </span>
               </div>
             </div>

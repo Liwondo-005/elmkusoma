@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { Users, ChevronRight, Loader2, BookOpen, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import type { ClassGroupInfo, TeacherAssignment } from "@/lib/teacher-api"
 
 export default function TeacherClassesPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
   const [classes, setClasses] = useState<ClassGroupInfo[]>([])
   const [assignments, setAssignments] = useState<TeacherAssignment[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,7 +38,7 @@ export default function TeacherClassesPage() {
           academicYearName: c.academicYear || null,
         })))
       } catch {
-        setError("Failed to load classes")
+        setError(t("classes.loadError"))
       }
       finally { setLoading(false) }
     }
@@ -53,8 +56,8 @@ export default function TeacherClassesPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">My Classes</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Classes you are assigned to teach.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("myClasses")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("classes.subtitle")}</p>
       </div>
 
       {error && (
@@ -69,8 +72,8 @@ export default function TeacherClassesPage() {
       {classes.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <Users className="mx-auto mb-3 size-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No classes assigned</p>
-          <p className="mt-1 text-xs text-muted-foreground">Contact your admin to assign classes.</p>
+          <p className="text-sm font-medium text-foreground">{t("classes.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("classes.emptyDesc")}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -101,7 +104,7 @@ export default function TeacherClassesPage() {
                 <div className="mt-4 flex items-center gap-4">
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Users className="size-3.5" />
-                    <span>{cls.studentCount} students</span>
+                    <span>{t("courses.students", { count: cls.studentCount })}</span>
                   </div>
                   {classSubjects.length > 0 && (
                     <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -111,7 +114,7 @@ export default function TeacherClassesPage() {
                   )}
                 </div>
                 <div className="mt-4 flex items-center gap-1 text-xs font-medium text-primary">
-                  View Class <ChevronRight className="size-3" />
+                  {t("classes.viewClass")} <ChevronRight className="size-3" />
                 </div>
               </Link>
             )

@@ -1,27 +1,17 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { notFound, useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
-import { vetaTrades, getVetaTradeBySlug } from "@/lib/data"
-import type { Metadata } from "next"
+import { getVetaTradeBySlug } from "@/lib/data"
 
-export function generateStaticParams() {
-  return vetaTrades.map((t) => ({ trade: t.id }))
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ trade: string }> }): Promise<Metadata> {
-  const { trade } = await params
-  const t = getVetaTradeBySlug(trade)
-  if (!t) return { title: "Trade Not Found — ELMKUSOMA" }
-  return {
-    title: `${t.name} — VETA — ELMKUSOMA`,
-    description: t.description,
-  }
-}
-
-export default async function TradePage({ params }: { params: Promise<{ trade: string }> }) {
-  const { trade } = await params
+export default function TradePage() {
+  const t = useTranslations("public")
+  const params = useParams()
+  const trade = params.trade as string
   const tradeData = getVetaTradeBySlug(trade)
   if (!tradeData) notFound()
 
@@ -38,7 +28,7 @@ export default async function TradePage({ params }: { params: Promise<{ trade: s
         <section className="border-b border-border bg-muted/40">
           <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Link href="/courses" className="transition-colors hover:text-foreground">Courses</Link>
+              <Link href="/courses" className="transition-colors hover:text-foreground">{t("coursesHome.title")}</Link>
               <span>/</span>
               <Link href="/courses/veta" className="transition-colors hover:text-foreground">VETA</Link>
               <span>/</span>
@@ -50,20 +40,20 @@ export default async function TradePage({ params }: { params: Promise<{ trade: s
             <p className="mt-2 max-w-2xl text-muted-foreground">{tradeData.description}</p>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
-                {tradeData.levels.length} levels
+                {t("vetaTrade.levelsCount", { count: tradeData.levels.length })}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                {totalModules} modules
+                {t("vetaTrade.modulesCount", { count: totalModules })}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                {totalLessons} lessons
+                {t("vetaTrade.lessonsCount", { count: totalLessons })}
               </span>
             </div>
           </div>
         </section>
 
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <h2 className="text-lg font-semibold text-foreground">Training Levels</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("vetaTrade.levelsTitle")}</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {tradeData.levels.map((level) => (
               <Link
@@ -73,7 +63,7 @@ export default async function TradePage({ params }: { params: Promise<{ trade: s
               >
                 <div className="flex items-start justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {level.modules.length} {level.modules.length === 1 ? "module" : "modules"}
+                    {t("vetaTrade.modulesCount", { count: level.modules.length })}
                   </span>
                 </div>
                 <h3 className="mt-3 text-base font-semibold text-foreground group-hover:text-primary">

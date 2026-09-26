@@ -1,3 +1,6 @@
+"use client"
+
+import { useTranslations } from "next-intl"
 import { Award, BadgeCheck } from "lucide-react"
 
 interface Certificate {
@@ -11,6 +14,7 @@ interface Certificate {
 }
 
 export function CertificateCard({ certificate }: { certificate: Certificate }) {
+  const t = useTranslations("ui")
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
       <div className="border-b border-border bg-accent/50 px-6 py-4">
@@ -19,7 +23,7 @@ export function CertificateCard({ certificate }: { certificate: Certificate }) {
             <Award className="size-5 text-orange" />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Certificate of Completion</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("certificateCard.completionTitle")}</p>
             <p className="text-sm font-semibold text-foreground">ELMKUSOMA</p>
           </div>
         </div>
@@ -27,32 +31,32 @@ export function CertificateCard({ certificate }: { certificate: Certificate }) {
 
       <div className="px-6 py-6">
         <p className="text-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
-          This is to certify that
+          {t("certificateCard.certifyLine1")}
         </p>
         <p className="mt-2 text-center text-2xl font-bold text-foreground">{certificate.studentName}</p>
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          has successfully completed the course
+          {t("certificateCard.certifyLine2")}
         </p>
         <p className="mt-2 text-center text-lg font-semibold text-primary">{certificate.courseTitle}</p>
 
         <div className="mt-6 space-y-3 rounded-xl border border-border bg-muted/40 p-4">
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">Instructor:</span>
+            <span className="text-muted-foreground">{t("certificateCard.instructor")}</span>
             <span className="font-medium text-foreground">{certificate.instructor}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">Completed:</span>
+            <span className="text-muted-foreground">{t("certificateCard.completed")}</span>
             <span className="font-medium text-foreground">{certificate.completionDate}</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">Grade:</span>
+            <span className="text-muted-foreground">{t("certificateCard.grade")}</span>
             <span className="font-medium text-foreground">{certificate.grade}</span>
           </div>
         </div>
 
         {certificate.skills.length > 0 && (
           <div className="mt-5">
-            <p className="text-xs font-medium text-muted-foreground">Skills Acquired</p>
+            <p className="text-xs font-medium text-muted-foreground">{t("certificateCard.skills")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {certificate.skills.map((skill) => (
                 <span
@@ -68,11 +72,11 @@ export function CertificateCard({ certificate }: { certificate: Certificate }) {
 
         <div className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-teal/20 bg-teal/5 px-4 py-3">
           <BadgeCheck className="size-5 text-teal" />
-          <span className="text-sm font-semibold text-teal">Verified Certificate</span>
+          <span className="text-sm font-semibold text-teal">{t("certificateCard.verified")}</span>
         </div>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Certificate ID: <span className="font-mono font-medium text-foreground">{certificate.id}</span>
+          {t("certificateCard.certId")} <span className="font-mono font-medium text-foreground">{certificate.id}</span>
         </p>
       </div>
     </div>

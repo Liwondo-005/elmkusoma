@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { BookOpen, Loader2, ChevronRight, Video, Clock } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ChildOverview, type ParentIntelligence, type LiveClassData } from "@/lib/parent-api"
 
 export default function ParentLearningPage() {
   const { user } = useAuth()
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [intelligence, setIntelligence] = useState<ParentIntelligence | null>(null)
@@ -46,8 +50,8 @@ export default function ParentLearningPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Learning</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Courses, lessons, and learning resources</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("learning")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("learning.subtitle")}</p>
       </div>
 
       {children.length > 1 && (
@@ -64,7 +68,7 @@ export default function ParentLearningPage() {
       {/* Recommendations */}
       {intelligence && intelligence.recommendations.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">How You Can Help</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("learning.helpTitle")}</h2>
           <div className="mt-3 space-y-3">
             {intelligence.recommendations.map((rec) => (
               <div key={rec.id} className="rounded-xl border border-border bg-muted/30 p-4">
@@ -84,13 +88,13 @@ export default function ParentLearningPage() {
       {/* Live Classes */}
       <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Live Classes</h2>
-          <Link href="/live-classes" className="text-xs font-medium text-primary hover:underline">View All</Link>
+          <h2 className="text-base font-semibold text-foreground">{tn("liveClasses")}</h2>
+          <Link href="/live-classes" className="text-xs font-medium text-primary hover:underline">{tc("viewAll")}</Link>
         </div>
         {liveClasses.length === 0 ? (
           <div className="mt-6 py-8 text-center">
             <Video className="mx-auto mb-3 size-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No live classes scheduled</p>
+            <p className="text-sm text-muted-foreground">{t("learning.noLiveClasses")}</p>
           </div>
         ) : (
           <div className="mt-3 space-y-2">
@@ -115,7 +119,7 @@ export default function ParentLearningPage() {
       {/* Learning Library */}
       {library && library.categories.length > 0 && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Family Learning Library</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("library.title")}</h2>
           <div className="mt-3 space-y-4">
             {library.categories.map((cat) => (
               <div key={cat.name}>
@@ -131,7 +135,7 @@ export default function ParentLearningPage() {
                       </div>
                       {item.fileUrl && (
                         <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs font-medium text-primary hover:underline">
-                          Open
+                          {t("library.open")}
                         </a>
                       )}
                     </div>
@@ -147,8 +151,8 @@ export default function ParentLearningPage() {
       {selectedChildId && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Learning Goals</h2>
-            <Link href="/dashboard/parent/goals" className="text-xs font-medium text-primary hover:underline">View All</Link>
+            <h2 className="text-base font-semibold text-foreground">{t("goals.title")}</h2>
+            <Link href="/dashboard/parent/goals" className="text-xs font-medium text-primary hover:underline">{tc("viewAll")}</Link>
           </div>
           <GoalsPreview childId={selectedChildId} />
         </section>
@@ -158,6 +162,7 @@ export default function ParentLearningPage() {
 }
 
 function GoalsPreview({ childId }: { childId: string }) {
+  const t = useTranslations("parent")
   const [goals, setGoals] = useState<{ activeCount: number; completedCount: number; goals: Array<{ id: string; title: string; status: string; progressPercentage: number }> } | null>(null)
 
   useEffect(() => {
@@ -165,7 +170,7 @@ function GoalsPreview({ childId }: { childId: string }) {
   }, [childId])
 
   if (!goals) return <div className="mt-4 py-4 text-center"><Loader2 className="size-4 animate-spin text-muted-foreground" /></div>
-  if (goals.goals.length === 0) return <p className="mt-4 text-sm text-muted-foreground">No learning goals set yet.</p>
+  if (goals.goals.length === 0) return <p className="mt-4 text-sm text-muted-foreground">{t("goals.emptyTitle")}</p>
 
   return (
     <div className="mt-3 space-y-2">

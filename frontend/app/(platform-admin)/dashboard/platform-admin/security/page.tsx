@@ -1,10 +1,13 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { ShieldAlert, Loader2, CheckCircle2, Globe, Clock } from "lucide-react"
 import { platformAdminApi, type SecurityEventItem } from "@/lib/platform-admin-api"
 
 export default function SecurityCenterPage() {
+  const t = useTranslations("platformAdmin");
   const [events, setEvents] = useState<SecurityEventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +24,7 @@ export default function SecurityCenterPage() {
       const data = await platformAdminApi.getSecurityEvents()
       setEvents(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load security events")
+      setError(err instanceof Error ? err.message : t("security.failedToLoadSecurity"))
     } finally {
       setLoading(false)
     }
@@ -33,7 +36,7 @@ export default function SecurityCenterPage() {
       await platformAdminApi.resolveSecurityEvent(eventId)
       setEvents((prev) => prev.filter((e) => e.id !== eventId))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to resolve event")
+      setError(err instanceof Error ? err.message : t("security.failedToResolveEvent"))
     } finally {
       setResolving(null)
     }
@@ -57,8 +60,8 @@ export default function SecurityCenterPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Security Center</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Monitor and resolve security events across the platform.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("security.securityCenter")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("security.monitorAndResolveSecurity")}</p>
       </div>
 
       {error && (
@@ -72,8 +75,8 @@ export default function SecurityCenterPage() {
       ) : unresolved.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <CheckCircle2 className="size-10 text-green-500/60" />
-          <p className="mt-4 text-sm font-medium text-foreground">No unresolved security events</p>
-          <p className="mt-1 text-sm text-muted-foreground">All security events have been addressed.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("security.noUnresolvedSecurityEvents")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("security.allSecurityEventsHave")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -108,8 +111,7 @@ export default function SecurityCenterPage() {
                   ) : (
                     <CheckCircle2 className="size-3.5" />
                   )}
-                  Resolve
-                </button>
+                  {t("security.resolve")}</button>
               </div>
             </div>
           ))}

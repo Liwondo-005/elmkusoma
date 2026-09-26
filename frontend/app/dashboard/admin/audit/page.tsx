@@ -1,5 +1,6 @@
 ﻿"use client"
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react"
 import { Eye, Loader2, Filter, ChevronLeft, ChevronRight } from "lucide-react"
 import { adminApi, getInstitutionId, type InstitutionAuditLogResponse } from "@/lib/api"
@@ -18,6 +19,8 @@ const actionColors: Record<string, string> = {
 }
 
 export default function AuditLogPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [logs, setLogs] = useState<InstitutionAuditLogResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -29,11 +32,11 @@ export default function AuditLogPage() {
 
   async function loadLogs() {
     const institutionId = getInstitutionId()
-    if (!institutionId) { setError("No institution context"); setLoading(false); return }
+    if (!institutionId) { setError(t("audit.noInstitutionContext")); setLoading(false); return }
     try {
       const data = await adminApi.getAuditLog(institutionId, page, pageSize)
       setLogs(data)
-    } catch (err) { setError(err instanceof Error ? err.message : "Failed to load audit logs") }
+    } catch (err) { setError(err instanceof Error ? err.message : t("audit.failedToLoadAudit")) }
     finally { setLoading(false) }
   }
 
@@ -46,14 +49,14 @@ export default function AuditLogPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold tracking-tight text-foreground">Audit Log</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Track all administrative actions in your institution</p></div>
+        <div><h1 className="text-2xl font-bold tracking-tight text-foreground">{t("audit.auditLog")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("audit.trackAllAdministrativeActions")}</p></div>
       </div>
 
       <div className="flex items-center gap-3">
         <Filter className="size-4 text-muted-foreground" />
         <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} className="rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary">
-          <option value="">All Actions</option>
+          <option value="">{t("audit.allActions")}</option>
           {actionTypes.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
@@ -66,11 +69,11 @@ export default function AuditLogPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead><tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Time</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Actor</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Action</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Target</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Details</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("audit.time")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("audit.actor")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("audit.action")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("audit.target")}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{t("audit.details")}</th>
               </tr></thead>
               <tbody className="divide-y divide-border">
                 {filteredLogs.map((log) => (
@@ -82,17 +85,16 @@ export default function AuditLogPage() {
                     <td className="px-4 py-3 text-xs text-muted-foreground max-w-[300px] truncate">{log.details}</td>
                   </tr>
                 ))}
-                {filteredLogs.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">No audit logs found</td></tr>}
+                {filteredLogs.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">{t("audit.noAuditLogsFound")}</td></tr>}
               </tbody>
             </table>
           </div>
           <div className="flex items-center justify-between border-t border-border px-4 py-3">
             <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50">
-              <ChevronLeft className="size-4" />Previous
-            </button>
-            <span className="text-sm text-muted-foreground">Page {page + 1}</span>
+              <ChevronLeft className="size-4" />{tc("previous")}</button>
+            <span className="text-sm text-muted-foreground">{t("audit.page", { p0: page + 1 })}</span>
             <button onClick={() => setPage(page + 1)} disabled={logs.length < pageSize} className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50">
-              Next<ChevronRight className="size-4" />
+              {tc("next")}<ChevronRight className="size-4" />
             </button>
           </div>
         </div>

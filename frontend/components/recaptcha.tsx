@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useTranslations } from "next-intl"
 
 declare global {
   interface Window {
@@ -19,6 +20,7 @@ interface RecaptchaProps {
 }
 
 export function Recaptcha({ siteKey, onVerify, onExpire }: RecaptchaProps) {
+  const t = useTranslations("ui")
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<number | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -65,7 +67,7 @@ export function Recaptcha({ siteKey, onVerify, onExpire }: RecaptchaProps) {
       {!loaded && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          Loading verification...
+          {t("recaptcha.loading")}
         </div>
       )}
     </div>

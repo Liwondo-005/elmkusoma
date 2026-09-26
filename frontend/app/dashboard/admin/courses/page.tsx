@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { BookOpen, Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2, X, Check, Search, Filter } from "lucide-react"
 import { courseApi, getInstitutionId, type Course, type CourseStats } from "@/lib/api"
@@ -8,6 +10,8 @@ const LEVELS = ["ALL_LEVELS", "NURSERY", "PRIMARY", "SECONDARY", "COLLEGE", "VET
 const CATEGORIES = ["Mathematics", "Science", "English", "History", "Geography", "Arts", "Physical Education", "Computer Science", "Languages", "Other"]
 
 export default function CoursesPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
   const [courses, setCourses] = useState<Course[]>([])
   const [stats, setStats] = useState<CourseStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,7 +40,7 @@ export default function CoursesPage() {
       setCourses(coursesData)
       setStats(statsData)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load courses")
+      setError(err instanceof Error ? err.message : t("courses.failedToLoadCourses"))
     } finally {
       setLoading(false)
     }
@@ -59,17 +63,17 @@ export default function CoursesPage() {
       resetForm()
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save course")
+      setError(err instanceof Error ? err.message : t("courses.failedToSaveCourse"))
     }
   }
 
   const handleDelete = async (courseId: string) => {
-    if (!confirm("Are you sure you want to delete this course?")) return
+    if (!confirm(t("courses.areYouSureYou"))) return
     try {
       await courseApi.deleteCourse(courseId)
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete course")
+      setError(err instanceof Error ? err.message : t("courses.failedToDeleteCourse"))
     }
   }
 
@@ -78,7 +82,7 @@ export default function CoursesPage() {
       await courseApi.togglePublish(courseId)
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to toggle publish status")
+      setError(err instanceof Error ? err.message : t("courses.failedToTogglePublish"))
     }
   }
 
@@ -109,35 +113,34 @@ export default function CoursesPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Course Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage all courses across all education levels.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("courses.courseManagement")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("courses.manageAllCoursesAcross")}</p>
         </div>
         <button
           onClick={() => { resetForm(); setEditingCourse(null); setShowForm(true) }}
           className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="size-4" />
-          New Course
-        </button>
+          {t("courses.newCourse")}</button>
       </div>
 
       {stats && (
         <div className="grid gap-4 sm:grid-cols-4">
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-2xl font-bold text-foreground">{stats.totalCourses}</p>
-            <p className="text-xs text-muted-foreground">Total Courses</p>
+            <p className="text-xs text-muted-foreground">{t("courses.totalCourses")}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-2xl font-bold text-emerald-600">{stats.publishedCourses}</p>
-            <p className="text-xs text-muted-foreground">Published</p>
+            <p className="text-xs text-muted-foreground">{t("courses.published")}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-2xl font-bold text-yellow-600">{stats.draftCourses}</p>
-            <p className="text-xs text-muted-foreground">Drafts</p>
+            <p className="text-xs text-muted-foreground">{t("courses.drafts")}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-2xl font-bold text-indigo-600">{stats.totalModules}</p>
-            <p className="text-xs text-muted-foreground">Modules / {stats.totalLessons} Lessons</p>
+            <p className="text-xs text-muted-foreground">{t("courses.modulesLessons", { p0: stats.totalLessons })}</p>
           </div>
         </div>
       )}
@@ -151,7 +154,7 @@ export default function CoursesPage() {
       {error && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-4 text-center">
           <p className="text-sm font-medium text-destructive">{error}</p>
-          <button onClick={() => setError(null)} className="mt-2 text-xs text-destructive underline">Dismiss</button>
+          <button onClick={() => setError(null)} className="mt-2 text-xs text-destructive underline">{t("courses.dismiss")}</button>
         </div>
       )}
 
@@ -162,7 +165,7 @@ export default function CoursesPage() {
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search courses..."
+                placeholder={t("courses.searchCourses")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full rounded-xl border border-border bg-card pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -173,7 +176,7 @@ export default function CoursesPage() {
               onChange={(e) => setFilterLevel(e.target.value)}
               className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
-              <option value="">All Levels</option>
+              <option value="">{t("courses.allLevels")}</option>
               {LEVELS.map((l) => (
                 <option key={l} value={l}>{l.replace(/_/g, " ")}</option>
               ))}
@@ -183,7 +186,7 @@ export default function CoursesPage() {
           {filteredCourses.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card py-16 text-center">
               <BookOpen className="mx-auto size-12 text-muted-foreground/50" />
-              <p className="mt-4 text-sm text-muted-foreground">No courses found. Create your first course to get started.</p>
+              <p className="mt-4 text-sm text-muted-foreground">{t("courses.noCoursesFoundCreate")}</p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -192,7 +195,7 @@ export default function CoursesPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-foreground truncate">{course.title}</h3>
-                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{course.description || "No description"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{course.description || t("courses.noDescription")}</p>
                     </div>
                     {course.isFeatured && <Star className="size-4 shrink-0 text-amber-500 fill-amber-500" />}
                   </div>
@@ -207,14 +210,14 @@ export default function CoursesPage() {
                       </span>
                     )}
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${course.isPublished ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground"}`}>
-                      {course.isPublished ? "Published" : "Draft"}
+                      {course.isPublished ? t("courses.published2") : t("courses.draft")}
                     </span>
                   </div>
 
                   <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{course.moduleCount} modules</span>
-                    <span>{course.lessonCount} lessons</span>
-                    {course.createdByName && <span>by {course.createdByName}</span>}
+                    <span>{t("courses.modules", { p0: course.moduleCount })}</span>
+                    <span>{t("courses.lessons", { p0: course.lessonCount })}</span>
+                    {course.createdByName && <span>{t("courses.by", { p0: course.createdByName })}</span>}
                   </div>
 
                   <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
@@ -223,22 +226,20 @@ export default function CoursesPage() {
                       className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
                     >
                       {course.isPublished ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                      {course.isPublished ? "Unpublish" : "Publish"}
+                      {course.isPublished ? t("courses.unpublish") : t("courses.publish")}
                     </button>
                     <button
                       onClick={() => handleEdit(course)}
                       className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
                     >
                       <Pencil className="size-3.5" />
-                      Edit
-                    </button>
+                      {tc("edit")}</button>
                     <button
                       onClick={() => handleDelete(course.id)}
                       className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 ml-auto"
                     >
                       <Trash2 className="size-3.5" />
-                      Delete
-                    </button>
+                      {tc("delete")}</button>
                   </div>
                 </div>
               ))}
@@ -251,7 +252,7 @@ export default function CoursesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">{editingCourse ? "Edit Course" : "New Course"}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{editingCourse ? t("courses.editCourse") : t("courses.newCourse2")}</h2>
               <button onClick={() => { setShowForm(false); setEditingCourse(null) }} className="text-muted-foreground hover:text-foreground">
                 <X className="size-5" />
               </button>
@@ -259,31 +260,31 @@ export default function CoursesPage() {
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground">Title *</label>
+                <label className="text-sm font-medium text-foreground">{t("courses.title")}</label>
                 <input
                   type="text"
                   required
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  placeholder="e.g. Introduction to Mathematics"
+                  placeholder={t("courses.eGIntroductionTo")}
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-foreground">Description</label>
+                <label className="text-sm font-medium text-foreground">{t("courses.description")}</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  placeholder="Brief description of the course"
+                  placeholder={t("courses.briefDescriptionOfThe")}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-foreground">Level</label>
+                  <label className="text-sm font-medium text-foreground">{t("courses.level")}</label>
                   <select
                     value={form.level}
                     onChange={(e) => setForm({ ...form, level: e.target.value })}
@@ -295,13 +296,13 @@ export default function CoursesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">Category</label>
+                  <label className="text-sm font-medium text-foreground">{t("courses.category")}</label>
                   <select
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
                     className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    <option value="">Select category</option>
+                    <option value="">{t("courses.selectCategory")}</option>
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
@@ -317,8 +318,7 @@ export default function CoursesPage() {
                     onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
                     className="size-4 rounded border-border"
                   />
-                  Published
-                </label>
+                  {t("courses.published3")}</label>
                 <label className="flex items-center gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
@@ -326,8 +326,7 @@ export default function CoursesPage() {
                     onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
                     className="size-4 rounded border-border"
                   />
-                  Featured
-                </label>
+                  {t("courses.featured")}</label>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
@@ -336,14 +335,13 @@ export default function CoursesPage() {
                   onClick={() => { setShowForm(false); setEditingCourse(null) }}
                   className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted"
                 >
-                  Cancel
-                </button>
+                  {tc("cancel")}</button>
                 <button
                   type="submit"
                   className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                   <Check className="size-4" />
-                  {editingCourse ? "Update" : "Create"}
+                  {editingCourse ? tc("update") : tc("create")}
                 </button>
               </div>
             </form>
