@@ -117,7 +117,7 @@ export default function PlatformInstitutionsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-<div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("institutions.institutions")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("institutions.manageAllEducationInstitutions")}</p>
@@ -128,8 +128,7 @@ export default function PlatformInstitutionsPage() {
         >
           <Plus className="size-4" />
           {t("institutions.addInstitution")}
-        </button>
-      </div>
+</button>
       </div>
 
       <form onSubmit={handleSearch} className="relative">
