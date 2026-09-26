@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type Enrollment, type CourseSummary, type CourseModuleSummary, type CourseLesson } from "@/lib/learner-api"
 import { LoadingState, EmptyState } from "@/components/learner/shared"
 import { BarChart3, BookOpen, ArrowRight, CheckCircle, Clock, TrendingUp, AlertCircle } from "lucide-react"
@@ -16,6 +17,8 @@ interface CourseProgressDetail {
 
 export default function ProgressPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [progressDetails, setProgressDetails] = useState<CourseProgressDetail[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,7 +63,7 @@ export default function ProgressPage() {
       }
       setProgressDetails(details)
     } catch {
-      setError("Failed to load progress data")
+      setError(t("prog.loadError"))
     } finally {
       setLoading(false)
     }
@@ -78,8 +81,8 @@ export default function ProgressPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Learning Progress</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Track your progress across all enrolled courses.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("prog.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("prog.subtitle")}</p>
       </div>
 
       {error && (
@@ -93,19 +96,19 @@ export default function ProgressPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Total Courses</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("prog.totalCourses")}</p>
           <p className="mt-1 text-2xl font-extrabold text-foreground">{totalCourses}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">In Progress</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("prog.inProgress")}</p>
           <p className="mt-1 text-2xl font-extrabold text-blue-500">{inProgressCourses}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Completed</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("prog.completedLabel")}</p>
           <p className="mt-1 text-2xl font-extrabold text-green-600">{completedCourses}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-          <p className="text-xs font-medium text-muted-foreground">Average Progress</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("prog.avgProgress")}</p>
           <p className="mt-1 text-2xl font-extrabold text-teal">{avgProgress}%</p>
         </div>
       </div>
@@ -115,14 +118,14 @@ export default function ProgressPage() {
       ) : enrollments.length === 0 ? (
         <EmptyState
           icon={<BarChart3 className="size-8" />}
-          title="No progress to show yet"
-          description="Enroll in a course to start tracking your learning progress."
+          title={t("prog.emptyTitle")}
+          description={t("prog.emptyDesc")}
           action={
             <Link
               href="/dashboard/learner/courses"
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Explore Courses <ArrowRight className="size-4" />
+              {t("exploreCourses")} <ArrowRight className="size-4" />
             </Link>
           }
         />
@@ -136,11 +139,11 @@ export default function ProgressPage() {
                     <h3 className="text-sm font-semibold text-foreground truncate">{detail.enrollment.courseTitle}</h3>
                     {detail.enrollment.completedAt ? (
                       <span className="inline-flex items-center gap-1 shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600">
-                        <CheckCircle className="size-3" /> Completed
+                        <CheckCircle className="size-3" /> {t("prog.completedBadge")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 shrink-0 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-500">
-                        <Clock className="size-3" /> In Progress
+                        <Clock className="size-3" /> {t("prog.inProgressBadge")}
                       </span>
                     )}
                   </div>
@@ -152,14 +155,14 @@ export default function ProgressPage() {
                   href={`/dashboard/learner/courses/${detail.enrollment.courseId}`}
                   className="shrink-0 text-xs font-medium text-primary hover:underline"
                 >
-                  View Course
+                  {t("prog.viewCourse")}
                 </Link>
               </div>
 
               <div className="mt-4">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">
-                    {detail.completedLessons} of {detail.totalLessons} lessons completed
+                    {t("prog.lessonsLine", { done: detail.completedLessons, total: detail.totalLessons })}
                   </span>
                   <span className="font-semibold text-teal">{detail.enrollment.progressPercentage}%</span>
                 </div>
@@ -176,16 +179,16 @@ export default function ProgressPage() {
                   {detail.modules.sort((a, b) => a.sortOrder - b.sortOrder).map((mod) => (
                     <div key={mod.id} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
                       <p className="text-[11px] font-medium text-foreground truncate">{mod.title}</p>
-                      <p className="text-[10px] text-muted-foreground">{mod.lessonCount} lessons</p>
+                      <p className="text-[10px] text-muted-foreground">{t("prog.modLessons", { count: mod.lessonCount })}</p>
                     </div>
                   ))}
                 </div>
               )}
 
               <div className="mt-3 flex items-center gap-4 text-[10px] text-muted-foreground">
-                <span>Enrolled {new Date(detail.enrollment.enrolledAt).toLocaleDateString()}</span>
+                <span>{t("prog.enrolledOn", { date: new Date(detail.enrollment.enrolledAt).toLocaleDateString() })}</span>
                 {detail.enrollment.completedAt && (
-                  <span>Completed {new Date(detail.enrollment.completedAt).toLocaleDateString()}</span>
+                  <span>{t("prog.completedOn", { date: new Date(detail.enrollment.completedAt).toLocaleDateString() })}</span>
                 )}
               </div>
             </div>

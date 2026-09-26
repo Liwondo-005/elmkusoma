@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, FileText, Award, PenTool, ClipboardList, CheckCircle } from "lucide-react"
@@ -32,6 +34,8 @@ interface AssessmentMetrics {
 }
 
 export default function OversightAssessmentsPage() {
+  const t = useTranslations("oversight");
+  const ts = useTranslations("status");
   const { user, loading: authLoading } = useRequireAuth()
   const [metrics, setMetrics] = useState<AssessmentMetrics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,7 +65,7 @@ export default function OversightAssessmentsPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading assessment analytics...</div>
+        <div className="text-muted-foreground">{t("assessments.loadingAssessmentAnalytics")}</div>
       </div>
     )
   }
@@ -70,8 +74,8 @@ export default function OversightAssessmentsPage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h1 className="text-2xl font-bold text-foreground">Assessment Analytics</h1>
-          <p className="mt-2 text-muted-foreground">Assessment data unavailable.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("assessments.assessmentAnalytics")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("assessments.assessmentDataUnavailable")}</p>
         </div>
       </div>
     )
@@ -85,10 +89,9 @@ export default function OversightAssessmentsPage() {
             <FileText className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Assessment Analytics</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("assessments.assessmentAnalytics2")}</h1>
             <p className="text-sm text-muted-foreground">
-              Assessment activity and performance across your jurisdiction
-            </p>
+              {t("assessments.assessmentActivityAndPerformance")}</p>
           </div>
         </div>
       </div>
@@ -104,18 +107,17 @@ export default function OversightAssessmentsPage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <Building2 className="size-5 text-muted-foreground" />
-          School Assessment Activity
-        </h2>
+          {t("assessments.schoolAssessmentActivity")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">School</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Code</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Assessments</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Completed</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Avg Score</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Pass Rate</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("assessments.school")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("assessments.code")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("assessments.assessments")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{ts("completed")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("assessments.avgScore")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("assessments.passRate")}</th>
               </tr>
             </thead>
             <tbody>
@@ -141,18 +143,17 @@ export default function OversightAssessmentsPage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <ClipboardList className="size-5 text-muted-foreground" />
-          Recent Assessments
-        </h2>
+          {t("assessments.recentAssessments")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Title</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">School</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Subject</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
-                <th className="text-center py-3 px-4 font-medium text-muted-foreground">Status</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Participants</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("assessments.title")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("assessments.school2")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("assessments.subject")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("assessments.date")}</th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground">{t("assessments.status")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("assessments.participants")}</th>
               </tr>
             </thead>
             <tbody>

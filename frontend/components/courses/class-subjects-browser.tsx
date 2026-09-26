@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useTranslations } from "next-intl"
 
 import type { CurriculumSubject, SubjectCategory } from "@/lib/data"
 import { SubjectCard } from "@/components/courses/subject-card"
@@ -19,6 +20,8 @@ export function ClassSubjectsBrowser({
   classNameSlug: string
   displayName: string
 }) {
+  const t = useTranslations("ui")
+  const tc = useTranslations("common")
   const [search, setSearch] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<SubjectCategory | "All">("All")
 
@@ -50,7 +53,7 @@ export function ClassSubjectsBrowser({
         <label className="relative flex items-center sm:flex-1 sm:max-w-md">
           <input
             type="search"
-            placeholder="Search subjects..."
+            placeholder={t("subjectsBrowser.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-10 w-full rounded-lg border border-border bg-muted/60 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
@@ -61,7 +64,7 @@ export function ClassSubjectsBrowser({
             onClick={clearFilters}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            Clear filters
+            {t("subjectsBrowser.clearFilters")}
           </button>
         )}
       </div>
@@ -77,7 +80,7 @@ export function ClassSubjectsBrowser({
                 : "bg-muted text-muted-foreground hover:text-foreground"
             )}
           >
-            All
+            {tc("all")}
           </button>
           {categories.map((cat) => (
             <button
@@ -99,7 +102,7 @@ export function ClassSubjectsBrowser({
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">{filtered.length}</span>{" "}
-          {filtered.length === 1 ? "subject" : "subjects"} found
+          {t("subjectsBrowser.foundUnit", { count: filtered.length })}
         </p>
       </div>
 
@@ -111,15 +114,15 @@ export function ClassSubjectsBrowser({
         </div>
       ) : (
         <div className="mt-12 flex flex-col items-center justify-center text-center">
-          <h3 className="mt-4 text-sm font-semibold text-foreground">No subjects found</h3>
+          <h3 className="mt-4 text-sm font-semibold text-foreground">{t("subjectsBrowser.emptyTitle")}</h3>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Try adjusting your search or category filter.
+            {t("subjectsBrowser.emptyDesc")}
           </p>
           <button
             onClick={clearFilters}
             className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Clear filters
+            {t("subjectsBrowser.clearFilters")}
           </button>
         </div>
       )}

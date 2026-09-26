@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { Package, Plus, Search, Loader2, CheckCircle, XCircle } from "lucide-react"
 import { platformAdminApi, type ServiceSummary, type PageResponse } from "@/lib/platform-admin-api"
@@ -12,6 +14,8 @@ function errorMessage(e: unknown, fallback: string): string {
 }
 
 export default function ServicesPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [data, setData] = useState<PageResponse<ServiceSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState<string>("")
@@ -64,12 +68,11 @@ export default function ServicesPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Service Catalogue</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage platform services available to providers</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("services.serviceCatalogue")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("services.managePlatformServicesAvailable")}</p>
         </div>
         <button onClick={() => setShowCreate(!showCreate)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-          <Plus className="size-4" /> Add Service
-        </button>
+          <Plus className="size-4" /> {t("services.addService")}</button>
       </div>
 
       {error && (
@@ -79,7 +82,7 @@ export default function ServicesPage() {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => setCategory("")} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${!category ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>All</button>
+        <button onClick={() => setCategory("")} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${!category ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>{tc("all")}</button>
         {CATEGORIES.map(c => (
           <button key={c} onClick={() => setCategory(c)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${category === c ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>{c}</button>
         ))}
@@ -87,20 +90,19 @@ export default function ServicesPage() {
 
       {showCreate && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Create Service</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("services.createService")}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <input placeholder="Service Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm" />
-            <input placeholder="Service Code (e.g. COURSES)" value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm uppercase" />
-            <input placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm" />
+            <input placeholder={t("services.serviceName")} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm" />
+            <input placeholder={t("services.serviceCodeEG")} value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm uppercase" />
+            <input placeholder={t("services.description")} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm" />
             <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="rounded-xl border border-border bg-background px-4 py-2 text-sm">
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div className="flex gap-2">
             <button onClick={handleCreate} disabled={saving || !form.name || !form.code} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-              {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Create
-            </button>
-            <button onClick={() => setShowCreate(false)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted/50">Cancel</button>
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} {tc("create")}</button>
+            <button onClick={() => setShowCreate(false)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted/50">{tc("cancel")}</button>
           </div>
         </div>
       )}
@@ -111,7 +113,7 @@ export default function ServicesPage() {
         <div className="rounded-2xl border border-border bg-card p-10 text-center">
           <Package className="mx-auto size-10 text-muted-foreground/50" />
           <p className="mt-3 text-sm text-muted-foreground">
-            {error ? "Services could not be loaded." : "No services configured yet"}
+            {error ? t("services.loadError") : t("services.noServicesConfiguredYet")}
           </p>
         </div>
       ) : (
@@ -130,10 +132,10 @@ export default function ServicesPage() {
               {svc.description && <p className="text-xs text-muted-foreground line-clamp-2">{svc.description}</p>}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="rounded-md bg-muted px-2 py-0.5">{svc.category}</span>
-                {svc.monthlyPrice && <span>{svc.currency} {svc.monthlyPrice.toLocaleString()}/mo</span>}
+                {svc.monthlyPrice && <span>{t("services.mo", { p0: svc.currency, p1: svc.monthlyPrice.toLocaleString() })}</span>}
               </div>
               <button onClick={() => toggleService(svc)} className={`w-full rounded-xl border px-3 py-1.5 text-xs font-medium ${svc.isActive ? "border-red-200 text-red-600 hover:bg-red-50" : "border-green-200 text-green-600 hover:bg-green-50"}`}>
-                {svc.isActive ? "Deactivate" : "Activate"}
+                {svc.isActive ? t("services.deactivate") : t("services.activate")}
               </button>
             </div>
           ))}

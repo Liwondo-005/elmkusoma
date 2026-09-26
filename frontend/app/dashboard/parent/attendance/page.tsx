@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, CheckCircle, XCircle, Clock as ClockIcon } from "lucide-react"
 import { parentApi, type AttendanceData, type ChildOverview } from "@/lib/parent-api"
 
 export default function ParentAttendancePage() {
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
   const searchParams = useSearchParams()
   const childId = searchParams.get("child")
   const [children, setChildren] = useState<ChildOverview[]>([])
@@ -38,12 +42,22 @@ export default function ParentAttendancePage() {
     }
   }
 
+  function statusLabel(status: string) {
+    switch (status) {
+      case "PRESENT": return ts("present")
+      case "ABSENT": return ts("absent")
+      case "LATE": return ts("late")
+      case "EXCUSED": return ts("excused")
+      default: return status
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <Link href="/dashboard/parent" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft className="size-4" /> Back to Dashboard
+        <ArrowLeft className="size-4" /> {t("assignments.backToDashboard")}
       </Link>
-      <h1 className="text-xl font-bold text-foreground">Attendance</h1>
+      <h1 className="text-xl font-bold text-foreground">{tn("attendance")}</h1>
 
       {children.length > 1 && (
         <div className="flex flex-wrap gap-2">
@@ -70,33 +84,33 @@ export default function ParentAttendancePage() {
           <div className="grid gap-4 sm:grid-cols-5">
             <div className="rounded-xl border border-border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{attendance.totalDays}</p>
-              <p className="text-xs text-muted-foreground">Total Days</p>
+              <p className="text-xs text-muted-foreground">{t("attendance.totalDays")}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-teal">{attendance.presentDays}</p>
-              <p className="text-xs text-muted-foreground">Present</p>
+              <p className="text-xs text-muted-foreground">{ts("present")}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-red-500">{attendance.absentDays}</p>
-              <p className="text-xs text-muted-foreground">Absent</p>
+              <p className="text-xs text-muted-foreground">{ts("absent")}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-orange">{attendance.lateDays}</p>
-              <p className="text-xs text-muted-foreground">Late</p>
+              <p className="text-xs text-muted-foreground">{ts("late")}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-foreground">
                 {attendance.attendancePercentage != null ? `${Math.round(attendance.attendancePercentage)}%` : "—"}
               </p>
-              <p className="text-xs text-muted-foreground">Rate</p>
+              <p className="text-xs text-muted-foreground">{t("attendance.rate")}</p>
             </div>
           </div>
 
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <h2 className="text-base font-semibold text-foreground">Recent Attendance</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("attendance.recentTitle")}</h2>
             <div className="mt-4 space-y-2">
               {attendance.recentDays.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">No attendance records yet.</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">{t("attendance.noRecords")}</p>
               ) : (
                 attendance.recentDays.map((day, i) => (
                   <div key={`${day.date}-${i}`} className="flex items-center gap-3 rounded-lg border border-border p-3">
@@ -110,7 +124,7 @@ export default function ParentAttendancePage() {
                     <span className={`text-xs font-semibold ${
                       day.status === "PRESENT" ? "text-teal" : day.status === "ABSENT" ? "text-red-500" : "text-orange"
                     }`}>
-                      {day.status}
+                      {statusLabel(day.status)}
                     </span>
                   </div>
                 ))
@@ -119,7 +133,7 @@ export default function ParentAttendancePage() {
           </section>
         </>
       ) : (
-        <p className="py-12 text-center text-sm text-muted-foreground">Select a child to view attendance.</p>
+        <p className="py-12 text-center text-sm text-muted-foreground">{t("attendance.selectChild")}</p>
       )}
     </div>
   )

@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { GraduationCap, Plus, Pencil, Trash2, Loader2, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -32,6 +34,9 @@ const defaultForm: FormData = {
 }
 
 export default function ProgrammesPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [programmes, setProgrammes] = useState<Programme[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +53,7 @@ export default function ProgrammesPage() {
       const res = await collegeApi.listProgrammes()
       setProgrammes((res.data as Programme[] | undefined) || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load programmes")
+      setError(err instanceof Error ? err.message : t("programmes.failedToLoadProgrammes"))
     } finally {
       setLoading(false)
     }
@@ -82,7 +87,7 @@ export default function ProgrammesPage() {
       resetForm()
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save programme")
+      setError(err instanceof Error ? err.message : t("programmes.failedToSaveProgramme"))
     } finally {
       setSaving(false)
     }
@@ -109,7 +114,7 @@ export default function ProgrammesPage() {
       setDeleteConfirm(null)
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete programme")
+      setError(err instanceof Error ? err.message : t("programmes.failedToDeleteProgramme"))
     }
   }
 
@@ -123,16 +128,15 @@ export default function ProgrammesPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Programmes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage academic programmes for your institution</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("programmes.programmes")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("programmes.manageAcademicProgrammesFor")}</p>
         </div>
         <Button
           onClick={() => { resetForm(); setShowForm(true) }}
           className="gap-2"
         >
           <Plus className="size-4" />
-          Add Programme
-        </Button>
+          {t("programmes.addProgramme")}</Button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -140,13 +144,13 @@ export default function ProgrammesPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search programmes..."
+            placeholder={t("programmes.searchProgrammes")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <span className="text-sm text-muted-foreground">{filtered.length} programme{filtered.length !== 1 ? "s" : ""}</span>
+        <span className="text-sm text-muted-foreground">{filtered.length} {t("programmes.programme")}{filtered.length !== 1 ? "s" : ""}</span>
       </div>
 
       {error && (
@@ -160,9 +164,9 @@ export default function ProgrammesPage() {
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <GraduationCap className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No programmes found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("programmes.noProgrammesFound")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {searchQuery ? "Try a different search term." : "Add your first programme to get started."}
+            {searchQuery ? t("programmes.tryADifferentSearch") : t("programmes.addYourFirstProgramme")}
           </p>
         </div>
       ) : (
@@ -171,13 +175,13 @@ export default function ProgrammesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Name</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Code</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Type</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Duration</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Level</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("programmes.name")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("programmes.code")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("programmes.type")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("programmes.duration")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("programmes.level")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("programmes.status")}</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">{t("programmes.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,7 +203,7 @@ export default function ProgrammesPage() {
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                         prog.isActive ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"
                       }`}>
-                        {prog.isActive ? "Active" : "Inactive"}
+                        {prog.isActive ? ts("active") : ts("inactive")}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
@@ -217,15 +221,13 @@ export default function ProgrammesPage() {
                               size="xs"
                               onClick={() => handleDelete(prog.id)}
                             >
-                              Delete
-                            </Button>
+                              {tc("delete")}</Button>
                             <Button
                               variant="outline"
                               size="xs"
                               onClick={() => setDeleteConfirm(null)}
                             >
-                              Cancel
-                            </Button>
+                              {tc("cancel")}</Button>
                           </div>
                         ) : (
                           <button
@@ -249,34 +251,34 @@ export default function ProgrammesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">{editing ? "Edit Programme" : "Add Programme"}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{editing ? t("programmes.editProgramme") : t("programmes.addProgramme2")}</h2>
               <button onClick={() => { setShowForm(false); resetForm() }} className="rounded-lg p-1 hover:bg-muted">
                 <X className="size-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">Name *</label>
+                <label className="mb-1 block text-sm font-medium">{t("programmes.name2")}</label>
                 <input
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. Bachelor of Science in Computer Science"
+                  placeholder={t("programmes.eGBachelorOf")}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Code *</label>
+                <label className="mb-1 block text-sm font-medium">{t("programmes.code2")}</label>
                 <input
                   required
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value })}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. BSC-CS"
+                  placeholder={t("programmes.eGBscCs")}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Description</label>
+                <label className="mb-1 block text-sm font-medium">{t("programmes.description")}</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -286,7 +288,7 @@ export default function ProgrammesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Programme Type *</label>
+                  <label className="mb-1 block text-sm font-medium">{t("programmes.programmeType")}</label>
                   <select
                     value={form.programmeType}
                     onChange={(e) => setForm({ ...form, programmeType: e.target.value as ProgrammeType })}
@@ -296,7 +298,7 @@ export default function ProgrammesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Education Level *</label>
+                  <label className="mb-1 block text-sm font-medium">{t("programmes.educationLevel")}</label>
                   <select
                     value={form.educationLevel}
                     onChange={(e) => setForm({ ...form, educationLevel: e.target.value as EducationLevelType })}
@@ -308,30 +310,30 @@ export default function ProgrammesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Duration (months)</label>
+                  <label className="mb-1 block text-sm font-medium">{t("programmes.durationMonths")}</label>
                   <input
                     type="number"
                     min="0"
                     value={form.durationMonths}
                     onChange={(e) => setForm({ ...form, durationMonths: e.target.value })}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="e.g. 36"
+                    placeholder={t("programmes.eG")}
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Credit Hours</label>
+                  <label className="mb-1 block text-sm font-medium">{t("programmes.creditHours")}</label>
                   <input
                     type="number"
                     min="0"
                     value={form.creditHours}
                     onChange={(e) => setForm({ ...form, creditHours: e.target.value })}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="e.g. 120"
+                    placeholder={t("programmes.eG2")}
                   />
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <label className="text-sm font-medium">Active</label>
+                <label className="text-sm font-medium">{ts("active")}</label>
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, isActive: !form.isActive })}
@@ -346,11 +348,10 @@ export default function ProgrammesPage() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setShowForm(false); resetForm() }}>
-                  Cancel
-                </Button>
+                  {tc("cancel")}</Button>
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="size-4 animate-spin" />}
-                  {editing ? "Save Changes" : "Create Programme"}
+                  {editing ? t("programmes.saveChanges") : t("programmes.createProgramme")}
                 </Button>
               </div>
             </form>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import {
   Award,
   Flame,
@@ -21,6 +22,7 @@ interface BadgeGridProps {
 }
 
 export function BadgeGrid({ badges, loading }: BadgeGridProps) {
+  const t = useTranslations("ui")
   if (loading) {
     return (
       <div className="space-y-4">
@@ -44,10 +46,10 @@ export function BadgeGrid({ badges, loading }: BadgeGridProps) {
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Award className="size-4 text-yellow-500" />
-          Badges
+          {t("gamification.badges")}
         </h3>
         <span className="text-xs font-medium text-muted-foreground">
-          {earned} earned
+          {t("gamification.earnedCount", { count: earned })}
         </span>
       </div>
 
@@ -55,7 +57,7 @@ export function BadgeGrid({ badges, loading }: BadgeGridProps) {
         <div className="rounded-2xl border border-dashed border-border py-8 text-center">
           <Trophy className="mx-auto size-8 text-muted-foreground/40" />
           <p className="mt-2 text-sm text-muted-foreground">
-            Complete lessons to earn badges!
+            {t("gamification.emptyBadges")}
           </p>
         </div>
       ) : (
@@ -88,6 +90,7 @@ interface StreakDisplayProps {
 }
 
 export function StreakDisplay({ streak, loading }: StreakDisplayProps) {
+  const t = useTranslations("ui")
   if (loading) {
     return (
       <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-4">
@@ -111,11 +114,11 @@ export function StreakDisplay({ streak, loading }: StreakDisplayProps) {
       <div>
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl font-bold text-foreground">{current}</span>
-          <span className="text-sm font-medium text-muted-foreground">day streak!</span>
+          <span className="text-sm font-medium text-muted-foreground">{t("gamification.dayStreak")}</span>
         </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Star className="size-3 text-yellow-500" />
-          {total.toLocaleString()} total points
+          {t("gamification.totalPoints", { count: total })}
         </div>
       </div>
     </div>
@@ -213,40 +216,41 @@ interface EncouragingMessageProps {
   type: "completion" | "attempt" | "streak" | "badge"
 }
 
-const MESSAGES: Record<string, string[]> = {
+const MESSAGE_KEYS: Record<string, string[]> = {
   completion: [
-    "Great job finishing that lesson!",
-    "You completed it! Keep going!",
-    "Well done! You are learning so fast!",
-    "Awesome work! Keep it up!",
-    "You did it! That was great!",
+    "gamificationMessages.completion.m0",
+    "gamificationMessages.completion.m1",
+    "gamificationMessages.completion.m2",
+    "gamificationMessages.completion.m3",
+    "gamificationMessages.completion.m4",
   ],
   attempt: [
-    "Good try! You will get it next time!",
-    "Nice effort! Keep practicing!",
-    "You are getting better every time!",
-    "Don't give up! You are close!",
-    "That was a good attempt! Try again!",
+    "gamificationMessages.attempt.m0",
+    "gamificationMessages.attempt.m1",
+    "gamificationMessages.attempt.m2",
+    "gamificationMessages.attempt.m3",
+    "gamificationMessages.attempt.m4",
   ],
   streak: [
-    "Wow! You are on a roll!",
-    "Keep that streak going!",
-    "You are super consistent!",
-    "Amazing! Day after day!",
-    "Your streak is awesome!",
+    "gamificationMessages.streak.m0",
+    "gamificationMessages.streak.m1",
+    "gamificationMessages.streak.m2",
+    "gamificationMessages.streak.m3",
+    "gamificationMessages.streak.m4",
   ],
   badge: [
-    "You earned a new badge!",
-    "A new badge! You earned it!",
-    "Badge unlocked! Great work!",
-    "That badge is well deserved!",
-    "You collected a new badge!",
+    "gamificationMessages.badge.m0",
+    "gamificationMessages.badge.m1",
+    "gamificationMessages.badge.m2",
+    "gamificationMessages.badge.m3",
+    "gamificationMessages.badge.m4",
   ],
 }
 
 export function EncouragingMessage({ type }: EncouragingMessageProps) {
-  const messages = MESSAGES[type] || MESSAGES.attempt
-  const msg = messages[Math.floor(Math.random() * messages.length)]
+  const t = useTranslations("ui")
+  const keys = MESSAGE_KEYS[type] || MESSAGE_KEYS.attempt
+  const msg = t(keys[Math.floor(Math.random() * keys.length)])
 
   return (
     <span className="text-sm font-medium text-foreground">{msg}</span>

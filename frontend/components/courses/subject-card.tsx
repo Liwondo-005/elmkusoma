@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import type { CurriculumSubject } from "@/lib/data"
 import { educationLevelToSlug, classNameToSlug } from "@/lib/data"
@@ -28,6 +31,7 @@ export function SubjectCard({
     levelSlug && classNameSlug
       ? `/courses/${levelSlug}/${classNameSlug}/${subject.id}`
       : `/courses/${educationLevelToSlug(subject.level)}/${classNameToSlug(subject.className)}/${subject.id}`
+  const t = useTranslations("ui")
 
   return (
     <Link
@@ -61,7 +65,7 @@ export function SubjectCard({
             {subject.category}
           </span>
           <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-            {subject.enrolled.toLocaleString()} enrolled
+            {t("subjectCard.enrolled", { count: subject.enrolled })}
           </span>
         </div>
       </div>

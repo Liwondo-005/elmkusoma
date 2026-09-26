@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { BookOpen, Plus, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, Eye, EyeOff, GripVertical, X } from "lucide-react"
@@ -40,6 +41,9 @@ const initialForm = {
 
 export default function TeacherLessonsPage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
+  const tc = useTranslations("common")
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [selectedClassId, setSelectedClassId] = useState<string>("")
@@ -71,7 +75,7 @@ export default function TeacherLessonsPage() {
       setClasses(unique)
       await loadLessons()
     } catch {
-      setError("Failed to load data")
+      setError(tc("error.load"))
     } finally {
       setLoading(false)
     }
@@ -116,20 +120,20 @@ export default function TeacherLessonsPage() {
       setForm(initialForm)
       await loadLessons()
     } catch {
-      setError("Failed to save lesson")
+      setError(t("lessons.saveError"))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this lesson?")) return
+    if (!confirm(t("lessons.deleteConfirm"))) return
     setDeleting(id)
     try {
       await teacherFetch(`/v1/learning/lessons/${id}`, { method: "DELETE" })
       await loadLessons()
     } catch {
-      setError("Failed to delete lesson")
+      setError(t("lessons.deleteError"))
     } finally {
       setDeleting(null)
     }
@@ -143,7 +147,7 @@ export default function TeacherLessonsPage() {
       })
       await loadLessons()
     } catch {
-      setError("Failed to update lesson")
+      setError(t("lessons.updateError"))
     }
   }
 
@@ -180,12 +184,12 @@ export default function TeacherLessonsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Lessons</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and manage lesson content for your classes.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("lessons")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("lessons.subtitle")}</p>
         </div>
         {selectedClassId && (
           <Button onClick={openCreate} className="gap-2">
-            <Plus className="size-4" /> Create Lesson
+            <Plus className="size-4" /> {t("lessons.createLesson")}
           </Button>
         )}
       </div>
@@ -198,14 +202,14 @@ export default function TeacherLessonsPage() {
       )}
 
       <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-        <label className="text-sm font-medium text-foreground">Select Class</label>
+        <label className="text-sm font-medium text-foreground">{t("lessons.selectClass")}</label>
         <div className="relative mt-1">
           <select
             value={selectedClassId}
             onChange={(e) => { setSelectedClassId(e.target.value); setLessons([]) }}
             className="w-full appearance-none rounded-lg border border-border bg-background px-3 py-2.5 pr-10 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="">Choose a class...</option>
+            <option value="">{t("lessons.chooseClass")}</option>
             {classes.map((c) => (
               <option key={c.classGroupId} value={c.classGroupId}>{c.className}</option>
             ))}
@@ -217,32 +221,32 @@ export default function TeacherLessonsPage() {
       {showForm && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">{editingLesson ? "Edit Lesson" : "Create Lesson"}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{editingLesson ? t("lessons.editLesson") : t("lessons.createLesson")}</h3>
             <button onClick={() => { setShowForm(false); setEditingLesson(null) }} className="text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground">Title *</label>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder="Lesson title" />
+              <label className="text-xs font-medium text-muted-foreground">{t("lessons.titleLabel")}</label>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder={t("lessons.titlePlaceholder")} />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Class *</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("lessons.classLabel")}</label>
               <select value={form.classGroupId} onChange={(e) => setForm({ ...form, classGroupId: e.target.value })} className="mt-1 w-full appearance-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none">
-                <option value="">Select class</option>
+                <option value="">{t("lessons.selectClassOption")}</option>
                 {classes.map((c) => <option key={c.classGroupId} value={c.classGroupId}>{c.className}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("lessons.sortOrder")}</label>
               <input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder="Brief description" />
+              <label className="text-xs font-medium text-muted-foreground">{t("lessons.descLabel")}</label>
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder={t("lessons.descPlaceholder")} />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-muted-foreground">Content</label>
-              <textarea value={form.contentText} onChange={(e) => setForm({ ...form, contentText: e.target.value })} rows={6} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder="Lesson content (supports plain text)" />
+              <label className="text-xs font-medium text-muted-foreground">{t("lessons.contentLabel")}</label>
+              <textarea value={form.contentText} onChange={(e) => setForm({ ...form, contentText: e.target.value })} rows={6} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none" placeholder={t("lessons.contentPlaceholder")} />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Video URL</label>
@@ -251,15 +255,15 @@ export default function TeacherLessonsPage() {
             <div className="flex items-end">
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={form.isPublished} onChange={(e) => setForm({ ...form, isPublished: e.target.checked })} className="size-4 rounded border-border" />
-                <span className="text-sm text-foreground">Published</span>
+                <span className="text-sm text-foreground">{t("lessons.published")}</span>
               </label>
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { setShowForm(false); setEditingLesson(null) }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowForm(false); setEditingLesson(null) }}>{tc("cancel")}</Button>
             <Button onClick={handleSave} disabled={saving || !form.title || !form.classGroupId}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : null}
-              {editingLesson ? "Update" : "Create"}
+              {editingLesson ? t("announcements.update") : tc("create")}
             </Button>
           </div>
         </div>
@@ -268,15 +272,15 @@ export default function TeacherLessonsPage() {
       {!selectedClassId ? (
         <div className="rounded-2xl border border-dashed border-border py-12 text-center">
           <BookOpen className="mx-auto mb-3 size-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">Select a class to manage lessons</p>
-          <p className="mt-1 text-xs text-muted-foreground">Choose a class above to see and create lessons.</p>
+          <p className="text-sm font-medium text-foreground">{t("lessons.selectClassEmpty")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("lessons.selectClassEmptyDesc")}</p>
         </div>
       ) : lessons.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-12 text-center">
           <BookOpen className="mx-auto mb-3 size-8 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-foreground">No Lessons Yet</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Create your first lesson for this class.</p>
-          <Button onClick={openCreate} className="mt-4 gap-2" size="sm"><Plus className="size-3" /> Create Lesson</Button>
+          <h3 className="text-sm font-semibold text-foreground">{t("lessons.emptyTitle")}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{t("lessons.emptyDesc")}</p>
+          <Button onClick={openCreate} className="mt-4 gap-2" size="sm"><Plus className="size-3" /> {t("lessons.createLesson")}</Button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -290,21 +294,21 @@ export default function TeacherLessonsPage() {
                       <h4 className="text-sm font-semibold text-foreground truncate">{lesson.title}</h4>
                       <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                         lesson.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                      }`}>{lesson.isPublished ? "Published" : "Draft"}</span>
+                      }`}>{lesson.isPublished ? t("lessons.published") : t("lessons.draft")}</span>
                     </div>
                     {lesson.description && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{lesson.description}</p>}
                     <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                      {lesson.contentText && <span className="flex items-center gap-1"><BookOpen className="size-3" /> Has content</span>}
-                      {lesson.videoUrl && <span className="flex items-center gap-1">🎥 Video</span>}
+                      {lesson.contentText && <span className="flex items-center gap-1"><BookOpen className="size-3" /> {t("lessons.hasContent")}</span>}
+                      {lesson.videoUrl && <span className="flex items-center gap-1">🎥 {t("lessons.hasVideo")}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <button onClick={() => togglePublish(lesson)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" title={lesson.isPublished ? "Unpublish" : "Publish"}>
+                  <button onClick={() => togglePublish(lesson)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" title={lesson.isPublished ? t("lessons.unpublish") : t("lessons.publish")}>
                     {lesson.isPublished ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
-                  <button onClick={() => openEdit(lesson)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" title="Edit"><Pencil className="size-4" /></button>
-                  <button onClick={() => handleDelete(lesson.id)} disabled={deleting === lesson.id} className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Delete">
+                  <button onClick={() => openEdit(lesson)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" title={tc("edit")}><Pencil className="size-4" /></button>
+                  <button onClick={() => handleDelete(lesson.id)} disabled={deleting === lesson.id} className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title={tc("delete")}>
                     {deleting === lesson.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                   </button>
                 </div>

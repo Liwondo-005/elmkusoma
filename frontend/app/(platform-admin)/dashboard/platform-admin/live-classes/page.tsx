@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { Video, Loader2, Clock, Users } from "lucide-react"
 import { platformAdminApi, type LiveClassSummary, type PageResponse } from "@/lib/platform-admin-api"
@@ -8,6 +10,9 @@ const STATUS_OPTIONS = ["", "SCHEDULED", "LIVE", "COMPLETED", "CANCELLED"]
 const PAGE_SIZE = 20
 
 export default function LiveClassesMonitorPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [data, setData] = useState<PageResponse<LiveClassSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +26,7 @@ export default function LiveClassesMonitorPage() {
       const res = await platformAdminApi.listLiveClasses(page, PAGE_SIZE, status || undefined)
       setData(res)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load live classes")
+      setError(err instanceof Error ? err.message : t("liveClasses.failedToLoadLive"))
     } finally {
       setLoading(false)
     }
@@ -51,8 +56,8 @@ export default function LiveClassesMonitorPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Live Classes Monitor</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Monitor all live classes across the platform.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("liveClasses.liveClassesMonitor")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("liveClasses.monitorAllLiveClasses")}</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -62,7 +67,7 @@ export default function LiveClassesMonitorPage() {
           className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
         >
           {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s || "All Statuses"}</option>
+            <option key={s} value={s}>{s || t("liveClasses.allStatuses")}</option>
           ))}
         </select>
       </div>
@@ -78,9 +83,9 @@ export default function LiveClassesMonitorPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Video className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No live classes found</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("liveClasses.noLiveClassesFound")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {status ? "No classes match the selected filter." : "No live classes available."}
+            {status ? t("liveClasses.noClassesMatchThe") : t("liveClasses.noLiveClassesAvailable")}
           </p>
         </div>
       ) : (
@@ -89,11 +94,11 @@ export default function LiveClassesMonitorPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Title</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Scheduled</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Duration</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Participants</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("liveClasses.title")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("liveClasses.status")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{ts("scheduled")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("liveClasses.duration")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("liveClasses.participants")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -107,7 +112,7 @@ export default function LiveClassesMonitorPage() {
                         {formatDate(cls.scheduledAt)}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{cls.durationMinutes} min</td>
+                    <td className="px-5 py-3.5 text-muted-foreground">{t("liveClasses.min", { p0: cls.durationMinutes })}</td>
                     <td className="px-5 py-3.5">
                       <span className="inline-flex items-center gap-1 text-muted-foreground">
                         <Users className="size-3.5" />
@@ -129,18 +134,15 @@ export default function LiveClassesMonitorPage() {
             disabled={page === 0}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Prev
-          </button>
+            {t("liveClasses.prev")}</button>
           <span className="text-sm text-muted-foreground">
-            Page {page + 1} of {data.totalPages}
-          </span>
+            {t("liveClasses.pageOf", { p0: page + 1, p1: data.totalPages })}</span>
           <button
             onClick={() => setPage((p) => Math.min(data.totalPages - 1, p + 1))}
             disabled={page >= data.totalPages - 1}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Next
-          </button>
+            {tc("next")}</button>
         </div>
       )}
     </div>

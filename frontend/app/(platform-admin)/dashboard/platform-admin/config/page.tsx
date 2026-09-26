@@ -1,10 +1,13 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { Settings, Loader2, Save } from "lucide-react"
 import { platformAdminApi, type PlatformConfigItem } from "@/lib/platform-admin-api"
 
 export default function ConfigPage() {
+  const t = useTranslations("platformAdmin");
   const [configs, setConfigs] = useState<PlatformConfigItem[]>([])
   const [loading, setLoading] = useState(true)
   const [edits, setEdits] = useState<Record<string, string>>({})
@@ -30,8 +33,8 @@ export default function ConfigPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Platform Configuration</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage platform-wide settings and feature flags</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("config.platformConfiguration")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("config.managePlatformWideSettings")}</p>
       </div>
 
       {loading ? (
@@ -39,14 +42,14 @@ export default function ConfigPage() {
       ) : configs.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-10 text-center">
           <Settings className="mx-auto size-10 text-muted-foreground/50" />
-          <p className="mt-3 text-sm text-muted-foreground">No configuration entries found</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t("config.noConfigurationEntriesFound")}</p>
         </div>
       ) : (
         <div className="space-y-6">
           {categories.map(cat => (
             <div key={cat} className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
               <div className="border-b border-border bg-muted/30 px-5 py-3">
-                <h2 className="text-sm font-semibold text-foreground">{cat || "General"}</h2>
+                <h2 className="text-sm font-semibold text-foreground">{cat || t("config.general")}</h2>
               </div>
               <div className="divide-y divide-border">
                 {configs.filter(c => c.category === cat).map(c => (
@@ -71,7 +74,7 @@ export default function ConfigPage() {
                         </button>
                       )}
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${c.isPublic ? "bg-green-50 text-green-700" : "bg-muted text-muted-foreground"}`}>
-                        {c.isPublic ? "Public" : "Private"}
+                        {c.isPublic ? t("config.public") : t("config.private")}
                       </span>
                     </div>
                   </div>

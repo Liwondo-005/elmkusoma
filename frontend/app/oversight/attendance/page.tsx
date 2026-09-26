@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, AlertTriangle, ClipboardList, Calendar, Target } from "lucide-react"
@@ -29,6 +31,8 @@ interface AttendanceMetrics {
 }
 
 export default function OversightAttendancePage() {
+  const t = useTranslations("oversight");
+  const ts = useTranslations("status");
   const { user, loading: authLoading } = useRequireAuth()
   const [metrics, setMetrics] = useState<AttendanceMetrics | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,7 +62,7 @@ export default function OversightAttendancePage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading attendance analytics...</div>
+        <div className="text-muted-foreground">{t("attendance.loadingAttendanceAnalytics")}</div>
       </div>
     )
   }
@@ -67,8 +71,8 @@ export default function OversightAttendancePage() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h1 className="text-2xl font-bold text-foreground">Attendance Analytics</h1>
-          <p className="mt-2 text-muted-foreground">Attendance data unavailable.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("attendance.attendanceAnalytics")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("attendance.attendanceDataUnavailable")}</p>
         </div>
       </div>
     )
@@ -82,10 +86,9 @@ export default function OversightAttendancePage() {
             <ClipboardList className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Attendance Analytics</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("attendance.attendanceAnalytics2")}</h1>
             <p className="text-sm text-muted-foreground">
-              Attendance monitoring across your jurisdiction
-            </p>
+              {t("attendance.attendanceMonitoringAcrossYour")}</p>
           </div>
         </div>
       </div>
@@ -100,18 +103,17 @@ export default function OversightAttendancePage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <Building2 className="size-5 text-muted-foreground" />
-          School Attendance Overview
-        </h2>
+          {t("attendance.schoolAttendanceOverview")}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">School</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Code</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Students</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Attendance</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Absent</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Late</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("attendance.school")}</th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("attendance.code")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("attendance.students")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("attendance.attendance")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{ts("absent")}</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground">{ts("late")}</th>
               </tr>
             </thead>
             <tbody>
@@ -138,16 +140,15 @@ export default function OversightAttendancePage() {
         <div className="rounded-2xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <AlertTriangle className="size-5 text-orange-500" />
-            Students Requiring Attention (Attendance &lt; 75%)
-          </h2>
+            {t("attendance.studentsRequiringAttentionAttendance")}</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Student</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">School</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Attendance</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Days Absent</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("attendance.student")}</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("attendance.school2")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("attendance.attendance2")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("attendance.daysAbsent")}</th>
                 </tr>
               </thead>
               <tbody>

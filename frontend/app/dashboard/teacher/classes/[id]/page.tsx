@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Users, BookOpen, Loader2, CheckCircle, XCircle, Clock, FileText, PenTool, Video, AlertCircle } from "lucide-react"
 import { teacherFetch, type ClassGroupInfo, type StudentInClass, type AttendanceSummary } from "@/lib/teacher-api"
 
@@ -14,6 +15,9 @@ type Tab = "students" | "attendance" | "lessons" | "assignments" | "assessments"
 
 export default function TeacherClassDetailPage() {
   const params = useParams()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
   const classId = params.id as string
   const [cls, setCls] = useState<ClassGroupInfo | null>(null)
   const [students, setStudents] = useState<StudentInClass[]>([])
@@ -44,7 +48,7 @@ export default function TeacherClassDetailPage() {
         setAssignments(classAssignments)
         setAssessments(classAssessments)
       } catch {
-        setError("Failed to load class details")
+        setError(t("classDetail.loadError"))
       } finally { setLoading(false) }
     }
     load()
@@ -59,18 +63,18 @@ export default function TeacherClassDetailPage() {
   }
 
   const tabs: { key: Tab; label: string; icon: typeof Users; count: number }[] = [
-    { key: "students", label: "Students", icon: Users, count: students.length },
-    { key: "attendance", label: "Attendance", icon: CheckCircle, count: summaries.length },
-    { key: "lessons", label: "Lessons", icon: BookOpen, count: lessons.length },
-    { key: "assignments", label: "Assignments", icon: FileText, count: assignments.length },
-    { key: "assessments", label: "Assessments", icon: PenTool, count: assessments.length },
+    { key: "students", label: tn("students"), icon: Users, count: students.length },
+    { key: "attendance", label: tn("attendance"), icon: CheckCircle, count: summaries.length },
+    { key: "lessons", label: tn("lessons"), icon: BookOpen, count: lessons.length },
+    { key: "assignments", label: tn("assignments"), icon: FileText, count: assignments.length },
+    { key: "assessments", label: tn("assessments"), icon: PenTool, count: assessments.length },
   ]
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{cls?.name || "Class Details"}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{cls?.gradeName} &middot; {students.length} students &middot; {lessons.length} lessons &middot; {assignments.length} assignments</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{cls?.name || t("classDetail.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("classDetail.meta", { grade: cls?.gradeName ?? "", students: students.length, lessons: lessons.length, assignments: assignments.length })}</p>
       </div>
 
       {error && (
@@ -93,11 +97,11 @@ export default function TeacherClassDetailPage() {
       {activeTab === "students" && (
         <div className="rounded-2xl border border-border bg-card shadow-xs">
           {students.length === 0 ? (
-            <div className="py-12 text-center"><Users className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">No students in this class</p></div>
+            <div className="py-12 text-center"><Users className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">{t("classDetail.noStudents")}</p></div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3">Name</th><th className="px-4 py-3">Admission No.</th><th className="px-4 py-3">Email</th></tr></thead>
+                <thead><tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3">{t("students.colName")}</th><th className="px-4 py-3">{t("classDetail.colAdmission")}</th><th className="px-4 py-3">{t("email")}</th></tr></thead>
                 <tbody>{students.map((s) => (<tr key={s.id} className="border-b border-border last:border-0"><td className="px-4 py-3 font-medium text-foreground">{s.firstName} {s.lastName}</td><td className="px-4 py-3 text-muted-foreground">{s.admissionNumber}</td><td className="px-4 py-3 text-muted-foreground">{s.email || "—"}</td></tr>))}</tbody>
               </table>
             </div>
@@ -108,11 +112,11 @@ export default function TeacherClassDetailPage() {
       {activeTab === "attendance" && (
         <div className="rounded-2xl border border-border bg-card shadow-xs">
           {summaries.length === 0 ? (
-            <div className="py-12 text-center"><Clock className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">No attendance data yet</p></div>
+            <div className="py-12 text-center"><Clock className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">{t("classDetail.noAttendance")}</p></div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3">Student</th><th className="px-4 py-3">Present</th><th className="px-4 py-3">Absent</th><th className="px-4 py-3">Late</th><th className="px-4 py-3">Rate</th></tr></thead>
+                <thead><tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3">{t("classDetail.colStudent")}</th><th className="px-4 py-3">{ts("present")}</th><th className="px-4 py-3">{ts("absent")}</th><th className="px-4 py-3">{ts("late")}</th><th className="px-4 py-3">{t("classDetail.colRate")}</th></tr></thead>
                 <tbody>{summaries.map((s) => (<tr key={s.studentId} className="border-b border-border last:border-0"><td className="px-4 py-3 font-medium text-foreground">{s.studentName}</td><td className="px-4 py-3 text-teal">{s.presentDays}</td><td className="px-4 py-3 text-red-500">{s.absentDays}</td><td className="px-4 py-3 text-orange">{s.lateDays}</td><td className="px-4 py-3 font-medium text-foreground">{Math.round(s.attendancePercentage)}%</td></tr>))}</tbody>
               </table>
             </div>
@@ -123,9 +127,9 @@ export default function TeacherClassDetailPage() {
       {activeTab === "lessons" && (
         <div className="rounded-2xl border border-border bg-card shadow-xs">
           {lessons.length === 0 ? (
-            <div className="py-12 text-center"><BookOpen className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">No lessons yet</p><p className="mt-1 text-xs text-muted-foreground">Create lessons from the Lessons page.</p></div>
+            <div className="py-12 text-center"><BookOpen className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">{t("classDetail.noLessons")}</p><p className="mt-1 text-xs text-muted-foreground">{t("classDetail.noLessonsDesc")}</p></div>
           ) : (
-            <div className="divide-y divide-border">{lessons.sort((a, b) => a.sortOrder - b.sortOrder).map((l) => (<div key={l.id} className="flex items-center justify-between px-4 py-3"><div className="flex items-center gap-3"><span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">{l.sortOrder}</span><div><p className="text-sm font-medium text-foreground">{l.title}</p>{l.description && <p className="text-xs text-muted-foreground line-clamp-1">{l.description}</p>}</div></div><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${l.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>{l.isPublished ? "Published" : "Draft"}</span></div>))}</div>
+            <div className="divide-y divide-border">{lessons.sort((a, b) => a.sortOrder - b.sortOrder).map((l) => (<div key={l.id} className="flex items-center justify-between px-4 py-3"><div className="flex items-center gap-3"><span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">{l.sortOrder}</span><div><p className="text-sm font-medium text-foreground">{l.title}</p>{l.description && <p className="text-xs text-muted-foreground line-clamp-1">{l.description}</p>}</div></div><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${l.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>{l.isPublished ? t("lessons.published") : t("lessons.draft")}</span></div>))}</div>
           )}
         </div>
       )}
@@ -133,9 +137,9 @@ export default function TeacherClassDetailPage() {
       {activeTab === "assignments" && (
         <div className="rounded-2xl border border-border bg-card shadow-xs">
           {assignments.length === 0 ? (
-            <div className="py-12 text-center"><FileText className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">No assignments yet</p></div>
+            <div className="py-12 text-center"><FileText className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">{t("classDetail.noAssignments")}</p></div>
           ) : (
-            <div className="divide-y divide-border">{assignments.map((a) => (<div key={a.id} className="flex items-center justify-between px-4 py-3"><div><p className="text-sm font-medium text-foreground">{a.title}</p>{a.description && <p className="text-xs text-muted-foreground line-clamp-1">{a.description}</p>}</div><div className="text-right text-xs text-muted-foreground"><p>{a.totalMarks} marks</p>{a.dueDate && <p>Due: {new Date(a.dueDate).toLocaleDateString()}</p>}</div></div>))}</div>
+            <div className="divide-y divide-border">{assignments.map((a) => (<div key={a.id} className="flex items-center justify-between px-4 py-3"><div><p className="text-sm font-medium text-foreground">{a.title}</p>{a.description && <p className="text-xs text-muted-foreground line-clamp-1">{a.description}</p>}</div><div className="text-right text-xs text-muted-foreground"><p>{t("classDetail.marksCount", { count: a.totalMarks })}</p>{a.dueDate && <p>{t("classDetail.dueLabel", { date: new Date(a.dueDate).toLocaleDateString() })}</p>}</div></div>))}</div>
           )}
         </div>
       )}
@@ -143,9 +147,9 @@ export default function TeacherClassDetailPage() {
       {activeTab === "assessments" && (
         <div className="rounded-2xl border border-border bg-card shadow-xs">
           {assessments.length === 0 ? (
-            <div className="py-12 text-center"><PenTool className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">No assessments yet</p></div>
+            <div className="py-12 text-center"><PenTool className="mx-auto mb-3 size-8 text-muted-foreground" /><p className="text-sm font-medium text-foreground">{t("classDetail.noAssessments")}</p></div>
           ) : (
-            <div className="divide-y divide-border">{assessments.map((a) => (<div key={a.id} className="flex items-center justify-between px-4 py-3"><div><p className="text-sm font-medium text-foreground">{a.title}</p>{a.description && <p className="text-xs text-muted-foreground line-clamp-1">{a.description}</p>}</div><div className="text-right text-xs text-muted-foreground"><p>{a.totalMarks} marks</p>{a.timeLimitMinutes > 0 && <p>{a.timeLimitMinutes} min</p>}</div></div>))}</div>
+            <div className="divide-y divide-border">{assessments.map((a) => (<div key={a.id} className="flex items-center justify-between px-4 py-3"><div><p className="text-sm font-medium text-foreground">{a.title}</p>{a.description && <p className="text-xs text-muted-foreground line-clamp-1">{a.description}</p>}</div><div className="text-right text-xs text-muted-foreground"><p>{t("classDetail.marksCount", { count: a.totalMarks })}</p>{a.timeLimitMinutes > 0 && <p>{t("classDetail.minutesCount", { count: a.timeLimitMinutes })}</p>}</div></div>))}</div>
           )}
         </div>
       )}

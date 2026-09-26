@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Play, Pause, Volume2, VolumeX, Maximize, X } from "lucide-react"
 
 interface VideoPlayerProps {
@@ -10,6 +11,7 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ url, title, onClose }: VideoPlayerProps) {
+  const t = useTranslations("ui")
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -92,7 +94,7 @@ export function VideoPlayer({ url, title, onClose }: VideoPlayerProps) {
         <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
           <iframe
             src={`https://www.youtube.com/embed/${videoId}?rel=0`}
-            title={title || "Video"}
+            title={title || t("videoPlayer.defaultTitle")}
             className="absolute inset-0 h-full w-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
@@ -115,7 +117,7 @@ export function VideoPlayer({ url, title, onClose }: VideoPlayerProps) {
         <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
           <iframe
             src={`https://player.vimeo.com/video/${vimeoId}?byline=0&portrait=0`}
-            title={title || "Video"}
+            title={title || t("videoPlayer.defaultTitle")}
             className="absolute inset-0 h-full w-full"
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen

@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type Bookmark } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { Bookmark as BookmarkIcon, Trash2, ExternalLink, AlertCircle, BookOpen, Video, FileText, ArrowRight } from "lucide-react"
 
 export default function LearnerBookmarksPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +29,7 @@ export default function LearnerBookmarksPage() {
       const data = await learnerApi.getBookmarks()
       setBookmarks(data)
     } catch {
-      setError("Failed to load bookmarks")
+      setError(t("marks.loadError"))
     } finally {
       setLoading(false)
     }
@@ -38,7 +41,7 @@ export default function LearnerBookmarksPage() {
       await learnerApi.removeBookmark(id)
       setBookmarks((prev) => prev.filter((b) => b.id !== id))
     } catch {
-      setError("Failed to remove bookmark")
+      setError(t("marks.removeError"))
     } finally {
       setRemoving(null)
     }
@@ -79,8 +82,8 @@ export default function LearnerBookmarksPage() {
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Bookmarks</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your saved items for quick access.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("marks.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("marks.subtitle")}</p>
       </div>
 
       {error && (
@@ -99,8 +102,8 @@ export default function LearnerBookmarksPage() {
         <div role="status">
         <EmptyState
           icon={<BookmarkIcon className="size-8" />}
-          title="No bookmarks yet"
-          description="Save courses, resources, and classes for quick access."
+          title={t("marks.emptyTitle")}
+          description={t("marks.emptyDesc")}
         />
         </div>
       ) : (
@@ -114,48 +117,48 @@ export default function LearnerBookmarksPage() {
                 <div className="flex items-center gap-2">
                   {bookmark.targetAvailable !== false ? (
                     <Link href={getLink(bookmark)} className="text-sm font-medium text-foreground hover:text-primary truncate">
-                        {bookmark.targetTitle || "Untitled"}
+                        {bookmark.targetTitle || t("marks.untitled")}
                       </Link>
                   ) : (
-                    <span className="text-sm font-medium text-muted-foreground truncate">{bookmark.targetTitle || "Untitled"}</span>
+                    <span className="text-sm font-medium text-muted-foreground truncate">{bookmark.targetTitle || t("marks.untitled")}</span>
                   )}
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getTypeBadge(bookmark.targetType)}`}>
                     {bookmark.targetType}
                   </span>
                   {bookmark.targetAvailable === false && (
                     <span className="shrink-0 rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-600">
-                      Content no longer available
+                      {t("marks.unavailable")}
                     </span>
                   )}
                 </div>
                 <p className="mt-1 text-[10px] text-muted-foreground">
-                  Saved {new Date(bookmark.createdAt).toLocaleDateString()}
+                  {t("marks.savedOn", { date: new Date(bookmark.createdAt).toLocaleDateString() })}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {bookmark.targetAvailable !== false ? (
                   <Link
                       href={getLink(bookmark)}
-                      aria-label={`View ${bookmark.targetTitle || "item"}`}
+                      aria-label={t("marks.viewItem", { title: bookmark.targetTitle || t("marks.itemFallback") })}
                       className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                     >
                       <ExternalLink className="size-3" />
-                      View
+                      {t("marks.view")}
                     </Link>
                 ) : (
                   <button
                       disabled
-                      aria-label={`View ${bookmark.targetTitle || "item"} (unavailable)`}
+                      aria-label={t("marks.viewItemUnavailable", { title: bookmark.targetTitle || t("marks.itemFallback") })}
                       className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground opacity-50 cursor-not-allowed"
                     >
                       <ExternalLink className="size-3" />
-                      View
+                      {t("marks.view")}
                     </button>
                 )}
                 <button
                   onClick={() => removeBookmark(bookmark.id)}
                   disabled={removing === bookmark.id}
-                  aria-label={`Remove bookmark for ${bookmark.targetTitle || "item"}`}
+                  aria-label={t("marks.removeItem", { title: bookmark.targetTitle || t("marks.itemFallback") })}
                   className="inline-flex items-center gap-1 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
                 >
                   <Trash2 className="size-3" />
@@ -168,9 +171,9 @@ export default function LearnerBookmarksPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">Discover new content to bookmark.</p>
+        <p className="text-sm text-muted-foreground">{t("marks.discover")}</p>
         <Link href="/dashboard/learner/resources" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          Discover new content <ArrowRight className="size-3" />
+          {t("marks.discoverLink")} <ArrowRight className="size-3" />
         </Link>
       </div>
     </div>

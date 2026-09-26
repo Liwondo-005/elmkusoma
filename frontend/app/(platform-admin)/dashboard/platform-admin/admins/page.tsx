@@ -1,10 +1,14 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { Shield, Loader2, Search, KeyRound, Save, AlertCircle, RefreshCw } from "lucide-react"
 import { platformAdminApi, type AdminAccount } from "@/lib/platform-admin-api"
 
 export default function AdminsPage() {
+  const t = useTranslations("platformAdmin");
+  const ts = useTranslations("status");
   const [admins, setAdmins] = useState<AdminAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -18,7 +22,7 @@ export default function AdminsPage() {
     try {
       setAdmins(await platformAdminApi.listAdmins())
     } catch (e: any) {
-      setError(e.message || "Failed to load admins")
+      setError(e.message || t("admins.failedToLoadAdmins"))
       setAdmins([])
     } finally { setLoading(false) }
   }, [])
@@ -48,7 +52,7 @@ export default function AdminsPage() {
       setSelected({ ...selected, permissions: updated })
       setAdmins(prev => prev.map(a => (a.userId === selected.userId ? { ...a, permissions: updated } : a)))
     } catch (e: any) {
-      setError(e.message || "Failed to update permissions")
+      setError(e.message || t("admins.failedToUpdatePermissions"))
     } finally { setSaving(false) }
   }
 
@@ -62,10 +66,10 @@ export default function AdminsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Administrator Accounts</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Admin roles with editable permission matrix (role_permissions)</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("admins.administratorAccounts")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("admins.adminRolesWithEditable")}</p>
         </div>
-        <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> Refresh</button>
+        <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> {t("admins.refresh")}</button>
       </div>
 
       {error && (
@@ -79,7 +83,7 @@ export default function AdminsPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search admins..."
+            placeholder={t("admins.searchAdmins")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-border bg-card py-2 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/20"
@@ -92,17 +96,17 @@ export default function AdminsPage() {
           {filtered.length === 0 ? (
             <div className="p-12 text-center">
               <Shield className="mx-auto size-10 text-muted-foreground" />
-              <p className="mt-4 text-sm font-medium text-foreground">No administrators found</p>
+              <p className="mt-4 text-sm font-medium text-foreground">{t("admins.noAdministratorsFound")}</p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Perms</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("admins.name")}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("admins.email")}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("admins.role")}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("admins.perms")}</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("admins.status")}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -117,14 +121,13 @@ export default function AdminsPage() {
                     <td className="px-5 py-3.5 text-xs tabular-nums text-muted-foreground">{admin.permissions?.length ?? 0}</td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${admin.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                        {admin.isActive ? "Active" : "Inactive"}
+                        {admin.isActive ? ts("active") : ts("inactive")}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <button onClick={() => openMatrix(admin)}
                         className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted">
-                        <KeyRound className="size-3" /> Matrix
-                      </button>
+                        <KeyRound className="size-3" /> {t("admins.matrix")}</button>
                     </td>
                   </tr>
                 ))}
@@ -134,9 +137,9 @@ export default function AdminsPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><KeyRound className="size-4" /> Permission Matrix</h2>
+          <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><KeyRound className="size-4" /> {t("admins.permissionMatrix")}</h2>
           {!selected ? (
-            <p className="mt-3 text-sm text-muted-foreground">Select an admin to edit their permission list (one permission per line).</p>
+            <p className="mt-3 text-sm text-muted-foreground">{t("admins.selectAnAdminTo")}</p>
           ) : (
             <>
               <p className="mt-2 text-xs text-muted-foreground">{selected.fullName} · {selected.email}</p>
@@ -149,8 +152,7 @@ export default function AdminsPage() {
               />
               <button onClick={saveMatrix} disabled={saving}
                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-                {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} Save permissions
-              </button>
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} {t("admins.savePermissions")}</button>
             </>
           )}
         </div>

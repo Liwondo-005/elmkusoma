@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation"
+import { cookies } from "next/headers"
+import { getTranslations } from "next-intl/server"
 import Link from "next/link"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -24,6 +26,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function InstitutionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const cookieStore = await cookies()
+  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value
+  const t = await getTranslations({ locale: cookieLocale === "sw" ? "sw" : "en", namespace: "public" })
   const institution = getInstitutionById(id)
   if (!institution) notFound()
 
@@ -60,7 +65,7 @@ export default async function InstitutionPage({ params }: { params: Promise<{ id
               href={levelRoutes[institution.educationLevel]}
               className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
-              Browse More {institution.educationLevel} Schools
+              {t("institutionDetail.browseMore", { level: institution.educationLevel })}
             </Link>
           </div>
         </section>

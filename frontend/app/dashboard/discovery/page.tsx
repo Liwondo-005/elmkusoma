@@ -2,19 +2,22 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type DiscoveryEntry } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { Lightbulb, FlaskConical, Eye, BookOpen, Plus, X, CheckCircle, Sparkles } from "lucide-react"
 
-const discoveryTypes = [
-  { value: "WONDER", label: "Wonder", icon: Lightbulb, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-200", badge: "bg-amber-100 text-amber-700" },
-  { value: "EXPERIMENT", label: "Experiment", icon: FlaskConical, color: "text-green-500", bg: "bg-green-50", border: "border-green-200", badge: "bg-green-100 text-green-700" },
-  { value: "OBSERVATION", label: "Observation", icon: Eye, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200", badge: "bg-blue-100 text-blue-700" },
-  { value: "RESEARCH", label: "Research", icon: BookOpen, color: "text-purple-500", bg: "bg-purple-50", border: "border-purple-200", badge: "bg-purple-100 text-purple-700" },
-]
 
 export default function DiscoveryPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
+  const discoveryTypes = [
+  { value: "WONDER", label: t("discovery.typeWonder"), icon: Lightbulb, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-200", badge: "bg-amber-100 text-amber-700" },
+  { value: "EXPERIMENT", label: t("discovery.typeExperiment"), icon: FlaskConical, color: "text-green-500", bg: "bg-green-50", border: "border-green-200", badge: "bg-green-100 text-green-700" },
+  { value: "OBSERVATION", label: t("discovery.typeObservation"), icon: Eye, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200", badge: "bg-blue-100 text-blue-700" },
+  { value: "RESEARCH", label: t("discovery.typeResearch"), icon: BookOpen, color: "text-purple-500", bg: "bg-purple-50", border: "border-purple-200", badge: "bg-purple-100 text-purple-700" },
+]
   const [entries, setEntries] = useState<DiscoveryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -91,15 +94,15 @@ export default function DiscoveryPage() {
             <Lightbulb className="size-5 text-amber-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Discovery Mode</h1>
-            <p className="text-sm text-muted-foreground">Ninashangaa...</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("discovery.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("discovery.tagline")}</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Lightbulb className="size-12 text-muted-foreground/30" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Discovery Mode is for Primary learners</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("discovery.primaryOnlyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Switch to a primary learner account to explore your curiosity.
+            {t("discovery.primaryOnlyDesc")}
           </p>
         </div>
       </div>
@@ -115,8 +118,8 @@ export default function DiscoveryPage() {
               <Lightbulb className="size-6 text-amber-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">I Wonder...</h1>
-              <p className="text-sm text-muted-foreground">Ninashangaa...</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("discovery.wonderTitle")}</h1>
+              <p className="text-sm text-muted-foreground">{t("discovery.tagline")}</p>
             </div>
           </div>
           <button
@@ -124,7 +127,7 @@ export default function DiscoveryPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="size-4" />
-            Ask a Question
+            {t("discovery.askQuestion")}
           </button>
         </div>
       </div>
@@ -132,29 +135,29 @@ export default function DiscoveryPage() {
       {showForm && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">What do you wonder about?</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("discovery.formTitle")}</h2>
             <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="size-5" />
             </button>
           </div>
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground">Title</label>
+              <label className="text-sm font-medium text-foreground">{t("discovery.titleLabel")}</label>
               <input
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="Give your discovery a name"
+                placeholder={t("discovery.titlePlaceholder")}
                 className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
                 required
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Your Question</label>
+              <label className="text-sm font-medium text-foreground">{t("discovery.questionLabel")}</label>
               <textarea
                 value={form.question}
                 onChange={(e) => setForm((f) => ({ ...f, question: e.target.value }))}
-                placeholder="What would you like to know?"
+                placeholder={t("discovery.questionPlaceholder")}
                 rows={3}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
                 required
@@ -162,7 +165,7 @@ export default function DiscoveryPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-foreground">Type</label>
+                <label className="text-sm font-medium text-foreground">{t("discovery.typeLabel")}</label>
                 <select
                   value={form.discoveryType}
                   onChange={(e) => setForm((f) => ({ ...f, discoveryType: e.target.value }))}
@@ -174,13 +177,13 @@ export default function DiscoveryPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Subject (optional)</label>
+                <label className="text-sm font-medium text-foreground">{t("discovery.subjectLabel")}</label>
                 <select
                   value={form.subjectName}
                   onChange={(e) => setForm((f) => ({ ...f, subjectName: e.target.value }))}
                   className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
                 >
-                  <option value="">No specific subject</option>
+                  <option value="">{t("discovery.noSubject")}</option>
                   {primarySubjects.map((s) => (
                     <option key={s.name} value={s.name}>{s.name}</option>
                   ))}
@@ -197,7 +200,7 @@ export default function DiscoveryPage() {
               ) : (
                 <Sparkles className="size-4" />
               )}
-              Add Discovery
+              {t("discovery.addButton")}
             </button>
           </form>
         </div>
@@ -208,15 +211,15 @@ export default function DiscoveryPage() {
           <div className="flex size-20 items-center justify-center rounded-full bg-amber-500/10">
             <Lightbulb className="size-10 text-amber-500" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">What do you wonder about?</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("discovery.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Everyone is curious! Ask questions, make observations, and discover new things about the world.
+            {t("discovery.emptyDesc")}
           </p>
           <button
             onClick={() => setShowForm(true)}
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            <Plus className="size-4" /> Start Wondering
+            <Plus className="size-4" /> {t("discovery.startWondering")}
           </button>
         </div>
       ) : (
@@ -227,7 +230,7 @@ export default function DiscoveryPage() {
               <div key={group.value}>
                 <div className="flex items-center gap-2 mb-3">
                   <Icon className={`size-5 ${group.color}`} />
-                  <h2 className="text-base font-semibold text-foreground">{group.label}s</h2>
+                  <h2 className="text-base font-semibold text-foreground">{t("discovery.groupTitle", { type: group.value })}</h2>
                   <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                     {group.entries.length}
                   </span>
@@ -235,7 +238,7 @@ export default function DiscoveryPage() {
                 {group.entries.length === 0 ? (
                   <div className={`rounded-2xl border ${group.border} ${group.bg} p-8 text-center`}>
                     <Icon className={`mx-auto size-8 ${group.color} opacity-30`} />
-                    <p className="mt-2 text-sm text-muted-foreground">No {group.label.toLowerCase()}s yet</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{t("discovery.emptyGroup", { type: group.value })}</p>
                   </div>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -259,14 +262,14 @@ export default function DiscoveryPage() {
                         <div className="mt-3 flex items-center justify-between">
                           <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${entry.isResolved ? "text-green-600" : "text-muted-foreground"}`}>
                             {entry.isResolved ? <CheckCircle className="size-3" /> : null}
-                            {entry.isResolved ? "Resolved" : "Open"}
+                            {entry.isResolved ? t("discovery.resolved") : t("discovery.open")}
                           </span>
                           {!entry.isResolved && (
                             <button
                               onClick={() => handleResolve(entry.id)}
                               className="text-[10px] font-medium text-primary hover:underline"
                             >
-                              I resolved this!
+                              {t("discovery.resolveButton")}
                             </button>
                           )}
                         </div>

@@ -1,12 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Users, Loader2, Mail, Phone, BookOpen } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ChildOverview, type ParentTeachers, type TeacherItem } from "@/lib/parent-api"
 
 export default function ParentTeachersPage() {
   const { user } = useAuth()
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [teachers, setTeachers] = useState<ParentTeachers | null>(null)
@@ -36,8 +39,8 @@ export default function ParentTeachersPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Teachers</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your child&apos;s teachers and their subjects</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("teachers")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("teachers.subtitle")}</p>
       </div>
 
       {children.length > 1 && (
@@ -54,8 +57,8 @@ export default function ParentTeachersPage() {
       {teacherList.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center">
           <Users className="mx-auto mb-3 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No teachers found</p>
-          <p className="mt-1 text-xs text-muted-foreground">Teacher information will appear once class assignments are made.</p>
+          <p className="text-sm font-medium text-foreground">{t("teachers.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("teachers.emptyDesc")}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -69,6 +72,7 @@ export default function ParentTeachersPage() {
 }
 
 function TeacherCard({ teacher }: { teacher: TeacherItem }) {
+  const t = useTranslations("parent")
   const initials = teacher.fullName?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "??"
 
   return (
@@ -81,7 +85,7 @@ function TeacherCard({ teacher }: { teacher: TeacherItem }) {
           <p className="text-sm font-semibold text-foreground">{teacher.fullName}</p>
           <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
             <BookOpen className="size-3" />
-            {teacher.subject || "General"}
+            {teacher.subject || t("teachers.generalSubject")}
           </div>
           {teacher.specialization && (
             <p className="mt-0.5 text-xs text-muted-foreground">{teacher.specialization}</p>

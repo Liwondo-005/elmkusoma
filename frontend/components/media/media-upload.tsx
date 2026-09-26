@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { Upload, Loader2, FileText, Image, Video } from "lucide-react"
 
 interface MediaUploadProps {
@@ -9,6 +10,7 @@ interface MediaUploadProps {
 }
 
 export function MediaUpload({ onUploadComplete, institutionId }: MediaUploadProps) {
+  const t = useTranslations("ui")
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
@@ -34,11 +36,11 @@ export function MediaUpload({ onUploadComplete, institutionId }: MediaUploadProp
         body: formData,
       })
 
-      if (!res.ok) throw new Error("Upload failed")
+      if (!res.ok) throw new Error(t("mediaUpload.uploadFailed"))
       const data = await res.json()
       onUploadComplete?.(data.data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed")
+      setError(err instanceof Error ? err.message : t("mediaUpload.uploadFailed"))
     } finally {
       setUploading(false)
     }
@@ -72,8 +74,8 @@ export function MediaUpload({ onUploadComplete, institutionId }: MediaUploadProp
         ) : (
           <>
             <Upload className="size-8 text-muted-foreground" />
-            <p className="mt-2 text-sm font-medium text-foreground">Click or drag to upload</p>
-            <p className="mt-1 text-xs text-muted-foreground">PDF, Images, Videos, Documents</p>
+            <p className="mt-2 text-sm font-medium text-foreground">{t("mediaUpload.dropTitle")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("mediaUpload.dropHint")}</p>
           </>
         )}
       </div>

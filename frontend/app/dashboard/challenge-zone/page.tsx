@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type QuestChallenge } from "@/lib/api"
 import { Zap, Trophy, Star, Filter, CheckCircle, Clock, Target, ArrowLeft } from "lucide-react"
 
@@ -9,6 +10,8 @@ type Difficulty = "ALL" | "EASY" | "MEDIUM" | "HARD"
 
 export default function ChallengeZonePage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [challenges, setChallenges] = useState<QuestChallenge[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Difficulty>("ALL")
@@ -56,14 +59,14 @@ export default function ChallengeZonePage() {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <button onClick={() => { setSelected(null); setAnswer("") }} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" /> Back to Challenges
+          <ArrowLeft className="size-4" /> {t("challenge.backToList")}
         </button>
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10"><Zap className="size-5 text-primary" /></div>
             <div>
               <h2 className="text-lg font-bold text-foreground">{selected.title}</h2>
-              <p className="text-xs text-muted-foreground">{selected.subjectName || "Challenge"}</p>
+              <p className="text-xs text-muted-foreground">{selected.subjectName || t("challenge.fallbackSubject")}</p>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mb-4">{selected.description}</p>
@@ -71,14 +74,14 @@ export default function ChallengeZonePage() {
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${selected.difficulty === "EASY" ? "bg-green-100 text-green-700" : selected.difficulty === "MEDIUM" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>
               {selected.difficulty}
             </span>
-            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{selected.totalPoints} pts</span>
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{t("quests.ptsCount", { count: selected.totalPoints })}</span>
           </div>
           <textarea
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Write your answer here..."
+            placeholder={t("challenge.answerPlaceholder")}
             className="w-full rounded-xl border border-border bg-background p-4 text-sm min-h-[150px] focus:outline-none focus:ring-2 focus:ring-primary/30"
-            aria-label="Your answer"
+            aria-label={t("challenge.answerLabel")}
           />
           <div className="mt-4 flex justify-end">
             <button
@@ -86,7 +89,7 @@ export default function ChallengeZonePage() {
               disabled={!answer.trim() || submitting}
               className="rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {submitting ? "Submitting..." : "Submit Answer"}
+              {submitting ? t("challenge.submitting") : t("challenge.submit")}
             </button>
           </div>
         </div>
@@ -100,8 +103,8 @@ export default function ChallengeZonePage() {
         <div className="flex items-center gap-3">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10"><Zap className="size-6 text-primary" /></div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Challenge Zone</h1>
-            <p className="text-sm text-muted-foreground">Test your skills with challenging problems!</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("challenge.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("challenge.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -110,17 +113,17 @@ export default function ChallengeZonePage() {
         <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-xs">
           <Trophy className="mx-auto size-6 text-amber-500" />
           <p className="mt-1 text-2xl font-bold text-foreground">{completed}</p>
-          <p className="text-xs text-muted-foreground">Completed</p>
+          <p className="text-xs text-muted-foreground">{ts("completed")}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-xs">
           <Star className="mx-auto size-6 text-yellow-500" />
           <p className="mt-1 text-2xl font-bold text-foreground">{totalPoints}</p>
-          <p className="text-xs text-muted-foreground">Points</p>
+          <p className="text-xs text-muted-foreground">{t("challenge.points")}</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-xs">
           <Target className="mx-auto size-6 text-primary" />
           <p className="mt-1 text-2xl font-bold text-foreground">{challenges.length}</p>
-          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="text-xs text-muted-foreground">{t("challenge.total")}</p>
         </div>
       </div>
 
@@ -136,8 +139,8 @@ export default function ChallengeZonePage() {
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-12 text-center">
           <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-primary/10"><Zap className="size-8 text-primary" /></div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No challenges yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground">Check back soon for new challenges!</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("challenge.emptyTitle")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("challenge.emptyDesc")}</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -155,11 +158,11 @@ export default function ChallengeZonePage() {
                 {c.subjectName && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{c.subjectName}</span>}
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs font-medium text-amber-600">{c.totalPoints} pts</span>
+                <span className="text-xs font-medium text-amber-600">{t("quests.ptsCount", { count: c.totalPoints })}</span>
                 {c.isCompleted ? (
-                  <span className="text-xs font-medium text-green-600">Score: {c.score}</span>
+                  <span className="text-xs font-medium text-green-600">{t("quests.scoreLine", { score: c.score, total: c.totalPoints })}</span>
                 ) : (
-                  <span className="text-xs font-medium text-primary">Start Challenge</span>
+                  <span className="text-xs font-medium text-primary">{t("challenge.start")}</span>
                 )}
               </div>
             </button>

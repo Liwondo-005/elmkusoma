@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react"
 import { learnerApi, type Resource } from "@/lib/learner-api"
 import { VideoPlayer } from "@/components/events/video-player"
+import { useTranslations } from "next-intl"
 import { Search, Play, Loader2, VideoOff, Clock, Filter, Download, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 export default function VideoLibraryPage() {
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [videos, setVideos] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -25,7 +28,7 @@ export default function VideoLibraryPage() {
       const all = await learnerApi.getVideoLibrary()
       setVideos(all.filter((r) => r.resourceType === "VIDEO"))
     } catch (e: any) {
-      setError(e.message || "Failed to load videos")
+      setError(e.message || t("vids.loadError"))
     } finally {
       setLoading(false)
     }
@@ -42,8 +45,8 @@ export default function VideoLibraryPage() {
   return (
     <div role="main" className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Video Library</h1>
-        <p className="text-muted-foreground">Browse educational videos, tutorials, and recordings</p>
+        <h1 className="text-2xl font-bold">{t("vids.title")}</h1>
+        <p className="text-muted-foreground">{t("vids.subtitle")}</p>
       </div>
 
       {playingUrl && (
@@ -58,10 +61,10 @@ export default function VideoLibraryPage() {
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Search videos..."
+          placeholder={t("vids.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search videos"
+          aria-label={t("vids.searchPlaceholder")}
           className="h-10 w-full rounded-lg border border-border bg-card pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
@@ -76,9 +79,9 @@ export default function VideoLibraryPage() {
       ) : filtered.length === 0 ? (
         <div role="status" className="flex flex-col items-center justify-center py-16 text-center">
           <VideoOff className="size-12 text-muted-foreground/40" />
-          <p className="mt-4 text-lg font-medium">No videos found</p>
+          <p className="mt-4 text-lg font-medium">{t("vids.emptyTitle")}</p>
           <p className="text-sm text-muted-foreground">
-            {search ? "Try a different search term" : "Videos will appear here once uploaded"}
+            {search ? t("vids.emptySearch") : t("vids.emptyDefault")}
           </p>
         </div>
       ) : (
@@ -92,7 +95,7 @@ export default function VideoLibraryPage() {
                   <Play className="size-6" />
                 </div>
                 <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
-                  Video
+                  {t("vids.badge")}
                 </div>
               </div>
               <div className="p-4">
@@ -105,11 +108,11 @@ export default function VideoLibraryPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    aria-label={`Download ${video.title}`}
+                    aria-label={t("vids.downloadLabel", { title: video.title })}
                     className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     <Download className="size-3" />
-                    Download
+                    {t("vids.download")}
                   </a>
                 </div>
               </div>
@@ -120,9 +123,9 @@ export default function VideoLibraryPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">Looking for more materials?</p>
+        <p className="text-sm text-muted-foreground">{t("vids.moreHint")}</p>
         <Link href="/dashboard/learner/resources" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          Browse all Resources <ArrowRight className="size-3" />
+          {t("vids.browseAll")} <ArrowRight className="size-3" />
         </Link>
       </div>
     </div>

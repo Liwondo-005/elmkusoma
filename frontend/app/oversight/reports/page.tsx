@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, FileBarChart, FileText, Download, Calendar, ClipboardList, Award, BookOpen, Video, AlertTriangle } from "lucide-react"
@@ -90,12 +92,13 @@ const reportTypes: Report[] = [
 ]
 
 export default function OversightReportsPage() {
+  const t = useTranslations("oversight");
   const { user, loading: authLoading } = useRequireAuth()
 
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading reports...</div>
+        <div className="text-muted-foreground">{t("reports.loadingReports")}</div>
       </div>
     )
   }
@@ -108,10 +111,9 @@ export default function OversightReportsPage() {
             <FileBarChart className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Reports Center</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("reports.reportsCenter")}</h1>
             <p className="text-sm text-muted-foreground">
-              Generate and download jurisdiction-scoped reports
-            </p>
+              {t("reports.generateAndDownloadJurisdiction")}</p>
           </div>
         </div>
       </div>
@@ -126,6 +128,7 @@ export default function OversightReportsPage() {
 }
 
 function ReportCard({ report }: { report: Report }) {
+  const t = useTranslations("oversight")
   const icons: Record<string, React.ReactNode> = {
     Award: <Award className="size-5" />,
     ClipboardList: <ClipboardList className="size-5" />,
@@ -155,8 +158,7 @@ function ReportCard({ report }: { report: Report }) {
             {report.available && (
               <button className="text-primary hover:underline text-sm flex items-center gap-1">
                 <Download className="size-3" />
-                Generate
-              </button>
+                {t("reports.generate")}</button>
             )}
           </div>
         </div>

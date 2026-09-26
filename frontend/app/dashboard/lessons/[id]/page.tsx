@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learningApi, type Lesson, type LessonProgress } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, CheckCircle, Clock, BookOpen, Play } from "lucide-react"
@@ -12,6 +13,8 @@ export default function LessonDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [progress, setProgress] = useState<LessonProgress | null>(null)
   const [loading, setLoading] = useState(true)
@@ -75,11 +78,11 @@ export default function LessonDetailPage() {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 size-4" /> Back
+          <ArrowLeft className="mr-2 size-4" /> {t("lessonDetail.back")}
         </Button>
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <BookOpen className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Lesson Not Found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("lessonDetail.notFound")}</h3>
         </div>
       </div>
     )
@@ -90,7 +93,7 @@ export default function LessonDetailPage() {
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.back()} className="w-fit">
-        <ArrowLeft className="mr-2 size-4" /> Back to Lessons
+        <ArrowLeft className="mr-2 size-4" /> {t("lessonDetail.backToLessons")}
       </Button>
 
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -104,11 +107,11 @@ export default function LessonDetailPage() {
           <div className="flex items-center gap-2">
             {pct >= 100 ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                <CheckCircle className="size-3" /> Completed
+                <CheckCircle className="size-3" /> {ts("completed")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                <Clock className="size-3" /> {Math.round(pct)}% Complete
+                <Clock className="size-3" /> {t("lessonDetail.percentComplete", { pct: Math.round(pct) })}
               </span>
             )}
           </div>
@@ -135,17 +138,17 @@ export default function LessonDetailPage() {
 
         {lesson.fileAttachments && (
           <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-semibold text-foreground">Attachments</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("lessonDetail.attachments")}</h3>
             <p className="mt-1 text-xs text-muted-foreground">{lesson.fileAttachments}</p>
           </div>
         )}
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-lg font-semibold text-foreground">Progress</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("lessonDetail.progressTitle")}</h2>
         <div className="mt-3">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Completion</span>
+            <span>{t("lessonDetail.completion")}</span>
             <span>{Math.round(pct)}%</span>
           </div>
           <div className="mt-2 h-2 w-full rounded-full bg-muted overflow-hidden">
@@ -155,17 +158,17 @@ export default function LessonDetailPage() {
         <div className="mt-4 flex gap-2">
           {pct < 25 && (
             <Button variant="outline" size="sm" onClick={() => updateProgressPct(25)}>
-              Mark 25%
+              {t("lessonDetail.markPct", { pct: 25 })}
             </Button>
           )}
           {pct < 50 && (
             <Button variant="outline" size="sm" onClick={() => updateProgressPct(50)}>
-              Mark 50%
+              {t("lessonDetail.markPct", { pct: 50 })}
             </Button>
           )}
           {pct < 75 && (
             <Button variant="outline" size="sm" onClick={() => updateProgressPct(75)}>
-              Mark 75%
+              {t("lessonDetail.markPct", { pct: 75 })}
             </Button>
           )}
           {pct < 100 && (
@@ -175,7 +178,7 @@ export default function LessonDetailPage() {
               ) : (
                 <CheckCircle className="size-3.5" />
               )}
-              Mark Complete
+              {t("lessonDetail.markComplete")}
             </Button>
           )}
         </div>
@@ -183,10 +186,10 @@ export default function LessonDetailPage() {
 
       <div className="flex justify-between">
         <Button variant="outline" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 size-4" /> Previous
+          <ArrowLeft className="mr-2 size-4" /> {t("lessonDetail.previous")}
         </Button>
         <Button onClick={() => router.push("/dashboard/lessons")}>
-          Next <Play className="ml-2 size-4" />
+          {t("lessonDetail.next")} <Play className="ml-2 size-4" />
         </Button>
       </div>
     </div>

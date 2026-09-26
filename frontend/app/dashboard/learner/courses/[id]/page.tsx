@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type CourseDetail, type CourseModuleSummary, type CourseLesson, type Enrollment, type CourseSummary, type CourseLessonFlat } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
 import { BookOpen, ArrowLeft, ChevronDown, ChevronRight, Loader2, AlertCircle, CheckCircle, Clock, Bookmark, BookmarkCheck, Play, FileText, ExternalLink } from "lucide-react"
@@ -11,6 +12,8 @@ import { getLastAccessedLesson } from "@/lib/learner-api"
 
 export default function CourseDetailPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const params = useParams()
   const router = useRouter()
   const courseId = params.id as string
@@ -64,7 +67,7 @@ export default function CourseDetailPage() {
         setBookmarked(isBookmarked)
       }).catch(() => {})
     } catch {
-      setError("Failed to load course details")
+      setError(t("course.loadError"))
     } finally {
       setLoading(false)
     }
@@ -76,9 +79,9 @@ export default function CourseDetailPage() {
       setError(null)
       const result = await learnerApi.enroll(courseId)
       setEnrollment(result)
-      setSuccess("Successfully enrolled in this course!")
+      setSuccess(t("course.enrolledOk"))
     } catch (err: any) {
-      setError(err.message || "Failed to enroll in course")
+      setError(err.message || t("course.enrollError"))
     } finally {
       setEnrolling(false)
     }
@@ -149,11 +152,11 @@ export default function CourseDetailPage() {
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="size-4" />
-            Course not found
+            {t("course.notFound")}
           </div>
         </div>
         <Link href="/dashboard/learner/courses" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-          <ArrowLeft className="size-4" /> Back to courses
+          <ArrowLeft className="size-4" /> {t("course.backLink")}
         </Link>
       </div>
     )
@@ -166,7 +169,7 @@ export default function CourseDetailPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <Link href="/dashboard/learner/courses" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-          <ArrowLeft className="size-4" /> Back to courses
+          <ArrowLeft className="size-4" /> {t("course.backLink")}
         </Link>
         <button
           onClick={handleBookmark}
@@ -178,7 +181,7 @@ export default function CourseDetailPage() {
           ) : (
             <Bookmark className="size-3.5" />
           )}
-          {bookmarked ? "Saved" : "Save"}
+          {bookmarked ? t("course.saved") : t("course.save")}
         </button>
       </div>
 
@@ -221,7 +224,7 @@ export default function CourseDetailPage() {
             onClick={handleBookmark}
             disabled={bookmarkLoading}
             className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-            title={bookmarked ? "Remove bookmark" : "Bookmark this course"}
+            title={bookmarked ? t("course.removeBm") : t("course.addBm")}
           >
             {bookmarked ? <BookmarkCheck className="size-5 text-primary" /> : <Bookmark className="size-5" />}
           </button>
@@ -239,7 +242,7 @@ export default function CourseDetailPage() {
           )}
           {modules && (
             <span className="text-xs text-muted-foreground">
-              {modules.length} modules &middot; {courseLessons.length} lessons
+              {t("course.modLessons", { mods: modules.length, lessons: courseLessons.length })}
             </span>
           )}
         </div>
@@ -247,14 +250,14 @@ export default function CourseDetailPage() {
           {enrollment ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Your progress</span>
+                <span className="text-muted-foreground">{t("course.yourProgress")}</span>
                 <span className="font-semibold text-teal">{courseProgress.pct.toFixed(0)}%</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full bg-teal transition-all" style={{ width: `${courseProgress.pct}%` }} />
               </div>
               <p className="text-xs text-muted-foreground">
-                {courseProgress.completed} of {courseProgress.total} lessons completed
+                {t("course.lessonsLine", { done: courseProgress.completed, total: courseProgress.total })}
               </p>
               {nextLesson ? (
                 <Link
@@ -262,7 +265,7 @@ export default function CourseDetailPage() {
                   className="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-medium text-white hover:bg-teal/90"
                 >
                   <Play className="size-4" />
-                  {courseProgress.pct > 0 ? "Continue Learning" : "Start Learning"}
+                  {courseProgress.pct > 0 ? t("continueLearning") : t("course.startLearning")}
                 </Link>
               ) : (
                 <Link
@@ -279,7 +282,7 @@ export default function CourseDetailPage() {
                   })()}
                   className="inline-flex items-center gap-2 rounded-lg bg-teal px-4 py-2 text-sm font-medium text-white hover:bg-teal/90"
                 >
-                  Continue Learning
+                  {t("continueLearning")}
                 </Link>
               )}
             </div>
@@ -292,10 +295,10 @@ export default function CourseDetailPage() {
               {enrolling ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Enrolling...
+                  {t("course.enrolling")}
                 </>
               ) : (
-                "Enroll in Course"
+                t("course.enroll")
               )}
             </button>
           )}
@@ -304,7 +307,7 @@ export default function CourseDetailPage() {
 
       {modules && modules.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground">Course Content</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("course.contentTitle")}</h2>
           <div className="mt-4 space-y-3">
             {modules.sort((a, b) => a.sortOrder - b.sortOrder).map((module) => (
               <div key={module.id} className="rounded-xl border border-border overflow-hidden">
@@ -321,7 +324,7 @@ export default function CourseDetailPage() {
                       <p className="text-xs text-muted-foreground truncate">{module.description}</p>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">{module.lessonCount} lessons</span>
+                  <span className="text-xs text-muted-foreground">{t("course.modCount", { count: module.lessonCount })}</span>
                   {expandedModules.has(module.id) ? (
                     <ChevronDown className="size-4 text-muted-foreground" />
                   ) : (
@@ -345,7 +348,7 @@ export default function CourseDetailPage() {
                         {lesson.durationMinutes && (
                           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                             <Clock className="size-3" />
-                            {lesson.durationMinutes}m
+                            {t("course.minsShort", { count: lesson.durationMinutes })}
                           </span>
                         )}
                         {enrollment && (
@@ -354,7 +357,7 @@ export default function CourseDetailPage() {
                       </Link>
                     ))}
                     {moduleLessons[module.id].length === 0 && (
-                      <p className="px-4 py-3 text-sm text-muted-foreground">No lessons in this module yet.</p>
+                      <p className="px-4 py-3 text-sm text-muted-foreground">{t("course.emptyModule")}</p>
                     )}
                   </div>
                 )}
@@ -371,7 +374,7 @@ export default function CourseDetailPage() {
 
       {relatedCourses.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground">Related Courses</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("course.relatedTitle")}</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {relatedCourses.map((rc) => (
               <Link

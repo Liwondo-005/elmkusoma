@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import {
   teacherApi,
@@ -45,36 +46,6 @@ interface AttendanceSummary {
   attendanceRate: number
 }
 
-const statusConfig: Record<
-  string,
-  { label: string; icon: typeof Check; className: string; activeClassName: string }
-> = {
-  PRESENT: {
-    label: "Present",
-    icon: Check,
-    className: "border-border bg-background text-muted-foreground hover:bg-muted",
-    activeClassName: "border-teal/40 bg-teal/10 text-teal",
-  },
-  ABSENT: {
-    label: "Absent",
-    icon: X,
-    className: "border-border bg-background text-muted-foreground hover:bg-muted",
-    activeClassName: "border-destructive/40 bg-destructive/10 text-destructive",
-  },
-  LATE: {
-    label: "Late",
-    icon: Clock,
-    className: "border-border bg-background text-muted-foreground hover:bg-muted",
-    activeClassName: "border-amber-500/40 bg-amber-500/10 text-amber-600",
-  },
-  EXCUSED: {
-    label: "Excused",
-    icon: AlertCircle,
-    className: "border-border bg-background text-muted-foreground hover:bg-muted",
-    activeClassName: "border-primary/40 bg-primary/10 text-primary",
-  },
-}
-
 interface MarkTabProps {
   classes: TeacherClassGroup[]
   students: TeacherStudent[]
@@ -100,13 +71,46 @@ function MarkAttendanceTab({
   markedCount, totalCount, setSelectedClassId, setSelectedDate,
   setStatus, setAllStatuses, submitAttendance,
 }: MarkTabProps) {
+  const t = useTranslations("teacher")
+  const ts = useTranslations("status")
+
+  const statusConfig: Record<
+    string,
+    { label: string; icon: typeof Check; className: string; activeClassName: string }
+  > = {
+    PRESENT: {
+      label: ts("present"),
+      icon: Check,
+      className: "border-border bg-background text-muted-foreground hover:bg-muted",
+      activeClassName: "border-teal/40 bg-teal/10 text-teal",
+    },
+    ABSENT: {
+      label: ts("absent"),
+      icon: X,
+      className: "border-border bg-background text-muted-foreground hover:bg-muted",
+      activeClassName: "border-destructive/40 bg-destructive/10 text-destructive",
+    },
+    LATE: {
+      label: ts("late"),
+      icon: Clock,
+      className: "border-border bg-background text-muted-foreground hover:bg-muted",
+      activeClassName: "border-amber-500/40 bg-amber-500/10 text-amber-600",
+    },
+    EXCUSED: {
+      label: ts("excused"),
+      icon: AlertCircle,
+      className: "border-border bg-background text-muted-foreground hover:bg-muted",
+      activeClassName: "border-primary/40 bg-primary/10 text-primary",
+    },
+  }
+
   return (
     <>
       {success && (
         <div className="rounded-2xl border border-teal/20 bg-teal/5 p-4">
           <div className="flex items-center gap-2 text-sm text-teal">
             <Check className="size-4" />
-            Attendance submitted successfully
+            {t("attendance.submitSuccess")}
           </div>
         </div>
       )}
@@ -122,7 +126,7 @@ function MarkAttendanceTab({
             disabled={loadingClasses}
             className="h-10 rounded-lg border border-border bg-background pl-9 pr-8 text-sm outline-none focus:border-ring disabled:opacity-50"
           >
-            <option value="">Select a class</option>
+            <option value="">{t("attendance.selectClassOption")}</option>
             {classes.map((c) => (
               <option key={c.classGroupId} value={c.classGroupId}>
                 {c.className} — {c.subjectName}
@@ -144,10 +148,10 @@ function MarkAttendanceTab({
         {students.length > 0 && (
           <div className="flex gap-2 sm:ml-auto">
             <Button variant="outline" size="sm" onClick={() => setAllStatuses("PRESENT")}>
-              <Check className="size-3.5" /> Mark All Present
+              <Check className="size-3.5" /> {t("attendance.markAllPresent")}
             </Button>
             <Button variant="outline" size="sm" onClick={() => setAllStatuses("ABSENT")}>
-              <X className="size-3.5" /> Mark All Absent
+              <X className="size-3.5" /> {t("attendance.markAllAbsent")}
             </Button>
           </div>
         )}
@@ -160,14 +164,14 @@ function MarkAttendanceTab({
       ) : classes.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <ClipboardCheck className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Classes Found</h3>
-          <p className="mt-2 text-sm text-muted-foreground">You have no assigned classes to take attendance for.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("schedule.emptyTitle")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("attendance.noClassesDesc")}</p>
         </div>
       ) : !selectedClassId ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <ClipboardCheck className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Select a Class</h3>
-          <p className="mt-2 text-sm text-muted-foreground">Choose a class and date to begin marking attendance.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("gradebook.selectClass")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("attendance.selectClassDesc")}</p>
         </div>
       ) : loadingStudents ? (
         <div className="flex items-center justify-center py-20">
@@ -176,20 +180,20 @@ function MarkAttendanceTab({
       ) : students.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Users className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Students</h3>
-          <p className="mt-2 text-sm text-muted-foreground">No students are enrolled in this class.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("gradebook.noStudents")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("gradebook.noStudentsDesc")}</p>
         </div>
       ) : (
         <>
           <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
-            <span className="text-sm text-muted-foreground">{markedCount} of {totalCount} students marked</span>
+            <span className="text-sm text-muted-foreground">{t("attendance.markedCount", { marked: markedCount, total: totalCount })}</span>
             <Button onClick={submitAttendance} disabled={submitting || markedCount === 0} size="sm">
               {submitting ? (
                 <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
               ) : (
                 <ClipboardCheck className="size-3.5" />
               )}
-              {submitting ? "Submitting..." : "Submit Attendance"}
+              {submitting ? t("attendance.submitting") : t("attendance.submitAttendance")}
             </Button>
           </div>
 
@@ -197,9 +201,9 @@ function MarkAttendanceTab({
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-muted-foreground">Student</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">Admission #</th>
-                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">Status</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{t("gradebook.colStudent")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground hidden sm:table-cell">{t("students.colAdmission")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground text-right">{t("students.colStatus")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -259,27 +263,41 @@ function HistoryTab({
   historyRecords, historySummary, loadingHistory,
   setHistoryClassId, setHistoryStartDate, setHistoryEndDate, loadHistory,
 }: HistoryTabProps) {
+  const t = useTranslations("teacher")
+  const tc = useTranslations("common")
+  const ts = useTranslations("status")
+
+  function historyStatusLabel(status: string) {
+    switch (status) {
+      case "PRESENT": return ts("present")
+      case "ABSENT": return ts("absent")
+      case "LATE": return ts("late")
+      case "EXCUSED": return ts("excused")
+      default: return status
+    }
+  }
+
   return (
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-2">
           <Calendar className="size-4 text-muted-foreground" />
-          <label className="text-sm font-medium">Class:</label>
+          <label className="text-sm font-medium">{t("attendance.classLabel")}</label>
           <select
             value={historyClassId}
             onChange={(e) => setHistoryClassId(e.target.value)}
             className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
           >
-            <option value="">Select class</option>
+            <option value="">{t("lessons.selectClassOption")}</option>
             {classes.map((c) => (
               <option key={c.classGroupId} value={c.classGroupId}>{c.className}</option>
             ))}
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">From:</label>
+          <label className="text-sm font-medium">{t("attendance.fromLabel")}</label>
           <input type="date" value={historyStartDate} onChange={(e) => setHistoryStartDate(e.target.value)} className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm" />
-          <label className="text-sm font-medium">To:</label>
+          <label className="text-sm font-medium">{t("attendance.toLabel")}</label>
           <input type="date" value={historyEndDate} onChange={(e) => setHistoryEndDate(e.target.value)} className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm" />
         </div>
         <Button onClick={loadHistory} disabled={!historyClassId || loadingHistory} size="sm">
@@ -288,35 +306,35 @@ function HistoryTab({
           ) : (
             <History className="size-3.5" />
           )}
-          {loadingHistory ? "Loading..." : "View History"}
+          {loadingHistory ? tc("loading") : t("attendance.viewHistory")}
         </Button>
       </div>
 
       {historySummary.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Class Attendance Summary</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t("attendance.historySummaryTitle")}</h3>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <div className="text-center">
               <p className="text-2xl font-bold text-foreground">{historySummary.reduce((s, r) => s + r.presentDays, 0)}</p>
-              <p className="text-xs text-muted-foreground">Present</p>
+              <p className="text-xs text-muted-foreground">{ts("present")}</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-destructive">{historySummary.reduce((s, r) => s + r.absentDays, 0)}</p>
-              <p className="text-xs text-muted-foreground">Absent</p>
+              <p className="text-xs text-muted-foreground">{ts("absent")}</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-yellow-600">{historySummary.reduce((s, r) => s + r.lateDays, 0)}</p>
-              <p className="text-xs text-muted-foreground">Late</p>
+              <p className="text-xs text-muted-foreground">{ts("late")}</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-muted-foreground">{historySummary.reduce((s, r) => s + r.excusedDays, 0)}</p>
-              <p className="text-xs text-muted-foreground">Excused</p>
+              <p className="text-xs text-muted-foreground">{ts("excused")}</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-teal">
                 {historySummary.length > 0 ? Math.round(historySummary.reduce((s, r) => s + r.attendanceRate, 0) / historySummary.length) : 0}%
               </p>
-              <p className="text-xs text-muted-foreground">Avg Rate</p>
+              <p className="text-xs text-muted-foreground">{t("attendance.avgRate")}</p>
             </div>
           </div>
         </div>
@@ -327,10 +345,10 @@ function HistoryTab({
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-3 font-medium text-muted-foreground text-left">Student</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-left hidden sm:table-cell">Admission #</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-left">Date</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground text-left">Status</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-left">{t("gradebook.colStudent")}</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-left hidden sm:table-cell">{t("students.colAdmission")}</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-left">{t("attendance.colDate")}</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-left">{t("students.colStatus")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -346,7 +364,7 @@ function HistoryTab({
                       record.status === "LATE" ? "bg-yellow-500/10 text-yellow-600" :
                       "bg-muted text-muted-foreground"
                     }`}>
-                      {record.status}
+                      {historyStatusLabel(record.status)}
                     </span>
                   </td>
                 </tr>
@@ -359,14 +377,14 @@ function HistoryTab({
       {historyClassId && !loadingHistory && historyRecords.length === 0 && (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <ClipboardList className="mx-auto size-8 text-muted-foreground/40" />
-          <p className="mt-2 text-sm text-muted-foreground">No attendance records found for this period.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("attendance.noHistoryRecords")}</p>
         </div>
       )}
 
       {!historyClassId && (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Calendar className="mx-auto size-8 text-muted-foreground/40" />
-          <p className="mt-2 text-sm text-muted-foreground">Select a class to view attendance history.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("attendance.selectClassHistory")}</p>
         </div>
       )}
     </>
@@ -375,6 +393,8 @@ function HistoryTab({
 
 export default function TeacherAttendancePage() {
   const { user } = useAuth()
+  const t = useTranslations("teacher")
+  const tn = useTranslations("nav")
   const [classes, setClasses] = useState<TeacherClassGroup[]>([])
   const [students, setStudents] = useState<TeacherStudent[]>([])
   const [attendance, setAttendance] = useState<
@@ -421,7 +441,7 @@ export default function TeacherAttendancePage() {
       const data = await teacherApi.getClasses()
       setClasses(data)
     } catch {
-      setError("Failed to load classes")
+      setError(t("classes.loadError"))
       setClasses([])
     } finally {
       setLoadingClasses(false)
@@ -444,7 +464,7 @@ export default function TeacherAttendancePage() {
       })
       setAttendance(initial)
     } catch {
-      setError("Failed to load students")
+      setError(t("students.loadError"))
       setStudents([])
     } finally {
       setLoadingStudents(false)
@@ -472,7 +492,7 @@ export default function TeacherAttendancePage() {
       }))
 
     if (records.length === 0) {
-      setError("Mark at least one student before submitting")
+      setError(t("attendance.markRequired"))
       return
     }
 
@@ -487,7 +507,7 @@ export default function TeacherAttendancePage() {
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch {
-      setError("Failed to submit attendance")
+      setError(t("attendance.submitError"))
     } finally {
       setSubmitting(false)
     }
@@ -544,10 +564,10 @@ export default function TeacherAttendancePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Attendance
+            {tn("attendance")}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Record and review daily attendance for your classes.
+            {t("attendance.subtitle")}
           </p>
         </div>
         {activeTab === "mark" && selectedClassId && students.length > 0 && (
@@ -561,7 +581,7 @@ export default function TeacherAttendancePage() {
             ) : (
               <ClipboardCheck className="size-3.5" />
             )}
-            {submitting ? "Submitting..." : "Submit Attendance"}
+            {submitting ? t("attendance.submitting") : t("attendance.submitAttendance")}
           </Button>
         )}
       </div>
@@ -573,7 +593,7 @@ export default function TeacherAttendancePage() {
             activeTab === "mark" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <ClipboardCheck className="size-4" /> Mark Attendance
+          <ClipboardCheck className="size-4" /> {t("attendance.markTab")}
         </button>
         <button
           onClick={() => setActiveTab("history")}
@@ -581,7 +601,7 @@ export default function TeacherAttendancePage() {
             activeTab === "history" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <History className="size-4" /> History
+          <History className="size-4" /> {tn("history")}
         </button>
       </div>
 

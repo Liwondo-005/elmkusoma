@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { primaryApi, type TeacherInfo } from "@/lib/api"
 import { GraduationCap, Mail, MessageSquare, BookOpen, Users } from "lucide-react"
 
@@ -16,6 +17,9 @@ const SUBJECT_COLORS: Record<string, string> = {
 
 export default function MyTeachersPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
+  const tc = useTranslations("common")
   const [teachers, setTeachers] = useState<TeacherInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -32,7 +36,7 @@ export default function MyTeachersPage() {
       const data = await primaryApi.getTeachers()
       setTeachers(data)
     } catch {
-      setError("Could not load your teachers")
+      setError(t("teachers.loadError"))
     } finally {
       setLoading(false)
     }
@@ -56,8 +60,8 @@ export default function MyTeachersPage() {
             <GraduationCap className="size-6 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Teachers</h1>
-            <p className="text-sm text-muted-foreground">Mwalimu Wangu</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("teachers.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("teachers.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -65,7 +69,7 @@ export default function MyTeachersPage() {
       {error && (
         <div className="rounded-xl bg-destructive/10 p-4 text-center text-sm text-destructive">
           {error}
-          <button onClick={loadTeachers} className="ml-2 underline">Retry</button>
+          <button onClick={loadTeachers} className="ml-2 underline">{tc("retry")}</button>
         </div>
       )}
 
@@ -74,9 +78,9 @@ export default function MyTeachersPage() {
           <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-muted">
             <GraduationCap className="size-8 text-muted-foreground" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No teachers assigned yet</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("teachers.emptyTitle")}</h3>
           <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            Your teachers will appear here once they are assigned to your classes.
+            {t("teachers.emptyDesc")}
           </p>
         </div>
       ) : (
@@ -84,11 +88,11 @@ export default function MyTeachersPage() {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Users className="size-4" />
-              {teachers.length} teacher{teachers.length !== 1 ? "s" : ""}
+              {t("teachers.countLine", { count: teachers.length })}
             </span>
             <span className="flex items-center gap-1.5">
               <BookOpen className="size-4" />
-              {subjects.length} subject{subjects.length !== 1 ? "s" : ""}
+              {t("teachers.subjectsLine", { count: subjects.length })}
             </span>
           </div>
 
@@ -130,7 +134,7 @@ export default function MyTeachersPage() {
                         className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80"
                       >
                         <Mail className="size-3.5" />
-                        Email
+                        {t("teachers.emailButton")}
                       </a>
                     )}
                     <Link
@@ -138,7 +142,7 @@ export default function MyTeachersPage() {
                       className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
                     >
                       <MessageSquare className="size-3.5" />
-                      Ask a Question
+                      {t("teachers.askButton")}
                     </Link>
                   </div>
                 </div>

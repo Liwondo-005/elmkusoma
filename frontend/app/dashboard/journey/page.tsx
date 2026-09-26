@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learningApi, type Lesson, type LessonProgress, primaryApi, type LearningPassport } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { Map, CheckCircle, Clock, ArrowRight, Compass } from "lucide-react"
 
 export default function JourneyPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [progress, setProgress] = useState<LessonProgress[]>([])
   const [passport, setPassport] = useState<LearningPassport | null>(null)
@@ -80,17 +83,17 @@ export default function JourneyPage() {
             <Map className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Learning Journey</h1>
-            <p className="text-sm text-muted-foreground">Safari yangu ya Masomo</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("journey.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("journey.subtitle")}</p>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <Compass className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Journey view available for Primary learners</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("journey.primaryOnlyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Switch to a primary learner account to see your learning journey map.
+            {t("journey.primaryOnlyDesc")}
           </p>
         </div>
       </div>
@@ -105,8 +108,8 @@ export default function JourneyPage() {
             <Map className="size-6 text-teal" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Learning Journey</h1>
-            <p className="text-sm text-muted-foreground">Safari yangu ya Masomo</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("journey.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("journey.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -119,7 +122,7 @@ export default function JourneyPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{completedCount}</p>
-              <p className="text-xs text-muted-foreground">Subjects Completed</p>
+              <p className="text-xs text-muted-foreground">{t("journey.subjectsCompleted")}</p>
             </div>
           </div>
         </div>
@@ -130,7 +133,7 @@ export default function JourneyPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{totalCount - completedCount}</p>
-              <p className="text-xs text-muted-foreground">Still Exploring</p>
+              <p className="text-xs text-muted-foreground">{t("journey.stillExploring")}</p>
             </div>
           </div>
         </div>
@@ -141,7 +144,7 @@ export default function JourneyPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{passport?.stampsEarned ?? 0}</p>
-              <p className="text-xs text-muted-foreground">Stamps Earned</p>
+              <p className="text-xs text-muted-foreground">{t("journey.stampsEarned")}</p>
             </div>
           </div>
         </div>
@@ -150,8 +153,8 @@ export default function JourneyPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Journey Progress</h2>
-            <p className="text-sm text-muted-foreground">{completedCount} of {totalCount} subjects completed</p>
+            <h2 className="text-lg font-semibold text-foreground">{t("journey.progressTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t("journey.progressSummary", { done: completedCount, total: totalCount })}</p>
           </div>
           <span className="text-2xl font-bold text-primary">{totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%</span>
         </div>
@@ -208,10 +211,10 @@ export default function JourneyPage() {
 
                   <div className="mt-4 flex items-center gap-4 text-xs">
                     <span className="text-muted-foreground">
-                      {subject.completed} / {subject.total} lessons
+                      {t("journey.lessonsCount", { done: subject.completed, total: subject.total })}
                     </span>
                     {subject.inProgress > 0 && (
-                      <span className="text-primary font-medium">{subject.inProgress} in progress</span>
+                      <span className="text-primary font-medium">{t("journey.inProgressCount", { count: subject.inProgress })}</span>
                     )}
                   </div>
 
@@ -239,10 +242,10 @@ export default function JourneyPage() {
                       }`}
                     >
                       {subject.status === "completed"
-                        ? "Completed"
+                        ? ts("completed")
                         : subject.status === "in_progress"
-                        ? "In Progress"
-                        : "Not Started"}
+                        ? ts("inProgress")
+                        : ts("notStarted")}
                     </span>
                     <span className="text-[10px] text-muted-foreground">{subject.percentage}%</span>
                   </div>
@@ -258,15 +261,15 @@ export default function JourneyPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <Compass className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">Your journey awaits!</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("journey.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Your teacher will set up your learning path. Once lessons are assigned, your journey will appear here.
+            {t("journey.emptyDesc")}
           </p>
           <Link
             href="/dashboard/lessons"
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Browse Lessons <ArrowRight className="size-4" />
+            {t("journey.browseLessons")} <ArrowRight className="size-4" />
           </Link>
         </div>
       )}

@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { Building2, Users, GraduationCap, MapPin, AlertTriangle, TrendingUp } from "lucide-react"
@@ -30,6 +32,9 @@ interface SchoolsResponse {
 }
 
 export default function OversightSchoolsPage() {
+  const t = useTranslations("oversight");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const { user, loading: authLoading } = useRequireAuth()
   const [institutions, setInstitutions] = useState<Institution[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,7 +65,7 @@ export default function OversightSchoolsPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-muted-foreground">Loading schools...</div>
+        <div className="text-muted-foreground">{t("schools.loadingSchools")}</div>
       </div>
     )
   }
@@ -73,10 +78,9 @@ export default function OversightSchoolsPage() {
             <Building2 className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Schools Oversight</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("schools.schoolsOversight")}</h1>
             <p className="text-sm text-muted-foreground">
-              Monitor schools within your jurisdiction
-            </p>
+              {t("schools.monitorSchoolsWithinYour")}</p>
           </div>
         </div>
       </div>
@@ -84,32 +88,31 @@ export default function OversightSchoolsPage() {
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">
-            Institutions in Your Jurisdiction ({institutions.length})
-          </h2>
+            {t("schools.institutionsInYourJurisdiction", { p0: institutions.length })}</h2>
         </div>
 
         {institutions.length === 0 ? (
           <div className="text-center py-12">
             <Building2 className="size-12 mx-auto text-muted-foreground/50" />
-            <p className="mt-4 text-muted-foreground">No institutions found in your jurisdiction.</p>
+            <p className="mt-4 text-muted-foreground">{t("schools.noInstitutionsFoundIn")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Code</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Type</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Location</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Teachers</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Students</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Classes</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Attendance</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Performance</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Curriculum</th>
-                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Status</th>
-                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("schools.name")}</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("schools.code")}</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("schools.type")}</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">{t("schools.location")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("schools.teachers")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("schools.students")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("schools.classes")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("schools.attendance")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("schools.performance")}</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">{t("schools.curriculum")}</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">{t("schools.status")}</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">{t("schools.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,7 +138,7 @@ export default function OversightSchoolsPage() {
                       <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                         inst.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                       }`}>
-                        {inst.isActive ? "Active" : "Inactive"}
+                        {inst.isActive ? ts("active") : ts("inactive")}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -143,8 +146,7 @@ export default function OversightSchoolsPage() {
                         href={`/oversight/schools/${inst.id}`}
                         className="text-primary hover:underline text-sm"
                       >
-                        View
-                      </Link>
+                        {tc("view")}</Link>
                     </td>
                   </tr>
                 ))}

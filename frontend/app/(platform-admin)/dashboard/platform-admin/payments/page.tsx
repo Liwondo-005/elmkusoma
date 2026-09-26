@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { CreditCard, Loader2, DollarSign } from "lucide-react"
 import { platformAdminApi, type PaymentSummary, type PageResponse } from "@/lib/platform-admin-api"
@@ -8,6 +10,8 @@ const STATUS_OPTIONS = ["", "PENDING", "COMPLETED", "FAILED", "REFUNDED"]
 const PAGE_SIZE = 20
 
 export default function PaymentsPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [data, setData] = useState<PageResponse<PaymentSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +25,7 @@ export default function PaymentsPage() {
       const res = await platformAdminApi.listPayments(page, PAGE_SIZE, status || undefined)
       setData(res)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load payments")
+      setError(err instanceof Error ? err.message : t("payments.failedToLoadPayments"))
     } finally {
       setLoading(false)
     }
@@ -51,8 +55,8 @@ export default function PaymentsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Payments</h1>
-        <p className="mt-1 text-sm text-muted-foreground">View all payment transactions across the platform.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("payments.payments")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("payments.viewAllPaymentTransactions")}</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -62,7 +66,7 @@ export default function PaymentsPage() {
           className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
         >
           {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s || "All Statuses"}</option>
+            <option key={s} value={s}>{s || t("payments.allStatuses")}</option>
           ))}
         </select>
       </div>
@@ -78,9 +82,9 @@ export default function PaymentsPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <CreditCard className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No payments found</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("payments.noPaymentsFound")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {status ? "No payments match the selected filter." : "No payment transactions available."}
+            {status ? t("payments.noPaymentsMatchThe") : t("payments.noPaymentTransactionsAvailable")}
           </p>
         </div>
       ) : (
@@ -89,10 +93,10 @@ export default function PaymentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Amount</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Service Type</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Date</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("payments.amount")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("payments.status")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("payments.serviceType")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("payments.date")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -122,18 +126,15 @@ export default function PaymentsPage() {
             disabled={page === 0}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Prev
-          </button>
+            {t("payments.prev")}</button>
           <span className="text-sm text-muted-foreground">
-            Page {page + 1} of {data.totalPages}
-          </span>
+            {t("payments.pageOf", { p0: page + 1, p1: data.totalPages })}</span>
           <button
             onClick={() => setPage((p) => Math.min(data.totalPages - 1, p + 1))}
             disabled={page >= data.totalPages - 1}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Next
-          </button>
+            {tc("next")}</button>
         </div>
       )}
     </div>

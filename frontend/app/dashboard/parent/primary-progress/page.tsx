@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import {
   BookOpen,
   Loader2,
@@ -92,6 +93,7 @@ function AttendanceRing({ percentage }: { percentage: number | null }) {
 }
 
 function SubjectBar({ item }: { item: SubjectPerformanceItem }) {
+  const t = useTranslations("parent")
   const trend = item.trend ? TREND_ICONS[item.trend] : null
   const barWidth = item.averageMark !== null ? Math.min(item.averageMark, 100) : 0
   const barColor =
@@ -114,8 +116,8 @@ function SubjectBar({ item }: { item: SubjectPerformanceItem }) {
         <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${barWidth}%` }} />
       </div>
       <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-        <span>{item.averageMark !== null ? `${Math.round(item.averageMark)}%` : "No data"}</span>
-        <span>{item.completedAssessments}/{item.totalAssessments} assessments</span>
+        <span>{item.averageMark !== null ? `${Math.round(item.averageMark)}%` : t("primaryProgress.noData")}</span>
+        <span>{t("primaryProgress.assessmentsCount", { completed: item.completedAssessments, total: item.totalAssessments })}</span>
       </div>
     </div>
   )
@@ -168,7 +170,10 @@ function BadgeItem({ badge }: { badge: AchievementItem }) {
 
 export default function PrimaryProgressPage() {
   const { user } = useAuth()
-  const firstName = user?.name?.split(" ")[0] || "Parent"
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
+  const firstName = user?.name?.split(" ")[0] || t("primaryProgress.parentFallback")
   const [children, setChildren] = useState<ChildOverview[]>([])
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [subjectPerformance, setSubjectPerformance] = useState<SubjectPerformanceItem[]>([])
@@ -191,7 +196,7 @@ export default function PrimaryProgressPage() {
           setSelectedChildId(kids[0].studentId)
         }
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to load progress"
+        const msg = err instanceof Error ? err.message : t("primaryProgress.loadError")
         setError(msg)
       } finally {
         setLoading(false)
@@ -230,7 +235,7 @@ export default function PrimaryProgressPage() {
       <div className="mx-auto max-w-4xl py-16 text-center">
         <p className="text-sm text-muted-foreground">{error}</p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Make sure your parent profile is set up and you have children linked to your account.
+          {t("primaryProgress.errorDesc")}
         </p>
       </div>
     )
@@ -251,10 +256,10 @@ export default function PrimaryProgressPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          My Child&apos;s Progress / Maendeleo ya Mtoto Wangu
+          {t("primaryProgress.title")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Track how {firstName}&apos;s child is doing at school.
+          {t("primaryProgress.subtitle", { name: firstName })}
         </p>
       </div>
 
@@ -281,44 +286,44 @@ export default function PrimaryProgressPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-              <p className="text-xs font-medium text-muted-foreground">Attendance</p>
+              <p className="text-xs font-medium text-muted-foreground">{tn("attendance")}</p>
               <div className="mt-2 flex items-center gap-3">
                 <AttendanceRing percentage={selectedChild.attendancePercentage} />
                 <div>
                   <p className="text-sm text-muted-foreground">{selectedChild.className}</p>
                   <p className="text-xs text-muted-foreground">
-                    {selectedChild.daysPresent} of {selectedChild.totalDays} days
+                    {t("primaryProgress.daysPresent", { present: selectedChild.daysPresent, total: selectedChild.totalDays })}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-              <p className="text-xs font-medium text-muted-foreground">Subjects Enrolled</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("primaryProgress.subjectsEnrolled")}</p>
               <p className="mt-1 text-2xl font-extrabold text-foreground">{subjectPerformance.length}</p>
-              <p className="text-xs text-muted-foreground">Active subjects</p>
+              <p className="text-xs text-muted-foreground">{t("reports.activeSubjects")}</p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-              <p className="text-xs font-medium text-muted-foreground">Lessons Completed</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("primaryProgress.lessonsCompleted")}</p>
               <p className="mt-1 text-2xl font-extrabold text-foreground">{selectedChild.completedAssignments}</p>
-              <p className="text-xs text-muted-foreground">of {selectedChild.totalAssignments} total</p>
+              <p className="text-xs text-muted-foreground">{t("primaryProgress.ofTotal", { total: selectedChild.totalAssignments })}</p>
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-              <p className="text-xs font-medium text-muted-foreground">Average Score</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("primaryProgress.avgScore")}</p>
               <p className="mt-1 text-2xl font-extrabold text-foreground">
                 {selectedChild.latestAverage !== null ? `${Math.round(selectedChild.latestAverage)}%` : "--"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {selectedChild.latestGrade ? `Grade: ${selectedChild.latestGrade}` : "No results yet"}
+                {selectedChild.latestGrade ? t("primaryProgress.gradeValue", { grade: selectedChild.latestGrade }) : t("primaryProgress.noResults")}
               </p>
             </div>
           </div>
 
           {teachers.length > 0 && (
             <section>
-              <h2 className="mb-3 text-base font-semibold text-foreground">Teachers</h2>
+              <h2 className="mb-3 text-base font-semibold text-foreground">{tn("teachers")}</h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {teachers.map((t) => (
                   <TeacherInfoCard key={t.id} teacher={mapTeacherToInfo(t)} />
@@ -329,7 +334,7 @@ export default function PrimaryProgressPage() {
 
           {subjectPerformance.length > 0 && (
             <section>
-              <h2 className="mb-3 text-base font-semibold text-foreground">Subject Performance</h2>
+              <h2 className="mb-3 text-base font-semibold text-foreground">{t("reports.subjectPerfTitle")}</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {subjectPerformance.map((sp) => (
                   <SubjectBar key={sp.subjectId} item={sp} />
@@ -341,7 +346,7 @@ export default function PrimaryProgressPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             {activities.length > 0 && (
               <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-                <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
+                <h2 className="text-base font-semibold text-foreground">{t("primaryProgress.recentActivity")}</h2>
                 <div className="mt-3 space-y-2">
                   {activities.slice(0, 8).map((act) => {
                     const Icon = ACTIVITY_ICONS[act.type] || CheckCircle2
@@ -363,11 +368,11 @@ export default function PrimaryProgressPage() {
 
             {attendance.length > 0 && (
               <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-                <h2 className="text-base font-semibold text-foreground">Attendance Calendar</h2>
+                <h2 className="text-base font-semibold text-foreground">{t("primaryProgress.attendanceCalendar")}</h2>
                 <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><span className="size-2 rounded-sm bg-green-100" /> Present</span>
-                  <span className="flex items-center gap-1"><span className="size-2 rounded-sm bg-red-100" /> Absent</span>
-                  <span className="flex items-center gap-1"><span className="size-2 rounded-sm bg-yellow-100" /> Late</span>
+                  <span className="flex items-center gap-1"><span className="size-2 rounded-sm bg-green-100" /> {ts("present")}</span>
+                  <span className="flex items-center gap-1"><span className="size-2 rounded-sm bg-red-100" /> {ts("absent")}</span>
+                  <span className="flex items-center gap-1"><span className="size-2 rounded-sm bg-yellow-100" /> {ts("late")}</span>
                 </div>
                 <div className="mt-3">
                   <AttendanceCalendar days={attendance} />
@@ -378,7 +383,7 @@ export default function PrimaryProgressPage() {
 
           {achievements.length > 0 && (
             <section>
-              <h2 className="mb-3 text-base font-semibold text-foreground">Badges & Achievements</h2>
+              <h2 className="mb-3 text-base font-semibold text-foreground">{t("primaryProgress.badgesTitle")}</h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {achievements.map((ach) => (
                   <BadgeItem key={ach.id} badge={ach} />
@@ -393,7 +398,7 @@ export default function PrimaryProgressPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             >
               <ChevronRight className="size-4 rotate-180" />
-              Back to Dashboard
+              {t("assignments.backToDashboard")}
             </Link>
           </div>
         </>

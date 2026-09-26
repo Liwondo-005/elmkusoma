@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type LearnerNotification } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { MessageSquare, Send, Bell, CheckCircle2, AlertCircle, Clock } from "lucide-react"
 
 export default function DashboardMessagesPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
+  const tc = useTranslations("common")
   const [messages, setMessages] = useState<LearnerNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +28,7 @@ export default function DashboardMessagesPage() {
       const data = await learnerApi.getNotifications()
       setMessages(data.filter((n) => n.notificationType === "MESSAGE" || n.notificationType === "ANNOUNCEMENT"))
     } catch {
-      setError("Failed to load messages")
+      setError(t("inbox.loadError"))
     } finally {
       setLoading(false)
     }
@@ -43,20 +47,20 @@ export default function DashboardMessagesPage() {
 
   if (authLoading || loading) return <LoadingState />
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || t("inbox.learnerFallback")
   const unreadCount = messages.filter((m) => !m.isRead).length
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Messages</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Communicate with instructors and support.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("inbox.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("inbox.subtitle")}</p>
         </div>
         {unreadCount > 0 && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             <Bell className="size-3" />
-            {unreadCount} unread
+            {t("inbox.unreadCount", { count: unreadCount })}
           </span>
         )}
       </div>
@@ -65,15 +69,15 @@ export default function DashboardMessagesPage() {
         <div className="rounded-2xl border border-border bg-card p-4 text-sm text-red-600 flex items-center gap-2">
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
-          <button onClick={() => { setError(null); loadMessages() }} className="ml-auto text-xs underline">Retry</button>
+          <button onClick={() => { setError(null); loadMessages() }} className="ml-auto text-xs underline">{tc("retry")}</button>
         </div>
       )}
 
       {messages.length === 0 ? (
         <EmptyState
           icon={<MessageSquare className="size-8" />}
-          title="No messages yet"
-          description="Messages from teachers, instructors, and support will appear here."
+          title={t("inbox.emptyTitle")}
+          description={t("inbox.emptyDesc")}
         />
       ) : (
         <div className="space-y-3">

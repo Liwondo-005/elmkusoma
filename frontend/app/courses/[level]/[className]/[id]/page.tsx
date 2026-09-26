@@ -1,5 +1,8 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { notFound, useParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -14,28 +17,6 @@ import {
 import { SubjectCard } from "@/components/courses/subject-card"
 import { cn } from "@/lib/utils"
 
-export function generateStaticParams() {
-  return curriculumSubjects.map((s) => ({
-    level: educationLevelToSlug(s.level),
-    className: classNameToSlug(s.className),
-    id: s.id,
-  }))
-}
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ level: string; className: string; id: string }>
-}) {
-  const { level, className, id } = await params
-  const subject = curriculumSubjects.find((s) => s.id === id)
-  if (!subject) return { title: "Subject Not Found — ELMKUSOMA" }
-  return {
-    title: `${subject.name} (${subject.className}) — ELMKUSOMA`,
-    description: subject.description,
-  }
-}
-
 const categoryColors: Record<string, string> = {
   Core: "bg-teal/10 text-teal",
   "Social Science": "bg-amber-100 text-amber-700",
@@ -47,12 +28,12 @@ const categoryColors: Record<string, string> = {
   "Culture, Arts and Sports": "bg-rose-100 text-rose-700",
 }
 
-export default async function SubjectDetailPage({
-  params,
-}: {
-  params: Promise<{ level: string; className: string; id: string }>
-}) {
-  const { level, className, id } = await params
+export default function SubjectDetailPage() {
+  const t = useTranslations("public")
+  const params = useParams()
+  const level = params.level as string
+  const className = params.className as string
+  const id = params.id as string
   const courseLevel = getCourseLevelBySlug(level)
   if (!courseLevel) notFound()
 
@@ -76,7 +57,7 @@ export default async function SubjectDetailPage({
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link href="/courses" className="transition-colors hover:text-foreground">
-              Courses
+              {t("coursesHome.title")}
             </Link>
             <span>/</span>
             <Link href={`/courses/${level}`} className="transition-colors hover:text-foreground">
@@ -112,7 +93,7 @@ export default async function SubjectDetailPage({
                 </p>
 
                 <div className="mt-6">
-                  <h2 className="text-sm font-semibold text-foreground">About this subject</h2>
+                  <h2 className="text-sm font-semibold text-foreground">{t("subjectDetail.aboutTitle")}</h2>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     {subject.description}
                   </p>
@@ -120,15 +101,15 @@ export default async function SubjectDetailPage({
 
                 <div className="mt-6 grid grid-cols-3 gap-4 rounded-xl border border-border p-4">
                   <div>
-                    <p className="text-xs text-muted-foreground">Level</p>
+                    <p className="text-xs text-muted-foreground">{t("subjectDetail.levelLabel")}</p>
                     <p className="text-sm font-semibold text-foreground">{subject.level}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Class</p>
+                    <p className="text-xs text-muted-foreground">{t("subjectDetail.classLabel")}</p>
                     <p className="text-sm font-semibold text-foreground">{subject.className}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Enrolled</p>
+                    <p className="text-xs text-muted-foreground">{t("subjectDetail.enrolledLabel")}</p>
                     <p className="text-sm font-semibold text-foreground">{subject.enrolled.toLocaleString()}</p>
                   </div>
                 </div>
@@ -137,7 +118,7 @@ export default async function SubjectDetailPage({
               {relatedSubjects.length > 0 && (
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
                   <h2 className="text-sm font-semibold text-foreground">
-                    Other subjects in {displayName}
+                    {t("subjectDetail.relatedTitle", { name: displayName })}
                   </h2>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {relatedSubjects.map((s) => (
@@ -157,15 +138,15 @@ export default async function SubjectDetailPage({
 
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Level</span>
+                    <span className="text-muted-foreground">{t("subjectDetail.levelLabel")}</span>
                     <span className="font-medium text-foreground">{subject.level}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Category</span>
+                    <span className="text-muted-foreground">{t("subjectDetail.categoryLabel")}</span>
                     <span className="font-medium text-foreground">{subject.category}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Students Enrolled</span>
+                    <span className="text-muted-foreground">{t("subjectDetail.studentsLabel")}</span>
                     <span className="font-medium text-foreground">{subject.enrolled.toLocaleString()}</span>
                   </div>
                 </div>
@@ -174,7 +155,7 @@ export default async function SubjectDetailPage({
                   href="/register"
                   className="mt-5 flex h-10 items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
-                  Enroll Now
+                  {t("subjectDetail.enrollNow")}
                 </Link>
               </div>
             </aside>

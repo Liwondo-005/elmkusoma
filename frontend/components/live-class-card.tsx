@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import { Eye, Clock, Users } from "lucide-react"
 import type { LiveClass } from "@/lib/data"
 import { buttonVariants } from "@/components/ui/button"
@@ -25,13 +26,16 @@ function StatusBadge({ status, badge }: { status: LiveClass["status"]; badge: st
 
 export function LiveClassCard({ item }: { item: LiveClass }) {
   const isLive = item.status === "live"
+  const t = useTranslations("learner")
+  const tn = useTranslations("nav")
+  const tlc = useTranslations("liveClasses")
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg">
       <div className="relative aspect-video overflow-hidden">
         <Image
           src={item.image || "/placeholder.svg"}
-          alt={`${item.title} class with ${item.instructor}`}
+          alt={t("liveClassImageAlt", { title: item.title, instructor: item.instructor })}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 100vw, 25vw"
@@ -43,7 +47,7 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
         {isLive && (
           <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-teal/90 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur">
             <span className="size-1.5 rounded-full bg-white" />
-            Live
+            {tn("live")}
           </span>
         )}
       </div>
@@ -57,14 +61,14 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
         <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
           {isLive ? (
             <>
-              <span><Eye className="inline size-3.5" /> {item.watching} watching</span>
+              <span><Eye className="inline size-3.5" /> {t("liveWatching", { count: item.watching ?? 0 })}</span>
             </>
           ) : (
             <>
               <span><Clock className="inline size-3.5" /> {item.time}</span>
               {item.going ? (
                 <span className="ml-auto inline-flex items-center gap-1">
-                  <Users className="size-3.5" /> {item.going} going
+                  <Users className="size-3.5" /> {t("liveGoing", { count: item.going })}
                 </span>
               ) : null}
             </>
@@ -77,15 +81,15 @@ export function LiveClassCard({ item }: { item: LiveClass }) {
               href={`/live-classes/${item.id}`}
               className={cn(buttonVariants(), "h-9 w-full bg-teal text-teal-foreground hover:bg-primary")}
             >
-              Join Live Class
+              {t("joinLiveClass")}
             </Link>
           ) : (
             <Link
               href="/dashboard/learner/calendar-integration"
-              aria-label={`Set reminder for ${item.title} — open calendar`}
+              aria-label={t("setReminderAria", { title: item.title })}
               className={cn(buttonVariants({ variant: "outline" }), "h-9 w-full hover:bg-primary/10")}
             >
-              Set Reminder
+              {tlc("setReminder")}
             </Link>
           )}
         </div>

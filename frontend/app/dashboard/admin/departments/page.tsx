@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { Users, Plus, Pencil, Trash2, Loader2, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,6 +23,9 @@ const defaultForm: FormData = {
 }
 
 export default function DepartmentsPage() {
+  const t = useTranslations("admin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +42,7 @@ export default function DepartmentsPage() {
       const res = await collegeApi.listDepartments()
       setDepartments((res.data as Department[] | undefined) || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load departments")
+      setError(err instanceof Error ? err.message : t("departments.failedToLoadDepartments"))
     } finally {
       setLoading(false)
     }
@@ -66,7 +71,7 @@ export default function DepartmentsPage() {
       resetForm()
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save department")
+      setError(err instanceof Error ? err.message : t("departments.failedToSaveDepartment"))
     } finally {
       setSaving(false)
     }
@@ -89,7 +94,7 @@ export default function DepartmentsPage() {
       setDeleteConfirm(null)
       loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete department")
+      setError(err instanceof Error ? err.message : t("departments.failedToDeleteDepartment"))
     }
   }
 
@@ -102,16 +107,15 @@ export default function DepartmentsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Departments</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage academic departments</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("departments.departments")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("departments.manageAcademicDepartments")}</p>
         </div>
         <Button
           onClick={() => { resetForm(); setShowForm(true) }}
           className="gap-2"
         >
           <Plus className="size-4" />
-          Add Department
-        </Button>
+          {t("departments.addDepartment")}</Button>
       </div>
 
       <div className="flex items-center gap-3">
@@ -119,13 +123,13 @@ export default function DepartmentsPage() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search departments..."
+            placeholder={t("departments.searchDepartments")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <span className="text-sm text-muted-foreground">{filtered.length} department{filtered.length !== 1 ? "s" : ""}</span>
+        <span className="text-sm text-muted-foreground">{filtered.length} {t("departments.department")}{filtered.length !== 1 ? "s" : ""}</span>
       </div>
 
       {error && (
@@ -139,9 +143,9 @@ export default function DepartmentsPage() {
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Users className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No departments found</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("departments.noDepartmentsFound")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {searchQuery ? "Try a different search term." : "Add your first department to get started."}
+            {searchQuery ? t("departments.tryADifferentSearch") : t("departments.addYourFirstDepartment")}
           </p>
         </div>
       ) : (
@@ -150,10 +154,10 @@ export default function DepartmentsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Name</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Code</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("departments.name")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("departments.code")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("departments.status")}</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">{t("departments.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -172,7 +176,7 @@ export default function DepartmentsPage() {
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                         dept.isActive ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"
                       }`}>
-                        {dept.isActive ? "Active" : "Inactive"}
+                        {dept.isActive ? ts("active") : ts("inactive")}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
@@ -190,15 +194,13 @@ export default function DepartmentsPage() {
                               size="xs"
                               onClick={() => handleDelete(dept.id)}
                             >
-                              Delete
-                            </Button>
+                              {tc("delete")}</Button>
                             <Button
                               variant="outline"
                               size="xs"
                               onClick={() => setDeleteConfirm(null)}
                             >
-                              Cancel
-                            </Button>
+                              {tc("cancel")}</Button>
                           </div>
                         ) : (
                           <button
@@ -222,34 +224,34 @@ export default function DepartmentsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">{editing ? "Edit Department" : "Add Department"}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{editing ? t("departments.editDepartment") : t("departments.addDepartment2")}</h2>
               <button onClick={() => { setShowForm(false); resetForm() }} className="rounded-lg p-1 hover:bg-muted">
                 <X className="size-5" />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">Name *</label>
+                <label className="mb-1 block text-sm font-medium">{t("departments.name2")}</label>
                 <input
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. Department of Computer Science"
+                  placeholder={t("departments.eGDepartmentOf")}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Code *</label>
+                <label className="mb-1 block text-sm font-medium">{t("departments.code2")}</label>
                 <input
                   required
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value })}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. DCS"
+                  placeholder={t("departments.eGDcs")}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Description</label>
+                <label className="mb-1 block text-sm font-medium">{t("departments.description")}</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -258,7 +260,7 @@ export default function DepartmentsPage() {
                 />
               </div>
               <div className="flex items-center gap-3">
-                <label className="text-sm font-medium">Active</label>
+                <label className="text-sm font-medium">{ts("active")}</label>
                 <button
                   type="button"
                   onClick={() => setForm({ ...form, isActive: !form.isActive })}
@@ -273,11 +275,10 @@ export default function DepartmentsPage() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setShowForm(false); resetForm() }}>
-                  Cancel
-                </Button>
+                  {tc("cancel")}</Button>
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="size-4 animate-spin" />}
-                  {editing ? "Save Changes" : "Create Department"}
+                  {editing ? t("departments.saveChanges") : t("departments.createDepartment")}
                 </Button>
               </div>
             </form>

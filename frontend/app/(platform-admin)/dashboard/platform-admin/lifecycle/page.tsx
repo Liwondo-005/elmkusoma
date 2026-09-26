@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { GitBranch, RefreshCw, AlertCircle, Search, Building2, ChevronDown } from "lucide-react"
 import { platformAdminApi, type InstitutionSummary, type PageResponse } from "@/lib/platform-admin-api"
@@ -24,6 +26,8 @@ function StatusBadge({ s }: { s: string }) {
 }
 
 export default function PlatformLifecyclePage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
   const [page, setPage] = useState<PageResponse<InstitutionSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +41,7 @@ export default function PlatformLifecyclePage() {
     try {
       setPage(await platformAdminApi.listInstitutions(pageIndex, 20, search || undefined))
     } catch (e: any) {
-      setError(e.message || "Failed to load lifecycle states"); setPage(null)
+      setError(e.message || t("lifecycle.failedToLoadLifecycle")); setPage(null)
     } finally { setLoading(false) }
   }, [pageIndex, search])
 
@@ -49,7 +53,7 @@ export default function PlatformLifecyclePage() {
       await platformAdminApi.updateInstitutionLifecycle(inst.id, target)
       await load()
     } catch (e: any) {
-      setError(e.message || "Lifecycle transition failed")
+      setError(e.message || t("lifecycle.lifecycleTransitionFailed"))
     } finally { setUpdating(null) }
   }
 
@@ -60,21 +64,21 @@ export default function PlatformLifecyclePage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-slate-700 text-white"><GitBranch className="size-4" /></span> Platform Lifecycle</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Institution lifecycle governance: <span className="font-mono text-xs">ACTIVE → SUSPENDED → DEACTIVATED → ARCHIVED</span>. Offboarding never silently destroys data (spec §99).</p>
+            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-slate-700 text-white"><GitBranch className="size-4" /></span> {t("lifecycle.platformLifecycle")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("lifecycle.institutionLifecycleGovernance")}<span className="font-mono text-xs">{t("lifecycle.activeSuspendedDeactivatedArchived")}</span>{t("lifecycle.offboardingNeverSilentlyDestroys")}</p>
           </div>
-          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> Refresh</button>
+          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> {t("lifecycle.refresh")}</button>
         </div>
         <div className="mt-4 relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(e) => { setSearch(e.target.value); setPageIndex(0) }} placeholder="Search institutions..." className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" />
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setPageIndex(0) }} placeholder={t("lifecycle.searchInstitutions")} className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" />
         </div>
       </div>
 
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
           <span className="flex items-center gap-2"><AlertCircle className="size-4" />{error}</span>
-          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Retry</button>
+          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">{t("lifecycle.retry")}</button>
         </div>
       )}
 
@@ -82,8 +86,8 @@ export default function PlatformLifecyclePage() {
         {loading ? <div className="animate-pulse space-y-3"><div className="h-16 rounded-xl bg-muted" /><div className="h-16 rounded-xl bg-muted" /></div> : rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
             <GitBranch className="size-10 text-muted-foreground/50" />
-            <p className="mt-3 text-sm font-semibold text-foreground">No institutions found</p>
-            <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">Institution lifecycle transitions appear here. No synthetic workflows are shown.</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("lifecycle.noInstitutionsFound")}</p>
+            <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">{t("lifecycle.institutionLifecycleTransitionsAppear")}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -101,7 +105,7 @@ export default function PlatformLifecyclePage() {
                     <button disabled={updating === inst.id || allowed.length === 0}
                       onClick={() => setOpenMenu(openMenu === inst.id ? null : inst.id)}
                       className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:opacity-40">
-                      {updating === inst.id ? "Updating…" : "Transition"} <ChevronDown className="size-3" />
+                      {updating === inst.id ? t("lifecycle.updating") : t("lifecycle.transition")} <ChevronDown className="size-3" />
                     </button>
                     {openMenu === inst.id && allowed.length > 0 && (
                       <div className="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-border bg-card p-1 shadow-lg">
@@ -121,9 +125,9 @@ export default function PlatformLifecyclePage() {
         )}
         {page && page.totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between text-sm">
-            <button disabled={page.first} onClick={() => setPageIndex(i => i - 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">Previous</button>
-            <span className="text-xs text-muted-foreground">Page {page.page + 1} of {page.totalPages} · {page.totalElements} institutions</span>
-            <button disabled={page.last} onClick={() => setPageIndex(i => i + 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">Next</button>
+            <button disabled={page.first} onClick={() => setPageIndex(i => i - 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">{tc("previous")}</button>
+            <span className="text-xs text-muted-foreground">{t("lifecycle.pageOfInstitutions", { p0: page.page + 1, p1: page.totalPages, p2: page.totalElements })}</span>
+            <button disabled={page.last} onClick={() => setPageIndex(i => i + 1)} className="rounded-lg border px-3 py-1.5 disabled:opacity-40">{tc("next")}</button>
           </div>
         )}
       </div>

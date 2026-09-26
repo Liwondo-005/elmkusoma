@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, Award } from "lucide-react"
 import { parentApi, type ResultData, type ChildOverview } from "@/lib/parent-api"
 
 export default function ParentResultsPage() {
+  const t = useTranslations("parent")
   const searchParams = useSearchParams()
   const childId = searchParams.get("child")
   const [children, setChildren] = useState<ChildOverview[]>([])
@@ -30,9 +32,9 @@ export default function ParentResultsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <Link href="/dashboard/parent" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft className="size-4" /> Back to Dashboard
+        <ArrowLeft className="size-4" /> {t("assignments.backToDashboard")}
       </Link>
-      <h1 className="text-xl font-bold text-foreground">Results & Report Cards</h1>
+      <h1 className="text-xl font-bold text-foreground">{t("results.title")}</h1>
 
       {children.length > 1 && (
         <div className="flex flex-wrap gap-2">
@@ -63,12 +65,12 @@ export default function ParentResultsPage() {
                   <p className="text-sm font-semibold text-foreground">
                     {rc.term} &middot; {rc.academicYear}
                   </p>
-                  <p className="text-xs text-muted-foreground">Status: {rc.status}</p>
+                  <p className="text-xs text-muted-foreground">{t("results.statusLabel", { status: rc.status })}</p>
                 </div>
                 {rc.overallGrade && (
                   <div className="rounded-xl bg-primary/10 px-3 py-2 text-center">
                     <p className="text-lg font-bold text-primary">{rc.overallGrade}</p>
-                    <p className="text-[10px] text-muted-foreground">Grade</p>
+                    <p className="text-[10px] text-muted-foreground">{t("results.gradeLabel")}</p>
                   </div>
                 )}
               </div>
@@ -77,7 +79,7 @@ export default function ParentResultsPage() {
                 {rc.averageMark != null && (
                   <div className="rounded-lg bg-muted/50 p-3 text-center">
                     <p className="text-lg font-bold text-foreground">{rc.averageMark.toFixed(1)}</p>
-                    <p className="text-[10px] text-muted-foreground">Average</p>
+                    <p className="text-[10px] text-muted-foreground">{t("results.averageLabel")}</p>
                   </div>
                 )}
                 {rc.gpa != null && (
@@ -91,7 +93,7 @@ export default function ParentResultsPage() {
                     <p className="text-lg font-bold text-foreground">
                       {rc.classRank}/{rc.totalStudentsInClass}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Class Rank</p>
+                    <p className="text-[10px] text-muted-foreground">{t("results.classRankLabel")}</p>
                   </div>
                 )}
                 {rc.publishedAt && (
@@ -99,14 +101,14 @@ export default function ParentResultsPage() {
                     <p className="text-sm font-bold text-foreground">
                       {new Date(rc.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Published</p>
+                    <p className="text-[10px] text-muted-foreground">{t("results.publishedLabel")}</p>
                   </div>
                 )}
               </div>
 
               {rc.remarks && (
                 <p className="mt-3 rounded-lg bg-muted/30 p-3 text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">Remarks: </span>{rc.remarks}
+                  <span className="font-semibold text-foreground">{t("results.remarksLabel")} </span>{rc.remarks}
                 </p>
               )}
             </div>
@@ -115,11 +117,11 @@ export default function ParentResultsPage() {
       ) : results && results.reportCards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border py-12 text-center">
           <Award className="mx-auto mb-3 size-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">No report cards available yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">Results will appear here once published by the school.</p>
+          <p className="text-sm font-medium text-foreground">{t("results.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("results.emptyDesc")}</p>
         </div>
       ) : (
-        <p className="py-12 text-center text-sm text-muted-foreground">Select a child to view results.</p>
+        <p className="py-12 text-center text-sm text-muted-foreground">{t("results.selectChild")}</p>
       )}
     </div>
   )

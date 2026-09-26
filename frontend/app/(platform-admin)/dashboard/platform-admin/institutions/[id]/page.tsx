@@ -1,11 +1,16 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Building2, Loader2, ArrowLeft, Users, GraduationCap, BookOpen, MapPin, Phone, Mail, Calendar, Shield, ShieldOff, ListChecks, CheckCircle2, Circle, AlertCircle, RefreshCw } from "lucide-react"
 import { platformAdminApi, type InstitutionDetail, type OffboardingChecklist } from "@/lib/platform-admin-api"
 
 export default function InstitutionDetailPage() {
+  const t = useTranslations("platformAdmin");
+  const tc = useTranslations("common");
+  const ts = useTranslations("status");
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
@@ -22,7 +27,7 @@ export default function InstitutionDetailPage() {
       setOffboarding(await platformAdminApi.getOffboardingChecklist(institutionId))
     } catch (e: any) {
       setOffboarding(null)
-      setOffboardingError(e.message || "Offboarding checklist unavailable")
+      setOffboardingError(e.message || t("institutionDetail.offboardingChecklistUnavailable"))
     }
   }, [])
 
@@ -31,7 +36,7 @@ export default function InstitutionDetailPage() {
     setLoading(true)
     platformAdminApi.getInstitution(id)
       .then(setInst)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load institution"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("institutionDetail.failedToLoadInstitution")))
       .finally(() => setLoading(false))
     loadOffboarding(id)
   }, [id, loadOffboarding])
@@ -43,7 +48,7 @@ export default function InstitutionDetailPage() {
       const updated = await platformAdminApi.updateInstitutionStatus(inst.id, !inst.isActive)
       setInst((prev) => prev ? { ...prev, isActive: !prev.isActive } : prev)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status")
+      setError(err instanceof Error ? err.message : t("institutionDetail.failedToUpdateStatus"))
     } finally {
       setToggling(false)
     }
@@ -60,8 +65,7 @@ export default function InstitutionDetailPage() {
   if (error) return (
     <div className="mx-auto max-w-4xl space-y-6 py-10">
       <button onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> Back
-      </button>
+        <ArrowLeft className="size-4" /> {tc("back")}</button>
       <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-4 text-sm text-destructive">{error}</div>
     </div>
   )
@@ -71,8 +75,7 @@ export default function InstitutionDetailPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <button onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" /> Back to Institutions
-      </button>
+        <ArrowLeft className="size-4" /> {t("institutionDetail.backToInstitutions")}</button>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-start justify-between">
@@ -85,7 +88,7 @@ export default function InstitutionDetailPage() {
               <p className="text-sm text-muted-foreground">{inst.code}</p>
               <div className="mt-2 flex items-center gap-2">
                 <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${inst.isActive ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
-                  {inst.isActive ? "Active" : "Inactive"}
+                  {inst.isActive ? ts("active") : ts("inactive")}
                 </span>
                 <span className="inline-block rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{inst.type}</span>
               </div>
@@ -101,17 +104,17 @@ export default function InstitutionDetailPage() {
             }`}
           >
             {toggling ? <Loader2 className="size-4 animate-spin" /> : inst.isActive ? <ShieldOff className="size-4" /> : <Shield className="size-4" />}
-            {inst.isActive ? "Deactivate" : "Activate"}
+            {inst.isActive ? t("institutionDetail.deactivate") : t("institutionDetail.activate")}
           </button>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-4">
         {[
-          { icon: Users, label: "Total Users", value: inst.totalUsers, color: "bg-blue-500/10 text-blue-600" },
-          { icon: GraduationCap, label: "Students", value: inst.totalStudents, color: "bg-emerald-500/10 text-emerald-600" },
-          { icon: BookOpen, label: "Teachers", value: inst.totalTeachers, color: "bg-amber-500/10 text-amber-600" },
-          { icon: Calendar, label: "Created", value: formatDate(inst.createdAt), color: "bg-purple-500/10 text-purple-600", isText: true },
+          { icon: Users, label: t("institutionDetail.totalUsers"), value: inst.totalUsers, color: "bg-blue-500/10 text-blue-600" },
+          { icon: GraduationCap, label: t("institutionDetail.students"), value: inst.totalStudents, color: "bg-emerald-500/10 text-emerald-600" },
+          { icon: BookOpen, label: t("institutionDetail.teachers"), value: inst.totalTeachers, color: "bg-amber-500/10 text-amber-600" },
+          { icon: Calendar, label: t("institutionDetail.created"), value: formatDate(inst.createdAt), color: "bg-purple-500/10 text-purple-600", isText: true },
         ].map(({ icon: Icon, label, value, color, isText }) => (
           <div key={label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
             <div className="flex items-center gap-3">
@@ -129,7 +132,7 @@ export default function InstitutionDetailPage() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground mb-4">Contact Information</h2>
+          <h2 className="text-base font-semibold text-foreground mb-4">{t("institutionDetail.contactInformation")}</h2>
           <div className="space-y-3">
             {inst.address && (
               <div className="flex items-center gap-3 text-sm">
@@ -150,44 +153,42 @@ export default function InstitutionDetailPage() {
               </div>
             )}
             {!inst.address && !inst.phone && !inst.email && (
-              <p className="text-sm text-muted-foreground">No contact information available.</p>
+              <p className="text-sm text-muted-foreground">{t("institutionDetail.noContactInformationAvailable")}</p>
             )}
           </div>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground mb-4">Quick Actions</h2>
+          <h2 className="text-base font-semibold text-foreground mb-4">{t("institutionDetail.quickActions")}</h2>
           <div className="space-y-2">
             <button
               onClick={() => router.push(`/dashboard/platform-admin/users?institution=${inst.id}`)}
               className="flex w-full items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <Users className="size-4 text-muted-foreground" />
-              View Institution Users
-            </button>
+              {t("institutionDetail.viewInstitutionUsers")}</button>
             <button
               onClick={() => router.push("/dashboard/platform-admin/audit")}
               className="flex w-full items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <Calendar className="size-4 text-muted-foreground" />
-              View Audit Logs
-            </button>
+              {t("institutionDetail.viewAuditLogs")}</button>
           </div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><ListChecks className="size-4" /> Offboarding Checklist</h2>
-          <button onClick={() => loadOffboarding(id)} className="text-muted-foreground hover:text-foreground" aria-label="Refresh offboarding"><RefreshCw className="size-3.5" /></button>
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground"><ListChecks className="size-4" /> {t("institutionDetail.offboardingChecklist")}</h2>
+          <button onClick={() => loadOffboarding(id)} className="text-muted-foreground hover:text-foreground" aria-label={t("institutionDetail.refreshOffboarding")}><RefreshCw className="size-3.5" /></button>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">Live readiness steps before deactivating or removing this institution.</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("institutionDetail.liveReadinessStepsBefore")}</p>
         {offboardingError ? (
           <p className="mt-3 flex items-center gap-1 text-sm text-red-600"><AlertCircle className="size-4" />{offboardingError}</p>
         ) : !offboarding ? (
           <div className="mt-3 h-16 animate-pulse rounded-xl bg-muted" />
         ) : offboarding.steps.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Data unavailable — no checklist steps returned.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t("institutionDetail.dataUnavailableNoChecklist")}</p>
         ) : (
           <ul className="mt-4 space-y-2">
             {offboarding.steps.map((step) => {

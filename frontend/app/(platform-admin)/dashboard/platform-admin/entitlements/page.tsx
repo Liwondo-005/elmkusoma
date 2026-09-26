@@ -1,10 +1,13 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react"
 import { Shield, Loader2 } from "lucide-react"
 import { platformAdminApi, type EntitlementSummary, type PageResponse } from "@/lib/platform-admin-api"
 
 export default function EntitlementsPage() {
+  const t = useTranslations("platformAdmin");
   const [data, setData] = useState<PageResponse<EntitlementSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("")
@@ -19,14 +22,14 @@ export default function EntitlementsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Entitlements</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Platform-wide service entitlements and access grants</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("entitlements.entitlements")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("entitlements.platformWideServiceEntitlements")}</p>
       </div>
 
       <div className="flex gap-2">
         {["", "ACTIVE", "EXPIRED", "REVOKED"].map(s => (
           <button key={s} onClick={() => setFilter(s)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${filter === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-            {s || "All"}
+            {s || t("entitlements.all")}
           </button>
         ))}
       </div>
@@ -36,18 +39,18 @@ export default function EntitlementsPage() {
       ) : !data || data.content.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-10 text-center">
           <Shield className="mx-auto size-10 text-muted-foreground/50" />
-          <p className="mt-3 text-sm text-muted-foreground">No entitlements found</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t("entitlements.noEntitlementsFound")}</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Service</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Student</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Starts</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Expires</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{t("entitlements.service")}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{t("entitlements.student")}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{t("entitlements.status")}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{t("entitlements.starts")}</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{t("entitlements.expires")}</th>
               </tr>
             </thead>
             <tbody>
@@ -61,7 +64,7 @@ export default function EntitlementsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{ent.startsAt ? new Date(ent.startsAt).toLocaleDateString("en-GB") : "-"}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{ent.expiresAt ? new Date(ent.expiresAt).toLocaleDateString("en-GB") : "Never"}</td>
+<td className="px-4 py-3 text-xs text-muted-foreground">{ent.expiresAt ? new Date(ent.expiresAt).toLocaleDateString("en-GB") : t("entitlements.never")}</td>
                 </tr>
               ))}
             </tbody>

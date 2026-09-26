@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { dashboardApi, type DashboardSummary, learningApi, type LessonProgress } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
 import { BarChart3, CheckCircle, Clock, TrendingUp, Award, BookOpen, Star, Trophy, Target } from "lucide-react"
 
 export default function DashboardProgressPage() {
   const { user } = useRequireAuth()
+  const t = useTranslations("primary")
+  const ts = useTranslations("status")
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,8 +64,8 @@ export default function DashboardProgressPage() {
               <TrendingUp className="size-6 text-teal" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">My Growth</h1>
-              <p className="text-sm text-muted-foreground">See how much you have learned and grown!</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("growth.title")}</h1>
+              <p className="text-sm text-muted-foreground">{t("growth.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -76,7 +79,7 @@ export default function DashboardProgressPage() {
               </div>
               <div>
                 <p className="text-2xl font-extrabold text-foreground">{completedLessons}</p>
-                <p className="text-xs text-muted-foreground">Completed</p>
+                <p className="text-xs text-muted-foreground">{ts("completed")}</p>
               </div>
             </div>
           </div>
@@ -87,7 +90,7 @@ export default function DashboardProgressPage() {
               </div>
               <div>
                 <p className="text-2xl font-extrabold text-foreground">{inProgressLessons}</p>
-                <p className="text-xs text-muted-foreground">In Progress</p>
+                <p className="text-xs text-muted-foreground">{ts("inProgress")}</p>
               </div>
             </div>
           </div>
@@ -98,7 +101,7 @@ export default function DashboardProgressPage() {
               </div>
               <div>
                 <p className="text-2xl font-extrabold text-foreground">{summary?.activeEnrollments ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Subjects</p>
+                <p className="text-xs text-muted-foreground">{t("growth.subjects")}</p>
               </div>
             </div>
           </div>
@@ -109,7 +112,7 @@ export default function DashboardProgressPage() {
               </div>
               <div>
                 <p className="text-2xl font-extrabold text-foreground">{summary?.overallAverage ?? 0}%</p>
-                <p className="text-xs text-muted-foreground">Average</p>
+                <p className="text-xs text-muted-foreground">{t("growth.average")}</p>
               </div>
             </div>
           </div>
@@ -117,7 +120,7 @@ export default function DashboardProgressPage() {
 
         {/* Overall Progress Bar */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Overall Progress</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.overall")}</h2>
           <div className="flex items-center gap-4">
             <div className="h-5 flex-1 overflow-hidden rounded-full bg-muted">
               <div
@@ -128,13 +131,13 @@ export default function DashboardProgressPage() {
             <span className="text-2xl font-bold text-primary">{completionRate}%</span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            {summary?.completedLessons ?? 0} of {summary?.totalLessonsStarted ?? 0} lessons completed
+            {t("growth.lessonsSummary", { done: summary?.completedLessons ?? 0, total: summary?.totalLessonsStarted ?? 0 })}
           </p>
         </div>
 
         {/* Learning Milestones */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Learning Milestones</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.milestones")}</h2>
           <div className="space-y-3">
             {completedLessons >= 1 && (
               <div className="flex items-center gap-3 rounded-xl bg-green-50 p-3">
@@ -142,8 +145,8 @@ export default function DashboardProgressPage() {
                   <CheckCircle className="size-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">First Lesson Complete!</p>
-                  <p className="text-xs text-muted-foreground">You completed your first lesson. Great start!</p>
+                  <p className="text-sm font-semibold text-foreground">{t("growth.firstDone")}</p>
+                  <p className="text-xs text-muted-foreground">{t("growth.firstDoneDesc")}</p>
                 </div>
               </div>
             )}
@@ -153,8 +156,8 @@ export default function DashboardProgressPage() {
                   <Star className="size-4 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Fast Learner!</p>
-                  <p className="text-xs text-muted-foreground">You completed 5 lessons. Keep going!</p>
+                  <p className="text-sm font-semibold text-foreground">{t("growth.fastLearner")}</p>
+                  <p className="text-xs text-muted-foreground">{t("growth.fastLearnerDesc")}</p>
                 </div>
               </div>
             )}
@@ -164,8 +167,8 @@ export default function DashboardProgressPage() {
                   <Trophy className="size-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Knowledge Champion!</p>
-                  <p className="text-xs text-muted-foreground">You completed 10 lessons. Amazing progress!</p>
+                  <p className="text-sm font-semibold text-foreground">{t("growth.champion")}</p>
+                  <p className="text-xs text-muted-foreground">{t("growth.championDesc")}</p>
                 </div>
               </div>
             )}
@@ -175,8 +178,8 @@ export default function DashboardProgressPage() {
                   <Target className="size-4 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Halfway There!</p>
-                  <p className="text-xs text-muted-foreground">You are 50% done with your lessons!</p>
+                  <p className="text-sm font-semibold text-foreground">{t("growth.halfway")}</p>
+                  <p className="text-xs text-muted-foreground">{t("growth.halfwayDesc")}</p>
                 </div>
               </div>
             )}
@@ -185,8 +188,8 @@ export default function DashboardProgressPage() {
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
                   <Star className="size-6 text-muted-foreground" />
                 </div>
-                <p className="mt-3 text-sm font-medium text-foreground">Your growth journey begins soon</p>
-                <p className="text-xs text-muted-foreground">Start a lesson to begin earning milestones!</p>
+                <p className="mt-3 text-sm font-medium text-foreground">{t("growth.emptyTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("growth.emptyDesc")}</p>
               </div>
             )}
           </div>
@@ -194,11 +197,11 @@ export default function DashboardProgressPage() {
 
         {/* Attendance */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Attendance</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.attendance")}</h2>
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-3xl font-extrabold text-primary">{summary?.monthAttendanceRate ?? 0}%</p>
-              <p className="text-xs text-muted-foreground mt-1">This Month</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("growth.thisMonth")}</p>
             </div>
             <div className="flex-1">
               <div className="h-4 overflow-hidden rounded-full bg-muted">
@@ -209,10 +212,10 @@ export default function DashboardProgressPage() {
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
                 {(summary?.monthAttendanceRate ?? 0) >= 90
-                  ? "Excellent attendance! Keep it up!"
+                  ? t("growth.attExcellent")
                   : (summary?.monthAttendanceRate ?? 0) >= 75
-                    ? "Good attendance. Try to attend more days!"
-                    : "Let's work on attending school more regularly."}
+                    ? t("growth.attGood")
+                    : t("growth.attImprove")}
               </p>
             </div>
           </div>
@@ -223,17 +226,17 @@ export default function DashboardProgressPage() {
 
   /* Non-Primary: Original progress page */
   const stats = [
-    { label: "Lessons Started", value: summary?.totalLessonsStarted ?? 0 },
-    { label: "Lessons Completed", value: summary?.completedLessons ?? 0 },
-    { label: "Attendance Rate", value: `${summary?.monthAttendanceRate ?? 0}%` },
-    { label: "Overall Average", value: `${summary?.overallAverage ?? 0}%` },
+    { label: t("growth.statStarted"), value: summary?.totalLessonsStarted ?? 0 },
+    { label: t("growth.statCompleted"), value: summary?.completedLessons ?? 0 },
+    { label: t("growth.statAttendance"), value: `${summary?.monthAttendanceRate ?? 0}%` },
+    { label: t("growth.statAverage"), value: `${summary?.overallAverage ?? 0}%` },
   ]
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">My Progress</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Track your learning journey across all courses.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("growth.myProgress")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("growth.myProgressDesc")}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -246,7 +249,7 @@ export default function DashboardProgressPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Overall Completion</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t("growth.overallCompletion")}</h2>
         <div className="flex items-center gap-4">
           <div className="h-4 flex-1 overflow-hidden rounded-full bg-muted">
             <div
@@ -257,15 +260,15 @@ export default function DashboardProgressPage() {
           <span className="text-2xl font-bold text-teal">{completionRate}%</span>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          {summary?.completedLessons ?? 0} of {summary?.totalLessonsStarted ?? 0} lessons completed
+          {t("growth.lessonsSummary", { done: summary?.completedLessons ?? 0, total: summary?.totalLessonsStarted ?? 0 })}
         </p>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-12 text-center">
         <BarChart3 className="mx-auto size-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-lg font-semibold text-foreground">Detailed Progress</h3>
+        <h3 className="mt-4 text-lg font-semibold text-foreground">{t("growth.detailed")}</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Course-by-course progress tracking coming soon. Complete lessons to see your progress here.
+          {t("growth.detailedDesc")}
         </p>
       </div>
     </div>

@@ -1,5 +1,7 @@
 "use client"
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useCallback } from "react"
 import { Plug2, RefreshCw, AlertCircle, CheckCircle2, XCircle, AlertTriangle, HelpCircle, Mail, CreditCard, HardDrive, MessageSquare, Radio, Bug, Webhook } from "lucide-react"
 import { platformAdminApi, type IntegrationStatus, type WebhookEvent, type PageResponse } from "@/lib/platform-admin-api"
@@ -37,6 +39,7 @@ function StatusPill({ status }: { status: ConnStatus }) {
 }
 
 export default function PlatformIntegrationsPage() {
+  const t = useTranslations("platformAdmin");
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([])
   const [webhooks, setWebhooks] = useState<WebhookEvent[]>([])
   const [failedOnly, setFailedOnly] = useState(false)
@@ -54,7 +57,7 @@ export default function PlatformIntegrationsPage() {
       setIntegrations(list)
       setWebhooks((hooks as PageResponse<WebhookEvent>).content ?? [])
     } catch (e: any) {
-      setError(e.message || "Failed to load integrations")
+      setError(e.message || t("integrations.failedToLoadIntegrations"))
     } finally { setLoading(false) }
   }, [failedOnly])
 
@@ -66,7 +69,7 @@ export default function PlatformIntegrationsPage() {
       const updated = await platformAdminApi.probeIntegration(key)
       setIntegrations(prev => prev.map(i => (i.key === key ? updated : i)))
     } catch (e: any) {
-      setError(e.message || `Probe failed for ${key}`)
+      setError(e.message || t("integrations.probeFailedFor", { p0: key }))
     } finally { setProbing(null) }
   }
 
@@ -75,17 +78,17 @@ export default function PlatformIntegrationsPage() {
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-slate-800 text-white"><Plug2 className="size-4" /></span> Integration Management</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Registry-backed connection status, config presence, webhook health — no secrets displayed, no fake healthy.</p>
+            <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-slate-800 text-white"><Plug2 className="size-4" /></span> {t("integrations.integrationManagement")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("integrations.registryBackedConnectionStatus")}</p>
           </div>
-          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> Refresh</button>
+          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> {t("integrations.refresh")}</button>
         </div>
       </div>
 
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
           <span className="flex items-center gap-2"><AlertCircle className="size-4" />{error}</span>
-          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">Retry</button>
+          <button onClick={load} className="rounded-lg bg-white border px-3 py-1 text-xs font-semibold">{t("integrations.retry")}</button>
         </div>
       )}
 
@@ -111,20 +114,20 @@ export default function PlatformIntegrationsPage() {
               </div>
               <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
                 <div className="rounded-xl border border-border bg-muted/20 p-3">
-                  <p className="font-bold uppercase tracking-widest text-muted-foreground">Config</p>
+                  <p className="font-bold uppercase tracking-widest text-muted-foreground">{t("integrations.config")}</p>
                   <p className="mt-1 font-medium text-foreground">{it.configStatus}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-muted/20 p-3">
-                  <p className="font-bold uppercase tracking-widest text-muted-foreground">Last success</p>
+                  <p className="font-bold uppercase tracking-widest text-muted-foreground">{t("integrations.lastSuccess")}</p>
                   <p className="mt-1 font-medium text-foreground">{it.lastSuccessAt ? new Date(it.lastSuccessAt).toLocaleString() : "—"}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-muted/20 p-3">
-                  <p className="font-bold uppercase tracking-widest text-muted-foreground">Failures</p>
+                  <p className="font-bold uppercase tracking-widest text-muted-foreground">{t("integrations.failures")}</p>
                   <p className="mt-1 font-medium text-foreground">{it.failureCount ?? 0}</p>
                 </div>
               </div>
               {it.webhookStatus && (
-                <p className="mt-3 text-xs text-muted-foreground">Webhook: <span className="font-semibold">{it.webhookStatus}</span> · Retry: {it.retryStatus ?? "—"}</p>
+                <p className="mt-3 text-xs text-muted-foreground">{t("integrations.webhook")}<span className="font-semibold">{it.webhookStatus}</span> {t("integrations.retry2")}{it.retryStatus ?? "—"}</p>
               )}
               {it.probeDetail && <p className="mt-1 text-xs text-muted-foreground">{it.probeDetail}</p>}
               <button
@@ -132,8 +135,7 @@ export default function PlatformIntegrationsPage() {
                 disabled={probing === it.key}
                 className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:opacity-50"
               >
-                {probing === it.key ? <RefreshCw className="size-3.5 animate-spin" /> : <Bug className="size-3.5" />} Run probe
-              </button>
+                {probing === it.key ? <RefreshCw className="size-3.5 animate-spin" /> : <Bug className="size-3.5" />} {t("integrations.runProbe")}</button>
             </div>
           )
         })}
@@ -141,26 +143,25 @@ export default function PlatformIntegrationsPage() {
 
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Webhook className="size-4" /> Webhook Events</h2>
+          <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Webhook className="size-4" /> {t("integrations.webhookEvents")}</h2>
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <input type="checkbox" checked={failedOnly} onChange={e => setFailedOnly(e.target.checked)} className="size-3.5" />
-            Failed only
-          </label>
+            {t("integrations.failedOnly")}</label>
         </div>
         {loading ? (
           <div className="mt-3 h-24 animate-pulse rounded-xl bg-muted" />
         ) : webhooks.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">No webhook events recorded yet — status remains unavailable, not fabricated.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t("integrations.noWebhookEventsRecorded")}</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th className="py-2 pr-4 font-semibold">Source</th>
-                  <th className="py-2 pr-4 font-semibold">Event</th>
-                  <th className="py-2 pr-4 font-semibold">Verification</th>
-                  <th className="py-2 pr-4 font-semibold">Result</th>
-                  <th className="py-2 pr-4 font-semibold">Received</th>
+                  <th className="py-2 pr-4 font-semibold">{t("integrations.source")}</th>
+                  <th className="py-2 pr-4 font-semibold">{t("integrations.event")}</th>
+                  <th className="py-2 pr-4 font-semibold">{t("integrations.verification")}</th>
+                  <th className="py-2 pr-4 font-semibold">{t("integrations.result")}</th>
+                  <th className="py-2 pr-4 font-semibold">{t("integrations.received")}</th>
                 </tr>
               </thead>
               <tbody>

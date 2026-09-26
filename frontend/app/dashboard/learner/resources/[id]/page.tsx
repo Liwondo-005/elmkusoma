@@ -4,12 +4,15 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
+import { useTranslations } from "next-intl"
 import { learnerApi, type Resource } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
 import { FileText, Video, Music, Image, Download, ArrowLeft, AlertCircle, Bookmark, BookmarkCheck } from "lucide-react"
 
 export default function ResourceDetailPage() {
   const { user, loading: authLoading } = useAuth()
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const params = useParams()
   const resourceId = params.id as string
 
@@ -35,7 +38,7 @@ export default function ResourceDetailPage() {
       learnerApi.getRelatedResources(resourceId).then(setRelatedResources).catch(() => {})
       learnerApi.checkBookmark("resource", resourceId).then((isBookmarked) => setIsBookmarked(isBookmarked)).catch(() => {})
     } catch {
-      setError("Failed to load resource")
+      setError(t("res.loadError"))
     } finally {
       setLoading(false)
     }
@@ -89,11 +92,11 @@ export default function ResourceDetailPage() {
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
           <div className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="size-4" />
-            Resource not found
+            {t("res.notFound")}
           </div>
         </div>
         <Link href="/dashboard/learner/resources" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-          <ArrowLeft className="size-4" /> Back to resources
+          <ArrowLeft className="size-4" /> {t("res.backLink")}
         </Link>
       </div>
     )
@@ -102,7 +105,7 @@ export default function ResourceDetailPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <Link href="/dashboard/learner/resources" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft className="size-4" /> Back to resources
+        <ArrowLeft className="size-4" /> {t("res.backLink")}
       </Link>
 
       {error && (
@@ -125,9 +128,9 @@ export default function ResourceDetailPage() {
               <button
                 onClick={toggleBookmark}
                 disabled={bookmarkLoading}
-                aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this resource"}
+                aria-label={isBookmarked ? t("res.removeBm") : t("res.addBm")}
                 className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-                title={isBookmarked ? "Remove bookmark" : "Bookmark"}
+                title={isBookmarked ? t("res.removeBm") : t("res.bmShort")}
               >
                 {isBookmarked ? <BookmarkCheck className="size-5 text-primary" /> : <Bookmark className="size-5" />}
               </button>
@@ -140,7 +143,7 @@ export default function ResourceDetailPage() {
                 {resource.resourceType}
               </span>
               <span className="text-xs text-muted-foreground">
-                Added {new Date(resource.createdAt).toLocaleDateString()}
+                {t("res.addedOn", { date: new Date(resource.createdAt).toLocaleDateString() })}
               </span>
             </div>
           </div>
@@ -150,27 +153,27 @@ export default function ResourceDetailPage() {
             href={resource.fileUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`Download ${resource.title}`}
+            aria-label={t("res.downloadLabel", { title: resource.title })}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Download className="size-4" />
-            Download Resource
+            {t("res.download")}
           </a>
           <button
             onClick={toggleBookmark}
             disabled={bookmarkLoading}
-            aria-label={isBookmarked ? "Remove bookmark" : "Save to bookmarks"}
+            aria-label={isBookmarked ? t("res.removeBm") : t("res.saveBm")}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
           >
             {isBookmarked ? <BookmarkCheck className="size-4 text-primary" /> : <Bookmark className="size-4" />}
-            {isBookmarked ? "Bookmarked" : "Bookmark"}
+            {isBookmarked ? t("res.bookmarked") : t("res.bmShort")}
           </button>
         </div>
       </div>
 
       {relatedResources.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground">Related Resources</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("res.related")}</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {relatedResources.slice(0, 3).map((rr) => (
               <Link

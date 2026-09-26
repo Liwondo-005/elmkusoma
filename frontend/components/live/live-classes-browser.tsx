@@ -1,15 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { dashboardApi, type LiveClass as ApiLiveClass } from "@/lib/api"
 import { LiveClassCard } from "@/components/live-class-card"
 import { cn } from "@/lib/utils"
 import type { LiveClass } from "@/lib/data"
 
 const tabs = [
-  { id: "upcoming", label: "Upcoming Classes", count: 0 },
-  { id: "live", label: "Live Now", count: 0 },
-  { id: "past", label: "Past Classes", count: 0 },
+  { id: "upcoming", labelKey: "liveBrowser.upcoming", count: 0 },
+  { id: "live", labelKey: "liveBrowser.liveNow", count: 0 },
+  { id: "past", labelKey: "liveBrowser.past", count: 0 },
 ] as const
 
 type TabId = (typeof tabs)[number]["id"]
@@ -44,6 +45,7 @@ function mapApiToCard(lc: ApiLiveClass): LiveClass {
 }
 
 export function LiveClassesBrowser() {
+  const t = useTranslations("ui")
   const [active, setActive] = useState<TabId>("upcoming")
   const [classes, setClasses] = useState<LiveClass[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,7 +83,7 @@ export function LiveClassesBrowser() {
                   active === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {tab.label}
+                {t(tab.labelKey)}
                 {count > 0 && (
                   <span className="inline-flex size-5 items-center justify-center rounded-full bg-orange text-[10px] font-bold text-orange-foreground">
                     {count}
@@ -108,12 +110,12 @@ export function LiveClassesBrowser() {
         ) : (
           <div className="mt-8 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/40 py-20 text-center">
             <p className="text-sm font-medium text-foreground">
-              {active === "past" ? "No past classes yet" : "No upcoming classes"}
+              {active === "past" ? t("liveBrowser.emptyPastTitle") : t("liveBrowser.emptyUpcomingTitle")}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               {active === "past"
-                ? "Recorded sessions will appear here once live classes have ended."
-                : "Check back later for scheduled live classes."}
+                ? t("liveBrowser.emptyPastDesc")
+                : t("liveBrowser.emptyUpcomingDesc")}
             </p>
           </div>
         )}

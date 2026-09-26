@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { Shield, ArrowLeft } from "lucide-react"
 
 interface PermissionDeniedProps {
@@ -9,7 +10,10 @@ interface PermissionDeniedProps {
   backHref?: string
 }
 
-export function PermissionDenied({ title = "Access Restricted", message = "You don't have permission to view this page. Ask your teacher for help.", backHref = "/dashboard" }: PermissionDeniedProps) {
+export function PermissionDenied({ title: titleProp, message: messageProp, backHref = "/dashboard" }: PermissionDeniedProps) {
+  const t = useTranslations("ui")
+  const title = titleProp ?? t("permissionDenied.defaultTitle")
+  const message = messageProp ?? t("permissionDenied.defaultMessage")
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
       <div className="text-center">
@@ -19,7 +23,7 @@ export function PermissionDenied({ title = "Access Restricted", message = "You d
         <h2 className="mt-6 text-xl font-bold text-foreground">{title}</h2>
         <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">{message}</p>
         <Link href={backHref} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-          <ArrowLeft className="size-4" /> Back to Dashboard
+          <ArrowLeft className="size-4" /> {t("permissionDenied.backToDashboard")}
         </Link>
       </div>
     </div>

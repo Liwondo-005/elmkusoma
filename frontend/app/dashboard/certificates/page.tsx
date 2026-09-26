@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Award, Download, ExternalLink, Loader2 } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { certificateApi, type CertificateResponse } from "@/lib/api"
 
 export default function DashboardCertificatesPage() {
+  const t = useTranslations("learner")
+  const tc = useTranslations("common")
   const [certificates, setCertificates] = useState<CertificateResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -14,7 +17,7 @@ export default function DashboardCertificatesPage() {
     certificateApi
       .list()
       .then(setCertificates)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load certificates"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("certificatesPage.loadFailed")))
       .finally(() => setLoading(false))
   }, [])
 
@@ -22,11 +25,11 @@ export default function DashboardCertificatesPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Certificates</h1>
-          <p className="mt-1 text-sm text-muted-foreground">View and download your earned certificates.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("certificatesPage.title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("certificatesPage.subtitle")}</p>
         </div>
         <Link href="/certificates/verify" className="text-sm font-medium text-primary hover:underline">
-          Verify a Certificate
+          {tc("verifyTitle")}
         </Link>
       </div>
 
@@ -45,8 +48,8 @@ export default function DashboardCertificatesPage() {
       {!loading && !error && certificates.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
           <Award className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No certificates yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Complete courses to earn certificates.</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("noCertificatesYet")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("completeCoursesToEarn")}</p>
         </div>
       )}
 
@@ -60,7 +63,7 @@ export default function DashboardCertificatesPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base font-semibold text-foreground">{cert.title}</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Serial: {cert.serialNumber}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t("certificatesPage.serial", { serial: cert.serialNumber })}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                       {cert.certificateType}
@@ -99,7 +102,7 @@ export default function DashboardCertificatesPage() {
                     href={`/certificates/verify`}
                     className="flex h-9 items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 text-xs font-medium text-foreground hover:bg-muted"
                   >
-                    <ExternalLink className="size-3.5" /> Verify
+                    <ExternalLink className="size-3.5" /> {tc("verifyButton")}
                   </Link>
                 )}
               </div>

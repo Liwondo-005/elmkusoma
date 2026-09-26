@@ -2,6 +2,7 @@
 
 import { Bell, AlertTriangle, CheckCircle, Clock, Info, Mail, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { parentApi, type ParentNotificationItem } from "@/lib/parent-api"
 
 const typeIcons: Record<string, typeof Bell> = {
@@ -26,23 +27,26 @@ const typeColors: Record<string, string> = {
   ASSESSMENT: "text-purple-600",
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "Just now"
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days === 1) return "Yesterday"
-  if (days < 7) return `${days} days ago`
-  return new Date(dateStr).toLocaleDateString("en-GB", { month: "short", day: "numeric" })
-}
-
 export default function ParentNotificationsPage() {
+  const t = useTranslations("parent")
+  const tn = useTranslations("nav")
+  const te = useTranslations("emptyStates")
   const [notifications, setNotifications] = useState<ParentNotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
+
+  function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return t("activity.timeJustNow")
+    if (mins < 60) return t("activity.timeMinutesAgo", { count: mins })
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return t("activity.timeHoursAgo", { count: hrs })
+    const days = Math.floor(hrs / 24)
+    if (days === 1) return t("activity.timeYesterday")
+    if (days < 7) return t("activity.timeDaysAgo", { count: days })
+    return new Date(dateStr).toLocaleDateString("en-GB", { month: "short", day: "numeric" })
+  }
 
   useEffect(() => {
     parentApi.getNotifications(0, 50).then((data) => {
@@ -73,14 +77,14 @@ export default function ParentNotificationsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Notifications</h1>
+          <h1 className="text-xl font-bold text-foreground">{tn("notifications")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}` : "All caught up"}
+            {unreadCount > 0 ? t("notifications.unreadCount", { count: unreadCount }) : t("notifications.allCaughtUp")}
           </p>
         </div>
         {unreadCount > 0 && (
           <button onClick={markAllRead} className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20">
-            Mark all read
+            {t("notifications.markAllRead")}
           </button>
         )}
       </div>
@@ -89,8 +93,8 @@ export default function ParentNotificationsPage() {
         {notifications.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border py-16 text-center">
             <Bell className="mx-auto mb-3 size-10 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">No notifications</p>
-            <p className="mt-1 text-xs text-muted-foreground">You&apos;re all caught up.</p>
+            <p className="text-sm font-medium text-foreground">{te("noNotifications")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("notifications.emptyDesc")}</p>
           </div>
         ) : (
           notifications.map((n) => {
