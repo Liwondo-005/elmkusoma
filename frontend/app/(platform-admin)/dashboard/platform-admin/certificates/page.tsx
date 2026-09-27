@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useEffect, useState, useCallback } from "react"
 import {
   Award, Loader2, Hash, Ban, AlertCircle, Search, LayoutTemplate, Users,
@@ -45,6 +46,8 @@ interface InstitutionOption {
 const CERT_TYPES = ["COMPLETION", "ACHIEVEMENT", "PARTICIPATION", "TRANSCRIPT"]
 
 export default function CertificatesPage() {
+  const t = useTranslations("platformAdmin")
+  const tc = useTranslations("common")
   const [tab, setTab] = useState<TabKey>("certificates")
   const [data, setData] = useState<PageResponse<CertificateSummary> | null>(null)
   const [loading, setLoading] = useState(true)
@@ -73,7 +76,7 @@ export default function CertificatesPage() {
       })
       setData(res)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load certificates")
+      setError(err instanceof Error ? err.message : t("certificates.failedToLoadCertificates"))
     } finally {
       setLoading(false)
     }
@@ -109,7 +112,7 @@ export default function CertificatesPage() {
       setRevokePrompt(null)
       await loadData()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to revoke certificate")
+      setError(e instanceof Error ? e.message : t("certificates.failedToRevokeCertificate"))
     } finally { setRevoking(null) }
   }
 
@@ -129,35 +132,35 @@ export default function CertificatesPage() {
   const formatDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 
   const tabs: { key: TabKey; label: string; icon: typeof Award }[] = [
-    { key: "overview", label: "Overview", icon: BarChart3 },
-    { key: "certificates", label: "Certificates", icon: Award },
-    { key: "templates", label: "Templates", icon: LayoutTemplate },
-    { key: "signatories", label: "Signatories", icon: Users },
+    { key: "overview", label: t("certificates.tabOverview"), icon: BarChart3 },
+    { key: "certificates", label: t("certificates.certificates"), icon: Award },
+    { key: "templates", label: t("certificates.tabTemplates"), icon: LayoutTemplate },
+    { key: "signatories", label: t("certificates.tabSignatories"), icon: Users },
   ]
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Certificates</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("certificates.certificates")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Certificate governance: issuance, templates, authorised signatories, verification and revocation.
+          {t("certificates.subtitle")}
         </p>
       </div>
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-1 rounded-2xl border border-border bg-muted/50 p-1">
-        {tabs.map((t) => (
+        {tabs.map((tabItem) => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tabItem.key}
+            onClick={() => setTab(tabItem.key)}
             className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-              tab === t.key
+              tab === tabItem.key
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <t.icon className="size-4" />
-            {t.label}
+            <tabItem.icon className="size-4" />
+            {tabItem.label}
           </button>
         ))}
       </div>
@@ -176,24 +179,23 @@ export default function CertificatesPage() {
 
           {revokePrompt && (
             <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 space-y-3">
-              <p className="text-sm font-semibold text-destructive">Revoke certificate (platform action)</p>
+              <p className="text-sm font-semibold text-destructive">{t("certificates.revokeCertificatePlatformAction")}</p>
               <p className="text-sm text-muted-foreground">
-                The certificate will be marked REVOKED permanently — it is not deleted, and the action is recorded
-                in the audit trail with your reason. Public verification will then report it as revoked.
+                {t("certificates.revokeDescription")}
               </p>
               <input
                 autoFocus
                 value={revokePrompt.reason}
                 onChange={(e) => setRevokePrompt({ ...revokePrompt, reason: e.target.value })}
-                placeholder="Reason (required for audit)"
+                placeholder={t("certificates.reasonRequiredForAudit")}
                 className="w-full rounded-xl border border-destructive/30 bg-background px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-destructive/30"
               />
               <div className="flex gap-2">
                 <button onClick={revoke} disabled={revoking === revokePrompt.id || !revokePrompt.reason.trim()}
                   className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
-                  {revoking === revokePrompt.id ? <Loader2 className="size-4 animate-spin" /> : <Ban className="size-4" />} Confirm revoke
+                  {revoking === revokePrompt.id ? <Loader2 className="size-4 animate-spin" /> : <Ban className="size-4" />} {t("certificates.confirmRevoke")}
                 </button>
-                <button onClick={() => setRevokePrompt(null)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">Cancel</button>
+                <button onClick={() => setRevokePrompt(null)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground">{tc("cancel")}</button>
               </div>
             </div>
           )}
@@ -207,7 +209,7 @@ export default function CertificatesPage() {
                   value={draftFilters.search}
                   onChange={(e) => setDraftFilters({ ...draftFilters, search: e.target.value })}
                   onKeyDown={(e) => e.key === "Enter" && applyFilters()}
-                  placeholder="Search title, serial, recipient, course"
+                  placeholder={t("certificates.searchPlaceholder")}
                   className="w-full rounded-xl border border-border bg-background pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
@@ -216,29 +218,29 @@ export default function CertificatesPage() {
                 onChange={(e) => setDraftFilters({ ...draftFilters, status: e.target.value })}
                 className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
               >
-                <option value="">All statuses</option>
-                <option value="ISSUED">Issued</option>
-                <option value="DRAFT">Draft</option>
-                <option value="REVOKED">Revoked</option>
+                <option value="">{t("certificates.allStatuses")}</option>
+                <option value="ISSUED">{t("certificates.filterIssued")}</option>
+                <option value="DRAFT">{t("certificates.filterDraft")}</option>
+                <option value="REVOKED">{t("certificates.filterRevoked")}</option>
               </select>
               <select
                 value={draftFilters.type}
                 onChange={(e) => setDraftFilters({ ...draftFilters, type: e.target.value })}
                 className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
               >
-                <option value="">All types</option>
-                {CERT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                <option value="">{tc("allTypes")}</option>
+                {CERT_TYPES.map((certType) => <option key={certType} value={certType}>{certType}</option>)}
               </select>
               <select
                 value={draftFilters.institutionId}
                 onChange={(e) => setDraftFilters({ ...draftFilters, institutionId: e.target.value })}
                 className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
               >
-                <option value="">All institutions</option>
+                <option value="">{t("certificates.allInstitutions")}</option>
                 {institutions.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
               </select>
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                From
+                {t("certificates.from")}
                 <input
                   type="date"
                   value={draftFilters.from}
@@ -247,7 +249,7 @@ export default function CertificatesPage() {
                 />
               </label>
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                To
+                {t("certificates.to")}
                 <input
                   type="date"
                   value={draftFilters.to}
@@ -261,14 +263,14 @@ export default function CertificatesPage() {
                 onClick={applyFilters}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
               >
-                <Filter className="size-4" /> Apply filters
+                <Filter className="size-4" /> {t("certificates.applyFilters")}
               </button>
               {hasFilters && (
                 <button
                   onClick={clearFilters}
                   className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
                 >
-                  <X className="size-3.5" /> Clear
+                  <X className="size-3.5" /> {t("certificates.clear")}
                 </button>
               )}
             </div>
@@ -281,11 +283,11 @@ export default function CertificatesPage() {
           ) : !data || data.content.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
               <Award className="size-10 text-muted-foreground/50" />
-              <p className="mt-4 text-sm font-medium text-foreground">No certificates found</p>
+              <p className="mt-4 text-sm font-medium text-foreground">{t("certificates.noCertificatesFound")}</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {hasFilters
-                  ? "No certificates match your filters."
-                  : "No certificates have been issued yet."}
+                  ? t("certificates.noCertificatesMatchFilters")
+                  : t("certificates.noCertificatesHaveBeen")}
               </p>
             </div>
           ) : (
@@ -294,13 +296,13 @@ export default function CertificatesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">Title</th>
-                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">Recipient</th>
-                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">Type</th>
-                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">Serial Number</th>
-                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">Institution</th>
-                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">Issue Date</th>
-                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.title")}</th>
+                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.recipient")}</th>
+                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.type")}</th>
+                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.serialNumber")}</th>
+                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.institution")}</th>
+                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.issueDate")}</th>
+                      <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("certificates.status")}</th>
                       <th className="px-5 py-3" />
                     </tr>
                   </thead>
@@ -325,14 +327,14 @@ export default function CertificatesPage() {
                               onClick={() => setDetailId(cert.id)}
                               className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                             >
-                              <Eye className="size-3" /> Details
+                              <Eye className="size-3" /> {t("certificates.details")}
                             </button>
                             {cert.status !== "REVOKED" && (
                               <button
                                 onClick={() => setRevokePrompt({ id: cert.id, reason: "" })}
                                 className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
                               >
-                                <Ban className="size-3" /> Revoke
+                                <Ban className="size-3" /> {t("certificates.revoke")}
                               </button>
                             )}
                           </div>
@@ -352,17 +354,17 @@ export default function CertificatesPage() {
                 disabled={page === 0}
                 className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
               >
-                Prev
+                {t("certificates.prev")}
               </button>
               <span className="text-sm text-muted-foreground">
-                Page {page + 1} of {data.totalPages}
+                {t("certificates.pageOf", { p0: page + 1, p1: data.totalPages })}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(data.totalPages - 1, p + 1))}
                 disabled={page >= data.totalPages - 1}
                 className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
               >
-                Next
+                {tc("next")}
               </button>
             </div>
           )}
