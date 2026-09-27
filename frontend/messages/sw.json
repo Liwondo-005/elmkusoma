@@ -85,6 +85,7 @@
     "verifyFieldInstructor": "Mkufunzi",
     "verifyFieldGrade": "Alama",
     "verifyFieldCompletionDate": "Tarehe ya Kukamilisha",
+    "verifyFieldIssueDate": "Tarehe ya Kutolewa",
     "verifyFieldSerial": "Nambari ya Mfululizo",
     "verifyFieldInstitution": "Taasisi",
     "verifyFieldSkills": "Ujuzi",
@@ -1000,6 +1001,10 @@
     "settingsPage": {
       "deleteButton": "Futa Akaunti",
       "save": "Hifadhi Mipangilio",
+      "title": "Mipangilio",
+      "subtitle": "Mapendeleo hapa chini yamehifadhiwa kwenye kifaa hiki (kivinjari tu) — hayajasawazishwa na akaunti yako.",
+      "emailLabel": "Arifa za barua pepe",
+      "emailDesc": "Pokea taarifa kuhusu kozi na madarasa",
       "liveLabel": "Vikumbusho vya madarasa ya moja kwa moja",
       "liveDesc": "Pata arifa kabla ya madarasa ya moja kwa moja kuanza",
       "assignLabel": "Tarehe za mwisho za kazi",
@@ -1011,6 +1016,8 @@
       "showActivity": "Onyesha shughuli za kujifunza",
       "showActivityDesc": "Onyesha maendeleo yako kwenye wasifu wako",
       "danger": "Eneo Hatari",
+      "deleteTitle": "Futa Akaunti",
+      "saved": "Imehifadhiwa kwenye kifaa hiki.",
       "deleteDesc": "Futa akaunti yako na data zote kabisa"
     },
     "speak": {
@@ -5385,7 +5392,8 @@
       "serviceName": "Huduma Jina",
       "serviceCodeEG": "Huduma Code (e.g. KOZI)",
       "description": "Description",
-      "noServicesConfiguredYet": "Hakuna huduma configured yet",
+      "noServicesConfiguredYet": "Hakuna huduma zilizowekwa bado",
+      "loadError": "Imeshindwa kupakia huduma.",
       "deactivate": "Deactivate",
       "activate": "Amilisha"
     },
@@ -6082,7 +6090,11 @@
       "responseTitle": "Muda wa Majibu",
       "locationTitle": "Mahali",
       "successTitle": "Ujumbe Umetumwa!",
-      "submitting": "Inatuma..."
+      "submitting": "Inatuma...",
+      "mailtoTitle": "Programu yako ya barua pepe inapaswa kuwa wazi",
+      "mailtoDescPrefix": "Tumeandaa ujumbe wako kwa",
+      "mailtoDescSuffix": ". Bonyeza tuma huko ili utufikie — kama hakuna kilichofunguka, tutumie barua pepe moja kwa moja.",
+      "backToForm": "Rudi kwenye Fomu"
     },
     "coursesHome": {
       "title": "Kozi",

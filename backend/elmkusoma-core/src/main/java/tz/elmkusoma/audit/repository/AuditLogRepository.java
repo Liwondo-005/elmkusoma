@@ -27,6 +27,10 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     @Query("SELECT a FROM AuditLog a WHERE a.userId = :userId ORDER BY a.createdAt DESC")
     Page<AuditLog> findByUserId(@Param("userId") UUID userId, Pageable pageable);
 
+    @Query("SELECT a FROM AuditLog a WHERE a.institutionId = :institutionId AND a.userId = :userId ORDER BY a.createdAt DESC")
+    Page<AuditLog> findByInstitutionIdAndUserId(@Param("institutionId") UUID institutionId,
+                                                @Param("userId") UUID userId, Pageable pageable);
+
     @Query("SELECT a FROM AuditLog a WHERE a.institutionId = :institutionId AND a.entityType = :entityType AND a.entityId = :entityId ORDER BY a.createdAt DESC")
     List<AuditLog> findByEntityTypeAndEntityId(@Param("institutionId") UUID institutionId,
                                                 @Param("entityType") String entityType,
@@ -41,6 +45,13 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     Page<AuditLog> findByActionAndIsDeletedFalse(tz.elmkusoma.audit.domain.AuditLog.AuditAction action, Pageable pageable);
     Page<AuditLog> findByEntityTypeAndIsDeletedFalse(String entityType, Pageable pageable);
     Page<AuditLog> findByActionAndEntityTypeAndIsDeletedFalse(tz.elmkusoma.audit.domain.AuditLog.AuditAction action, String entityType, Pageable pageable);
+
+    Page<AuditLog> findByEntityIdAndIsDeletedFalse(UUID entityId, Pageable pageable);
+
+    @Query("SELECT COUNT(a) FROM AuditLog a WHERE a.entityType = :entityType AND a.action = :action AND a.isDeleted = false AND a.createdAt >= :since")
+    long countByEntityTypeAndActionSince(@Param("entityType") String entityType,
+                                         @Param("action") tz.elmkusoma.audit.domain.AuditLog.AuditAction action,
+                                         @Param("since") LocalDateTime since);
 
     long countByArchivedAtIsNotNull();
 

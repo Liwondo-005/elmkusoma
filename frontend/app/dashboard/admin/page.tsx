@@ -48,18 +48,25 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const load = () => {
     const institutionId = getInstitutionId()
     if (!institutionId) {
       setError(t("overview.noInstitutionContextFound"))
       setLoading(false)
       return
     }
+    setLoading(true)
+    setError(null)
     adminApi
       .getEnhancedDashboard(institutionId)
       .then(setData)
       .catch((err) => setError(err instanceof Error ? err.message : t("overview.failedToLoadDashboard")))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
@@ -82,6 +89,12 @@ export default function AdminDashboardPage() {
       {error && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-10 text-center">
           <p className="text-sm font-medium text-destructive">{error}</p>
+          <button
+            onClick={load}
+            className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-destructive/30 px-4 text-sm font-medium text-destructive hover:bg-destructive/10"
+          >
+            Retry
+          </button>
         </div>
       )}
 

@@ -114,9 +114,11 @@ public class Institution {
     private String approvedBy;
 
     public enum InstitutionType {
+        NATIONAL,
         NURSERY,
         PRIMARY,
         SECONDARY,
+        SCHOOL,
         COLLEGE,
         VOCATIONAL,
         UNIVERSITY,
@@ -128,8 +130,6 @@ public class Institution {
         CONTENT_PROVIDER,
         EVENT_PROVIDER,
         COMMUNITY_SCHOOL,
-        ADULT_EDUCATION,
-        NATIONAL,
-        SCHOOL
+        ADULT_EDUCATION
     }
 }

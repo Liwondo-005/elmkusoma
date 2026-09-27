@@ -50,13 +50,24 @@ public class CertificateService {
     private final AuditService auditService;
     private final StudentRepository studentRepository;
     private final LearnerNotificationRepository learnerNotificationRepository;
+    private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
 
-    private static final ConcurrentHashMap<String, AtomicInteger> verifyAttempts = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, VerifyWindow> verifyWindows = new ConcurrentHashMap<>();
     private static final int MAX_VERIFY_ATTEMPTS = 10;
     private static final long WINDOW_MS = 60_000; // 1 minute
+
+    /**
+     * Sliding one-minute window per rate-limit key. The window is recreated when it
+     * expires, so verification is throttled per minute instead of once per process
+     * lifetime (the previous implementation never reset its counter).
+     */
+    private static final class VerifyWindow {
+        private final long startedAt = System.currentTimeMillis();
+        private final AtomicInteger attempts = new AtomicInteger();
+    }
 
     // ── Template Management ──
 
@@ -117,8 +128,8 @@ public class CertificateService {
         // Generate verification code
         String verificationCode = generateVerificationCode();
 
-        // Build verification URL
-        String verificationUrl = "/api/v1/certificates/" + verificationCode + "/verify";
+        // Build verification URL (public web route used by the verification page and QR codes)
+        String verificationUrl = "/certificates/verify/" + verificationCode;
 
         // Resolve student ID: if not a valid student record, try to find by user ID
         UUID studentId = request.getStudentId();
@@ -244,15 +255,15 @@ public class CertificateService {
 
     // ── Certificate Verification ──
 
-    @Transactional(readOnly = true)
     public CertificateVerificationResponse verifyCertificate(String verificationCode) {
-        // Rate limit check (simplified — in production use Redis)
+        // Rate limit: sliding one-minute window (reset when the window expires)
         String key = "verify";
-        AtomicInteger attempts = verifyAttempts.computeIfAbsent(key, k -> new AtomicInteger(0));
-        if (attempts.get() > MAX_VERIFY_ATTEMPTS) {
+        VerifyWindow window = verifyWindows.compute(key, (k, w) ->
+                (w == null || System.currentTimeMillis() - w.startedAt >= WINDOW_MS) ? new VerifyWindow() : w);
+        if (window.attempts.get() >= MAX_VERIFY_ATTEMPTS) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many attempts");
         }
-        attempts.incrementAndGet();
+        window.attempts.incrementAndGet();
 
         Certificate certificate = certificateRepository.findByVerificationCodeAndIsDeletedFalse(verificationCode)
                 .orElse(null);
@@ -265,8 +276,14 @@ public class CertificateService {
                     .build();
         }
 
+        String institutionName = certificate.getInstitutionId() == null ? null
+                : institutionRepository.findById(certificate.getInstitutionId())
+                        .map(tz.elmkusoma.shared.domain.Institution::getName)
+                        .orElse(null);
+
+        CertificateVerificationResponse response;
         if (certificate.getStatus() == CertificateStatus.REVOKED) {
-            return CertificateVerificationResponse.builder()
+            response = CertificateVerificationResponse.builder()
                     .valid(false)
                     .id(certificate.getId().toString())
                     .serialNumber(certificate.getSerialNumber())
@@ -278,13 +295,13 @@ public class CertificateService {
                     .grade(certificate.getGrade())
                     .skills(certificate.getSkills())
                     .completionDate(certificate.getCompletionDate())
+                    .institutionName(institutionName)
                     .status(certificate.getStatus().name())
+                    .issueDate(certificate.getIssueDate())
                     .message("This certificate has been revoked: " + certificate.getRevokedReason())
                     .build();
-        }
-
-        if (certificate.getExpiryDate() != null && certificate.getExpiryDate().isBefore(LocalDate.now())) {
-            return CertificateVerificationResponse.builder()
+        } else if (certificate.getExpiryDate() != null && certificate.getExpiryDate().isBefore(LocalDate.now())) {
+            response = CertificateVerificationResponse.builder()
                     .valid(false)
                     .id(certificate.getId().toString())
                     .serialNumber(certificate.getSerialNumber())
@@ -296,27 +313,42 @@ public class CertificateService {
                     .grade(certificate.getGrade())
                     .skills(certificate.getSkills())
                     .completionDate(certificate.getCompletionDate())
+                    .institutionName(institutionName)
                     .status(certificate.getStatus().name())
+                    .issueDate(certificate.getIssueDate())
                     .message("This certificate has expired")
+                    .build();
+        } else {
+            response = CertificateVerificationResponse.builder()
+                    .valid(certificate.getStatus() == CertificateStatus.ISSUED)
+                    .id(certificate.getId().toString())
+                    .serialNumber(certificate.getSerialNumber())
+                    .studentName(certificate.getStudentName())
+                    .certificateType(certificate.getCertificateType().name())
+                    .title(certificate.getTitle())
+                    .courseTitle(certificate.getTitle())
+                    .instructorName(certificate.getInstructorName())
+                    .grade(certificate.getGrade())
+                    .skills(certificate.getSkills())
+                    .completionDate(certificate.getCompletionDate())
+                    .institutionName(institutionName)
+                    .status(certificate.getStatus().name())
+                    .issueDate(certificate.getIssueDate())
+                    .message("Certificate is valid and verified")
                     .build();
         }
 
-        return CertificateVerificationResponse.builder()
-                .valid(certificate.getStatus() == CertificateStatus.ISSUED)
-                .id(certificate.getId().toString())
-                .serialNumber(certificate.getSerialNumber())
-                .studentName(certificate.getStudentName())
-                .certificateType(certificate.getCertificateType().name())
-                .title(certificate.getTitle())
-                .courseTitle(certificate.getTitle())
-                .instructorName(certificate.getInstructorName())
-                .grade(certificate.getGrade())
-                .skills(certificate.getSkills())
-                .completionDate(certificate.getCompletionDate())
-                .status(certificate.getStatus().name())
-                .issueDate(certificate.getIssueDate())
-                .message("Certificate is valid and verified")
-                .build();
+        // Record real verification activity through the existing audit system.
+        try {
+            auditService.recordAuditLog(certificate.getInstitutionId(), null, null, "PUBLIC",
+                    "Certificate", certificate.getId(), certificate.getSerialNumber(),
+                    AuditLog.AuditAction.VIEW, null,
+                    java.util.Map.of("outcome", response.getStatus() != null ? response.getStatus() : "UNKNOWN",
+                            "valid", response.isValid()));
+        } catch (Exception e) {
+            log.warn("Failed to audit certificate verification for {}: {}", certificate.getSerialNumber(), e.getMessage());
+        }
+        return response;
     }
 
     // ── Certificate Queries ──

@@ -12,6 +12,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import tz.elmkusoma.testutil.TestTokens;
+import org.springframework.context.annotation.Import;
+import tz.elmkusoma.testutil.TestDataSeeder;
 
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -24,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestPropertySource(locations = "classpath:application-test.properties")
+@Import(TestDataSeeder.class)
 class EventLifecycleE2ETest {
 
     @Autowired

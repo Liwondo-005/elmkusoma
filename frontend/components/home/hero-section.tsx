@@ -1,6 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { buttonVariants } from "@/components/ui/button"
+import { HeroLearnerBadge } from "@/components/home/platform-stats"
 import { cn } from "@/lib/utils"
 
 const highlights = [
@@ -62,22 +63,7 @@ export function HeroSection() {
               />
             </div>
 
-            <div className="absolute bottom-5 right-5 flex items-center gap-3 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
-              <div className="flex -space-x-2">
-                {["A", "M", "J"].map((initial) => (
-                  <span
-                    key={initial}
-                    className="flex size-7 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-bold text-primary-foreground"
-                  >
-                    {initial}
-                  </span>
-                ))}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">8,500+</p>
-                <p className="text-xs text-muted-foreground">Active learners across Africa</p>
-              </div>
-            </div>
+            <HeroLearnerBadge />
           </div>
         </div>
       </div>

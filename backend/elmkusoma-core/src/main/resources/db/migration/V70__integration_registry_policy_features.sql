@@ -101,21 +101,21 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_archived_at ON audit_logs(archived_at)
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- 6. Central policy flags (M27 §62) — defaults preserve current behaviour (permissive = true)
-INSERT INTO platform_config (id, config_key, config_value, config_type, description, category, is_public, created_at, is_deleted)
+INSERT INTO platform_config (id, config_key, config_value, config_type, description, category, is_public, is_sensitive, created_at, is_deleted)
 VALUES
-    (gen_random_uuid(), 'policy.registration.enabled', 'true', 'BOOLEAN', 'Who can register: allow public registration', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.provider.create.enabled', 'true', 'BOOLEAN', 'Who can create providers/institutions', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.content.publish.enabled', 'true', 'BOOLEAN', 'Who can publish content', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.live.create.enabled', 'true', 'BOOLEAN', 'Who can create Live sessions', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.certificate.issue.enabled', 'true', 'BOOLEAN', 'Who can issue certificates', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.charge.enabled', 'true', 'BOOLEAN', 'Who can charge users', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.sponsor.enabled', 'true', 'BOOLEAN', 'Who can sponsor users', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.invite.enabled', 'true', 'BOOLEAN', 'Who can invite participants', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.paid_access.enabled', 'true', 'BOOLEAN', 'Who can access paid services', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.verification.required', 'true', 'BOOLEAN', 'Who requires verification', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'policy.approval.required', 'true', 'BOOLEAN', 'Who requires approval', 'POLICY', false, NOW(), false),
-    (gen_random_uuid(), 'ops.scheduler.heartbeat', NULL, 'TIMESTAMP', 'Last background scheduler heartbeat (real)', 'OPS', false, NOW(), false),
-    (gen_random_uuid(), 'ops.backup.status_file', './backups/last_backup_status.json', 'STRING', 'Path to backup status file written by backup-db.sh', 'OPS', false, NOW(), false),
-    (gen_random_uuid(), 'ops.backup.dir', './backups', 'STRING', 'Directory holding database backup dumps', 'OPS', false, NOW(), false),
-    (gen_random_uuid(), 'data.retention.last_sweep', NULL, 'STRING', 'Result of last data retention sweep (JSON, set by job)', 'DATA', false, NOW(), false)
+    (gen_random_uuid(), 'policy.registration.enabled', 'true', 'BOOLEAN', 'Who can register: allow public registration', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.provider.create.enabled', 'true', 'BOOLEAN', 'Who can create providers/institutions', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.content.publish.enabled', 'true', 'BOOLEAN', 'Who can publish content', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.live.create.enabled', 'true', 'BOOLEAN', 'Who can create Live sessions', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.certificate.issue.enabled', 'true', 'BOOLEAN', 'Who can issue certificates', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.charge.enabled', 'true', 'BOOLEAN', 'Who can charge users', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.sponsor.enabled', 'true', 'BOOLEAN', 'Who can sponsor users', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.invite.enabled', 'true', 'BOOLEAN', 'Who can invite participants', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.paid_access.enabled', 'true', 'BOOLEAN', 'Who can access paid services', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.verification.required', 'true', 'BOOLEAN', 'Who requires verification', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'policy.approval.required', 'true', 'BOOLEAN', 'Who requires approval', 'POLICY', false, false, NOW(), false),
+    (gen_random_uuid(), 'ops.scheduler.heartbeat', NULL, 'TIMESTAMP', 'Last background scheduler heartbeat (real)', 'OPS', false, false, NOW(), false),
+    (gen_random_uuid(), 'ops.backup.status_file', './backups/last_backup_status.json', 'STRING', 'Path to backup status file written by backup-db.sh', 'OPS', false, false, NOW(), false),
+    (gen_random_uuid(), 'ops.backup.dir', './backups', 'STRING', 'Directory holding database backup dumps', 'OPS', false, false, NOW(), false),
+    (gen_random_uuid(), 'data.retention.last_sweep', NULL, 'STRING', 'Result of last data retention sweep (JSON, set by job)', 'DATA', false, false, NOW(), false)
 ON CONFLICT (config_key) DO NOTHING;

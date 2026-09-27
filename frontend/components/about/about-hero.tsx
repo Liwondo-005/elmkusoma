@@ -1,9 +1,5 @@
 import Image from "next/image"
-
-const highlights = [
-  { label: "8,500+ Learners" },
-  { label: "500+ Instructors" },
-]
+import { AboutHighlights } from "@/components/home/platform-stats"
 
 export function AboutHero() {
   return (
@@ -28,16 +24,7 @@ export function AboutHero() {
               and a digital library — connecting students with expert teachers across the continent.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
-              {highlights.map((h) => (
-                <span
-                  key={h.label}
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-xs"
-                >
-                  {h.label}
-                </span>
-              ))}
-            </div>
+            <AboutHighlights />
           </div>
 
           <div className="relative">

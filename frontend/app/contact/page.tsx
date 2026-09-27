@@ -33,15 +33,19 @@ export default function ContactPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
   } = useForm<ContactValues>({
     resolver: zodResolver(contactSchema),
   })
 
-  async function onSubmit(_values: ContactValues) {
-    await new Promise((r) => setTimeout(r, 1500))
+  function onSubmit(values: ContactValues) {
+    // Honest handoff: no backend contact endpoint exists, so open the user's
+    // mail app pre-filled to the published support address instead of faking a send.
+    const subject = encodeURIComponent(values.subject)
+    const body = encodeURIComponent(
+      `${values.message}\n\n— ${values.name} (${values.email})`,
+    )
+    window.location.href = `mailto:info@elmkusoma.co.tz?subject=${subject}&body=${body}`
     setSubmitted(true)
-    reset()
   }
 
   return (
@@ -120,12 +124,16 @@ export default function ContactPage() {
                     <div className="flex size-14 items-center justify-center rounded-full bg-teal/10">
                       <CheckCircle className="size-7 text-teal" />
                     </div>
-                    <h2 className="mt-4 text-xl font-bold text-foreground">{t("contact.successTitle")}</h2>
+                    <h2 className="mt-4 text-xl font-bold text-foreground">{t("contact.mailtoTitle")}</h2>
                     <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                      {t("contact.successDesc")}
+                      {t("contact.mailtoDescPrefix")}{" "}
+                      <a href="mailto:info@elmkusoma.co.tz" className="font-medium text-primary hover:underline">
+                        info@elmkusoma.co.tz
+                      </a>
+                      {t("contact.mailtoDescSuffix")}
                     </p>
                     <Button onClick={() => setSubmitted(false)} variant="outline" className="mt-6">
-                      {t("contact.sendAnother")}
+                      {t("contact.backToForm")}
                     </Button>
                   </div>
                 ) : (

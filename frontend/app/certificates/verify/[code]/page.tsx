@@ -95,7 +95,7 @@ export default function CertificateVerifyPage() {
               )}
             </div>
 
-            {result.valid && (
+            {result.id && (
               <div className="space-y-4">
                 {result.title && (
                   <div className="rounded-xl border border-border p-4">
@@ -140,6 +140,14 @@ export default function CertificateVerifyPage() {
                       <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldCompletionDate")}</p>
                       <p className="mt-0.5 text-sm font-medium text-foreground">
                         {new Date(result.completionDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                  {result.issueDate && (
+                    <div className="rounded-xl border border-border p-4">
+                      <p className="text-xs font-medium text-muted-foreground">{tc("verifyFieldIssueDate")}</p>
+                      <p className="mt-0.5 text-sm font-medium text-foreground">
+                        {new Date(result.issueDate).toLocaleDateString()}
                       </p>
                     </div>
                   )}

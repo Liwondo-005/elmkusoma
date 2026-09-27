@@ -35,8 +35,8 @@ public class ProfessionalDevelopmentGoalService {
                 .evidenceUrl(dto.getEvidenceUrl())
                 .notes(dto.getNotes())
                 .category(dto.getCategory())
-                .institutionId(dto.getInstitutionId() != null ? dto.getInstitutionId() : UUID.randomUUID())
                 .build();
+        goal.setInstitutionId(dto.getInstitutionId() != null ? dto.getInstitutionId() : UUID.randomUUID());
         return toDTO(goalRepository.save(goal));
     }
 

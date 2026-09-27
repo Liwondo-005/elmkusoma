@@ -138,9 +138,113 @@ export interface CertificateSummary {
   id: string
   studentId: string
   serialNumber: string
+  certificateNumber: string | null
   title: string
+  studentName: string | null
+  certificateType: string | null
+  courseOrProgramme: string | null
+  institutionId: string | null
+  institutionName: string | null
   issueDate: string
+  expiryDate: string | null
   status: string
+  createdAt: string | null
+}
+
+export interface CertificateOverview {
+  total: number
+  issued: number
+  revoked: number
+  draft: number
+  byType: Record<string, number>
+  verificationActivity30Days: number
+  generatedAt: string
+}
+
+export interface Signatory {
+  id: string
+  institutionId: string | null
+  institutionName: string | null
+  fullName: string
+  positionTitle: string | null
+  organization: string | null
+  signatureImage: string | null
+  certificateTypes: string[] | null
+  status: string
+  validFrom: string | null
+  validUntil: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export interface SignatoryInput {
+  fullName: string
+  positionTitle?: string | null
+  organization?: string | null
+  signatureImage?: string | null
+  certificateTypes?: string[] | null
+  status?: string
+  validFrom?: string | null
+  validUntil?: string | null
+  institutionId?: string | null
+}
+
+export interface PlatformTemplate {
+  id: string
+  institutionId: string
+  institutionName: string | null
+  name: string
+  description: string | null
+  templateType: string
+  htmlContent: string | null
+  cssContent: string | null
+  logoUrl: string | null
+  signatureLine1: string | null
+  signatureLine2: string | null
+  signatureLine3: string | null
+  isActive: boolean
+  version: number
+  usageCount: number
+  createdAt: string | null
+  updatedAt: string | null
+  signatories: Signatory[]
+}
+
+export interface TemplateInput {
+  name: string
+  description?: string | null
+  templateType: string
+  htmlContent?: string | null
+  cssContent?: string | null
+  logoUrl?: string | null
+  signatureLine1?: string | null
+  signatureLine2?: string | null
+  signatureLine3?: string | null
+  institutionId?: string
+}
+
+export interface TemplateVersion {
+  id: string
+  templateId: string
+  version: number
+  name: string
+  templateType: string
+  description: string | null
+  htmlContent: string | null
+  cssContent: string | null
+  logoUrl: string | null
+  archivedAt: string | null
+  archivedBy: string | null
+}
+
+export interface CertificateDetail {
+  certificate: import("./api").CertificateResponse
+  institutionName: string | null
+  templateId: string | null
+  templateName: string | null
+  templateVersion: number | null
+  templateIsActive: boolean | null
+  signatories: Signatory[]
 }
 
 export interface SecurityEventItem {
@@ -373,17 +477,84 @@ export const platformAdminApi = {
     return platformFetch<PageResponse<PaymentSummary>>(`/v1/platform-admin/payments?${params}`)
   },
 
-  listCertificates: (page = 0, size = 20) =>
-    platformFetch<PageResponse<CertificateSummary>>(`/v1/platform-admin/certificates?page=${page}&size=${size}`),
+  listCertificates: (page = 0, size = 20, filters?: {
+    search?: string; status?: string; type?: string; institutionId?: string; from?: string; to?: string
+  }) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (filters?.search) params.set("search", filters.search)
+    if (filters?.status) params.set("status", filters.status)
+    if (filters?.type) params.set("type", filters.type)
+    if (filters?.institutionId) params.set("institutionId", filters.institutionId)
+    if (filters?.from) params.set("from", filters.from)
+    if (filters?.to) params.set("to", filters.to)
+    return platformFetch<PageResponse<CertificateSummary>>(`/v1/platform-admin/certificates?${params}`)
+  },
+
+  getCertificateOverview: () =>
+    platformFetch<CertificateOverview>("/v1/platform-admin/certificates/overview"),
+
+  getCertificateDetail: (certificateId: string) =>
+    platformFetch<CertificateDetail>(`/v1/platform-admin/certificates/${certificateId}`),
+
+  listCertificateTemplates: (page = 0, size = 50, filters?: { search?: string; type?: string; institutionId?: string }) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (filters?.search) params.set("search", filters.search)
+    if (filters?.type) params.set("type", filters.type)
+    if (filters?.institutionId) params.set("institutionId", filters.institutionId)
+    return platformFetch<PageResponse<PlatformTemplate>>(`/v1/platform-admin/certificate-templates?${params}`)
+  },
+
+  createCertificateTemplate: (body: TemplateInput) =>
+    platformFetch<PlatformTemplate>("/v1/platform-admin/certificate-templates", {
+      method: "POST", body: JSON.stringify(body) }),
+
+  updateCertificateTemplate: (templateId: string, body: TemplateInput) =>
+    platformFetch<PlatformTemplate>(`/v1/platform-admin/certificate-templates/${templateId}`, {
+      method: "PUT", body: JSON.stringify(body) }),
+
+  setCertificateTemplateStatus: (templateId: string, isActive: boolean) =>
+    platformFetch<PlatformTemplate>(`/v1/platform-admin/certificate-templates/${templateId}/status`, {
+      method: "PUT", body: JSON.stringify({ isActive }) }),
+
+  getTemplateSignatories: (templateId: string) =>
+    platformFetch<Signatory[]>(`/v1/platform-admin/certificate-templates/${templateId}/signatories`),
+
+  replaceTemplateSignatories: (templateId: string, signatoryIds: string[]) =>
+    platformFetch<Signatory[]>(`/v1/platform-admin/certificate-templates/${templateId}/signatories`, {
+      method: "PUT", body: JSON.stringify({ signatoryIds }) }),
+
+  getTemplateVersions: (templateId: string) =>
+    platformFetch<TemplateVersion[]>(`/v1/platform-admin/certificate-templates/${templateId}/versions`),
+
+  listCertificateSignatories: (page = 0, size = 50, filters?: { search?: string; status?: string; institutionId?: string }) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (filters?.search) params.set("search", filters.search)
+    if (filters?.status) params.set("status", filters.status)
+    if (filters?.institutionId) params.set("institutionId", filters.institutionId)
+    return platformFetch<PageResponse<Signatory>>(`/v1/platform-admin/certificate-signatories?${params}`)
+  },
+
+  createCertificateSignatory: (body: SignatoryInput) =>
+    platformFetch<Signatory>("/v1/platform-admin/certificate-signatories", {
+      method: "POST", body: JSON.stringify(body) }),
+
+  updateCertificateSignatory: (signatoryId: string, body: SignatoryInput) =>
+    platformFetch<Signatory>(`/v1/platform-admin/certificate-signatories/${signatoryId}`, {
+      method: "PUT", body: JSON.stringify(body) }),
+
+  deleteCertificateSignatory: (signatoryId: string) =>
+    platformFetch<{ id: string; deleted: boolean; linksRemoved: number }>(
+      `/v1/platform-admin/certificate-signatories/${signatoryId}`, { method: "DELETE" }),
 
   getSecurityEvents: () => platformFetch<SecurityEventItem[]>("/v1/platform-admin/security/events"),
   resolveSecurityEvent: (eventId: string) =>
     platformFetch<SecurityEventItem>(`/v1/platform-admin/security/events/${eventId}/resolve`, { method: "POST" }),
 
-  getAuditLogs: (page = 0, size = 20, action?: string, entityType?: string) => {
+  getAuditLogs: (page = 0, size = 20, action?: string, entityType?: string, entityId?: string) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
     if (action) params.set("action", action)
     if (entityType) params.set("entityType", entityType)
+    if (entityId) params.set("entityId", entityId)
     return platformFetch<AuditLogEntry[]>(`/v1/platform-admin/audit/logs?${params}`)
   },
 

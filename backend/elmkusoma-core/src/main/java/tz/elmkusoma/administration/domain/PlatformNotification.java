@@ -3,6 +3,8 @@ package tz.elmkusoma.administration.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
 
 import java.time.LocalDateTime;
@@ -50,6 +52,7 @@ public class PlatformNotification extends BaseEntity {
     @Column(name = "read_count")
     private Integer readCount = 0;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String metadata;
 }

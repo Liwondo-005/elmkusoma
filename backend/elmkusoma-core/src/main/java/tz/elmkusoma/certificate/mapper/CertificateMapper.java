@@ -44,6 +44,7 @@ public class CertificateMapper {
                 .signatureLine2(request.getSignatureLine2())
                 .signatureLine3(request.getSignatureLine3())
                 .isActive(true)
+                .version(1)
                 .build();
         template.setInstitutionId(institutionId);
         return template;

@@ -89,7 +89,7 @@ function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function DashboardTopbar() {
+export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate: () => void) => React.ReactNode }) {
   const t = useTranslations("common")
   const tn = useTranslations("nav")
   const { locale, setLocale } = useLocaleContext()
@@ -99,15 +99,19 @@ export function DashboardTopbar() {
   const [unreadCount, setUnreadCount] = useState(0)
   const { user, logout } = useAuth()
   const router = useRouter()
+  const isAdmin = user?.role === "Admin"
 
   useEffect(() => {
+    // Platform search palette queries /v1/platform-admin/search (ADMIN-only) —
+    // gate the shortcut so learners/teachers never open a 403 palette.
+    if (!isAdmin) return
     function handleKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(true) }
       if (e.key === "Escape") setSearchOpen(false)
     }
     document.addEventListener("keydown", handleKey)
     return () => document.removeEventListener("keydown", handleKey)
-  }, [])
+  }, [isAdmin])
 
   useEffect(() => {
     if (!user || user.role !== "Other Learner") return
@@ -135,8 +139,6 @@ export function DashboardTopbar() {
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U"
-
-  const isAdmin = user?.role === "Admin"
 
   return (
     <>
@@ -244,7 +246,7 @@ export function DashboardTopbar() {
             >
               <X className="size-5" />
             </Button>
-            <DashboardSidebar onNavigate={() => setOpen(false)} />
+            {renderSidebar ? renderSidebar(() => setOpen(false)) : <DashboardSidebar onNavigate={() => setOpen(false)} />}
           </div>
         </div>
       )}

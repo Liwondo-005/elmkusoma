@@ -29,10 +29,12 @@ import {
   BarChart3,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
+import { learnerApi } from "@/lib/learner-api"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 import { Room, RoomEvent, Track, Participant as LKParticipant, TrackPublication } from "livekit-client"
+import { LiveVideoPlayer, type LivePlayerState } from "@/components/live/live-video-player"
 
 interface Participant {
   userId: string
@@ -112,6 +114,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [remoteParticipants, setRemoteParticipants] = useState<Map<string, LKParticipant>>(new Map())
   const [remoteVideoTrack, setRemoteVideoTrack] = useState<TrackPublication | null>(null)
   const [remoteAudioTrack, setRemoteAudioTrack] = useState<TrackPublication | null>(null)
+  const [sessionStatus, setSessionStatus] = useState(liveClass.status)
+  const [roomState, setRoomState] = useState<"idle" | "connecting" | "connected" | "reconnecting" | "error">("idle")
   const [showIssueModal, setShowIssueModal] = useState(false)
   const [issueType, setIssueType] = useState("CONNECTION_PROBLEM")
   const [issueDescription, setIssueDescription] = useState("")
@@ -149,7 +153,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const screenVideoRef = useRef<HTMLVideoElement>(null)
 
-  const isInProgress = liveClass.status === "IN_PROGRESS" || liveClass.status === "LIVE"
+  const isInProgress = sessionStatus === "IN_PROGRESS" || sessionStatus === "LIVE"
+  const sessionEnded = sessionStatus === "COMPLETED" || sessionStatus === "ENDED" || sessionStatus === "CANCELLED"
   const myUserId = user?.id || ""
   const isTeacherClient = user?.role === "Teacher"
 
@@ -206,6 +211,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   useEffect(() => {
     if (!isInProgress || !liveKitToken || !liveKitUrl || serviceMode !== "full") return
 
+    setRoomState("connecting")
     const room = new Room({
       adaptiveStream: true,
       dynacast: true,
@@ -215,12 +221,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     room.on(RoomEvent.Connected, () => {
       setConnected(true)
       setReconnecting(false)
+      setRoomState("connected")
       retryCountRef.current = 0
     })
 
     room.on(RoomEvent.Disconnected, () => {
       if (isInProgress && retryCountRef.current < 10) {
         setReconnecting(true)
+        setRoomState("reconnecting")
         const delay = Math.min(3000 * Math.pow(1.5, retryCountRef.current), 30000)
         retryCountRef.current++
         setTimeout(() => {
@@ -228,6 +236,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             roomRef.current.connect(liveKitUrl, liveKitToken).catch(() => {})
           }
         }, delay)
+      } else {
+        setRoomState("error")
       }
     })
 
@@ -246,6 +256,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         next.delete(participant.identity)
         return next
       })
+      setRemoteVideoTrack(prev => {
+        const pub = prev as (TrackPublication & { participant?: LKParticipant }) | null
+        return pub?.participant?.identity === participant.identity ? null : prev
+      })
+      setRemoteAudioTrack(prev => {
+        const pub = prev as (TrackPublication & { participant?: LKParticipant }) | null
+        return pub?.participant?.identity === participant.identity ? null : prev
+      })
     })
 
     room.on(RoomEvent.TrackSubscribed, (_track: any, pub: TrackPublication, participant?: LKParticipant) => {
@@ -261,7 +279,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
     room.connect(liveKitUrl, liveKitToken).catch(err => {
       console.error("LiveKit connection failed:", err)
-      setServiceMode("chat-only")
+      setRoomState("error")
     })
 
     return () => {
@@ -271,7 +289,50 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   }, [isInProgress, liveKitToken, liveKitUrl, serviceMode])
 
   useEffect(() => {
+    if (!isInProgress) return
+    let cancelled = false
+    const iv = setInterval(async () => {
+      try {
+        const data = await learnerApi.getLiveClass(liveClass.id)
+        if (!cancelled && data?.status && data.status !== sessionStatus) {
+          setSessionStatus(data.status)
+        }
+      } catch {}
+    }, 10000)
+    return () => {
+      cancelled = true
+      clearInterval(iv)
+    }
+  }, [isInProgress, liveClass.id, sessionStatus])
+
+  useEffect(() => {
     if (!isInProgress || !token || !user) return
+
+    function fetchLiveKitToken() {
+      fetch(`/v1/live-session/join/${liveClass.id}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "X-Institution-Id": user?.institutionId || "",
+          "Content-Type": "application/json",
+        },
+      }).then(r => r.json()).then(data => {
+        if (data?.data?.liveKitAvailable) {
+          setServiceMode("full")
+          setLiveKitToken(data.data.liveKitToken)
+          setLiveKitUrl(data.data.liveKitUrl)
+          setRoomName(data.data.roomName)
+        } else {
+          setServiceMode("chat-only")
+          setRoomState("error")
+          setConnected(true)
+        }
+      }).catch(() => {
+        setServiceMode("chat-only")
+        setRoomState("error")
+        setConnected(true)
+      })
+    }
 
     function connect() {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
@@ -287,28 +348,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         setJoinError("")
         retryCountRef.current = 0
         ws.send(JSON.stringify({ type: "JOIN" }))
-
-        fetch(`/v1/live-session/join/${liveClass.id}`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "X-Institution-Id": user?.institutionId || "",
-            "Content-Type": "application/json",
-          },
-        }).then(r => r.json()).then(data => {
-          if (data?.data?.liveKitAvailable) {
-            setServiceMode("full")
-            setLiveKitToken(data.data.liveKitToken)
-            setLiveKitUrl(data.data.liveKitUrl)
-            setRoomName(data.data.roomName)
-          } else {
-            setServiceMode("chat-only")
-            setConnected(true)
-          }
-        }).catch(() => {
-          setServiceMode("chat-only")
-          setConnected(true)
-        })
+        fetchLiveKitToken()
       }
 
       ws.onmessage = (event) => {
@@ -895,6 +935,54 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     return new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
   }
 
+  const playerState: LivePlayerState = sessionEnded
+    ? "ended"
+    : !isInProgress
+      ? sessionStatus === "SCHEDULED" || sessionStatus === "UPCOMING"
+        ? "scheduled"
+        : "ended"
+      : serviceMode === "chat-only"
+        ? "error"
+        : roomState === "error"
+          ? "error"
+          : roomState === "reconnecting"
+            ? "reconnecting"
+            : roomState === "connected"
+              ? remoteVideoTrack?.videoTrack
+                ? "live"
+                : "waiting"
+              : "connecting"
+
+  function retryLiveKit() {
+    if (!token || !user) return
+    setRoomState("connecting")
+    setServiceMode("unknown")
+    setLiveKitToken(null)
+    fetch(`/v1/live-session/join/${liveClass.id}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "X-Institution-Id": user?.institutionId || "",
+        "Content-Type": "application/json",
+      },
+    }).then(r => r.json()).then(data => {
+      if (data?.data?.liveKitAvailable) {
+        setServiceMode("full")
+        setLiveKitToken(data.data.liveKitToken)
+        setLiveKitUrl(data.data.liveKitUrl)
+        setRoomName(data.data.roomName)
+      } else {
+        setServiceMode("chat-only")
+        setRoomState("error")
+        setConnected(true)
+      }
+    }).catch(() => {
+      setServiceMode("chat-only")
+      setRoomState("error")
+      setConnected(true)
+    })
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -917,14 +1005,16 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <span className={cn(
           "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold",
-          isInProgress ? "bg-teal text-teal-foreground" :
-          liveClass.status === "SERVICE_DEGRADED" || liveClass.status === "SERVICE_UNAVAILABLE" ? "bg-amber-100 text-amber-700" :
-          liveClass.status === "RECOVERING" ? "bg-blue-100 text-blue-700" :
-          liveClass.status === "COMPLETED" || liveClass.status === "ENDED" ? "bg-gray-100 text-gray-600" :
+          (playerState === "live" || playerState === "waiting") ? "bg-teal text-teal-foreground" :
+          sessionStatus === "SERVICE_DEGRADED" || sessionStatus === "SERVICE_UNAVAILABLE" ? "bg-amber-100 text-amber-700" :
+          sessionStatus === "RECOVERING" ? "bg-blue-100 text-blue-700" :
+          sessionEnded ? "bg-gray-100 text-gray-600" :
           "bg-blue-100 text-blue-700"
         )}>
-          {(isInProgress || liveClass.status === "LIVE") && <span className="size-1.5 animate-pulse rounded-full bg-white" />}
-          {liveClass.status === "IN_PROGRESS" ? "LIVE" : liveClass.status.replace(/_/g, " ")}
+          {(playerState === "live" || playerState === "waiting") && <span className="size-1.5 animate-pulse rounded-full bg-white" />}
+          {(playerState === "live" || playerState === "waiting")
+            ? "LIVE"
+            : sessionStatus.replace(/_/g, " ")}
         </span>
         <div>
           <h1 className="text-base font-bold text-foreground">{liveClass.title}</h1>
@@ -967,70 +1057,26 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-4 order-2 lg:order-1">
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <div className="relative aspect-video bg-slate-900 flex items-center justify-center">
-              {isInProgress ? (
-                <>
-                  {remoteVideoTrack ? (
-                    <video
-                      ref={el => {
-                        if (el && remoteVideoTrack.videoTrack) {
-                          el.srcObject = new MediaStream([remoteVideoTrack.videoTrack.mediaStreamTrack!])
-                        }
-                      }}
-                      autoPlay
-                      playsInline
-                      className="absolute inset-0 w-full h-full object-contain"
-                    />
-                  ) : isTeacherClient && screenStream ? (
-                    <video
-                      ref={screenVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="absolute inset-0 w-full h-full object-contain"
-                    />
-                  ) : isTeacherClient && localStream && cameraEnabled ? (
-                    <video
-                      ref={localVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-center text-white">
-                      <Video className="mx-auto size-10 mb-2 opacity-40" />
-                      <p className="text-xs opacity-60">
-                        {isTeacherClient ? "Camera off" : "Waiting for the teacher's stream"}
-                      </p>
-                    </div>
-                  )}
-
-                  {remoteAudioTrack && (
-                    <audio
-                      ref={el => {
-                        if (el && remoteAudioTrack.audioTrack) {
-                          el.srcObject = new MediaStream([remoteAudioTrack.audioTrack.mediaStreamTrack!])
-                        }
-                      }}
-                      autoPlay
-                    />
-                  )}
-
-                  {localStream && cameraEnabled && (screenStream || (!isTeacherClient && !remoteVideoTrack)) && (
-                    <div className="absolute bottom-2 right-2 w-40 aspect-video rounded-lg overflow-hidden border-2 border-white/20">
-                      <video
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-
-                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent p-3">
+          <LiveVideoPlayer
+            state={playerState}
+            remoteVideoTrack={remoteVideoTrack}
+            remoteAudioTrack={remoteAudioTrack}
+            isTeacher={isTeacherClient}
+            localStream={localStream}
+            screenStream={screenStream}
+            cameraEnabled={cameraEnabled}
+            recordingUrl={sessionEnded ? liveClass.recordingUrl : null}
+            scheduledLabel={liveClass.scheduledAt ? `Starts at ${formatTime(liveClass.scheduledAt)}` : "Starts at TBD"}
+            onRetry={retryLiveKit}
+            pipStream={
+              localStream && cameraEnabled && (screenStream || (!isTeacherClient && !remoteVideoTrack))
+                ? localStream
+                : null
+            }
+          >
+            {isInProgress && (
+              <>
+                <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent p-3">
                     <ControlButton active={cameraEnabled} onClick={toggleCamera} label={cameraEnabled ? "Turn off camera" : "Turn on camera"}>
                       {cameraEnabled ? <Video className="size-4" /> : <VideoOff className="size-4" />}
                     </ControlButton>
@@ -1060,7 +1106,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     </button>
                   </div>
                   {showMaterialInput && (
-                    <div className="absolute inset-x-0 bottom-16 flex items-center gap-2 bg-black/80 p-3 rounded-lg mx-3">
+                    <div className="absolute inset-x-0 bottom-16 z-20 flex items-center gap-2 bg-black/80 p-3 rounded-lg mx-3">
                       <input
                         type="text"
                         value={materialName}
@@ -1079,37 +1125,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     </div>
                   )}
                 </>
-              ) : liveClass.status === "COMPLETED" || liveClass.status === "ENDED" || liveClass.status === "CANCELLED" ? (
-                <div className="text-center text-white p-6">
-                  <p className="text-sm opacity-75 mb-4">This session has ended</p>
-                  {liveClass.recordingUrl ? (
-                    <div className="space-y-3">
-                      <p className="text-xs opacity-60">Recording is available for replay</p>
-                      {liveClass.recordingUrl.startsWith("http") ? (
-                        <a
-                          href={liveClass.recordingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm text-white hover:bg-white/30 transition-colors"
-                        >
-                          <PlayCircle className="size-4" /> Watch Recording
-                        </a>
-                      ) : (
-                        <p className="text-xs opacity-50">Recording is being processed</p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs opacity-50">No recording available</p>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center text-white">
-                  <Clock className="mx-auto size-10 mb-2 opacity-40" />
-                  <p className="text-xs opacity-60">Starts at {liveClass.scheduledAt ? formatTime(liveClass.scheduledAt) : "TBD"}</p>
-                </div>
               )}
-            </div>
-          </div>
+            </LiveVideoPlayer>
 
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <h2 className="text-xs font-semibold text-foreground mb-2">Class Details</h2>

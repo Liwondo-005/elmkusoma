@@ -8,6 +8,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import tz.elmkusoma.testutil.TestDataSeeder;
+import org.springframework.context.annotation.Import;
 import tz.elmkusoma.testutil.TestTokens;
 
 import java.util.UUID;
@@ -17,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestDataSeeder.class)
 @TestPropertySource(locations = "classpath:application-test.properties")
 class LiveKitIntegrationTest {
 

@@ -1093,6 +1093,43 @@ export interface InstitutionAuditLogResponse {
   createdAt: string
 }
 
+// --- Live session monitoring (AdminLiveSessionController / LiveSessionHealthController) ---
+export interface ActiveLiveSession {
+  id: string
+  title: string
+  teacherId: string | null
+  scheduledAt: string
+  durationMinutes: number | null
+  maxParticipants: number | null
+  currentParticipants: number
+  status: string
+}
+
+export interface LiveSessionStats {
+  totalSessions: number
+  scheduled: number
+  inProgress: number
+  completed: number
+}
+
+export interface SessionParticipant {
+  userId: string
+  userName: string
+  role: string
+  joinedAt: string | null
+  leftAt: string | null
+  durationSeconds: number | null
+  online: boolean
+}
+
+export interface LiveSessionHealth {
+  service: string
+  liveKitConfigured: boolean
+  mode: "full" | "chat-only"
+  status: "OPERATIONAL" | "DEGRADED"
+  message: string
+}
+
 export const adminApi = {
   getDashboard: (institutionId: string) =>
     request<DashboardResponse>(`/v1/admin/dashboard?institutionId=${institutionId}`),
@@ -1195,6 +1232,20 @@ export const adminApi = {
     request<void>(`/v1/admin/people/invitations/${invitationId}?institutionId=${institutionId}`, {
       method: "DELETE",
     }),
+
+  // Live session monitoring — backend requires the X-Institution-Id HEADER
+  // (request() attaches it from getInstitutionId()); query params are ignored.
+  getActiveLiveSessions: () =>
+    request<ActiveLiveSession[]>(`/v1/admin/live-sessions/active`),
+
+  getLiveSessionStats: () =>
+    request<LiveSessionStats>(`/v1/admin/live-sessions/stats`),
+
+  getSessionParticipants: (classId: string) =>
+    request<SessionParticipant[]>(`/v1/admin/live-sessions/participants/${classId}`),
+
+  getLiveSessionHealth: () =>
+    request<LiveSessionHealth>(`/v1/live-session/health`),
 
   // Events
   getEvents: (institutionId: string) =>

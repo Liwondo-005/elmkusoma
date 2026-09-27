@@ -7,6 +7,12 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.amqp.core.MessagePostProcessor;
+import tz.elmkusoma.config.security.OrganizationContext;
+import tz.elmkusoma.config.security.OrganizationContextHolder;
+
+import java.util.UUID;
 
 @Configuration
 public class RabbitMQConfig {
@@ -20,6 +26,7 @@ public class RabbitMQConfig {
     public static final String REPORT_ROUTING_KEY = "elmkusoma.report";
     public static final String CERTIFICATE_ROUTING_KEY = "elmkusoma.certificate";
     public static final String EMAIL_ROUTING_KEY = "elmkusoma.email";
+    private static final String HEADER_INSTITUTION_ID = "x-institution-id";
 
     @Bean
     public TopicExchange elmkusomaExchange() {
@@ -72,9 +79,27 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
+    public MessagePostProcessor institutionIdHeaderPostProcessor(OrganizationContextHolder contextHolder) {
+        return message -> {
+            UUID institutionId = null;
+            OrganizationContext context = contextHolder.getContext();
+            if (context != null) {
+                institutionId = context.getInstitutionId();
+            }
+            if (institutionId != null) {
+                message.getMessageProperties().getHeaders().put(HEADER_INSTITUTION_ID, institutionId.toString());
+            }
+            return message;
+        };
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
+                                          MessageConverter jsonMessageConverter,
+                                          MessagePostProcessor institutionIdHeaderPostProcessor) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
-        rabbitTemplate.setMessageConverter(jsonMessageConverter());
+        rabbitTemplate.setMessageConverter(jsonMessageConverter);
+        rabbitTemplate.setBeforePublishPostProcessors(institutionIdHeaderPostProcessor);
         return rabbitTemplate;
     }
 }

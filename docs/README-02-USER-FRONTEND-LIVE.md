@@ -1198,7 +1198,7 @@ All 16 checks pass — no applicable area missing.
 | Frontend stack / deps | `frontend/package.json`, `frontend/next.config.mjs` |
 | Auth context + role map | `frontend/lib/auth.tsx` |
 | API clients | `frontend/lib/api.ts`, `frontend/lib/fetch.ts`, `frontend/lib/learner-api.ts`, `frontend/lib/college-api.ts`, `frontend/lib/nursery-api.ts`, `frontend/lib/secondary-api.ts`, `frontend/lib/teacher-api.ts`, `frontend/lib/parent-api.ts`, `frontend/lib/platform-admin-api.ts` |
-| Routing guards | `frontend/proxy.ts`, `frontend/app/dashboard/layout.tsx`, `frontend/app/dashboard/nursery/layout.tsx`, `frontend/app/dashboard/secondary/layout.tsx`, `frontend/app/dashboard/learner/layout.tsx`, `frontend/app/dashboard/platform-admin/layout.tsx`, `frontend/app/oversight/layout.tsx` |
+| Routing guards | `frontend/proxy.ts`, `frontend/app/dashboard/layout.tsx`, `frontend/app/dashboard/nursery/layout.tsx`, `frontend/app/dashboard/secondary/layout.tsx`, `frontend/app/dashboard/learner/layout.tsx`, `frontend/app/(platform-admin)/dashboard/platform-admin/layout.tsx`, `frontend/app/oversight/layout.tsx` |
 | Sidebars | `frontend/components/dashboard/dashboard-sidebar.tsx`, `frontend/components/dashboard/platform-admin-sidebar.tsx`, `frontend/components/dashboard/authority-sidebar.tsx` |
 | Learner config | `frontend/lib/learner-config.ts` |
 | Live classroom | `frontend/components/live/live-classroom.tsx`, `frontend/components/live/primary-live-classroom.tsx`, `frontend/components/live/live-interactive-panel.tsx`, `frontend/components/live/activity-creator.tsx` |
