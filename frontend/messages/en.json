@@ -127,7 +127,6 @@
     "durationShort": "{count} min",
     "learnerDashboard": "Learner Dashboard",
     "skipToMainContent": "Skip to main content",
-    "inProgress": "In Progress",
     "completed": "Completed",
     "goBack": "Go back",
     "learn": "Learn",
@@ -461,7 +460,16 @@
       "greeting": "Hello {name}! I'm your AI Learning Guide. Ask me anything about your schoolwork, and I'll help you understand it better. What would you like to learn about today?",
       "thinking": "Thinking...",
       "inputPlaceholder": "Ask a question about your schoolwork...",
-      "dashboard": "Dashboard"
+      "dashboard": "Dashboard",
+      "suggestFractions": "Help me understand fractions",
+      "suggestNext": "What should I study next?",
+      "suggestWater": "Explain the water cycle",
+      "suggestPractice": "Give me a practice problem",
+      "suggestWriting": "How do I improve my writing?",
+      "suggestToday": "What did I learn today?",
+      "title": "AI Learning Guide",
+      "subtitle": "Ask me anything about your schoolwork",
+      "aiLabel": "AI Guide"
     },
     "quiz": {
       "backToQuizzes": "Back to Quizzes",
@@ -472,7 +480,27 @@
       "passed": "Passed",
       "questionCount": "questions",
       "marksCount": "{count} marks",
-      "passMark": "Pass Mark"
+      "passMark": "Pass Mark",
+      "questionsLabel": "Questions",
+      "greatEffort": "Great effort!",
+      "amazingJob": "You did an amazing job! Keep it up!",
+      "practiceMakesPerfect": "Practice makes perfect. You will get better!",
+      "yourScore": "Your Score",
+      "percentage": "Percentage",
+      "statusLabel": "Status",
+      "notPassed": "NOT PASSED",
+      "exit": "Exit",
+      "notFound": "Assessment Not Found",
+      "questionsLine": "Questions: {count}",
+      "totalMarksLine": "Total Marks: {count}",
+      "passMarksLine": "Pass Marks: {count}",
+      "timeLimitLine": "Time Limit: {count} minutes",
+      "congrats": "Congratulations!",
+      "keepPracticing": "Keep Practicing",
+      "passedDesc": "You passed this assessment.",
+      "failedDesc": "You didn't pass this time. Review the material and try again.",
+      "failed": "FAILED",
+      "exitQuiz": "Exit Quiz"
     },
     "assignmentDetail": {
       "answerPlaceholderShort": "Write your answer here...",
@@ -484,7 +512,32 @@
       "back": "Back",
       "scoreLabel": "Score",
       "graded": "Graded",
-      "attachments": "Attachments"
+      "attachments": "Attachments",
+      "teacherSays": "Teacher says:",
+      "submitFailed": "Failed to submit",
+      "notFound": "Assignment Not Found",
+      "backToPractice": "Back to Practice",
+      "whatToDo": "What to do",
+      "noInstructions": "Read the instructions from your teacher and complete the work.",
+      "teacherFiles": "Files from your teacher",
+      "gradedTitle": "Your work has been graded!",
+      "scoreLine": "You got {grade} out of {total}",
+      "submittedTitle": "Work Submitted!",
+      "submittedDesc": "Your teacher will check it soon. Great job!",
+      "sendWork": "Send your work",
+      "changeFile": "Click to change file",
+      "tapUpload": "Tap to upload a photo or file",
+      "uploadHint": "Images and PDFs work best",
+      "backToAssignments": "Back to Assignments",
+      "submittedState": "Submitted",
+      "resultsTitle": "Results",
+      "feedbackLabel": "Feedback",
+      "submittedStateTitle": "Submitted",
+      "pendingReview": "Your submission is pending review.",
+      "submitTitle": "Submit Your Work",
+      "writtenAnswer": "Written Answer",
+      "uploadOptional": "Upload File (optional)",
+      "dragDrop": "Drag and drop or click to upload"
     },
     "lessonDetail": {
       "previous": "Previous",
@@ -496,7 +549,8 @@
       "percentComplete": "{pct}% complete",
       "attachments": "Attachments",
       "progressTitle": "Academic Progress",
-      "completion": "Completion"
+      "completion": "Completion",
+      "backToLessons": "Back to Lessons"
     },
     "assessments": {
       "areaTanzania": "Tanzania Discovery",
@@ -505,21 +559,74 @@
       "upcoming": "Upcoming",
       "available": "Available",
       "startQuiz": "Start Quiz",
-      "totalMarks": "Total Marks"
+      "totalMarks": "Total Marks",
+      "topicWildlife": "Wildlife & Nature",
+      "topicGeography": "Geography & Maps",
+      "topicPeople": "People & Culture",
+      "topicEnvironment": "Environment",
+      "topicAfrica": "Africa & Continents",
+      "topicOceans": "Oceans & Seas",
+      "topicSpace": "Space & Planets",
+      "topicWorldCultures": "World Cultures",
+      "topicMathPuzzles": "Math Puzzles",
+      "topicLogic": "Logic Challenges",
+      "topicPatterns": "Pattern Detective",
+      "topicRealMath": "Real-Life Math",
+      "discoverTitle": "Discover",
+      "discoverSubtitle": "Show what you know and explore new ideas!",
+      "showWhatYouKnow": "Show Me What You Know",
+      "pickQuiz": "Pick a quiz and have fun!",
+      "emptyQuizTitle": "No Quizzes Yet",
+      "emptyQuizDesc": "New quizzes will appear here soon.",
+      "minsCount": "{count} min",
+      "title": "Assessments",
+      "subtitle": "Take quizzes and view your results.",
+      "emptyTitle": "No Assessments",
+      "emptyDesc": "No assessments have been published yet.",
+      "passMarks": "Pass Marks",
+      "timeLimit": "Time Limit"
     },
     "assignments": {
       "submit": "Submit",
       "emptyPracticeDesc": "Your teacher will assign practice work soon. Keep learning!",
       "needsAttention": "Needs Attention",
       "marksCount": "{count} marks",
-      "view": "View"
+      "view": "View",
+      "practiceTitle": "Practice",
+      "practiceSubtitle": "Complete your homework and practice what you learned.",
+      "emptyPracticeTitle": "No practice work yet",
+      "totalMarks": "Total: {count} marks",
+      "dueDate": "Due: {date}",
+      "submitNow": "Submit Now",
+      "practiceWorkTitle": "Practice Work",
+      "practiceBadge": "Practice",
+      "title": "Assignments",
+      "subtitle": "View and submit your assignments.",
+      "emptyTitle": "No Assignments",
+      "emptyDesc": "No assignments have been posted yet."
     },
     "attend": {
       "excellentDesc": "You are attending school very regularly. Keep it up!",
       "excellent": "Excellent!",
       "colDate": "Date",
       "colStatus": "Status",
-      "colRemarks": "Remarks"
+      "colRemarks": "Remarks",
+      "title": "My Attendance",
+      "subtitle": "Keep coming to school every day!",
+      "good": "Good job!",
+      "improve": "Let's improve!",
+      "goodDesc": "You are doing well. Try to attend every day!",
+      "improveDesc": "Coming to school every day helps you learn more. Let's work on it!",
+      "schoolDays": "My School Days",
+      "emptyTitle": "No attendance records yet",
+      "emptyDesc": "Your attendance will appear here.",
+      "monthDesc": "Track your attendance for this month.",
+      "rateLabel": "Attendance Rate",
+      "recordsTitle": "Attendance Records",
+      "noRecords": "No Records",
+      "noRecordsDesc": "No attendance records found for this month.",
+      "colIn": "Check In",
+      "colOut": "Check Out"
     },
     "challenge": {
       "answerPlaceholder": "Write your answer here...",
@@ -528,7 +635,13 @@
       "submit": "Submit",
       "points": "Points",
       "total": "Total",
-      "start": "Start"
+      "start": "Start",
+      "backToList": "Back to Challenges",
+      "fallbackSubject": "Challenge",
+      "title": "Challenge Zone",
+      "subtitle": "Test your skills with challenging problems!",
+      "emptyTitle": "No challenges yet",
+      "emptyDesc": "Check back soon for new challenges!"
     },
     "discovery": {
       "primaryOnlyDesc": "Switch to a primary learner account to explore your curiosity.",
@@ -540,7 +653,24 @@
       "resolveButton": "I resolved this!",
       "typeLabel": "Type",
       "subjectLabel": "Subject",
-      "open": "Open"
+      "open": "Open",
+      "typeWonder": "Wonder",
+      "typeExperiment": "Experiment",
+      "typeObservation": "Observation",
+      "typeResearch": "Research",
+      "title": "Discovery Mode",
+      "tagline": "Ninashangaa...",
+      "primaryOnlyTitle": "Discovery Mode is for Primary learners",
+      "wonderTitle": "I Wonder...",
+      "formTitle": "What do you wonder about?",
+      "titleLabel": "Title",
+      "questionLabel": "Your Question",
+      "noSubject": "No specific subject",
+      "emptyTitle": "What do you wonder about?",
+      "startWondering": "Start Wondering",
+      "groupTitle": "{type}s",
+      "emptyGroup": "No {type}s yet",
+      "resolved": "Resolved"
     },
     "evidence": {
       "generalSubject": "General",
@@ -556,12 +686,42 @@
       "filterAll": "All",
       "subjectLabel": "Subject",
       "descLabel": "Description",
-      "badges": "Badges"
+      "badges": "Badges",
+      "typeLesson": "Lesson Complete",
+      "typeProject": "Project",
+      "typeQuiz": "Quiz Score",
+      "typePortfolio": "Portfolio",
+      "typeTeacher": "Teacher Note",
+      "typeAttendance": "Attendance",
+      "title": "My Learning Evidence",
+      "subtitle": "Proof of your amazing progress!",
+      "filterTitle": "Filter Evidence",
+      "formTitle": "Add Learning Evidence",
+      "titleLabel": "Title *",
+      "evidenceTypeLabel": "Evidence Type",
+      "totalPoints": "Total Evidence Points",
+      "totalItems": "Total Items",
+      "creations": "Creations",
+      "emptyStart": "Start learning to collect your first evidence!",
+      "emptyFiltered": "No evidence matches your filters",
+      "emptyStartDesc": "Complete lessons, create projects, and participate in class to build your evidence collection.",
+      "emptyFilteredDesc": "Try adjusting your filters to see more evidence."
     },
     "journey": {
       "primaryOnlyDesc": "Switch to a primary learner account to see your learning journey map.",
       "emptyDesc": "Your teacher will set up your learning path. Once lessons are assigned, your journey will appear here.",
-      "title": "Lessons"
+      "title": "Lessons",
+      "subtitle": "Safari yangu ya Masomo",
+      "primaryOnlyTitle": "Journey view available for Primary learners",
+      "subjectsCompleted": "Subjects Completed",
+      "stillExploring": "Still Exploring",
+      "stampsEarned": "Stamps Earned",
+      "progressTitle": "Journey Progress",
+      "progressSummary": "{done} of {total} subjects completed",
+      "lessonsCount": "{done} / {total} lessons",
+      "inProgressCount": "{count} in progress",
+      "emptyTitle": "Your journey awaits!",
+      "browseLessons": "Browse Lessons"
     },
     "labs": {
       "primaryOnlyDesc": "Switch to a primary learner account to start experimenting.",
@@ -570,7 +730,23 @@
       "markCompleted": "Mark as Completed",
       "emptyDesc": "Check with your teacher! They will create labs for you to explore.",
       "doneBadge": "Completed",
-      "filterAll": "All"
+      "filterAll": "All",
+      "typeNature": "Nature",
+      "typeMaterials": "Materials",
+      "typeForces": "Forces",
+      "typeLiving": "Living Things",
+      "title": "ELMKUSOMA Labs",
+      "subtitle": "Explore, experiment, and discover!",
+      "primaryOnlyTitle": "Labs is for Primary learners",
+      "hypothesis": "Hypothesis",
+      "materials": "Materials Needed",
+      "steps": "Steps",
+      "expected": "Expected Result",
+      "learnedLabel": "What I Learned",
+      "pointsCount": "{count} points",
+      "totalLabs": "Total Labs",
+      "avgScore": "Avg Score",
+      "emptyTitle": "No labs available yet"
     },
     "learnProfile": {
       "primaryOnlyDesc": "Switch to a primary learner account to set up your profile.",
@@ -588,7 +764,31 @@
       "createTitle": "Create Event",
       "totalPoints": "Total Points",
       "noData": "No Grade Data",
-      "noDataDesc": "No assignments or assessments found for this class."
+      "noDataDesc": "No assignments or assessments found for this class.",
+      "styleVisual": "Visual",
+      "styleVisualDesc": "You learn best by seeing — charts, diagrams, videos",
+      "styleAuditory": "Auditory",
+      "styleAuditoryDesc": "You learn best by hearing — discussions, lectures, music",
+      "styleKinesthetic": "Kinesthetic",
+      "styleKinestheticDesc": "You learn best by doing — hands-on activities, movement",
+      "styleReading": "Reading/Writing",
+      "styleReadingDesc": "You learn best by reading and writing",
+      "primaryOnlyTitle": "Learning Profile is for Primary learners",
+      "formSubtitle": "Tell us how you learn best",
+      "styleLabel": "Learning Style",
+      "styleHint": "Choose the way you learn best",
+      "strengthsLabel": "Strengths",
+      "strengthsHint": "What are you good at?",
+      "interestsLabel": "Interests",
+      "interestsHint": "What do you enjoy?",
+      "goalsLabel": "Goals",
+      "goalsHint": "What do you want to learn?",
+      "editButton": "Edit Profile",
+      "currentLevel": "Current Level",
+      "styleTitle": "Learning Style",
+      "strengthsTitle": "Strengths",
+      "interestsTitle": "Interests",
+      "goalsTitle": "Goals"
     },
     "lessons": {
       "searchPlaceholder": "Search lessons...",
@@ -598,7 +798,14 @@
       "start": "Start",
       "viewAll": "View All",
       "title": "Lessons",
-      "subtitle": "Classes you are assigned to teach."
+      "subtitle": "Classes you are assigned to teach.",
+      "learnTitle": "Learn",
+      "learnSubtitle": "Choose a subject and start learning!",
+      "emptySubject": "No lessons available for {subject} yet.",
+      "emptyDefault": "Your teacher will add lessons soon.",
+      "groupSummary": "{done} of {total} lessons completed",
+      "emptyTitleGeneral": "No Lessons Available",
+      "emptyGeneralDesc": "Lessons will appear here once your teacher publishes them."
     },
     "live": {
       "emptyDesc": "Your teacher will schedule live sessions soon. Check back later!",
@@ -614,14 +821,30 @@
       "upcomingBadge": "UPCOMING",
       "watchReplay": "Watch Replay",
       "replays": "Replays",
-      "minutesCount": "{count} minutes"
+      "minutesCount": "{count} minutes",
+      "minsCount": "{count} min",
+      "sessionFallback": "Live Session",
+      "eligible": "You are eligible to join",
+      "todayBadge": "Today",
+      "comingUp": "Coming Up",
+      "recentlyDone": "Recently Completed",
+      "justEnded": "Just Ended",
+      "classesTitle": "Live Classes",
+      "classesSubtitle": "Join scheduled live sessions with your teachers.",
+      "emptyClassesTitle": "No Live Classes",
+      "upcomingTitle": "Upcoming Classes",
+      "scheduledBadge": "Scheduled",
+      "maxCount": "{count} max",
+      "pastTitle": "Past Classes"
     },
     "inbox": {
       "loadError": "Failed to load messages",
       "emptyTitle": "No messages yet",
       "emptyDesc": "Messages from teachers, instructors, and support will appear here.",
       "title": "Lessons",
-      "subtitle": "Classes you are assigned to teach."
+      "subtitle": "Classes you are assigned to teach.",
+      "learnerFallback": "Learner",
+      "unreadCount": "{count} unread"
     },
     "mistakes": {
       "primaryOnlyDesc": "Switch to a primary learner account to start learning from mistakes.",
@@ -639,7 +862,16 @@
       "formTitle": "Generate a New Certificate",
       "emptyTitle": "No messages yet",
       "addFirst": "Add your first entry",
-      "correctAnswer": "Correct Answer"
+      "correctAnswer": "Correct Answer",
+      "primaryOnlyTitle": "Mistake Lab is for Primary learners",
+      "tagline": "Mistakes help us learn! Review your mistakes and grow stronger.",
+      "reviewed": "Reviewed",
+      "toReview": "To Review",
+      "questionLabel": "The Question / Problem",
+      "wrongLabel": "Your Wrong Answer",
+      "correctLabel": "The Correct Answer",
+      "explainLabel": "Explanation",
+      "yourAnswer": "Your Answer"
     },
     "reading": {
       "filterAll": "All",
@@ -649,7 +881,17 @@
       "filterFavorites": "Favorites",
       "title": "Lessons",
       "subtitle": "Classes you are assigned to teach.",
-      "emptyTitle": "No messages yet"
+      "emptyTitle": "No messages yet",
+      "primaryOnlyTitle": "Reading Adventures is for Primary learners",
+      "metaLine": "{words} words - {mins} min read",
+      "timesRead": "Read {count} times",
+      "storiesRead": "Stories Read",
+      "minutesReading": "Minutes Reading",
+      "favoriteSubject": "Favorite Subject",
+      "emptyFav": "Mark stories as favorites to see them here.",
+      "emptyDefault": "New reading adventures will appear here soon. Check back later!",
+      "wordsCount": "{count} words",
+      "minsCount": "{count} min"
     },
     "teachers": {
       "loadError": "Could not load your teachers",
@@ -658,7 +900,9 @@
       "askButton": "Ask a Question",
       "title": "Lessons",
       "subtitle": "Classes you are assigned to teach.",
-      "emptyTitle": "No messages yet"
+      "emptyTitle": "No messages yet",
+      "countLine": "{count} teachers",
+      "subjectsLine": "{count} subjects"
     },
     "notifs": {
       "emptyDesc": "You'll see updates about lessons, assignments, and live classes here.",
@@ -675,7 +919,67 @@
       "subtitle": "Classes you are assigned to teach.",
       "studentFallback": "Student",
       "badgesEarned": "Badges Earned",
-      "emptyTitle": "No messages yet"
+      "emptyTitle": "No messages yet",
+      "ms0n": "First Lesson",
+      "ms0d": "Complete your first lesson",
+      "ms1n": "5 Lessons Done",
+      "ms1d": "Complete 5 lessons",
+      "ms2n": "Knowledge Seeker",
+      "ms2d": "Complete 10 lessons",
+      "ms3n": "Star Learner",
+      "ms3d": "Complete 25 lessons",
+      "ms4n": "Master Scholar",
+      "ms4d": "Complete 50 lessons",
+      "ms5n": "Badge Collector",
+      "ms5d": "Earn your first badge",
+      "ms6n": "Badge Master",
+      "ms6d": "Earn 5 badges",
+      "ms7n": "Creator",
+      "ms7d": "Submit your first project",
+      "ms8n": "Builder",
+      "ms8d": "Submit 3 projects",
+      "ms9n": "Perfect Score",
+      "ms9d": "Get 100% on any lesson",
+      "ms10n": "Week Warrior",
+      "ms10d": "Maintain a 7-day streak",
+      "ms11n": "Monthly Champion",
+      "ms11d": "Maintain a 30-day streak",
+      "ms12n": "All-Rounder",
+      "ms12d": "Try all 8 subjects",
+      "ms13n": "Quiz Master",
+      "ms13d": "Answer 100 questions",
+      "ms14n": "Young Writer",
+      "ms14d": "Write your first essay",
+      "ms15n": "Storyteller",
+      "ms15d": "Write 3 essays",
+      "ms16n": "Photographer",
+      "ms16d": "Upload 10 photos",
+      "ms17n": "Helper",
+      "ms17d": "Help a classmate",
+      "ms18n": "Live Learner",
+      "ms18d": "Attend a live class",
+      "ms19n": "Bookworm",
+      "ms19d": "Read for 1 hour total",
+      "ms20n": "Math Wizard",
+      "ms20d": "Complete 10 math lessons",
+      "ms21n": "Science Explorer",
+      "ms21d": "Complete 10 science lessons",
+      "ms22n": "English Pro",
+      "ms22d": "Complete 10 English lessons",
+      "ms23n": "Kiswahili Master",
+      "ms23d": "Complete 10 Kiswahili lessons",
+      "ms24n": "Attendance Star",
+      "ms24d": "Attend 30 days in a row",
+      "levelLine": "Level: {level} Learner",
+      "primaryFallback": "Primary",
+      "currentStage": "Current Stage:",
+      "journeyTitle": "Your Journey",
+      "startingPoint": "Starting point",
+      "stampsRequired": "{count} stamps required",
+      "progressTo": "{pct}% to {name}",
+      "stampsTitle": "Stamp Collection",
+      "collected": "{done} / {total} collected",
+      "totalStamps": "Total Stamps"
     },
     "portfolioPage": {
       "saveFailed": "Failed to save: {msg}",
@@ -697,7 +1001,37 @@
       "emptyTitle": "No messages yet",
       "recording": "Recording",
       "saving": "Saving...",
-      "save": "Save Profile"
+      "save": "Save Profile",
+      "actDraw": "Draw Something",
+      "actStory": "Write a Story",
+      "actProject": "Build a Project",
+      "actPhoto": "Take a Photo",
+      "actVoice": "Record Your Voice",
+      "actEssay": "Write an Essay",
+      "typeStory": "Story",
+      "typeProject": "Project",
+      "typePhoto": "Photo",
+      "typeVoice": "Voice Recording",
+      "chooseTitle": "What would you like to create?",
+      "chooseDesc": "Choose an activity to get started",
+      "clickStart": "Click to start",
+      "createFirst": "Create Your First Item",
+      "step1Title": "What is it about?",
+      "step1Desc": "Give your creation a name",
+      "step2Title": "Tell us more",
+      "step2Desc": "Add a description (optional)",
+      "step3Title": "Add your work",
+      "step3Desc": "Show us what you created",
+      "pencil": "Pencil",
+      "eraser": "Eraser",
+      "dropFiles": "Drop files here or click to upload (optional)",
+      "photoTitle": "Take or upload a photo",
+      "photoDesc": "Click to select an image from your device",
+      "tapRecord": "Tap to start recording",
+      "step4Title": "Which subject?",
+      "step4Desc": "Choose a subject for this work",
+      "step5Title": "Save to My Backpack",
+      "step5Desc": "Ready to save your creation?"
     },
     "profilePage": {
       "saveError": "Failed to save profile",
@@ -713,7 +1047,14 @@
       "bioPlaceholder": "Tell others about yourself...",
       "saving": "Saving...",
       "save": "Save Profile",
-      "saved": "Saved!"
+      "saved": "Saved!",
+      "phoneLabel": "Phone",
+      "levelLabel": "Education Level",
+      "selectLevel": "Select level",
+      "levelLowerSecondary": "Lower Secondary School",
+      "levelAdvancedSecondary": "Advanced Secondary School",
+      "levelVocational": "Vocational",
+      "bioLabel": "Bio"
     },
     "growth": {
       "attExcellent": "Excellent attendance! Keep it up!",
@@ -727,7 +1068,26 @@
       "attendance": "Attendance",
       "thisMonth": "This Month",
       "myProgress": "My Progress",
-      "overallCompletion": "Overall completion"
+      "overallCompletion": "Overall completion",
+      "average": "Average",
+      "lessonsSummary": "{done} of {total} lessons completed",
+      "firstDone": "First Lesson Complete!",
+      "firstDoneDesc": "You completed your first lesson. Great start!",
+      "fastLearner": "Fast Learner!",
+      "fastLearnerDesc": "You completed 5 lessons. Keep going!",
+      "champion": "Knowledge Champion!",
+      "championDesc": "You completed 10 lessons. Amazing progress!",
+      "halfway": "Halfway There!",
+      "halfwayDesc": "You are 50% done with your lessons!",
+      "emptyDesc": "Start a lesson to begin earning milestones!",
+      "attGood": "Good attendance. Try to attend more days!",
+      "attImprove": "Let's work on attending school more regularly.",
+      "statStarted": "Lessons Started",
+      "statCompleted": "Lessons Completed",
+      "statAttendance": "Attendance Rate",
+      "statAverage": "Overall Average",
+      "myProgressDesc": "Track your learning journey across all courses.",
+      "detailed": "Detailed Progress"
     },
     "quests": {
       "primaryOnlyDesc": "Switch to a primary learner account to start your quest journey.",
@@ -741,7 +1101,26 @@
       "subtitle": "Classes you are assigned to teach.",
       "completedOn": " · Completed {date}",
       "emptyTitle": "No messages yet",
-      "instructions": "Instructions"
+      "instructions": "Instructions",
+      "ptsCount": "{count} pts",
+      "scoreLine": "Score: {score} / {total}",
+      "catMath": "Math Quests",
+      "catScience": "Science Quests",
+      "catLogic": "Logic Quests",
+      "catTanzania": "Tanzania Quests",
+      "primaryOnlyTitle": "Quests is for Primary learners",
+      "completedTitle": "Quest Completed!",
+      "statCompleted": "Quests Completed",
+      "statPoints": "Points Earned",
+      "statTotal": "Total Quests",
+      "locationLine": "Location: {location}",
+      "missionDone": "Mission Completed!",
+      "evidenceLine": "Evidence: {text}",
+      "evidenceLabel": "Submit Evidence",
+      "missionsTitle": "Real World Missions",
+      "missionsSubtitle": "Apply what you learn in the real world!",
+      "noMissions": "No missions yet",
+      "noMissionsDesc": "Your teacher will create real world missions for you."
     },
     "settingsPage": {
       "deleteButton": "Delete Account",
@@ -753,7 +1132,19 @@
       "emailDesc": "For general inquiries, support and partnerships",
       "privacy": "Privacy",
       "deleteTitle": "Delete Event",
-      "saved": "Saved!"
+      "saved": "Saved!",
+      "liveLabel": "Live class reminders",
+      "liveDesc": "Get notified before live classes start",
+      "assignLabel": "Assignment deadlines",
+      "assignDesc": "Reminders before assignment due dates",
+      "marketingLabel": "Marketing emails",
+      "marketingDesc": "News about new features and promotions",
+      "showProfile": "Show profile to others",
+      "showProfileDesc": "Allow other learners to see your profile",
+      "showActivity": "Show learning activity",
+      "showActivityDesc": "Display your progress on your profile",
+      "danger": "Danger Zone",
+      "deleteDesc": "Permanently delete your account and all data"
     },
     "speak": {
       "primaryOnlyDesc": "Switch to a primary learner account to start creating.",
@@ -770,20 +1161,90 @@
       "typeLabel": "Type",
       "descLabel": "Description",
       "subjectLabel": "Subject",
-      "emptyTitle": "No messages yet"
+      "emptyTitle": "No messages yet",
+      "secs": "{n} sec",
+      "minsSecs": "{m} min {s} sec",
+      "typeRecord": "Record Story",
+      "typeReading": "Practice Reading",
+      "typeSing": "Sing Song",
+      "typeArt": "Create Art",
+      "typePoem": "Write Poem",
+      "primaryOnlyTitle": "Speak & Create is for Primary learners",
+      "newActivity": "New Activity",
+      "totalActivities": "Total Activities",
+      "totalTime": "Total Time",
+      "titleLabel": "Title",
+      "creationsTitle": "My Creations",
+      "portfolioEmpty": "Your portfolio is empty"
     },
     "academicTab": {
       "terms": "Terms",
       "subjects": "Subjects",
       "classes": "Classes",
-      "current": "Current"
+      "current": "Current",
+      "years": "Academic Years",
+      "grades": "Grades",
+      "title": "Academic Management",
+      "subtitle": "Manage academic years, terms, grades, subjects, and class groups.",
+      "emptyYears": "No academic years found.",
+      "emptyTerms": "No terms found.",
+      "termLine": "Term {n} · {start} to {end}",
+      "emptyGrades": "No grades found.",
+      "orderLine": "Order: {n}",
+      "emptySubjects": "No subjects found.",
+      "emptyClasses": "No class groups found.",
+      "sectionLine": "Section {s}",
+      "capacityLine": "· Capacity: {n}"
     },
     "create": {
       "writing": "Writing",
-      "reading": "Reading"
+      "reading": "Reading",
+      "drawing": "Drawing",
+      "drawingDesc": "Express yourself with art and drawings",
+      "writingDesc": "Write stories, essays, and more",
+      "readingDesc": "Read and share book reviews",
+      "voice": "Voice",
+      "voiceDesc": "Record and share voice notes",
+      "photo": "Photo",
+      "photoDesc": "Capture and share photos",
+      "video": "Video",
+      "videoDesc": "Create and share videos",
+      "title": "Create",
+      "subtitle": "Express your creativity and share your work.",
+      "startCreating": "Start Creating"
     },
     "family": {
-      "share": "Share"
+      "share": "Share",
+      "quizNight": "Family Quiz Night",
+      "quizNightDesc": "Test your knowledge together",
+      "readTogether": "Read Together",
+      "readTogetherDesc": "Share stories with family",
+      "scienceHome": "Science at Home",
+      "scienceHomeDesc": "Try experiments at home",
+      "artCraft": "Art & Craft",
+      "artCraftDesc": "Create together",
+      "musicTime": "Music Time",
+      "musicTimeDesc": "Sing and play together",
+      "title": "Family Learning",
+      "subtitle": "Learn together with your family!",
+      "copied": "Copied!",
+      "recent": "Recent Family Activities"
+    },
+    "together": {
+      "withPartner": "with {name}",
+      "studyGroups": "Study Groups",
+      "studyGroupsDesc": "Find study partners",
+      "partnerReading": "Partner Reading",
+      "partnerReadingDesc": "Read together",
+      "teamChallenges": "Team Challenges",
+      "teamChallengesDesc": "Compete as a team",
+      "shareWork": "Share My Work",
+      "shareWorkDesc": "Show your creations",
+      "title": "Learn Together",
+      "subtitle": "Learning is more fun with friends!",
+      "myCollabs": "My Collaborations",
+      "emptyTitle": "No collaborations yet",
+      "emptyDesc": "Invite a friend to learn together!"
     }
   },
   "lessons": {
@@ -1333,7 +1794,13 @@
       "timezoneLabel": "Timezone",
       "updateClass": "Update Class",
       "updatedSuccess": "Live class updated successfully",
-      "viewRecording": "View Recording"
+      "viewRecording": "View Recording",
+      "patternDaily": "Daily",
+      "patternWeekly": "Weekly",
+      "patternBiweekly": "Bi-weekly",
+      "patternMonthly": "Monthly",
+      "reviewTitle": "Review Live Class",
+      "backToEdit": "Back to Edit"
     },
     "livePrepare": {
       "allPassed": "All checks passed. You are ready to go live.",
@@ -1430,7 +1897,8 @@
       "tabStudents": "Student Performance",
       "totalAssessments": "Total Assessments",
       "totalAttempts": "Total Attempts",
-      "totalSubmissions": "Total Submissions"
+      "totalSubmissions": "Total Submissions",
+      "assignmentList": "Assignment List"
     },
     "support": {
       "academicTitle": "Academic Performance",
@@ -1512,7 +1980,8 @@
       "titlePlaceholder": "Assessment title",
       "totalMarks": "Total Marks",
       "trueLabel": "True",
-      "typeLabel": "Type"
+      "typeLabel": "Type",
+      "falseLabel": "False"
     },
     "assignments": {
       "allClasses": "All classes",
@@ -1650,7 +2119,8 @@
       "viewAnalytics": "View Analytics",
       "viewClasses": "View Classes",
       "viewSchedule": "View Schedule",
-      "welcome": "Welcome back, {name}!"
+      "welcome": "Welcome back, {name}!",
+      "submissionsReceived": "Submissions received"
     },
     "primaryProgress": {
       "recentActivity": "Recent Activity"
@@ -2230,7 +2700,10 @@
     "announce": {
       "loadError": "Failed to load announcements",
       "emptyTitle": "No announcements",
-      "emptyDesc": "There are no announcements at the moment. Check back later."
+      "emptyDesc": "There are no announcements at the moment. Check back later.",
+      "title": "Announcements",
+      "subtitle": "Stay updated with the latest news and updates.",
+      "byAuthor": "By {name}"
     },
     "marks": {
       "loadError": "Failed to load bookmarks",
@@ -2239,7 +2712,16 @@
       "emptyDesc": "Save courses, resources, and classes for quick access.",
       "unavailable": "Content no longer available",
       "view": "View",
-      "discover": "Discover"
+      "discover": "Discover",
+      "title": "Bookmarks",
+      "subtitle": "Your saved items for quick access.",
+      "untitled": "Untitled",
+      "savedOn": "Saved {date}",
+      "viewItem": "View {title}",
+      "itemFallback": "item",
+      "viewItemUnavailable": "View {title} (unavailable)",
+      "removeItem": "Remove bookmark for {title}",
+      "discoverLink": "Discover new content"
     },
     "certs": {
       "loadError": "Failed to load certificates",
@@ -2247,7 +2729,21 @@
       "emptyTitle": "No certificates yet",
       "emptyDesc": "Complete courses to earn certificates.",
       "verify": "Verify",
-      "title": "Certificates"
+      "title": "Certificates",
+      "fileTitle": "Title: {title}",
+      "fileDesc": "Description: {text}",
+      "fileStudent": "Student: {name}",
+      "fileCourse": "Course/Programme: {name}",
+      "fileCompleted": "Completed: {date}",
+      "fileIssued": "Issued: {date}",
+      "fileCode": "Verification Code: {code}",
+      "subtitle": "Your earned certificates and achievements.",
+      "completedLabel": "Completed:",
+      "issuedLabel": "Issued:",
+      "codeLabel": "Code:",
+      "verifyLabel": "Verify certificate {title}",
+      "downloadLabel": "Download certificate {title}",
+      "browseHint": "Browse courses to earn certificates."
     },
     "lesson": {
       "notFound": "Lesson not found",
@@ -2263,7 +2759,12 @@
       "markComplete": "Mark as Complete",
       "backToCourse": "Back to Course",
       "courseFallback": "Course",
-      "allLessons": "All Lessons"
+      "allLessons": "All Lessons",
+      "backLink": "Back to course",
+      "moduleLine": "Module: {title}",
+      "countLine": "Lesson {current} of {total}",
+      "minsCount": "{count} min",
+      "courseProgress": "Course progress"
     },
     "course": {
       "loadError": "Failed to load course details",
@@ -2274,7 +2775,18 @@
       "enroll": "Enroll in Course",
       "saved": "Saved",
       "save": "Save",
-      "startLearning": "Start Learning"
+      "startLearning": "Start Learning",
+      "minsShort": "{count}m",
+      "backLink": "Back to courses",
+      "removeBm": "Remove bookmark",
+      "addBm": "Bookmark this course",
+      "modLessons": "{mods} modules · {lessons} lessons",
+      "yourProgress": "Your progress",
+      "lessonsLine": "{done} of {total} lessons completed",
+      "contentTitle": "Course Content",
+      "modCount": "{count} lessons",
+      "emptyModule": "No lessons in this module yet.",
+      "relatedTitle": "Related Courses"
     },
     "history": {
       "savedFallback": "Saved Item",
@@ -2287,7 +2799,13 @@
       "completed": "completed",
       "enrolled": "Enrolled",
       "emptyTitle": "No templates yet",
-      "emptyDesc": "There are no announcements at the moment. Check back later."
+      "emptyDesc": "There are no announcements at the moment. Check back later.",
+      "inProgress": "In progress",
+      "savedBadge": "Saved",
+      "title": "Learning History",
+      "subtitle": "Your learning activity and saved items.",
+      "emptySearch": "No matching history",
+      "emptySearchDesc": "Try adjusting your search or filters."
     },
     "liveClass": {
       "loadError": "Failed to load live class",
@@ -2313,7 +2831,13 @@
       "subtitle": "Generate, issue, and manage certificates.",
       "emptyTitle": "No templates yet",
       "emptySearch": "Try a different search term",
-      "minutesCount": "{count} minutes"
+      "minutesCount": "{count} minutes",
+      "emptyDefault": "No live classes scheduled yet.",
+      "removeBm": "Remove bookmark",
+      "addBm": "Bookmark",
+      "upcomingTitle": "Upcoming Classes",
+      "maxLine": "Max {count} participants",
+      "pastTitle": "Past Classes"
     },
     "mods": {
       "emptyTitle": "No modules yet",
@@ -2324,7 +2848,12 @@
       "loadError": "Failed to load announcements",
       "subtitle": "Generate, issue, and manage certificates.",
       "backLink": "Back to Live Classes",
-      "overallProgress": "Overall Progress"
+      "overallProgress": "Overall Progress",
+      "learnerFallback": "Learner",
+      "creditsCount": "{count} credits",
+      "progressLabel": "Progress",
+      "gradeLabel": "Grade:",
+      "finalGrade": "Final Grade"
     },
     "kit": {
       "loadError": "Failed to load learning kit",
@@ -2332,7 +2861,10 @@
       "marksDesc": "Save courses and resources for quick access later.",
       "noResources": "No resources available",
       "noResourcesDesc": "Learning resources will appear here once published by your instructors.",
-      "searchPlaceholder": "Search history..."
+      "searchPlaceholder": "Search history...",
+      "learnerFallback": "Learner",
+      "tabBookmarks": "Bookmarks",
+      "tabResources": "Resources"
     },
     "prog": {
       "loadError": "Failed to load progress data",
@@ -2344,14 +2876,27 @@
       "totalCourses": "Total Courses",
       "inProgress": "in progress",
       "avgProgress": "Avg Progress",
-      "completedOn": " · Completed {date}"
+      "completedOn": " · Completed {date}",
+      "completedLabel": "Completed",
+      "completedBadge": "Completed",
+      "inProgressBadge": "In Progress",
+      "lessonsLine": "{done} of {total} lessons completed",
+      "modLessons": "{count} lessons",
+      "enrolledOn": "Enrolled {date}"
     },
     "res": {
       "loadError": "Failed to load resource",
       "notFound": "Resource not found",
       "download": "Download Resource",
       "backLink": "Back to Live Classes",
-      "related": "RELATED"
+      "related": "RELATED",
+      "removeBm": "Remove bookmark",
+      "addBm": "Bookmark this resource",
+      "bmShort": "Bookmark",
+      "addedOn": "Added {date}",
+      "downloadLabel": "Download {title}",
+      "saveBm": "Save to bookmarks",
+      "bookmarked": "Bookmarked"
     },
     "lsettings": {
       "aboutBody": "ELMKUSOMA Education Platform. Manage your learning journey and track your progress.",
@@ -2364,7 +2909,10 @@
       "security": "Security",
       "passwordLabel": "Password",
       "change": "Change…",
-      "about": "About"
+      "about": "About",
+      "roleLabel": "Role",
+      "levelLabel": "Learning Level",
+      "passwordDesc": "Update your account password"
     },
     "vids": {
       "loadError": "Failed to load videos",
@@ -2374,7 +2922,11 @@
       "title": "Certificates",
       "subtitle": "Generate, issue, and manage certificates.",
       "emptyTitle": "No templates yet",
-      "emptySearch": "Try a different search term"
+      "emptySearch": "Try a different search term",
+      "emptyDefault": "Videos will appear here once uploaded",
+      "downloadLabel": "Download {title}",
+      "moreHint": "Looking for more materials?",
+      "browseAll": "Browse all Resources"
     }
   },
   "nursery": {
@@ -5636,7 +6188,19 @@
       "messageLabel": "Message",
       "messagePlaceholder": "Tell us more about your inquiry...",
       "emailRequired": "Email is required",
-      "submit": "Submit"
+      "submit": "Submit",
+      "nameRequired": "Name is required",
+      "nameTooShort": "Name must be at least 2 characters",
+      "emailInvalid": "Please enter a valid email address",
+      "subjectRequired": "Subject is required",
+      "subjectTooShort": "Subject must be at least 3 characters",
+      "messageRequired": "Message is required",
+      "messageTooShort": "Message must be at least 10 characters",
+      "emailTitle": "Email",
+      "responseTitle": "Response Time",
+      "locationTitle": "Location",
+      "successTitle": "Message Sent!",
+      "submitting": "Sending..."
     },
     "coursesHome": {
       "title": "Courses",
@@ -5647,7 +6211,12 @@
     "subjectDetail": {
       "enrollNow": "Enroll Now",
       "categoryLabel": "Category",
-      "studentsLabel": "Students"
+      "studentsLabel": "Students",
+      "aboutTitle": "About this subject",
+      "levelLabel": "Level",
+      "classLabel": "Class",
+      "enrolledLabel": "Enrolled",
+      "relatedTitle": "Other subjects in {name}"
     },
     "colleges": {
       "title": "Colleges & Universities",
@@ -5659,7 +6228,10 @@
       "contentPlaceholder": "Lesson content will be available here — video, notes, and interactive exercises.",
       "backToModule": "Back to Module",
       "previous": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "badge": "Lesson {current} of {total}",
+      "overviewTitle": "Lesson Overview",
+      "materialTitle": "Learning Material"
     },
     "veta": {
       "badge": "Vocational Education",
@@ -5691,7 +6263,17 @@
       "s8b": "the new policy on this page and updating the Last updated date.",
       "s9post": "or call +255 700 000 000.",
       "title": "Get in touch",
-      "updated": "Goal updated"
+      "updated": "Goal updated",
+      "s1t": "1. Information We Collect",
+      "s1b": "When you create an account on ELMKUSOMA, we collect your name, email address, education level, and password. We also collect usage data such as courses accessed, live classes attended, and learning progress to improve your experience.",
+      "s2t": "2. How We Use Your Information",
+      "s2b": "We use your information to provide and improve our educational services, track your learning progress, issue certificates, communicate important updates, and ensure the security of your account. We do not sell your personal data to third parties.",
+      "s3t": "3. Data Sharing",
+      "s3b": "We may share your information with partner institutions when you apply for admission or enroll in their programs. We may also share aggregated, anonymized data for research and improvement purposes. Your personal information is never shared without your consent.",
+      "s4t": "4. Data Security",
+      "s4b": "We implement industry-standard security measures to protect your personal information, including encrypted password storage, secure data transmission, and regular security audits. However, no method of transmission over the Internet is 100% secure.",
+      "s9t": "9. Contact Us",
+      "s9pre": "If you have any questions about this Privacy Policy, please contact us at"
     },
     "support": {
       "subtitle": "We're here to help. Reach out to us or browse our frequently asked questions.",
@@ -5705,7 +6287,25 @@
       "nameLabel": "Your Name",
       "emailLabel": "Email Address",
       "subjectLabel": "Subject",
-      "messageLabel": "Message"
+      "messageLabel": "Message",
+      "faq1q": "How do I reset my password?",
+      "faq1a": "Go to the Login page and click 'Forgot Password'. Enter your email address and we will send you a link to reset your password.",
+      "faq2q": "How do I verify a certificate?",
+      "faq2a": "Visit the Certificate Verification page and enter the certificate ID. You can find the ID on your certificate document.",
+      "faq3q": "Can I access courses for free?",
+      "faq3a": "Yes! ELMKUSOMA offers a free tier with access to select courses, recorded classes, and the digital library. Premium content requires a subscription.",
+      "faq4q": "How do I contact my instructor?",
+      "faq4a": "You can reach instructors through the live class chat during sessions or through the course discussion board.",
+      "faq5q": "How do I enroll in a school program?",
+      "faq5a": "Browse the Schools section, select your education level, choose an institution, and click 'Apply for Admission' to start the enrollment process.",
+      "faq6q": "What payment methods do you accept?",
+      "faq6a": "We accept mobile money (M-Pesa, Tigo Pesa, Airtel Money), bank transfers, and credit/debit cards.",
+      "contactTitle": "Contact Us",
+      "emailUs": "Email Us",
+      "callUs": "Call Us",
+      "whatsapp": "WhatsApp",
+      "whatsappDesc": "Chat with us on WhatsApp",
+      "faqTitle": "Frequently Asked Questions"
     },
     "terms": {
       "s10t": "These terms are governed by the laws of the United Republic of Tanzania. Any disputes shall be resolved in the",
@@ -5713,17 +6313,61 @@
       "s11post": "or call +255 700 000 000.",
       "title": "Get in touch",
       "updated": "Goal updated",
-      "s8b": "the new policy on this page and updating the Last updated date."
+      "s8b": "the new policy on this page and updating the Last updated date.",
+      "s1t": "1. Acceptance of Terms",
+      "s1b": "By accessing or using ELMKUSOMA, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our platform. These terms apply to all users, including students, instructors, and visitors.",
+      "s2t": "2. Account Registration",
+      "s2b": "You must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your password and for all activities that occur under your account. You must be at least 5 years old to create an account.",
+      "s3t": "3. Use of the Platform",
+      "s3b": "ELMKUSOMA grants you a limited, non-exclusive, non-transferable license to access and use the platform for personal educational purposes. You may not reproduce, distribute, modify, or create derivative works from any content on the platform without written permission.",
+      "s4t": "4. Content and Intellectual Property",
+      "s4b": "All courses, live classes, recorded lessons, and digital library materials are owned by ELMKUSOMA or its content providers. Instructors retain ownership of their original course content but grant ELMKUSOMA a license to host and distribute it. You may not download, record, or redistribute paid content without authorization.",
+      "s5t": "5. Payments and Subscriptions",
+      "s5b": "Some features require a paid subscription. Prices are listed in Tanzanian Shillings (TZS) and may change with notice. Refund requests are handled on a case-by-case basis within 14 days of purchase. Free tier content remains accessible without payment.",
+      "s6t": "6. Certificates",
+      "s6b": "Certificates are issued upon successful completion of courses or programs. Certificates are digital and can be verified through our verification page. ELMKUSOMA reserves the right to revoke certificates obtained through dishonest means.",
+      "s7t": "7. Prohibited Conduct",
+      "s7b": "You agree not to: use the platform for any unlawful purpose; attempt to gain unauthorized access to any part of the platform; transmit harmful code or malware; harass, abuse, or harm other users; or impersonate any person or entity.",
+      "s8t": "8. Limitation of Liability",
+      "s9t": "9. Termination",
+      "s9b": "We may suspend or terminate your account at any time for violation of these terms. You may also delete your account at any time through your account settings. Upon termination, your right to use the platform ceases immediately.",
+      "s11t": "11. Contact",
+      "s11pre": "For questions about these Terms, contact us at"
     },
     "facultyDetail": {
-      "coursesCount": "{count} courses"
+      "coursesCount": "{count} courses",
+      "programmesCount": "{count, plural, one {# programme} other {# programmes}}",
+      "programmesTitle": "Programmes"
     },
     "vetaTrade": {
       "modulesCount": "{count} modules",
-      "lessonsCount": "{count} lessons"
+      "lessonsCount": "{count} lessons",
+      "levelsCount": "{count} levels",
+      "levelsTitle": "Training Levels"
     },
     "vetaLevel": {
-      "lessonsCount": "{count} lessons"
+      "lessonsCount": "{count} lessons",
+      "summary": "{modules, plural, one {# module} other {# modules}} · {lessons, plural, one {# lesson} other {# lessons}}",
+      "modulesTitle": "Modules"
+    },
+    "collegeDetail": {
+      "facultiesCount": "{count} faculties",
+      "programmesCount": "{count} programmes",
+      "facultiesTitle": "Faculties & Schools"
+    },
+    "programmeDetail": {
+      "coursesTitle": "Courses ({count})",
+      "creditsCount": "{count} credits"
+    },
+    "vetaModule": {
+      "lessonsTitle": "Lessons"
+    },
+    "levelIndex": {
+      "summary": "{classes, plural, one {# class} other {# classes}} · {subjects} subjects",
+      "subjectsCount": "{count, plural, one {# subject} other {# subjects}}"
+    },
+    "classDetail": {
+      "summary": "{level} · {count, plural, one {# subject} other {# subjects}}"
     }
   },
   "ui": {
