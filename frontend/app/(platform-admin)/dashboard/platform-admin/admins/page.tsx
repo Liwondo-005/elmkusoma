@@ -3,8 +3,9 @@
 import { useTranslations } from "next-intl";
 
 import { useEffect, useState, useCallback } from "react"
-import { Shield, Loader2, Search, KeyRound, Save, AlertCircle, RefreshCw } from "lucide-react"
+import { Shield, Loader2, Search, KeyRound, Save, AlertCircle, RefreshCw, Plus, Pencil, Trash2, ShieldAlert } from "lucide-react"
 import { platformAdminApi, type AdminAccount } from "@/lib/platform-admin-api"
+import { AdminFormModal } from "@/components/platform-admin/admin-form-modal"
 
 export default function AdminsPage() {
   const t = useTranslations("platformAdmin");
@@ -16,6 +17,12 @@ export default function AdminsPage() {
   const [selected, setSelected] = useState<AdminAccount | null>(null)
   const [permDraft, setPermDraft] = useState("")
   const [saving, setSaving] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<AdminAccount | null>(null)
+
+  const flash = (msg: string) => {
+    // We'll just use the error/success pattern inline
+  }
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -28,6 +35,20 @@ export default function AdminsPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  const handleSaved = async (message: string) => {
+    await load()
+  }
+
+  const handleDelete = async (admin: AdminAccount) => {
+    if (!window.confirm(`Delete "${admin.fullName}"? This cannot be undone.`)) return
+    try {
+      await platformAdminApi.deleteAdmin(admin.userId)
+      await load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete admin")
+    }
+  }
 
   const filtered = admins.filter(a =>
     `${a.fullName} ${a.email} ${a.role}`.toLowerCase().includes(search.toLowerCase())
@@ -69,7 +90,15 @@ export default function AdminsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("admins.administratorAccounts")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("admins.adminRolesWithEditable")}</p>
         </div>
-        <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> {t("admins.refresh")}</button>
+        <div className="flex items-center gap-2">
+          <button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"><RefreshCw className="size-4" /> {t("admins.refresh")}</button>
+          <button
+            onClick={() => { setEditing(null); setModalOpen(true) }}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="size-4" /> {t("admins.addAdmin")}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -125,9 +154,22 @@ export default function AdminsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <button onClick={() => openMatrix(admin)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted">
-                        <KeyRound className="size-3" /> {t("admins.matrix")}</button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={() => { setEditing(admin); setModalOpen(true) }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                        >
+                          <Pencil className="size-3" /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(admin)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                        >
+                          <Trash2 className="size-3" /> Delete
+                        </button>
+                        <button onClick={() => openMatrix(admin)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold hover:bg-muted">
+                          <KeyRound className="size-3" /> {t("admins.matrix")}</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -157,6 +199,13 @@ export default function AdminsPage() {
           )}
         </div>
       </div>
+
+      <AdminFormModal
+        open={modalOpen}
+        admin={editing}
+        onClose={() => setModalOpen(false)}
+        onSaved={() => load()}
+      />
     </div>
   )
 }

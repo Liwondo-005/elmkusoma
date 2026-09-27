@@ -20,6 +20,9 @@ import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.repository.LiveClassRepository;
+import tz.elmkusoma.event.dto.EventRequest;
+import tz.elmkusoma.event.dto.EventResponse;
+import tz.elmkusoma.event.service.EventService;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
@@ -41,6 +44,9 @@ import tz.elmkusoma.teacher.repository.TeacherRepository;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import tz.elmkusoma.identity.domain.PasswordResetToken;
+import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -106,6 +112,9 @@ public class PlatformAdminService {
     private final BackupStatusService backupStatusService;
     private final InstitutionMembershipRepository membershipRepository;
     private final tz.elmkusoma.config.security.PermissionCacheService permissionCacheService;
+    private final tz.elmkusoma.event.service.EventService eventService;
+    private final tz.elmkusoma.identity.repository.PasswordResetTokenRepository passwordResetTokenRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     // ── Command Center ──
 
@@ -299,6 +308,105 @@ public class PlatformAdminService {
                 Map.of("isActive", !active), Map.of("isActive", active));
         log.info("User {} {} by platform admin", userId, active ? "activated" : "suspended");
         return toUserSummary(user);
+    }
+
+    @Transactional
+    public UserSummaryResponse createUser(CreateUserRequest request) {
+        if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
+            throw new IllegalArgumentException("User with email " + request.getEmail() + " already exists");
+        }
+        User user = User.builder()
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .isActive(true)
+                .isEmailVerified(false)
+                .build();
+        user = userRepository.save(user);
+        writeAudit(PLATFORM_INSTITUTION_ID, "USER", user.getId(), user.getEmail(), "CREATE",
+                Map.of(), Map.of("email", user.getEmail(), "role", user.getRole().name()));
+        log.info("User created by platform admin: {}", user.getEmail());
+        return toUserSummary(user);
+    }
+
+    @Transactional
+    public UserSummaryResponse updateUser(UUID userId, UpdateUserRequest request) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        String oldRole = user.getRole() != null ? user.getRole().name() : null;
+        
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
+        if (request.getIsActive() != null) {
+            if (!request.getIsActive() && User.Role.ADMIN.equals(user.getRole())) {
+                long activeAdmins = userRepository.countByRoleAndIsDeletedFalse(User.Role.ADMIN);
+                long activeCount = userRepository.findByRoleAndIsDeletedFalse(User.Role.ADMIN, PageRequest.of(0, 1000)).getContent().stream().filter(u -> Boolean.TRUE.equals(u.getIsActive())).count();
+                if (activeCount <= 1) {
+                    throw new IllegalStateException("Cannot suspend the last active Platform Admin");
+                }
+            }
+            user.setIsActive(request.getIsActive());
+        }
+        if (request.getIsEmailVerified() != null) user.setIsEmailVerified(request.getIsEmailVerified());
+        
+        userRepository.save(user);
+        writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                "USER", userId, user.getEmail(), "UPDATE",
+                Map.of("role", oldRole), Map.of("role", user.getRole() != null ? user.getRole().name() : null));
+        log.info("User updated by platform admin: {}", user.getEmail());
+        return toUserSummary(user);
+    }
+
+    @Transactional
+    public void deleteUser(UUID userId) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        if (User.Role.ADMIN.equals(user.getRole())) {
+            long activeAdmins = userRepository.countByRoleAndIsDeletedFalse(User.Role.ADMIN);
+            long activeCount = userRepository.findByRoleAndIsDeletedFalse(User.Role.ADMIN, PageRequest.of(0, 1000)).getContent().stream().filter(u -> Boolean.TRUE.equals(u.getIsActive())).count();
+            if (activeCount <= 1) {
+                throw new IllegalStateException("Cannot delete the last active Platform Admin");
+            }
+        }
+        user.setIsDeleted(true);
+        userRepository.save(user);
+        writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                "USER", userId, user.getEmail(), "DELETE", Map.of(), Map.of());
+        log.info("User deleted by platform admin: {}", user.getEmail());
+    }
+
+    @Transactional
+    public void resetUserPassword(UUID userId, String newPassword) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                "USER", userId, user.getEmail(), "RESET_PASSWORD", Map.of(), Map.of());
+        log.info("Password reset by platform admin for user: {}", user.getEmail());
+    }
+
+    @Transactional
+    public void sendPasswordResetLink(UUID userId) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(UUID.randomUUID().toString())
+                .userId(user.getId())
+                .expiresAt(LocalDateTime.now().plusHours(24))
+                .used(false)
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+        // TODO: Send email with reset link
+        log.info("Password reset link sent to user: {}", user.getEmail());
     }
 
     // ── Institutions ──
@@ -1234,6 +1342,32 @@ public class PlatformAdminService {
         return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages(), p.isFirst(), p.isLast());
     }
 
+    @Transactional
+    public EventResponse createEvent(EventRequest request) {
+        UUID platformAdminUserId = UUID.fromString("b0000000-0000-0000-0000-000000000099");
+        return eventService.createEvent(PLATFORM_INSTITUTION_ID, platformAdminUserId, request);
+    }
+
+    @Transactional
+    public EventResponse updateEvent(UUID id, EventRequest request) {
+        return eventService.updateEvent(id, request);
+    }
+
+    @Transactional
+    public void deleteEvent(UUID id) {
+        eventService.deleteEvent(id, true);
+    }
+
+    @Transactional
+    public EventResponse publishEvent(UUID id) {
+        return eventService.publishEvent(id, PLATFORM_INSTITUTION_ID);
+    }
+
+    @Transactional
+    public EventResponse cancelEvent(UUID id, String reason) {
+        return eventService.cancelEvent(id, PLATFORM_INSTITUTION_ID, reason);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<PlatformMediaResponse> listPlatformMedia(int page, int size) {
         Page<tz.elmkusoma.liveclass.domain.MediaAsset> p = mediaAssetRepository.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -1868,12 +2002,114 @@ public class PlatformAdminService {
                 .build();
     }
 
-    private ServiceSummaryResponse toServiceSummary(PlatformService s) {
+private ServiceSummaryResponse toServiceSummary(PlatformService s) {
         return ServiceSummaryResponse.builder()
                 .id(s.getId()).name(s.getName()).code(s.getCode()).description(s.getDescription())
                 .category(s.getCategory()).isActive(s.getIsActive()).requiresVerification(s.getRequiresVerification())
                 .maxSeats(s.getMaxSeats()).monthlyPrice(s.getMonthlyPrice()).currency(s.getCurrency())
                 .createdAt(s.getCreatedAt()).build();
+    }
+
+    @Transactional
+    public AdminAccountResponse createAdmin(CreateAdminRequest request) {
+        if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
+            throw new IllegalArgumentException("User with email " + request.getEmail() + " already exists");
+        }
+        User user = User.builder()
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .isActive(true)
+                .isEmailVerified(false)
+                .build();
+        user = userRepository.save(user);
+        writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", user.getId(), user.getEmail(), "CREATE",
+                Map.of(), Map.of("email", user.getEmail(), "role", user.getRole().name()));
+        log.info("Admin created: {}", user.getEmail());
+        return toAdminAccount(user);
+    }
+
+    @Transactional
+    public AdminAccountResponse updateAdmin(UUID userId, UpdateAdminRequest request) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        String oldRole = user.getRole() != null ? user.getRole().name() : null;
+
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
+        if (request.getIsActive() != null) {
+            if (!request.getIsActive() && User.Role.ADMIN.equals(user.getRole())) {
+                long activeAdmins = userRepository.countByRoleAndIsDeletedFalse(User.Role.ADMIN);
+                long activeCount = userRepository.findByRoleAndIsDeletedFalse(User.Role.ADMIN, PageRequest.of(0, 1000)).getContent().stream().filter(u -> Boolean.TRUE.equals(u.getIsActive())).count();
+                if (activeCount <= 1) {
+                    throw new IllegalStateException("Cannot suspend the last active Platform Admin");
+                }
+            }
+            user.setIsActive(request.getIsActive());
+        }
+        userRepository.save(user);
+        writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", userId, user.getEmail(), "UPDATE",
+                Map.of("role", oldRole), Map.of("role", user.getRole() != null ? user.getRole().name() : null));
+        log.info("Admin updated: {}", user.getEmail());
+        return toAdminAccount(user);
+    }
+
+    @Transactional
+    public void deleteAdmin(UUID userId) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        if (User.Role.ADMIN.equals(user.getRole())) {
+            long activeAdmins = userRepository.countByRoleAndIsDeletedFalse(User.Role.ADMIN);
+            long activeCount = userRepository.findByRoleAndIsDeletedFalse(User.Role.ADMIN, PageRequest.of(0, 1000)).getContent().stream().filter(u -> Boolean.TRUE.equals(u.getIsActive())).count();
+            if (activeCount <= 1) {
+                throw new IllegalStateException("Cannot delete the last active Platform Admin");
+            }
+        }
+        user.setIsDeleted(true);
+        userRepository.save(user);
+        writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", userId, user.getEmail(), "DELETE", Map.of(), Map.of());
+        log.info("Admin deleted: {}", user.getEmail());
+    }
+
+    @Transactional
+    public AdminAccountResponse updateAdminRole(UUID userId, String newRole, String actorEmail) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        String oldRole = user.getRole() != null ? user.getRole().name() : null;
+        try {
+            User.Role role = User.Role.valueOf(newRole.toUpperCase());
+            user.setRole(role);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid role: " + newRole);
+        }
+        userRepository.save(user);
+        writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", userId, user.getEmail(), "ROLE_CHANGE",
+                Map.of("role", oldRole), Map.of("role", newRole.toUpperCase()));
+        log.info("Admin role updated: {} -> {}", user.getEmail(), newRole);
+        return toAdminAccount(user);
+    }
+
+    private AdminAccountResponse toAdminAccount(User user) {
+        List<String> permissions = rolePermissionRepository.findPermissionsByRoleId(user.getId());
+        String scope = user.getInstitutionId() != null ? user.getInstitutionId().toString() : "PLATFORM";
+        return AdminAccountResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .role(user.getRole() != null ? user.getRole().name() : null)
+                .assignedRoleName(user.getRole() != null ? user.getRole().name() : null)
+                .permissions(permissions)
+                .scope(scope)
+                .isActive(user.getIsActive())
+                .createdAt(user.getCreatedAt())
+                .build();
     }
 
     private IncidentSummaryResponse toIncidentSummary(PlatformIncident i) {
@@ -1883,4 +2119,5 @@ public class PlatformAdminService {
                 .assignedTo(i.getAssignedTo()).detectedAt(i.getDetectedAt()).resolvedAt(i.getResolvedAt())
                 .createdAt(i.getCreatedAt()).build();
     }
+
 }

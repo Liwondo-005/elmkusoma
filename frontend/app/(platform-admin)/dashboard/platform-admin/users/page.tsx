@@ -4,8 +4,9 @@ import { useTranslations } from "next-intl";
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Users, Loader2, Search, UserCheck, UserX } from "lucide-react"
+import { Users, Loader2, Search, UserCheck, UserX, Plus, Pencil, Trash2, Key, RotateCcw, AlertCircle, RefreshCw, Mail, Shield, ShieldAlert } from "lucide-react"
 import { platformAdminApi, type UserSummary, type PageResponse } from "@/lib/platform-admin-api"
+import { UserFormModal } from "@/components/platform-admin/user-form-modal"
 
 const ROLES = ["", "STUDENT", "TEACHER", "PARENT", "OTHER_LEARNER", "ADMIN", "INSTITUTION_ADMIN", "PROVIDER_ADMIN"]
 const PAGE_SIZE = 20
@@ -18,12 +19,26 @@ export default function PlatformUsersPage() {
   const [data, setData] = useState<PageResponse<UserSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [role, setRole] = useState("")
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [toggling, setToggling] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<UserSummary | null>(null)
+const editingForModal = editing ? { 
+  ...editing, 
+  phone: editing.phone ?? "", 
+  isEmailVerified: editing.isEmailVerified ?? false,
+  isPhoneVerified: editing.isPhoneVerified ?? false,
+} : null
+
+  const flash = (msg: string) => {
+    setSuccess(msg)
+    setTimeout(() => setSuccess(null), 5000)
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -51,7 +66,6 @@ export default function PlatformUsersPage() {
   const handleToggleStatus = async (user: UserSummary) => {
     try {
       setToggling(user.id)
-      setConfirmId(null)
       await platformAdminApi.updateUserStatus(user.id, !user.isActive)
       setData((prev) => {
         if (!prev) return prev
@@ -62,6 +76,7 @@ export default function PlatformUsersPage() {
           ),
         }
       })
+      flash(user.isActive ? t("users.userSuspended") : t("users.userActivated"))
     } catch (err) {
       setError(err instanceof Error ? err.message : t("users.failedToUpdateUser"))
     } finally {
@@ -69,13 +84,61 @@ export default function PlatformUsersPage() {
     }
   }
 
+  const handleSaved = async (message: string) => {
+    flash(message)
+    await loadData()
+  }
+
+  const handleDelete = async (user: UserSummary) => {
+    if (!window.confirm(`${t("users.confirmDelete")} "${user.firstName} ${user.lastName}"?`)) return
+    setConfirmId(user.id)
+    setError(null)
+    try {
+      await platformAdminApi.deleteUser(user.id)
+      flash(`${t("users.userDeleted")} ${user.firstName} ${user.lastName}`)
+      await loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("users.failedToDeleteUser"))
+    } finally {
+      setConfirmId(null)
+    }
+  }
+
+  const handleResetPassword = async (user: UserSummary) => {
+    const newPassword = window.prompt(`${t("users.enterNewPassword")} ${user.email}:`)
+    if (!newPassword) return
+    try {
+      await platformAdminApi.resetUserPassword(user.id, newPassword)
+      flash(`${t("users.passwordResetFor")} ${user.email}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("users.failedToResetPassword"))
+    }
+  }
+
+  const handleSendResetLink = async (user: UserSummary) => {
+    try {
+      await platformAdminApi.sendPasswordResetLink(user.id)
+      flash(`${t("users.resetLinkSentTo")} ${user.email}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("users.failedToSendResetLink"))
+    }
+  }
+
   const formatDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("users.users")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("users.managePlatformUsersAcross")}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("users.users")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("users.managePlatformUsersAcross")}</p>
+        </div>
+        <button
+          onClick={() => { setEditing(null); setModalOpen(true) }}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="size-4" /> {t("users.addUser")}
+        </button>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -99,6 +162,12 @@ export default function PlatformUsersPage() {
           ))}
         </select>
       </div>
+
+      {success && (
+        <div className="flex items-center gap-2 rounded-2xl border border-green-500/20 bg-green-500/5 px-6 py-4 text-sm text-green-600">
+          <UserCheck className="size-4 shrink-0" /> {success}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-4 text-sm text-destructive">{error}</div>
@@ -151,42 +220,72 @@ export default function PlatformUsersPage() {
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{formatDate(user.createdAt)}</td>
                     <td className="px-5 py-3.5 text-right">
-                      {confirmId === user.id ? (
-                        <div className="inline-flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground">{tc("confirm")}{user.isActive ? t("users.suspend") : t("users.activate")}?</span>
-                          <button
-                            onClick={() => handleToggleStatus(user)}
-                            disabled={toggling === user.id}
-                            className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                          >
-                            {toggling === user.id ? <Loader2 className="size-3 animate-spin" /> : t("users.confirmYes")}
-                          </button>
-                          <button
-                            onClick={() => setConfirmId(null)}
-                            className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
-                          >
-                            {tc("cancel")}</button>
-                        </div>
-                      ) : (
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => setConfirmId(user.id)}
-                          disabled={toggling === user.id}
-                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
-                            user.isActive
-                              ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800"
-                              : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800"
-                          }`}
+                          onClick={() => { setEditing(user); setModalOpen(true) }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                         >
-                          {toggling === user.id ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : user.isActive ? (
-                            <UserX className="size-3.5" />
-                          ) : (
-                            <UserCheck className="size-3.5" />
-                          )}
-                          {user.isActive ? t("users.suspend2") : t("users.activate2")}
+                          <Pencil className="size-3" /> Edit
                         </button>
-                      )}
+                        <button
+                          onClick={() => handleResetPassword(user)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                          title={t("users.resetPassword")}
+                        >
+                          <Key className="size-3" /> {t("users.resetPassword")}
+                        </button>
+                        <button
+                          onClick={() => handleSendResetLink(user)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                          title={t("users.sendResetLink")}
+                        >
+                          <RotateCcw className="size-3" /> {t("users.sendResetLink")}
+                        </button>
+                        {confirmId === user.id ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">
+                              {tc("confirm")} {user.isActive ? t("users.suspend") : t("users.activate")}?
+                            </span>
+                            <button
+                              onClick={() => handleToggleStatus(user)}
+                              disabled={toggling === user.id}
+                              className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                              {toggling === user.id ? <Loader2 className="size-3 animate-spin" /> : t("users.confirmYes")}
+                            </button>
+                            <button
+                              onClick={() => setConfirmId(null)}
+                              className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
+                            >
+                              {tc("cancel")}</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmId(user.id)}
+                            disabled={toggling === user.id}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                              user.isActive
+                                ? "border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800"
+                                : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800"
+                            }`}
+                          >
+                            {toggling === user.id ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : user.isActive ? (
+                              <UserX className="size-3.5" />
+                            ) : (
+                              <UserCheck className="size-3.5" />
+                            )}
+                            {user.isActive ? t("users.suspend2") : t("users.activate2")}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(user)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 dark:border-red-800"
+                        >
+                          <Trash2 className="size-3" /> {t("users.delete")}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -214,6 +313,13 @@ export default function PlatformUsersPage() {
             {tc("next")}</button>
         </div>
       )}
+
+      <UserFormModal
+        open={modalOpen}
+        user={editingForModal}
+        onClose={() => setModalOpen(false)}
+        onSaved={handleSaved}
+      />
     </div>
   )
 }

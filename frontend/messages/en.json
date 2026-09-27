@@ -4907,7 +4907,8 @@
       "matrix": "Matrix",
       "permissionMatrix": "Permission Matrix",
       "selectAnAdminTo": "Select an admin to edit their permission list (one permission per line).",
-      "savePermissions": "Save permissions"
+      "savePermissions": "Save permissions",
+      "addAdmin": "Add Admin"
     },
     "analytics": {
       "dataUnavailable": "Data unavailable",
@@ -5145,7 +5146,8 @@
       "tryADifferentSearch": "Try a different search or filter.",
       "noEventsExistYet": "No events exist yet for platform governance.",
       "archive": "Archive",
-      "prev": "Prev"
+      "prev": "Prev",
+      "addEvent": "Add Event"
     },
     "health": {
       "failedToLoadHealth": "Failed to load health",
@@ -5631,7 +5633,21 @@
       "suspend2": "Suspend",
       "activate2": "Activate",
       "prev": "Prev",
-      "confirmYes": "Yes"
+      "confirmYes": "Yes",
+      "addUser": "Add User",
+      "userSuspended": "User suspended",
+      "userActivated": "User activated",
+      "confirmDelete": "Delete",
+      "userDeleted": "Deleted",
+      "failedToDeleteUser": "Failed to delete user",
+      "enterNewPassword": "Enter new password for",
+      "passwordResetFor": "Password reset for",
+      "failedToResetPassword": "Failed to reset password",
+      "resetLinkSentTo": "Reset link sent to",
+      "failedToSendResetLink": "Failed to send reset link",
+      "resetPassword": "Reset Password",
+      "sendResetLink": "Send Reset Link",
+      "delete": "Delete"
     },
     "userDetail": {
       "failedToLoadUser": "Failed to load user",

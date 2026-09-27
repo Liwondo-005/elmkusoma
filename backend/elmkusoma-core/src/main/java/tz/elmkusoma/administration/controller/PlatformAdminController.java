@@ -15,11 +15,14 @@ import tz.elmkusoma.administration.service.PlatformAdminService;
 import tz.elmkusoma.audit.dto.ActivityFeedResponse;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;
+import tz.elmkusoma.event.dto.EventRequest;
+import tz.elmkusoma.event.dto.EventResponse;
 import tz.elmkusoma.institution.dto.request.CreateInstitutionRequest;
 import tz.elmkusoma.institution.dto.request.UpdateInstitutionRequest;
 import tz.elmkusoma.institution.dto.response.InstitutionResponse;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -108,6 +111,47 @@ public class PlatformAdminController {
             @RequestParam boolean active) {
         UserSummaryResponse response = platformAdminService.updateUserStatus(userId, active);
         return ResponseEntity.ok(ApiResponse.success("User status updated", response));
+    }
+
+    @PostMapping("/users")
+    @Operation(summary = "Create a new user (platform admin)")
+    public ResponseEntity<ApiResponse<UserSummaryResponse>> createUser(
+            @Valid @RequestBody CreateUserRequest request) {
+        UserSummaryResponse response = platformAdminService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("User created successfully", response));
+    }
+
+    @PutMapping("/users/{userId}")
+    @Operation(summary = "Update user details (platform admin)")
+    public ResponseEntity<ApiResponse<UserSummaryResponse>> updateUser(
+            @PathVariable UUID userId,
+            @Valid @RequestBody UpdateUserRequest request) {
+        UserSummaryResponse response = platformAdminService.updateUser(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("User updated successfully", response));
+    }
+
+    @DeleteMapping("/users/{userId}")
+    @Operation(summary = "Delete a user (platform admin)")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID userId) {
+        platformAdminService.deleteUser(userId);
+        return ResponseEntity.ok(ApiResponse.success("User deleted successfully", null));
+    }
+
+    @PostMapping("/users/{userId}/reset-password")
+    @Operation(summary = "Reset user password (platform admin)")
+    public ResponseEntity<ApiResponse<Void>> resetUserPassword(
+            @PathVariable UUID userId,
+            @RequestParam String newPassword) {
+        platformAdminService.resetUserPassword(userId, newPassword);
+        return ResponseEntity.ok(ApiResponse.success("Password reset successfully", null));
+    }
+
+    @PostMapping("/users/{userId}/send-reset-link")
+    @Operation(summary = "Send password reset link to user")
+    public ResponseEntity<ApiResponse<Void>> sendPasswordResetLink(@PathVariable UUID userId) {
+        platformAdminService.sendPasswordResetLink(userId);
+        return ResponseEntity.ok(ApiResponse.success("Password reset link sent", null));
     }
 
     // ── Institutions ──
@@ -457,6 +501,48 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformEvents(page, size, search)));
     }
 
+    @PostMapping("/events")
+    @Operation(summary = "Create a new event (platform admin)")
+    public ResponseEntity<ApiResponse<EventResponse>> createEvent(
+            @Valid @RequestBody EventRequest request) {
+        EventResponse event = platformAdminService.createEvent(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Event created successfully", event));
+    }
+
+    @PutMapping("/events/{id}")
+    @Operation(summary = "Update an event (platform admin)")
+    public ResponseEntity<ApiResponse<EventResponse>> updateEvent(
+            @PathVariable UUID id,
+            @Valid @RequestBody EventRequest request) {
+        EventResponse event = platformAdminService.updateEvent(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Event updated successfully", event));
+    }
+
+    @DeleteMapping("/events/{id}")
+    @Operation(summary = "Delete an event (platform admin)")
+    public ResponseEntity<ApiResponse<Void>> deleteEvent(@PathVariable UUID id) {
+        platformAdminService.deleteEvent(id);
+        return ResponseEntity.ok(ApiResponse.success("Event deleted successfully", null));
+    }
+
+    @PostMapping("/events/{id}/publish")
+    @Operation(summary = "Publish an event (platform admin)")
+    public ResponseEntity<ApiResponse<EventResponse>> publishEvent(@PathVariable UUID id) {
+        EventResponse event = platformAdminService.publishEvent(id);
+        return ResponseEntity.ok(ApiResponse.success("Event published successfully", event));
+    }
+
+    @PostMapping("/events/{id}/cancel")
+    @Operation(summary = "Cancel an event (platform admin)")
+    public ResponseEntity<ApiResponse<EventResponse>> cancelEvent(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.getOrDefault("reason", "") : "";
+        EventResponse event = platformAdminService.cancelEvent(id, reason);
+        return ResponseEntity.ok(ApiResponse.success("Event cancelled successfully", event));
+    }
+
     @GetMapping("/media")
     @Operation(summary = "List media assets across platform (governance)")
     public ResponseEntity<ApiResponse<PageResponse<PlatformMediaResponse>>> listPlatformMedia(
@@ -682,6 +768,46 @@ public class PlatformAdminController {
             @RequestBody RolePermissionUpdateRequest req) {
         return ResponseEntity.ok(ApiResponse.success("Permissions updated",
                 platformAdminService.updateRolePermissions(roleId, req)));
+    }
+
+    @PostMapping("/admins")
+    @Operation(summary = "Create a new admin account")
+    public ResponseEntity<ApiResponse<AdminAccountResponse>> createAdmin(
+            @Valid @RequestBody CreateAdminRequest request) {
+        AdminAccountResponse admin = platformAdminService.createAdmin(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Admin created successfully", admin));
+    }
+
+    @PutMapping("/admins/{userId}")
+    @Operation(summary = "Update admin details")
+    public ResponseEntity<ApiResponse<AdminAccountResponse>> updateAdmin(
+            @PathVariable UUID userId,
+            @Valid @RequestBody UpdateAdminRequest request) {
+        AdminAccountResponse admin = platformAdminService.updateAdmin(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Admin updated successfully", admin));
+    }
+
+    @DeleteMapping("/admins/{userId}")
+    @Operation(summary = "Delete an admin account")
+    public ResponseEntity<ApiResponse<Void>> deleteAdmin(@PathVariable UUID userId) {
+        platformAdminService.deleteAdmin(userId);
+        return ResponseEntity.ok(ApiResponse.success("Admin deleted successfully", null));
+    }
+
+    @PutMapping("/admins/{userId}/role")
+    @Operation(summary = "Update admin role")
+    public ResponseEntity<ApiResponse<AdminAccountResponse>> updateAdminRole(
+            @PathVariable UUID userId,
+            @RequestBody java.util.Map<String, String> body,
+            HttpServletRequest request) {
+        String role = body.get("role");
+        if (role == null || role.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("role is required"));
+        }
+        String actorEmail = request.getAttribute("userEmail") != null ? request.getAttribute("userEmail").toString() : "admin";
+        AdminAccountResponse admin = platformAdminService.updateAdminRole(userId, role, actorEmail);
+        return ResponseEntity.ok(ApiResponse.success("Admin role updated successfully", admin));
     }
 
     @GetMapping("/institutions/{institutionId}/offboarding")

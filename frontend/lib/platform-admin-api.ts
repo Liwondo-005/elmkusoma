@@ -88,6 +88,29 @@ export interface UserSummary {
   isActive: boolean
   institutionId: string | null
   createdAt: string
+  isEmailVerified?: boolean
+  isPhoneVerified?: boolean
+  phone?: string
+}
+
+export interface UserCreatePayload {
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  password?: string
+  role: string
+  institutionId?: string
+}
+
+export interface UserUpdatePayload {
+  firstName?: string
+  lastName?: string
+  phone?: string
+  role?: string
+  isActive?: boolean
+  isEmailVerified?: boolean
+  isPhoneVerified?: boolean
 }
 
 export interface InstitutionSummary {
@@ -347,6 +370,38 @@ export interface PageResponse<T> {
   last: boolean
 }
 
+export interface EventFormPayload {
+  title: string
+  description?: string
+  eventType: string
+  category?: string
+  location?: string
+  meetingUrl?: string
+  startsAt: string
+  endsAt?: string
+  durationMinutes?: number
+  maxParticipants?: number
+  status?: string
+  thumbnailUrl?: string
+  tags?: string
+  isFree?: boolean
+  requiresApproval?: boolean
+  organizerId?: string
+  timezone?: string
+  accessLevel?: string
+  presenterName?: string
+  eventFormat?: string
+  difficulty?: string
+  targetAudience?: string
+  prerequisites?: string
+  learningOutcomes?: string
+  agenda?: string
+  relatedCourseId?: string
+  relatedModuleId?: string
+  relatedLessonId?: string
+  providerId?: string
+}
+
 export interface ServiceSummary {
   id: string; name: string; code: string; description: string; category: string
   isActive: boolean; requiresVerification: boolean; maxSeats: number | null
@@ -458,6 +513,24 @@ export interface AdminAccount {
   lastModifiedAt: string | null; expiresAt: string | null; recentActionCount: number | null
 }
 
+export interface AdminCreatePayload {
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  password: string
+  role: string
+  institutionId?: string
+}
+
+export interface AdminUpdatePayload {
+  firstName?: string
+  lastName?: string
+  phone?: string
+  role?: string
+  isActive?: boolean
+}
+
 export interface OffboardingStep {
   step: string; status: string; detail: string
 }
@@ -500,6 +573,16 @@ export const platformAdminApi = {
   getUser: (userId: string) => platformFetch<UserSummary>(`/v1/platform-admin/users/${userId}`),
   updateUserStatus: (userId: string, active: boolean) =>
     platformFetch<UserSummary>(`/v1/platform-admin/users/${userId}/status?active=${active}`, { method: "PUT" }),
+  createUser: (payload: UserCreatePayload) =>
+    platformFetch<UserSummary>(`/v1/platform-admin/users`, { method: "POST", body: JSON.stringify(payload) }),
+  updateUser: (id: string, payload: UserUpdatePayload) =>
+    platformFetch<UserSummary>(`/v1/platform-admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteUser: (id: string) =>
+    platformFetch<null>(`/v1/platform-admin/users/${id}`, { method: "DELETE" }),
+  resetUserPassword: (id: string, newPassword: string) =>
+    platformFetch<null>(`/v1/platform-admin/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
+  sendPasswordResetLink: (id: string) =>
+    platformFetch<null>(`/v1/platform-admin/users/${id}/send-reset-link`, { method: "POST" }),
 
   listInstitutions: (page = 0, size = 20, search?: string) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
@@ -703,6 +786,17 @@ export const platformAdminApi = {
     if (search) params.set("search", search)
     return platformFetch<PageResponse<any>>(`/v1/platform-admin/events?${params}`)
   },
+  createEvent: (payload: EventFormPayload) =>
+    platformFetch<any>(`/v1/platform-admin/events`, { method: "POST", body: JSON.stringify(payload) }),
+  updateEvent: (id: string, payload: EventFormPayload) =>
+    platformFetch<any>(`/v1/platform-admin/events/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteEvent: (id: string) =>
+    platformFetch<null>(`/v1/platform-admin/events/${id}`, { method: "DELETE" }),
+  publishEvent: (id: string) =>
+    platformFetch<any>(`/v1/platform-admin/events/${id}/publish`, { method: "POST" }),
+  cancelEvent: (id: string, reason?: string) =>
+    platformFetch<any>(`/v1/platform-admin/events/${id}/cancel`, { method: "POST", body: JSON.stringify({ reason: reason || "" }) }),
+
   listPlatformMedia: (page = 0, size = 20) => platformFetch<PageResponse<any>>(`/v1/platform-admin/media?page=${page}&size=${size}`),
   listPlatformResources: (page = 0, size = 20) => platformFetch<PageResponse<any>>(`/v1/platform-admin/resources?page=${page}&size=${size}`),
 
@@ -773,6 +867,14 @@ export const platformAdminApi = {
     platformFetch<string[]>(`/v1/platform-admin/roles/${roleId}/permissions`, {
       method: "PUT", body: JSON.stringify({ permissions }),
     }),
+  createAdmin: (payload: AdminCreatePayload) =>
+    platformFetch<AdminAccount>(`/v1/platform-admin/admins`, { method: "POST", body: JSON.stringify(payload) }),
+  updateAdmin: (id: string, payload: AdminUpdatePayload) =>
+    platformFetch<AdminAccount>(`/v1/platform-admin/admins/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteAdmin: (id: string) =>
+    platformFetch<null>(`/v1/platform-admin/admins/${id}`, { method: "DELETE" }),
+  updateAdminRole: (id: string, role: string) =>
+    platformFetch<AdminAccount>(`/v1/platform-admin/admins/${id}/role`, { method: "PUT", body: JSON.stringify({ role }) }),
 
   getOffboardingChecklist: (institutionId: string) =>
     platformFetch<OffboardingChecklist>(`/v1/platform-admin/institutions/${institutionId}/offboarding`),

@@ -4791,7 +4791,8 @@
       "matrix": "Jedwali",
       "permissionMatrix": "Jedwali la Ruhusa",
       "selectAnAdminTo": "Select an msimamizi to hariri their permission list (one permission per line).",
-      "savePermissions": "Hifadhi ruhusa"
+      "savePermissions": "Hifadhi ruhusa",
+      "addAdmin": "Ongeza Msimamizi"
     },
     "analytics": {
       "dataUnavailable": "Data haipatikani",
@@ -5029,7 +5030,8 @@
       "tryADifferentSearch": "Try a different tafuta or chuja.",
       "noEventsExistYet": "Hakuna matukio exist yet for mfumo governance.",
       "archive": "Archive",
-      "prev": "Prev"
+      "prev": "Prev",
+      "addEvent": "Ongeza Tukio"
     },
     "health": {
       "failedToLoadHealth": "Imeshindwa to pakia hali",
@@ -5515,7 +5517,21 @@
       "suspend2": "Simamisha",
       "activate2": "Amilisha",
       "prev": "Prev",
-      "confirmYes": "Ndiyo"
+      "confirmYes": "Ndiyo",
+      "addUser": "Ongeza Mtumiaji",
+      "userSuspended": "Mtumiaji amesimamishwa",
+      "userActivated": "Mtumiaji amewashwa",
+      "confirmDelete": "Futa",
+      "userDeleted": "Imefutwa",
+      "failedToDeleteUser": "Imeshindwa kufuta mtumiaji",
+      "enterNewPassword": "Weka nenosiri jipya kwa",
+      "passwordResetFor": "Nenosiri limebadilishwa kwa",
+      "failedToResetPassword": "Imeshindwa kubadilisha nenosiri",
+      "resetLinkSentTo": "Kiungo cha kubadilisha kimetumwa kwa",
+      "failedToSendResetLink": "Imeshindwa kutuma kiungo cha kubadilisha",
+      "resetPassword": "Badilisha Nenosiri",
+      "sendResetLink": "Tuma Kiungo cha Kubadilisha",
+      "delete": "Futa"
     },
     "userDetail": {
       "failedToLoadUser": "Imeshindwa to pakia mtumiaji",
