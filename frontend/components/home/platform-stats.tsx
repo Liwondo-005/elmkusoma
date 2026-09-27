@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { usePublicStats } from "@/lib/public-stats"
 
 function fmt(n: number): string {
@@ -8,14 +9,15 @@ function fmt(n: number): string {
 
 /** Stats `dl` inside the homepage CTA banner (replaces mock `stats` from lib/data). */
 export function CtaStats() {
+  const t = useTranslations("home")
   const stats = usePublicStats()
   if (!stats) return null
 
   const items = [
-    { value: fmt(stats.learners), label: "Learners" },
-    { value: fmt(stats.instructors), label: "Instructors" },
-    { value: fmt(stats.courses + stats.liveClasses), label: "Courses & Classes" },
-    { value: fmt(stats.institutions), label: "Institutions" },
+    { value: fmt(stats.learners), label: t("stats.learners") },
+    { value: fmt(stats.instructors), label: t("stats.instructors") },
+    { value: fmt(stats.courses + stats.liveClasses), label: t("stats.coursesClasses") },
+    { value: fmt(stats.institutions), label: t("stats.institutions") },
   ]
 
   return (
@@ -32,14 +34,15 @@ export function CtaStats() {
 
 /** Card grid on the About page (replaces mock `stats` from lib/data). */
 export function AboutStatsGrid() {
+  const t = useTranslations("home")
   const stats = usePublicStats()
   if (!stats) return null
 
   const items = [
-    { value: fmt(stats.learners), label: "Learners" },
-    { value: fmt(stats.instructors), label: "Instructors" },
-    { value: fmt(stats.courses + stats.liveClasses), label: "Courses & Classes" },
-    { value: fmt(stats.institutions), label: "Institutions" },
+    { value: fmt(stats.learners), label: t("stats.learners") },
+    { value: fmt(stats.instructors), label: t("stats.instructors") },
+    { value: fmt(stats.courses + stats.liveClasses), label: t("stats.coursesClasses") },
+    { value: fmt(stats.institutions), label: t("stats.institutions") },
   ]
 
   return (
@@ -56,6 +59,7 @@ export function AboutStatsGrid() {
 
 /** Floating learner-count badge over the hero image (replaces hardcoded "8,500+"). */
 export function HeroLearnerBadge() {
+  const t = useTranslations("home")
   const stats = usePublicStats()
   if (!stats) return null
 
@@ -73,7 +77,7 @@ export function HeroLearnerBadge() {
       </div>
       <div>
         <p className="text-sm font-bold text-foreground">{fmt(stats.learners)}</p>
-        <p className="text-xs text-muted-foreground">Learners on ELMKUSOMA</p>
+        <p className="text-xs text-muted-foreground">{t("stats.learnersOnPlatform")}</p>
       </div>
     </div>
   )
@@ -81,10 +85,14 @@ export function HeroLearnerBadge() {
 
 /** Learner/instructor chips on the About hero (replaces hardcoded "8,500+ Learners"). */
 export function AboutHighlights() {
+  const t = useTranslations("home")
   const stats = usePublicStats()
   if (!stats) return null
 
-  const highlights = [`${fmt(stats.learners)} Learners`, `${fmt(stats.instructors)} Instructors`]
+  const highlights = [
+    t("stats.learnersHighlight", { count: fmt(stats.learners) }),
+    t("stats.instructorsHighlight", { count: fmt(stats.instructors) }),
+  ]
 
   return (
     <div className="mt-7 flex flex-wrap gap-3">

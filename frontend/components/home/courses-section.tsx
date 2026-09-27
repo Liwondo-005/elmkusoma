@@ -3,11 +3,14 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Play } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { usePublicCourses } from "@/lib/public-stats"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export function CoursesSection() {
+  const t = useTranslations("home")
+  const tn = useTranslations("nav")
   const courses = usePublicCourses(6)
   // Hide-on-failure: no published courses yet, or backend unreachable.
   if (!courses) return null
@@ -17,13 +20,13 @@ export function CoursesSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-foreground">Popular courses</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground">{t("courses.title")}</h2>
             <p className="mt-2 max-w-xl text-muted-foreground">
-              Self-paced courses published on ELMKUSOMA — learn at your own pace.
+              {t("courses.subtitle")}
             </p>
           </div>
           <Link href="/courses" className={cn(buttonVariants({ variant: "outline" }), "h-10 gap-2 px-4")}>
-            Explore Courses
+            {tn("exploreCourses")}
           </Link>
         </div>
 

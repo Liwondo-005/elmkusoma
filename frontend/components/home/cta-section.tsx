@@ -1,10 +1,15 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import { buttonVariants } from "@/components/ui/button"
 import { CtaStats } from "@/components/home/platform-stats"
 import { cn } from "@/lib/utils"
 
 export function CtaSection() {
+  const t = useTranslations("home")
+
   return (
     <section className="pb-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -12,17 +17,17 @@ export function CtaSection() {
           <div className="grid items-center gap-8 lg:grid-cols-2">
             <div className="p-8 sm:p-12">
               <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-                Join thousands of learners achieving their goals
+                {t("cta.title")}
               </h2>
               <p className="mt-4 max-w-md text-pretty text-primary-foreground/80">
-                Get certified, gain skills and advance your future with live, interactive learning built for Africa.
+                {t("cta.subtitle")}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link
                   href="/register"
                   className={cn(buttonVariants(), "h-12 bg-background px-6 text-base text-foreground hover:bg-background/90")}
                 >
-                  Start Learning Free
+                  {t("cta.startFree")}
                 </Link>
                 <Link
                   href="/schools/nursery"
@@ -31,7 +36,7 @@ export function CtaSection() {
                     "h-12 border-primary-foreground/30 bg-transparent px-6 text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground",
                   )}
                 >
-                  Browse Schools
+                  {t("hero.browseSchools")}
                 </Link>
               </div>
 
@@ -41,7 +46,7 @@ export function CtaSection() {
             <div className="relative hidden h-full min-h-80 lg:block">
               <Image
                 src="/images/cta-learner.png"
-                alt="Happy learner using ELMKUSOMA"
+                alt={t("cta.imageAlt")}
                 fill
                 className="object-cover"
                 sizes="50vw"

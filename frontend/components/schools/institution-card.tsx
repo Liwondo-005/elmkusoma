@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import { MapPin, Users, Star, CheckCircle, Building2 } from "lucide-react"
 import { Institution } from "@/lib/data"
 import { cn } from "@/lib/utils"
@@ -13,6 +14,7 @@ type Props = {
 }
 
 export function InstitutionCard({ institution, detailHref }: Props) {
+  const t = useTranslations("schools")
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
       {/* Image */}
@@ -36,11 +38,11 @@ export function InstitutionCard({ institution, detailHref }: Props) {
           {institution.verified && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/90 px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
               <CheckCircle className="size-3" />
-              Verified
+              {t("verified")}
             </span>
           )}
           <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground backdrop-blur-sm">
-            {institution.ownership}
+            {institution.ownership === "Government" ? t("government") : t("private")}
           </span>
         </div>
 
@@ -63,7 +65,7 @@ export function InstitutionCard({ institution, detailHref }: Props) {
           </span>
           <span className="flex items-center gap-1">
             <Users className="size-3 shrink-0" />
-            {institution.students.toLocaleString()} students
+            {t("studentsCount", { count: institution.students.toLocaleString() })}
           </span>
         </div>
 
@@ -79,7 +81,7 @@ export function InstitutionCard({ institution, detailHref }: Props) {
               "h-10 w-full gap-2 transition-all duration-200 hover:bg-primary/90"
             )}
           >
-            View Details
+            {t("viewDetails")}
           </Link>
         </div>
       </div>

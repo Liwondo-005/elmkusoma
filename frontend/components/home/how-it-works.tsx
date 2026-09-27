@@ -1,18 +1,24 @@
-const steps = [
-  { title: "Create your account", desc: "Sign up and pick your education level to get a personalized experience." },
-  { title: "Find your classes", desc: "Browse live classes, courses and your institution's learning content." },
-  { title: "Learn live", desc: "Join interactive live sessions, chat with teachers and track your progress." },
-  { title: "Earn certificates", desc: "Complete courses and receive verifiable certificates of achievement." },
-]
+"use client"
+
+import { useTranslations } from "next-intl"
 
 export function HowItWorks() {
+  const t = useTranslations("home")
+
+  const steps = [
+    { title: t("how.step1Title"), desc: t("how.step1Desc") },
+    { title: t("how.step2Title"), desc: t("how.step2Desc") },
+    { title: t("how.step3Title"), desc: t("how.step3Desc") },
+    { title: t("how.step4Title"), desc: t("how.step4Desc") },
+  ]
+
   return (
     <section className="py-16 lg:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground">How ELMKUSOMA works</h2>
+          <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground">{t("how.title")}</h2>
           <p className="mt-3 text-pretty text-muted-foreground">
-            Getting started takes minutes — from sign up to your first live class.
+            {t("how.subtitle")}
           </p>
         </div>
 

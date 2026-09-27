@@ -1,31 +1,35 @@
+"use client"
+
+import { useTranslations } from "next-intl"
+
 export function CollegeHero() {
+  const t = useTranslations("schools")
   return (
     <section className="relative overflow-hidden border-b border-border bg-gradient-to-br from-accent via-background to-accent/50">
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="max-w-3xl">
           <span className="inline-flex items-center gap-1.5 rounded-md bg-orange/10 px-2.5 py-1 text-xs font-semibold text-orange">
-            College Level
+            {t("collegeHero.badge")}
           </span>
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            Diploma & Degree Programs
+            {t("collegeHero.title")}
           </h1>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            Higher education institutions offering diploma and degree programs across
-            engineering, business, ICT, health, education and agriculture.
+            {t("collegeHero.description")}
           </p>
 
           <div className="mt-8 flex flex-wrap gap-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">6 Departments</span>
-              <span>Engineering to Health</span>
+              <span className="font-medium text-foreground">{t("collegeHero.stat1Value")}</span>
+              <span>{t("collegeHero.stat1Label")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">30+ Programs</span>
-              <span>Diploma & Degree</span>
+              <span className="font-medium text-foreground">{t("collegeHero.stat2Value")}</span>
+              <span>{t("collegeHero.stat2Label")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">5 Institutions</span>
-              <span>Across Tanzania</span>
+              <span className="font-medium text-foreground">{t("collegeHero.stat3Value")}</span>
+              <span>{t("collegeHero.stat3Label")}</span>
             </div>
           </div>
         </div>

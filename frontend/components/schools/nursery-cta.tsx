@@ -1,18 +1,21 @@
+"use client"
+
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export function NurseryCta() {
+  const t = useTranslations("schools")
   return (
     <section className="py-12 lg:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="flex flex-col justify-between overflow-hidden rounded-2xl bg-primary p-8 text-primary-foreground">
             <div>
-              <h2 className="text-2xl font-bold">Start Playing for Free</h2>
+              <h2 className="text-2xl font-bold">{t("nurseryCta.playTitle")}</h2>
               <p className="mt-3 text-primary-foreground/80">
-                Jump straight into interactive nursery games — no account needed. Try
-                Reading, Counting, Drawing and more.
+                {t("nurseryCta.playDescription")}
               </p>
             </div>
             <Link
@@ -22,16 +25,15 @@ export function NurseryCta() {
                 "mt-8 h-11 w-full gap-2 bg-background text-foreground hover:bg-background/90 sm:w-auto sm:self-start",
               )}
             >
-              Start Playing
+              {t("nurseryCta.playNow")}
             </Link>
           </div>
 
           <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-8">
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Enroll in a Nursery School</h2>
+              <h2 className="text-2xl font-bold text-foreground">{t("nurseryCta.enrollTitle")}</h2>
               <p className="mt-3 text-muted-foreground">
-                Register your child for a full nursery program with structured lessons,
-                progress tracking and certificates across Baby, Middle and Top levels.
+                {t("nurseryCta.enrollDescription")}
               </p>
             </div>
             <Link
@@ -41,7 +43,7 @@ export function NurseryCta() {
                 "mt-8 h-11 w-full gap-2 border-primary/30 text-primary hover:bg-accent sm:w-auto sm:self-start",
               )}
             >
-              Enroll Now
+              {t("nurseryCta.enrollNow")}
             </Link>
           </div>
         </div>

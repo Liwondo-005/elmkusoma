@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2, X, ShieldCheck, AlertCircle, UserRound } from "lucide-react"
 import { platformAdminApi, ORG_MEMBER_ROLES, type OrgMember, type InstitutionSummary } from "@/lib/platform-admin-api"
 
@@ -11,6 +12,8 @@ interface OrgMembersModalProps {
 }
 
 export function OrgMembersModal({ open, institution, onClose }: OrgMembersModalProps) {
+  const t = useTranslations("platformAdmin")
+  const tc = useTranslations("common")
   const [members, setMembers] = useState<OrgMember[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +28,7 @@ export function OrgMembersModal({ open, institution, onClose }: OrgMembersModalP
     platformAdminApi
       .listOrgMembers(institution.id)
       .then(setMembers)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load members"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("orgMembers.loadFailed")))
       .finally(() => setLoading(false))
   }, [open, institution])
 
@@ -39,10 +42,10 @@ export function OrgMembersModal({ open, institution, onClose }: OrgMembersModalP
     try {
       const updated = await platformAdminApi.updateOrgMemberRole(institution.id, member.userId, newRole)
       setMembers((prev) => prev.map((m) => (m.userId === member.userId ? { ...m, ...updated } : m)))
-      setSuccess(`${member.fullName || member.email || "Member"} is now ${newRole}`)
+      setSuccess(t("orgMembers.roleUpdated", { name: member.fullName || member.email || t("orgMembers.defaultMemberName"), role: newRole }))
       setTimeout(() => setSuccess(null), 4000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update role")
+      setError(err instanceof Error ? err.message : t("orgMembers.updateRoleFailed"))
     } finally {
       setSavingUserId(null)
     }
@@ -55,13 +58,13 @@ export function OrgMembersModal({ open, institution, onClose }: OrgMembersModalP
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
-              <ShieldCheck className="size-5 text-primary" /> Members &amp; Roles
+              <ShieldCheck className="size-5 text-primary" /> {t("orgMembers.title")}
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {institution.name} — assign roles to organization members.
+              {t("orgMembers.subtitle", { name: institution.name })}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-muted-foreground hover:text-foreground" aria-label="Close">
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-muted-foreground hover:text-foreground" aria-label={tc("close")}>
             <X className="size-5" />
           </button>
         </div>
@@ -83,7 +86,7 @@ export function OrgMembersModal({ open, institution, onClose }: OrgMembersModalP
           ) : members.length === 0 ? (
             <div className="flex flex-col items-center py-14 text-center">
               <UserRound className="size-8 text-muted-foreground/50" />
-              <p className="mt-3 text-sm text-muted-foreground">No members found for this organization.</p>
+              <p className="mt-3 text-sm text-muted-foreground">{t("orgMembers.empty")}</p>
             </div>
           ) : (
             <ul className="space-y-2">
@@ -95,7 +98,7 @@ export function OrgMembersModal({ open, institution, onClose }: OrgMembersModalP
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {m.email}{m.userRole ? ` · ${m.userRole}` : ""}
-                      {!m.isActive && <span className="ml-1 text-red-600">(inactive membership)</span>}
+                      {!m.isActive && <span className="ml-1 text-red-600">{t("orgMembers.inactiveMembership")}</span>}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -108,7 +111,7 @@ export function OrgMembersModal({ open, institution, onClose }: OrgMembersModalP
                       onChange={(e) => handleRoleChange(m, e.target.value)}
                       className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                     >
-                      {!m.membershipRole && <option value="">Select role…</option>}
+                      {!m.membershipRole && <option value="">{t("orgMembers.selectRole")}</option>}
                       {ORG_MEMBER_ROLES.map((r) => (
                         <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
                       ))}
@@ -127,7 +130,7 @@ export function OrgMembersModal({ open, institution, onClose }: OrgMembersModalP
             onClick={onClose}
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
           >
-            Close
+            {tc("close")}
           </button>
         </div>
       </div>

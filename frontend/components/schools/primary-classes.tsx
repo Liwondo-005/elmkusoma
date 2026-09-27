@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { primaryClasses } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 export function PrimaryClasses() {
+  const t = useTranslations("schools")
   const [activeId, setActiveId] = useState(primaryClasses[0].id)
   const activeClass = primaryClasses.find((c) => c.id === activeId) || primaryClasses[0]
 
@@ -13,10 +15,10 @@ export function PrimaryClasses() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Classes & Subjects
+            {t("primaryClasses.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Each class follows the Tanzanian primary curriculum. Select a class to view its subjects.
+            {t("primaryClasses.description")}
           </p>
         </div>
 
@@ -54,7 +56,7 @@ export function PrimaryClasses() {
 
             <div className="mt-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Subjects ({activeClass.subjects.length})
+                {t("primaryClasses.subjectsCount", { count: activeClass.subjects.length })}
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {activeClass.subjects.map((subject, i) => (

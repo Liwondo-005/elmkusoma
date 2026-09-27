@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { secondaryForms, aLevelCombinations } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 export function SecondaryLevels() {
+  const t = useTranslations("schools")
   const [activeTab, setActiveTab] = useState<"o-level" | "a-level">("o-level")
   const [activeFormId, setActiveFormId] = useState("form-1")
   const [activeComboId, setActiveComboId] = useState("pcm")
@@ -18,10 +20,10 @@ export function SecondaryLevels() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Forms & Subjects
+            {t("secondaryLevels.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Browse O-Level subjects by form or explore A-Level combination groups.
+            {t("secondaryLevels.description")}
           </p>
         </div>
 
@@ -35,7 +37,7 @@ export function SecondaryLevels() {
               activeTab === "o-level" ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            O-Level (Form I–IV)
+            {t("secondaryLevels.oLevelTab")}
             {activeTab === "o-level" && (
               <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />
             )}
@@ -48,7 +50,7 @@ export function SecondaryLevels() {
               activeTab === "a-level" ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            A-Level (Form V–VI)
+            {t("secondaryLevels.aLevelTab")}
             {activeTab === "a-level" && (
               <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />
             )}
@@ -84,13 +86,13 @@ export function SecondaryLevels() {
               <div className="flex items-center gap-3">
                 <div>
                   <h3 className="text-lg font-bold text-foreground">{activeForm.name}</h3>
-                  <p className="text-sm text-muted-foreground">{activeForm.label} · {activeForm.ages} · O-Level</p>
+                  <p className="text-sm text-muted-foreground">{t("secondaryLevels.formMetaOLevel", { label: activeForm.label, ages: activeForm.ages })}</p>
                 </div>
               </div>
 
               <div className="mt-6">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Masomo / Subjects ({activeForm.subjects.length})
+                  {t("secondaryLevels.masomoSubjects", { count: activeForm.subjects.length })}
                 </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {activeForm.subjects.map((subject, i) => (
@@ -134,7 +136,7 @@ export function SecondaryLevels() {
                   </div>
                   <div>
                     <p className="font-semibold">{combo.name}</p>
-                    <p className="text-xs text-muted-foreground">{combo.abbreviation} · Form V–VI</p>
+                    <p className="text-xs text-muted-foreground">{t("secondaryLevels.comboMeta", { abbr: combo.abbreviation })}</p>
                   </div>
                 </button>
               ))}
@@ -148,7 +150,7 @@ export function SecondaryLevels() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">{activeCombo.name}</h3>
-                  <p className="text-sm text-muted-foreground">Form V–VI · A-Level</p>
+                  <p className="text-sm text-muted-foreground">{t("secondaryLevels.formMetaALevel")}</p>
                 </div>
               </div>
 
@@ -156,7 +158,7 @@ export function SecondaryLevels() {
 
               <div className="mt-6">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Core Subjects ({activeCombo.subjects.length})
+                  {t("secondaryLevels.coreSubjects", { count: activeCombo.subjects.length })}
                 </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   {activeCombo.subjects.map((subject, i) => (
@@ -174,9 +176,9 @@ export function SecondaryLevels() {
               </div>
 
               <div className="mt-6 rounded-xl bg-muted/50 p-4">
-                <p className="text-xs font-semibold text-muted-foreground">Also studied at A-Level</p>
+                <p className="text-xs font-semibold text-muted-foreground">{t("secondaryLevels.alsoStudied")}</p>
                 <p className="mt-1 text-sm text-foreground">
-                  General Studies · Communication Skills
+                  {t("secondaryLevels.generalStudies")}
                 </p>
               </div>
             </div>

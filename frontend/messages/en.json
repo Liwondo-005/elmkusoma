@@ -2744,7 +2744,8 @@
       "codeLabel": "Code:",
       "verifyLabel": "Verify certificate {title}",
       "downloadLabel": "Download certificate {title}",
-      "browseHint": "Browse courses to earn certificates."
+      "browseHint": "Browse courses to earn certificates.",
+      "fileVerify": "Verify at: {url}"
     },
     "lesson": {
       "notFound": "Lesson not found",
@@ -5201,7 +5202,8 @@
       "changeLifecycle": "Change lifecycle…",
       "deactivate": "Deactivate",
       "activate": "Activate",
-      "prev": "Prev"
+      "prev": "Prev",
+      "addInstitution": "Add Institution"
     },
     "institutionDetail": {
       "offboardingChecklistUnavailable": "Offboarding checklist unavailable",
@@ -5222,7 +5224,9 @@
       "offboardingChecklist": "Offboarding Checklist",
       "refreshOffboarding": "Refresh offboarding",
       "liveReadinessStepsBefore": "Live readiness steps before deactivating or removing this institution.",
-      "dataUnavailableNoChecklist": "Data unavailable — no checklist steps returned."
+      "dataUnavailableNoChecklist": "Data unavailable — no checklist steps returned.",
+      "edit": "Edit",
+      "delete": "Delete"
     },
     "integrations": {
       "failedToLoadIntegrations": "Failed to load integrations",
@@ -5352,7 +5356,15 @@
       "allTypes": "All types",
       "addOrganization": "Add Organization",
       "deactivate": "Deactivate",
-      "activate": "Activate"
+      "activate": "Activate",
+      "activatedToast": "Organization activated",
+      "confirmDelete": "Delete \"{name}\"? This will remove it from the platform.",
+      "deactivatedToast": "Organization deactivated",
+      "deletedToast": "Organization \"{name}\" deleted",
+      "failedToDeleteOrganization": "Failed to delete organization",
+      "failedToUpdateStatus": "Failed to update status",
+      "lifecycleChangedTo": "Lifecycle changed to {status}",
+      "roles": "Roles"
     },
     "packages": {
       "pageOfPackages": "Page {p0} of {p1} · {p2} packages",
@@ -5647,6 +5659,43 @@
       "submitted": "... | Submitted:",
       "approve": "Approve",
       "reject": "Reject"
+    },
+    "institutionForm": {
+      "createdOk": "Institution created successfully",
+      "createInstitution": "Create Institution",
+      "labelAddress": "Address",
+      "labelCity": "City",
+      "labelCountry": "Country",
+      "labelDescription": "Description",
+      "labelEmail": "Email",
+      "labelLogoUrl": "Logo URL",
+      "labelName": "Name *",
+      "labelPhone": "Phone",
+      "labelType": "Type *",
+      "labelWebsite": "Website",
+      "phAddress": "Street address",
+      "phCity": "e.g. Dodoma",
+      "phDescription": "Short description of the institution...",
+      "phName": "e.g. Dodoma Secondary School",
+      "nameRequired": "Institution name is required",
+      "saveChanges": "Save Changes",
+      "saveFailed": "Failed to save institution",
+      "subtitleAdd": "Register a new education institution on the platform.",
+      "subtitleEdit": "Update the institution details below.",
+      "titleAdd": "Add Institution",
+      "titleEdit": "Edit Institution",
+      "updatedOk": "Institution updated successfully"
+    },
+    "orgMembers": {
+      "defaultMemberName": "Member",
+      "empty": "No members found for this organization.",
+      "inactiveMembership": "(inactive membership)",
+      "loadFailed": "Failed to load members",
+      "roleUpdated": "{name} is now {role}",
+      "selectRole": "Select role…",
+      "subtitle": "{name} — assign roles to organization members.",
+      "title": "Members & Roles",
+      "updateRoleFailed": "Failed to update role"
     }
   },
   "admin": {
@@ -6563,6 +6612,318 @@
   "??": {
     "institutionDetail": {
       "browseMore": "Browse More"
+    }
+  },
+  "home": {
+    "contact": {
+      "backToForm": "Back to Form",
+      "emailLabel": "Email Address",
+      "errEmailInvalid": "Please enter a valid email address",
+      "errEmailRequired": "Email is required",
+      "errMessageRequired": "Message is required",
+      "errMessageShort": "Message must be at least 10 characters",
+      "errNameRequired": "Name is required",
+      "errNameShort": "Name must be at least 2 characters",
+      "errSubjectRequired": "Subject is required",
+      "errSubjectShort": "Subject must be at least 3 characters",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Tell us more about your inquiry...",
+      "nameLabel": "Your Name",
+      "namePlaceholder": "Enter your name",
+      "send": "Send Message",
+      "sending": "Sending...",
+      "subjectLabel": "Subject",
+      "subjectPlaceholder": "How can we help?",
+      "subtitle": "Questions, feedback or partnership ideas? We'd love to hear from you.",
+      "successDesc": "We've prepared your message to <email>info@elmkusoma.co.tz</email>. Press send there to reach us — if nothing opened, email us directly.",
+      "successTitle": "Your email app should be open"
+    },
+    "courses": {
+      "subtitle": "Self-paced courses published on ELMKUSOMA — learn at your own pace.",
+      "title": "Popular courses"
+    },
+    "cta": {
+      "imageAlt": "Happy learner using ELMKUSOMA",
+      "startFree": "Start Learning Free",
+      "subtitle": "Get certified, gain skills and advance your future with live, interactive learning built for Africa.",
+      "title": "Join thousands of learners achieving their goals"
+    },
+    "hero": {
+      "badge": "African EdTech, reimagined",
+      "browseSchools": "Browse Schools",
+      "highlightAnywhereDesc": "Access learning anytime, anywhere",
+      "highlightAnywhereTitle": "Learn Anywhere",
+      "highlightLiveDesc": "Real-time classes with expert teachers",
+      "highlightLiveTitle": "Live & Interactive",
+      "highlightTrustedDesc": "Thousands of students across Africa",
+      "highlightTrustedTitle": "Trusted by Learners",
+      "imageAlt": "Student learning on a laptop",
+      "subtitle": "Join live classes, learn from expert teachers and connect with students across Africa — all in one unified digital education platform.",
+      "titleAccent": "Live.",
+      "titleMain": "Learn. Connect.",
+      "titlePrefix": "Succeed —"
+    },
+    "how": {
+      "step1Desc": "Sign up and pick your education level to get a personalized experience.",
+      "step1Title": "Create your account",
+      "step2Desc": "Browse live classes, courses and your institution's learning content.",
+      "step2Title": "Find your classes",
+      "step3Desc": "Join interactive live sessions, chat with teachers and track your progress.",
+      "step3Title": "Learn live",
+      "step4Desc": "Complete courses and receive verifiable certificates of achievement.",
+      "step4Title": "Earn certificates",
+      "subtitle": "Getting started takes minutes — from sign up to your first live class.",
+      "title": "How ELMKUSOMA works"
+    },
+    "levels": {
+      "items": {
+        "college": {
+          "desc": "Departments & programs",
+          "name": "College"
+        },
+        "nursery": {
+          "desc": "Games & interactive learning",
+          "name": "Nursery"
+        },
+        "primary": {
+          "desc": "Classes, subjects & quizzes",
+          "name": "Primary"
+        },
+        "secondary": {
+          "desc": "O-Level & A-Level programs",
+          "name": "Secondary"
+        },
+        "university": {
+          "desc": "Faculties & degree programs",
+          "name": "University"
+        },
+        "vocational": {
+          "desc": "VETA training & modules",
+          "name": "Vocational"
+        }
+      },
+      "subtitle": "From nursery games to university degrees — discover the right experience for every education level across Africa.",
+      "title": "One platform for every stage of learning"
+    },
+    "live": {
+      "badge": "Live Now",
+      "levelIntermediate": "Intermediate",
+      "statusEnded": "Ended",
+      "statusLiveNow": "LIVE NOW",
+      "statusRecorded": "RECORDED",
+      "subtitle": "Join live classes, interact with teachers and students in real time.",
+      "tagline": "Real-time classes in session",
+      "viewAll": "View All Live Classes"
+    },
+    "stats": {
+      "coursesClasses": "Courses & Classes",
+      "instructors": "Instructors",
+      "instructorsHighlight": "{count} Instructors",
+      "institutions": "Institutions",
+      "learners": "Learners",
+      "learnersHighlight": "{count} Learners",
+      "learnersOnPlatform": "Learners on ELMKUSOMA"
+    }
+  },
+  "schools": {
+    "collegeCta": {
+      "applyDescription": "Submit your application for diploma or degree programs at our partner colleges and universities across Tanzania.",
+      "applyNow": "Apply Now",
+      "applyTitle": "Apply for Admission",
+      "exploreDescription": "Browse sample lectures and course materials from our partner institutions — no account needed.",
+      "exploreTitle": "Explore a Program"
+    },
+    "collegeDepartments": {
+      "description": "Browse departments and the programs they offer. Select a department to view available courses.",
+      "programsAvailable": "{count} programs available",
+      "programsCount": "{count} programs",
+      "programsLabel": "Programs / Masomo",
+      "title": "Departments & Programs"
+    },
+    "collegeHero": {
+      "badge": "College Level",
+      "description": "Higher education institutions offering diploma and degree programs across engineering, business, ICT, health, education and agriculture.",
+      "stat1Label": "Engineering to Health",
+      "stat1Value": "6 Departments",
+      "stat2Label": "Diploma & Degree",
+      "stat2Value": "30+ Programs",
+      "stat3Label": "Across Tanzania",
+      "stat3Value": "5 Institutions",
+      "title": "Diploma & Degree Programs"
+    },
+    "collegeList": {
+      "description": "Browse colleges and universities offering diploma and degree programs.",
+      "title": "Institutions"
+    },
+    "government": "Government",
+    "institutionDetail": {
+      "about": "About",
+      "admissionComingSoon": "Admission information coming soon",
+      "applyNow": "Apply Now",
+      "browseMore": "Browse more {level} schools",
+      "contactInfo": "Contact Information",
+      "facilities": "Facilities",
+      "programsOffered": "Programs Offered",
+      "rating": "Rating"
+    },
+    "nurseryCta": {
+      "enrollDescription": "Register your child for a full nursery program with structured lessons, progress tracking and certificates across Baby, Middle and Top levels.",
+      "enrollNow": "Enroll Now",
+      "enrollTitle": "Enroll in a Nursery School",
+      "playDescription": "Jump straight into interactive nursery games — no account needed. Try Reading, Counting, Drawing and more.",
+      "playNow": "Start Playing",
+      "playTitle": "Start Playing for Free"
+    },
+    "nurseryHero": {
+      "badge": "Nursery Level",
+      "description": "Fun, interactive classes for the youngest learners. Explore nursery schools with Baby, Middle and Top levels — taught through games, stories and creative activities.",
+      "stat1Label": "Baby, Middle & Top",
+      "stat1Value": "3 Levels",
+      "stat2Label": "Reading, Writing & more",
+      "stat2Value": "4 Subjects",
+      "stat3Label": "Across Tanzania",
+      "stat3Value": "5 Schools",
+      "title": "Learn Through Play"
+    },
+    "nurseryLevels": {
+      "description": "Three progressive levels designed for children aged 2 to 5 years.",
+      "subjectCounting": "Counting",
+      "subjectDrawing": "Drawing",
+      "subjectReading": "Reading",
+      "subjectWriting": "Writing",
+      "title": "Baby Levels"
+    },
+    "nurserySchools": {
+      "description": "Browse nursery schools and their programs. Select a school to explore levels and subjects.",
+      "title": "Partner Schools"
+    },
+    "nurserySubjects": {
+      "description": "Four core subjects taught through interactive activities.",
+      "title": "Subjects"
+    },
+    "primaryClasses": {
+      "description": "Each class follows the Tanzanian primary curriculum. Select a class to view its subjects.",
+      "subjectsCount": "Subjects ({count})",
+      "title": "Classes & Subjects"
+    },
+    "primaryCta": {
+      "enrollDescription": "Register your child for a full primary program with structured lessons, progress tracking and certificates from Standard 1 through Standard 6.",
+      "enrollNow": "Enroll Now",
+      "enrollTitle": "Enroll in a Primary School",
+      "tryDescription": "Explore sample lessons from Standard 1 to Standard 6 — no account needed. See how we teach Kiswahili, English and Mathematics.",
+      "tryTitle": "Try a Free Lesson"
+    },
+    "primaryHero": {
+      "badge": "Primary Level",
+      "description": "Complete primary education from Standard 1 to Standard 6. Structured classes with the full Tanzanian curriculum — Kiswahili, English, Mathematics, Science and more.",
+      "stat1Label": "Standard 1 – 6",
+      "stat1Value": "6 Classes",
+      "stat2Label": "Full Tanzanian curriculum",
+      "stat2Value": "8 Subjects",
+      "stat3Label": "Across Tanzania",
+      "stat3Value": "5 Schools",
+      "title": "Standard 1 — 6"
+    },
+    "primarySchools": {
+      "description": "Browse primary schools and their programs. Select a school to explore classes and subjects.",
+      "title": "Partner Schools"
+    },
+    "private": "Private",
+    "secondaryCta": {
+      "enrollDescription": "Register for a full secondary program with structured lessons, progress tracking and certificates from O-Level through A-Level.",
+      "enrollNow": "Enroll Now",
+      "enrollTitle": "Enroll in a Secondary School",
+      "tryDescription": "Explore sample lessons from Form I to Form VI — no account needed. See how we teach Mathematics, Physics, History and more.",
+      "tryTitle": "Try a Free Lesson"
+    },
+    "secondaryHero": {
+      "badge": "Secondary Level",
+      "description": "Complete secondary education from Form I to Form VI. O-Level builds foundations across 15+ subjects, A-Level specializes through combination groups like PCM, PCB, HGL and ECA.",
+      "stat1Label": "Form I – VI",
+      "stat1Value": "6 Forms",
+      "stat2Label": "A-Level groups",
+      "stat2Value": "6 Combinations",
+      "stat3Label": "Across Tanzania",
+      "stat3Value": "5 Schools",
+      "title": "O-Level & A-Level"
+    },
+    "secondaryLevels": {
+      "aLevelTab": "A-Level (Form V–VI)",
+      "alsoStudied": "Also studied at A-Level",
+      "comboMeta": "{abbr} · Form V–VI",
+      "coreSubjects": "Core Subjects ({count})",
+      "description": "Browse O-Level subjects by form or explore A-Level combination groups.",
+      "formMetaALevel": "Form V–VI · A-Level",
+      "formMetaOLevel": "{label} · {ages} · O-Level",
+      "generalStudies": "General Studies · Communication Skills",
+      "masomoSubjects": "Masomo / Subjects ({count})",
+      "oLevelTab": "O-Level (Form I–IV)",
+      "title": "Forms & Subjects"
+    },
+    "secondarySchools": {
+      "description": "Browse secondary schools by level — O-Level (Form I–IV), A-Level (Form V–VI), or CO-School (Form I–VI).",
+      "title": "Partner Schools"
+    },
+    "studentsCount": "{count} students",
+    "studentsLabel": "Students",
+    "teachersLabel": "Teachers",
+    "universityCta": {
+      "applyDescription": "Submit your application for diploma, bachelor's, master's or PhD programs at our partner universities across Tanzania.",
+      "applyNow": "Apply Now",
+      "applyTitle": "Apply for Admission",
+      "exploreDescription": "Browse sample lectures and course materials from our partner universities — no account needed. See how we teach medicine, engineering, law and more.",
+      "exploreTitle": "Explore a Program"
+    },
+    "universityHero": {
+      "badge": "University Level",
+      "description": "Higher education from diploma to doctorate. Explore Tanzania's top universities offering programs in medicine, engineering, law, science, arts and more.",
+      "stat1Label": "Diploma to PhD",
+      "stat1Value": "4 Degree Levels",
+      "stat2Label": "Across disciplines",
+      "stat2Value": "30+ Faculties",
+      "stat3Label": "Top institutions",
+      "stat3Value": "5 Universities",
+      "title": "Faculties & Degree Programs"
+    },
+    "universityLevels": {
+      "availableAt": "Available at these universities",
+      "description": "Explore programs by qualification level — from diplomas to doctorates.",
+      "title": "Degree Levels"
+    },
+    "universityList": {
+      "description": "Browse Tanzania's top universities. Each institution offers programs across multiple degree levels.",
+      "title": "Partner Universities"
+    },
+    "verified": "Verified",
+    "viewDetails": "View Details",
+    "vocationalCenters": {
+      "description": "Browse VETA centers across Tanzania. Each center specializes in specific trade categories.",
+      "title": "VETA Training Centers"
+    },
+    "vocationalCta": {
+      "enrollDescription": "Register for a trade certificate program at one of our partner VETA centers. Get hands-on training and earn a nationally recognized trade certificate.",
+      "enrollNow": "Enroll Now",
+      "enrollTitle": "Enroll in a VETA Center",
+      "tryDescription": "Explore sample lessons from our vocational trade programs — no account needed. See how we teach practical skills in carpentry, mechanics, ICT and more.",
+      "tryTitle": "Try a Free Lesson"
+    },
+    "vocationalHero": {
+      "badge": "Vocational Level",
+      "description": "Practical skills training through Tanzania's VETA system. Learn a trade from construction to ICT, automotive to hospitality — with hands-on experience and trade certificates.",
+      "stat1Label": "17 trade programs",
+      "stat1Value": "6 Categories",
+      "stat2Label": "1–2 year programs",
+      "stat2Value": "Trade Certificates",
+      "stat3Label": "Across Tanzania",
+      "stat3Value": "5 VETA Centers",
+      "title": "VETA Training & Modules"
+    },
+    "vocationalTrades": {
+      "description": "Browse VETA trades by category. Select a category to view available programs and durations.",
+      "title": "Trade Categories",
+      "tradeProgramsCount": "{count} trade programs",
+      "tradesCount": "{count} trades",
+      "tradesLabel": "Trades / Fundi Skills"
     }
   }
 }

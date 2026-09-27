@@ -73,9 +73,9 @@ const t = useTranslations("platformAdmin");
         ...prev,
         content: prev.content.map((i) => i.id === org.id ? { ...i, isActive: !i.isActive } : i),
       } : prev)
-      flash(`Organization ${org.isActive ? "deactivated" : "activated"}`)
+      flash(org.isActive ? t("organizations.deactivatedToast") : t("organizations.activatedToast"))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status")
+      setError(err instanceof Error ? err.message : t("organizations.failedToUpdateStatus"))
     }
   }
 
@@ -88,24 +88,24 @@ const t = useTranslations("platformAdmin");
         ...prev,
         content: prev.content.map((i) => i.id === org.id ? { ...i, ...updated } : i),
       } : prev)
-      flash(`Lifecycle changed to ${status}`)
+      flash(t("organizations.lifecycleChangedTo", { status }))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update lifecycle status")
+      setError(err instanceof Error ? err.message : t("institutions.failedToUpdateLifecycle"))
     } finally {
       setLifecycleBusy(null)
     }
   }
 
   const handleDelete = async (org: InstitutionSummary) => {
-    if (!window.confirm(`Delete "${org.name}"? This will remove it from the platform.`)) return
+    if (!window.confirm(t("organizations.confirmDelete", { name: org.name }))) return
     setDeleting(org.id)
     setError(null)
     try {
       await platformAdminApi.deleteInstitution(org.id)
-      flash(`Organization "${org.name}" deleted`)
+      flash(t("organizations.deletedToast", { name: org.name }))
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete organization")
+      setError(err instanceof Error ? err.message : t("organizations.failedToDeleteOrganization"))
     } finally {
       setDeleting(null)
     }
@@ -217,7 +217,7 @@ const t = useTranslations("platformAdmin");
                   onChange={(e) => { if (e.target.value) handleLifecycleChange(org, e.target.value) }}
                   className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-medium outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                 >
-                  <option value="">Change lifecycle…</option>
+                  <option value="">{t("institutions.changeLifecycle")}</option>
                   {(LIFECYCLE_OPTIONS[org.status ?? "ACTIVE"] ?? []).map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -226,20 +226,20 @@ const t = useTranslations("platformAdmin");
                   onClick={(e) => { e.stopPropagation(); setEditing(org); setModalOpen(true) }}
                   className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                 >
-                  <Pencil className="size-3" /> Edit
+                  <Pencil className="size-3" /> {tc("edit")}
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setRolesFor(org) }}
                   className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                 >
-                  <ShieldCheck className="size-3" /> Roles
+                  <ShieldCheck className="size-3" /> {t("organizations.roles")}
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(org) }}
                   disabled={deleting === org.id}
                   className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800"
                 >
-                  {deleting === org.id ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />} Delete
+                  {deleting === org.id ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />} {tc("delete")}
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleToggleStatus(org) }}

@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { collegeDepartments } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 export function CollegeDepartments() {
+  const t = useTranslations("schools")
   const [activeId, setActiveId] = useState(collegeDepartments[0].id)
   const activeDept = collegeDepartments.find((d) => d.id === activeId) || collegeDepartments[0]
 
@@ -13,10 +15,10 @@ export function CollegeDepartments() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Departments & Programs
+            {t("collegeDepartments.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Browse departments and the programs they offer. Select a department to view available courses.
+            {t("collegeDepartments.description")}
           </p>
         </div>
 
@@ -38,7 +40,7 @@ export function CollegeDepartments() {
                 >
                   <div className="flex-1">
                     <p className="font-semibold">{dept.name}</p>
-                    <p className="text-xs text-muted-foreground">{dept.programs.length} programs</p>
+                    <p className="text-xs text-muted-foreground">{t("collegeDepartments.programsCount", { count: dept.programs.length })}</p>
                   </div>
                 </button>
               )
@@ -50,13 +52,13 @@ export function CollegeDepartments() {
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-foreground">{activeDept.name}</h3>
-                <p className="text-sm text-muted-foreground">{activeDept.programs.length} programs available</p>
+                <p className="text-sm text-muted-foreground">{t("collegeDepartments.programsAvailable", { count: activeDept.programs.length })}</p>
               </div>
             </div>
 
             <div className="mt-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Programs / Masomo
+                {t("collegeDepartments.programsLabel")}
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {activeDept.programs.map((program, i) => (

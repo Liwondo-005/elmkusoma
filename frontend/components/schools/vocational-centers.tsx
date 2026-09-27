@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import { getInstitutionsByLevel } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 export function VocationalCenters() {
+  const t = useTranslations("schools")
   const institutions = getInstitutionsByLevel("Vocational")
 
   return (
@@ -14,10 +16,10 @@ export function VocationalCenters() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            VETA Training Centers
+            {t("vocationalCenters.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Browse VETA centers across Tanzania. Each center specializes in specific trade categories.
+            {t("vocationalCenters.description")}
           </p>
         </div>
 
@@ -38,11 +40,11 @@ export function VocationalCenters() {
                 <div className="absolute top-3 left-3 flex gap-1.5">
                   {institution.verified && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-500/90 px-2 py-0.5 text-xs font-semibold text-white">
-                      Verified
+                      {t("verified")}
                     </span>
                   )}
                   <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground">
-                    {institution.ownership}
+                    {institution.ownership === "Government" ? t("government") : t("private")}
                   </span>
                 </div>
                 <div className="absolute top-3 right-3 flex items-center gap-1 rounded-md bg-background/90 px-2 py-0.5">
@@ -57,7 +59,7 @@ export function VocationalCenters() {
                     {institution.location}
                   </span>
                   <span className="flex items-center gap-1">
-                    {institution.students.toLocaleString()} students
+                    {t("studentsCount", { count: institution.students.toLocaleString() })}
                   </span>
                 </div>
 
@@ -71,7 +73,7 @@ export function VocationalCenters() {
                       "h-9 w-full gap-2 hover:bg-primary/90",
                     )}
                   >
-                    View Details
+                    {t("viewDetails")}
                   </Link>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { Institution } from "@/lib/data"
 import { Carousel } from "@/components/ui/carousel"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -29,6 +30,7 @@ interface InstitutionDetailProps {
 }
 
 export function InstitutionDetail({ institution }: InstitutionDetailProps) {
+  const t = useTranslations("schools")
   const backHref = educationLevelRoutes[institution.educationLevel]
   const hasHigherEdPrograms =
     (institution.educationLevel === "Colleges" ||
@@ -48,7 +50,7 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
         href={backHref}
         className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        Browse more {institution.educationLevel.toLowerCase()} schools
+        {t("institutionDetail.browseMore", { level: institution.educationLevel.toLowerCase() })}
       </Link>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
@@ -64,7 +66,7 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
               </h1>
               {institution.verified && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">
-                  Verified
+                  {t("verified")}
                 </span>
               )}
             </div>
@@ -78,7 +80,7 @@ export function InstitutionDetail({ institution }: InstitutionDetailProps) {
                     : "bg-violet-500/10 text-violet-600"
                 )}
               >
-                {institution.ownership}
+                {institution.ownership === "Government" ? t("government") : t("private")}
               </span>
               <span
                 className={cn(
@@ -113,19 +115,19 @@ institution.secondaryLevel === "Comprehensive"
                 <p className="mt-1 text-lg font-bold text-foreground">
                   {institution.students.toLocaleString()}
                 </p>
-                <p className="text-xs text-muted-foreground">Students</p>
+                <p className="text-xs text-muted-foreground">{t("studentsLabel")}</p>
               </div>
               {institution.teachers !== undefined && (
                 <div className="rounded-xl bg-muted/60 p-3 text-center">
                   <p className="mt-1 text-lg font-bold text-foreground">
                     {institution.teachers.toLocaleString()}
                   </p>
-                  <p className="text-xs text-muted-foreground">Teachers</p>
+                  <p className="text-xs text-muted-foreground">{t("teachersLabel")}</p>
                 </div>
               )}
               <div className="rounded-xl bg-muted/60 p-3 text-center">
                 <p className="mt-1 text-lg font-bold text-foreground">{institution.rating}</p>
-                <p className="text-xs text-muted-foreground">Rating</p>
+                <p className="text-xs text-muted-foreground">{t("institutionDetail.rating")}</p>
               </div>
             </div>
 
@@ -137,7 +139,7 @@ institution.secondaryLevel === "Comprehensive"
 
         <div className="space-y-6">
           <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <h2 className="text-lg font-bold text-foreground">About</h2>
+            <h2 className="text-lg font-bold text-foreground">{t("institutionDetail.about")}</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               {institution.description}
             </p>
@@ -145,7 +147,7 @@ institution.secondaryLevel === "Comprehensive"
 
           {hasHigherEdPrograms && (
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-              <h2 className="text-lg font-bold text-foreground">Programs Offered</h2>
+              <h2 className="text-lg font-bold text-foreground">{t("institutionDetail.programsOffered")}</h2>
               <div className="mt-4 flex flex-wrap gap-2">
                 {institution.programs!.map((program) => (
                   <span
@@ -161,7 +163,7 @@ institution.secondaryLevel === "Comprehensive"
 
           {institution.facilities.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-              <h2 className="text-lg font-bold text-foreground">Facilities</h2>
+              <h2 className="text-lg font-bold text-foreground">{t("institutionDetail.facilities")}</h2>
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {institution.facilities.map((facility) => (
                   <div
@@ -177,7 +179,7 @@ institution.secondaryLevel === "Comprehensive"
 
           {(institution.phone || institution.email || institution.website) && (
             <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-              <h2 className="text-lg font-bold text-foreground">Contact Information</h2>
+              <h2 className="text-lg font-bold text-foreground">{t("institutionDetail.contactInfo")}</h2>
               <ul className="mt-4 space-y-3">
                 {institution.phone && (
                   <li className="flex items-center gap-3 text-sm">
@@ -218,11 +220,11 @@ institution.secondaryLevel === "Comprehensive"
                     buttonVariants({ className: "h-11 w-full gap-2 text-sm" })
                   )}
                 >
-                  Apply Now
+                  {t("institutionDetail.applyNow")}
                 </a>
               ) : (
                 <Button disabled className="h-11 w-full gap-2 text-sm">
-                  Admission information coming soon
+                  {t("institutionDetail.admissionComingSoon")}
                 </Button>
               )}
             </div>

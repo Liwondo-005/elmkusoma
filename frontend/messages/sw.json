@@ -2615,7 +2615,8 @@
       "codeLabel": "Msimbo:",
       "verifyLabel": "Hakiki cheti {title}",
       "downloadLabel": "Pakua cheti {title}",
-      "browseHint": "Vinjari kozi ili upate vyeti."
+      "browseHint": "Vinjari kozi ili upate vyeti.",
+      "fileVerify": "Thibitisha kupitia: {url}"
     },
     "lesson": {
       "notFound": "Somo halikupatikana",
@@ -5085,7 +5086,8 @@
       "changeLifecycle": "Change mzunguko wa maisha…",
       "deactivate": "Deactivate",
       "activate": "Amilisha",
-      "prev": "Prev"
+      "prev": "Prev",
+      "addInstitution": "Ongeza Taasisi"
     },
     "institutionDetail": {
       "offboardingChecklistUnavailable": "Offboarding checklist haipatikani",
@@ -5106,7 +5108,9 @@
       "offboardingChecklist": "Offboarding Checklist",
       "refreshOffboarding": "Onyesha upya offboarding",
       "liveReadinessStepsBefore": "Moja kwa moja readiness steps before deactivating or removing this taasisi.",
-      "dataUnavailableNoChecklist": "Data haipatikani — hakuna checklist steps returned."
+      "dataUnavailableNoChecklist": "Data haipatikani — hakuna checklist steps returned.",
+      "edit": "Hariri",
+      "delete": "Futa"
     },
     "integrations": {
       "failedToLoadIntegrations": "Imeshindwa to pakia miunganisho",
@@ -5236,7 +5240,15 @@
       "allTypes": "Aina zote",
       "addOrganization": "Ongeza Mshirika",
       "deactivate": "Futa Mshirika",
-      "activate": "Faulu Mshirika"
+      "activate": "Faulu Mshirika",
+      "activatedToast": "Shirika limeamilishwa",
+      "confirmDelete": "Kufuta \"{name}\"? Hii itakiondoa kwenye mfumo.",
+      "deactivatedToast": "Shirika limesitishwa",
+      "deletedToast": "Shirika \"{name}\" limefutwa",
+      "failedToDeleteOrganization": "Imeshindwa kufuta shirika",
+      "failedToUpdateStatus": "Imeshindwa kusasisha hali",
+      "lifecycleChangedTo": "Mzunguko wa maisha umebadilishwa kuwa {status}",
+      "roles": "Nafasi"
     },
     "packages": {
       "pageOfPackages": "Ukurasa {p0} kati ya {p1} · vifurushi {p2}",
@@ -5531,6 +5543,43 @@
       "submitted": "... | Submitted:",
       "approve": "Approve",
       "reject": "Reject"
+    },
+    "institutionForm": {
+      "createdOk": "Taasisi imeundwa kikamilifu",
+      "createInstitution": "Unda Taasisi",
+      "labelAddress": "Anwani",
+      "labelCity": "Mji",
+      "labelCountry": "Nchi",
+      "labelDescription": "Maelezo",
+      "labelEmail": "Barua pepe",
+      "labelLogoUrl": "Kiungo cha Logo",
+      "labelName": "Jina *",
+      "labelPhone": "Simu",
+      "labelType": "Aina *",
+      "labelWebsite": "Tovuti",
+      "phAddress": "Anwani ya mtaa",
+      "phCity": "mf. Dodoma",
+      "phDescription": "Maelezo mafupi ya taasisi...",
+      "phName": "mf. Shule ya Sekondari Dodoma",
+      "nameRequired": "Jina la taasisi linahitajika",
+      "saveChanges": "Hifadhi Mabadiliko",
+      "saveFailed": "Imeshindwa kuhifadhi taasisi",
+      "subtitleAdd": "Sajili taasisi mpya ya elimu kwenye mfumo.",
+      "subtitleEdit": "Sasisha maelezo ya taasisi hapa chini.",
+      "titleAdd": "Ongeza Taasisi",
+      "titleEdit": "Hariri Taasisi",
+      "updatedOk": "Taasisi imesasishwa kikamilifu"
+    },
+    "orgMembers": {
+      "defaultMemberName": "Mwanachama",
+      "empty": "Hakuna wanachama waliopatikana kwa shirika hili.",
+      "inactiveMembership": "(uanachama usiotumika)",
+      "loadFailed": "Imeshindwa kupakia wanachama",
+      "roleUpdated": "{name} sasa ni {role}",
+      "selectRole": "Chagua nafasi…",
+      "subtitle": "{name} — gawa nafasi kwa wanachama wa shirika.",
+      "title": "Wanachama na Nafasi",
+      "updateRoleFailed": "Imeshindwa kusasisha nafasi"
     }
   },
   "admin": {
@@ -6430,6 +6479,318 @@
     },
     "videoPlayer": {
       "defaultTitle": "Video"
+    }
+  },
+  "home": {
+    "contact": {
+      "backToForm": "Rudi kwenye Fomu",
+      "emailLabel": "Barua Pepe",
+      "errEmailInvalid": "Tafadhali weka barua pepe sahihi",
+      "errEmailRequired": "Barua pepe inahitajika",
+      "errMessageRequired": "Ujumbe unahitajika",
+      "errMessageShort": "Ujumbe lazima uwe na herufi angalau 10",
+      "errNameRequired": "Jina linahitajika",
+      "errNameShort": "Jina lazima liwe na herufi angalau 2",
+      "errSubjectRequired": "Mada inahitajika",
+      "errSubjectShort": "Mada lazima iwe na herufi angalau 3",
+      "messageLabel": "Ujumbe",
+      "messagePlaceholder": "Tueleweshe zaidi kuhusu swala lako...",
+      "nameLabel": "Jina Lako",
+      "namePlaceholder": "Weka jina lako",
+      "send": "Tuma Ujumbe",
+      "sending": "Inatuma...",
+      "subjectLabel": "Mada",
+      "subjectPlaceholder": "Tunaweza kukusaidiaje?",
+      "subtitle": "Maswali, maoni au mawazo ya ushirikiano? Tungependa kusikia kutoka kwako.",
+      "successDesc": "Tumekuandalia ujumbe wako kwa <email>info@elmkusoma.co.tz</email>. Bonyeza tuma huko ili kutufikia — kama hakuna kilichofunguka, tutumie barua pepe moja kwa moja.",
+      "successTitle": "Programu yako ya barua pepe inapaswa kuwa wazi"
+    },
+    "courses": {
+      "subtitle": "Kozi za kujisomea zilizochapishwa kwenye ELMKUSOMA — jifunze kwa mwendo wako.",
+      "title": "Kozi maarufu"
+    },
+    "cta": {
+      "imageAlt": "Mwanafunzi mwenye furaha akitumia ELMKUSOMA",
+      "startFree": "Anza Kujifunza Bure",
+      "subtitle": "Pata vyeti, jenga ujuzi na songesha mustakabali wako kwa masomo shirikishi ya moja kwa moja yaliyoundwa kwa ajili ya Afrika.",
+      "title": "Jiunge na maelfu ya wanafunzi wanaotimiza malengo yao"
+    },
+    "hero": {
+      "badge": "Elimu ya Kidijitali ya Afrika, iliyobuniwa upya",
+      "browseSchools": "Vinjari Shule",
+      "highlightAnywhereDesc": "Fikia masomo wakati wowote, mahali popote",
+      "highlightAnywhereTitle": "Jifunze Popote",
+      "highlightLiveDesc": "Vipindi vya moja kwa moja na walimu wazoefu",
+      "highlightLiveTitle": "Moja kwa Moja na Shirikishi",
+      "highlightTrustedDesc": "Maelfu ya wanafunzi kote Afrika",
+      "highlightTrustedTitle": "Wanaaminiwa na Wanafunzi",
+      "imageAlt": "Mwanafunzi akijifunza kwenye kompyuta",
+      "subtitle": "Jiunge na vipindi vya moja kwa moja, jifunze kutoka kwa walimu wazoefu na ungana na wanafunzi kote Afrika — yote kwenye jukwaa moja la kidijitali la elimu.",
+      "titleAccent": "Moja kwa Moja.",
+      "titleMain": "Jifunze. Ungana.",
+      "titlePrefix": "Fanikiwa —"
+    },
+    "how": {
+      "step1Desc": "Jisajili na uchague kiwango chako cha elimu ili kupata uzoefu unaokufaa.",
+      "step1Title": "Fungua akaunti yako",
+      "step2Desc": "Vinjari vipindi vya moja kwa moja, kozi na maudhui ya taasisi yako.",
+      "step2Title": "Tafuta vipindi vyako",
+      "step3Desc": "Jiunge na vipindi shirikishi vya moja kwa moja, zungumza na walimu na fuatilia maendeleo yako.",
+      "step3Title": "Jifunze moja kwa moja",
+      "step4Desc": "Kamilisha kozi na pokea vyeti vinavyothibitishika vya mafanikio.",
+      "step4Title": "Pata vyeti",
+      "subtitle": "Kuanza kunachukua dakika chache — kutoka kujisajili hadi kipindi chako cha kwanza cha moja kwa moja.",
+      "title": "Jinsi ELMKUSOMA inavyofanya kazi"
+    },
+    "levels": {
+      "items": {
+        "college": {
+          "desc": "Idara na programu",
+          "name": "Chuo"
+        },
+        "nursery": {
+          "desc": "Michezo na ujifunzaji shirikishi",
+          "name": "Chekechea"
+        },
+        "primary": {
+          "desc": "Vipindi, masomo na mitihani",
+          "name": "Msingi"
+        },
+        "secondary": {
+          "desc": "Programu za O-Level na A-Level",
+          "name": "Sekondari"
+        },
+        "university": {
+          "desc": "Vitivo na programu za shahada",
+          "name": "Chuo Kikuu"
+        },
+        "vocational": {
+          "desc": "Mafunzo ya VETA na moduli",
+          "name": "Ufundi"
+        }
+      },
+      "subtitle": "Kutoka michezo ya chekechea hadi shahada za chuo kikuu — gundua uzoefu unaofaa kwa kila kiwango cha elimu kote Afrika.",
+      "title": "Jukwaa moja kwa kila hatua ya ujifunzaji"
+    },
+    "live": {
+      "badge": "Moja kwa Moja Sasa",
+      "levelIntermediate": "Wastani",
+      "statusEnded": "Kimeisha",
+      "statusLiveNow": "MOJA KWA MOJA SASA",
+      "statusRecorded": "KILICHOREKODIWA",
+      "subtitle": "Jiunge na vipindi vya moja kwa moja, shirikiana na walimu na wanafunzi kwa wakati halisi.",
+      "tagline": "Vipindi vya moja kwa moja vinaendelea",
+      "viewAll": "Tazama Vipindi Vyote vya Moja kwa Moja"
+    },
+    "stats": {
+      "coursesClasses": "Kozi na Vipindi",
+      "instructors": "Wakufunzi",
+      "instructorsHighlight": "{count} Wakufunzi",
+      "institutions": "Taasisi",
+      "learners": "Wanafunzi",
+      "learnersHighlight": "{count} Wanafunzi",
+      "learnersOnPlatform": "Wanafunzi kwenye ELMKUSOMA"
+    }
+  },
+  "schools": {
+    "collegeCta": {
+      "applyDescription": "Tuma ombi lako la stashahada au shahada katika vyuo na vyuo vikuu washirika nchini Tanzania.",
+      "applyNow": "Omba Sasa",
+      "applyTitle": "Omba Udahili",
+      "exploreDescription": "Angalia mihadhara ya sampuli na vifaa vya kozi kutoka taasisi washirika — hakuna akaunti inayohitajika.",
+      "exploreTitle": "Chunguza Programu"
+    },
+    "collegeDepartments": {
+      "description": "Chunguza idara na programu zinazotolewa. Chagua idara kuona kozi zinazopatikana.",
+      "programsAvailable": "Programu {count} zinapatikana",
+      "programsCount": "Programu {count}",
+      "programsLabel": "Programu / Masomo",
+      "title": "Idara na Programu"
+    },
+    "collegeHero": {
+      "badge": "Ngazi ya Chuo",
+      "description": "Taasisi za elimu ya juu zinazotoa stashahada na shahada katika uhandisi, biashara, TEHAMA, afya, elimu na kilimo.",
+      "stat1Label": "Kutoka Uhandisi hadi Afya",
+      "stat1Value": "Idara 6",
+      "stat2Label": "Stashahada na Shahada",
+      "stat2Value": "Programu 30+",
+      "stat3Label": "Nchini Tanzania",
+      "stat3Value": "Taasisi 5",
+      "title": "Programu za Stashahada na Shahada"
+    },
+    "collegeList": {
+      "description": "Chunguza vyuo na vyuo vikuu vinavyotoa programu za stashahada na shahada.",
+      "title": "Taasisi"
+    },
+    "government": "Serikali",
+    "institutionDetail": {
+      "about": "Kuhusu",
+      "admissionComingSoon": "Taarifa za udahili zitakuja hivi karibuni",
+      "applyNow": "Omba Sasa",
+      "browseMore": "Angalia shule zaidi za {level}",
+      "contactInfo": "Mawasiliano",
+      "facilities": "Vifaa",
+      "programsOffered": "Programu Zinazotolewa",
+      "rating": "Ukadiriaji"
+    },
+    "nurseryCta": {
+      "enrollDescription": "Msajili mwanao kwa programu kamili ya chekechea yenye masomo yaliyopangwa, ufuatiliaji wa maendeleo na vyeti katika ngazi za Baby, Middle na Top.",
+      "enrollNow": "Sajili Sasa",
+      "enrollTitle": "Sajili katika Shule ya Awali",
+      "playDescription": "Ingia moja kwa moja kwenye michezo shirikishi ya chekechea — hakuna akaunti inayohitajika. Jaribu Kusoma, Kuhesabu, Kuchora na zaidi.",
+      "playNow": "Anza Kucheza",
+      "playTitle": "Anza Kucheza Bure"
+    },
+    "nurseryHero": {
+      "badge": "Ngazi ya Awali",
+      "description": "Madarsa ya kufurahisha na shirikishi kwa wanafunzi wadogo. Chunguza shule za awali zenye ngazi za Baby, Middle na Top — kwa michezo, hadithi na shughuli za ubunifu.",
+      "stat1Label": "Baby, Middle na Top",
+      "stat1Value": "Ngazi 3",
+      "stat2Label": "Kusoma, Kuandika na zaidi",
+      "stat2Value": "Masomo 4",
+      "stat3Label": "Nchini Tanzania",
+      "stat3Value": "Shule 5",
+      "title": "Jifunze Kupitia Michezo"
+    },
+    "nurseryLevels": {
+      "description": "Ngazi tatu zinazoendelea kwa watoto wenye umri wa miaka 2 hadi 5.",
+      "subjectCounting": "Kuhesabu",
+      "subjectDrawing": "Kuchora",
+      "subjectReading": "Kusoma",
+      "subjectWriting": "Kuandika",
+      "title": "Ngazi za Awali"
+    },
+    "nurserySchools": {
+      "description": "Chunguza shule za awali na programu zao. Chagua shule kuchunguza ngazi na masomo.",
+      "title": "Shule Washirika"
+    },
+    "nurserySubjects": {
+      "description": "Masomo manne ya msingi yanayofundishwa kupitia shughuli shirikishi.",
+      "title": "Masomo"
+    },
+    "primaryClasses": {
+      "description": "Kila darasa linafuata mtaala wa msingi wa Tanzania. Chagua darasa kuona masomo yake.",
+      "subjectsCount": "Masomo ({count})",
+      "title": "Madarsa na Masomo"
+    },
+    "primaryCta": {
+      "enrollDescription": "Msajili mwanao kwa programu kamili ya msingi yenye masomo yaliyopangwa, ufuatiliaji wa maendeleo na vyeti kutoka Darasa la 1 hadi la 6.",
+      "enrollNow": "Sajili Sasa",
+      "enrollTitle": "Sajili katika Shule ya Msingi",
+      "tryDescription": "Angalia sampuli za masomo kutoka Darasa la 1 hadi la 6 — hakuna akaunti inayohitajika. Ona jinsi tunavyofundisha Kiswahili, Kiingereza na Hisabati.",
+      "tryTitle": "Jaribu Somo Bure"
+    },
+    "primaryHero": {
+      "badge": "Ngazi ya Msingi",
+      "description": "Elimu kamili ya msingi kutoka Darasa la 1 hadi la 6. Madarsa yaliyopangwa na mtaala kamili wa Tanzania — Kiswahili, Kiingereza, Hisabati, Sayansi na zaidi.",
+      "stat1Label": "Darasa la 1 – 6",
+      "stat1Value": "Madarsa 6",
+      "stat2Label": "Mtaala kamili wa Tanzania",
+      "stat2Value": "Masomo 8",
+      "stat3Label": "Nchini Tanzania",
+      "stat3Value": "Shule 5",
+      "title": "Darasa la 1 — 6"
+    },
+    "primarySchools": {
+      "description": "Chunguza shule za msingi na programu zao. Chagua shule kuchunguza madarsa na masomo.",
+      "title": "Shule Washirika"
+    },
+    "private": "Binafsi",
+    "secondaryCta": {
+      "enrollDescription": "Jisajili kwa programu kamili ya sekondari yenye masomo yaliyopangwa, ufuatiliaji wa maendeleo na vyeti kutoka O-Level hadi A-Level.",
+      "enrollNow": "Sajili Sasa",
+      "enrollTitle": "Sajili katika Shule ya Sekondari",
+      "tryDescription": "Angalia sampuli za masomo kutoka Kidato cha I hadi cha VI — hakuna akaunti inayohitajika. Ona jinsi tunavyofundisha Hisabati, Fizikia, Historia na zaidi.",
+      "tryTitle": "Jaribu Somo Bure"
+    },
+    "secondaryHero": {
+      "badge": "Ngazi ya Sekondari",
+      "description": "Elimu kamili ya sekondari kutoka Kidato cha I hadi cha VI. O-Level inajenga misingi katika masomo 15+, A-Level inaelekea kwenye makundi kama PCM, PCB, HGL na ECA.",
+      "stat1Label": "Kidato cha I – VI",
+      "stat1Value": "Madarasa 6",
+      "stat2Label": "Makundi ya A-Level",
+      "stat2Value": "Michanganyiko 6",
+      "stat3Label": "Nchini Tanzania",
+      "stat3Value": "Shule 5",
+      "title": "O-Level na A-Level"
+    },
+    "secondaryLevels": {
+      "aLevelTab": "A-Level (Kidato cha V–VI)",
+      "alsoStudied": "Pia husomwa katika A-Level",
+      "comboMeta": "{abbr} · Kidato cha V–VI",
+      "coreSubjects": "Masomo ya Msingi ({count})",
+      "description": "Chunguza masomo ya O-Level kwa kidato au chunguza makundi ya A-Level.",
+      "formMetaALevel": "Kidato cha V–VI · A-Level",
+      "formMetaOLevel": "{label} · {ages} · O-Level",
+      "generalStudies": "General Studies · Communication Skills",
+      "masomoSubjects": "Masomo ({count})",
+      "oLevelTab": "O-Level (Kidato cha I–IV)",
+      "title": "Madarasa na Masomo"
+    },
+    "secondarySchools": {
+      "description": "Chunguza shule za sekondari kwa ngazi — O-Level (Kidato cha I–IV), A-Level (Kidato cha V–VI), au CO-School (Kidato cha I–VI).",
+      "title": "Shule Washirika"
+    },
+    "studentsCount": "{count} Wanafunzi",
+    "studentsLabel": "Wanafunzi",
+    "teachersLabel": "Walimu",
+    "universityCta": {
+      "applyDescription": "Tuma ombi lako la stashahada, shahada ya kwanza, uzamili au uzamivu katika vyuo vikuu washirika nchini Tanzania.",
+      "applyNow": "Omba Sasa",
+      "applyTitle": "Omba Udahili",
+      "exploreDescription": "Angalia mihadhara ya sampuli na vifaa vya kozi kutoka vyuo vikuu washirika — hakuna akaunti inayohitajika. Ona jinsi tunavyofundisha tiba, uhandisi, sheria na zaidi.",
+      "exploreTitle": "Chunguza Programu"
+    },
+    "universityHero": {
+      "badge": "Ngazi ya Chuo Kikuu",
+      "description": "Elimu ya juu kutoka stashahada hadi uzamivu. Chunguza vyuo vikuu bora vya Tanzania vinavyotoa programu za tiba, uhandisi, sheria, sayansi, sanaa na zaidi.",
+      "stat1Label": "Stashahada hadi PhD",
+      "stat1Value": "Ngazi 4 za Shahada",
+      "stat2Label": "Kote katika taaluma",
+      "stat2Value": "Vitivo 30+",
+      "stat3Label": "Taasisi bora",
+      "stat3Value": "Vyuo Vikuu 5",
+      "title": "Vitivo na Programu za Shahada"
+    },
+    "universityLevels": {
+      "availableAt": "Vinapatikana katika vyuo vikuu hivi",
+      "description": "Chunguza programu kwa ngazi ya sifa — kutoka stashahada hadi uzamivu.",
+      "title": "Ngazi za Shahada"
+    },
+    "universityList": {
+      "description": "Chunguza vyuo vikuu bora vya Tanzania. Kila taasisi inatoa programu katika ngazi nyingi za shahada.",
+      "title": "Vyuo Vikuu Washirika"
+    },
+    "verified": "Imethibitishwa",
+    "viewDetails": "Angalia Maelezo",
+    "vocationalCenters": {
+      "description": "Chunguza vituo vya VETA nchini Tanzania. Kila kituo kimebobea katika kategoria maalum za fani.",
+      "title": "Vituo vya Mafunzo vya VETA"
+    },
+    "vocationalCta": {
+      "enrollDescription": "Jisajili kwa programu ya cheti cha fani katika mojawapo ya vituo washirika vya VETA. Pata mafunzo ya vitendo na cheti cha fani kinachotambulika kitaifa.",
+      "enrollNow": "Sajili Sasa",
+      "enrollTitle": "Sajili katika Kituo cha VETA",
+      "tryDescription": "Angalia sampuli za masomo kutoka programu za fani — hakuna akaunti inayohitajika. Ona jinsi tunavyofundisha ujuzi wa vitendo kama useremala, umekanika, TEHAMA na zaidi.",
+      "tryTitle": "Jaribu Somo Bure"
+    },
+    "vocationalHero": {
+      "badge": "Ngazi ya Ufundi",
+      "description": "Mafunzo ya ujuzi wa vitendo kupitia mfumo wa VETA wa Tanzania. Jifunze fani kutoka ujenzi hadi TEHAMA, magari hadi ukarimu — kwa uzoefu wa vitendo na vyeti vya fani.",
+      "stat1Label": "Programu 17 za fani",
+      "stat1Value": "Kategoria 6",
+      "stat2Label": "Programu za mwaka 1–2",
+      "stat2Value": "Vyeti vya Fani",
+      "stat3Label": "Nchini Tanzania",
+      "stat3Value": "Vituo 5 vya VETA",
+      "title": "Mafunzo na Moduli za VETA"
+    },
+    "vocationalTrades": {
+      "description": "Chunguza fani za VETA kwa kategoria. Chagua kategoria kuona programu zinazopatikana na muda wake.",
+      "title": "Kategoria za Fani",
+      "tradeProgramsCount": "Programu {count} za fani",
+      "tradesCount": "Fani {count}",
+      "tradesLabel": "Fani / Ujuzi wa Fundi"
     }
   }
 }

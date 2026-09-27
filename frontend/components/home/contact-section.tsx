@@ -4,20 +4,28 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Send } from "lucide-react"
 
-const contactSchema = z.object({
-  name: z.string().min(1, "Name is required").min(2, "Name must be at least 2 characters"),
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
-  subject: z.string().min(1, "Subject is required").min(3, "Subject must be at least 3 characters"),
-  message: z.string().min(1, "Message is required").min(10, "Message must be at least 10 characters"),
-})
-
-type ContactValues = z.infer<typeof contactSchema>
+type ContactValues = {
+  name: string
+  email: string
+  subject: string
+  message: string
+}
 
 export function ContactSection() {
+  const t = useTranslations("home")
+  const tc = useTranslations("common")
   const [submitted, setSubmitted] = useState(false)
+
+  const contactSchema = z.object({
+    name: z.string().min(1, t("contact.errNameRequired")).min(2, t("contact.errNameShort")),
+    email: z.string().min(1, t("contact.errEmailRequired")).email(t("contact.errEmailInvalid")),
+    subject: z.string().min(1, t("contact.errSubjectRequired")).min(3, t("contact.errSubjectShort")),
+    message: z.string().min(1, t("contact.errMessageRequired")).min(10, t("contact.errMessageShort")),
+  })
 
   const {
     register,
@@ -43,10 +51,10 @@ export function ContactSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Send us a message
+            {tc("sendMessage")}
           </h2>
           <p className="mt-3 text-pretty text-muted-foreground">
-            Questions, feedback or partnership ideas? We&apos;d love to hear from you.
+            {t("contact.subtitle")}
           </p>
         </div>
 
@@ -56,16 +64,18 @@ export function ContactSection() {
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
                 <CheckCircle className="size-7 text-teal" />
               </div>
-              <h3 className="mt-4 text-xl font-bold text-foreground">Your email app should be open</h3>
+              <h3 className="mt-4 text-xl font-bold text-foreground">{t("contact.successTitle")}</h3>
               <p className="mt-2 max-w-sm mx-auto text-sm text-muted-foreground">
-                We&apos;ve prepared your message to{" "}
-                <a href="mailto:info@elmkusoma.co.tz" className="font-medium text-primary hover:underline">
-                  info@elmkusoma.co.tz
-                </a>
-                . Press send there to reach us — if nothing opened, email us directly.
+                {t.rich("contact.successDesc", {
+                  email: (chunks) => (
+                    <a href="mailto:info@elmkusoma.co.tz" className="font-medium text-primary hover:underline">
+                      {chunks}
+                    </a>
+                  ),
+                })}
               </p>
               <Button onClick={() => setSubmitted(false)} variant="outline" className="mt-6">
-                Back to Form
+                {t("contact.backToForm")}
               </Button>
             </div>
           ) : (
@@ -74,12 +84,12 @@ export function ContactSection() {
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label htmlFor="home-name" className="block text-sm font-medium text-foreground">
-                      Your Name
+                      {t("contact.nameLabel")}
                     </label>
                     <input
                       id="home-name"
                       type="text"
-                      placeholder="Enter your name"
+                      placeholder={t("contact.namePlaceholder")}
                       {...register("name")}
                       className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                     />
@@ -90,7 +100,7 @@ export function ContactSection() {
 
                   <div>
                     <label htmlFor="home-email" className="block text-sm font-medium text-foreground">
-                      Email Address
+                      {t("contact.emailLabel")}
                     </label>
                     <input
                       id="home-email"
@@ -106,14 +116,14 @@ export function ContactSection() {
                 </div>
 
                 <div>
-                  <label htmlFor="home-subject" className="block text-sm font-medium text-foreground">
-                    Subject
-                  </label>
-                  <input
-                    id="home-subject"
-                    type="text"
-                    placeholder="How can we help?"
-                    {...register("subject")}
+                    <label htmlFor="home-subject" className="block text-sm font-medium text-foreground">
+                      {t("contact.subjectLabel")}
+                    </label>
+                    <input
+                      id="home-subject"
+                      type="text"
+                      placeholder={t("contact.subjectPlaceholder")}
+                      {...register("subject")}
                     className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
                   />
                   {errors.subject && (
@@ -122,13 +132,13 @@ export function ContactSection() {
                 </div>
 
                 <div>
-                  <label htmlFor="home-message" className="block text-sm font-medium text-foreground">
-                    Message
-                  </label>
-                  <textarea
-                    id="home-message"
-                    rows={4}
-                    placeholder="Tell us more about your inquiry..."
+                    <label htmlFor="home-message" className="block text-sm font-medium text-foreground">
+                      {t("contact.messageLabel")}
+                    </label>
+                    <textarea
+                      id="home-message"
+                      rows={4}
+                      placeholder={t("contact.messagePlaceholder")}
                     {...register("message")}
                     className="mt-1.5 w-full rounded-lg border border-border bg-muted/60 px-3.5 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background resize-none"
                   />
@@ -138,7 +148,7 @@ export function ContactSection() {
                 </div>
 
                 <Button type="submit" className="h-11 w-full text-sm" disabled={isSubmitting}>
-                  {isSubmitting ? "Sending..." : <><Send className="mr-2 size-4" /> Send Message</>}
+                  {isSubmitting ? t("contact.sending") : <><Send className="mr-2 size-4" /> {t("contact.send")}</>}
                 </Button>
               </form>
             </div>

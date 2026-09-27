@@ -1,32 +1,35 @@
+"use client"
+
+import { useTranslations } from "next-intl"
+
 export function SecondaryHero() {
+  const t = useTranslations("schools")
   return (
     <section className="relative overflow-hidden border-b border-border bg-gradient-to-br from-accent via-background to-accent/50">
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="max-w-3xl">
           <span className="inline-flex items-center gap-1.5 rounded-md bg-teal/10 px-2.5 py-1 text-xs font-semibold text-teal">
-            Secondary Level
+            {t("secondaryHero.badge")}
           </span>
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            O-Level & A-Level
+            {t("secondaryHero.title")}
           </h1>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            Complete secondary education from Form I to Form VI. O-Level builds
-            foundations across 15+ subjects, A-Level specializes through combination
-            groups like PCM, PCB, HGL and ECA.
+            {t("secondaryHero.description")}
           </p>
 
           <div className="mt-8 flex flex-wrap gap-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">6 Forms</span>
-              <span>Form I – VI</span>
+              <span className="font-medium text-foreground">{t("secondaryHero.stat1Value")}</span>
+              <span>{t("secondaryHero.stat1Label")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">6 Combinations</span>
-              <span>A-Level groups</span>
+              <span className="font-medium text-foreground">{t("secondaryHero.stat2Value")}</span>
+              <span>{t("secondaryHero.stat2Label")}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">5 Schools</span>
-              <span>Across Tanzania</span>
+              <span className="font-medium text-foreground">{t("secondaryHero.stat3Value")}</span>
+              <span>{t("secondaryHero.stat3Label")}</span>
             </div>
           </div>
         </div>

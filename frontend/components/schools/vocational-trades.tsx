@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { vetaCategories } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 export function VocationalTrades() {
+  const t = useTranslations("schools")
   const [activeId, setActiveId] = useState(vetaCategories[0].id)
   const activeCat = vetaCategories.find((c) => c.id === activeId) || vetaCategories[0]
 
@@ -13,10 +15,10 @@ export function VocationalTrades() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Trade Categories
+            {t("vocationalTrades.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Browse VETA trades by category. Select a category to view available programs and durations.
+            {t("vocationalTrades.description")}
           </p>
         </div>
 
@@ -38,7 +40,7 @@ export function VocationalTrades() {
                 >
                   <div className="flex-1">
                     <p className="font-semibold">{cat.name}</p>
-                    <p className="text-xs text-muted-foreground">{cat.trades.length} trades</p>
+                    <p className="text-xs text-muted-foreground">{t("vocationalTrades.tradesCount", { count: cat.trades.length })}</p>
                   </div>
                 </button>
               )
@@ -50,13 +52,13 @@ export function VocationalTrades() {
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-foreground">{activeCat.name}</h3>
-                <p className="text-sm text-muted-foreground">{activeCat.trades.length} trade programs</p>
+                <p className="text-sm text-muted-foreground">{t("vocationalTrades.tradeProgramsCount", { count: activeCat.trades.length })}</p>
               </div>
             </div>
 
             <div className="mt-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Trades / Fundi Skills
+                {t("vocationalTrades.tradesLabel")}
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {activeCat.trades.map((trade, i) => (

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { degreeLevels } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
@@ -12,6 +13,7 @@ const levelColors: Record<string, string> = {
 }
 
 export function UniversityLevels() {
+  const t = useTranslations("schools")
   const [activeId, setActiveId] = useState(degreeLevels[0].id)
   const activeLevel = degreeLevels.find((l) => l.id === activeId) || degreeLevels[0]
 
@@ -20,10 +22,10 @@ export function UniversityLevels() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Degree Levels
+            {t("universityLevels.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Explore programs by qualification level — from diplomas to doctorates.
+            {t("universityLevels.description")}
           </p>
         </div>
 
@@ -60,7 +62,7 @@ export function UniversityLevels() {
 
           <div className="mt-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Available at these universities
+              {t("universityLevels.availableAt")}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {[

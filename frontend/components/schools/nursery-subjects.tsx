@@ -1,15 +1,19 @@
+"use client"
+
+import { useTranslations } from "next-intl"
 import { nurserySubjects } from "@/lib/data"
 
 export function NurserySubjects() {
+  const t = useTranslations("schools")
   return (
     <section className="bg-muted/40 py-12 lg:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Subjects
+            {t("nurserySubjects.title")}
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Four core subjects taught through interactive activities.
+            {t("nurserySubjects.description")}
           </p>
         </div>
 

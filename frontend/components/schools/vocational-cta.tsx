@@ -1,18 +1,22 @@
+"use client"
+
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export function VocationalCta() {
+  const t = useTranslations("schools")
+  const tc = useTranslations("common")
   return (
     <section className="py-12 lg:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="flex flex-col justify-between overflow-hidden rounded-2xl bg-primary p-8 text-primary-foreground">
             <div>
-              <h2 className="text-2xl font-bold">Try a Free Lesson</h2>
+              <h2 className="text-2xl font-bold">{t("vocationalCta.tryTitle")}</h2>
               <p className="mt-3 text-primary-foreground/80">
-                Explore sample lessons from our vocational trade programs — no account needed. See
-                how we teach practical skills in carpentry, mechanics, ICT and more.
+                {t("vocationalCta.tryDescription")}
               </p>
             </div>
             <Link
@@ -22,16 +26,15 @@ export function VocationalCta() {
                 "mt-8 h-11 w-full gap-2 bg-background text-foreground hover:bg-background/90 sm:w-auto sm:self-start",
               )}
             >
-              Start Learning
+              {tc("startLearning")}
             </Link>
           </div>
 
           <div className="flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-8">
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Enroll in a VETA Center</h2>
+              <h2 className="text-2xl font-bold text-foreground">{t("vocationalCta.enrollTitle")}</h2>
               <p className="mt-3 text-muted-foreground">
-                Register for a trade certificate program at one of our partner VETA centers.
-                Get hands-on training and earn a nationally recognized trade certificate.
+                {t("vocationalCta.enrollDescription")}
               </p>
             </div>
             <Link
@@ -41,7 +44,7 @@ export function VocationalCta() {
                 "mt-8 h-11 w-full gap-2 border-primary/30 text-primary hover:bg-accent sm:w-auto sm:self-start",
               )}
             >
-              Enroll Now
+              {t("vocationalCta.enrollNow")}
             </Link>
           </div>
         </div>
