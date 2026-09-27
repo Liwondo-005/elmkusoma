@@ -427,8 +427,61 @@ export interface NotificationSummary {
 }
 
 export interface DelegationSummary {
-  id: string; delegatorId: string; delegateId: string; permissions: string
-  scope: string; status: string; startsAt: string; expiresAt: string | null; createdAt: string
+  id: string; delegatorId: string; delegatorName: string | null
+  delegateId: string; delegateName: string | null; permissions: string
+  scope: string; authority: string | null; status: string
+  startsAt: string; expiresAt: string | null; createdAt: string
+}
+
+export interface DelegationDetail {
+  id: string; delegatorId: string; delegatorName: string | null; delegatorEmail: string | null
+  delegateId: string; delegateName: string | null; delegateEmail: string | null
+  authority: string | null; permissions: string; scope: string
+  resourceIds: string[]; resourceNames: string[]; status: string
+  reason: string | null; notes: string | null
+  startsAt: string; expiresAt: string | null
+  approvedBy: string | null; approvedByName: string | null; approvedAt: string | null
+  rejectedAt: string | null; rejectionReason: string | null
+  revokedAt: string | null; revokedBy: string | null; revokedByName: string | null
+  revocationReason: string | null; createdAt: string; currentlyEffective: boolean | null
+}
+
+export interface DelegationCreatePayload {
+  delegatorId: string; delegateId: string; permissions: string; scope?: string
+  authority?: string; reason?: string; notes?: string; resourceIds?: string[]
+  startsAt?: string; expiresAt?: string; requiresApproval?: boolean
+}
+
+export interface ProviderRegistryItem {
+  id: string; name: string; code: string; type: string | null
+  city: string | null; region: string | null; isActive: boolean | null
+  status: string | null; verificationStatus: string | null
+  adminCount: number | null; createdAt: string | null
+}
+
+export interface ProviderVerificationItem {
+  id: string; verificationType: string; status: string
+  submittedBy: string | null; submittedByName: string | null; submittedAt: string
+  reviewedBy: string | null; reviewedByName: string | null; reviewedAt: string | null
+  notes: string | null; documents: string | null
+}
+
+export interface ProviderGovernanceDetail {
+  id: string; name: string; code: string; type: string | null
+  description: string | null; address: string | null; city: string | null
+  region: string | null; country: string | null; phone: string | null
+  email: string | null; website: string | null; logoUrl: string | null
+  isActive: boolean | null; status: string | null; enabledServices: string | null
+  verificationStatus: string | null; approvedAt: string | null; approvedBy: string | null
+  createdAt: string | null; updatedAt: string | null
+  admins: OrgMember[]; verificationHistory: ProviderVerificationItem[]
+  serviceEntitlements: ProviderQuota[]; complianceFlags: string[]
+  recentAudit: AuditLogEntry[]
+}
+
+export interface ProviderAttentionItem {
+  providerId: string; providerName: string; severity: string; category: string
+  title: string; description: string; actionUrl: string
 }
 
 export interface VerificationSummary {
@@ -756,11 +809,36 @@ export const platformAdminApi = {
     platformFetch<NotificationSummary>("/v1/platform-admin/notifications", { method: "POST", body: JSON.stringify(data) }),
 
   listDelegations: () => platformFetch<DelegationSummary[]>("/v1/platform-admin/delegations"),
-  createDelegation: (data: { delegatorId: string; delegateId: string; permissions: string; scope?: string }) =>
+  createDelegation: (data: DelegationCreatePayload) =>
     platformFetch<DelegationSummary>("/v1/platform-admin/delegations", { method: "POST", body: JSON.stringify(data) }),
+  getDelegation: (id: string) => platformFetch<DelegationDetail>(`/v1/platform-admin/delegations/${id}`),
+  approveDelegation: (id: string, reason?: string) =>
+    platformFetch<DelegationSummary>(`/v1/platform-admin/delegations/${id}/approve`, { method: "POST", body: JSON.stringify({ reason: reason ?? null }) }),
+  rejectDelegation: (id: string, reason: string) =>
+    platformFetch<DelegationSummary>(`/v1/platform-admin/delegations/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+  extendDelegation: (id: string, expiresAt: string, reason?: string) =>
+    platformFetch<DelegationSummary>(`/v1/platform-admin/delegations/${id}/extend`, { method: "PUT", body: JSON.stringify({ expiresAt, reason: reason ?? null }) }),
+  delegationVocabulary: () => platformFetch<{ authorities: string[]; permissions: string[] }>("/v1/platform-admin/delegations/authorities"),
   revokeDelegation: (id: string, reason?: string) => {
     const params = reason ? `?reason=${encodeURIComponent(reason)}` : ""
     return platformFetch<string>(`/v1/platform-admin/delegations/${id}/revoke${params}`, { method: "PUT" })
+  },
+
+  listProviderRegistry: (params: { search?: string; type?: string; status?: string; verification?: string; page?: number; size?: number } = {}) => {
+    const q = new URLSearchParams()
+    if (params.search) q.set("search", params.search)
+    if (params.type) q.set("type", params.type)
+    if (params.status) q.set("status", params.status)
+    if (params.verification) q.set("verification", params.verification)
+    q.set("page", String(params.page ?? 0)); q.set("size", String(params.size ?? 20))
+    return platformFetch<PageResponse<ProviderRegistryItem>>(`/v1/platform-admin/providers/registry?${q}`)
+  },
+  getProviderGovernance: (id: string) => platformFetch<ProviderGovernanceDetail>(`/v1/platform-admin/providers/${id}/governance`),
+  getProviderAttention: () => platformFetch<ProviderAttentionItem[]>("/v1/platform-admin/providers/attention"),
+  reviewProviderVerification: (id: string, status: string, notes?: string) => {
+    const params = new URLSearchParams({ status })
+    if (notes) params.set("notes", notes)
+    return platformFetch<VerificationSummary>(`/v1/platform-admin/verifications/${id}/provider-review?${params}`, { method: "PUT" })
   },
 
   listPendingVerifications: () => platformFetch<VerificationSummary[]>("/v1/platform-admin/verifications/pending"),

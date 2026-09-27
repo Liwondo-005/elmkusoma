@@ -1140,50 +1140,624 @@ public class PlatformAdminService {
 
     // ── Delegations ──
 
+    /** Authority types supported by the platform governance model. Do not invent others in the UI. */
+    public static final Set<String> DELEGATION_AUTHORITIES = Set.of(
+            "PROVIDER_VERIFICATION", "INSTITUTION_REVIEW", "COMPLIANCE_REVIEW",
+            "INCIDENT_MANAGEMENT", "PLATFORM_SUPPORT", "CONTENT_GOVERNANCE",
+            "SERVICE_GOVERNANCE", "GENERAL_ADMIN");
+
+    /** Granular permission tokens usable inside a delegation. */
+    public static final Set<String> DELEGATION_PERMISSIONS = Set.of(
+            "VIEW", "REVIEW", "APPROVE", "VERIFY", "REJECT", "SUSPEND", "REACTIVATE", "MANAGE");
+
+    private static final Set<String> TERMINAL_DELEGATION_STATUSES = Set.of("REVOKED", "EXPIRED", "REJECTED");
+
+    private String resolveUserName(UUID userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId).map(User::getFullName).orElse(null);
+    }
+
+    private String resolveUserEmail(UUID userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId).map(User::getEmail).orElse(null);
+    }
+
+    private List<UUID> parseResourceIds(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            com.fasterxml.jackson.databind.JsonNode node = PERMISSIONS_JSON.readTree(json);
+            List<UUID> ids = new ArrayList<>();
+            if (node.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode el : node) {
+                    try { ids.add(UUID.fromString(el.asText())); } catch (Exception ignored) {}
+                }
+            }
+            return ids;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private Set<String> parsePermissionTokens(String json) {
+        Set<String> tokens = new HashSet<>();
+        if (json == null || json.isBlank()) return tokens;
+        String trimmed = json.trim();
+        try {
+            com.fasterxml.jackson.databind.JsonNode node = PERMISSIONS_JSON.readTree(trimmed);
+            if (node.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode el : node) tokens.add(el.asText().trim().toUpperCase());
+            } else {
+                tokens.add(node.asText().trim().toUpperCase());
+            }
+        } catch (Exception e) {
+            for (String part : trimmed.split("[,;\\s]+")) {
+                if (!part.isBlank()) tokens.add(part.trim().toUpperCase());
+            }
+        }
+        return tokens;
+    }
+
+    private boolean isDelegationEffective(AdminDelegation d, LocalDateTime now) {
+        if (!"ACTIVE".equals(d.getStatus())) return false;
+        if (d.getStartsAt() != null && now.isBefore(d.getStartsAt())) return false;
+        if (d.getExpiresAt() != null && !now.isBefore(d.getExpiresAt())) return false;
+        return true;
+    }
+
+    private DelegationSummaryResponse toDelegationSummary(AdminDelegation d) {
+        return DelegationSummaryResponse.builder()
+                .id(d.getId()).delegatorId(d.getDelegatorId()).delegatorName(resolveUserName(d.getDelegatorId()))
+                .delegateId(d.getDelegateId()).delegateName(resolveUserName(d.getDelegateId()))
+                .permissions(d.getPermissions()).scope(d.getScope()).authority(d.getAuthority())
+                .status(d.getStatus()).startsAt(d.getStartsAt()).expiresAt(d.getExpiresAt())
+                .createdAt(d.getCreatedAt()).build();
+    }
+
     @Transactional(readOnly = true)
     public List<DelegationSummaryResponse> listDelegations() {
         return delegationRepository.findAll().stream()
                 .filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
                 .filter(d -> !"EXPIRED".equals(d.getStatus()) || d.getExpiresAt() == null || d.getExpiresAt().isAfter(LocalDateTime.now()))
-                .map(d -> DelegationSummaryResponse.builder()
-                        .id(d.getId()).delegatorId(d.getDelegatorId()).delegateId(d.getDelegateId())
-                        .permissions(d.getPermissions()).scope(d.getScope()).status(d.getStatus())
-                        .startsAt(d.getStartsAt()).expiresAt(d.getExpiresAt())
-                        .createdAt(d.getCreatedAt()).build())
+                .map(this::toDelegationSummary)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public DelegationDetailResponse getDelegation(UUID id) {
+        AdminDelegation d = delegationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("AdminDelegation", "id", id));
+        List<UUID> resourceIds = parseResourceIds(d.getResourceIds());
+        List<String> resourceNames = resourceIds.stream()
+                .map(rid -> institutionRepository.findById(rid).map(Institution::getName).orElse(rid.toString()))
+                .toList();
+        return DelegationDetailResponse.builder()
+                .id(d.getId()).delegatorId(d.getDelegatorId())
+                .delegatorName(resolveUserName(d.getDelegatorId())).delegatorEmail(resolveUserEmail(d.getDelegatorId()))
+                .delegateId(d.getDelegateId())
+                .delegateName(resolveUserName(d.getDelegateId())).delegateEmail(resolveUserEmail(d.getDelegateId()))
+                .authority(d.getAuthority()).permissions(d.getPermissions()).scope(d.getScope())
+                .resourceIds(resourceIds).resourceNames(resourceNames).status(d.getStatus())
+                .reason(d.getReason()).notes(d.getNotes())
+                .startsAt(d.getStartsAt()).expiresAt(d.getExpiresAt())
+                .approvedBy(d.getApprovedBy()).approvedByName(resolveUserName(d.getApprovedBy()))
+                .approvedAt(d.getApprovedAt()).rejectedAt(d.getRejectedAt()).rejectionReason(d.getRejectionReason())
+                .revokedAt(d.getRevokedAt()).revokedBy(d.getRevokedBy())
+                .revokedByName(resolveUserName(d.getRevokedBy())).revocationReason(d.getRevocationReason())
+                .createdAt(d.getCreatedAt())
+                .currentlyEffective(isDelegationEffective(d, LocalDateTime.now()))
+                .build();
+    }
+
     public DelegationSummaryResponse createDelegation(DelegationCreateRequest req) {
+        if (req.getDelegatorId() == null || req.getDelegateId() == null) {
+            throw new IllegalArgumentException("delegatorId and delegateId are required");
+        }
+        if (req.getDelegatorId().equals(req.getDelegateId())) {
+            throw new IllegalArgumentException("Delegator and delegate must be different users");
+        }
+        userRepository.findByIdAndIsDeletedFalse(req.getDelegatorId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", req.getDelegatorId()));
+        userRepository.findByIdAndIsDeletedFalse(req.getDelegateId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", req.getDelegateId()));
+        String authority = req.getAuthority() != null ? req.getAuthority().trim().toUpperCase() : "GENERAL_ADMIN";
+        if (!DELEGATION_AUTHORITIES.contains(authority)) {
+            throw new IllegalArgumentException("Unsupported authority: " + req.getAuthority()
+                    + ". Allowed: " + DELEGATION_AUTHORITIES);
+        }
+        Set<String> tokens = parsePermissionTokens(req.getPermissions());
+        if (tokens.isEmpty()) {
+            throw new IllegalArgumentException("At least one permission is required");
+        }
+        for (String token : tokens) {
+            if (!DELEGATION_PERMISSIONS.contains(token)) {
+                throw new IllegalArgumentException("Unsupported permission: " + token
+                        + ". Allowed: " + DELEGATION_PERMISSIONS);
+            }
+        }
+        String resourceJson = null;
+        if (req.getResourceIds() != null && !req.getResourceIds().isEmpty()) {
+            try {
+                resourceJson = PERMISSIONS_JSON.writeValueAsString(req.getResourceIds().stream().map(UUID::toString).toList());
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Invalid resourceIds");
+            }
+        }
+        boolean requiresApproval = Boolean.TRUE.equals(req.getRequiresApproval());
         AdminDelegation del = AdminDelegation.builder()
                 .delegatorId(req.getDelegatorId()).delegateId(req.getDelegateId())
-                .permissions(normalizePermissions(req.getPermissions())).scope(req.getScope() != null ? req.getScope() : "PLATFORM")
-                .status("ACTIVE").startsAt(LocalDateTime.now()).expiresAt(req.getExpiresAt()).build();
+                .permissions(normalizePermissions(req.getPermissions()))
+                .scope(req.getScope() != null && !req.getScope().isBlank() ? req.getScope().trim().toUpperCase() : "PLATFORM")
+                .authority(authority).reason(req.getReason()).notes(req.getNotes()).resourceIds(resourceJson)
+                .status(requiresApproval ? "PENDING_APPROVAL" : "ACTIVE")
+                .startsAt(req.getStartsAt() != null ? req.getStartsAt() : LocalDateTime.now())
+                .expiresAt(req.getExpiresAt()).build();
+        if (del.getExpiresAt() != null && !del.getExpiresAt().isAfter(del.getStartsAt())) {
+            throw new IllegalArgumentException("expiresAt must be after startsAt");
+        }
         delegationRepository.save(del);
-        writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", del.getId(), String.valueOf(del.getScope()), "CREATE",
+        writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", del.getId(), authority + " / " + del.getScope(), "CREATE",
                 Map.of(), Map.of("delegatorId", String.valueOf(del.getDelegatorId()),
                         "delegateId", String.valueOf(del.getDelegateId()),
-                        "permissions", String.valueOf(del.getPermissions())));
-        log.info("Admin delegation created: {} -> {}", del.getDelegatorId(), del.getDelegateId());
-        return DelegationSummaryResponse.builder()
-                .id(del.getId()).delegatorId(del.getDelegatorId()).delegateId(del.getDelegateId())
-                .permissions(del.getPermissions()).scope(del.getScope()).status(del.getStatus())
-                .startsAt(del.getStartsAt()).expiresAt(del.getExpiresAt())
-                .createdAt(del.getCreatedAt()).build();
+                        "authority", authority,
+                        "permissions", String.valueOf(del.getPermissions()),
+                        "status", del.getStatus()));
+        log.info("Admin delegation created: {} -> {} ({} / {})", del.getDelegatorId(), del.getDelegateId(), authority, del.getScope());
+        return toDelegationSummary(del);
+    }
+
+    public DelegationSummaryResponse approveDelegation(UUID id, UUID decidedBy, String reason) {
+        AdminDelegation del = delegationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("AdminDelegation", "id", id));
+        if (!"PENDING_APPROVAL".equals(del.getStatus())) {
+            throw new IllegalStateException("Only PENDING_APPROVAL delegations can be approved (current: " + del.getStatus() + ")");
+        }
+        del.setStatus("ACTIVE");
+        del.setApprovedBy(decidedBy);
+        del.setApprovedAt(LocalDateTime.now());
+        if (reason != null && !reason.isBlank()) del.setNotes(appendNote(del.getNotes(), "Approval note: " + reason));
+        delegationRepository.save(del);
+        writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", id, del.getAuthority() + " / " + del.getScope(), "UPDATE",
+                Map.of("status", "PENDING_APPROVAL"),
+                Map.of("status", "ACTIVE", "approvedBy", String.valueOf(decidedBy)));
+        log.info("Admin delegation approved: {}", id);
+        return toDelegationSummary(del);
+    }
+
+    public DelegationSummaryResponse rejectDelegation(UUID id, UUID decidedBy, String reason) {
+        AdminDelegation del = delegationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("AdminDelegation", "id", id));
+        if (!"PENDING_APPROVAL".equals(del.getStatus())) {
+            throw new IllegalStateException("Only PENDING_APPROVAL delegations can be rejected (current: " + del.getStatus() + ")");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("A rejection reason is required");
+        }
+        del.setStatus("REJECTED");
+        del.setRejectedAt(LocalDateTime.now());
+        del.setRejectionReason(reason);
+        delegationRepository.save(del);
+        writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", id, del.getAuthority() + " / " + del.getScope(), "UPDATE",
+                Map.of("status", "PENDING_APPROVAL"),
+                Map.of("status", "REJECTED", "rejectedBy", String.valueOf(decidedBy), "reason", reason));
+        log.info("Admin delegation rejected: {}", id);
+        return toDelegationSummary(del);
+    }
+
+    public DelegationSummaryResponse extendDelegation(UUID id, LocalDateTime expiresAt, String reason) {
+        AdminDelegation del = delegationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("AdminDelegation", "id", id));
+        if (TERMINAL_DELEGATION_STATUSES.contains(del.getStatus())) {
+            throw new IllegalStateException("Terminal delegations (" + del.getStatus() + ") cannot be extended. Create a new delegation instead.");
+        }
+        if (expiresAt == null || (del.getExpiresAt() != null && !expiresAt.isAfter(del.getExpiresAt()))) {
+            throw new IllegalArgumentException("New expiry must be after the current expiry");
+        }
+        LocalDateTime oldExpiry = del.getExpiresAt();
+        del.setExpiresAt(expiresAt);
+        if ("EXPIRED".equals(del.getStatus())) {
+            del.setStatus("ACTIVE");
+        }
+        if (reason != null && !reason.isBlank()) del.setNotes(appendNote(del.getNotes(), "Extended: " + reason));
+        delegationRepository.save(del);
+        writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", id, del.getAuthority() + " / " + del.getScope(), "UPDATE",
+                Map.of("expiresAt", String.valueOf(oldExpiry)),
+                Map.of("expiresAt", String.valueOf(expiresAt), "reason", reason != null ? reason : ""));
+        log.info("Admin delegation extended: {} -> {}", id, expiresAt);
+        return toDelegationSummary(del);
+    }
+
+    private String appendNote(String existing, String addition) {
+        if (existing == null || existing.isBlank()) return addition;
+        return existing + "\n" + addition;
     }
 
     public void revokeDelegation(UUID id, UUID revokedBy, String reason) {
         AdminDelegation del = delegationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("AdminDelegation", "id", id));
+        if (TERMINAL_DELEGATION_STATUSES.contains(del.getStatus())) {
+            throw new IllegalStateException("Delegation is already " + del.getStatus() + " and cannot be revoked");
+        }
+        String oldStatus = del.getStatus();
         del.setStatus("REVOKED");
         del.setRevokedAt(LocalDateTime.now());
         del.setRevokedBy(revokedBy);
         del.setRevocationReason(reason);
         delegationRepository.save(del);
         writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", id, String.valueOf(del.getScope()), "UPDATE",
-                Map.of("status", "ACTIVE"),
+                Map.of("status", oldStatus),
                 Map.of("status", "REVOKED", "revokedBy", String.valueOf(revokedBy),
                         "reason", reason != null ? reason : ""));
         log.info("Admin delegation revoked: {}", id);
+    }
+
+    /**
+     * Backend authorization check: does the delegate currently hold the given authority
+     * (with the required permission token) over the given scope/resource?
+     * Scope formats: PLATFORM | NATIONAL | REGION:&lt;name&gt; | DISTRICT:&lt;name&gt;
+     * | INSTITUTION:&lt;uuid&gt; | PROVIDER:&lt;uuid&gt;. When resourceIds are set on the
+     * delegation, the resource must additionally be listed there.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasDelegatedAuthority(UUID delegateId, String authority, String requiredPermission,
+                                         UUID resourceId, String region) {
+        if (delegateId == null || authority == null) return false;
+        LocalDateTime now = LocalDateTime.now();
+        return delegationRepository.findByDelegateIdAndIsDeletedFalse(delegateId).stream()
+                .filter(d -> isDelegationEffective(d, now))
+                .filter(d -> authority.equalsIgnoreCase(d.getAuthority()))
+                .filter(d -> {
+                    Set<String> tokens = parsePermissionTokens(d.getPermissions());
+                    return tokens.contains("MANAGE")
+                            || (requiredPermission != null && tokens.contains(requiredPermission.toUpperCase()));
+                })
+                .anyMatch(d -> scopeCovers(d, resourceId, region)
+                        && resourcesCover(d, resourceId));
+    }
+
+    private boolean scopeCovers(AdminDelegation d, UUID resourceId, String region) {
+        String scope = d.getScope() != null ? d.getScope().trim().toUpperCase() : "PLATFORM";
+        if ("PLATFORM".equals(scope) || "NATIONAL".equals(scope)) return true;
+        if (scope.startsWith("REGION:") && region != null) {
+            return scope.substring("REGION:".length()).trim().equalsIgnoreCase(region.trim());
+        }
+        if (scope.startsWith("DISTRICT:") && region != null) {
+            return scope.substring("DISTRICT:".length()).trim().equalsIgnoreCase(region.trim());
+        }
+        if ((scope.startsWith("INSTITUTION:") || scope.startsWith("PROVIDER:")) && resourceId != null) {
+            String idPart = scope.substring(scope.indexOf(':') + 1).trim();
+            try {
+                return UUID.fromString(idPart).equals(resourceId);
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private boolean resourcesCover(AdminDelegation d, UUID resourceId) {
+        List<UUID> ids = parseResourceIds(d.getResourceIds());
+        if (ids.isEmpty()) return true;
+        return resourceId != null && ids.contains(resourceId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminDelegation> findEffectiveDelegations(UUID delegateId, String authority) {
+        LocalDateTime now = LocalDateTime.now();
+        return delegationRepository.findByDelegateIdAndIsDeletedFalse(delegateId).stream()
+                .filter(d -> isDelegationEffective(d, now))
+                .filter(d -> authority == null || authority.equalsIgnoreCase(d.getAuthority()))
+                .toList();
+    }
+
+    // ── Provider Governance (providers ARE institutions of provider types — no duplicate model) ──
+
+    public static final Set<String> PROVIDER_TYPES = Set.of(
+            "TRAINING_PROVIDER", "PROFESSIONAL_BODY", "COMPANY", "NGO",
+            "GOVERNMENT", "CONTENT_PROVIDER", "EVENT_PROVIDER");
+
+    private static final Set<String> PLATFORM_ADMIN_ROLES = Set.of(
+            "ADMIN", "NATIONAL_ADMIN", "REGIONAL_ADMIN", "DISTRICT_ADMIN");
+
+    private boolean isProviderType(Institution inst) {
+        return inst.getType() != null && PROVIDER_TYPES.contains(inst.getType().name());
+    }
+
+    private String resolveVerificationStatus(UUID institutionId) {
+        List<VerificationRecord> records =
+                verificationRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse("INSTITUTION", institutionId);
+        if (records.isEmpty()) return "NONE";
+        VerificationRecord latest = records.stream()
+                .max(Comparator.comparing(VerificationRecord::getSubmittedAt,
+                        Comparator.nullsFirst(Comparator.naturalOrder())))
+                .orElse(null);
+        if (latest == null) return "NONE";
+        String status = latest.getStatus() != null ? latest.getStatus().toUpperCase() : "NONE";
+        if ("APPROVED".equals(status)) return "VERIFIED";
+        return status;
+    }
+
+    private int countInstitutionAdmins(UUID institutionId) {
+        return (int) membershipRepository.findByInstitutionIdAndIsActiveTrue(institutionId).stream()
+                .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                .count();
+    }
+
+    private ProviderRegistryItem toProviderRegistryItem(Institution inst) {
+        return ProviderRegistryItem.builder()
+                .id(inst.getId()).name(inst.getName()).code(inst.getCode())
+                .type(inst.getType() != null ? inst.getType().name() : null)
+                .city(inst.getCity()).region(inst.getRegion())
+                .isActive(inst.getIsActive()).status(inst.getStatus())
+                .verificationStatus(resolveVerificationStatus(inst.getId()))
+                .adminCount(countInstitutionAdmins(inst.getId()))
+                .createdAt(inst.getCreatedAt())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ProviderRegistryItem> listProviders(String search, String type, String status,
+                                                            String verification, int page, int size) {
+        List<Institution> providers = institutionRepository.findByIsDeletedFalse().stream()
+                .filter(this::isProviderType)
+                .toList();
+        if (search != null && !search.isBlank()) {
+            String q = search.trim().toLowerCase();
+            providers = providers.stream()
+                    .filter(i -> (i.getName() != null && i.getName().toLowerCase().contains(q))
+                            || (i.getCode() != null && i.getCode().toLowerCase().contains(q))
+                            || (i.getCity() != null && i.getCity().toLowerCase().contains(q)))
+                    .toList();
+        }
+        if (type != null && !type.isBlank()) {
+            providers = providers.stream()
+                    .filter(i -> i.getType() != null && i.getType().name().equalsIgnoreCase(type.trim()))
+                    .toList();
+        }
+        if (status != null && !status.isBlank()) {
+            String s = status.trim().toUpperCase();
+            providers = providers.stream()
+                    .filter(i -> s.equals(i.getStatus() != null ? i.getStatus().toUpperCase() : "ACTIVE"))
+                    .toList();
+        }
+        List<ProviderRegistryItem> items = providers.stream()
+                .map(this::toProviderRegistryItem)
+                .toList();
+        if (verification != null && !verification.isBlank()) {
+            String v = verification.trim().toUpperCase();
+            items = items.stream()
+                    .filter(i -> v.equals(i.getVerificationStatus()))
+                    .toList();
+        }
+        items = items.stream()
+                .sorted(Comparator.comparing(ProviderRegistryItem::getName,
+                        Comparator.nullsFirst(String::compareToIgnoreCase)))
+                .toList();
+        int total = items.size();
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+        List<ProviderRegistryItem> content = items.subList(from, to);
+        int totalPages = size > 0 ? (int) Math.ceil((double) total / size) : 0;
+        return new PageResponse<>(content, page, size, total, totalPages, page == 0, to >= total);
+    }
+
+    @Transactional(readOnly = true)
+    public ProviderDetailResponse getProviderDetail(UUID providerId) {
+        Institution inst = institutionRepository.findByIdAndIsDeletedFalse(providerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", providerId));
+        if (!isProviderType(inst)) {
+            throw new IllegalArgumentException("Institution " + providerId + " is not a provider (type=" +
+                    (inst.getType() != null ? inst.getType().name() : null) + ")");
+        }
+        List<ProviderVerificationItem> history =
+                verificationRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse("INSTITUTION", providerId).stream()
+                        .sorted(Comparator.comparing(VerificationRecord::getSubmittedAt,
+                                Comparator.nullsFirst(Comparator.reverseOrder())))
+                        .map(v -> ProviderVerificationItem.builder()
+                                .id(v.getId()).verificationType(v.getVerificationType()).status(v.getStatus())
+                                .submittedBy(v.getSubmittedBy()).submittedByName(resolveUserName(v.getSubmittedBy()))
+                                .submittedAt(v.getSubmittedAt())
+                                .reviewedBy(v.getReviewedBy()).reviewedByName(resolveUserName(v.getReviewedBy()))
+                                .reviewedAt(v.getReviewedAt()).notes(v.getNotes()).documents(v.getDocuments())
+                                .build())
+                        .toList();
+        List<ProviderQuotaResponse> entitlements =
+                providerEntitlementRepository.findByProviderIdAndIsDeletedFalse(providerId).stream()
+                        .map(ent -> {
+                            PlatformService svc = platformServiceRepository.findById(ent.getServiceId()).orElse(null);
+                            return ProviderQuotaResponse.builder()
+                                    .id(ent.getId()).providerId(ent.getProviderId()).serviceId(ent.getServiceId())
+                                    .serviceName(svc != null ? svc.getName() : null)
+                                    .serviceCode(svc != null ? svc.getCode() : null)
+                                    .status(ent.getStatus())
+                                    .seatsUsed(ent.getSeatsUsed()).maxSeats(ent.getMaxSeats())
+                                    .expiresAt(ent.getExpiresAt()).createdAt(ent.getCreatedAt())
+                                    .build();
+                        })
+                        .toList();
+        List<String> compliance = buildComplianceFlags(inst, history);
+        List<AuditLogResponse> recentAudit = auditLogRepository
+                .findByEntityIdAndIsDeletedFalse(providerId, PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt")))
+                .getContent().stream()
+                .map(log -> AuditLogResponse.builder()
+                        .id(log.getId()).userId(log.getUserId()).performedBy(log.getUserEmail())
+                        .userRole(log.getUserRole())
+                        .action(log.getAction() != null ? log.getAction().name() : null)
+                        .entityType(log.getEntityType()).entityId(log.getEntityId()).entityName(log.getEntityName())
+                        .oldValues(log.getOldValues()).newValues(log.getNewValues())
+                        .ipAddress(log.getIpAddress()).createdAt(log.getCreatedAt())
+                        .build())
+                .toList();
+        return ProviderDetailResponse.builder()
+                .id(inst.getId()).name(inst.getName()).code(inst.getCode())
+                .type(inst.getType() != null ? inst.getType().name() : null)
+                .description(inst.getDescription()).address(inst.getAddress()).city(inst.getCity())
+                .region(inst.getRegion()).country(inst.getCountry()).phone(inst.getPhone())
+                .email(inst.getEmail()).website(inst.getWebsite()).logoUrl(inst.getLogoUrl())
+                .isActive(inst.getIsActive()).status(inst.getStatus())
+                .enabledServices(inst.getEnabledServices())
+                .verificationStatus(resolveVerificationStatus(providerId))
+                .approvedAt(inst.getApprovedAt()).approvedBy(inst.getApprovedBy())
+                .createdAt(inst.getCreatedAt()).updatedAt(inst.getUpdatedAt())
+                .admins(listInstitutionMembers(providerId))
+                .verificationHistory(history)
+                .serviceEntitlements(entitlements)
+                .complianceFlags(compliance)
+                .recentAudit(recentAudit)
+                .build();
+    }
+
+    /** Honest compliance flags derived only from real persisted state — never invented. */
+    private List<String> buildComplianceFlags(Institution inst, List<ProviderVerificationItem> history) {
+        List<String> flags = new ArrayList<>();
+        if ((inst.getEmail() == null || inst.getEmail().isBlank())
+                && (inst.getPhone() == null || inst.getPhone().isBlank())) {
+            flags.add("MISSING_CONTACT");
+        }
+        if (Boolean.FALSE.equals(inst.getIsActive()) || "SUSPENDED".equalsIgnoreCase(inst.getStatus())) {
+            flags.add("SUSPENDED");
+        }
+        if (history.stream().anyMatch(v -> "PENDING".equalsIgnoreCase(v.getStatus()))) {
+            flags.add("VERIFICATION_PENDING");
+        }
+        if (!history.isEmpty() && history.stream().noneMatch(v -> "APPROVED".equalsIgnoreCase(v.getStatus()))
+                && history.stream().noneMatch(v -> "PENDING".equalsIgnoreCase(v.getStatus()))) {
+            flags.add("NOT_VERIFIED");
+        }
+        if (history.stream().anyMatch(v -> "CHANGES_REQUIRED".equalsIgnoreCase(v.getStatus()))) {
+            flags.add("CHANGES_REQUESTED");
+        }
+        if (history.isEmpty() && inst.getApprovedAt() == null) {
+            flags.add("NEVER_VERIFIED");
+        }
+        if (countInstitutionAdmins(inst.getId()) == 0) {
+            flags.add("NO_ADMINS");
+        }
+        return flags;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProviderAttentionResponse> getProviderAttention() {
+        List<ProviderAttentionResponse> out = new ArrayList<>();
+        String base = "/dashboard/platform-admin/providers/";
+        for (Institution inst : institutionRepository.findByIsDeletedFalse()) {
+            if (!isProviderType(inst)) continue;
+            String url = base + inst.getId();
+            if ("SUSPENDED".equalsIgnoreCase(inst.getStatus()) || Boolean.FALSE.equals(inst.getIsActive())) {
+                out.add(ProviderAttentionResponse.builder()
+                        .providerId(inst.getId()).providerName(inst.getName())
+                        .severity("HIGH").category("SUSPENDED")
+                        .title("Provider suspended").description(inst.getName() + " is currently suspended.")
+                        .actionUrl(url).build());
+            }
+            List<VerificationRecord> records =
+                    verificationRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse("INSTITUTION", inst.getId());
+            boolean pending = records.stream().anyMatch(r -> "PENDING".equalsIgnoreCase(r.getStatus()));
+            boolean changes = records.stream().anyMatch(r -> "CHANGES_REQUIRED".equalsIgnoreCase(r.getStatus()));
+            boolean verified = records.stream().anyMatch(r -> "APPROVED".equalsIgnoreCase(r.getStatus()))
+                    || inst.getApprovedAt() != null;
+            if (pending) {
+                out.add(ProviderAttentionResponse.builder()
+                        .providerId(inst.getId()).providerName(inst.getName())
+                        .severity("HIGH").category("PENDING_VERIFICATION")
+                        .title("Verification pending").description(inst.getName() + " has a pending verification request.")
+                        .actionUrl(url).build());
+            }
+            if (changes) {
+                out.add(ProviderAttentionResponse.builder()
+                        .providerId(inst.getId()).providerName(inst.getName())
+                        .severity("MEDIUM").category("CHANGES_REQUESTED")
+                        .title("Changes requested").description(inst.getName() + " must resubmit verification evidence.")
+                        .actionUrl(url).build());
+            }
+            if (!verified && !pending && Boolean.TRUE.equals(inst.getIsActive())) {
+                out.add(ProviderAttentionResponse.builder()
+                        .providerId(inst.getId()).providerName(inst.getName())
+                        .severity("MEDIUM").category("NEVER_VERIFIED")
+                        .title("Never verified").description(inst.getName() + " is active but has no verification record.")
+                        .actionUrl(url).build());
+            }
+            if ((inst.getEmail() == null || inst.getEmail().isBlank())
+                    && (inst.getPhone() == null || inst.getPhone().isBlank())) {
+                out.add(ProviderAttentionResponse.builder()
+                        .providerId(inst.getId()).providerName(inst.getName())
+                        .severity("LOW").category("MISSING_INFORMATION")
+                        .title("Missing contact information").description(inst.getName() + " has no email or phone on file.")
+                        .actionUrl(url).build());
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Delegation-enforced provider verification review (spec §033).
+     * The actor must be a platform-level admin OR hold an ACTIVE delegation with
+     * authority PROVIDER_VERIFICATION covering the entity's scope. Frontend button
+     * hiding is NOT security — this check runs on every call.
+     */
+    public VerificationSummaryResponse reviewProviderVerification(UUID verificationId, UUID actorId,
+                                                                  String status, String notes) {
+        VerificationRecord rec = verificationRepository.findById(verificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("VerificationRecord", "id", verificationId));
+        if (!"PENDING".equalsIgnoreCase(rec.getStatus()) && !"CHANGES_REQUIRED".equalsIgnoreCase(rec.getStatus())) {
+            throw new IllegalStateException("Verification " + verificationId + " is already " + rec.getStatus());
+        }
+        String action = status != null ? status.trim().toUpperCase() : "";
+        if (!Set.of("APPROVED", "REJECTED", "CHANGES_REQUIRED").contains(action)) {
+            throw new IllegalArgumentException("Invalid review status: " + status);
+        }
+        String requiredPermission = "APPROVED".equals(action) ? "VERIFY"
+                : "REJECTED".equals(action) ? "REJECT" : "REVIEW";
+        UUID resourceId = rec.getEntityId();
+        String region = null;
+        if ("INSTITUTION".equalsIgnoreCase(rec.getEntityType())) {
+            region = institutionRepository.findById(rec.getEntityId()).map(Institution::getRegion).orElse(null);
+        } else if ("PROVIDER".equalsIgnoreCase(rec.getEntityType())) {
+            UUID resolved = membershipRepository.findByUserIdAndIsActiveTrue(rec.getEntityId()).stream()
+                    .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                    .map(InstitutionMembership::getInstitutionId)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(rec.getEntityId());
+            resourceId = resolved;
+            if (!resolved.equals(rec.getEntityId())) {
+                region = institutionRepository.findById(resolved).map(Institution::getRegion).orElse(null);
+            }
+        }
+        final UUID scopeResourceId = resourceId;
+        final String scopeRegion = region;
+        boolean platformAdmin = false;
+        if (actorId != null) {
+            platformAdmin = userRepository.findById(actorId)
+                    .map(u -> u.getRole() != null && PLATFORM_ADMIN_ROLES.contains(u.getRole().name()))
+                    .orElse(false);
+        }
+        AdminDelegation usedDelegation = null;
+        if (!platformAdmin) {
+            if (actorId == null) {
+                throw new SecurityException("Authentication required to review verifications");
+            }
+            usedDelegation = findEffectiveDelegations(actorId, "PROVIDER_VERIFICATION").stream()
+                    .filter(d -> {
+                        Set<String> tokens = parsePermissionTokens(d.getPermissions());
+                        return tokens.contains("MANAGE") || tokens.contains(requiredPermission);
+                    })
+                    .filter(d -> scopeCovers(d, scopeResourceId, scopeRegion) && resourcesCover(d, scopeResourceId))
+                    .findFirst()
+                    .orElseThrow(() -> new SecurityException(
+                            "Access denied: no active PROVIDER_VERIFICATION delegation covers this entity"));
+        }
+        VerificationSummaryResponse result = reviewVerification(verificationId, actorId, action, notes);
+        if (usedDelegation != null) {
+            writeAudit(PLATFORM_INSTITUTION_ID, "DELEGATION", usedDelegation.getId(),
+                    "PROVIDER_VERIFICATION delegation used", "UPDATE",
+                    Map.of("verificationId", verificationId.toString()),
+                    Map.of("verificationId", verificationId.toString(),
+                            "decision", action,
+                            "delegateId", String.valueOf(actorId)));
+            log.info("Delegated verification review: delegate={} verification={} decision={}",
+                    actorId, verificationId, action);
+        }
+        return result;
     }
 
     // ── Verifications ──

@@ -32,6 +32,19 @@ public class AdminDelegation extends BaseEntity {
     @Column(nullable = false)
     private String scope = "PLATFORM";
 
+    @Column(nullable = false, length = 60)
+    private String authority = "GENERAL_ADMIN";
+
+    @Column(columnDefinition = "TEXT")
+    private String reason;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "resource_ids", columnDefinition = "jsonb")
+    private String resourceIds;
+
     @Column(nullable = false)
     private String status = "ACTIVE";
 
@@ -49,4 +62,16 @@ public class AdminDelegation extends BaseEntity {
 
     @Column(name = "revocation_reason")
     private String revocationReason;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
 }

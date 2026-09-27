@@ -451,6 +451,51 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Delegation revoked", null));
     }
 
+    @GetMapping("/delegations/{delegationId}")
+    @Operation(summary = "Get delegation detail with resolved names and audit context")
+    public ResponseEntity<ApiResponse<DelegationDetailResponse>> getDelegation(@PathVariable UUID delegationId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.getDelegation(delegationId)));
+    }
+
+    @PostMapping("/delegations/{delegationId}/approve")
+    @Operation(summary = "Approve a pending delegation (PENDING_APPROVAL → ACTIVE)")
+    public ResponseEntity<ApiResponse<DelegationSummaryResponse>> approveDelegation(
+            @PathVariable UUID delegationId,
+            @RequestBody(required = false) DelegationDecisionRequest req,
+            HttpServletRequest request) {
+        UUID actorId = request.getAttribute("userId") != null ? UUID.fromString(request.getAttribute("userId").toString()) : null;
+        return ResponseEntity.ok(ApiResponse.success("Delegation approved",
+                platformAdminService.approveDelegation(delegationId, actorId, req != null ? req.getReason() : null)));
+    }
+
+    @PostMapping("/delegations/{delegationId}/reject")
+    @Operation(summary = "Reject a pending delegation (PENDING_APPROVAL → REJECTED)")
+    public ResponseEntity<ApiResponse<DelegationSummaryResponse>> rejectDelegation(
+            @PathVariable UUID delegationId,
+            @RequestBody(required = false) DelegationDecisionRequest req,
+            HttpServletRequest request) {
+        UUID actorId = request.getAttribute("userId") != null ? UUID.fromString(request.getAttribute("userId").toString()) : null;
+        return ResponseEntity.ok(ApiResponse.success("Delegation rejected",
+                platformAdminService.rejectDelegation(delegationId, actorId, req != null ? req.getReason() : null)));
+    }
+
+    @PutMapping("/delegations/{delegationId}/extend")
+    @Operation(summary = "Extend a delegation expiry (terminal states cannot be extended)")
+    public ResponseEntity<ApiResponse<DelegationSummaryResponse>> extendDelegation(
+            @PathVariable UUID delegationId,
+            @RequestBody DelegationExtendRequest req) {
+        return ResponseEntity.ok(ApiResponse.success("Delegation extended",
+                platformAdminService.extendDelegation(delegationId, req.getExpiresAt(), req.getReason())));
+    }
+
+    @GetMapping("/delegations/authorities")
+    @Operation(summary = "Supported delegation authorities and permission tokens")
+    public ResponseEntity<ApiResponse<java.util.Map<String, java.util.Set<String>>>> delegationVocabulary() {
+        return ResponseEntity.ok(ApiResponse.success(java.util.Map.of(
+                "authorities", PlatformAdminService.DELEGATION_AUTHORITIES,
+                "permissions", PlatformAdminService.DELEGATION_PERMISSIONS)));
+    }
+
     // ── Verifications ──
 
     @GetMapping("/verifications/pending")
@@ -560,6 +605,44 @@ public class PlatformAdminController {
     }
 
     // ── Provider Quotas / Entitlements ──
+
+    // ── Provider Governance (providers = institutions of provider types) ──
+
+    @GetMapping("/providers/registry")
+    @Operation(summary = "Provider registry: institutions of provider types with verification status")
+    public ResponseEntity<ApiResponse<PageResponse<ProviderRegistryItem>>> listProviders(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String verification,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                platformAdminService.listProviders(search, type, status, verification, page, size)));
+    }
+
+    @GetMapping("/providers/attention")
+    @Operation(summary = "Providers requiring platform admin attention (real data only)")
+    public ResponseEntity<ApiResponse<List<ProviderAttentionResponse>>> providerAttention() {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.getProviderAttention()));
+    }
+
+    @GetMapping("/providers/{providerId}/governance")
+    @Operation(summary = "Provider governance detail: identity, verification, admins, services, compliance, audit")
+    public ResponseEntity<ApiResponse<ProviderDetailResponse>> providerGovernance(@PathVariable UUID providerId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.getProviderDetail(providerId)));
+    }
+
+    @PutMapping("/verifications/{verificationId}/provider-review")
+    @Operation(summary = "Review a provider/institution verification with delegation enforcement (APPROVED|REJECTED|CHANGES_REQUIRED)")
+    public ResponseEntity<ApiResponse<VerificationSummaryResponse>> reviewProviderVerification(
+            @PathVariable UUID verificationId,
+            @RequestParam String status,
+            @RequestParam(required = false) String notes,
+            HttpServletRequest request) {
+        UUID actorId = request.getAttribute("userId") != null ? UUID.fromString(request.getAttribute("userId").toString()) : null;
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.reviewProviderVerification(verificationId, actorId, status, notes)));
+    }
 
     @GetMapping("/providers/{providerId}/quotas")
     @Operation(summary = "List provider service entitlements and seat quotas")

@@ -64,6 +64,8 @@ class PlatformAdminServiceTest {
     @Mock private PlatformIntegrationService integrationService;
     @Mock private BackupStatusService backupStatusService;
 
+    @Mock private tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
+
     @InjectMocks
     private PlatformAdminService service;
 
@@ -138,10 +140,18 @@ class PlatformAdminServiceTest {
 
     @Test
     void createDelegation_persists() {
+        UUID delegator = UUID.randomUUID();
+        UUID delegate = UUID.randomUUID();
+        when(userRepository.findByIdAndIsDeletedFalse(delegator))
+                .thenReturn(Optional.of(adminUser(delegator, User.Role.ADMIN)));
+        when(userRepository.findByIdAndIsDeletedFalse(delegate))
+                .thenReturn(Optional.of(adminUser(delegate, User.Role.REGIONAL_ADMIN)));
         DelegationCreateRequest req = DelegationCreateRequest.builder()
-                .delegatorId(UUID.randomUUID())
-                .delegateId(UUID.randomUUID())
-                .permissions("read,write")
+                .delegatorId(delegator)
+                .delegateId(delegate)
+                .permissions("VIEW,REVIEW")
+                .authority("GENERAL_ADMIN")
+                .reason("Legacy contract cover")
                 .expiresAt(LocalDateTime.now().plusDays(30))
                 .build();
         when(delegationRepository.save(any(AdminDelegation.class))).thenAnswer(i -> i.getArgument(0));
@@ -406,5 +416,290 @@ class PlatformAdminServiceTest {
         assertEquals("COMPLETION", summary.getCertificateType());
         assertEquals("Mathematics", summary.getCourseOrProgramme());
         assertEquals("ISSUED", summary.getStatus());
+    }
+
+    // ── Delegation governance ──
+
+    private User adminUser(UUID id, User.Role role) {
+        User u = User.builder().email("u-" + id + "@test.go.tz").firstName("Test").lastName("User")
+                .passwordHash("x").role(role).isActive(true).build();
+        u.setId(id);
+        return u;
+    }
+
+    private AdminDelegation activeDelegation(UUID delegator, UUID delegate) {
+        AdminDelegation d = AdminDelegation.builder()
+                .delegatorId(delegator).delegateId(delegate)
+                .permissions("[\"VERIFY\",\"REVIEW\"]").scope("PLATFORM")
+                .authority("PROVIDER_VERIFICATION").status("ACTIVE")
+                .startsAt(LocalDateTime.now().minusDays(1))
+                .expiresAt(LocalDateTime.now().plusDays(30)).build();
+        d.setId(UUID.randomUUID());
+        return d;
+    }
+
+    @Test
+    void createDelegation_validCreatesActive() {
+        UUID delegator = UUID.randomUUID();
+        UUID delegate = UUID.randomUUID();
+        when(userRepository.findByIdAndIsDeletedFalse(delegator)).thenReturn(Optional.of(adminUser(delegator, User.Role.ADMIN)));
+        when(userRepository.findByIdAndIsDeletedFalse(delegate)).thenReturn(Optional.of(adminUser(delegate, User.Role.REGIONAL_ADMIN)));
+        when(delegationRepository.save(any(AdminDelegation.class))).thenAnswer(i -> i.getArgument(0));
+
+        DelegationCreateRequest req = DelegationCreateRequest.builder()
+                .delegatorId(delegator).delegateId(delegate)
+                .permissions("[\"VIEW\",\"REVIEW\",\"VERIFY\"]").scope("PLATFORM")
+                .authority("PROVIDER_VERIFICATION").reason("Workload cover").build();
+
+        var out = service.createDelegation(req);
+
+        assertEquals("ACTIVE", out.getStatus());
+        assertEquals("PROVIDER_VERIFICATION", out.getAuthority());
+        verify(delegationRepository).save(any(AdminDelegation.class));
+        verify(auditLogRepository).save(any(tz.elmkusoma.audit.domain.AuditLog.class));
+    }
+
+    @Test
+    void createDelegation_requiresApprovalCreatesPending() {
+        UUID delegator = UUID.randomUUID();
+        UUID delegate = UUID.randomUUID();
+        when(userRepository.findByIdAndIsDeletedFalse(delegator)).thenReturn(Optional.of(adminUser(delegator, User.Role.ADMIN)));
+        when(userRepository.findByIdAndIsDeletedFalse(delegate)).thenReturn(Optional.of(adminUser(delegate, User.Role.DISTRICT_ADMIN)));
+        when(delegationRepository.save(any(AdminDelegation.class))).thenAnswer(i -> i.getArgument(0));
+
+        DelegationCreateRequest req = DelegationCreateRequest.builder()
+                .delegatorId(delegator).delegateId(delegate)
+                .permissions("REVIEW").authority("INSTITUTION_REVIEW")
+                .reason("Needs sign-off").requiresApproval(true).build();
+
+        var out = service.createDelegation(req);
+
+        assertEquals("PENDING_APPROVAL", out.getStatus());
+    }
+
+    @Test
+    void createDelegation_invalidAuthorityRejected() {
+        UUID delegator = UUID.randomUUID();
+        UUID delegate = UUID.randomUUID();
+        when(userRepository.findByIdAndIsDeletedFalse(delegator)).thenReturn(Optional.of(adminUser(delegator, User.Role.ADMIN)));
+        when(userRepository.findByIdAndIsDeletedFalse(delegate)).thenReturn(Optional.of(adminUser(delegate, User.Role.ADMIN)));
+
+        DelegationCreateRequest req = DelegationCreateRequest.builder()
+                .delegatorId(delegator).delegateId(delegate)
+                .permissions("VIEW").authority("DELETE_EVERYTHING").reason("x").build();
+
+        assertThrows(IllegalArgumentException.class, () -> service.createDelegation(req));
+    }
+
+    @Test
+    void createDelegation_sameUserRejected() {
+        UUID u = UUID.randomUUID();
+        DelegationCreateRequest req = DelegationCreateRequest.builder()
+                .delegatorId(u).delegateId(u).permissions("VIEW").reason("x").build();
+        assertThrows(IllegalArgumentException.class, () -> service.createDelegation(req));
+    }
+
+    @Test
+    void createDelegation_unknownPermissionRejected() {
+        UUID delegator = UUID.randomUUID();
+        UUID delegate = UUID.randomUUID();
+        when(userRepository.findByIdAndIsDeletedFalse(delegator)).thenReturn(Optional.of(adminUser(delegator, User.Role.ADMIN)));
+        when(userRepository.findByIdAndIsDeletedFalse(delegate)).thenReturn(Optional.of(adminUser(delegate, User.Role.ADMIN)));
+        DelegationCreateRequest req = DelegationCreateRequest.builder()
+                .delegatorId(delegator).delegateId(delegate)
+                .permissions("[\"FLY\"]").reason("x").build();
+        assertThrows(IllegalArgumentException.class, () -> service.createDelegation(req));
+    }
+
+    @Test
+    void approveDelegation_pendingBecomesActive() {
+        AdminDelegation d = activeDelegation(UUID.randomUUID(), UUID.randomUUID());
+        d.setStatus("PENDING_APPROVAL");
+        when(delegationRepository.findById(d.getId())).thenReturn(Optional.of(d));
+        when(delegationRepository.save(any(AdminDelegation.class))).thenAnswer(i -> i.getArgument(0));
+
+        var out = service.approveDelegation(d.getId(), UUID.randomUUID(), "ok");
+
+        assertEquals("ACTIVE", out.getStatus());
+        assertNotNull(d.getApprovedAt());
+    }
+
+    @Test
+    void approveDelegation_nonPendingThrows() {
+        AdminDelegation d = activeDelegation(UUID.randomUUID(), UUID.randomUUID());
+        when(delegationRepository.findById(d.getId())).thenReturn(Optional.of(d));
+        assertThrows(IllegalStateException.class, () -> service.approveDelegation(d.getId(), UUID.randomUUID(), "ok"));
+    }
+
+    @Test
+    void rejectDelegation_requiresReason() {
+        AdminDelegation d = activeDelegation(UUID.randomUUID(), UUID.randomUUID());
+        d.setStatus("PENDING_APPROVAL");
+        when(delegationRepository.findById(d.getId())).thenReturn(Optional.of(d));
+        assertThrows(IllegalArgumentException.class, () -> service.rejectDelegation(d.getId(), UUID.randomUUID(), "  "));
+    }
+
+    @Test
+    void revokeDelegation_terminalCannotRevokeAgain() {
+        AdminDelegation d = activeDelegation(UUID.randomUUID(), UUID.randomUUID());
+        when(delegationRepository.findById(d.getId())).thenReturn(Optional.of(d));
+        service.revokeDelegation(d.getId(), UUID.randomUUID(), "done");
+        assertEquals("REVOKED", d.getStatus());
+        assertThrows(IllegalStateException.class, () -> service.revokeDelegation(d.getId(), UUID.randomUUID(), "again"));
+    }
+
+    @Test
+    void extendDelegation_revokedThrows() {
+        AdminDelegation d = activeDelegation(UUID.randomUUID(), UUID.randomUUID());
+        d.setStatus("REVOKED");
+        when(delegationRepository.findById(d.getId())).thenReturn(Optional.of(d));
+        assertThrows(IllegalStateException.class,
+                () -> service.extendDelegation(d.getId(), LocalDateTime.now().plusDays(60), "renew"));
+    }
+
+    @Test
+    void hasDelegatedAuthority_enforcesTimeAndScope() {
+        UUID delegate = UUID.randomUUID();
+        AdminDelegation ok = activeDelegation(UUID.randomUUID(), delegate);
+        AdminDelegation expired = activeDelegation(UUID.randomUUID(), delegate);
+        expired.setExpiresAt(LocalDateTime.now().minusHours(1));
+        AdminDelegation otherAuthority = activeDelegation(UUID.randomUUID(), delegate);
+        otherAuthority.setAuthority("PLATFORM_SUPPORT");
+        when(delegationRepository.findByDelegateIdAndIsDeletedFalse(delegate))
+                .thenReturn(List.of(ok, expired, otherAuthority));
+
+        assertTrue(service.hasDelegatedAuthority(delegate, "PROVIDER_VERIFICATION", "VERIFY", UUID.randomUUID(), null));
+        assertFalse(service.hasDelegatedAuthority(delegate, "CONTENT_GOVERNANCE", "VERIFY", UUID.randomUUID(), null));
+        assertFalse(service.hasDelegatedAuthority(delegate, "PROVIDER_VERIFICATION", "SUSPEND", UUID.randomUUID(), null));
+
+        AdminDelegation scoped = activeDelegation(UUID.randomUUID(), delegate);
+        UUID instId = UUID.randomUUID();
+        scoped.setScope("INSTITUTION:" + instId);
+        when(delegationRepository.findByDelegateIdAndIsDeletedFalse(delegate)).thenReturn(List.of(scoped));
+        assertTrue(service.hasDelegatedAuthority(delegate, "PROVIDER_VERIFICATION", "VERIFY", instId, null));
+        assertFalse(service.hasDelegatedAuthority(delegate, "PROVIDER_VERIFICATION", "VERIFY", UUID.randomUUID(), null));
+    }
+
+    @Test
+    void reviewProviderVerification_delegatedOfficerAllowed() {
+        UUID actor = UUID.randomUUID();
+        UUID instId = UUID.randomUUID();
+        VerificationRecord rec = VerificationRecord.builder()
+                .entityType("INSTITUTION").entityId(instId)
+                .verificationType("PROVIDER_LICENSE").status("PENDING")
+                .submittedAt(LocalDateTime.now()).build();
+        rec.setId(UUID.randomUUID());
+        User officer = adminUser(actor, User.Role.TEACHER);
+        Institution inst = Institution.builder().name("Test NGO").code("TNGO")
+                .type(Institution.InstitutionType.NGO).country("Tanzania").isActive(true).status("ACTIVE").build();
+        inst.setId(instId);
+
+        when(verificationRepository.findById(rec.getId())).thenReturn(Optional.of(rec));
+        when(userRepository.findById(actor)).thenReturn(Optional.of(officer));
+        when(institutionRepository.findById(instId)).thenReturn(Optional.of(inst));
+        when(delegationRepository.findByDelegateIdAndIsDeletedFalse(actor))
+                .thenReturn(List.of(activeDelegation(UUID.randomUUID(), actor)));
+        when(verificationRepository.save(any(VerificationRecord.class))).thenAnswer(i -> i.getArgument(0));
+
+        var out = service.reviewProviderVerification(rec.getId(), actor, "APPROVED", "looks good");
+
+        assertEquals("APPROVED", out.getStatus());
+    }
+
+    @Test
+    void reviewProviderVerification_unauthorizedDenied() {
+        UUID actor = UUID.randomUUID();
+        UUID instId = UUID.randomUUID();
+        VerificationRecord rec = VerificationRecord.builder()
+                .entityType("INSTITUTION").entityId(instId)
+                .verificationType("PROVIDER_LICENSE").status("PENDING")
+                .submittedAt(LocalDateTime.now()).build();
+        rec.setId(UUID.randomUUID());
+        User officer = adminUser(actor, User.Role.TEACHER);
+        Institution inst = Institution.builder().name("Test NGO").code("TNGO2")
+                .type(Institution.InstitutionType.NGO).country("Tanzania").isActive(true).status("ACTIVE").build();
+        inst.setId(instId);
+
+        when(verificationRepository.findById(rec.getId())).thenReturn(Optional.of(rec));
+        when(userRepository.findById(actor)).thenReturn(Optional.of(officer));
+        when(institutionRepository.findById(instId)).thenReturn(Optional.of(inst));
+        when(delegationRepository.findByDelegateIdAndIsDeletedFalse(actor)).thenReturn(List.of());
+
+        assertThrows(SecurityException.class,
+                () -> service.reviewProviderVerification(rec.getId(), actor, "APPROVED", "x"));
+    }
+
+    @Test
+    void reviewProviderVerification_alreadyDecidedThrows() {
+        UUID actor = UUID.randomUUID();
+        VerificationRecord rec = VerificationRecord.builder()
+                .entityType("INSTITUTION").entityId(UUID.randomUUID())
+                .verificationType("PROVIDER_LICENSE").status("APPROVED")
+                .submittedAt(LocalDateTime.now()).build();
+        rec.setId(UUID.randomUUID());
+        when(verificationRepository.findById(rec.getId())).thenReturn(Optional.of(rec));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.reviewProviderVerification(rec.getId(), actor, "REJECTED", "late"));
+    }
+
+    // ── Provider governance ──
+
+    @Test
+    void listProviders_onlyProviderTypes() {
+        Institution school = Institution.builder().name("A School").code("SCH1")
+                .type(Institution.InstitutionType.PRIMARY).country("Tanzania").isActive(true).status("ACTIVE").build();
+        school.setId(UUID.randomUUID());
+        Institution ngo = Institution.builder().name("B NGO").code("NGO1")
+                .type(Institution.InstitutionType.NGO).country("Tanzania").isActive(true).status("ACTIVE").build();
+        ngo.setId(UUID.randomUUID());
+        when(institutionRepository.findByIsDeletedFalse()).thenReturn(List.of(school, ngo));
+        when(verificationRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse(eq("INSTITUTION"), any(UUID.class)))
+                .thenReturn(List.of());
+        when(membershipRepository.findByInstitutionIdAndIsActiveTrue(any(UUID.class))).thenReturn(List.of());
+
+        var out = service.listProviders(null, null, null, null, 0, 20);
+
+        assertEquals(1, out.getContent().size());
+        assertEquals("B NGO", out.getContent().get(0).getName());
+        assertEquals("NONE", out.getContent().get(0).getVerificationStatus());
+    }
+
+    @Test
+    void getProviderDetail_nonProviderRejected() {
+        UUID id = UUID.randomUUID();
+        Institution school = Institution.builder().name("A School").code("SCH9")
+                .type(Institution.InstitutionType.SECONDARY).country("Tanzania").build();
+        school.setId(id);
+        when(institutionRepository.findByIdAndIsDeletedFalse(id)).thenReturn(Optional.of(school));
+        assertThrows(IllegalArgumentException.class, () -> service.getProviderDetail(id));
+    }
+
+    @Test
+    void getProviderAttention_flagsSuspendedAndPending() {
+        Institution suspended = Institution.builder().name("S Co").code("SC1")
+                .type(Institution.InstitutionType.COMPANY).country("Tanzania")
+                .email("s@co.tz").phone("+255700000001")
+                .isActive(false).status("SUSPENDED").build();
+        suspended.setId(UUID.randomUUID());
+        Institution pending = Institution.builder().name("P NGO").code("PN1")
+                .type(Institution.InstitutionType.NGO).country("Tanzania")
+                .email("p@ngo.tz").phone("+255700000002")
+                .isActive(true).status("ACTIVE").build();
+        pending.setId(UUID.randomUUID());
+        VerificationRecord v = VerificationRecord.builder()
+                .entityType("INSTITUTION").entityId(pending.getId())
+                .verificationType("PROVIDER_LICENSE").status("PENDING")
+                .submittedAt(LocalDateTime.now()).build();
+        when(institutionRepository.findByIsDeletedFalse()).thenReturn(List.of(suspended, pending));
+        when(verificationRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse(eq("INSTITUTION"), eq(suspended.getId())))
+                .thenReturn(List.of());
+        when(verificationRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse(eq("INSTITUTION"), eq(pending.getId())))
+                .thenReturn(List.of(v));
+
+        var out = service.getProviderAttention();
+
+        assertTrue(out.stream().anyMatch(a -> a.getCategory().equals("SUSPENDED") && a.getProviderId().equals(suspended.getId())));
+        assertTrue(out.stream().anyMatch(a -> a.getCategory().equals("PENDING_VERIFICATION") && a.getProviderId().equals(pending.getId())));
     }
 }

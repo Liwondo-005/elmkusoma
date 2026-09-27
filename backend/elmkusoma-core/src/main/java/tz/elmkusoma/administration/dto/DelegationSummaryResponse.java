@@ -8,9 +8,12 @@ import java.util.UUID;
 public class DelegationSummaryResponse {
     private UUID id;
     private UUID delegatorId;
+    private String delegatorName;
     private UUID delegateId;
+    private String delegateName;
     private String permissions;
     private String scope;
+    private String authority;
     private String status;
     private LocalDateTime startsAt;
     private LocalDateTime expiresAt;
