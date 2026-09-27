@@ -5,9 +5,9 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth"
 import { useTranslations } from "next-intl"
-import { learnerApi, type Resource } from "@/lib/learner-api"
+import { learnerApi, type Resource, type ResourceAnnotation } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
-import { FileText, Video, Music, Image, Download, ArrowLeft, AlertCircle, Bookmark, BookmarkCheck } from "lucide-react"
+import { FileText, Video, Music, Image, Download, ArrowLeft, AlertCircle, Bookmark, BookmarkCheck, MessageSquare, Trash2, Send } from "lucide-react"
 
 export default function ResourceDetailPage() {
   const { user, loading: authLoading } = useAuth()
@@ -22,10 +22,15 @@ export default function ResourceDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
+  const [annotations, setAnnotations] = useState<ResourceAnnotation[]>([])
+  const [annotationText, setAnnotationText] = useState("")
+  const [annotationPrivate, setAnnotationPrivate] = useState(true)
+  const [annotationSubmitting, setAnnotationSubmitting] = useState(false)
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadResource()
+    loadAnnotations()
   }, [user, resourceId])
 
   async function loadResource() {
@@ -60,6 +65,36 @@ export default function ResourceDetailPage() {
       // Silent fail
     } finally {
       setBookmarkLoading(false)
+    }
+  }
+
+  function loadAnnotations() {
+    learnerApi.getResourceAnnotations(resourceId).then(setAnnotations).catch(() => setAnnotations([]))
+  }
+
+  async function submitAnnotation() {
+    if (!annotationText.trim()) return
+    try {
+      setAnnotationSubmitting(true)
+      await learnerApi.createResourceAnnotation(resourceId, {
+        content: annotationText.trim(),
+        isPrivate: annotationPrivate,
+      })
+      setAnnotationText("")
+      loadAnnotations()
+    } catch {
+      // Silent fail
+    } finally {
+      setAnnotationSubmitting(false)
+    }
+  }
+
+  async function deleteAnnotation(annotationId: string) {
+    try {
+      await learnerApi.deleteResourceAnnotation(resourceId, annotationId)
+      setAnnotations((prev) => prev.filter((a) => a.id !== annotationId))
+    } catch {
+      // Silent fail
     }
   }
 
@@ -150,7 +185,7 @@ export default function ResourceDetailPage() {
         </div>
         <div className="mt-6 flex gap-3">
           <a
-            href={resource.fileUrl}
+            href={resource.storageUrl || resource.fileUrl || resource.thumbnailUrl || "#"}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t("res.downloadLabel", { title: resource.title })}
@@ -169,6 +204,80 @@ export default function ResourceDetailPage() {
             {isBookmarked ? t("res.bookmarked") : t("res.bmShort")}
           </button>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <MessageSquare className="size-5 text-primary" />
+          Annotations
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            {annotations.length}
+          </span>
+        </h2>
+
+        <div className="mt-4 space-y-3">
+          <textarea
+            value={annotationText}
+            onChange={(e) => setAnnotationText(e.target.value)}
+            placeholder="Add your note about this resource..."
+            rows={3}
+            aria-label="Annotation content"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={annotationPrivate}
+                onChange={(e) => setAnnotationPrivate(e.target.checked)}
+                className="size-4 rounded border-border"
+              />
+              Private note
+            </label>
+            <button
+              onClick={submitAnnotation}
+              disabled={annotationSubmitting || !annotationText.trim()}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Send className="size-4" />
+              {annotationSubmitting ? "Saving..." : "Add annotation"}
+            </button>
+          </div>
+        </div>
+
+        {annotations.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">No annotations yet. Be the first to add a note.</p>
+        ) : (
+          <ul className="mt-5 space-y-3">
+            {annotations.map((a) => (
+              <li key={a.id} className="rounded-xl border border-border bg-background p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">{a.studentName}</span>
+                      {a.isPrivate && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          Private
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(a.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{a.content}</p>
+                  </div>
+                  <button
+                    onClick={() => deleteAnnotation(a.id)}
+                    aria-label="Delete annotation"
+                    className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {relatedResources.length > 0 && (

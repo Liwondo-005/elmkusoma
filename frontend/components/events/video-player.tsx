@@ -8,9 +8,10 @@ interface VideoPlayerProps {
   url: string
   title?: string
   onClose?: () => void
+  onProgress?: (positionSeconds: number, durationSeconds: number, completed: boolean) => void
 }
 
-export function VideoPlayer({ url, title, onClose }: VideoPlayerProps) {
+export function VideoPlayer({ url, title, onClose, onProgress }: VideoPlayerProps) {
   const t = useTranslations("ui")
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -18,6 +19,9 @@ export function VideoPlayer({ url, title, onClose }: VideoPlayerProps) {
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
+  const onProgressRef = useRef(onProgress)
+  const lastSentRef = useRef(0)
+  useEffect(() => { onProgressRef.current = onProgress }, [onProgress])
 
   useEffect(() => {
     const video = videoRef.current
@@ -25,9 +29,17 @@ export function VideoPlayer({ url, title, onClose }: VideoPlayerProps) {
     const onTimeUpdate = () => {
       setCurrentTime(video.currentTime)
       setProgress((video.currentTime / video.duration) * 100 || 0)
+      const now = Date.now()
+      if (onProgressRef.current && now - lastSentRef.current > 5000) {
+        lastSentRef.current = now
+        onProgressRef.current(video.currentTime, video.duration || 0, false)
+      }
     }
     const onLoadedMetadata = () => setDuration(video.duration)
-    const onEnded = () => setPlaying(false)
+    const onEnded = () => {
+      setPlaying(false)
+      onProgressRef.current?.(video.duration || video.currentTime, video.duration || 0, true)
+    }
     video.addEventListener("timeupdate", onTimeUpdate)
     video.addEventListener("loadedmetadata", onLoadedMetadata)
     video.addEventListener("ended", onEnded)
@@ -35,8 +47,11 @@ export function VideoPlayer({ url, title, onClose }: VideoPlayerProps) {
       video.removeEventListener("timeupdate", onTimeUpdate)
       video.removeEventListener("loadedmetadata", onLoadedMetadata)
       video.removeEventListener("ended", onEnded)
+      if (onProgressRef.current && video.currentTime > 0) {
+        onProgressRef.current(video.currentTime, video.duration || 0, false)
+      }
     }
-  }, [])
+  }, [url])
 
   const togglePlay = () => {
     const video = videoRef.current

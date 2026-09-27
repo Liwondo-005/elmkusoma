@@ -201,17 +201,19 @@ export default function LearnerResourcesPage() {
                       <Bookmark className="size-4" />
                     )}
                   </button>
-                  <a
-                    href={resource.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      const url = resource.storageUrl || resource.fileUrl || resource.thumbnailUrl
+                      if (url) window.open(url, "_blank", "noopener,noreferrer")
+                    }}
                     aria-label={`${tc("download")} ${resource.title}`}
-                    onClick={(e) => e.stopPropagation()}
                     className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     <Download className="size-3" />
                     {tc("download")}
-                  </a>
+                  </button>
                 </div>
               </div>
               <p className="mt-2 text-[10px] text-muted-foreground">

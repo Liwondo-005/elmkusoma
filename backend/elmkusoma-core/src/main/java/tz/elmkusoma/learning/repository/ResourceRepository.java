@@ -14,38 +14,52 @@ import java.util.UUID;
 @Repository
 public interface ResourceRepository extends JpaRepository<Resource, UUID> {
 
-    List<Resource> findBySubjectIdAndIsDeletedFalse(UUID subjectId);
-
-    List<Resource> findByClassGroupIdAndIsDeletedFalse(UUID classGroupId);
-
     List<Resource> findByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
-    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false ORDER BY r.createdAt DESC")
-    List<Resource> findAllAndIsDeletedFalse();
+    List<Resource> findByLessonIdAndIsDeletedFalse(UUID lessonId);
 
-    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY r.createdAt DESC")
-    List<Resource> searchByTitleAndIsDeletedFalse(@Param("query") String query);
+    List<Resource> findByModuleIdAndIsDeletedFalse(UUID moduleId);
 
-    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.resourceType = :resourceType ORDER BY r.createdAt DESC")
-    List<Resource> findByResourceTypeAndIsDeletedFalse(@Param("resourceType") Resource.ResourceType resourceType);
+    List<Resource> findByCourseIdAndIsDeletedFalse(UUID courseId);
 
-    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%')) AND r.resourceType = :resourceType ORDER BY r.createdAt DESC")
-    List<Resource> searchByTitleAndResourceTypeAndIsDeletedFalse(@Param("query") String query, @Param("resourceType") Resource.ResourceType resourceType);
+    List<Resource> findByUploadedByAndIsDeletedFalse(UUID uploadedBy);
 
-    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.id <> :excludeId AND ((r.subjectId IS NOT NULL AND r.subjectId = :subjectId) OR LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY r.createdAt DESC")
-    List<Resource> findRelatedResources(@Param("excludeId") UUID excludeId, @Param("subjectId") UUID subjectId, @Param("query") String query);
+    @Query("SELECT r FROM Resource r WHERE r.institutionId = :institutionId AND r.isDeleted = false AND r.visibility IN :visibilities")
+    List<Resource> findByInstitutionIdAndVisibilities(@Param("institutionId") UUID institutionId, @Param("visibilities") List<String> visibilities);
 
+    @Query("SELECT r FROM Resource r WHERE r.lessonId = :lessonId AND r.isDeleted = false AND r.visibility IN :visibilities ORDER BY r.sortOrder")
+    List<Resource> findVisibleByLessonId(@Param("lessonId") UUID lessonId, @Param("visibilities") List<String> visibilities);
+
+    @Query("SELECT r FROM Resource r WHERE r.moduleId = :moduleId AND r.isDeleted = false AND r.visibility IN :visibilities ORDER BY r.sortOrder")
+    List<Resource> findVisibleByModuleId(@Param("moduleId") UUID moduleId, @Param("visibilities") List<String> visibilities);
+
+    @Query("SELECT r FROM Resource r WHERE r.courseId = :courseId AND r.isDeleted = false AND r.visibility IN :visibilities ORDER BY r.sortOrder")
+    List<Resource> findVisibleByCourseId(@Param("courseId") UUID courseId, @Param("visibilities") List<String> visibilities);
+
+    Page<Resource> findByInstitutionIdAndIsDeletedFalse(UUID institutionId, org.springframework.data.domain.Pageable pageable);
+
+    long countByInstitutionIdAndIsDeletedFalse(UUID institutionId);
+
+    long countByLessonIdAndIsDeletedFalse(UUID lessonId);
+
+    // Backward compatibility for existing services
+    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false")
     Page<Resource> findByIsDeletedFalse(Pageable pageable);
 
-    Page<Resource> findByTitleContainingIgnoreCase(String title, Pageable pageable);
+    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false")
+    List<Resource> findAllAndIsDeletedFalse();
 
-    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.institutionId = :institutionId AND (LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(r.description) LIKE LOWER(CONCAT('%', :query, '%')))")
-    List<Resource> searchByInstitutionAndQuery(@Param("institutionId") UUID institutionId, @Param("query") String query, Pageable pageable);
-
-    List<Resource> findByInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID institutionId);
-
-    Page<Resource> findByInstitutionIdAndIsDeletedFalse(UUID institutionId, Pageable pageable);
-
-    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.institutionId = :institutionId AND LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY r.createdAt DESC")
+    // Backward compatibility for existing LearnerController
+    @Query("SELECT r FROM Resource r WHERE r.institutionId = :institutionId AND r.isDeleted = false AND (r.title ILIKE %:query% OR r.description ILIKE %:query%)")
     List<Resource> searchByInstitutionIdAndIsDeletedFalse(@Param("institutionId") UUID institutionId, @Param("query") String query);
+
+    // Backward compatibility
+    @Query("SELECT r FROM Resource r WHERE r.institutionId = :institutionId AND r.isDeleted = false AND r.visibility = 'PUBLIC' AND (r.title ILIKE %:query% OR r.description ILIKE %:query%)")
+    Page<Resource> searchPublishedByInstitutionWithAllFilters(@Param("institutionId") UUID institutionId, @Param("query") String query, @Param("level") String level, @Param("category") String category, @Param("fromDate") java.time.LocalDateTime fromDate, @Param("toDate") java.time.LocalDateTime toDate, Pageable pageable);
+
+    @Query("SELECT r FROM Resource r WHERE r.institutionId = :institutionId AND r.isDeleted = false AND (r.title ILIKE %:query% OR r.description ILIKE %:query%)")
+    List<Resource> searchByInstitutionIdAndQuery(@Param("institutionId") UUID institutionId, @Param("query") String query);
+
+    @Query("SELECT r FROM Resource r WHERE r.institutionId = :institutionId AND r.isDeleted = false AND r.id <> :resourceId AND (r.resourceType = :resourceType OR r.lessonId = :lessonId) ORDER BY r.createdAt DESC")
+    List<Resource> findRelatedResources(@Param("institutionId") UUID institutionId, @Param("resourceId") UUID resourceId, @Param("lessonId") UUID lessonId, @Param("resourceType") Resource.ResourceType resourceType);
 }

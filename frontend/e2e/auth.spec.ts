@@ -15,7 +15,7 @@ test.describe("Authentication Flow", () => {
 
   test("register page renders", async ({ page }) => {
     await page.goto("/register")
-    await expect(page.locator("text=Create")).toBeVisible()
+    await expect(page.locator("text=Create").first()).toBeVisible()
   })
 
   test("login with invalid credentials shows error", async ({ page }) => {
@@ -26,6 +26,6 @@ test.describe("Authentication Flow", () => {
     await passwordInput.fill("wrongpassword")
     const submitBtn = page.locator("button[type='submit'], button:has-text('Sign in'), button:has-text('Login')").first()
     await submitBtn.click()
-    await expect(page.locator("text=Invalid|error|incorrect|failed", { timeout: 10000 })).toBeVisible()
+    await expect(page.getByText(/invalid|error|incorrect|failed/i).first()).toBeVisible({ timeout: 10000 })
   })
 })

@@ -1,20 +1,29 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { learnerApi, type Resource } from "@/lib/learner-api"
+import { useEffect, useState, useCallback } from "react"
+import { learnerApi, type Resource, type VideoTutorial } from "@/lib/learner-api"
 import { VideoPlayer } from "@/components/events/video-player"
 import { useTranslations } from "next-intl"
-import { Search, Play, Loader2, VideoOff, Clock, Filter, Download, ArrowRight } from "lucide-react"
+import { Search, Play, Loader2, VideoOff, Clock, Download, ArrowRight, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
+
+interface VideoItem {
+  id: string
+  title: string
+  description: string | null
+  url: string
+  createdAt: string
+  durationSeconds: number | null
+  source: "resource" | "tutorial"
+  completionPercentage?: number
+}
 
 export default function VideoLibraryPage() {
   const t = useTranslations("learner")
-  const tc = useTranslations("common")
-  const [videos, setVideos] = useState<Resource[]>([])
+  const [videos, setVideos] = useState<VideoItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [playingUrl, setPlayingUrl] = useState<string | null>(null)
-  const [playingTitle, setPlayingTitle] = useState("")
+  const [playing, setPlaying] = useState<VideoItem | null>(null)
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -25,14 +34,63 @@ export default function VideoLibraryPage() {
     setLoading(true)
     setError("")
     try {
-      const all = await learnerApi.getVideoLibrary()
-      setVideos(all.filter((r) => r.resourceType === "VIDEO"))
+      const [resources, tutorials, progressList] = await Promise.all([
+        learnerApi.getVideoLibrary().catch(() => [] as Resource[]),
+        learnerApi.getVideoTutorials().catch(() => [] as VideoTutorial[]),
+        learnerApi.getVideoTutorialProgressList().catch(() => [] as never[]),
+      ])
+
+      const progressById = new Map(
+        (progressList as { videoTutorialId: string; completionPercentage: number }[]).map((p) => [
+          p.videoTutorialId,
+          p.completionPercentage,
+        ])
+      )
+
+      const resourceItems: VideoItem[] = resources
+        .filter((r) => r.resourceType === "VIDEO")
+        .map((r) => ({
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          url: r.storageUrl || r.fileUrl || r.thumbnailUrl || "",
+          createdAt: r.createdAt,
+          durationSeconds: r.durationSeconds ?? null,
+          source: "resource" as const,
+        }))
+
+      const tutorialItems: VideoItem[] = tutorials.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        url: t.recordingUrl || "",
+        createdAt: t.createdAt,
+        durationSeconds: t.durationSeconds ?? null,
+        source: "tutorial" as const,
+        completionPercentage: progressById.get(t.id),
+      }))
+
+      setVideos([...tutorialItems, ...resourceItems])
     } catch (e: any) {
       setError(e.message || t("vids.loadError"))
     } finally {
       setLoading(false)
     }
   }
+
+  const handleProgress = useCallback(
+    (positionSeconds: number, durationSeconds: number, completed: boolean) => {
+      if (!playing || playing.source !== "tutorial") return
+      learnerApi
+        .updateVideoProgress(playing.id, {
+          positionSeconds,
+          durationSeconds: durationSeconds > 0 ? durationSeconds : undefined,
+          completed,
+        })
+        .catch(() => {})
+    },
+    [playing]
+  )
 
   const filtered = search
     ? videos.filter(
@@ -42,6 +100,13 @@ export default function VideoLibraryPage() {
       )
     : videos
 
+  const formatDuration = (s: number | null) => {
+    if (!s || s <= 0) return null
+    const m = Math.floor(s / 60)
+    const sec = Math.floor(s % 60)
+    return `${m}:${sec.toString().padStart(2, "0")}`
+  }
+
   return (
     <div role="main" className="space-y-6">
       <div>
@@ -49,10 +114,18 @@ export default function VideoLibraryPage() {
         <p className="text-muted-foreground">{t("vids.subtitle")}</p>
       </div>
 
-      {playingUrl && (
+      {playing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-4xl">
-            <VideoPlayer url={playingUrl} title={playingTitle} onClose={() => { setPlayingUrl(null); setPlayingTitle("") }} />
+            <VideoPlayer
+              url={playing.url}
+              title={playing.title}
+              onClose={() => {
+                setPlaying(null)
+                loadVideos()
+              }}
+              onProgress={handleProgress}
+            />
           </div>
         </div>
       )}
@@ -87,33 +160,44 @@ export default function VideoLibraryPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((video) => (
-            <div key={video.id}
+            <div key={`${video.source}-${video.id}`}
               className="group rounded-xl border border-border bg-card overflow-hidden transition-all hover:border-primary/30 hover:shadow-md cursor-pointer"
-              onClick={() => { setPlayingUrl(video.fileUrl); setPlayingTitle(video.title) }}>
+              onClick={() => { if (video.url) setPlaying(video) }}>
               <div className="relative aspect-video bg-muted flex items-center justify-center">
                 <div className="flex size-14 items-center justify-center rounded-full bg-primary/20 text-primary transition-transform group-hover:scale-110">
                   <Play className="size-6" />
                 </div>
                 <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
-                  {t("vids.badge")}
+                  {video.source === "tutorial" ? (video.url ? "Tutorial" : "Processing") : "Video"}
                 </div>
+                {video.completionPercentage != null && video.completionPercentage > 0 && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
+                    <CheckCircle2 className="size-3" />
+                    {Math.round(video.completionPercentage)}%
+                  </div>
+                )}
               </div>
               <div className="p-4">
                 <h3 className="font-semibold group-hover:text-primary transition-colors line-clamp-2">{video.title}</h3>
                 {video.description && <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2">{video.description}</p>}
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" /> {new Date(video.createdAt).toLocaleDateString()}</span>
-                  <a
-                    href={video.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={t("vids.downloadLabel", { title: video.title })}
-                    className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Download className="size-3" />
-                    {t("vids.download")}
-                  </a>
+                  <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Clock className="size-3" /> {new Date(video.createdAt).toLocaleDateString()}</span>
+                    {formatDuration(video.durationSeconds) && <span>{formatDuration(video.durationSeconds)}</span>}
+                  </span>
+                  {video.url && (
+                    <a
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={t("vids.downloadLabel", { title: video.title })}
+                      className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Download className="size-3" />
+                      {t("vids.download")}
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
