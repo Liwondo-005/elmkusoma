@@ -2569,7 +2569,11 @@
       "emptyDefault": "Video zitaonekana hapa zitakapopakiwa",
       "downloadLabel": "Pakua {title}",
       "moreHint": "Unatafuta nyenzo zaidi?",
-      "browseAll": "Vinjari Rasilimali zote"
+      "browseAll": "Vinjari Rasilimali zote",
+      "title": "Maktaba ya Video",
+      "subtitle": "Tazama video za masomo na ufuatilie maendeleo yako.",
+      "emptyTitle": "Hakuna video bado",
+      "emptySearch": "Hakuna video zinazolingana na utafutaji wako"
     },
     "announce": {
       "loadError": "Imeshindwa kupakia matangazo",
@@ -2736,8 +2740,10 @@
       "bmShort": "Weka alama",
       "addedOn": "Imeongezwa {date}",
       "downloadLabel": "Pakua {title}",
-      "saveBm": "Hifadhi kwenye alama",
-      "bookmarked": "Imehifadhiwa"
+      "saveBm": "Hifadhi",
+      "bookmarked": "Imehifadhiwa",
+      "backLink": "Rudi",
+      "related": "Zinazohusiana"
     },
     "lsettings": {
       "aboutBody": "Jukwaa la Elimu la ELMKUSOMA. Simamia safari yako ya kujifunza na fuatilia maendeleo yako.",

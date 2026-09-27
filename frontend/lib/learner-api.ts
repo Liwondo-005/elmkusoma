@@ -189,11 +189,60 @@ export interface Resource {
   id: string
   title: string
   description: string | null
-  fileUrl: string
+  fileUrl?: string
+  storageUrl?: string
+  thumbnailUrl?: string
+  mimeType?: string
+  fileSize?: number | null
+  durationSeconds?: number | null
+  visibility?: string
+  processingStatus?: string
   resourceType: string
   subjectId: string | null
   institutionId: string
   createdAt: string
+}
+
+export interface VideoTutorial {
+  id: string
+  institutionId: string
+  lessonId: string | null
+  title: string
+  description: string | null
+  durationSeconds: number | null
+  recordingUrl: string | null
+  thumbnailUrl: string | null
+  status: string
+  visibility: string
+  isDownloadable: boolean | null
+  tagNames: string[] | null
+  createdAt: string
+}
+
+export interface VideoTutorialProgress {
+  id: string
+  videoTutorialId: string
+  studentId: string
+  positionSeconds: number
+  completed: boolean
+  completionPercentage: number
+  lastWatchedAt: string | null
+  watchCount: number
+  totalWatchTimeSeconds: number
+  lastPositionSeconds: number
+}
+
+export interface ResourceAnnotation {
+  id: string
+  resourceId: string
+  studentId: string
+  studentName: string
+  content: string
+  positionData: string | null
+  isPrivate: boolean | null
+  parentAnnotationId: string | null
+  createdAt: string
+  updatedAt: string | null
 }
 
 export interface LiveClass {
@@ -542,12 +591,14 @@ export const learnerApi = {
       method: "POST",
       body: JSON.stringify({ lessonId, completionPercentage }),
     }),
-  getResources: (params?: { page?: number; size?: number }) => {
+  getResources: async (params?: { page?: number; size?: number }) => {
     const searchParams = new URLSearchParams()
-    if (params?.page != null) searchParams.set("page", String(params.page))
+    if (params?.page != null) searchParams.set("page", String(Math.max(0, params.page - 1)))
     if (params?.size != null) searchParams.set("size", String(params.size))
     const qs = searchParams.toString()
-    return learnerFetch<Resource[]>(`/v1/learner/resources${qs ? `?${qs}` : ""}`)
+    const data = await learnerFetch<{ content?: Resource[] } | Resource[]>(`/v1/learner/resources${qs ? `?${qs}` : ""}`)
+    if (Array.isArray(data)) return data
+    return data.content ?? []
   },
   getLiveClasses: () => learnerFetch<LiveClass[]>("/v1/learner/live-classes"),
   getLiveClass: (id: string) => learnerFetch<LiveClass>(`/v1/learner/live-classes/${id}`),
@@ -642,14 +693,36 @@ export const learnerApi = {
   getRegisteredPastEvents: () => learnerFetch<EventItem[]>("/v1/learner/events/registered/past"),
   getEventMaterials: (eventId: string) =>
     learnerFetch<EventMaterial[]>(`/v1/learner/events/${eventId}/materials`),
-  getVideoLibrary: () => learnerFetch<Resource[]>("/v1/learner/resources"),
+  getVideoLibrary: () => learnerApi.getResources(),
   getVideoResources: () =>
-    learnerFetch<Resource[]>("/v1/learner/resources").then((resources) =>
+    learnerApi.getResources().then((resources) =>
       resources.filter((r) => r.resourceType === "VIDEO")
     ),
   getRelatedCourses: (courseId: string) =>
     learnerFetch<CourseSummary[]>(`/v1/learner/courses/${courseId}/related`),
   getResource: (id: string) => learnerFetch<Resource>(`/v1/learner/resources/${id}`),
+  getResourceUrl: (r: Resource) => r.storageUrl || r.fileUrl || r.thumbnailUrl || "",
+  getVideoTutorials: () => learnerFetch<VideoTutorial[]>("/v1/video-tutorials"),
+  getVideoTutorial: (id: string) => learnerFetch<VideoTutorial>(`/v1/video-tutorials/${id}`),
+  getVideoTutorialProgressList: () => learnerFetch<VideoTutorialProgress[]>("/v1/video-tutorials/progress"),
+  updateVideoProgress: (id: string, data: { positionSeconds: number; durationSeconds?: number; completed?: boolean }) => {
+    const params = new URLSearchParams()
+    params.set("positionSeconds", String(Math.floor(data.positionSeconds)))
+    if (data.durationSeconds != null) params.set("durationSeconds", String(Math.floor(data.durationSeconds)))
+    if (data.completed != null) params.set("completed", String(data.completed))
+    return learnerFetch<VideoTutorialProgress>(`/v1/video-tutorials/${id}/progress?${params.toString()}`, {
+      method: "PUT",
+    })
+  },
+  getResourceAnnotations: (resourceId: string) =>
+    learnerFetch<ResourceAnnotation[]>(`/v1/resources/${resourceId}/annotations`),
+  createResourceAnnotation: (resourceId: string, data: { content: string; isPrivate?: boolean; parentAnnotationId?: string }) =>
+    learnerFetch<ResourceAnnotation>(`/v1/resources/${resourceId}/annotations`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteResourceAnnotation: (resourceId: string, annotationId: string) =>
+    learnerFetch<void>(`/v1/resources/${resourceId}/annotations/${annotationId}`, { method: "DELETE" }),
   getRelatedResources: (resourceId: string) =>
     learnerFetch<Resource[]>(`/v1/learner/resources/${resourceId}/related`),
 

@@ -986,8 +986,8 @@ public class LearnerController {
         if (resource == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Resource not found"));
         }
-        String query = resource.getTitle() != null ? resource.getTitle().substring(0, Math.min(3, resource.getTitle().length())) : "";
-        List<Resource> related = resourceRepository.findRelatedResources(id, resource.getSubjectId(), query);
+        List<Resource> related = resourceRepository.findRelatedResources(
+                resource.getInstitutionId(), id, resource.getSubjectId(), resource.getResourceType());
         List<ResourceSearchResult> response = related.stream()
                 .limit(6)
                 .map(this::toResourceSearchResult)

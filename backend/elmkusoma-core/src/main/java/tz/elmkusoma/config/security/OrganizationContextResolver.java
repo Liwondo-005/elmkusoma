@@ -84,7 +84,7 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
                         InstitutionMembership activeMembership = null;
 
                         if (!memberships.isEmpty()) {
-                            UUID resolvedId = resolveTargetInstitutionId(request, token, memberships);
+                            UUID resolvedId = resolveTargetInstitutionId(request, token, user, memberships);
                             if (resolvedId != null) {
                                 targetInstitutionId = resolvedId;
                                 activeMembership = memberships.stream()
@@ -92,15 +92,20 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
                                         .findFirst()
                                         .orElse(null);
                             }
+                        } else {
+                            targetInstitutionId = resolveTargetInstitutionId(request, token, user, memberships);
                         }
 
                         // Final fallback: query institutionId directly from database
                         if (targetInstitutionId == null) {
                             try {
-                                targetInstitutionId = (UUID) entityManager.createNativeQuery(
-                                        "SELECT institution_id FROM users WHERE id = ?")
+                                List<?> rows = entityManager.createNativeQuery(
+                                        "SELECT institution_id FROM users WHERE id = ? AND institution_id IS NOT NULL")
                                         .setParameter(1, user.getId())
-                                        .getSingleResult();
+                                        .getResultList();
+                                if (!rows.isEmpty() && rows.get(0) != null) {
+                                    targetInstitutionId = (UUID) rows.get(0);
+                                }
                             } catch (Exception ignored) {
                             }
                         }
@@ -196,26 +201,35 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
         };
     }
 
-    private UUID resolveTargetInstitutionId(HttpServletRequest request, String token, List<InstitutionMembership> memberships) {
+    private UUID resolveHeaderInstitutionId(HttpServletRequest request) {
         String headerInstitutionId = request.getHeader(HEADER_INSTITUTION_ID);
         if (!StringUtils.hasText(headerInstitutionId)) {
             headerInstitutionId = request.getHeader(HEADER_INSTITUTION_ID_ALT);
         }
-
         if (StringUtils.hasText(headerInstitutionId)) {
             try {
-                UUID requestedId = UUID.fromString(headerInstitutionId);
-                if (memberships.stream().anyMatch(m -> m.getInstitutionId().equals(requestedId))) {
-                    return requestedId;
-                }
-                log.warn("User attempted to access institution {} without membership", requestedId);
-                return null;
+                return UUID.fromString(headerInstitutionId);
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid institution ID in header: {}", headerInstitutionId);
-                return null;
             }
         }
+        return null;
+    }
 
+    private UUID resolveTargetInstitutionId(HttpServletRequest request, String token,
+                                            User user, List<InstitutionMembership> memberships) {
+        UUID headerId = resolveHeaderInstitutionId(request);
+
+        // 1. Explicit header that matches an active membership
+        if (headerId != null && memberships.stream().anyMatch(m -> m.getInstitutionId().equals(headerId))) {
+            return headerId;
+        }
+        if (headerId != null) {
+            log.warn("User {} attempted to access institution {} without membership; falling back",
+                    user.getEmail(), headerId);
+        }
+
+        // 2. Institution embedded in the JWT
         String tokenInstitutionId = jwtTokenProvider.getInstitutionIdFromToken(token);
         if (StringUtils.hasText(tokenInstitutionId)) {
             try {
@@ -228,15 +242,19 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
             }
         }
 
-        String path = request.getRequestURI();
-        UUID pathInstitutionId = extractInstitutionIdFromPath(path);
-        if (pathInstitutionId != null) {
-            if (memberships.stream().anyMatch(m -> m.getInstitutionId().equals(pathInstitutionId))) {
-                return pathInstitutionId;
-            }
+        // 3. Institution embedded in the request path
+        UUID pathInstitutionId = extractInstitutionIdFromPath(request.getRequestURI());
+        if (pathInstitutionId != null
+                && memberships.stream().anyMatch(m -> m.getInstitutionId().equals(pathInstitutionId))) {
+            return pathInstitutionId;
         }
 
-        return memberships.get(0).getInstitutionId();
+        // 4. First active membership
+        if (!memberships.isEmpty()) {
+            return memberships.get(0).getInstitutionId();
+        }
+
+        return null;
     }
 
     private UUID extractInstitutionIdFromPath(String path) {
