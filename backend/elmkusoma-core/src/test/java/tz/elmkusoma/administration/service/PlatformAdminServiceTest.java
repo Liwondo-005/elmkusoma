@@ -625,7 +625,7 @@ class PlatformAdminServiceTest {
         when(institutionRepository.findById(instId)).thenReturn(Optional.of(inst));
         when(delegationRepository.findByDelegateIdAndIsDeletedFalse(actor)).thenReturn(List.of());
 
-        assertThrows(SecurityException.class,
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> service.reviewProviderVerification(rec.getId(), actor, "APPROVED", "x"));
     }
 
@@ -676,8 +676,7 @@ class PlatformAdminServiceTest {
     }
 
     @Test
-    void getProviderAttention_flagsSuspendedAndPending() {
-        Institution suspended = Institution.builder().name("S Co").code("SC1")
+    void getProviderAttention_flagsSuspendedAndPending() {        Institution suspended = Institution.builder().name("S Co").code("SC1")
                 .type(Institution.InstitutionType.COMPANY).country("Tanzania")
                 .email("s@co.tz").phone("+255700000001")
                 .isActive(false).status("SUSPENDED").build();
@@ -701,5 +700,102 @@ class PlatformAdminServiceTest {
 
         assertTrue(out.stream().anyMatch(a -> a.getCategory().equals("SUSPENDED") && a.getProviderId().equals(suspended.getId())));
         assertTrue(out.stream().anyMatch(a -> a.getCategory().equals("PENDING_VERIFICATION") && a.getProviderId().equals(pending.getId())));
+    }
+
+    // ── Verification submission ──
+
+    @Test
+    void submitVerification_validCreatesPending() {
+        UUID instId = UUID.randomUUID();
+        Institution inst = Institution.builder().name("V NGO").code("VNGO")
+                .type(Institution.InstitutionType.NGO).country("Tanzania").build();
+        inst.setId(instId);
+        when(institutionRepository.findByIdAndIsDeletedFalse(instId)).thenReturn(Optional.of(inst));
+        when(verificationRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse(eq("INSTITUTION"), eq(instId)))
+                .thenReturn(List.of());
+        when(verificationRepository.save(any(VerificationRecord.class))).thenAnswer(i -> i.getArgument(0));
+
+        var req = tz.elmkusoma.administration.dto.VerificationSubmitRequest.builder()
+                .entityType("INSTITUTION").entityId(instId)
+                .verificationType("PROVIDER_LICENSE").notes("please review").build();
+        var out = service.submitVerification(req);
+
+        assertEquals("PENDING", out.getStatus());
+        assertEquals("INSTITUTION", out.getEntityType());
+        assertEquals("PROVIDER_LICENSE", out.getVerificationType());
+        verify(verificationRepository).save(any(VerificationRecord.class));
+    }
+
+    @Test
+    void submitVerification_unknownEntityRejected() {
+        UUID instId = UUID.randomUUID();
+        when(institutionRepository.findByIdAndIsDeletedFalse(instId)).thenReturn(Optional.empty());
+        var req = tz.elmkusoma.administration.dto.VerificationSubmitRequest.builder()
+                .entityType("INSTITUTION").entityId(instId).verificationType("PROVIDER_LICENSE").build();
+        assertThrows(tz.elmkusoma.exception.ResourceNotFoundException.class,
+                () -> service.submitVerification(req));
+    }
+
+    @Test
+    void submitVerification_duplicatePendingRejected() {
+        UUID instId = UUID.randomUUID();
+        Institution inst = Institution.builder().name("D NGO").code("DNGO")
+                .type(Institution.InstitutionType.NGO).country("Tanzania").build();
+        inst.setId(instId);
+        VerificationRecord open = VerificationRecord.builder()
+                .entityType("INSTITUTION").entityId(instId)
+                .verificationType("PROVIDER_LICENSE").status("PENDING")
+                .submittedAt(LocalDateTime.now()).build();
+        when(institutionRepository.findByIdAndIsDeletedFalse(instId)).thenReturn(Optional.of(inst));
+        when(verificationRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse(eq("INSTITUTION"), eq(instId)))
+                .thenReturn(List.of(open));
+        var req = tz.elmkusoma.administration.dto.VerificationSubmitRequest.builder()
+                .entityType("INSTITUTION").entityId(instId).verificationType("PROVIDER_LICENSE").build();
+        assertThrows(IllegalStateException.class, () -> service.submitVerification(req));
+    }
+
+    @Test
+    void submitVerification_badEntityTypeRejected() {
+        var req = tz.elmkusoma.administration.dto.VerificationSubmitRequest.builder()
+                .entityType("PLANET").entityId(UUID.randomUUID()).verificationType("X").build();
+        assertThrows(IllegalArgumentException.class, () -> service.submitVerification(req));
+    }
+
+    @Test
+    void listDelegatedTasks_onlyInScopePending() {
+        UUID actor = UUID.randomUUID();
+        UUID inScope = UUID.randomUUID();
+        UUID outScope = UUID.randomUUID();
+        AdminDelegation d = activeDelegation(UUID.randomUUID(), actor);
+        d.setScope("INSTITUTION:" + inScope);
+        VerificationRecord vIn = VerificationRecord.builder()
+                .entityType("INSTITUTION").entityId(inScope)
+                .verificationType("PROVIDER_LICENSE").status("PENDING")
+                .submittedAt(LocalDateTime.now()).build();
+        vIn.setId(UUID.randomUUID());
+        VerificationRecord vOut = VerificationRecord.builder()
+                .entityType("INSTITUTION").entityId(outScope)
+                .verificationType("PROVIDER_LICENSE").status("PENDING")
+                .submittedAt(LocalDateTime.now()).build();
+        vOut.setId(UUID.randomUUID());
+        Institution inst = Institution.builder().name("In Scope").code("INS1")
+                .type(Institution.InstitutionType.NGO).country("Tanzania").build();
+        inst.setId(inScope);
+        when(delegationRepository.findByDelegateIdAndIsDeletedFalse(actor)).thenReturn(List.of(d));
+        when(verificationRepository.findByStatusAndIsDeletedFalse("PENDING")).thenReturn(List.of(vIn, vOut));
+        when(institutionRepository.findById(inScope)).thenReturn(Optional.of(inst));
+        when(institutionRepository.findById(outScope)).thenReturn(Optional.empty());
+
+        var tasks = service.listDelegatedTasks(actor);
+
+        assertEquals(1, tasks.size());
+        assertEquals(vIn.getId(), tasks.get(0).getVerificationId());
+        assertEquals("In Scope", tasks.get(0).getEntityName());
+    }
+
+    @Test
+    void listDelegatedTasks_unauthenticatedDenied() {
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.listDelegatedTasks(null));
     }
 }

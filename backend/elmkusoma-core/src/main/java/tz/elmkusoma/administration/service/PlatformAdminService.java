@@ -1734,7 +1734,8 @@ public class PlatformAdminService {
         AdminDelegation usedDelegation = null;
         if (!platformAdmin) {
             if (actorId == null) {
-                throw new SecurityException("Authentication required to review verifications");
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Authentication required to review verifications");
             }
             usedDelegation = findEffectiveDelegations(actorId, "PROVIDER_VERIFICATION").stream()
                     .filter(d -> {
@@ -1743,7 +1744,7 @@ public class PlatformAdminService {
                     })
                     .filter(d -> scopeCovers(d, scopeResourceId, scopeRegion) && resourcesCover(d, scopeResourceId))
                     .findFirst()
-                    .orElseThrow(() -> new SecurityException(
+                    .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException(
                             "Access denied: no active PROVIDER_VERIFICATION delegation covers this entity"));
         }
         VerificationSummaryResponse result = reviewVerification(verificationId, actorId, action, notes);
@@ -1760,7 +1761,129 @@ public class PlatformAdminService {
         return result;
     }
 
+    /**
+     * Tasks awaiting the given officer under their ACTIVE PROVIDER_VERIFICATION
+     * delegations. Same scope/permission rules as the enforced review path, so the
+     * UI can only ever offer what the backend will authorize.
+     */
+    @Transactional(readOnly = true)
+    public List<DelegatedTaskResponse> listDelegatedTasks(UUID actorId) {
+        if (actorId == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Authentication required");
+        }
+        List<DelegatedTaskResponse> tasks = new ArrayList<>();
+        List<AdminDelegation> delegations = findEffectiveDelegations(actorId, "PROVIDER_VERIFICATION");
+        List<VerificationRecord> pending = verificationRepository.findByStatusAndIsDeletedFalse("PENDING");
+        for (AdminDelegation d : delegations) {
+            Set<String> tokens = parsePermissionTokens(d.getPermissions());
+            boolean canDecide = tokens.contains("MANAGE") || tokens.contains("VERIFY")
+                    || tokens.contains("REVIEW") || tokens.contains("APPROVE") || tokens.contains("REJECT");
+            if (!canDecide) continue;
+            for (VerificationRecord rec : pending) {
+                if (!"INSTITUTION".equalsIgnoreCase(rec.getEntityType())
+                        && !"PROVIDER".equalsIgnoreCase(rec.getEntityType())) {
+                    continue;
+                }
+                UUID resourceId = rec.getEntityId();
+                String region = null;
+                if ("INSTITUTION".equalsIgnoreCase(rec.getEntityType())) {
+                    region = institutionRepository.findById(rec.getEntityId()).map(Institution::getRegion).orElse(null);
+                } else {
+                    UUID resolved = membershipRepository.findByUserIdAndIsActiveTrue(rec.getEntityId()).stream()
+                            .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                            .map(InstitutionMembership::getInstitutionId)
+                            .filter(Objects::nonNull)
+                            .findFirst()
+                            .orElse(rec.getEntityId());
+                    resourceId = resolved;
+                    if (!resolved.equals(rec.getEntityId())) {
+                        region = institutionRepository.findById(resolved).map(Institution::getRegion).orElse(null);
+                    }
+                }
+                if (!scopeCovers(d, resourceId, region) || !resourcesCover(d, resourceId)) continue;
+                String entityName = null;
+                if ("INSTITUTION".equalsIgnoreCase(rec.getEntityType())) {
+                    entityName = institutionRepository.findById(rec.getEntityId()).map(Institution::getName).orElse(null);
+                } else {
+                    entityName = userRepository.findById(rec.getEntityId()).map(User::getFullName).orElse(null);
+                }
+                tasks.add(DelegatedTaskResponse.builder()
+                        .verificationId(rec.getId()).verificationType(rec.getVerificationType())
+                        .entityType(rec.getEntityType()).entityId(rec.getEntityId()).entityName(entityName)
+                        .status(rec.getStatus()).submittedAt(rec.getSubmittedAt())
+                        .delegationId(d.getId()).authority(d.getAuthority()).scope(d.getScope())
+                        .build());
+            }
+        }
+        return tasks;
+    }
+
     // ── Verifications ──
+
+    private static final Set<String> VERIFIABLE_ENTITY_TYPES = Set.of("INSTITUTION", "PROVIDER", "SERVICE");
+
+    public VerificationSummaryResponse submitVerification(VerificationSubmitRequest req) {
+        String entityType = req.getEntityType() != null ? req.getEntityType().trim().toUpperCase() : null;
+        if (entityType == null || !VERIFIABLE_ENTITY_TYPES.contains(entityType)) {
+            throw new IllegalArgumentException("entityType must be one of " + VERIFIABLE_ENTITY_TYPES);
+        }
+        if (req.getEntityId() == null) {
+            throw new IllegalArgumentException("entityId is required");
+        }
+        if (req.getVerificationType() == null || req.getVerificationType().isBlank()) {
+            throw new IllegalArgumentException("verificationType is required");
+        }
+        switch (entityType) {
+            case "INSTITUTION" -> institutionRepository.findByIdAndIsDeletedFalse(req.getEntityId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", req.getEntityId()));
+            case "PROVIDER" -> userRepository.findByIdAndIsDeletedFalse(req.getEntityId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", req.getEntityId()));
+            case "SERVICE" -> platformServiceRepository.findById(req.getEntityId())
+                    .orElseThrow(() -> new ResourceNotFoundException("PlatformService", "id", req.getEntityId()));
+            default -> throw new IllegalArgumentException("Unsupported entityType: " + entityType);
+        }
+        // Only an undecided PENDING request blocks resubmission. A CHANGES_REQUIRED
+        // decision closes that round; the provider may submit fresh evidence, which
+        // creates a new PENDING record while history is preserved for audit.
+        boolean pendingExists = verificationRepository
+                .findByEntityTypeAndEntityIdAndIsDeletedFalse(entityType, req.getEntityId()).stream()
+                .anyMatch(v -> "PENDING".equalsIgnoreCase(v.getStatus()));
+        if (pendingExists) {
+            throw new IllegalStateException("A pending verification request already exists for this entity");
+        }
+        VerificationRecord rec = VerificationRecord.builder()
+                .entityType(entityType).entityId(req.getEntityId())
+                .verificationType(req.getVerificationType().trim().toUpperCase())
+                .status("PENDING").submittedBy(req.getSubmittedBy())
+                .submittedAt(LocalDateTime.now())
+                .documents(req.getDocuments() != null && !req.getDocuments().isBlank() ? req.getDocuments() : null)
+                .notes(req.getNotes())
+                .build();
+        if ("INSTITUTION".equals(entityType)) {
+            rec.setInstitutionId(req.getEntityId());
+        } else if ("PROVIDER".equals(entityType)) {
+            UUID providerInstitution = membershipRepository.findByUserIdAndIsActiveTrue(req.getEntityId()).stream()
+                    .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                    .map(InstitutionMembership::getInstitutionId)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(null);
+            rec.setInstitutionId(providerInstitution != null ? providerInstitution : PLATFORM_INSTITUTION_ID);
+        } else {
+            rec.setInstitutionId(PLATFORM_INSTITUTION_ID);
+        }
+        verificationRepository.save(rec);
+        writeAudit(rec.getInstitutionId() != null ? rec.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                "VerificationRecord", rec.getId(), entityType + " verification submitted", "CREATE",
+                Map.of(), Map.of("entityType", entityType, "entityId", req.getEntityId().toString(),
+                        "verificationType", rec.getVerificationType()));
+        log.info("Verification submitted: {} {} {}", rec.getId(), entityType, req.getEntityId());
+        return VerificationSummaryResponse.builder()
+                .id(rec.getId()).entityType(rec.getEntityType()).entityId(rec.getEntityId())
+                .verificationType(rec.getVerificationType()).status(rec.getStatus())
+                .submittedBy(rec.getSubmittedBy()).submittedAt(rec.getSubmittedAt())
+                .createdAt(rec.getCreatedAt()).build();
+    }
 
     @Transactional(readOnly = true)
     public List<VerificationSummaryResponse> listPendingVerifications() {
@@ -1813,6 +1936,10 @@ public class PlatformAdminService {
                 case "INSTITUTION" -> {
                     institutionRepository.findById(rec.getEntityId()).ifPresent(inst -> {
                         inst.setIsActive(true);
+                        inst.setApprovedAt(LocalDateTime.now());
+                        if (rec.getReviewedBy() != null) {
+                            inst.setApprovedBy(rec.getReviewedBy().toString());
+                        }
                         institutionRepository.save(inst);
                         log.info("Activated institution {} after verification approval", rec.getEntityId());
                     });

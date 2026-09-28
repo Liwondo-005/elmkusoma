@@ -504,6 +504,21 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPendingVerifications()));
     }
 
+    @PostMapping("/verifications")
+    @Operation(summary = "Submit a verification request (INSTITUTION|PROVIDER|SERVICE)")
+    public ResponseEntity<ApiResponse<VerificationSummaryResponse>> submitVerification(
+            @RequestBody VerificationSubmitRequest req,
+            HttpServletRequest request) {
+        if (req.getSubmittedBy() == null && request.getAttribute("userId") != null) {
+            try {
+                req.setSubmittedBy(UUID.fromString(request.getAttribute("userId").toString()));
+            } catch (Exception ignored) {
+            }
+        }
+        return ResponseEntity.ok(ApiResponse.success("Verification submitted",
+                platformAdminService.submitVerification(req)));
+    }
+
     @PutMapping("/verifications/{verificationId}/review")
     @Operation(summary = "Review a verification record")
     public ResponseEntity<ApiResponse<VerificationSummaryResponse>> reviewVerification(
@@ -633,16 +648,10 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.getProviderDetail(providerId)));
     }
 
-    @PutMapping("/verifications/{verificationId}/provider-review")
-    @Operation(summary = "Review a provider/institution verification with delegation enforcement (APPROVED|REJECTED|CHANGES_REQUIRED)")
-    public ResponseEntity<ApiResponse<VerificationSummaryResponse>> reviewProviderVerification(
-            @PathVariable UUID verificationId,
-            @RequestParam String status,
-            @RequestParam(required = false) String notes,
-            HttpServletRequest request) {
-        UUID actorId = request.getAttribute("userId") != null ? UUID.fromString(request.getAttribute("userId").toString()) : null;
-        return ResponseEntity.ok(ApiResponse.success(platformAdminService.reviewProviderVerification(verificationId, actorId, status, notes)));
-    }
+    // NOTE: provider-review intentionally lives outside /v1/platform-admin/**
+    // (see VerificationReviewController): /v1/platform-admin/** is URL-locked to
+    // ROLE_ADMIN, which would reject delegated officers before the service-level
+    // delegation enforcement could run.
 
     @GetMapping("/providers/{providerId}/quotas")
     @Operation(summary = "List provider service entitlements and seat quotas")

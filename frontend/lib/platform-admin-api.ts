@@ -484,6 +484,12 @@ export interface ProviderAttentionItem {
   title: string; description: string; actionUrl: string
 }
 
+export interface DelegatedTask {
+  verificationId: string; verificationType: string; entityType: string
+  entityId: string; entityName: string | null; status: string
+  submittedAt: string; delegationId: string; authority: string; scope: string
+}
+
 export interface VerificationSummary {
   id: string; entityType: string; entityId: string; verificationType: string
   status: string; submittedBy: string | null; reviewedBy: string | null
@@ -838,10 +844,14 @@ export const platformAdminApi = {
   reviewProviderVerification: (id: string, status: string, notes?: string) => {
     const params = new URLSearchParams({ status })
     if (notes) params.set("notes", notes)
-    return platformFetch<VerificationSummary>(`/v1/platform-admin/verifications/${id}/provider-review?${params}`, { method: "PUT" })
+    // Delegation-aware endpoint outside /v1/platform-admin (which is ADMIN-only at URL level)
+    return platformFetch<VerificationSummary>(`/v1/verifications/${id}/provider-review?${params}`, { method: "PUT" })
   },
+  delegatedTasks: () => platformFetch<DelegatedTask[]>("/v1/verifications/delegated-tasks"),
 
   listPendingVerifications: () => platformFetch<VerificationSummary[]>("/v1/platform-admin/verifications/pending"),
+  submitVerification: (data: { entityType: string; entityId: string; verificationType: string; documents?: string; notes?: string }) =>
+    platformFetch<VerificationSummary>("/v1/platform-admin/verifications", { method: "POST", body: JSON.stringify(data) }),
   reviewVerification: (id: string, status: string, notes?: string) => {
     const params = new URLSearchParams({ status })
     if (notes) params.set("notes", notes)
