@@ -3,39 +3,81 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Menu, X, Bell, Search, Globe } from "lucide-react"
+import { Menu, X, Bell, Search, Globe, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { useAuth } from "@/lib/auth"
 import { useLocaleContext } from "@/components/locale-provider"
 import { learnerApi } from "@/lib/learner-api"
+import { adminApi, ApiRequestError } from "@/lib/api"
 
-function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
+type PaletteMode = "platform" | "organization"
+
+interface PaletteResult {
+  type: string
+  id: string
+  title: string
+  subtitle: string
+}
+
+function GlobalSearchDropdown({
+  mode,
+  onClose,
+}: {
+  mode: PaletteMode
+  onClose: () => void
+}) {
   const t = useTranslations("common")
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<Array<{ type: string; id: string; title: string; subtitle: string }>>([])
+  const [results, setResults] = useState<PaletteResult[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const isPlatform = mode === "platform"
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
   useEffect(() => {
-    if (!query || query.length < 2) { setResults([]); return }
+    if (!query || query.length < 2) { setResults([]); setError(null); return }
     const timer = setTimeout(async () => {
       setLoading(true)
+      setError(null)
       try {
-        const token = document.cookie.match(/elmkusoma_access_token=([^;]+)/)?.[1]
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/v1/platform-admin/search?q=${encodeURIComponent(query)}&limit=10`, {
-          headers: { Authorization: `Bearer ${decodeURIComponent(token || "")}` },
-        })
-        if (res.ok) { const json = await res.json(); setResults(json.data || []) }
-      } catch {} finally { setLoading(false) }
+        if (isPlatform) {
+          const token = document.cookie.match(/elmkusoma_access_token=([^;]+)/)?.[1]
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/v1/platform-admin/search?q=${encodeURIComponent(query)}&limit=10`, {
+            headers: { Authorization: `Bearer ${decodeURIComponent(token || "")}` },
+          })
+          if (res.ok) {
+            const json = await res.json()
+            setResults(json.data || [])
+          } else {
+            setError(res.status === 403 ? t("searchForbidden") : t("searchFailed"))
+          }
+        } else {
+          // Org-scoped: OrganizationContextResolver restricts every row to the
+          // caller's own institution, so nothing foreign can come back.
+          setResults(await adminApi.orgSearch(query, "all", 10))
+        }
+      } catch (err) {
+        if (err instanceof ApiRequestError && err.status === 403) setError(t("searchForbidden"))
+        else setError(t("searchFailed"))
+        setResults([])
+      } finally { setLoading(false) }
     }, 300)
     return () => clearTimeout(timer)
-  }, [query])
+  }, [query, isPlatform, t])
 
   function navigateTo(type: string, id: string) {
+    if (!isPlatform) {
+      if (type === "COURSE") router.push("/dashboard/admin/courses")
+      else if (type === "LIVE_CLASS") router.push("/dashboard/admin/live-operations")
+      else if (type === "INSTITUTION") router.push("/dashboard/admin/profile")
+      else router.push(`/dashboard/admin/people?search=${encodeURIComponent(id)}`)
+      onClose()
+      return
+    }
     if (type === "USER") router.push(`/dashboard/platform-admin/users/${id}`)
     else if (type === "INSTITUTION") router.push(`/dashboard/platform-admin/institutions/${id}`)
     else if (type === "LIVE_CLASS") router.push(`/dashboard/platform-admin/live-classes`)
@@ -48,24 +90,35 @@ function GlobalSearchDropdown({ onClose }: { onClose: () => void }) {
 
   const typeColors: Record<string, string> = {
     USER: "bg-blue-100 text-blue-700", INSTITUTION: "bg-emerald-100 text-emerald-700",
+    COURSE: "bg-indigo-100 text-indigo-700",
     LIVE_CLASS: "bg-purple-100 text-purple-700", PAYMENT: "bg-amber-100 text-amber-700",
     CERTIFICATE: "bg-cyan-100 text-cyan-700", SERVICE: "bg-teal-100 text-teal-700",
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-foreground/40" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-xl">
         <div className="flex items-center gap-3 border-b border-border px-4">
           <Search className="size-4 text-muted-foreground" />
-          <input ref={inputRef} type="text" placeholder={t("searchPlatform")}
-            value={query} onChange={(e) => setQuery(e.target.value)}
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={isPlatform ? t("searchPlatform") : t("searchOrganizationPlaceholder")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-muted-foreground" />
           <kbd className="hidden rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">ESC</kbd>
         </div>
         <div className="max-h-80 overflow-y-auto p-2">
           {loading && <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("searching")}</p>}
-          {!loading && query.length >= 2 && results.length === 0 && (
+          {error && !loading && (
+            <p className="flex items-center justify-center gap-2 px-3 py-6 text-center text-sm text-destructive">
+              <AlertCircle className="size-4 shrink-0" />
+              {error}
+            </p>
+          )}
+          {!loading && !error && query.length >= 2 && results.length === 0 && (
             <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("noResults")}</p>
           )}
           {results.map((r) => (
@@ -100,18 +153,22 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
   const { user, logout } = useAuth()
   const router = useRouter()
   const isAdmin = user?.role === "Admin"
+  const isOrgAdmin = user?.role === "Institution Admin"
+  // §020/§065 — the palette must only open for roles whose search endpoint the
+  // caller is actually authorized to hit: platform search is ADMIN-only, org
+  // admins get the institution-scoped search instead.
+  const paletteMode: PaletteMode | null = isAdmin ? "platform" : isOrgAdmin ? "organization" : null
+  const canUsePalette = paletteMode !== null
 
   useEffect(() => {
-    // Platform search palette queries /v1/platform-admin/search (ADMIN-only) —
-    // gate the shortcut so learners/teachers never open a 403 palette.
-    if (!isAdmin) return
+    if (!canUsePalette) return
     function handleKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(true) }
       if (e.key === "Escape") setSearchOpen(false)
     }
     document.addEventListener("keydown", handleKey)
     return () => document.removeEventListener("keydown", handleKey)
-  }, [isAdmin])
+  }, [canUsePalette])
 
   useEffect(() => {
     if (!user || user.role !== "Other Learner") return
@@ -153,11 +210,11 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
           <Menu className="size-5" />
         </Button>
 
-        {isAdmin ? (
+        {canUsePalette ? (
           <button onClick={() => setSearchOpen(true)}
             className="hidden items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted sm:flex">
             <Search className="size-4" />
-            <span>{t("searchPlatform")}</span>
+            <span>{isAdmin ? t("searchPlatform") : t("searchOrganization")}</span>
             <kbd className="ml-4 rounded-md border border-border px-1.5 py-0.5 text-[10px]">Ctrl+K</kbd>
           </button>
         ) : (
@@ -231,7 +288,9 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
         </div>
       </header>
 
-      {searchOpen && <GlobalSearchDropdown onClose={() => setSearchOpen(false)} />}
+      {searchOpen && paletteMode && (
+        <GlobalSearchDropdown mode={paletteMode} onClose={() => setSearchOpen(false)} />
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">

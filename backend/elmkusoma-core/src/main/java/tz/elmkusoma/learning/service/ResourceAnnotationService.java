@@ -1,5 +1,7 @@
 package tz.elmkusoma.learning.service;
 
+import tz.elmkusoma.exception.ResourceNotFoundException;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +34,7 @@ public class ResourceAnnotationService {
                                                        UUID institutionId, UUID studentId) {
         Resource resource = resourceRepository.findById(resourceId)
                 .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
-                .orElseThrow(() -> new RuntimeException("Resource not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
 
         if (request.getParentAnnotationId() != null
                 && !annotationRepository.existsById(request.getParentAnnotationId())) {
@@ -59,7 +61,7 @@ public class ResourceAnnotationService {
     public List<ResourceAnnotationResponse> listAnnotations(UUID resourceId, UUID institutionId, String userRole) {
         resourceRepository.findById(resourceId)
                 .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
-                .orElseThrow(() -> new RuntimeException("Resource not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
 
         List<ResourceAnnotation> annotations =
                 annotationRepository.findByResourceIdAndIsDeletedFalseOrderByCreatedAtDesc(resourceId);

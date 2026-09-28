@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "media_files", indexes = {
@@ -27,10 +28,10 @@ public class MediaFile {
     private Long id;
 
     @Column(name = "institution_id", nullable = false)
-    private Long institutionId;
+    private UUID institutionId;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private UUID userId;
 
     @Column(name = "file_name", nullable = false)
     private String fileName;

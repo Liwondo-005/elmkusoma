@@ -20,6 +20,7 @@ import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -37,9 +38,10 @@ public class LearningController {
     @Operation(summary = "Create a new lesson")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<LessonResponse>> createLesson(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
             @Valid @RequestBody LessonRequest request) {
-        LessonResponse response = learningService.createLesson(institutionId, request);
+        LessonResponse response = learningService.createLesson(institutionId, request, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Lesson created", response));
     }
@@ -49,34 +51,102 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<LessonResponse>> updateLesson(
             @PathVariable UUID id,
-            @Valid @RequestBody LessonRequest request) {
-        LessonResponse response = learningService.updateLesson(id, request);
+            @Valid @RequestBody LessonRequest request,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole,
+            @RequestAttribute("userId") UUID userId) {
+        LessonResponse response = learningService.updateLesson(id, request, institutionId, userEmail, userRole, userId);
         return ResponseEntity.ok(ApiResponse.success("Lesson updated", response));
+    }
+
+    @PutMapping("/lessons/{id}/status")
+    @Operation(summary = "Transition a lesson publication status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<Void>> setLessonStatus(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole,
+            @RequestBody Map<String, String> body) {
+        learningService.setLessonStatus(id, body.get("status"), institutionId, userEmail, userRole);
+        return ResponseEntity.ok(ApiResponse.success("Lesson status updated", null));
     }
 
     @DeleteMapping("/lessons/{id}")
     @Operation(summary = "Delete a lesson")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteLesson(@PathVariable UUID id) {
-        learningService.deleteLesson(id);
+    public ResponseEntity<ApiResponse<Void>> deleteLesson(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        learningService.deleteLesson(id, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Lesson deleted", null));
+    }
+
+    @PostMapping("/lessons/{id}/publish")
+    @Operation(summary = "Publish a lesson (DRAFT -> PUBLISHED)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<LessonResponse>> publishLesson(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        LessonResponse response = learningService.setLessonStatus(id, "PUBLISHED", institutionId, userEmail, userRole);
+        return ResponseEntity.ok(ApiResponse.success("Lesson published", response));
+    }
+
+    @PostMapping("/lessons/{id}/unpublish")
+    @Operation(summary = "Unpublish a lesson (PUBLISHED -> DRAFT)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<LessonResponse>> unpublishLesson(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        LessonResponse response = learningService.setLessonStatus(id, "DRAFT", institutionId, userEmail, userRole);
+        return ResponseEntity.ok(ApiResponse.success("Lesson unpublished", response));
+    }
+
+    @PostMapping("/lessons/{id}/archive")
+    @Operation(summary = "Archive a lesson")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<LessonResponse>> archiveLesson(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        LessonResponse response = learningService.setLessonStatus(id, "ARCHIVED", institutionId, userEmail, userRole);
+        return ResponseEntity.ok(ApiResponse.success("Lesson archived", response));
     }
 
     @GetMapping("/lessons/subject/{subjectId}/class/{classGroupId}")
     @Operation(summary = "Get lessons by subject and class")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessons(
-            @PathVariable UUID subjectId, @PathVariable UUID classGroupId) {
-        List<LessonResponse> response = learningService.getLessonsBySubjectAndClass(subjectId, classGroupId);
+            @PathVariable UUID subjectId,
+            @PathVariable UUID classGroupId,
+            @RequestAttribute("userRole") String userRole) {
+        List<LessonResponse> response = learningService.getLessonsBySubjectAndClass(
+                subjectId, classGroupId, canSeeUnpublished(userRole));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/lessons/class/{classGroupId}")
     @Operation(summary = "Get all lessons for a class")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
-    public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessonsByClass(@PathVariable UUID classGroupId) {
-        List<LessonResponse> response = learningService.getLessonsByClass(classGroupId);
+    public ResponseEntity<ApiResponse<List<LessonResponse>>> getLessonsByClass(
+            @PathVariable UUID classGroupId,
+            @RequestAttribute("userRole") String userRole) {
+        List<LessonResponse> response = learningService.getLessonsByClass(
+                classGroupId, canSeeUnpublished(userRole));
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /** Learners only ever see PUBLISHED, non-archived lessons. */
+    private static boolean canSeeUnpublished(String userRole) {
+        return !"STUDENT".equals(userRole) && !"OTHER_LEARNER".equals(userRole) && !"PARENT".equals(userRole);
     }
 
     @PostMapping("/progress")

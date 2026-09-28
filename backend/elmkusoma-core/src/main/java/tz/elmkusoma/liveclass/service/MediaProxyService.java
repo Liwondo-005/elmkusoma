@@ -19,15 +19,20 @@ public class MediaProxyService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public Map<String, Object> uploadFile(MultipartFile file, UUID institutionId, UUID userId) {
+    /**
+     * Uploads on behalf of the caller: the media service binds institution/user
+     * from the forwarded JWT, never from form fields.
+     */
+    public Map<String, Object> uploadFile(MultipartFile file, String bearerToken) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            if (bearerToken != null && !bearerToken.isBlank()) {
+                headers.set("Authorization", bearerToken.startsWith("Bearer ") ? bearerToken : "Bearer " + bearerToken);
+            }
             
             org.springframework.util.LinkedMultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
             body.add("file", file.getResource());
-            body.add("institutionId", institutionId.toString());
-            body.add("userId", userId.toString());
             
             HttpEntity<org.springframework.util.LinkedMultiValueMap<String, Object>> request = 
                 new HttpEntity<>(body, headers);
@@ -46,15 +51,17 @@ public class MediaProxyService {
         }
     }
 
-    public Map<String, Object> getPresignedUploadUrl(String fileName, String contentType, UUID institutionId) {
+    public Map<String, Object> getPresignedUploadUrl(String fileName, String contentType, String bearerToken) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            if (bearerToken != null && !bearerToken.isBlank()) {
+                headers.set("Authorization", bearerToken.startsWith("Bearer ") ? bearerToken : "Bearer " + bearerToken);
+            }
             
             Map<String, String> request = Map.of(
                 "fileName", fileName,
-                "contentType", contentType,
-                "institutionId", institutionId.toString()
+                "contentType", contentType
             );
             
             HttpEntity<Map<String, String>> httpEntity = new HttpEntity<>(request, headers);
@@ -86,10 +93,16 @@ public class MediaProxyService {
         }
     }
 
-    public Map<String, Object> getDownloadUrl(String mediaId) {
+    public Map<String, Object> getDownloadUrl(String mediaId, String bearerToken) {
         try {
-            ResponseEntity<Map> response = restTemplate.getForEntity(
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            if (bearerToken != null && !bearerToken.isBlank()) {
+                headers.set("Authorization", bearerToken.startsWith("Bearer ") ? bearerToken : "Bearer " + bearerToken);
+            }
+            ResponseEntity<Map> response = restTemplate.exchange(
                 mediaServiceUrl + "/api/v1/media/" + mediaId + "/download",
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
                 Map.class
             );
             return response.getBody();

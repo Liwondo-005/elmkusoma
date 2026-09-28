@@ -14,6 +14,8 @@ import tz.elmkusoma.learning.domain.ResourceTagging;
 import tz.elmkusoma.learning.domain.StudentSavedResource;
 import tz.elmkusoma.learning.dto.ResourceRequest;
 import tz.elmkusoma.learning.dto.ResourceResponse;
+import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.learning.repository.ResourceRepository;
 import tz.elmkusoma.learning.repository.ResourceTagRepository;
 import tz.elmkusoma.learning.repository.ResourceTaggingRepository;
@@ -37,6 +39,7 @@ import java.util.stream.Collectors;
 public class ResourceService {
 
     private final ResourceRepository resourceRepository;
+    private final LessonRepository lessonRepository;
     private final ResourceTagRepository tagRepository;
     private final ResourceTaggingRepository taggingRepository;
     private final StudentSavedResourceRepository savedResourceRepository;
@@ -123,10 +126,10 @@ public class ResourceService {
         Resource resource = resourceRepository.findById(resourceId)
                 .filter(r -> r.getInstitutionId().equals(institutionId))
                 .filter(r -> !r.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Resource not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
 
         if (!canAccessResource(resource, userId, userRole)) {
-            throw new RuntimeException("Access denied to resource");
+            throw new SecurityException("Access denied to resource");
         }
 
         return mapToResponse(resource);
@@ -141,39 +144,48 @@ public class ResourceService {
         List<String> allowedVisibilities = getAllowedVisibilities(userRole);
 
         if (lessonId != null) {
-            return resourceRepository.findVisibleByLessonId(lessonId, getAllowedVisibilities("TEACHER"))
+            return resourceRepository.findVisibleByLessonId(lessonId, allowedVisibilities)
                     .stream()
+                    .filter(r -> canSeeResource(r, userId, userRole))
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
         }
 
         if (moduleId != null) {
-            return resourceRepository.findVisibleByModuleId(moduleId, getAllowedVisibilities("TEACHER"))
+            return resourceRepository.findVisibleByModuleId(moduleId, allowedVisibilities)
                     .stream()
+                    .filter(r -> canSeeResource(r, userId, userRole))
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
         }
 
         if (courseId != null) {
-            return resourceRepository.findVisibleByCourseId(courseId, getAllowedVisibilities("TEACHER"))
+            return resourceRepository.findVisibleByCourseId(courseId, allowedVisibilities)
                     .stream()
+                    .filter(r -> canSeeResource(r, userId, userRole))
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
         }
 
         List<Resource> resources = resourceRepository.findByInstitutionIdAndVisibilities(institutionId, allowedVisibilities);
         return resources.stream()
+                .filter(r -> canSeeResource(r, userId, userRole))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     // ── Update Resource ──
     @Transactional
-    public ResourceResponse updateResource(UUID resourceId, ResourceRequest request, UUID institutionId, UUID userId) {
+    public ResourceResponse updateResource(UUID resourceId, ResourceRequest request, UUID institutionId, UUID userId, String userRole) {
         Resource resource = resourceRepository.findById(resourceId)
                 .filter(r -> r.getInstitutionId().equals(institutionId))
                 .filter(r -> !r.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Resource not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
+
+        // Ownership: only the uploader (or an institution/platform admin) may modify
+        if ((resource.getUploadedBy() == null || !resource.getUploadedBy().equals(userId)) && !isAdminRole(userRole)) {
+            throw new SecurityException("You do not own this resource");
+        }
 
         if (request.getTitle() != null) resource.setTitle(request.getTitle());
         if (request.getDescription() != null) resource.setDescription(request.getDescription());
@@ -186,6 +198,8 @@ public class ResourceService {
         if (request.getMetadata() != null) resource.setMetadata(request.getMetadata());
 
         // Update tags
+        if (request.getLessonId() != null) resource.setLessonId(request.getLessonId());
+
         if (request.getTagNames() != null) {
             List<ResourceTag> tags = request.getTagNames().stream()
                     .map(name -> tagRepository.findByName(name)
@@ -209,11 +223,16 @@ public class ResourceService {
 
     // ── Delete Resource ──
     @Transactional
-    public void deleteResource(UUID resourceId, UUID institutionId, UUID userId) {
+    public void deleteResource(UUID resourceId, UUID institutionId, UUID userId, String userRole) {
         Resource resource = resourceRepository.findById(resourceId)
                 .filter(r -> r.getInstitutionId().equals(institutionId))
                 .filter(r -> !r.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Resource not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
+
+        // Ownership: only the uploader (or an institution/platform admin) may delete
+        if ((resource.getUploadedBy() == null || !resource.getUploadedBy().equals(userId)) && !isAdminRole(userRole)) {
+            throw new SecurityException("You do not own this resource");
+        }
 
         resource.setIsDeleted(true);
         resourceRepository.save(resource);
@@ -225,7 +244,7 @@ public class ResourceService {
     public ResourceResponse addTag(UUID resourceId, String tagName, UUID institutionId) {
         Resource resource = resourceRepository.findById(resourceId)
                 .filter(r -> r.getInstitutionId().equals(institutionId))
-                .orElseThrow(() -> new RuntimeException("Resource not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
 
         ResourceTag tag = tagRepository.findByName(tagName)
                 .orElseGet(() -> tagRepository.save(ResourceTag.builder()
@@ -291,31 +310,62 @@ public class ResourceService {
     }
 
     // ── Helper Methods ──
+
+    /**
+     * Static visibility check used by callers outside this service (e.g. the learner
+     * lesson endpoint that aggregates lesson materials).
+     *
+     * @param resource the resource to check (never null)
+     * @param userId   id of the requesting user (may be null)
+     * @param userRole role of the requesting user
+     * @return true when the caller is allowed to see the resource
+     */
     private boolean canAccessResource(Resource resource, UUID userId, String userRole) {
-        if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole)) {
-            return true;
-        }
-        // Check if user is the owner
-        if (resource.getUploadedBy().equals(userId)) {
-            return true;
-        }
-        // Check visibility
-        List<String> allowedVisibilities = getAllowedVisibilities(userRole);
-        return allowedVisibilities.contains(resource.getVisibility());
+        return canSeeResource(resource, userId, userRole);
     }
 
-    private List<String> getAllowedVisibilities(String userRole) {
-        if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole)) {
+    /**
+     * Single source of truth for read access: admins see everything; the uploader
+     * always sees their own; PRIVATE is owner-only even for other teachers
+     * (prompt: Teacher A must not reach Teacher B's private resources);
+     * everything else follows the role's allowed visibility set.
+     */
+    public static boolean canSeeResource(Resource resource, UUID userId, String userRole) {
+        if (resource == null || Boolean.TRUE.equals(resource.getIsDeleted())
+                || resource.getVisibility() == null) {
+            return false;
+        }
+        if (isAdminRole(userRole)) {
+            return true;
+        }
+        if (resource.getUploadedBy() != null && resource.getUploadedBy().equals(userId)) {
+            return true;
+        }
+        if (resource.getVisibility() == Resource.ResourceVisibility.PRIVATE) {
+            return false;
+        }
+        return getAllowedVisibilities(userRole).contains(resource.getVisibility().name());
+    }
+
+    public static List<String> getAllowedVisibilities(String userRole) {
+        if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole)) {
             return ADMIN_VISIBILITIES;
-        } else if ("TEACHER".equals(userRole)) {
+        } else if ("TEACHER".equals(userRole) || "INSTRUCTOR".equals(userRole) || "LECTURER".equals(userRole)) {
             return TEACHER_VISIBILITIES;
         } else {
             return STUDENT_VISIBILITIES;
         }
     }
 
+    public static boolean isAdminRole(String userRole) {
+        return "ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole);
+    }
+
     private void validateLessonAccess(UUID lessonId, UUID institutionId) {
-        // TODO: Implement lesson access validation
+        lessonRepository.findById(lessonId)
+                .filter(l -> !l.getIsDeleted())
+                .filter(l -> institutionId.equals(l.getInstitutionId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson", "id", lessonId));
     }
 
     private ResourceResponse mapToResponse(Resource resource) {

@@ -55,6 +55,9 @@ public class JwtRequestAttributeFilter extends OncePerRequestFilter implements O
                 String token = extractToken(request);
                 if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
                     String email = jwtTokenProvider.getEmailFromToken(token);
+                    // Kept for service-to-service calls (e.g. media proxy) that must
+                    // forward the caller's own token.
+                    request.setAttribute("bearerToken", token);
 
                     User user = userRepository.findByEmailAndIsDeletedFalse(email).orElse(null);
                     if (user != null) {

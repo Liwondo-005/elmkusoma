@@ -42,4 +42,8 @@ public class Lesson extends BaseEntity {
 
     @Column(name = "is_published", nullable = false)
     private Boolean isPublished = false;
+
+    /** Lifecycle: DRAFT | READY | PUBLISHED | ARCHIVED */
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "DRAFT";
 }

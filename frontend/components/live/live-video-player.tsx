@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { useTranslations } from "next-intl"
 import type { TrackPublication } from "livekit-client"
 import { Video, Clock, WifiOff, AlertCircle, PlayCircle } from "lucide-react"
 
@@ -76,6 +77,10 @@ export function LiveVideoPlayer({
   sessionLive = false,
   liveElapsed = null,
 }: LiveVideoPlayerProps) {
+  const t = useTranslations("live")
+  const tc = useTranslations("common")
+  const ts = useTranslations("status")
+  const te = useTranslations("events")
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const screenRef = useRef<HTMLVideoElement>(null)
@@ -140,28 +145,28 @@ export function LiveVideoPlayer({
       {state === "connecting" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white">
           <span className="size-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          <p className="text-sm opacity-80">Connecting to live session...</p>
+          <p className="text-sm opacity-80">{t("playerConnecting")}</p>
         </div>
       )}
 
       {state === "reconnecting" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white">
           <WifiOff className="size-8 animate-pulse opacity-60" />
-          <p className="text-sm opacity-80">Reconnecting to live session...</p>
+          <p className="text-sm opacity-80">{t("playerReconnecting")}</p>
         </div>
       )}
 
       {state === "error" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-white">
           <AlertCircle className="size-8 opacity-60" />
-          <p className="text-sm opacity-80">Unable to connect to the live session</p>
+          <p className="text-sm opacity-80">{t("playerConnectError")}</p>
           {onRetry && (
             <button
               type="button"
               onClick={onRetry}
               className="mt-1 rounded-lg bg-white/20 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition-colors"
             >
-              Retry
+              {tc("retry")}
             </button>
           )}
         </div>
@@ -169,7 +174,7 @@ export function LiveVideoPlayer({
 
       {state === "ended" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-6 text-center text-white">
-          <p className="text-sm font-medium opacity-90">Live session ended</p>
+          <p className="text-sm font-medium opacity-90">{t("playerEnded")}</p>
           {recordingUrl ? (
             recordingUrl.startsWith("http") ? (
               <a
@@ -178,13 +183,13 @@ export function LiveVideoPlayer({
                 rel="noopener noreferrer"
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm text-white hover:bg-white/30 transition-colors"
               >
-                <PlayCircle className="size-4" /> Watch Recording
+                <PlayCircle className="size-4" /> {t("playerWatchRecording")}
               </a>
             ) : (
-              <p className="mt-2 text-xs opacity-50">Recording is being processed</p>
+              <p className="mt-2 text-xs opacity-50">{te("status.processing")}</p>
             )
           ) : (
-            <p className="mt-1 text-xs opacity-50">No recording available</p>
+            <p className="mt-1 text-xs opacity-50">{te("past.noReplay")}</p>
           )}
         </div>
       )}
@@ -192,14 +197,14 @@ export function LiveVideoPlayer({
       {state === "scheduled" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white">
           <Clock className="size-10 opacity-40" />
-          <p className="text-xs opacity-60">{scheduledLabel || "Session has not started yet"}</p>
+          <p className="text-xs opacity-60">{scheduledLabel || t("playerSessionNotStarted")}</p>
         </div>
       )}
 
       {state === "waiting" && !showTeacherLocal && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-white">
           <Video className="size-10 mb-1 opacity-40" />
-          <p className="text-xs opacity-60">Waiting for the teacher&apos;s live screen...</p>
+          <p className="text-xs opacity-60">{t("playerWaitingTeacher")}</p>
         </div>
       )}
 
@@ -210,7 +215,7 @@ export function LiveVideoPlayer({
           playsInline
           muted
           className="absolute inset-0 h-full w-full object-contain"
-          aria-label="Live video"
+          aria-label={t("playerLiveVideoAria")}
         />
       )}
 
@@ -244,8 +249,8 @@ export function LiveVideoPlayer({
             <Video className="mx-auto mb-2 size-10 opacity-40" />
             <p className="text-xs opacity-60">
               {state === "waiting"
-                ? "Start your live screen — turn on your camera or share your screen"
-                : "Camera off"}
+                ? t("playerStartScreenHint")
+                : t("playerCameraOff")}
             </p>
           </div>
         </div>
@@ -277,7 +282,7 @@ export function LiveVideoPlayer({
       {state === "waiting" && showLiveBadge && !isTeacher && (
         <div className="absolute inset-x-0 top-14 z-10 text-center">
           <span className="rounded bg-black/60 px-2 py-1 text-[11px] text-white/90">
-            Waiting for the teacher&apos;s live screen...
+            {t("playerWaitingTeacher")}
           </span>
         </div>
       )}

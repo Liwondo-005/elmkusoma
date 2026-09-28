@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS media_files (
     id BIGSERIAL PRIMARY KEY,
-    institution_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
+    institution_id UUID NOT NULL,
+    user_id UUID NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     original_name VARCHAR(255) NOT NULL,
     content_type VARCHAR(255) NOT NULL,

@@ -20,6 +20,7 @@ import {
 import { primaryApi, type LiveClassActivity, type LiveClassActivityStats } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
+import { useTranslations } from "next-intl"
 
 interface LiveInteractivePanelProps {
   liveClassId: string
@@ -61,6 +62,7 @@ function PollActivity({
   isTeacher: boolean
   onSubmitted?: () => void
 }) {
+  const t = useTranslations("live")
   const [selected, setSelected] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [stats, setStats] = useState<LiveClassActivityStats | null>(null)
@@ -163,23 +165,23 @@ function PollActivity({
           disabled={!selected || submitting}
           className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
-          {submitting ? "Submitting..." : "Submit Answer"}
+          {submitting ? t("submitting") : t("submitAnswer")}
         </button>
       )}
       {isTeacher && stats && (
         <div className="rounded-xl bg-muted/50 p-4">
           <p className="text-xs font-semibold text-muted-foreground">
-            {stats.totalResponses} response{stats.totalResponses !== 1 ? "s" : ""}
+            {t("responsesCount", { count: stats.totalResponses })}
           </p>
           {stats.responses.slice(0, 5).map((r) => (
             <div key={r.userId} className="mt-1 flex items-center gap-2 text-xs">
               <span className="font-medium text-foreground">{r.userName}</span>
-              <span className="text-muted-foreground">chose {r.answer}</span>
+              <span className="text-muted-foreground">{t("choseAnswer", { answer: r.answer })}</span>
             </div>
           ))}
           {stats.responses.length > 5 && (
             <p className="mt-1 text-xs text-muted-foreground">
-              +{stats.responses.length - 5} more
+              {t("moreResponses", { count: stats.responses.length - 5 })}
             </p>
           )}
         </div>
@@ -202,11 +204,12 @@ function QuizActivity({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [timer, setTimer] = useState(activity.timerSeconds || 0)
   const [submitting, setSubmitting] = useState(false)
+  const t = useTranslations("live")
 
   useEffect(() => {
     if (timer <= 0 || submitted) return
-    const t = setInterval(() => setTimer((p) => p - 1), 1000)
-    return () => clearInterval(t)
+    const timerId = setInterval(() => setTimer((p) => p - 1), 1000)
+    return () => clearInterval(timerId)
   }, [timer, submitted])
 
   const handleSubmit = async () => {
@@ -280,7 +283,7 @@ function QuizActivity({
           disabled={!selected || submitting || timer <= 0}
           className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
-          {submitting ? "Submitting..." : "Submit Answer"}
+          {submitting ? t("submitting") : t("submitAnswer")}
         </button>
       )}
       {submitted && (
@@ -288,9 +291,9 @@ function QuizActivity({
           "rounded-xl p-4 text-sm font-medium",
           isCorrect ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
         )}>
-          {isCorrect ? "Correct! Well done!" : "Incorrect. Keep trying!"}
+          {isCorrect ? t("correctWellDone") : t("incorrectKeepTrying")}
           {activity.correctAnswer && !isCorrect && (
-            <p className="mt-1 text-xs opacity-70">Correct answer: {activity.correctAnswer}</p>
+            <p className="mt-1 text-xs opacity-70">{t("correctAnswerLabel", { answer: activity.correctAnswer })}</p>
           )}
         </div>
       )}
@@ -307,6 +310,7 @@ function TrueFalseActivity({
   isTeacher: boolean
   onSubmitted?: () => void
 }) {
+  const t = useTranslations("live")
   const [selected, setSelected] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
@@ -333,6 +337,7 @@ function TrueFalseActivity({
         {["True", "False"].map((opt) => {
           const isSelected = selected === opt
           const correct = activity.correctAnswer === opt
+          const optLabel = opt === "True" ? t("trueOption") : t("falseOption")
           return (
             <button
               key={opt}
@@ -351,7 +356,7 @@ function TrueFalseActivity({
                     : "border-border bg-card hover:border-primary/50 text-foreground"
               )}
             >
-              {opt}
+              {optLabel}
             </button>
           )
         })}
@@ -362,7 +367,7 @@ function TrueFalseActivity({
           disabled={!selected || submitting}
           className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
-          {submitting ? "Submitting..." : "Submit Answer"}
+          {submitting ? t("submitting") : t("submitAnswer")}
         </button>
       )}
       {submitted && (
@@ -370,7 +375,7 @@ function TrueFalseActivity({
           "rounded-xl p-4 text-sm font-medium",
           isCorrect ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
         )}>
-          {isCorrect ? "Correct!" : "Incorrect."}
+          {isCorrect ? t("correctShort") : t("incorrectShort")}
         </div>
       )}
     </div>
@@ -386,6 +391,7 @@ function MatchingActivity({
   isTeacher: boolean
   onSubmitted?: () => void
 }) {
+  const t = useTranslations("live")
   const leftItems = activity.options.filter((_, i) => i % 2 === 0)
   const rightItems = activity.options.filter((_, i) => i % 2 === 1)
   const [matches, setMatches] = useState<Record<string, string>>({})
@@ -422,7 +428,7 @@ function MatchingActivity({
       <p className="text-base font-semibold text-foreground">{activity.question}</p>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">Items</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase">{t("matchingItems")}</p>
           {leftItems.map((item) => (
             <button
               key={item}
@@ -444,7 +450,7 @@ function MatchingActivity({
           ))}
         </div>
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">Matches</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase">{t("matchingMatches")}</p>
           {rightItems.map((item) => (
             <button
               key={item}
@@ -467,7 +473,7 @@ function MatchingActivity({
           disabled={Object.keys(matches).length < leftItems.length || submitting}
           className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
-          {submitting ? "Submitting..." : "Submit Matches"}
+          {submitting ? t("submitting") : t("submitMatches")}
         </button>
       )}
     </div>
@@ -483,6 +489,7 @@ function DrawingActivity({
   isTeacher: boolean
   onSubmitted?: () => void
 }) {
+  const t = useTranslations("live")
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [drawing, setDrawing] = useState(false)
   const [color, setColor] = useState("#000000")
@@ -551,7 +558,7 @@ function DrawingActivity({
             tool === "pencil" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}
         >
-          Pencil
+          {t("pencilTool")}
         </button>
         <button
           onClick={() => setTool("eraser")}
@@ -560,7 +567,7 @@ function DrawingActivity({
             tool === "eraser" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}
         >
-          Eraser
+          {t("eraserTool")}
         </button>
         <input
           type="color"
@@ -572,7 +579,7 @@ function DrawingActivity({
           onClick={clearCanvas}
           className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground"
         >
-          Clear
+          {t("clearAction")}
         </button>
       </div>
       <canvas
@@ -591,7 +598,7 @@ function DrawingActivity({
           disabled={submitting}
           className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
-          {submitting ? "Submitting..." : "Submit Drawing"}
+          {submitting ? t("submitting") : t("submitDrawing")}
         </button>
       )}
     </div>
@@ -607,6 +614,7 @@ function PredictionActivity({
   isTeacher: boolean
   onSubmitted?: () => void
 }) {
+  const t = useTranslations("live")
   const [selected, setSelected] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [showAnswer, setShowAnswer] = useState(false)
@@ -656,7 +664,7 @@ function PredictionActivity({
           disabled={!selected || submitting}
           className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
-          {submitting ? "Submitting..." : "Make Your Prediction"}
+          {submitting ? t("submitting") : t("makePrediction")}
         </button>
       )}
       {isTeacher && submitted && (
@@ -665,12 +673,12 @@ function PredictionActivity({
           className="flex items-center gap-2 rounded-xl bg-muted px-4 py-2 text-sm font-bold text-muted-foreground"
         >
           {showAnswer ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-          {showAnswer ? "Hide Answer" : "Reveal Answer"}
+          {showAnswer ? t("hideAnswer") : t("revealAnswer")}
         </button>
       )}
       {showAnswer && activity.correctAnswer && (
         <div className="rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
-          Answer: {activity.correctAnswer}
+          {t("answerLabel", { answer: activity.correctAnswer })}
         </div>
       )}
     </div>
@@ -686,6 +694,7 @@ function QuestionActivity({
   isTeacher: boolean
   onSubmitted?: () => void
 }) {
+  const t = useTranslations("live")
   const [answer, setAnswer] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -722,7 +731,7 @@ function QuestionActivity({
           <textarea
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Type your answer..."
+            placeholder={t("typeAnswerPlaceholder")}
             className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary min-h-[100px] resize-none"
           />
           <button
@@ -730,19 +739,19 @@ function QuestionActivity({
             disabled={!answer.trim() || submitting}
             className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
-            {submitting ? "Submitting..." : "Submit Answer"}
+            {submitting ? t("submitting") : t("submitAnswer")}
           </button>
         </>
       )}
       {submitted && (
         <div className="rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
-          Your answer has been submitted!
+          {t("answerSubmitted")}
         </div>
       )}
       {isTeacher && stats && (
         <div className="rounded-xl bg-muted/50 p-4">
           <p className="text-xs font-semibold text-muted-foreground">
-            {stats.totalResponses} response{stats.totalResponses !== 1 ? "s" : ""}
+            {t("responsesCount", { count: stats.totalResponses })}
           </p>
           <div className="mt-2 space-y-2">
             {stats.responses.map((r) => (
@@ -767,6 +776,7 @@ function ChallengeActivity({
   isTeacher: boolean
   onSubmitted?: () => void
 }) {
+  const t = useTranslations("live")
   const [answer, setAnswer] = useState("")
   const [submitted, setSubmitted] = useState(false)
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
@@ -776,8 +786,8 @@ function ChallengeActivity({
 
   useEffect(() => {
     if (timer <= 0 || submitted) return
-    const t = setInterval(() => setTimer((p) => p - 1), 1000)
-    return () => clearInterval(t)
+    const timerId = setInterval(() => setTimer((p) => p - 1), 1000)
+    return () => clearInterval(timerId)
   }, [timer, submitted])
 
   const handleSubmit = async () => {
@@ -812,7 +822,7 @@ function ChallengeActivity({
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-        placeholder="Quick! Type your answer..."
+        placeholder={t("challengePlaceholder")}
         disabled={submitted}
         className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
       />
@@ -822,7 +832,7 @@ function ChallengeActivity({
           disabled={!answer.trim() || timer <= 0 || submitting}
           className="w-full rounded-xl bg-red-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
         >
-          {submitting ? "Submitting..." : "Challenge Submit!"}
+          {submitting ? t("submitting") : t("challengeSubmit")}
         </button>
       )}
       {submitted && (
@@ -830,12 +840,12 @@ function ChallengeActivity({
           "rounded-xl p-4 text-sm font-medium",
           isCorrect ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
         )}>
-          {isCorrect ? "Correct!" : "Not quite!"}
+          {isCorrect ? t("correctShort") : t("notQuite")}
           {score !== null && (
-            <span className="ml-2">Score: {score}</span>
+            <span className="ml-2">{t("scoreLabel", { score })}</span>
           )}
           {!isCorrect && activity.correctAnswer && (
-            <p className="mt-1 text-xs opacity-70">Answer: {activity.correctAnswer}</p>
+            <p className="mt-1 text-xs opacity-70">{t("answerLabel", { answer: activity.correctAnswer })}</p>
           )}
         </div>
       )}
@@ -849,6 +859,8 @@ export function LiveInteractivePanel({
   isOpen,
   onClose,
 }: LiveInteractivePanelProps) {
+  const t = useTranslations("live")
+  const tc = useTranslations("common")
   const [activities, setActivities] = useState<LiveClassActivity[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -862,11 +874,11 @@ export function LiveInteractivePanel({
       const data = await primaryApi.getLiveClassActivities(liveClassId)
       setActivities(data)
     } catch {
-      setError("Could not load activities")
+      setError(t("loadActivitiesError"))
     } finally {
       setLoading(false)
     }
-  }, [liveClassId])
+  }, [liveClassId, t])
 
   useEffect(() => {
     if (isOpen) fetchActivities()
@@ -898,7 +910,7 @@ export function LiveInteractivePanel({
       case "CHALLENGE":
         return <ChallengeActivity {...props} onSubmitted={fetchActivities} />
       default:
-        return <p className="text-sm text-muted-foreground">Unknown activity type</p>
+        return <p className="text-sm text-muted-foreground">{t("unknownActivityType")}</p>
     }
   }
 
@@ -909,7 +921,7 @@ export function LiveInteractivePanel({
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Activities</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("activitiesTitle")}</h3>
         </div>
         <button
           onClick={onClose}
@@ -932,7 +944,7 @@ export function LiveInteractivePanel({
           <div className="flex flex-col items-center py-12 text-center">
             <Sparkles className="size-10 text-muted-foreground/30" />
             <p className="mt-3 text-sm text-muted-foreground">
-              No activities yet. Your teacher will send them soon!
+              {t("noActivities")}
             </p>
           </div>
         ) : (
@@ -972,14 +984,14 @@ export function LiveInteractivePanel({
                   disabled={currentIndex === 0}
                   className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground disabled:opacity-50"
                 >
-                  Previous
+                  {tc("previous")}
                 </button>
                 <button
                   onClick={() => setCurrentIndex((p) => Math.min(activities.length - 1, p + 1))}
                   disabled={currentIndex === activities.length - 1}
                   className="rounded-lg bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground disabled:opacity-50"
                 >
-                  Next
+                  {tc("next")}
                 </button>
               </div>
             )}
