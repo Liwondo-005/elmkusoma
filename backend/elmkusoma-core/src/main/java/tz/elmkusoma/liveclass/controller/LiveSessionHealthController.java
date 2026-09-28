@@ -27,13 +27,20 @@ public class LiveSessionHealthController {
     public ResponseEntity<Map<String, Object>> getHealth() {
         Map<String, Object> health = new HashMap<>();
         boolean configured = liveKitConfig.isConfigured();
+        // Configured-but-unreachable must not read as OPERATIONAL: classrooms
+        // would attempt video against a dead signal server.
+        boolean available = configured && liveKitService.isAvailable();
         health.put("service", "ELMKUSOMA Live");
         health.put("liveKitConfigured", configured);
-        health.put("mode", configured ? "full" : "chat-only");
+        health.put("liveKitAvailable", available);
+        health.put("mode", available ? "full" : "chat-only");
 
-        if (configured) {
+        if (available) {
             health.put("status", "OPERATIONAL");
             health.put("message", "ELMKUSOMA Live is operational.");
+        } else if (configured) {
+            health.put("status", "DEGRADED");
+            health.put("message", "LiveKit server is unreachable. Chat is available.");
         } else {
             health.put("status", "DEGRADED");
             health.put("message", "Live video service is not configured. Chat is available.");

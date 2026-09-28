@@ -187,6 +187,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const startTimeRef = useRef<Date | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const retryCountRef = useRef(0)
+  // LiveKit's reconnect budget is separate from the classroom WS budget: a dead
+  // signal server must not silently consume (or be reset by) chat retries.
+  const lkRetryCountRef = useRef(0)
+  const lkReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const screenVideoRef = useRef<HTMLVideoElement>(null)
   // Restore flag re-armed on every WS (re)connect so refresh/reconnect always
@@ -264,6 +268,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     if (!isInProgress || !liveKitToken || !liveKitUrl || serviceMode !== "full") return
 
     setRoomState("connecting")
+    // Fresh room (initial join, breakout switch, or Retry) gets a fresh budget.
+    lkRetryCountRef.current = 0
     // A token swap tears this room down and builds a fresh one (main room →
     // breakout → back). Remote publications belong to the previous room, so they
     // must not linger on the stage while the new room connects.
@@ -276,11 +282,38 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     })
     roomRef.current = room
 
+    // Bounded LiveKit retry loop. Failed attempts used to be swallowed with an
+    // empty catch, which left the player stuck on "Reconnecting to live session..."
+    // forever; every failure now either schedules the next attempt or surfaces the
+    // error state with the Retry action. `disposed` kills any in-flight schedule
+    // when this effect tears down (token swap), so a stale timer can never
+    // reconnect the new room with the old token.
+    let disposed = false
+    const scheduleLiveKitReconnect = () => {
+      if (disposed) return
+      if (lkReconnectTimeoutRef.current) clearTimeout(lkReconnectTimeoutRef.current)
+      if (!isInProgress || lkRetryCountRef.current >= 10) {
+        setReconnecting(false)
+        setRoomState("error")
+        return
+      }
+      setReconnecting(true)
+      setRoomState("reconnecting")
+      const delay = Math.min(3000 * Math.pow(1.5, lkRetryCountRef.current), 30000)
+      lkRetryCountRef.current++
+      lkReconnectTimeoutRef.current = setTimeout(() => {
+        if (!disposed && roomRef.current && liveKitToken && liveKitUrl) {
+          roomRef.current.connect(liveKitUrl, liveKitToken).catch(() => scheduleLiveKitReconnect())
+        }
+      }, delay)
+    }
+
     room.on(RoomEvent.Connected, () => {
       setConnected(true)
       setReconnecting(false)
       setRoomState("connected")
-      retryCountRef.current = 0
+      lkRetryCountRef.current = 0
+      if (lkReconnectTimeoutRef.current) clearTimeout(lkReconnectTimeoutRef.current)
       // Re-publish local camera/mic captured in a previous room (breakout join or
       // return switches rooms without touching the media stream).
       const stream = mediaStateRef.current
@@ -296,19 +329,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     })
 
     room.on(RoomEvent.Disconnected, () => {
-      if (isInProgress && retryCountRef.current < 10) {
-        setReconnecting(true)
-        setRoomState("reconnecting")
-        const delay = Math.min(3000 * Math.pow(1.5, retryCountRef.current), 30000)
-        retryCountRef.current++
-        setTimeout(() => {
-          if (roomRef.current && liveKitToken && liveKitUrl) {
-            roomRef.current.connect(liveKitUrl, liveKitToken).catch(() => {})
-          }
-        }, delay)
-      } else {
-        setRoomState("error")
-      }
+      scheduleLiveKitReconnect()
     })
 
     room.on(RoomEvent.ParticipantConnected, (participant: LKParticipant) => {
@@ -349,10 +370,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
     room.connect(liveKitUrl, liveKitToken).catch(err => {
       console.error("LiveKit connection failed:", err)
-      setRoomState("error")
+      scheduleLiveKitReconnect()
     })
 
     return () => {
+      disposed = true
+      if (lkReconnectTimeoutRef.current) clearTimeout(lkReconnectTimeoutRef.current)
       room.disconnect()
       roomRef.current = null
     }
@@ -692,6 +715,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           const delay = Math.min(3000 * Math.pow(1.5, retryCountRef.current), 30000)
           retryCountRef.current++
           reconnectTimeoutRef.current = setTimeout(connect, delay)
+        } else {
+          // Budget exhausted (or session not live): drop the banner so the status
+          // chip shows the honest "Offline" instead of "Reconnecting..." forever.
+          setReconnecting(false)
         }
       }
 

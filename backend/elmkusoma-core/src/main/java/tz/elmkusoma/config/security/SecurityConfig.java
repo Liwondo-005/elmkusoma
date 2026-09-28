@@ -164,6 +164,12 @@ public class SecurityConfig {
                         // Object-level fences mirroring the controllers' @PreAuthorize role
                         // sets; running before @PathVariable/@Valid argument resolution
                         // keeps denials from being masked by 400/500 argument errors.
+                        // Teacher-owned /me/** DELETEs (cancel own class, remove own
+                        // announcement) mirror their controllers' hasRole('TEACHER') and
+                        // must be matched before the admin-only fence below, which covers
+                        // teacher records / qualifications / assignments.
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/v1/teachers/me/**")
+                            .hasRole("TEACHER")
                         .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/v1/teachers/**")
                             .hasAnyRole("ADMIN", "INSTITUTION_ADMIN")
                         .requestMatchers(org.springframework.http.HttpMethod.PUT, "/v1/students/**")

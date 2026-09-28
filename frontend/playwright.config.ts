@@ -6,6 +6,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  // Specs wait up to 60s for live-video states; the 30s default aborted them first.
+  timeout: 180_000,
   reporter: "list",
   use: {
     baseURL: "http://localhost:3000",

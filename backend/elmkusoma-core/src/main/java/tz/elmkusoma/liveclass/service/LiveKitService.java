@@ -8,6 +8,8 @@ import tz.elmkusoma.liveclass.config.LiveKitConfig;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -21,6 +23,8 @@ import java.util.*;
 public class LiveKitService {
 
     private static final long PARTICIPANT_TOKEN_TTL_MS = 15 * 60 * 1000;
+    private static final long AVAILABILITY_PROBE_TTL_MS = 10_000;
+    private static final int PROBE_TIMEOUT_MS = 1_500;
 
     private final LiveKitConfig config;
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -28,12 +32,61 @@ public class LiveKitService {
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private volatile long lastProbeAtMs = 0L;
+    private volatile boolean lastProbeResult = false;
+
     public LiveKitService(LiveKitConfig config) {
         this.config = config;
     }
 
+    /**
+     * Available means the browser can actually reach the signal server — not just
+     * that credentials exist. With devkey defaults the config is always "set", and
+     * handing clients a dead ws:// URL makes every classroom stall in
+     * "Reconnecting to live session...". The TCP probe result is cached briefly so
+     * joins and health checks stay cheap.
+     */
     public boolean isAvailable() {
+        if (!config.isConfigured()) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastProbeAtMs < AVAILABILITY_PROBE_TTL_MS) {
+            return lastProbeResult;
+        }
+        boolean reachable = probeServer();
+        lastProbeAtMs = now;
+        lastProbeResult = reachable;
+        if (!reachable) {
+            log.warn("LiveKit configured at {} but the server is not reachable - chat-only fallback",
+                    config.getServer().getUrl());
+        }
+        return reachable;
+    }
+
+    public boolean isConfigured() {
         return config.isConfigured();
+    }
+
+    /** TCP reachability of the configured signal endpoint; overridden in tests. */
+    protected boolean probeServer() {
+        try {
+            URI uri = URI.create(config.getServer().getUrl().replaceFirst("^ws", "http"));
+            String host = uri.getHost();
+            if (host == null) {
+                return false;
+            }
+            int port = uri.getPort();
+            if (port < 0) {
+                port = "https".equals(uri.getScheme()) ? 443 : 80;
+            }
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(host, port), PROBE_TIMEOUT_MS);
+                return true;
+            }
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public String generateToken(UUID classId, UUID userId, String identity, boolean isTeacher) {

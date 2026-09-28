@@ -21,6 +21,14 @@ public class LiveKitHealthIndicator implements HealthIndicator {
                     .withDetail("livekit", "configured")
                     .withDetail("mode", "video+audio+chat")
                     .build();
+        } else if (liveKitService.isConfigured()) {
+            // Credentials exist but the signal server cannot be reached: classes
+            // fall back to chat-only instead of handing out a dead ws:// URL.
+            return Health.up()
+                    .withDetail("livekit", "unreachable")
+                    .withDetail("mode", "chat only")
+                    .withDetail("message", "LiveKit server is not reachable - start it or fix LIVEKIT_URL")
+                    .build();
         } else {
             return Health.up()
                     .withDetail("livekit", "not configured")

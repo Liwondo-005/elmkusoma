@@ -100,7 +100,11 @@ public class LiveSessionController {
                 .roomName(roomName)
                 .liveKitAvailable(liveKitService.isAvailable())
                 .classStatus(liveClass.getStatus())
-                .message(liveKitService.isAvailable() ? "Joined live session" : "LiveKit not configured - chat only")
+                .message(liveKitService.isAvailable()
+                        ? "Joined live session"
+                        : (liveKitService.isConfigured()
+                                ? "LiveKit server unreachable - chat only"
+                                : "LiveKit not configured - chat only"))
                 .build();
 
         log.info("User {} joined live session class={} teacher={}", userId, classId, isTeacher);
