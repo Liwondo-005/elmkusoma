@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2, X } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { platformAdminApi, type UserSummary } from "@/lib/platform-admin-api"
 
 const FALLBACK_AUTHORITIES = [
@@ -35,6 +36,8 @@ interface DelegationFormModalProps {
 }
 
 export function DelegationFormModal({ open, onClose, onSaved }: DelegationFormModalProps) {
+  const t = useTranslations("platformAdmin")
+  const tc = useTranslations("common")
   const [authorities, setAuthorities] = useState<string[]>(FALLBACK_AUTHORITIES)
   const [permissionTokens, setPermissionTokens] = useState<string[]>(FALLBACK_PERMISSIONS)
   const [users, setUsers] = useState<UserSummary[]>([])
@@ -81,12 +84,12 @@ export function DelegationFormModal({ open, onClose, onSaved }: DelegationFormMo
     `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() + ` · ${u.email}` + (u.role ? ` · ${u.role}` : "")
 
   const validate = (): string | null => {
-    if (!form.delegatorId) return "Delegator is required"
-    if (!form.delegateId) return "Delegate is required"
-    if (form.delegatorId === form.delegateId) return "Delegator and delegate must be different users"
-    if (form.permissions.length === 0) return "Select at least one permission"
-    if (!form.reason.trim()) return "A reason is required"
-    if (form.expiresAt && form.startsAt && form.expiresAt <= form.startsAt) return "Expiry must be after the start"
+    if (!form.delegatorId) return t("delegationForm.errDelegatorRequired")
+    if (!form.delegateId) return t("delegationForm.errDelegateRequired")
+    if (form.delegatorId === form.delegateId) return t("delegationForm.errMustDiffer")
+    if (form.permissions.length === 0) return t("delegationForm.errPermissionRequired")
+    if (!form.reason.trim()) return t("delegationForm.errReasonRequired")
+    if (form.expiresAt && form.startsAt && form.expiresAt <= form.startsAt) return t("delegationForm.errExpiryAfterStart")
     return null
   }
 
@@ -112,10 +115,10 @@ export function DelegationFormModal({ open, onClose, onSaved }: DelegationFormMo
         notes: form.notes.trim() || undefined,
         requiresApproval: form.requiresApproval,
       })
-      onSaved(form.requiresApproval ? "Delegation submitted for approval" : "Delegation created and active")
+      onSaved(form.requiresApproval ? t("delegationForm.savedPendingApproval") : t("delegationForm.savedActive"))
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create delegation")
+      setError(err instanceof Error ? err.message : t("delegationForm.saveFailed"))
     } finally {
       setSaving(false)
     }
@@ -134,10 +137,10 @@ export function DelegationFormModal({ open, onClose, onSaved }: DelegationFormMo
       <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-lg">
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Create Delegation</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Grant scoped administrative authority to a platform officer.</p>
+            <h2 className="text-lg font-bold text-foreground">{t("delegationForm.title")}</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("delegationForm.subtitle")}</p>
           </div>
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label="Close">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label={tc("close")}>
             <X className="size-5" />
           </button>
         </div>
@@ -149,16 +152,16 @@ export function DelegationFormModal({ open, onClose, onSaved }: DelegationFormMo
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Delegator (grants authority) *</label>
+              <label className={labelClass}>{t("delegationForm.labelDelegator")}</label>
               <select value={form.delegatorId} onChange={(e) => set("delegatorId", e.target.value)} required className={inputClass}>
-                <option value="">{usersLoading ? "Loading users…" : "Select delegator…"}</option>
+                <option value="">{usersLoading ? t("delegationForm.loadingUsers") : t("delegationForm.selectDelegator")}</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{userLabel(u)}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Delegate (receives authority) *</label>
+              <label className={labelClass}>{t("delegationForm.labelDelegate")}</label>
               <select value={form.delegateId} onChange={(e) => set("delegateId", e.target.value)} required className={inputClass}>
-                <option value="">{usersLoading ? "Loading users…" : "Select delegate…"}</option>
+                <option value="">{usersLoading ? t("delegationForm.loadingUsers") : t("delegationForm.selectDelegate")}</option>
                 {users.map((u) => <option key={u.id} value={u.id}>{userLabel(u)}</option>)}
               </select>
             </div>
@@ -166,19 +169,19 @@ export function DelegationFormModal({ open, onClose, onSaved }: DelegationFormMo
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Authority *</label>
+              <label className={labelClass}>{t("delegationForm.labelAuthority")}</label>
               <select value={form.authority} onChange={(e) => set("authority", e.target.value)} className={inputClass}>
                 {authorities.map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Scope *</label>
+              <label className={labelClass}>{t("delegationForm.labelScope")}</label>
               <input value={form.scope} onChange={(e) => set("scope", e.target.value)} placeholder="PLATFORM, REGION:Dar es Salaam, INSTITUTION:<id>" className={inputClass} />
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Permissions *</label>
+            <label className={labelClass}>{t("delegationForm.labelPermissions")}</label>
             <div className="flex flex-wrap gap-2">
               {permissionTokens.map((token) => (
                 <button key={token} type="button" onClick={() => togglePermission(token)}
@@ -190,47 +193,47 @@ export function DelegationFormModal({ open, onClose, onSaved }: DelegationFormMo
           </div>
 
           <div>
-            <label className={labelClass}>Scoped resources (optional UUIDs, comma separated)</label>
-            <input value={form.resourceIds} onChange={(e) => set("resourceIds", e.target.value)} placeholder="institution / provider ids…" className={inputClass} />
+            <label className={labelClass}>{t("delegationForm.labelResources")}</label>
+            <input value={form.resourceIds} onChange={(e) => set("resourceIds", e.target.value)} placeholder={t("delegationForm.phResources")} className={inputClass} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Starts at</label>
+              <label className={labelClass}>{t("delegationForm.labelStartsAt")}</label>
               <input type="datetime-local" value={form.startsAt} onChange={(e) => set("startsAt", e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Expires at</label>
+              <label className={labelClass}>{t("delegationForm.labelExpiresAt")}</label>
               <input type="datetime-local" value={form.expiresAt} onChange={(e) => set("expiresAt", e.target.value)} className={inputClass} />
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Reason *</label>
-            <input value={form.reason} onChange={(e) => set("reason", e.target.value)} maxLength={500} placeholder="Why is this authority being delegated?" className={inputClass} />
+            <label className={labelClass}>{t("delegationForm.labelReason")}</label>
+            <input value={form.reason} onChange={(e) => set("reason", e.target.value)} maxLength={500} placeholder={t("delegationForm.phReason")} className={inputClass} />
           </div>
 
           <div>
-            <label className={labelClass}>Notes</label>
-            <input value={form.notes} onChange={(e) => set("notes", e.target.value)} maxLength={1000} placeholder="Optional conditions…" className={inputClass} />
+            <label className={labelClass}>{t("delegationForm.labelNotes")}</label>
+            <input value={form.notes} onChange={(e) => set("notes", e.target.value)} maxLength={1000} placeholder={t("delegationForm.phNotes")} className={inputClass} />
           </div>
 
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.requiresApproval} onChange={(e) => set("requiresApproval", e.target.checked)} className="size-4 accent-primary" />
-            Require approval before activation
+            {t("delegationForm.requireApproval")}
           </label>
 
           {confirming && (
             <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm">
-              <p className="font-semibold text-foreground">Confirmation summary</p>
+              <p className="font-semibold text-foreground">{t("delegationForm.confirmTitle")}</p>
               <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
-                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">Delegator:</dt><dd>{delegator ? userLabel(delegator) : form.delegatorId}</dd></div>
-                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">Delegate:</dt><dd>{delegate ? userLabel(delegate) : form.delegateId}</dd></div>
-                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">Authority:</dt><dd>{form.authority}</dd></div>
-                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">Scope:</dt><dd>{form.scope || "PLATFORM"}</dd></div>
-                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">Permissions:</dt><dd>{form.permissions.join(", ")}</dd></div>
-                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">Valid:</dt><dd>{form.startsAt || "now"} → {form.expiresAt || "no expiry"}</dd></div>
-                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">Reason:</dt><dd>{form.reason}</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">{t("delegationForm.rowDelegator")}</dt><dd>{delegator ? userLabel(delegator) : form.delegatorId}</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">{t("delegationForm.rowDelegate")}</dt><dd>{delegate ? userLabel(delegate) : form.delegateId}</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">{t("delegationForm.rowAuthority")}</dt><dd>{form.authority}</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">{t("delegationForm.rowScope")}</dt><dd>{form.scope || "PLATFORM"}</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">{t("delegationForm.rowPermissions")}</dt><dd>{form.permissions.join(", ")}</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">{t("delegationForm.rowValid")}</dt><dd>{t("delegationForm.validValue", { start: form.startsAt || t("delegationForm.validNow"), end: form.expiresAt || t("delegationForm.validNoExpiry") })}</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 font-medium">{t("delegationForm.rowReason")}</dt><dd>{form.reason}</dd></div>
               </dl>
             </div>
           )}
@@ -238,15 +241,15 @@ export function DelegationFormModal({ open, onClose, onSaved }: DelegationFormMo
           <div className="flex justify-end gap-3 pt-2">
             {confirming && (
               <button type="button" onClick={() => setConfirming(false)} disabled={saving} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50">
-                Back
+                {tc("back")}
               </button>
             )}
             <button type="button" onClick={onClose} disabled={saving} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50">
-              Cancel
+              {tc("cancel")}
             </button>
             <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               {saving && <Loader2 className="size-4 animate-spin" />}
-              {confirming ? "Confirm & Create" : "Review"}
+              {confirming ? t("delegationForm.btnConfirmCreate") : tc("review")}
             </button>
           </div>
         </form>

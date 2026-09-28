@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2, X } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { platformAdminApi, type UserSummary, type UserCreatePayload, type UserUpdatePayload } from "@/lib/platform-admin-api"
 
 const ROLES = [
@@ -49,6 +50,8 @@ interface UserFormModalProps {
 }
 
 export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalProps) {
+  const t = useTranslations("platformAdmin")
+  const tc = useTranslations("common")
   const isEdit = Boolean(user)
   const [form, setForm] = useState({
     firstName: "",
@@ -105,15 +108,15 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
     const lastName = form.lastName.trim()
     const email = form.email.trim()
     if (!firstName || !lastName || !email) {
-      setError("First name, last name, and email are required")
+      setError(t("userForm.errNamesEmail"))
       return
     }
     if (!isEdit && !form.password) {
-      setError("Password is required for new users")
+      setError(t("userForm.errPasswordRequired"))
       return
     }
     if (form.password && form.password.length < 8) {
-      setError("Password must be at least 8 characters")
+      setError(t("userForm.errPasswordMin"))
       return
     }
     setSaving(true)
@@ -132,14 +135,14 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
       }
       if (isEdit && user) {
         await platformAdminApi.updateUser(user.id, payload)
-        onSaved("User updated successfully")
+        onSaved(t("userForm.updatedOk"))
       } else {
         await platformAdminApi.createUser(payload)
-        onSaved("User created successfully")
+        onSaved(t("userForm.createdOk"))
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save user")
+      setError(err instanceof Error ? err.message : t("userForm.saveFailed"))
     } finally {
       setSaving(false)
     }
@@ -156,12 +159,12 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-lg">
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-foreground">{isEdit ? "Edit User" : "Add User"}</h2>
+            <h2 className="text-lg font-bold text-foreground">{isEdit ? t("userForm.titleEdit") : t("userForm.titleAdd")}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {isEdit ? "Update the user details below." : "Register a new user on the platform."}
+              {isEdit ? t("userForm.subEdit") : t("userForm.subAdd")}
             </p>
           </div>
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label="Close">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label={tc("close")}>
             <X className="size-5" />
           </button>
         </div>
@@ -173,28 +176,28 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>First Name *</label>
+              <label className={labelClass}>{t("userForm.labelFirstName")}</label>
               <input type="text" value={form.firstName} onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))} required minLength={1} maxLength={100} placeholder="John" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Last Name *</label>
+              <label className={labelClass}>{t("userForm.labelLastName")}</label>
               <input type="text" value={form.lastName} onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))} required minLength={1} maxLength={100} placeholder="Doe" className={inputClass} />
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Email *</label>
+            <label className={labelClass}>{t("userForm.labelEmail")}</label>
             <input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required maxLength={255} placeholder="user@example.com" className={inputClass} />
           </div>
 
           <div>
-            <label className={labelClass}>Phone</label>
+            <label className={labelClass}>{t("userForm.labelPhone")}</label>
             <input type="text" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} maxLength={50} placeholder="+255 ..." className={inputClass} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Role *</label>
+              <label className={labelClass}>{t("userForm.labelRole")}</label>
               <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} className={selectClass}>
                 {ROLES.map((r) => (
                   <option key={r} value={r}>{r}</option>
@@ -202,45 +205,45 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
               </select>
             </div>
             <div>
-              <label className={labelClass}>Status</label>
+              <label className={labelClass}>{t("userForm.labelStatus")}</label>
               <select value={form.isActive ? "active" : "inactive"} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.value === "active" }))} className={selectClass}>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
+                <option value="true">{t("userForm.optActive")}</option>
+                <option value="false">{t("userForm.optInactive")}</option>
               </select>
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Email Verified</label>
+              <label className={labelClass}>{t("userForm.labelEmailVerified")}</label>
               <select value={form.isEmailVerified === true ? "true" : "false"} onChange={(e) => setForm((p) => ({ ...p, isEmailVerified: e.target.value === "true" }))} className={selectClass}>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="true">{t("userForm.optYes")}</option>
+                <option value="false">{t("userForm.optNo")}</option>
               </select>
             </div>
             <div>
-              <label className={labelClass}>Phone Verified</label>
+              <label className={labelClass}>{t("userForm.labelPhoneVerified")}</label>
               <select value={form.isPhoneVerified === true ? "true" : "false"} onChange={(e) => setForm((p) => ({ ...p, isPhoneVerified: e.target.value === "true" }))} className={selectClass}>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+                <option value="true">{t("userForm.optYes")}</option>
+                <option value="false">{t("userForm.optNo")}</option>
               </select>
             </div>
           </div>
 
           {!isEdit && (
             <div>
-              <label className={labelClass}>Password *</label>
-              <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required minLength={8} placeholder="Min 8 characters" className={inputClass} />
+              <label className={labelClass}>{t("userForm.labelPassword")}</label>
+              <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required minLength={8} placeholder={t("userForm.phPassword")} className={inputClass} />
             </div>
           )}
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} disabled={saving} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50">
-              Cancel
+              {tc("cancel")}
             </button>
             <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               {saving && <Loader2 className="size-4 animate-spin" />}
-              {isEdit ? "Save Changes" : "Create User"}
+              {isEdit ? t("userForm.btnSave") : t("userForm.btnCreate")}
             </button>
           </div>
         </form>

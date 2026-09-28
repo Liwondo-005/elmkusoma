@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2, X } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { platformAdminApi, INSTITUTION_TYPES, type EventFormPayload } from "@/lib/platform-admin-api"
 
 interface EventFormModalProps {
@@ -79,6 +80,8 @@ const EVENT_CATEGORIES = [
 const STATUSES = ["DRAFT", "SCHEDULED", "PUBLISHED", "LIVE", "COMPLETED", "CANCELLED", "ARCHIVED"] as const
 
 export function EventFormModal({ open, event, onClose, onSaved }: EventFormModalProps) {
+  const t = useTranslations("platformAdmin")
+  const tc = useTranslations("common")
   const isEdit = Boolean(event)
   const [form, setForm] = useState<EventFormPayload>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -132,11 +135,11 @@ export function EventFormModal({ open, event, onClose, onSaved }: EventFormModal
     e.preventDefault()
     const title = form.title.trim()
     if (!title) {
-      setError("Event title is required")
+      setError(t("eventForm.errTitleRequired"))
       return
     }
     if (!form.startsAt) {
-      setError("Start time is required")
+      setError(t("eventForm.errStartRequired"))
       return
     }
     setSaving(true)
@@ -169,14 +172,14 @@ export function EventFormModal({ open, event, onClose, onSaved }: EventFormModal
       }
       if (isEdit && event) {
         await platformAdminApi.updateEvent(event.id, payload)
-        onSaved("Event updated successfully")
+        onSaved(t("eventForm.updatedOk"))
       } else {
         await platformAdminApi.createEvent(payload)
-        onSaved("Event created successfully")
+        onSaved(t("eventForm.createdOk"))
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save event")
+      setError(err instanceof Error ? err.message : t("eventForm.saveFailed"))
     } finally {
       setSaving(false)
     }
@@ -192,12 +195,12 @@ export function EventFormModal({ open, event, onClose, onSaved }: EventFormModal
       <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-lg">
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-foreground">{isEdit ? "Edit Event" : "Create Event"}</h2>
+            <h2 className="text-lg font-bold text-foreground">{isEdit ? t("eventForm.titleEdit") : t("eventForm.titleCreate")}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {isEdit ? "Update the event details below." : "Register a new event on the platform."}
+              {isEdit ? t("eventForm.subEdit") : t("eventForm.subCreate")}
             </p>
           </div>
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label="Close">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label={tc("close")}>
             <X className="size-5" />
           </button>
         </div>
@@ -208,30 +211,30 @@ export function EventFormModal({ open, event, onClose, onSaved }: EventFormModal
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className={labelClass}>Title *</label>
-            <input type="text" value={form.title} onChange={set("title")} required minLength={2} maxLength={300} placeholder="e.g. Annual Tech Conference 2026" className={inputClass} />
+            <label className={labelClass}>{t("eventForm.labelTitle")}</label>
+            <input type="text" value={form.title} onChange={set("title")} required minLength={2} maxLength={300} placeholder={t("eventForm.phTitle")} className={inputClass} />
           </div>
 
           <div>
-            <label className={labelClass}>Description</label>
-            <textarea value={form.description} onChange={set("description")} rows={3} maxLength={2000} placeholder="Event description..." className={inputClass} />
+            <label className={labelClass}>{t("eventForm.labelDescription")}</label>
+            <textarea value={form.description} onChange={set("description")} rows={3} maxLength={2000} placeholder={t("eventForm.phDescription")} className={inputClass} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Event Type *</label>
+              <label className={labelClass}>{t("eventForm.labelEventType")}</label>
               <select value={form.eventType} onChange={set("eventType")} className={inputClass}>
-                {EVENT_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                {EVENT_TYPES.map((et) => (
+                  <option key={et} value={et}>{et}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Category</label>
+              <label className={labelClass}>{t("eventForm.labelCategory")}</label>
               <select value={form.category} onChange={set("category")} className={inputClass}>
-                <option value="">Select category…</option>
-                {EVENT_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                <option value="">{t("eventForm.selectCategory")}</option>
+                {EVENT_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
@@ -239,129 +242,129 @@ export function EventFormModal({ open, event, onClose, onSaved }: EventFormModal
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Status</label>
+              <label className={labelClass}>{t("eventForm.labelStatus")}</label>
               <select value={form.status} onChange={set("status")} className={inputClass}>
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                {STATUSES.map((st) => (
+                  <option key={st} value={st}>{st}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Timezone</label>
+              <label className={labelClass}>{t("eventForm.labelTimezone")}</label>
               <input type="text" value={form.timezone} onChange={set("timezone")} maxLength={50} className={inputClass} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Start Date/Time *</label>
+              <label className={labelClass}>{t("eventForm.labelStartsAt")}</label>
               <input type="datetime-local" value={form.startsAt} onChange={set("startsAt")} required className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>End Date/Time</label>
+              <label className={labelClass}>{t("eventForm.labelEndsAt")}</label>
               <input type="datetime-local" value={form.endsAt ?? ""} onChange={set("endsAt")} className={inputClass} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Duration (minutes)</label>
+              <label className={labelClass}>{t("eventForm.labelDuration")}</label>
               <input type="number" value={form.durationMinutes ?? 60} onChange={set("durationMinutes")} min={1} max={10080} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Max Participants</label>
+              <label className={labelClass}>{t("eventForm.labelMaxParticipants")}</label>
               <input type="number" value={form.maxParticipants ?? ""} onChange={set("maxParticipants")} min={1} max={100000} className={inputClass} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Location</label>
-              <input type="text" value={form.location} onChange={set("location")} maxLength={255} placeholder="e.g. Main Hall, Building A" className={inputClass} />
+              <label className={labelClass}>{t("eventForm.labelLocation")}</label>
+              <input type="text" value={form.location} onChange={set("location")} maxLength={255} placeholder={t("eventForm.phLocation")} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Meeting URL</label>
+              <label className={labelClass}>{t("eventForm.labelMeetingUrl")}</label>
               <input type="url" value={form.meetingUrl} onChange={set("meetingUrl")} maxLength={255} placeholder="https://meet.example.com/..." className={inputClass} />
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Thumbnail URL</label>
+            <label className={labelClass}>{t("eventForm.labelThumbnail")}</label>
             <input type="url" value={form.thumbnailUrl} onChange={set("thumbnailUrl")} maxLength={500} placeholder="https://..." className={inputClass} />
           </div>
 
           <div>
-            <label className={labelClass}>Tags (comma separated)</label>
-            <input type="text" value={form.tags} onChange={set("tags")} maxLength={500} placeholder="tech, education, webinar" className={inputClass} />
+            <label className={labelClass}>{t("eventForm.labelTags")}</label>
+            <input type="text" value={form.tags} onChange={set("tags")} maxLength={500} placeholder={t("eventForm.phTags")} className={inputClass} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Access Level</label>
-              <input type="text" value={form.accessLevel} onChange={set("accessLevel")} maxLength={50} placeholder="public, private, invite-only" className={inputClass} />
+              <label className={labelClass}>{t("eventForm.labelAccessLevel")}</label>
+              <input type="text" value={form.accessLevel} onChange={set("accessLevel")} maxLength={50} placeholder={t("eventForm.phAccessLevel")} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Presenter Name</label>
-              <input type="text" value={form.presenterName} onChange={set("presenterName")} maxLength={100} placeholder="Dr. Jane Smith" className={inputClass} />
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>Event Format</label>
-              <input type="text" value={form.eventFormat} onChange={set("eventFormat")} maxLength={50} placeholder="online, hybrid, in-person" className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>Difficulty</label>
-              <input type="text" value={form.difficulty} onChange={set("difficulty")} maxLength={50} placeholder="beginner, intermediate, advanced" className={inputClass} />
+              <label className={labelClass}>{t("eventForm.labelPresenter")}</label>
+              <input type="text" value={form.presenterName} onChange={set("presenterName")} maxLength={100} placeholder={t("eventForm.phPresenter")} className={inputClass} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Target Audience</label>
-              <input type="text" value={form.targetAudience} onChange={set("targetAudience")} maxLength={255} placeholder="Students, Professionals, All" className={inputClass} />
+              <label className={labelClass}>{t("eventForm.labelFormat")}</label>
+              <input type="text" value={form.eventFormat} onChange={set("eventFormat")} maxLength={50} placeholder={t("eventForm.phFormat")} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Presenter Name</label>
-              <input type="text" value={form.presenterName} onChange={set("presenterName")} maxLength={100} placeholder="Dr. Jane Smith" className={inputClass} />
+              <label className={labelClass}>{t("eventForm.labelDifficulty")}</label>
+              <input type="text" value={form.difficulty} onChange={set("difficulty")} maxLength={50} placeholder={t("eventForm.phDifficulty")} className={inputClass} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Prerequisites</label>
-              <input type="text" value={form.prerequisites} onChange={set("prerequisites")} maxLength={500} placeholder="Basic programming knowledge" className={inputClass} />
+              <label className={labelClass}>{t("eventForm.labelAudience")}</label>
+              <input type="text" value={form.targetAudience} onChange={set("targetAudience")} maxLength={255} placeholder={t("eventForm.phAudience")} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Learning Outcomes</label>
-              <input type="text" value={form.learningOutcomes} onChange={set("learningOutcomes")} maxLength={500} placeholder="Learn React basics, Build a project" className={inputClass} />
+              <label className={labelClass}>{t("eventForm.labelPresenter")}</label>
+              <input type="text" value={form.presenterName} onChange={set("presenterName")} maxLength={100} placeholder={t("eventForm.phPresenter")} className={inputClass} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>{t("eventForm.labelPrereq")}</label>
+              <input type="text" value={form.prerequisites} onChange={set("prerequisites")} maxLength={500} placeholder={t("eventForm.phPrereq")} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>{t("eventForm.labelOutcomes")}</label>
+              <input type="text" value={form.learningOutcomes} onChange={set("learningOutcomes")} maxLength={500} placeholder={t("eventForm.phOutcomes")} className={inputClass} />
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Agenda</label>
-            <textarea value={form.agenda} onChange={set("agenda")} rows={4} maxLength={2000} placeholder="Event schedule and topics..." className={inputClass} />
+            <label className={labelClass}>{t("eventForm.labelAgenda")}</label>
+            <textarea value={form.agenda} onChange={set("agenda")} rows={4} maxLength={2000} placeholder={t("eventForm.phAgenda")} className={inputClass} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <label className={labelClass}>Related Course ID</label>
+              <label className={labelClass}>{t("eventForm.labelCourseId")}</label>
               <input type="text" value={form.relatedCourseId ?? ""} onChange={set("relatedCourseId")} placeholder="UUID" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Related Module ID</label>
+              <label className={labelClass}>{t("eventForm.labelModuleId")}</label>
               <input type="text" value={form.relatedModuleId ?? ""} onChange={set("relatedModuleId")} placeholder="UUID" className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Related Lesson ID</label>
+              <label className={labelClass}>{t("eventForm.labelLessonId")}</label>
               <input type="text" value={form.relatedLessonId ?? ""} onChange={set("relatedLessonId")} placeholder="UUID" className={inputClass} />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Provider ID</label>
+              <label className={labelClass}>{t("eventForm.labelProviderId")}</label>
               <input type="text" value={form.providerId ?? ""} onChange={set("providerId")} placeholder="UUID (optional)" className={inputClass} />
             </div>
           </div>
@@ -369,21 +372,21 @@ export function EventFormModal({ open, event, onClose, onSaved }: EventFormModal
           <div className="flex items-center gap-4">
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={form.isFree} onChange={(e) => setForm((p) => ({ ...p, isFree: e.target.checked }))} className="rounded border-border" />
-              <span className="text-sm">Free Event</span>
+              <span className="text-sm">{t("eventForm.freeEvent")}</span>
             </label>
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={form.requiresApproval} onChange={(e) => setForm((p) => ({ ...p, requiresApproval: e.target.checked }))} className="rounded border-border" />
-              <span className="text-sm">Requires Approval</span>
+              <span className="text-sm">{t("eventForm.requiresApproval")}</span>
             </label>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} disabled={saving} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50">
-              Cancel
+              {tc("cancel")}
             </button>
             <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               {saving && <Loader2 className="size-4 animate-spin" />}
-              {isEdit ? "Save Changes" : "Create Event"}
+              {isEdit ? t("eventForm.btnSave") : t("eventForm.btnCreate")}
             </button>
           </div>
         </form>
