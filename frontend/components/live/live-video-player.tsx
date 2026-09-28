@@ -26,6 +26,13 @@ interface LiveVideoPlayerProps {
   onRetry?: () => void
   children?: React.ReactNode
   pipStream?: MediaStream | null
+  // Authoritative live-session identity (driven by the classroom's polled
+  // LiveClass status, never by media-connection state): shows the ELMKUSOMA
+  // broadcast bug + elapsed duration only while the session is really LIVE.
+  sessionLive?: boolean
+  // Elapsed live duration formatted HH:MM:SS from the authoritative start
+  // timestamp. null/undefined hides the timer (scheduled/ended/replay).
+  liveElapsed?: string | null
 }
 
 function attachMedia(
@@ -66,6 +73,8 @@ export function LiveVideoPlayer({
   onRetry,
   children,
   pipStream = null,
+  sessionLive = false,
+  liveElapsed = null,
 }: LiveVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -242,10 +251,26 @@ export function LiveVideoPlayer({
         </div>
       )}
 
-      {showLiveBadge && (
-        <div className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-md bg-red-600/90 px-2 py-1 text-[11px] font-bold tracking-wide text-white shadow">
-          <span className="size-1.5 animate-pulse rounded-full bg-white" />
-          LIVE
+      {sessionLive && (
+        <div
+          className="absolute left-2 top-2 z-10 inline-flex items-center gap-1.5 rounded-md bg-black/55 px-2 py-1 text-[10px] font-bold tracking-wide text-white shadow-sm sm:left-3 sm:top-3 sm:text-[11px]"
+          data-live-identity
+        >
+          <span className="font-extrabold tracking-[0.12em]">ELMKUSOMA</span>
+          <span className="inline-flex items-center gap-1 border-l border-white/30 pl-1.5">
+            <span className="size-1.5 animate-pulse rounded-full bg-red-500 motion-reduce:animate-none" aria-hidden="true" />
+            <span>LIVE</span>
+          </span>
+        </div>
+      )}
+
+      {sessionLive && liveElapsed != null && (
+        <div
+          className="absolute right-2 top-2 z-10 rounded-md bg-black/55 px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-white shadow-sm sm:right-3 sm:top-3 sm:text-[11px]"
+          data-live-elapsed
+          aria-label="Live session duration"
+        >
+          {liveElapsed}
         </div>
       )}
 

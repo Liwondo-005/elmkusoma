@@ -185,6 +185,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const wsRef = useRef<WebSocket | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const startTimeRef = useRef<Date | null>(null)
+  // Authoritative live-start anchor (epoch ms), set only from server-recorded
+  // timestamps via applySessionStart — never from page-load/mount time.
+  const [sessionStartMs, setSessionStartMs] = useState<number | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const retryCountRef = useRef(0)
   // LiveKit's reconnect budget is separate from the classroom WS budget: a dead
@@ -246,19 +249,39 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
   const getElapsed = useCallback(() => {
     if (!startTimeRef.current) return "00:00:00"
-    const diff = Math.floor((Date.now() - startTimeRef.current.getTime()) / 1000)
+    const diff = Math.max(0, Math.floor((Date.now() - startTimeRef.current.getTime()) / 1000))
     const h = String(Math.floor(diff / 3600)).padStart(2, "0")
     const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0")
     const s = String(diff % 60).padStart(2, "0")
     return `${h}:${m}:${s}`
   }, [])
 
+  // §009/§010: elapsed ALWAYS derives from the authoritative session-start
+  // timestamp recorded by the server (earliest participant joinedAt — the WS
+  // JOIN handler rejects unless the class is IN_PROGRESS/LIVE, so the first
+  // join ≈ the moment the session went live). Monotonic-min keeps refresh,
+  // reconnect and remount on the same anchor; it is never anchored to
+  // page-load time, so a refresh continues instead of restarting at 00:00:00.
+  const applySessionStart = useCallback((iso: string | null | undefined) => {
+    if (!iso) return
+    const ms = new Date(iso).getTime()
+    if (Number.isNaN(ms)) return
+    setSessionStartMs(prev => (prev == null || ms < prev ? ms : prev))
+  }, [])
+
   useEffect(() => {
-    if (!isInProgress) return
-    startTimeRef.current = new Date()
+    startTimeRef.current = sessionStartMs != null ? new Date(sessionStartMs) : null
+  }, [sessionStartMs])
+
+  useEffect(() => {
+    if (!isInProgress) {
+      setElapsed("00:00:00")
+      return
+    }
+    setElapsed(getElapsed())
     const interval = setInterval(() => setElapsed(getElapsed()), 1000)
     return () => clearInterval(interval)
-  }, [isInProgress, getElapsed])
+  }, [isInProgress, sessionStartMs, getElapsed])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -382,8 +405,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     // roomName: isClassroomSource reads it to relax source gating inside breakout rooms.
   }, [isInProgress, liveKitToken, liveKitUrl, serviceMode, roomName])
 
+  // Status polling. Runs for SCHEDULED too (only ENDED stops it): a learner
+  // already sitting in the classroom must see the session flip to LIVE when
+  // the teacher starts it — the WS cannot (JOIN is rejected pre-start) and
+  // there is no other push channel, so without this read the page would stay
+  // "scheduled" until a manual refresh.
   useEffect(() => {
-    if (!isInProgress) return
+    if (sessionEnded) return
     let cancelled = false
     const iv = setInterval(async () => {
       try {
@@ -397,7 +425,29 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       cancelled = true
       clearInterval(iv)
     }
-  }, [isInProgress, liveClass.id, sessionStatus])
+  }, [sessionEnded, liveClass.id, sessionStatus])
+
+  // Authoritative elapsed anchor: earliest server-recorded participant join,
+  // read once per live session through the EXISTING participants endpoint
+  // (full history — leavers keep their original joinedAt, rejoin preserves it).
+  // Any earlier anchor already seen from the WS stays (monotonic min).
+  useEffect(() => {
+    if (!isInProgress) {
+      setSessionStartMs(null)
+      return
+    }
+    let cancelled = false
+    learnerApi
+      .getLiveParticipants(liveClass.id)
+      .then(list => {
+        if (cancelled || !Array.isArray(list)) return
+        for (const p of list) applySessionStart(p.joinedAt)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [isInProgress, liveClass.id, applySessionStart])
 
   useEffect(() => {
     if (!isInProgress || !token || !user) return
@@ -452,6 +502,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         switch (data.type) {
           case "USER_JOINED":
             if (data.role === "TEACHER") teacherUserIdRef.current = data.userId
+            applySessionStart(data.timestamp)
             setParticipants((prev) => {
               if (prev.some((p) => p.userId === data.userId)) return prev
               return [...prev, { userId: data.userId, userName: data.userName, role: data.role || "LEARNER", joinedAt: data.timestamp }]
@@ -483,6 +534,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               const teacher = data.participants.find((p: Participant) => p.role === "TEACHER")
               if (teacher) teacherUserIdRef.current = teacher.userId
               setParticipants(data.participants)
+              for (const p of data.participants) applySessionStart(p.joinedAt)
             }
             // JOIN ack ⇒ this client's participant row exists server-side, so the
             // session-scoped reads below are authorized. Once per connection:
@@ -1678,6 +1730,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         <div className="flex flex-col gap-4 order-2 lg:order-1">
           <LiveVideoPlayer
             state={playerState}
+            sessionLive={isInProgress}
+            liveElapsed={isInProgress ? elapsed : null}
             remoteVideoTrack={remoteVideoTrack}
             remoteAudioTrack={remoteAudioTrack}
             isTeacher={isTeacherClient}

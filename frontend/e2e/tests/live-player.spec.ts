@@ -100,6 +100,12 @@ const teacherUser = {
 
 const playerState = (page: Page) => page.locator("[data-live-player-state]")
 
+function parseElapsed(text: string | null): number {
+  const m = /^(\d{2}):(\d{2}):(\d{2})$/.exec((text || "").trim())
+  expect(m, `elapsed was "${text}"`).toBeTruthy()
+  return Number(m![1]) * 3600 + Number(m![2]) * 60 + Number(m![3])
+}
+
 test.beforeAll(async ({ playwright, request }) => {
   test.setTimeout(180_000)
   apiRequest = await playwright.request.newContext()
@@ -153,6 +159,8 @@ test("scheduled class shows SCHEDULED state and no LIVE badge", async ({ page })
   await page.goto(`/live-classes/${scheduledClassId}`)
   await expect(playerState(page)).toHaveAttribute("data-live-player-state", "scheduled", { timeout: 45000 })
   await expect(playerState(page).getByText("LIVE", { exact: true })).toHaveCount(0)
+  await expect(playerState(page).getByText("ELMKUSOMA")).toHaveCount(0)
+  await expect(playerState(page).locator("[data-live-elapsed]")).toHaveCount(0)
 })
 
 test("ended class shows ENDED state, recording copy, and no LIVE badge", async ({ page }) => {
@@ -161,6 +169,8 @@ test("ended class shows ENDED state, recording copy, and no LIVE badge", async (
   await expect(playerState(page)).toHaveAttribute("data-live-player-state", "ended", { timeout: 45000 })
   await expect(playerState(page).getByText("Live session ended")).toBeVisible()
   await expect(playerState(page).getByText("LIVE", { exact: true })).toHaveCount(0)
+  await expect(playerState(page).getByText("ELMKUSOMA")).toHaveCount(0)
+  await expect(playerState(page).locator("[data-live-elapsed]")).toHaveCount(0)
 })
 
 test("in-progress class connects to LiveKit and shows WAITING state with LIVE badge at 16:9", async ({ page }) => {
@@ -169,6 +179,10 @@ test("in-progress class connects to LiveKit and shows WAITING state with LIVE ba
 
   await expect(playerState(page)).toHaveAttribute("data-live-player-state", "waiting", { timeout: 60000 })
   await expect(playerState(page).getByText("LIVE", { exact: true })).toBeVisible()
+  await expect(playerState(page).getByText("ELMKUSOMA")).toBeVisible()
+  const waitingElapsed = playerState(page).locator("[data-live-elapsed]")
+  await expect(waitingElapsed).toBeVisible()
+  await expect(waitingElapsed).toHaveText(/^\d{2}:\d{2}:\d{2}$/)
   await expect(playerState(page).getByText("Waiting for the teacher's live screen...").first()).toBeVisible()
 
   const box = await playerState(page).boundingBox()
@@ -213,9 +227,86 @@ test("teacher publishes camera -> learner sees LIVE state with remote video", as
     )
     await expect(learnerPage.locator('video[aria-label="Live video"]')).toBeVisible({ timeout: 30000 })
     await expect(playerState(learnerPage).getByText("LIVE", { exact: true })).toBeVisible()
+    await expect(playerState(learnerPage).getByText("ELMKUSOMA")).toBeVisible()
+    await expect(playerState(learnerPage).locator("[data-live-elapsed]")).toHaveText(/^\d{2}:\d{2}:\d{2}$/)
   } finally {
     await teacherCtx.close()
     await learnerCtx.close()
+  }
+})
+
+test("elapsed duration continues across a page refresh", async ({ page }) => {
+  await seedAuth(page, studentToken, studentUser)
+  await page.goto(`/live-classes/${liveClassId}`)
+  const elapsed = playerState(page).locator("[data-live-elapsed]")
+  await expect(elapsed).toBeVisible({ timeout: 60000 })
+  const before = parseElapsed(await elapsed.textContent())
+  await page.waitForTimeout(2500)
+  await page.reload()
+  await expect(playerState(page)).toHaveAttribute(
+    "data-live-player-state",
+    /waiting|live/,
+    { timeout: 60000 },
+  )
+  await expect(elapsed).toBeVisible()
+  const after = parseElapsed(await elapsed.textContent())
+  expect(after).toBeGreaterThanOrEqual(before + 2)
+})
+
+test("mobile viewport keeps broadcast overlays compact and overflow-free", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 667 } })
+  const page = await ctx.newPage()
+  try {
+    await seedAuth(page, studentToken, studentUser)
+    await page.goto(`/live-classes/${liveClassId}`)
+    await expect(playerState(page)).toHaveAttribute(
+      "data-live-player-state",
+      /waiting|live/,
+      { timeout: 60000 },
+    )
+    await expect(playerState(page).getByText("ELMKUSOMA")).toBeVisible()
+    await expect(playerState(page).locator("[data-live-elapsed]")).toBeVisible()
+    const box = await playerState(page).boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.width).toBeLessThanOrEqual(375)
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    )
+    expect(overflow).toBeLessThanOrEqual(0)
+  } finally {
+    await ctx.close()
+  }
+})
+
+test("learner already inside sees LIVE identity appear when teacher starts, without refresh", async ({ page, request }) => {
+  // Far-future slot: the backend rejects overlapping schedules per teacher and
+  // beforeAll's classes occupy the next ~85 minutes.
+  const realtimeClassId = await createClass(request, `E2E Realtime ${Date.now()}`, 180)
+  try {
+    await seedAuth(page, studentToken, studentUser)
+    await page.goto(`/live-classes/${realtimeClassId}`)
+    await expect(playerState(page)).toHaveAttribute("data-live-player-state", "scheduled", { timeout: 45000 })
+    await expect(playerState(page).getByText("ELMKUSOMA")).toHaveCount(0)
+    await expect(playerState(page).locator("[data-live-elapsed]")).toHaveCount(0)
+
+    await teacherPost(`/v1/teachers/me/live-classes/${realtimeClassId}/start`)
+
+    await expect(playerState(page).getByText("ELMKUSOMA")).toBeVisible({ timeout: 45000 })
+    await expect(playerState(page).locator("[data-live-elapsed]")).toHaveText(
+      /^\d{2}:\d{2}:\d{2}$/,
+      { timeout: 15000 },
+    )
+  } finally {
+    await apiRequest
+      .post(`${API}/v1/teachers/me/live-classes/${realtimeClassId}/end`, {
+        headers: { Authorization: `Bearer ${teacherToken}`, "X-Institution-Id": INST },
+      })
+      .catch(() => {})
+    await apiRequest
+      .delete(`${API}/v1/teachers/me/live-classes/${realtimeClassId}`, {
+        headers: { Authorization: `Bearer ${teacherToken}`, "X-Institution-Id": INST },
+      })
+      .catch(() => {})
   }
 })
 
@@ -235,4 +326,6 @@ test("ending the session flips player to ENDED and removes LIVE badge", async ({
 
   await expect(playerState(page)).toHaveAttribute("data-live-player-state", "ended", { timeout: 45000 })
   await expect(playerState(page).getByText("LIVE", { exact: true })).toHaveCount(0)
+  await expect(playerState(page).getByText("ELMKUSOMA")).toHaveCount(0)
+  await expect(playerState(page).locator("[data-live-elapsed]")).toHaveCount(0)
 })
