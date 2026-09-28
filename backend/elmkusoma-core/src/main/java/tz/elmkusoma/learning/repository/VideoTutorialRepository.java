@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import tz.elmkusoma.learning.domain.VideoTutorial;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -18,11 +19,15 @@ public interface VideoTutorialRepository extends JpaRepository<VideoTutorial, UU
 
     List<VideoTutorial> findByLessonIdAndIsDeletedFalse(UUID lessonId);
 
+    Optional<VideoTutorial> findByInstitutionIdAndRecordingUrlAndIsDeletedFalse(UUID institutionId, String recordingUrl);
+
     List<VideoTutorial> findByModuleIdAndIsDeletedFalse(UUID moduleId);
 
     List<VideoTutorial> findByCourseIdAndIsDeletedFalse(UUID courseId);
 
     List<VideoTutorial> findByCreatedByAndIsDeletedFalse(String createdBy);
+
+    List<VideoTutorial> findByRecordingUrlAndInstitutionIdAndIsDeletedFalse(String recordingUrl, UUID institutionId);
 
     @Query("SELECT v FROM VideoTutorial v WHERE v.institutionId = :institutionId AND v.isDeleted = false AND v.visibility IN :visibilities")
     List<VideoTutorial> findByInstitutionIdAndVisibilities(@Param("institutionId") UUID institutionId, @Param("visibilities") List<String> visibilities);

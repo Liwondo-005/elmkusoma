@@ -11,6 +11,7 @@ import {
   type CourseModuleSummary,
   type CourseLesson,
   type Enrollment,
+  type LessonMaterial,
   setLastAccessedLesson,
 } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
@@ -49,6 +50,7 @@ export default function LessonViewerPage() {
   const [currentModule, setCurrentModule] = useState<CourseModuleSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [materials, setMaterials] = useState<LessonMaterial[]>([])
   const [completing, setCompleting] = useState(false)
   const [completed, setCompleted] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
@@ -60,12 +62,14 @@ export default function LessonViewerPage() {
       setLoading(true)
       setError(null)
 
-      const [courseResp, enrollments] = await Promise.all([
+      const [courseResp, enrollments, lessonDetail] = await Promise.all([
         learnerApi.getCourse(courseId),
         learnerApi.getEnrollments().catch(() => []),
+        learnerApi.getLessonDetail(lessonId).catch(() => null),
       ])
 
       setCourseData(courseResp)
+      setMaterials(lessonDetail?.materials || [])
       const existing = enrollments.find((e) => e.courseId === courseId)
       setEnrollment(existing || null)
 
@@ -373,6 +377,56 @@ export default function LessonViewerPage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">{t("lesson.materials")}</h2>
+        {materials.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("lesson.materialsEmpty")}</p>
+        ) : (
+          <div className="space-y-2">
+            {materials.map((material) => {
+              const MaterialIcon = material.kind === "video" ? Video : FileText
+              const duration =
+                material.durationSeconds && material.durationSeconds > 0
+                  ? `${Math.floor(material.durationSeconds / 60)}:${String(Math.floor(material.durationSeconds % 60)).padStart(2, "0")}`
+                  : null
+              const body = (
+                <>
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <MaterialIcon className="size-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{material.title}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {material.kind === "video" ? t("lesson.materialVideo") : t("lesson.materialResource")}
+                      {material.visibility ? ` · ${material.visibility}` : ""}
+                    </p>
+                  </div>
+                  {duration && (
+                    <span className="shrink-0 text-[11px] text-muted-foreground">{duration}</span>
+                  )}
+                  {material.url && <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />}
+                </>
+              )
+              return material.url ? (
+                <a
+                  key={material.id}
+                  href={material.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors hover:bg-muted/50"
+                >
+                  {body}
+                </a>
+              ) : (
+                <div key={material.id} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
+                  {body}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-4">

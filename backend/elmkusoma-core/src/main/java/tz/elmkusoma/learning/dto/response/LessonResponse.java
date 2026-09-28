@@ -24,5 +24,6 @@ public class LessonResponse {
     private String fileAttachments;
     private Integer sortOrder;
     private Boolean isPublished;
+    private String status;
     private LocalDateTime createdAt;
 }

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.service.AdministrationService;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.config.security.OrganizationContext;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +42,16 @@ public class AdministrationController {
             @RequestAttribute("userRole") String userRole,
             @RequestAttribute("userPermissions") List<String> userPermissions) {
         EnhancedDashboardResponse response = administrationService.getEnhancedDashboard(institutionId, userRole, userPermissions);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // ── Access & Permission Center ──
+
+    @GetMapping("/my-access")
+    @Operation(summary = "Effective access of the calling administrator: role, organization, membership, scope, and permissions")
+    public ResponseEntity<ApiResponse<MyAccessResponse>> getMyAccess(
+            @RequestAttribute("organizationContext") OrganizationContext organizationContext) {
+        MyAccessResponse response = administrationService.getMyAccess(organizationContext);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

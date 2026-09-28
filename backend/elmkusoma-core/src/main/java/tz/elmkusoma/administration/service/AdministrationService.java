@@ -2,6 +2,12 @@ package tz.elmkusoma.administration.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.actuate.health.CompositeHealth;
+import org.springframework.boot.actuate.health.Health;
+import org.springframework.boot.actuate.health.HealthComponent;
+import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.actuate.health.Status;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.administration.domain.*;
@@ -10,10 +16,16 @@ import tz.elmkusoma.administration.mapper.AdministrationMapper;
 import tz.elmkusoma.administration.repository.*;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.service.AuditService;
+import tz.elmkusoma.certificate.domain.Certificate;
+import tz.elmkusoma.certificate.repository.CertificateRepository;
+import tz.elmkusoma.config.security.OrganizationContext;
 import tz.elmkusoma.course.domain.Course;
+import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.repository.CourseModuleRepository;
 import tz.elmkusoma.course.repository.CourseRepository;
 import tz.elmkusoma.course.repository.CourseLessonRepository;
+import tz.elmkusoma.course.repository.LiveClassRepository;
+import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.User;
@@ -23,9 +35,13 @@ import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.administration.dto.GlobalSearchResult;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +64,14 @@ public class AdministrationService {
     private final InstitutionScopeService scopeService;
     private final InstitutionAuditService auditService2;
     private final InstitutionMembershipRepository membershipRepository;
+    private final CertificateRepository certificateRepository;
+    private final LiveClassRepository liveClassRepository;
+    private final EventRepository eventRepository;
+    private final AdminDelegationRepository delegationRepository;
+    private final ObjectProvider<HealthEndpoint> healthEndpointProvider;
+
+    private static final ObjectMapper PERMISSION_PARSER = new ObjectMapper();
+    private static final Set<String> TERMINAL_LIVE_STATUSES = Set.of("CANCELLED", "COMPLETED", "ENDED");
 
     // ── System Settings ──
 
@@ -235,14 +259,14 @@ public class AdministrationService {
                 totalTeachers,
                 totalParents,
                 activeStudents,
-                0L,
+                countIssuedCertificates(institutionId),
                 pendingJobs,
                 totalCourses,
                 publishedCourses,
                 draftCourses,
                 totalModules,
                 totalLessons,
-                0L
+                countScheduledLiveClasses(institutionId)
         );
 
         // Cache snapshot
@@ -251,14 +275,14 @@ public class AdministrationService {
         snapshotData.put("totalTeachers", totalTeachers);
         snapshotData.put("totalParents", totalParents);
         snapshotData.put("activeStudents", activeStudents);
-        snapshotData.put("certificatesIssued", 0L);
+        snapshotData.put("certificatesIssued", response.getCertificatesIssued());
         snapshotData.put("pendingImportJobs", pendingJobs);
         snapshotData.put("totalCourses", totalCourses);
         snapshotData.put("publishedCourses", publishedCourses);
         snapshotData.put("draftCourses", draftCourses);
         snapshotData.put("totalModules", totalModules);
         snapshotData.put("totalLessons", totalLessons);
-        snapshotData.put("liveClassesScheduled", 0L);
+        snapshotData.put("liveClassesScheduled", response.getLiveClassesScheduled());
 
         DashboardSnapshot snapshot = DashboardSnapshot.of(
                 institutionId,
@@ -371,13 +395,17 @@ public class AdministrationService {
         // Organization health summary
         var healthSummary = buildHealthSummary(institutionId);
 
-        // Live class stats
-        long liveClassesLiveNow = 0L;
-        long upcomingLiveClasses = 0L;
-        try {
-            // These would come from live class service
-            // For now, placeholder values
-        } catch (Exception ignored) {}
+        // Live class stats — real repository data (never placeholders)
+        List<LiveClass> liveClasses = liveClassRepository.findByInstitutionIdAndIsDeletedFalse(institutionId);
+        LocalDateTime now = LocalDateTime.now();
+        long liveClassesLiveNow = liveClasses.stream()
+                .filter(l -> "LIVE".equalsIgnoreCase(l.getStatus()) || "IN_PROGRESS".equalsIgnoreCase(l.getStatus())
+                        || "STARTING".equalsIgnoreCase(l.getStatus()))
+                .count();
+        long upcomingLiveClasses = liveClasses.stream()
+                .filter(l -> !TERMINAL_LIVE_STATUSES.contains(String.valueOf(l.getStatus()).toUpperCase()))
+                .filter(l -> l.getScheduledAt() != null && l.getScheduledAt().isAfter(now))
+                .count();
 
         return EnhancedDashboardResponse.builder()
                 .institutionId(institutionId)
@@ -419,115 +447,310 @@ public class AdministrationService {
         if (hasPermission(userPermissions, "CREATE_COURSE") || isAdminRole(currentUserRole)) {
             actions.add(EnhancedDashboardResponse.QuickAction.builder()
                     .id("create_course").label("Create Course").icon("book-plus")
-                    .actionUrl("/dashboard/admin/courses/create")
+                    .actionUrl("/dashboard/admin/courses")
                     .requiredPermission("CREATE_COURSE").available(true).build());
         }
 
         if (hasPermission(userPermissions, "INVITE_USER") || isAdminRole(currentUserRole)) {
             actions.add(EnhancedDashboardResponse.QuickAction.builder()
                     .id("invite_user").label("Invite User").icon("user-plus")
-                    .actionUrl("/dashboard/admin/people/invite")
+                    .actionUrl("/dashboard/admin/people")
                     .requiredPermission("INVITE_USER").available(true).build());
         }
 
         if (hasPermission(userPermissions, "SCHEDULE_LIVE") || isAdminRole(currentUserRole)) {
             actions.add(EnhancedDashboardResponse.QuickAction.builder()
                     .id("schedule_live").label("Schedule Live Class").icon("video-plus")
-                    .actionUrl("/dashboard/admin/live/create")
+                    .actionUrl("/dashboard/admin/live-operations")
                     .requiredPermission("SCHEDULE_LIVE").available(true).build());
         }
 
         if (hasPermission(userPermissions, "CREATE_EVENT") || isAdminRole(currentUserRole)) {
             actions.add(EnhancedDashboardResponse.QuickAction.builder()
                     .id("create_event").label("Create Event").icon("calendar-plus")
-                    .actionUrl("/dashboard/admin/events/create")
+                    .actionUrl("/dashboard/admin/events")
                     .requiredPermission("CREATE_EVENT").available(true).build());
-        }
-
-        if (hasPermission(userPermissions, "UPLOAD_RESOURCE") || isAdminRole(currentUserRole)) {
-            actions.add(EnhancedDashboardResponse.QuickAction.builder()
-                    .id("upload_resource").label("Upload Resource").icon("upload")
-                    .actionUrl("/dashboard/admin/resources/upload")
-                    .requiredPermission("UPLOAD_RESOURCE").available(true).build());
-        }
-
-        if (hasPermission(userPermissions, "REVIEW_CONTENT") || isAdminRole(currentUserRole)) {
-            actions.add(EnhancedDashboardResponse.QuickAction.builder()
-                    .id("review_content").label("Review Content").icon("clipboard-check")
-                    .actionUrl("/dashboard/admin/content/review")
-                    .requiredPermission("REVIEW_CONTENT").available(true).build());
-        }
-
-        if (hasPermission(userPermissions, "VERIFY_PAYMENT") || isFinanceRole(currentUserRole)) {
-            actions.add(EnhancedDashboardResponse.QuickAction.builder()
-                    .id("verify_payment").label("Verify Payment").icon("credit-card-check")
-                    .actionUrl("/dashboard/admin/payments/verify")
-                    .requiredPermission("VERIFY_PAYMENT").available(true).build());
         }
 
         if (hasPermission(userPermissions, "ISSUE_CERTIFICATE") || isAdminRole(currentUserRole)) {
             actions.add(EnhancedDashboardResponse.QuickAction.builder()
                     .id("issue_certificate").label("Issue Certificate").icon("award")
-                    .actionUrl("/dashboard/admin/certificates/issue")
+                    .actionUrl("/dashboard/certificates/generate")
                     .requiredPermission("ISSUE_CERTIFICATE").available(true).build());
         }
 
+        if (hasPermission(userPermissions, "MANAGE_ROLES") || isAdminRole(currentUserRole)) {
+            actions.add(EnhancedDashboardResponse.QuickAction.builder()
+                    .id("manage_roles").label("Manage Roles").icon("shield")
+                    .actionUrl("/dashboard/admin/roles")
+                    .requiredPermission("MANAGE_ROLES").available(true).build());
+        }
+
+        if (hasPermission(userPermissions, "MANAGE_USERS") || isAdminRole(currentUserRole)) {
+            actions.add(EnhancedDashboardResponse.QuickAction.builder()
+                    .id("import_users").label("Import Users").icon("file-text")
+                    .actionUrl("/dashboard/admin/import")
+                    .requiredPermission("MANAGE_USERS").available(true).build());
+        }
+
+        if (hasPermission(userPermissions, "VIEW_AUDIT") || isAdminRole(currentUserRole)) {
+            actions.add(EnhancedDashboardResponse.QuickAction.builder()
+                    .id("view_audit").label("View Audit Log").icon("eye")
+                    .actionUrl("/dashboard/admin/audit")
+                    .requiredPermission("VIEW_AUDIT").available(true).build());
+        }
+
+        if (hasPermission(userPermissions, "MANAGE_SETTINGS") || isAdminRole(currentUserRole)) {
+            actions.add(EnhancedDashboardResponse.QuickAction.builder()
+                    .id("service_config").label("Service Configuration").icon("settings")
+                    .actionUrl("/dashboard/admin/services")
+                    .requiredPermission("MANAGE_SETTINGS").available(true).build());
+        }
+
+        // Every emitted action resolves to a route that actually exists in the
+        // admin workspace — §018 forbids advertising actions that cannot be run.
         return actions;
     }
 
     private boolean hasPermission(List<String> permissions, String permission) {
-        return permissions != null && permissions.contains(permission);
+        return permissions != null && (permissions.contains("*") || permissions.contains(permission));
     }
 
     private boolean isAdminRole(String role) {
         return "ADMIN".equals(role) || "INSTITUTION_ADMIN".equals(role) || "OWNER".equals(role);
     }
 
-    private boolean isFinanceRole(String role) {
-        return isAdminRole(role) || "FINANCE_ADMIN".equals(role);
-    }
-
     private EnhancedDashboardResponse.WorkQueueSummary buildWorkQueueSummary(UUID institutionId,
                                                                               String currentUserRole) {
-        // These would query actual data from repositories
-        long pendingApprovals = 0L;
-        long pendingReviews = 0L;
-        long pendingVerifications = 0L;
+        // Every count below is an organization-scoped repository query — no placeholders.
+        long pendingInvitations = auditService2.countPendingInvitations(institutionId);
+        long draftCourses = Math.max(0, courseRepository.countByInstitutionIdAndIsDeletedFalse(institutionId)
+                - courseRepository.countByInstitutionIdAndIsPublishedAndIsDeletedFalse(institutionId, true));
+        long draftEvents = eventRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(institutionId, "DRAFT");
+        long draftCertificates = certificateRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(
+                institutionId, Certificate.CertificateStatus.DRAFT);
 
-        // In a real implementation, query based on role
-        if (isAdminRole(currentUserRole)) {
-            // Query actual counts
+        long pendingApprovals = pendingInvitations;
+        long pendingReviews = draftCourses + draftEvents;
+        long pendingVerifications = draftCertificates;
+
+        var items = new ArrayList<EnhancedDashboardResponse.WorkQueueItem>();
+        if (pendingInvitations > 0) {
+            items.add(EnhancedDashboardResponse.WorkQueueItem.builder()
+                    .type("INVITATIONS").label("Invitations awaiting response")
+                    .count(pendingInvitations).actionUrl("/dashboard/admin/people").build());
+        }
+        if (draftCourses > 0) {
+            items.add(EnhancedDashboardResponse.WorkQueueItem.builder()
+                    .type("COURSES").label("Courses awaiting publication")
+                    .count(draftCourses).actionUrl("/dashboard/admin/courses").build());
+        }
+        if (draftEvents > 0) {
+            items.add(EnhancedDashboardResponse.WorkQueueItem.builder()
+                    .type("EVENTS").label("Events awaiting publication")
+                    .count(draftEvents).actionUrl("/dashboard/admin/events").build());
+        }
+        if (draftCertificates > 0) {
+            items.add(EnhancedDashboardResponse.WorkQueueItem.builder()
+                    .type("CERTIFICATES").label("Certificates awaiting issuance")
+                    .count(draftCertificates).actionUrl("/dashboard/admin").build());
         }
 
         return EnhancedDashboardResponse.WorkQueueSummary.builder()
                 .pendingApprovals(pendingApprovals)
                 .pendingReviews(pendingReviews)
                 .pendingVerifications(pendingVerifications)
-                .queueUrl("/dashboard/admin/work-queue")
+                .queueUrl("/dashboard/admin")
+                .items(items)
                 .build();
     }
 
     private EnhancedDashboardResponse.OrganizationHealthSummary buildHealthSummary(UUID institutionId) {
         var metrics = new ArrayList<EnhancedDashboardResponse.HealthMetric>();
 
-        // Add key metrics
-        metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
-                .name("Database").status("HEALTHY").value("Connected").threshold("N/A").build());
-        metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
-                .name("Redis").status("HEALTHY").value("Connected").threshold("N/A").build());
-        metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
-                .name("RabbitMQ").status("HEALTHY").value("Connected").threshold("N/A").build());
-        metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
-                .name("LiveKit").status("HEALTHY").value("Connected").threshold("N/A").build());
+        // Infrastructure health: Spring Actuator HealthIndicator via HealthEndpoint.
+        // If no health endpoint is injectable in this context the component is reported
+        // as UNKNOWN with the honest reason — never as a fabricated HEALTHY.
+        HealthEndpoint endpoint = healthEndpointProvider.getIfAvailable();
+        if (endpoint != null) {
+            try {
+                HealthComponent result = endpoint.health();
+                Map<String, HealthComponent> components = null;
+                if (result instanceof CompositeHealth composite) {
+                    components = composite.getComponents();
+                }
+                if (components != null && !components.isEmpty()) {
+                    components.forEach((name, component) -> metrics.add(
+                            EnhancedDashboardResponse.HealthMetric.builder()
+                                    .name(prettyComponentName(name))
+                                    .status(mapHealthStatus(component.getStatus()))
+                                    .value(describeHealthComponent(component))
+                                    .threshold("UP")
+                                    .build()));
+                } else if (result != null) {
+                    metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
+                            .name("Application")
+                            .status(mapHealthStatus(result.getStatus()))
+                            .value(describeHealthComponent(result))
+                            .threshold("UP")
+                            .build());
+                } else {
+                    metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
+                            .name("Application")
+                            .status("UNKNOWN")
+                            .value("Health indicator returned no result")
+                            .threshold("UP")
+                            .build());
+                }
+            } catch (Exception ex) {
+                log.warn("Health endpoint could not be evaluated: {}", ex.getMessage());
+                metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
+                        .name("Application")
+                        .status("UNKNOWN")
+                        .value("Health check could not be executed: " + ex.getMessage())
+                        .threshold("UP")
+                        .build());
+            }
+        } else {
+            metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
+                    .name("Application")
+                    .status("UNKNOWN")
+                    .value("No health indicator is available in this context")
+                    .threshold("UP")
+                    .build());
+        }
 
-        String overallStatus = metrics.stream().allMatch(m -> "HEALTHY".equals(m.getStatus()))
-                ? "HEALTHY" : "DEGRADED";
+        // Organization-level evidence (real rows only).
+        Institution inst = institutionRepository.findById(institutionId).orElse(null);
+        if (inst == null) {
+            metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
+                    .name("Organization")
+                    .status("UNKNOWN")
+                    .value("Organization record not found")
+                    .threshold("ACTIVE")
+                    .build());
+        } else {
+            boolean active = Boolean.TRUE.equals(inst.getIsActive());
+            metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
+                    .name("Organization")
+                    .status(active ? "HEALTHY" : "DEGRADED")
+                    .value(active ? "ACTIVE" : "INACTIVE")
+                    .threshold("ACTIVE")
+                    .build());
+
+            long enabledServiceCount = inst.getEnabledServices() == null || inst.getEnabledServices().isBlank()
+                    ? 0
+                    : Arrays.stream(inst.getEnabledServices().split(","))
+                            .map(String::trim).filter(s -> !s.isEmpty()).count();
+            metrics.add(EnhancedDashboardResponse.HealthMetric.builder()
+                    .name("Enabled services")
+                    .status(enabledServiceCount > 0 ? "HEALTHY" : "DEGRADED")
+                    .value(enabledServiceCount > 0
+                            ? enabledServiceCount + " enabled"
+                            : "No services enabled for this organization")
+                    .threshold(">= 1 enabled")
+                    .build());
+        }
+
+        String overallStatus;
+        if (metrics.stream().anyMatch(m -> "DOWN".equals(m.getStatus()))) {
+            overallStatus = "CRITICAL";
+        } else if (metrics.stream().anyMatch(m -> "DEGRADED".equals(m.getStatus()))) {
+            overallStatus = "DEGRADED";
+        } else if (metrics.stream().anyMatch(m -> "UNKNOWN".equals(m.getStatus()))) {
+            overallStatus = "UNKNOWN";
+        } else {
+            overallStatus = "HEALTHY";
+        }
 
         return EnhancedDashboardResponse.OrganizationHealthSummary.builder()
                 .overallStatus(overallStatus)
                 .metrics(metrics)
                 .lastChecked(LocalDateTime.now())
                 .build();
+    }
+
+    private String mapHealthStatus(Status status) {
+        if (status == null) return "UNKNOWN";
+        String code = status.getCode();
+        if (Status.UP.getCode().equals(code)) return "HEALTHY";
+        if (Status.DOWN.getCode().equals(code)) return "DOWN";
+        if (Status.OUT_OF_SERVICE.getCode().equals(code)) return "DEGRADED";
+        return "UNKNOWN";
+    }
+
+    private String prettyComponentName(String raw) {
+        if (raw == null || raw.isBlank()) return "Component";
+        String[] parts = raw.split("(?<=[a-z0-9])(?=[A-Z])|[_\\-]+");
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (part.isEmpty()) continue;
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return sb.toString();
+    }
+
+    private String describeHealthComponent(HealthComponent component) {
+        try {
+            if (component instanceof CompositeHealth composite) {
+                Map<String, HealthComponent> nested = composite.getComponents();
+                if (nested == null || nested.isEmpty()) return composite.getStatus().getCode();
+                String joined = nested.entrySet().stream()
+                        .map(e -> prettyComponentName(e.getKey()) + "=" + e.getValue().getStatus().getCode())
+                        .limit(6)
+                        .collect(Collectors.joining(", "));
+                return truncate(joined);
+            }
+            if (component instanceof Health health) {
+                Map<String, Object> details = health.getDetails();
+                if (details == null || details.isEmpty()) return health.getStatus().getCode();
+                String joined = details.entrySet().stream()
+                        .filter(e -> e.getKey() != null)
+                        .filter(e -> {
+                            String key = e.getKey().toLowerCase();
+                            return !key.contains("password") && !key.contains("secret")
+                                    && !key.contains("token") && !key.contains("credential");
+                        })
+                        .map(e -> e.getKey() + "=" + e.getValue())
+                        .limit(4)
+                        .collect(Collectors.joining(", "));
+                if (joined.isEmpty()) return health.getStatus().getCode();
+                return truncate(joined);
+            }
+            return component.getStatus().getCode();
+        } catch (Exception ex) {
+            return component.getStatus().getCode();
+        }
+    }
+
+    private String truncate(String value) {
+        if (value == null) return "";
+        return value.length() > 160 ? value.substring(0, 157) + "..." : value;
+    }
+
+    private long countIssuedCertificates(UUID institutionId) {
+        try {
+            return certificateRepository.countByInstitutionIdAndStatusAndIsDeletedFalse(
+                    institutionId, Certificate.CertificateStatus.ISSUED);
+        } catch (Exception ex) {
+            log.warn("Certificate count unavailable for institution {}: {}", institutionId, ex.getMessage());
+            return 0L;
+        }
+    }
+
+    private long countScheduledLiveClasses(UUID institutionId) {
+        try {
+            return liveClassRepository.findByInstitutionIdAndIsDeletedFalse(institutionId).stream()
+                    .map(LiveClass::getStatus)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(status -> !TERMINAL_LIVE_STATUSES.contains(status))
+                    .count();
+        } catch (Exception ex) {
+            log.warn("Live class count unavailable for institution {}: {}", institutionId, ex.getMessage());
+            return 0L;
+        }
     }
 
     // ── Org-Scoped Search ──
@@ -559,7 +782,112 @@ public class AdministrationService {
                             .build()));
         }
 
+        if ("all".equals(type) || "courses".equals(type)) {
+            courseRepository.findByInstitutionIdAndIsDeletedFalse(institutionId).stream()
+                    .filter(c -> c.getTitle() != null && c.getTitle().toLowerCase().contains(q))
+                    .limit(limit)
+                    .forEach(c -> results.add(GlobalSearchResult.builder()
+                            .id(c.getId()).type("COURSE").title(c.getTitle())
+                            .subtitle(Boolean.TRUE.equals(c.getIsPublished()) ? "Published course" : "Draft course")
+                            .build()));
+        }
+
+        if ("all".equals(type) || "live".equals(type)) {
+            liveClassRepository.searchByInstitutionIdAndQuery(institutionId, query).stream()
+                    .limit(limit)
+                    .forEach(l -> results.add(GlobalSearchResult.builder()
+                            .id(l.getId()).type("LIVE_CLASS").title(l.getTitle())
+                            .subtitle(l.getStatus() + (l.getScheduledAt() != null
+                                    ? " — " + l.getScheduledAt().toLocalDate() : ""))
+                            .build()));
+        }
+
         return results.stream().limit(limit).toList();
+    }
+
+    // ── Access & Permission Center ──
+
+    @Transactional(readOnly = true)
+    public MyAccessResponse getMyAccess(OrganizationContext context) {
+        UUID institutionId = context.getInstitutionId();
+
+        Institution current = institutionId != null
+                ? institutionRepository.findById(institutionId).orElse(null) : null;
+
+        InstitutionMembership membership = institutionId == null ? null
+                : context.getAllMemberships().stream()
+                        .filter(m -> m.getInstitutionId().equals(institutionId))
+                        .findFirst()
+                        .orElse(null);
+
+        MyAccessResponse.Scope scope;
+        if (membership != null && membership.getDepartmentId() != null) {
+            scope = MyAccessResponse.Scope.builder().type("DEPARTMENT").id(membership.getDepartmentId()).build();
+        } else if (membership != null && membership.getCampusId() != null) {
+            scope = MyAccessResponse.Scope.builder().type("CAMPUS").id(membership.getCampusId()).build();
+        } else {
+            scope = MyAccessResponse.Scope.builder().type("INSTITUTION").id(institutionId).build();
+        }
+
+        List<MyAccessResponse.OrganizationSummary> organizations =
+                context.getAccessibleInstitutionIds().stream()
+                        .map(id -> {
+                            Institution org = institutionRepository.findById(id).orElse(null);
+                            return MyAccessResponse.OrganizationSummary.builder()
+                                    .id(id)
+                                    .name(org != null ? org.getName() : id.toString())
+                                    .type(org != null && org.getType() != null ? org.getType().name() : null)
+                                    .logoUrl(org != null ? org.getLogoUrl() : null)
+                                    .active(org != null && Boolean.TRUE.equals(org.getIsActive()))
+                                    .current(id.equals(institutionId))
+                                    .build();
+                        })
+                        .toList();
+
+        List<MyAccessResponse.DelegationSummary> delegations =
+                delegationRepository.findByDelegateIdAndIsDeletedFalse(context.getUserId()).stream()
+                        .filter(d -> "ACTIVE".equalsIgnoreCase(d.getStatus()))
+                        .map(d -> MyAccessResponse.DelegationSummary.builder()
+                                .id(d.getId())
+                                .scope(d.getScope())
+                                .status(d.getStatus())
+                                .permissions(parsePermissionList(d.getPermissions()))
+                                .startsAt(d.getStartsAt())
+                                .expiresAt(d.getExpiresAt())
+                                .build())
+                        .toList();
+
+        boolean membershipActive = membership != null && Boolean.TRUE.equals(membership.getIsActive());
+        String membershipStatus = membership == null ? "NO_MEMBERSHIP"
+                : (membershipActive ? "ACTIVE" : "INACTIVE");
+
+        return MyAccessResponse.builder()
+                .userId(context.getUserId())
+                .userEmail(context.getUserEmail())
+                .systemRole(context.getUserRole())
+                .membershipRole(membership != null ? membership.getRole().name() : null)
+                .membershipStatus(membershipStatus)
+                .membershipActive(membershipActive)
+                .institutionId(institutionId)
+                .institutionName(current != null ? current.getName() : null)
+                .institutionType(current != null && current.getType() != null ? current.getType().name() : null)
+                .institutionActive(current != null && Boolean.TRUE.equals(current.getIsActive()))
+                .scope(scope)
+                .permissions(context.getUserPermissions() != null
+                        ? List.copyOf(context.getUserPermissions()) : List.of())
+                .organizations(organizations)
+                .delegations(delegations)
+                .build();
+    }
+
+    private List<String> parsePermissionList(String raw) {
+        if (raw == null || raw.isBlank()) return List.of();
+        try {
+            return PERMISSION_PARSER.readValue(raw, new TypeReference<List<String>>() {
+            });
+        } catch (Exception ex) {
+            return List.of(raw);
+        }
     }
 
     // ── Data Export ──

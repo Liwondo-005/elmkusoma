@@ -40,6 +40,17 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    /**
+     * Guards such as {@code InstitutionScopeService} and ownership checks throw
+     * plain {@link SecurityException}; without this handler they surfaced as 500s.
+     */
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSecurityException(SecurityException ex) {
+        log.warn("Security check failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage() != null ? ex.getMessage() : "Access denied"));
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
         log.warn("Illegal state: {}", ex.getMessage());

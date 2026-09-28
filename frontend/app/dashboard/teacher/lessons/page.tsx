@@ -141,9 +141,8 @@ export default function TeacherLessonsPage() {
 
   async function togglePublish(lesson: Lesson) {
     try {
-      await teacherFetch(`/v1/learning/lessons/${lesson.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ isPublished: !lesson.isPublished }),
+      await teacherFetch(`/v1/learning/lessons/${lesson.id}/${lesson.isPublished ? "unpublish" : "publish"}`, {
+        method: "POST",
       })
       await loadLessons()
     } catch {

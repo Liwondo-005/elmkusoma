@@ -109,6 +109,15 @@ export interface CourseLesson {
   isFree: boolean
 }
 
+export interface LessonMaterial {
+  id: string
+  kind: "resource" | "video"
+  title: string
+  visibility: string | null
+  url: string | null
+  durationSeconds: number | null
+}
+
 export interface CourseLessonDetail {
   id: string
   moduleId: string
@@ -128,6 +137,7 @@ export interface CourseLessonDetail {
   courseId: string | null
   totalLessons: number
   currentIndex: number
+  materials?: LessonMaterial[]
 }
 
 export interface CourseLessonFlat {

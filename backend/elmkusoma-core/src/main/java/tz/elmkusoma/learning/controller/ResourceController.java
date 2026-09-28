@@ -85,8 +85,9 @@ public class ResourceController {
             @PathVariable UUID resourceId,
             @Valid @RequestBody ResourceRequest request,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID userId) {
-        ResourceResponse response = resourceService.updateResource(resourceId, request, institutionId, userId);
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+        ResourceResponse response = resourceService.updateResource(resourceId, request, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Resource updated successfully", response));
     }
 
@@ -96,8 +97,9 @@ public class ResourceController {
     public ResponseEntity<ApiResponse<Void>> deleteResource(
             @PathVariable UUID resourceId,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") UUID userId) {
-        resourceService.deleteResource(resourceId, institutionId, userId);
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+        resourceService.deleteResource(resourceId, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Resource deleted successfully", null));
     }
 

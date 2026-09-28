@@ -1,5 +1,7 @@
 package tz.elmkusoma.learning.service;
 
+import tz.elmkusoma.exception.ResourceNotFoundException;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -79,7 +81,7 @@ public class ResourceAnalyticsService {
     public VideoTutorialAnalyticsResponse getVideoAnalytics(UUID videoTutorialId, UUID institutionId) {
         VideoTutorial video = videoTutorialRepository.findById(videoTutorialId)
                 .filter(v -> institutionId == null || institutionId.equals(v.getInstitutionId()))
-                .orElseThrow(() -> new RuntimeException("Video tutorial not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Video tutorial not found"));
 
         List<VideoTutorialProgress> progresses =
                 progressRepository.findByVideoTutorialIdAndIsDeletedFalse(videoTutorialId);
@@ -130,7 +132,7 @@ public class ResourceAnalyticsService {
     private void assertResourceAccess(UUID resourceId, UUID institutionId) {
         resourceRepository.findById(resourceId)
                 .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
-                .orElseThrow(() -> new RuntimeException("Resource not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
     }
 
     private ResourceAnalyticsSummary emptySummary() {

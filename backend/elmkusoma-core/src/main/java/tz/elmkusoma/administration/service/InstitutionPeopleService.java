@@ -100,6 +100,16 @@ public class InstitutionPeopleService {
         User user = userRepository.findById(memberUserId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // Keep users.role (JWT role claim + @PreAuthorize checks) consistent with
+        // the membership role; otherwise role changes silently do not take effect.
+        User.Role mappedRole = mapMembershipToUserRole(role);
+        boolean preservePlatformAdmin = user.getRole() == User.Role.NATIONAL_ADMIN
+                && mappedRole != User.Role.NATIONAL_ADMIN;
+        if (!preservePlatformAdmin && user.getRole() != mappedRole) {
+            user.setRole(mappedRole);
+            userRepository.save(user);
+        }
+
         InstitutionMembership.Role membershipRole = scopeService.getMembershipRole(memberUserId, institutionId);
         return PeopleMemberResponse.builder()
                 .userId(user.getId())
@@ -259,5 +269,18 @@ public class InstitutionPeopleService {
         invitationRepository.save(invitation);
 
         log.info("Invitation accepted for user {} in institution {}", user.getEmail(), invitation.getInstitutionId());
+    }
+
+    /** Inverse of OrganizationContextResolver.mapUserRoleToMembershipRole. */
+    private static User.Role mapMembershipToUserRole(InstitutionMembership.Role membershipRole) {
+        return switch (membershipRole) {
+            case ADMIN, OWNER, INSTITUTION_ADMIN -> User.Role.INSTITUTION_ADMIN;
+            case TEACHER -> User.Role.TEACHER;
+            case STUDENT -> User.Role.STUDENT;
+            case PARENT -> User.Role.PARENT;
+            case OTHER_LEARNER -> User.Role.OTHER_LEARNER;
+            case INSTRUCTOR -> User.Role.INSTRUCTOR;
+            case NATIONAL_ADMIN -> User.Role.NATIONAL_ADMIN;
+        };
     }
 }

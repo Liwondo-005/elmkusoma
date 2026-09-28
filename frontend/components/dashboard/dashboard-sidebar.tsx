@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play, KeyRound, Wrench } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
@@ -379,6 +379,7 @@ const teacherNavSections: TeacherNavSection[] = [
     group: "TEACHING", groupKey: "groupTeaching",
     items: [
       { label: "Lessons", labelKey: "lessons", href: "/dashboard/teacher/lessons", icon: BookOpen },
+      { label: "Resources", labelKey: "teacherResources", href: "/dashboard/teacher/resources", icon: Library },
       { label: "Assignments", labelKey: "assignments", href: "/dashboard/teacher/assignments", icon: FileText },
       { label: "Assessments", labelKey: "assessments", href: "/dashboard/teacher/assessments", icon: PenTool },
       { label: "Grading", labelKey: "grading", href: "/dashboard/teacher/grading", icon: Award },
@@ -397,6 +398,7 @@ const teacherNavSections: TeacherNavSection[] = [
     items: [
       { label: "Live Classes", labelKey: "liveClasses", href: "/dashboard/teacher/live-classes", icon: Video },
       { label: "Media Library", labelKey: "mediaLibrary", href: "/dashboard/teacher/media-library", icon: Film },
+      { label: "Video Library", labelKey: "teacherVideoLibrary", href: "/dashboard/teacher/video-library", icon: Play },
       { label: "Messages", labelKey: "messages", href: "/dashboard/teacher/messages", icon: MessageSquare },
       { label: "Announcements", labelKey: "announcements", href: "/dashboard/teacher/announcements", icon: Bell },
       { label: "Notifications", labelKey: "notifications", href: "/dashboard/teacher/notifications", icon: Bell },
@@ -437,21 +439,86 @@ const parentNav: Array<{ label: string; labelKey?: string; href: string; icon: t
   { label: "Settings", labelKey: "settings", href: "/dashboard/parent/settings", icon: Settings },
 ]
 
-const adminNav: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
-  { label: "Platform Admin", labelKey: "platformAdmin", href: "/dashboard/platform-admin", icon: ShieldCheck },
-  { label: "Administration", labelKey: "administration", href: "/dashboard/admin", icon: ShieldCheck },
-  { label: "People", labelKey: "people", href: "/dashboard/admin/people", icon: Users },
-  { label: "Organization", labelKey: "organization", href: "/dashboard/admin/profile", icon: School },
-  { label: "Institutions", labelKey: "institutions", href: "/dashboard/admin/institutions", icon: School },
-  { label: "Programmes", labelKey: "programmes", href: "/dashboard/admin/programmes", icon: GraduationCap },
-  { label: "Departments", labelKey: "departments", href: "/dashboard/admin/departments", icon: Users },
-  { label: "Competencies", labelKey: "competencies", href: "/dashboard/admin/competencies", icon: Target },
-  { label: "Roles", labelKey: "roles", href: "/dashboard/admin/roles", icon: Shield },
-  { label: "Audit Log", labelKey: "auditLog", href: "/dashboard/admin/audit", icon: Eye },
-  { label: "Events", labelKey: "events", href: "/dashboard/admin/events", icon: Calendar },
-  { label: "Data Import", labelKey: "dataImport", href: "/dashboard/admin/import", icon: FileText },
-  { label: "Settings", labelKey: "settings", href: "/dashboard/admin/settings", icon: Settings },
+type AdminNavItem = { label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard; badge?: number }
+type AdminNavGroup = {
+  id: string
+  group: string
+  groupKey?: string
+  items: AdminNavItem[]
+}
+
+// §019 — admin workspace navigation is grouped and collapsible so the sidebar
+// stays short. Every href resolves to a route that actually exists.
+const adminNavGroups: AdminNavGroup[] = [
+  {
+    id: "core",
+    group: "CORE",
+    groupKey: "groupCore",
+    items: [
+      { label: "Dashboard", labelKey: "dashboard", href: "/dashboard/admin", icon: ShieldCheck },
+      { label: "Organization", labelKey: "organization", href: "/dashboard/admin/profile", icon: School },
+      { label: "Institutions", labelKey: "institutions", href: "/dashboard/admin/institutions", icon: School },
+      { label: "Data Import", labelKey: "dataImport", href: "/dashboard/admin/import", icon: FileText },
+    ],
+  },
+  {
+    id: "people",
+    group: "PEOPLE",
+    groupKey: "groupPeople",
+    items: [
+      { label: "People", labelKey: "people", href: "/dashboard/admin/people", icon: Users },
+    ],
+  },
+  {
+    id: "learning",
+    group: "LEARNING",
+    groupKey: "groupLearning",
+    items: [
+      { label: "Courses", labelKey: "courses", href: "/dashboard/admin/courses", icon: GraduationCap },
+      { label: "Programmes", labelKey: "programmes", href: "/dashboard/admin/programmes", icon: BookOpen },
+      { label: "Departments", labelKey: "departments", href: "/dashboard/admin/departments", icon: Users },
+      { label: "Competencies", labelKey: "competencies", href: "/dashboard/admin/competencies", icon: Target },
+    ],
+  },
+  {
+    id: "live-events",
+    group: "LIVE & EVENTS",
+    groupKey: "groupLiveEvents",
+    items: [
+      { label: "Live Operations", labelKey: "liveOperations", href: "/dashboard/admin/live-operations", icon: Radio },
+      { label: "Events", labelKey: "events", href: "/dashboard/admin/events", icon: Calendar },
+    ],
+  },
+  {
+    id: "insights",
+    group: "INSIGHTS",
+    groupKey: "groupInsights",
+    items: [
+      { label: "Audit Log", labelKey: "auditLog", href: "/dashboard/admin/audit", icon: Eye },
+    ],
+  },
+  {
+    id: "administration",
+    group: "ADMINISTRATION",
+    groupKey: "groupAdministration",
+    items: [
+      { label: "Access & Permissions", labelKey: "accessCenter", href: "/dashboard/admin/access", icon: KeyRound },
+      { label: "Roles", labelKey: "roles", href: "/dashboard/admin/roles", icon: Shield },
+      { label: "Service Configuration", labelKey: "serviceConfig", href: "/dashboard/admin/services", icon: Wrench },
+      { label: "Settings", labelKey: "settings", href: "/dashboard/admin/settings", icon: Settings },
+    ],
+  },
 ]
+
+// Platform workspace entry — platform admins only (filtered by role below).
+const platformNavGroup: AdminNavGroup = {
+  id: "platform",
+  group: "PLATFORM",
+  groupKey: "groupPlatform",
+  items: [
+    { label: "Platform Admin", labelKey: "platformAdmin", href: "/dashboard/platform-admin", icon: ShieldCheck },
+  ],
+}
 
 function getStudentNavSections(user: { learningLevel?: string | null } | null) {
   const level = (user?.learningLevel || "").toUpperCase()
@@ -490,6 +557,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const [collapsed, setCollapsed] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
+  const [collapsedAdminGroups, setCollapsedAdminGroups] = useState<Record<string, boolean>>({})
   const [badges, setBadges] = useState<Record<string, number>>({})
 
   const fetchBadges = useCallback(async () => {
@@ -586,6 +654,37 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         {renderNavItems(section.items)}
       </div>
     ))
+  }
+
+  function renderAdminGroups(groups: AdminNavGroup[]) {
+    return groups.map((group, gi) => {
+      const isExpanded = !collapsedAdminGroups[group.id]
+      const isGroupActive = group.items.some(
+        (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+      )
+      return (
+        <div key={group.id}>
+          {gi > 0 && <div className="my-2 border-t border-border" />}
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            onClick={() =>
+              setCollapsedAdminGroups((prev) => ({ ...prev, [group.id]: isExpanded }))
+            }
+            className={cn(
+              "flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors",
+              isGroupActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <span className="flex-1 text-left">{group.groupKey ? t(group.groupKey) : group.group}</span>
+            <ChevronRight
+              className={cn("size-3 shrink-0 transition-transform", isExpanded && "rotate-90")}
+            />
+          </button>
+          {isExpanded && renderNavItems(group.items)}
+        </div>
+      )
+    })
   }
 
   function renderUniversitySections(sections: NavSection[]) {
@@ -722,13 +821,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           // Admin workspaces get administration nav only — learner/secondary
           // items must never render for admin roles (spec §10 workspace model).
           <div>
-            <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("administration")}
-            </p>
-            {renderNavItems(
-              user?.role === "Admin"
-                ? adminNav
-                : adminNav.filter((item) => item.href !== "/dashboard/platform-admin"),
+            {renderAdminGroups(
+              user?.role === "Admin" ? [platformNavGroup, ...adminNavGroups] : adminNavGroups,
             )}
           </div>
         ) : isParent ? (

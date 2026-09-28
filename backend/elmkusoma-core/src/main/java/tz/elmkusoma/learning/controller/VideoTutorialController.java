@@ -12,11 +12,13 @@ import org.springframework.web.multipart.MultipartFile;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.learning.dto.VideoTutorialRequest;
 import tz.elmkusoma.learning.dto.VideoTutorialResponse;
+import tz.elmkusoma.learning.dto.AttachRecordingRequest;
 import tz.elmkusoma.learning.dto.VideoTutorialProgressResponse;
 import tz.elmkusoma.learning.service.VideoTutorialService;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -28,6 +30,35 @@ public class VideoTutorialController {
 
     private final VideoTutorialService videoTutorialService;
     private final tz.elmkusoma.learning.service.ResourceAnalyticsService resourceAnalyticsService;
+    private final tz.elmkusoma.liveclass.repository.MediaAssetRepository mediaAssetRepository;
+
+    @PostMapping("/attach-recording")
+    @Operation(summary = "Attach a live recording to the video tutorial library")
+    @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
+    public ResponseEntity<ApiResponse<VideoTutorialResponse>> attachRecording(
+            @Valid @RequestBody AttachRecordingRequest request,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+        UUID mediaAssetId = request.getMediaAssetId();
+        if (mediaAssetId == null) {
+            throw new IllegalArgumentException("mediaAssetId is required");
+        }
+
+        tz.elmkusoma.liveclass.domain.MediaAsset asset = mediaAssetRepository.findById(mediaAssetId)
+                .filter(a -> !Boolean.TRUE.equals(a.getIsDeleted()))
+                .filter(a -> institutionId.equals(a.getInstitutionId()))
+                .orElseThrow(() -> new SecurityException("Media asset not available"));
+
+        boolean isAdmin = "ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole);
+        if (!isAdmin && (asset.getTeacherId() == null || !asset.getTeacherId().equals(userId))) {
+            throw new SecurityException("Media asset not available");
+        }
+
+        VideoTutorialResponse response = videoTutorialService.attachRecording(asset, institutionId, userId.toString());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Recording attached successfully", response));
+    }
 
     @PostMapping
     @Operation(summary = "Create a new video tutorial")
@@ -79,8 +110,9 @@ public class VideoTutorialController {
             @PathVariable UUID videoTutorialId,
             @Valid @RequestBody VideoTutorialRequest request,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") String userId) {
-        VideoTutorialResponse response = videoTutorialService.updateVideoTutorial(videoTutorialId, request, institutionId, userId);
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("userRole") String userRole) {
+        VideoTutorialResponse response = videoTutorialService.updateVideoTutorial(videoTutorialId, request, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Video tutorial updated successfully", response));
     }
 
@@ -90,8 +122,9 @@ public class VideoTutorialController {
     public ResponseEntity<ApiResponse<Void>> deleteVideoTutorial(
             @PathVariable UUID videoTutorialId,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") String userId) {
-        videoTutorialService.deleteVideoTutorial(videoTutorialId, institutionId, userId);
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("userRole") String userRole) {
+        videoTutorialService.deleteVideoTutorial(videoTutorialId, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Video tutorial deleted successfully", null));
     }
 
@@ -101,8 +134,9 @@ public class VideoTutorialController {
     public ResponseEntity<ApiResponse<VideoTutorialResponse>> publishVideoTutorial(
             @PathVariable UUID videoTutorialId,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") String userId) {
-        VideoTutorialResponse response = videoTutorialService.publishVideoTutorial(videoTutorialId, institutionId, userId);
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("userRole") String userRole) {
+        VideoTutorialResponse response = videoTutorialService.publishVideoTutorial(videoTutorialId, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Video tutorial published successfully", response));
     }
 
@@ -112,8 +146,9 @@ public class VideoTutorialController {
     public ResponseEntity<ApiResponse<VideoTutorialResponse>> unpublishVideoTutorial(
             @PathVariable UUID videoTutorialId,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") String userId) {
-        VideoTutorialResponse response = videoTutorialService.unpublishVideoTutorial(videoTutorialId, institutionId, userId);
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("userRole") String userRole) {
+        VideoTutorialResponse response = videoTutorialService.unpublishVideoTutorial(videoTutorialId, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Video tutorial unpublished successfully", response));
     }
 
@@ -124,8 +159,10 @@ public class VideoTutorialController {
             @PathVariable UUID videoTutorialId,
             @RequestParam("file") MultipartFile file,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") String userId) throws Exception {
-        VideoTutorialResponse response = videoTutorialService.uploadVideo(videoTutorialId, file, institutionId, userId);
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute("userRole") String userRole,
+            @RequestAttribute(value = "bearerToken", required = false) String bearerToken) throws Exception {
+        VideoTutorialResponse response = videoTutorialService.uploadVideo(videoTutorialId, file, institutionId, userId, userRole, bearerToken);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Video uploaded successfully, processing started", response));
     }
@@ -138,8 +175,9 @@ public class VideoTutorialController {
             @RequestParam String fileName,
             @RequestParam String contentType,
             @RequestAttribute("institutionId") UUID institutionId,
-            @RequestAttribute("userId") String userId) {
-        String uploadUrl = videoTutorialService.getPresignedUploadUrl(institutionId, fileName, contentType, userId);
+            @RequestAttribute("userId") String userId,
+            @RequestAttribute(value = "bearerToken", required = false) String bearerToken) {
+        String uploadUrl = videoTutorialService.getPresignedUploadUrl(institutionId, fileName, contentType, userId, bearerToken);
         return ResponseEntity.ok(ApiResponse.success(uploadUrl));
     }
 

@@ -12,13 +12,19 @@ public interface LearningService {
 
     LessonResponse createLesson(UUID institutionId, LessonRequest request);
 
-    LessonResponse updateLesson(UUID lessonId, LessonRequest request);
+    LessonResponse createLesson(UUID institutionId, LessonRequest request, UUID publisherId);
 
-    void deleteLesson(UUID lessonId);
+    LessonResponse updateLesson(UUID lessonId, LessonRequest request, UUID institutionId, String userEmail, String userRole);
 
-    List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId);
+    LessonResponse updateLesson(UUID lessonId, LessonRequest request, UUID institutionId, String userEmail, String userRole, UUID publisherId);
 
-    List<LessonResponse> getLessonsByClass(UUID classGroupId);
+    void deleteLesson(UUID lessonId, UUID institutionId, String userEmail, String userRole);
+
+    LessonResponse setLessonStatus(UUID lessonId, String status, UUID institutionId, String userEmail, String userRole);
+
+    List<LessonResponse> getLessonsBySubjectAndClass(UUID subjectId, UUID classGroupId, boolean includeUnpublished);
+
+    List<LessonResponse> getLessonsByClass(UUID classGroupId, boolean includeUnpublished);
 
     ProgressResponse updateProgress(UUID institutionId, UUID studentId, ProgressRequest request);
 

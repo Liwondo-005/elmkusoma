@@ -55,10 +55,16 @@ public class MediaLibraryController {
     @Operation(summary = "Get recordings for a live class or event")
     public ResponseEntity<ApiResponse<List<MediaAssetResponse>>> getRecordings(
             @PathVariable String sourceType,
-            @PathVariable UUID sourceId) {
+            @PathVariable UUID sourceId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
 
+        boolean isAdmin = "ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole);
         List<MediaAsset> recordings = mediaAssetRepository
-                .findBySourceTypeAndSourceIdAndIsDeletedFalse(sourceType, sourceId);
+                .findBySourceTypeAndSourceIdAndIsDeletedFalse(sourceType, sourceId)
+                .stream()
+                .filter(a -> isAdmin || institutionId.equals(a.getInstitutionId()))
+                .toList();
 
         List<MediaAssetResponse> response = recordings.stream()
                 .map(this::toResponse)
@@ -70,9 +76,14 @@ public class MediaLibraryController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','INSTITUTION_ADMIN')")
     @Operation(summary = "Get media asset detail")
-    public ResponseEntity<ApiResponse<MediaAssetResponse>> getMedia(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<MediaAssetResponse>> getMedia(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
+        boolean isAdmin = "ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole);
         return mediaAssetRepository.findById(id)
                 .filter(a -> !Boolean.TRUE.equals(a.getIsDeleted()))
+                .filter(a -> isAdmin || institutionId.equals(a.getInstitutionId()))
                 .map(a -> ResponseEntity.ok(ApiResponse.success(toResponse(a))))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("Media asset not found")));
@@ -226,10 +237,9 @@ public class MediaLibraryController {
     @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN')")
     @Operation(summary = "Upload a media file via the media service")
     public ResponseEntity<ApiResponse<Map<String, Object>>> uploadMedia(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestAttribute("userId") UUID userId,
-            @RequestParam("file") MultipartFile file) {
-        Map<String, Object> result = mediaProxyService.uploadFile(file, institutionId, userId);
+            @RequestParam("file") MultipartFile file,
+            @RequestAttribute(value = "bearerToken", required = false) String bearerToken) {
+        Map<String, Object> result = mediaProxyService.uploadFile(file, bearerToken);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("File uploaded successfully", result));
     }
 
@@ -237,18 +247,32 @@ public class MediaLibraryController {
     @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN')")
     @Operation(summary = "Get a presigned URL for direct upload to object storage")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getPresignedUploadUrl(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request,
+            @RequestAttribute(value = "bearerToken", required = false) String bearerToken) {
         Map<String, Object> result = mediaProxyService.getPresignedUploadUrl(
-            request.get("fileName"), request.get("contentType"), institutionId);
+            request.get("fileName"), request.get("contentType"), bearerToken);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/{id}/download-url")
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','INSTITUTION_ADMIN')")
     @Operation(summary = "Get a presigned download URL for a media asset")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getDownloadUrl(@PathVariable UUID id) {
-        Map<String, Object> result = mediaProxyService.getDownloadUrl(id.toString());
-        return ResponseEntity.ok(ApiResponse.success(result));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDownloadUrl(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
+        boolean isAdmin = "ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole);
+        MediaAsset asset = mediaAssetRepository.findById(id)
+                .filter(a -> !Boolean.TRUE.equals(a.getIsDeleted()))
+                .filter(a -> isAdmin || institutionId.equals(a.getInstitutionId()))
+                .orElse(null);
+        if (asset == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Media asset not found"));
+        }
+        Map<String, Object> download = new java.util.HashMap<>();
+        download.put("downloadUrl", asset.getFileUrl() != null ? asset.getFileUrl() : "");
+        download.put("assetId", asset.getId());
+        return ResponseEntity.ok(ApiResponse.success(download));
     }
 }

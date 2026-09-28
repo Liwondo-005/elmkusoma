@@ -94,6 +94,18 @@ public class EnhancedDashboardResponse {
         private long pendingReviews;
         private long pendingVerifications;
         private String queueUrl;
+        private List<WorkQueueItem> items;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class WorkQueueItem {
+        private String type;
+        private String label;
+        private long count;
+        private String actionUrl;
     }
 
     @Data
@@ -101,7 +113,7 @@ public class EnhancedDashboardResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class OrganizationHealthSummary {
-        private String overallStatus; // HEALTHY, DEGRADED, CRITICAL
+        private String overallStatus; // HEALTHY, DEGRADED, CRITICAL, UNKNOWN
         private List<HealthMetric> metrics;
         private LocalDateTime lastChecked;
     }
@@ -112,7 +124,7 @@ public class EnhancedDashboardResponse {
     @AllArgsConstructor
     public static class HealthMetric {
         private String name;
-        private String status; // HEALTHY, DEGRADED, DOWN
+        private String status; // HEALTHY, DEGRADED, DOWN, UNKNOWN
         private String value;
         private String threshold;
     }

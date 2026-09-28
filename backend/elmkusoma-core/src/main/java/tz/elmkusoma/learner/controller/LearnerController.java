@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.course.domain.*;
@@ -23,9 +24,14 @@ import tz.elmkusoma.certificate.domain.CertificateTemplate;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.certificate.repository.CertificateTemplateRepository;
 import tz.elmkusoma.learning.domain.LessonProgress;
+import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.domain.Resource;
+import tz.elmkusoma.learning.domain.VideoTutorial;
 import tz.elmkusoma.learning.repository.LessonProgressRepository;
+import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.learning.repository.ResourceRepository;
+import tz.elmkusoma.learning.repository.VideoTutorialRepository;
+import tz.elmkusoma.learning.service.ResourceService;
 import tz.elmkusoma.learner.domain.*;
 import tz.elmkusoma.learner.dto.*;
 import tz.elmkusoma.learner.repository.*;
@@ -58,6 +64,8 @@ public class LearnerController {
     private final CourseModuleRepository courseModuleRepository;
     private final CourseLessonRepository courseLessonRepository;
     private final ResourceRepository resourceRepository;
+    private final VideoTutorialRepository videoTutorialRepository;
+    private final LessonRepository lessonRepository;
     private final LiveClassRepository liveClassRepository;
     private final AnnouncementRepository announcementRepository;
     private final LessonProgressRepository lessonProgressRepository;
@@ -68,6 +76,10 @@ public class LearnerController {
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
     private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
     private final LearnerGoalRepository learningGoalRepository;
+
+    /** Video visibilities every learner may see; PRIVATE/DRAFT stay creator-only. */
+    private static final java.util.Set<String> OPEN_VIDEO_VISIBILITIES =
+            java.util.Set.of("PUBLIC", "INSTITUTION", "SCHOOL", "CLASS_ONLY", "COURSE_ONLY");
 
     // ── Profile ──────────────────────────────────────────────────────────
 
@@ -419,26 +431,31 @@ public class LearnerController {
     @Operation(summary = "Browse all resources with optional type filter")
     public ResponseEntity<ApiResponse<Page<Resource>>> browseResources(
             @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole,
             @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
-            Page<Resource> resources;
+            List<String> allowedVisibilities = ResourceService.getAllowedVisibilities(userRole);
+            List<Resource> visible = resourceRepository
+                    .findByInstitutionIdAndVisibilities(institutionId, allowedVisibilities)
+                    .stream()
+                    .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                    .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
+                    .collect(Collectors.toList());
             if (type != null && !type.isEmpty() && !"all".equalsIgnoreCase(type)) {
                 try {
                     Resource.ResourceType resourceType = Resource.ResourceType.valueOf(type.toUpperCase());
-                    List<Resource> filtered = resourceRepository.findByInstitutionIdAndIsDeletedFalse(institutionId)
-                            .stream()
+                    visible = visible.stream()
                             .filter(r -> r.getResourceType() == resourceType)
                             .collect(Collectors.toList());
-                    List<Resource> paged = filtered.stream().skip((long) page * size).limit(size).collect(Collectors.toList());
-                    resources = new org.springframework.data.domain.PageImpl<>(paged, PageRequest.of(page, size), filtered.size());
-                } catch (IllegalArgumentException e) {
-                    resources = resourceRepository.findByInstitutionIdAndIsDeletedFalse(institutionId, PageRequest.of(page, size));
+                } catch (IllegalArgumentException ignored) {
                 }
-            } else {
-                resources = resourceRepository.findByInstitutionIdAndIsDeletedFalse(institutionId, PageRequest.of(page, size));
             }
+            List<Resource> paged = visible.stream().skip((long) page * size).limit(size).collect(Collectors.toList());
+            Page<Resource> resources = new org.springframework.data.domain.PageImpl<>(
+                    paged, PageRequest.of(page, size), visible.size());
             return ResponseEntity.ok(ApiResponse.success(resources));
         } catch (Exception ex) {
             log.error("Failed to browse resources: {}", ex.getMessage(), ex);
@@ -449,9 +466,15 @@ public class LearnerController {
 
     @GetMapping("/resources/{id}")
     @Operation(summary = "Get resource detail")
-    public ResponseEntity<ApiResponse<Resource>> getResourceDetail(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Resource>> getResourceDetail(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
         return resourceRepository.findById(id)
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                .filter(r -> institutionId.equals(r.getInstitutionId()))
+                .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
                 .map(r -> ResponseEntity.ok(ApiResponse.success(r)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Resource not found")));
     }
@@ -734,12 +757,34 @@ public class LearnerController {
     @Operation(summary = "Get a specific course lesson detail")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCourseLessonDetail(
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID lessonId) {
         CourseLesson lesson = courseLessonRepository.findById(lessonId)
                 .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
                 .orElse(null);
         if (lesson == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Lesson not found"));
+            // Lessons created through /v1/learning/lessons are stored separately; fall back
+            // to them so their materials stay reachable through the same endpoint.
+            Lesson learningLesson = lessonRepository.findById(lessonId)
+                    .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                    .orElse(null);
+            if (learningLesson == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Lesson not found"));
+            }
+            Map<String, Object> fallback = new LinkedHashMap<>();
+            fallback.put("id", learningLesson.getId());
+            fallback.put("moduleId", null);
+            fallback.put("moduleTitle", null);
+            fallback.put("title", learningLesson.getTitle());
+            fallback.put("contentType", learningLesson.getVideoUrl() != null ? "VIDEO" : "TEXT");
+            fallback.put("contentUrl", learningLesson.getVideoUrl());
+            fallback.put("durationMinutes", null);
+            fallback.put("sortOrder", learningLesson.getSortOrder());
+            fallback.put("isFree", false);
+            putLessonProgress(fallback, lessonId, userId);
+            fallback.put("materials", buildLessonMaterials(lessonId, userId, userRole, institutionId));
+            return ResponseEntity.ok(ApiResponse.success(fallback));
         }
         CourseModule module = courseModuleRepository.findById(lesson.getModuleId()).orElse(null);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -753,14 +798,20 @@ public class LearnerController {
         result.put("sortOrder", lesson.getSortOrder());
         result.put("isFree", lesson.getIsFree());
 
+        // Attached materials: resources + video tutorials linked to this lesson
+        UUID lessonInstitutionId = institutionId;
+        Course courseForScope = module != null ? courseRepository.findById(module.getCourseId()).orElse(null) : null;
+        if (lessonInstitutionId == null && courseForScope != null) {
+            lessonInstitutionId = courseForScope.getInstitutionId();
+        }
+        result.put("materials", buildLessonMaterials(lessonId, userId, userRole, lessonInstitutionId));
+
         // Check completion status
-        LessonProgress lp = lessonProgressRepository.findByLessonIdAndStudentIdAndIsDeletedFalse(lessonId, userId).orElse(null);
-        result.put("completed", lp != null && lp.getCompletionPercentage() != null && lp.getCompletionPercentage() >= 100.0);
-        result.put("progressPercentage", lp != null && lp.getCompletionPercentage() != null ? lp.getCompletionPercentage() : 0.0);
+        putLessonProgress(result, lessonId, userId);
 
         // Get navigation info (previous/next lesson within course)
         if (module != null) {
-            Course course = courseRepository.findById(module.getCourseId()).orElse(null);
+            Course course = courseForScope;
             if (course != null) {
                 List<CourseModule> allModules = courseModuleRepository.findByCourseIdAndIsDeletedFalseOrderBySortOrder(course.getId());
                 List<CourseLesson> flatLessons = new ArrayList<>();
@@ -790,7 +841,75 @@ public class LearnerController {
             }
         }
 
+        result.put("materials", buildLessonMaterials(lessonId, userId, userRole, institutionId));
+
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /** Puts the caller's completion state for a lesson into the response map. */
+    private void putLessonProgress(Map<String, Object> target, UUID lessonId, UUID userId) {
+        LessonProgress lp = lessonProgressRepository
+                .findByLessonIdAndStudentIdAndIsDeletedFalse(lessonId, userId).orElse(null);
+        target.put("completed", lp != null && lp.getCompletionPercentage() != null && lp.getCompletionPercentage() >= 100.0);
+        target.put("progressPercentage", lp != null && lp.getCompletionPercentage() != null ? lp.getCompletionPercentage() : 0.0);
+    }
+
+    /**
+     * Materials attached to a lesson: learning resources plus video tutorials.
+     * Every row is filtered by institution and by the caller's visibility rights.
+     */
+    private List<Map<String, Object>> buildLessonMaterials(UUID lessonId, UUID userId, String userRole,
+                                                           UUID institutionId) {
+        List<Map<String, Object>> materials = new ArrayList<>();
+
+        for (Resource resource : resourceRepository.findByLessonIdAndIsDeletedFalse(lessonId)) {
+            if (institutionId != null && !institutionId.equals(resource.getInstitutionId())) {
+                continue;
+            }
+            if (!ResourceService.canSeeResource(resource, userId, userRole)) {
+                continue;
+            }
+            Map<String, Object> material = new LinkedHashMap<>();
+            material.put("id", resource.getId());
+            material.put("kind", "resource");
+            material.put("title", resource.getTitle());
+            material.put("visibility", resource.getVisibility() != null ? resource.getVisibility().name() : null);
+            material.put("url", resource.getStorageUrl());
+            material.put("durationSeconds", resource.getDurationSeconds());
+            materials.add(material);
+        }
+
+        for (VideoTutorial video : videoTutorialRepository.findByLessonIdAndIsDeletedFalse(lessonId)) {
+            if (institutionId != null && !institutionId.equals(video.getInstitutionId())) {
+                continue;
+            }
+            String visibility = video.getVisibility() != null ? video.getVisibility().name() : null;
+            if (visibility == null || (!OPEN_VIDEO_VISIBILITIES.contains(visibility) && !isVideoCreator(video, userId))) {
+                continue;
+            }
+            Map<String, Object> material = new LinkedHashMap<>();
+            material.put("id", video.getId());
+            material.put("kind", "video");
+            material.put("title", video.getTitle());
+            material.put("visibility", visibility);
+            material.put("url", video.getRecordingUrl());
+            material.put("durationSeconds", video.getDurationSeconds());
+            materials.add(material);
+        }
+
+        return materials;
+    }
+
+    /** Mirrors VideoTutorialService creator check: PRIVATE/DRAFT videos stay creator-only. */
+    private boolean isVideoCreator(VideoTutorial video, UUID userId) {
+        String createdBy = video.getCreatedBy();
+        if (createdBy == null || userId == null) {
+            return false;
+        }
+        if (createdBy.equals(userId.toString())) {
+            return true;
+        }
+        return userRepository.findById(userId).map(u -> createdBy.equals(u.getEmail())).orElse(false);
     }
 
     @PostMapping("/me/lessons/{lessonId}/complete")

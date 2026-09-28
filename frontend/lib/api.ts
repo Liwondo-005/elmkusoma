@@ -973,10 +973,49 @@ export interface SettingRequest {
   isPublic?: boolean
 }
 
+export interface QuickAction {
+  id: string
+  label: string
+  icon: string
+  actionUrl: string
+  requiredPermission: string
+  available: boolean
+}
+
+export interface WorkQueueItem {
+  type: string
+  label: string
+  count: number
+  actionUrl: string
+}
+
+export interface WorkQueueSummary {
+  pendingApprovals: number
+  pendingReviews: number
+  pendingVerifications: number
+  queueUrl: string
+  items?: WorkQueueItem[]
+}
+
+export interface HealthMetric {
+  name: string
+  status: string
+  value: string
+  threshold: string
+}
+
+export interface OrganizationHealthSummary {
+  overallStatus: string
+  metrics: HealthMetric[]
+  lastChecked: string
+}
+
 export interface EnhancedDashboardResponse {
   institutionId: string
   institutionName: string
   institutionType: string
+  currentUserRole?: string
+  userPermissions?: string[]
   totalStudents: number
   totalTeachers: number
   totalParents: number
@@ -989,11 +1028,92 @@ export interface EnhancedDashboardResponse {
   totalModules: number
   totalLessons: number
   liveClassesScheduled: number
+  liveClassesLiveNow?: number
+  upcomingLiveClasses?: number
   pendingInvitations: number
   unreadNotifications: number
   enabledServices: string[]
   recentActivity: { type: string; title: string; description: string; timestamp: string }[]
-  attentionItems: { type: string; title: string; description: string; count: number; actionUrl: string }[]
+  attentionItems: {
+    type: string
+    title: string
+    description: string
+    count: number
+    severity?: string
+    actionUrl: string
+    actionLabel?: string
+  }[]
+  quickActions?: QuickAction[]
+  workQueueSummary?: WorkQueueSummary
+  healthSummary?: OrganizationHealthSummary
+}
+
+export interface GlobalSearchResult {
+  type: string
+  id: string
+  title: string
+  subtitle: string
+}
+
+export interface MyAccessScope {
+  type: string
+  id: string | null
+}
+
+export interface MyAccessOrganization {
+  id: string
+  name: string
+  type: string | null
+  logoUrl: string | null
+  active: boolean
+  current: boolean
+}
+
+export interface MyAccessDelegation {
+  id: string
+  scope: string
+  status: string
+  permissions: string[]
+  startsAt: string | null
+  expiresAt: string | null
+}
+
+export interface MyAccessResponse {
+  userId: string
+  userEmail: string
+  systemRole: string
+  membershipRole: string | null
+  membershipStatus: string
+  membershipActive: boolean
+  institutionId: string | null
+  institutionName: string | null
+  institutionType: string | null
+  institutionActive: boolean | null
+  scope: MyAccessScope | null
+  permissions: string[]
+  organizations: MyAccessOrganization[]
+  delegations: MyAccessDelegation[]
+}
+
+export interface InstitutionServiceItem {
+  id: string
+  institutionId: string
+  featureKey: string
+  featureName: string
+  status: string
+  enabled: boolean
+  configuration: string | null
+  enabledAt: string | null
+  enabledBy: string | null
+  description: string
+}
+
+export interface PlatformFeatureItem {
+  key: string
+  name: string
+  status: string
+  description: string
+  updatedAt?: string
 }
 
 export interface OrgProfileResponse {
@@ -1194,6 +1314,57 @@ export const adminApi = {
       method: "PUT",
       body: JSON.stringify(services),
     }),
+
+  // Organization switcher preflight. The target institution id is sent as an
+  // explicit X-Institution-Id header BEFORE it is persisted: the server-side
+  // OrganizationContextResolver answers 403 for institutions the caller has no
+  // membership in, so a rejected probe never mutates local state.
+  verifyInstitutionAccess: async (institutionId: string): Promise<void> => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
+    let res: Response
+    try {
+      res = await fetch(`${API_BASE_URL}/v1/admin/org/profile`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "X-Institution-Id": institutionId,
+        },
+      })
+    } catch (err) {
+      throw new ApiRequestError(
+        err instanceof Error ? err.message : "Network error",
+        0,
+        null,
+      )
+    }
+    if (res.status === 403) {
+      throw new ApiRequestError(
+        "Access to the requested institution is not permitted",
+        403,
+        null,
+      )
+    }
+    if (!res.ok) {
+      throw new ApiRequestError(`Organization switch check failed (${res.status})`, res.status, null)
+    }
+  },
+
+  // Access & permission center — everything derived server-side from
+  // OrganizationContext (role, membership, scope, effective permissions).
+  getMyAccess: () => request<MyAccessResponse>("/v1/admin/my-access"),
+
+  // Org-scoped search (AdministrationService.orgSearch) — scoped to the
+  // caller's resolved institution by OrganizationContextResolver.
+  orgSearch: (q: string, type = "all", limit = 10) =>
+    request<GlobalSearchResult[]>(
+      `/v1/admin/search?q=${encodeURIComponent(q)}&type=${encodeURIComponent(type)}&limit=${limit}`,
+    ),
+
+  // Per-institution service records (enabled + disabled rows).
+  getInstitutionServices: () => request<InstitutionServiceItem[]>("/v1/admin/services"),
+
+  // Platform feature catalogue. ADMIN-only — callers must tolerate 403.
+  listPlatformFeatures: () => request<PlatformFeatureItem[]>("/v1/platform-admin/features"),
 
   getAuditLog: (institutionId: string, page = 0, size = 50) =>
     request<InstitutionAuditLogResponse[]>(`/v1/admin/org/audit-log?institutionId=${institutionId}&page=${page}&size=${size}`),

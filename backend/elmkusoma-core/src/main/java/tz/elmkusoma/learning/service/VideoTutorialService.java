@@ -4,10 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learning.domain.VideoTutorial;
 import tz.elmkusoma.learning.domain.VideoTutorialProgress;
 import tz.elmkusoma.learning.dto.VideoTutorialRequest;
@@ -17,6 +19,10 @@ import tz.elmkusoma.learning.repository.VideoTutorialRepository;
 import tz.elmkusoma.learning.repository.VideoTutorialProgressRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.liveclass.domain.MediaAsset;
+import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
+import tz.elmkusoma.liveclass.service.MediaProxyService;
+import java.util.Map;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -33,6 +39,8 @@ public class VideoTutorialService {
     private final VideoTutorialRepository videoTutorialRepository;
     private final VideoTutorialProgressRepository progressRepository;
     private final UserRepository userRepository;
+    private final MediaProxyService mediaProxyService;
+    private final MediaAssetRepository mediaAssetRepository;
 
     private static final List<String> STUDENT_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION");
     private static final List<String> TEACHER_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
@@ -69,16 +77,49 @@ public class VideoTutorialService {
         return mapToResponse(video);
     }
 
+    // Attach a live recording (MediaAsset) to the video tutorial library
+    @Transactional
+    public VideoTutorialResponse attachRecording(tz.elmkusoma.liveclass.domain.MediaAsset asset,
+                                                 UUID institutionId, String userId) {
+        String recordingUrl = asset.getFileUrl();
+        if (recordingUrl != null && !recordingUrl.isBlank()
+                && !videoTutorialRepository
+                        .findByRecordingUrlAndInstitutionIdAndIsDeletedFalse(recordingUrl, institutionId)
+                        .isEmpty()) {
+            throw new IllegalStateException("Recording already attached to the video library");
+        }
+
+        VideoTutorial video = VideoTutorial.builder()
+                .institutionId(institutionId)
+                .createdBy(userId)
+                .title(asset.getTitle())
+                .description(asset.getDescription())
+                .durationSeconds(asset.getDurationSeconds() != null ? asset.getDurationSeconds().intValue() : null)
+                .recordingUrl(recordingUrl)
+                .thumbnailUrl(asset.getThumbnailUrl())
+                .visibility(VideoTutorial.ResourceVisibility.DRAFT)
+                .status(VideoTutorial.VideoTutorialStatus.READY)
+                .sortOrder(0)
+                .isDownloadable(true)
+                .isPreviewable(true)
+                .build();
+
+        video = videoTutorialRepository.save(video);
+        log.info("Attached recording {} to video library as {} for institution {}",
+                asset.getId(), video.getId(), institutionId);
+        return mapToResponse(video);
+    }
+
     // Get Video Tutorial
     @Transactional(readOnly = true)
     public VideoTutorialResponse getVideoTutorial(UUID videoTutorialId, UUID institutionId, String userId, String userRole) {
         VideoTutorial video = videoTutorialRepository.findById(videoTutorialId)
                 .filter(v -> v.getInstitutionId().equals(institutionId))
                 .filter(v -> !v.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Video tutorial not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Video tutorial not found"));
 
-        if (!canAccessVideo(video, userId)) {
-            throw new RuntimeException("Access denied to video tutorial");
+        if (!canAccessVideo(video, userId, userRole)) {
+            throw new SecurityException("You are not allowed to view this video tutorial");
         }
 
         return mapToResponse(video);
@@ -90,24 +131,24 @@ public class VideoTutorialService {
                                                           UUID lessonId, UUID moduleId, UUID courseId,
                                                           String status, String visibility,
                                                           int page, int size) {
-        List<String> allowedVisibilities = getAllowedVisibilities("TEACHER");
+        List<String> allowedVisibilities = getAllowedVisibilities(userRole);
 
         if (lessonId != null) {
-            return videoTutorialRepository.findVisibleByLessonId(lessonId, getAllowedVisibilities("TEACHER"))
+            return videoTutorialRepository.findVisibleByLessonId(lessonId, allowedVisibilities)
                     .stream()
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
         }
 
         if (moduleId != null) {
-            return videoTutorialRepository.findVisibleByModuleId(moduleId, getAllowedVisibilities("TEACHER"))
+            return videoTutorialRepository.findVisibleByModuleId(moduleId, allowedVisibilities)
                     .stream()
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
         }
 
         if (courseId != null) {
-            return videoTutorialRepository.findVisibleByCourseId(courseId, getAllowedVisibilities("TEACHER"))
+            return videoTutorialRepository.findVisibleByCourseId(courseId, allowedVisibilities)
                     .stream()
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
@@ -122,11 +163,12 @@ public class VideoTutorialService {
     // Update Video Tutorial
     @Transactional
 public VideoTutorialResponse updateVideoTutorial(UUID videoTutorialId, VideoTutorialRequest request,
-                                                      UUID institutionId, String userId) {
+                                                      UUID institutionId, String userId, String userRole) {
         VideoTutorial video = videoTutorialRepository.findById(videoTutorialId)
                 .filter(v -> v.getInstitutionId().equals(institutionId))
                 .filter(v -> !v.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Video tutorial not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Video tutorial not found"));
+        assertCanManage(video, institutionId, userId, userRole);
 
         if (request.getTitle() != null) video.setTitle(request.getTitle());
         if (request.getDescription() != null) video.setDescription(request.getDescription());
@@ -147,11 +189,12 @@ public VideoTutorialResponse updateVideoTutorial(UUID videoTutorialId, VideoTuto
 
     // Delete Video Tutorial
     @Transactional
-    public void deleteVideoTutorial(UUID videoTutorialId, UUID institutionId, String userId) {
+    public void deleteVideoTutorial(UUID videoTutorialId, UUID institutionId, String userId, String userRole) {
         VideoTutorial video = videoTutorialRepository.findById(videoTutorialId)
                 .filter(v -> v.getInstitutionId().equals(institutionId))
                 .filter(v -> !v.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Video tutorial not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Video tutorial not found"));
+        assertCanManage(video, institutionId, userId, userRole);
 
         video.setIsDeleted(true);
         videoTutorialRepository.save(video);
@@ -160,14 +203,15 @@ public VideoTutorialResponse updateVideoTutorial(UUID videoTutorialId, VideoTuto
 
     // Publish Video Tutorial
     @Transactional
-    public VideoTutorialResponse publishVideoTutorial(UUID videoTutorialId, UUID institutionId, String userId) {
+    public VideoTutorialResponse publishVideoTutorial(UUID videoTutorialId, UUID institutionId, String userId, String userRole) {
         VideoTutorial video = videoTutorialRepository.findById(videoTutorialId)
                 .filter(v -> v.getInstitutionId().equals(institutionId))
                 .filter(v -> !v.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Video tutorial not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Video tutorial not found"));
+        assertCanManage(video, institutionId, userId, userRole);
 
         if (!video.isReady()) {
-            throw new RuntimeException("Cannot publish video tutorial that is not READY");
+            throw new IllegalStateException("Cannot publish video tutorial that is not READY");
         }
 
         video.setVisibility(VideoTutorial.ResourceVisibility.PUBLIC);
@@ -178,43 +222,58 @@ public VideoTutorialResponse updateVideoTutorial(UUID videoTutorialId, VideoTuto
     // Unpublish Video Tutorial
     // Unpublish Video Tutorial
     @Transactional
-    public VideoTutorialResponse unpublishVideoTutorial(UUID videoTutorialId, UUID institutionId, String userId) {
+    public VideoTutorialResponse unpublishVideoTutorial(UUID videoTutorialId, UUID institutionId, String userId, String userRole) {
         VideoTutorial video = videoTutorialRepository.findById(videoTutorialId)
                 .filter(v -> v.getInstitutionId().equals(institutionId))
                 .filter(v -> !v.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Video tutorial not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Video tutorial not found"));
+        assertCanManage(video, institutionId, userId, userRole);
 
         video.setVisibility(VideoTutorial.ResourceVisibility.DRAFT);
         video = videoTutorialRepository.save(video);
         return mapToResponse(video);
     }
 
-    // Upload Video - simplified version without media service dependency
+    // Upload Video - bytes are stored by the media service (MinIO), never discarded
     @Transactional
-    public VideoTutorialResponse uploadVideo(UUID videoTutorialId, MultipartFile file, UUID institutionId, String userId) throws IOException {
+    public VideoTutorialResponse uploadVideo(UUID videoTutorialId, MultipartFile file, UUID institutionId,
+                                             String userId, String userRole, String bearerToken) throws IOException {
         VideoTutorial video = videoTutorialRepository.findById(videoTutorialId)
                 .filter(v -> v.getInstitutionId().equals(institutionId))
                 .filter(v -> !v.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Video tutorial not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Video tutorial not found"));
+        assertCanManage(video, institutionId, userId, userRole);
 
-        // Note: In production, this would upload to MinIO/S3 via the media service
-        // For now, we'll just update the status to PROCESSING
         video.setStatus(VideoTutorial.VideoTutorialStatus.PROCESSING);
         video.setProcessingStartedAt(LocalDateTime.now());
-
+        video.setProcessingError(null);
         video = videoTutorialRepository.save(video);
 
-        // Process video asynchronously (would typically be async)
-        processVideoAsync(video.getId(), file);
+        try {
+            Map<String, Object> stored = mediaProxyService.uploadFile(file, bearerToken);
+            video.setRecordingUrl(stored.get("url") != null ? String.valueOf(stored.get("url")) : file.getOriginalFilename());
+            if (stored.get("objectKey") != null) {
+                video.setRecordingObjectKey(String.valueOf(stored.get("objectKey")));
+            }
+            video.setStatus(VideoTutorial.VideoTutorialStatus.READY);
+            video.setProcessingCompletedAt(LocalDateTime.now());
+        } catch (Exception e) {
+            log.error("Video upload failed for {}: {}", videoTutorialId, e.getMessage());
+            video.setStatus(VideoTutorial.VideoTutorialStatus.FAILED);
+            video.setProcessingError(e.getMessage());
+            videoTutorialRepository.save(video);
+            throw new IOException("Video upload failed: " + e.getMessage(), e);
+        }
 
+        video = videoTutorialRepository.save(video);
         return mapToResponse(video);
     }
 
-    // Get Presigned Upload URL
-    public String getPresignedUploadUrl(UUID institutionId, String fileName, String contentType, String userId) {
-        // Note: In production, this would generate a presigned URL via the media service
-        // For now, return placeholder
-        return "/api/v1/media/presigned-upload";
+    // Get Presigned Upload URL (media service, authenticated as the caller)
+    public String getPresignedUploadUrl(UUID institutionId, String fileName, String contentType, String userId, String bearerToken) {
+        Map<String, Object> result = mediaProxyService.getPresignedUploadUrl(fileName, contentType, bearerToken);
+        Object uploadUrl = result != null ? result.get("uploadUrl") : null;
+        return uploadUrl != null ? String.valueOf(uploadUrl) : "/api/v1/media/presigned-upload";
     }
 
     // Student Progress
@@ -236,7 +295,7 @@ public VideoTutorialResponse updateVideoTutorial(UUID videoTutorialId, VideoTuto
                                                          int positionSeconds, Integer durationSeconds,
                                                          Boolean completed) {
         VideoTutorial video = videoTutorialRepository.findById(videoTutorialId)
-                .orElseThrow(() -> new RuntimeException("Video tutorial not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Video tutorial not found"));
 
         VideoTutorialProgress progress = progressRepository.findByVideoTutorialIdAndStudentId(videoTutorialId, studentId)
                 .orElseGet(() -> VideoTutorialProgress.builder()
@@ -264,33 +323,65 @@ public VideoTutorialResponse updateVideoTutorial(UUID videoTutorialId, VideoTuto
     }
 
     // Helper Methods
-    private boolean canAccessVideo(VideoTutorial video, String userId) {
-        // TODO: Implement proper access check based on role, visibility, enrollment
-        return true; // Simplified for now
+    private boolean canAccessVideo(VideoTutorial video, String userId, String userRole) {
+        if (isAdminRole(userRole)) {
+            return true;
+        }
+        VideoTutorial.ResourceVisibility visibility = video.getVisibility();
+        if (visibility == VideoTutorial.ResourceVisibility.PUBLIC
+                || visibility == VideoTutorial.ResourceVisibility.INSTITUTION
+                || visibility == VideoTutorial.ResourceVisibility.SCHOOL
+                || visibility == VideoTutorial.ResourceVisibility.CLASS_ONLY
+                || visibility == VideoTutorial.ResourceVisibility.COURSE_ONLY) {
+            return true;
+        }
+        // PRIVATE / DRAFT: creator or admin only
+        return isCreator(video, userId);
     }
 
-    private List<String> getAllowedVisibilities(String userRole) {
-        if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole)) {
-            return List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
-        } else if ("TEACHER".equals(userRole)) {
-            return List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
-        } else {
-            return List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION");
+    /**
+     * Ownership compare must tolerate both possible owner values: the userId the
+     * service assigned at build time and the email Spring Data auditing writes
+     * into {@code created_by} on persist.
+     */
+    private boolean isCreator(VideoTutorial video, String userId) {
+        String owner = video.getCreatedBy();
+        if (owner == null || "system".equals(owner)) {
+            // Unknown owner: fail closed, admins already returned above.
+            return false;
+        }
+        if (userId != null && owner.equals(userId)) {
+            return true;
+        }
+        Authentication authentication = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication();
+        return authentication != null && owner.equalsIgnoreCase(authentication.getName());
+    }
+
+    private static boolean isAdminRole(String userRole) {
+        return "ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole);
+    }
+
+    /** Institution + ownership enforcement for mutating operations. */
+    private void assertCanManage(VideoTutorial video, UUID institutionId, String userId, String userRole) {
+        if (institutionId == null || !institutionId.equals(video.getInstitutionId())) {
+            throw new ResourceNotFoundException("Video tutorial not found");
+        }
+        if (isAdminRole(userRole)) {
+            return;
+        }
+        if (!isCreator(video, userId)) {
+            throw new SecurityException("You do not own this video tutorial");
         }
     }
 
-
-
-    private void processVideoAsync(UUID videoTutorialId, MultipartFile file) {
-        // TODO: Implement async video processing (transcoding, thumbnail generation, caption extraction)
-        // For now, mark as READY
-        try {
-            VideoTutorial video = videoTutorialRepository.findById(videoTutorialId).orElseThrow();
-            video.setStatus(VideoTutorial.VideoTutorialStatus.READY);
-            video.setProcessingCompletedAt(LocalDateTime.now());
-            videoTutorialRepository.save(video);
-        } catch (Exception e) {
-            log.error("Video processing failed for {}: {}", videoTutorialId, e.getMessage());
+    private List<String> getAllowedVisibilities(String userRole) {
+        if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole)
+                || "NATIONAL_ADMIN".equals(userRole) || "TEACHER".equals(userRole)
+                || "INSTRUCTOR".equals(userRole) || "LECTURER".equals(userRole)) {
+            return List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
+        } else {
+            return List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION");
         }
     }
 

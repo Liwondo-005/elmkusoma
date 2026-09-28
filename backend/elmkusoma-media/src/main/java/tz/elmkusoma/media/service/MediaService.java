@@ -28,8 +28,12 @@ public class MediaService {
     @Value("${minio.bucket:elmkusoma-media}")
     private String bucket;
 
+    /**
+     * institutionId/userId MUST be bound from the verified JWT (request attributes),
+     * never from client-supplied query params.
+     */
     @Transactional
-    public MediaFileResponse uploadMedia(Long institutionId, Long userId, MultipartFile file, String metadata) {
+    public MediaFileResponse uploadMedia(UUID institutionId, UUID userId, MultipartFile file, String metadata) {
         try {
             String fileName = generateFileName(file.getOriginalFilename());
             String objectKey = buildObjectKey(institutionId, fileName);
@@ -67,10 +71,8 @@ public class MediaService {
     }
 
     @Transactional(readOnly = true)
-    public MediaFileResponse getMedia(Long mediaId) {
-        MediaFile mediaFile = mediaFileRepository.findById(mediaId)
-                .filter(m -> !m.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Media not found: " + mediaId));
+    public MediaFileResponse getMedia(Long mediaId, UUID callerInstitutionId, String callerRole) {
+        MediaFile mediaFile = requireOwned(mediaId, callerInstitutionId, callerRole);
 
         MediaFileResponse response = mapToResponse(mediaFile);
 
@@ -81,13 +83,13 @@ public class MediaService {
     }
 
     @Transactional(readOnly = true)
-    public List<MediaFileResponse> listMedia(Long institutionId, String contentType) {
+    public List<MediaFileResponse> listMedia(UUID callerInstitutionId, String contentType) {
         List<MediaFile> mediaFiles;
         if (contentType != null && !contentType.isEmpty()) {
             mediaFiles = mediaFileRepository.findByInstitutionIdAndContentTypeAndIsDeletedFalseOrderByCreatedAtDesc(
-                    institutionId, contentType);
+                    callerInstitutionId, contentType);
         } else {
-            mediaFiles = mediaFileRepository.findByInstitutionIdAndIsDeletedFalse(institutionId);
+            mediaFiles = mediaFileRepository.findByInstitutionIdAndIsDeletedFalse(callerInstitutionId);
         }
 
         return mediaFiles.stream()
@@ -96,10 +98,8 @@ public class MediaService {
     }
 
     @Transactional
-    public void deleteMedia(Long mediaId) {
-        MediaFile mediaFile = mediaFileRepository.findById(mediaId)
-                .filter(m -> !m.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Media not found: " + mediaId));
+    public void deleteMedia(Long mediaId, UUID callerInstitutionId, String callerRole) {
+        MediaFile mediaFile = requireOwned(mediaId, callerInstitutionId, callerRole);
 
         mediaFile.setIsDeleted(true);
         mediaFileRepository.save(mediaFile);
@@ -114,7 +114,7 @@ public class MediaService {
     }
 
     @Transactional(readOnly = true)
-    public PresignedUrlResponse getPresignedUploadUrl(Long institutionId, String fileName, String contentType) {
+    public PresignedUrlResponse getPresignedUploadUrl(UUID institutionId, String fileName, String contentType) {
         String objectKey = buildObjectKey(institutionId, fileName);
         String uploadUrl = storageService.getPresignedUploadUrl(objectKey, contentType, 15);
 
@@ -126,10 +126,8 @@ public class MediaService {
     }
 
     @Transactional(readOnly = true)
-    public PresignedUrlResponse getPresignedDownloadUrl(Long mediaId) {
-        MediaFile mediaFile = mediaFileRepository.findById(mediaId)
-                .filter(m -> !m.getIsDeleted())
-                .orElseThrow(() -> new RuntimeException("Media not found: " + mediaId));
+    public PresignedUrlResponse getPresignedDownloadUrl(Long mediaId, UUID callerInstitutionId, String callerRole) {
+        MediaFile mediaFile = requireOwned(mediaId, callerInstitutionId, callerRole);
 
         String downloadUrl = storageService.getPresignedDownloadUrl(mediaFile.getObjectKey(), 60);
 
@@ -140,6 +138,22 @@ public class MediaService {
                 .build();
     }
 
+    /**
+     * Institution ownership enforcement: a caller may only reach media rows bound to
+     * the institution resolved from their own verified token (admins bypass).
+     */
+    private MediaFile requireOwned(Long mediaId, UUID callerInstitutionId, String callerRole) {
+        MediaFile mediaFile = mediaFileRepository.findById(mediaId)
+                .filter(m -> !m.getIsDeleted())
+                .orElseThrow(() -> new RuntimeException("Media not found: " + mediaId));
+
+        boolean isAdmin = "ADMIN".equals(callerRole) || "NATIONAL_ADMIN".equals(callerRole);
+        if (!isAdmin && (callerInstitutionId == null || !callerInstitutionId.equals(mediaFile.getInstitutionId()))) {
+            throw new SecurityException("You are not authorized to access this media file");
+        }
+        return mediaFile;
+    }
+
     private String generateFileName(String originalName) {
         String extension = "";
         if (originalName != null && originalName.contains(".")) {
@@ -148,8 +162,8 @@ public class MediaService {
         return UUID.randomUUID().toString() + extension;
     }
 
-    private String buildObjectKey(Long institutionId, String fileName) {
-        return String.format("%d/media/%s", institutionId, fileName);
+    private String buildObjectKey(UUID institutionId, String fileName) {
+        return String.format("%s/media/%s", institutionId, fileName);
     }
 
     private MediaFileResponse mapToResponse(MediaFile mediaFile) {

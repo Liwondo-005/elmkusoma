@@ -1,6 +1,5 @@
 package tz.elmkusoma.media.controller;
 
-import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +11,7 @@ import tz.elmkusoma.media.service.MediaService;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -21,14 +21,15 @@ public class MediaUploadController {
 
     private final MediaService mediaService;
 
+    // --- identity is bound from the verified JWT only ---------------------
+
     @PostMapping("/upload")
     public ResponseEntity<MediaFileResponse> uploadMedia(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("institutionId") Long institutionId,
-            @RequestParam("userId") Long userId,
-            @RequestParam(value = "metadata", required = false) String metadata) {
-        log.info("Upload request for institution: {}, user: {}, fileName: {}",
-                institutionId, userId, file.getOriginalFilename());
+            @RequestParam(value = "metadata", required = false) String metadata,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId) {
+        log.info("Upload request for institution: {}, fileName: {}", institutionId, file.getOriginalFilename());
 
         MediaFileResponse response = mediaService.uploadMedia(institutionId, userId, file, metadata);
         return ResponseEntity.ok(response);
@@ -36,45 +37,45 @@ public class MediaUploadController {
 
     @PostMapping("/presigned-upload")
     public ResponseEntity<PresignedUrlResponse> getPresignedUploadUrl(
-            @RequestParam("institutionId") Long institutionId,
             @RequestParam("fileName") String fileName,
-            @RequestParam("contentType") String contentType) {
-        log.info("Presigned upload URL request for institution: {}, fileName: {}", institutionId, fileName);
-
+            @RequestParam("contentType") String contentType,
+            @RequestAttribute("institutionId") UUID institutionId) {
         PresignedUrlResponse response = mediaService.getPresignedUploadUrl(institutionId, fileName, contentType);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MediaFileResponse> getMedia(@PathVariable Long id) {
-        log.info("Get media request for id: {}", id);
-
-        MediaFileResponse response = mediaService.getMedia(id);
+    public ResponseEntity<MediaFileResponse> getMedia(
+            @PathVariable Long id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
+        MediaFileResponse response = mediaService.getMedia(id, institutionId, userRole);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/download")
-    public ResponseEntity<PresignedUrlResponse> getDownloadUrl(@PathVariable Long id) {
-        log.info("Download URL request for media id: {}", id);
-
-        PresignedUrlResponse response = mediaService.getPresignedDownloadUrl(id);
+    public ResponseEntity<PresignedUrlResponse> getDownloadUrl(
+            @PathVariable Long id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
+        PresignedUrlResponse response = mediaService.getPresignedDownloadUrl(id, institutionId, userRole);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> deleteMedia(@PathVariable Long id) {
-        log.info("Delete media request for id: {}", id);
-
-        mediaService.deleteMedia(id);
+    public ResponseEntity<Map<String, String>> deleteMedia(
+            @PathVariable Long id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
+        mediaService.deleteMedia(id, institutionId, userRole);
         return ResponseEntity.ok(Map.of("message", "Media deleted successfully"));
     }
 
     @GetMapping
     public ResponseEntity<List<MediaFileResponse>> listMedia(
-            @RequestParam("institutionId") Long institutionId,
-            @RequestParam(value = "contentType", required = false) String contentType) {
-        log.info("List media request for institution: {}, contentType: {}", institutionId, contentType);
-
+            @RequestParam(value = "institutionId", required = false) String ignoredInstitutionId,
+            @RequestParam(value = "contentType", required = false) String contentType,
+            @RequestAttribute("institutionId") UUID institutionId) {
         List<MediaFileResponse> responses = mediaService.listMedia(institutionId, contentType);
         return ResponseEntity.ok(responses);
     }
