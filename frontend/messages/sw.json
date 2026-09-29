@@ -1549,7 +1549,31 @@
       "titleLabel": "Kichwa *",
       "titlePlaceholder": "Kichwa cha somo",
       "unpublish": "Ondoa kuchapishwa",
-      "updateError": "Imeshindwa kusasisha somo"
+      "updateError": "Imeshindwa kusasisha somo",
+      "liveSectionTitle": "Kipindi cha Moja kwa Moja",
+      "liveSaveFirst": "Hifadhi somo kwanza, kisha panga au kuunganisha kipindi cha moja kwa moja.",
+      "liveCreate": "Tengeneza kipindi",
+      "liveLinkExisting": "Unganisha kilichopo",
+      "liveNoCandidates": "Hakuna vipindi vya moja kwa moja vya kuunganisha.",
+      "livePickExisting": "Chagua kipindi cha moja kwa moja",
+      "livePickPlaceholder": "Chagua kipindi…",
+      "liveLinkConfirm": "Unganisha na somo",
+      "liveCreateError": "Imeshindwa kutengeneza kipindi cha moja kwa moja.",
+      "liveLinkError": "Imeshindwa kuunganisha kipindi.",
+      "liveUnlinkError": "Imeshindwa kuondoa muunganisho wa kipindi.",
+      "liveUnlinkConfirm": "Ondoa kipindi hiki cha moja kwa moja kutoka somoni?",
+      "liveStartError": "Imeshindwa kuanzisha kipindi.",
+      "liveTitleLabel": "Kichwa cha kipindi",
+      "liveDateLabel": "Tarehe na saa",
+      "liveDurationLabel": "Muda (dakika)",
+      "liveSchedule": "Panga kipindi",
+      "liveView": "Angalia",
+      "livePrepare": "Tayarisha",
+      "liveStart": "Anzisha",
+      "liveEnter": "Ingiza darasa",
+      "liveRelink": "Badilisha muunganisho",
+      "liveUnlink": "Ondoa muunganisho",
+      "liveOpenBadge": "Fungua kipindi"
     },
     "mediaLibrary": {
       "allFilter": "Zote",
@@ -1772,7 +1796,12 @@
       "patternBiweekly": "Kila wiki mbili",
       "patternMonthly": "Kila mwezi",
       "reviewTitle": "Kagua Darasa la Moja kwa Moja",
-      "backToEdit": "Rudi Kuhariri"
+      "backToEdit": "Rudi Kuhariri",
+      "relatedLessonLabel": "Somo lililounganishwa",
+      "noLessonOption": "Hakuna somo (haujaunganishwa)",
+      "selectClassFirst": "Chagua darasa kwanza",
+      "noLessonsHint": "Bado hakuna somo katika darasa hili.",
+      "linkedLesson": "Somo lililounganishwa"
     },
     "livePrepare": {
       "allPassed": "Ukaguzi wote umefaulu. Uko tayari kwenda moja kwa moja.",
@@ -3083,6 +3112,18 @@
       "roleLabel": "Jukumu",
       "levelLabel": "Kiwango cha Kujifunza",
       "passwordDesc": "Sasisha nenosiri la akaunti yako"
+    },
+    "lessonLive": {
+      "sectionTitle": "Kipindi cha moja kwa moja",
+      "liveNow": "INAENDELEA SASA",
+      "scheduled": "Imepangwa",
+      "ended": "Imekwisha",
+      "cancelled": "Imeghairiwa",
+      "join": "Jiunge na kipindi",
+      "viewDetails": "Angalia maelezo",
+      "watchRecording": "Tazama rekodi",
+      "noRecording": "Hakuna rekodi ya kipindi hiki.",
+      "cancelledNote": "Kipindi hiki cha moja kwa moja kimeghairiwa."
     }
   },
   "nursery": {

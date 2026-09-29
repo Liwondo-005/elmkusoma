@@ -6,7 +6,9 @@ import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
 import { useTranslations } from "next-intl"
 import { learningApi, type Lesson, type LessonProgress } from "@/lib/api"
+import { learnerApi, type LiveLessonSummary } from "@/lib/learner-api"
 import { Button } from "@/components/ui/button"
+import { LessonLiveCard } from "@/components/learner/lesson-live-card"
 import { ArrowLeft, CheckCircle, Clock, BookOpen, Play } from "lucide-react"
 
 export default function LessonDetailPage() {
@@ -17,12 +19,17 @@ export default function LessonDetailPage() {
   const ts = useTranslations("status")
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [progress, setProgress] = useState<LessonProgress | null>(null)
+  const [liveClass, setLiveClass] = useState<LiveLessonSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
 
   useEffect(() => {
     if (!user || !params.id) return
     loadData()
+    // Lesson ↔ Live Class: real linked live session for this lesson
+    learnerApi.getLessonDetail(String(params.id))
+      .then((detail) => setLiveClass(detail?.liveClass ?? null))
+      .catch(() => setLiveClass(null))
   }, [user, params.id])
 
   async function loadData() {
@@ -103,6 +110,9 @@ export default function LessonDetailPage() {
             {lesson.description && (
               <p className="mt-2 text-sm text-muted-foreground">{lesson.description}</p>
             )}
+            <div className="mt-4">
+              <LessonLiveCard liveClass={liveClass} />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {pct >= 100 ? (

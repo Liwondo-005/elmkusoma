@@ -118,6 +118,21 @@ export interface LessonMaterial {
   durationSeconds: number | null
 }
 
+export interface LiveLessonSummary {
+  id: string
+  title: string
+  description: string | null
+  status: string
+  scheduledAt: string | null
+  durationMinutes: number | null
+  classGroupId: string | null
+  sessionType: string
+  recordingEnabled: boolean
+  recordingUrl: string | null
+  canJoin: boolean
+  inPast: boolean
+}
+
 export interface CourseLessonDetail {
   id: string
   moduleId: string
@@ -138,6 +153,8 @@ export interface CourseLessonDetail {
   totalLessons: number
   currentIndex: number
   materials?: LessonMaterial[]
+  /** Lesson ↔ Live Class: real live session linked to this lesson (null when none). */
+  liveClass?: LiveLessonSummary | null
 }
 
 export interface CourseLessonFlat {

@@ -25,6 +25,8 @@ interface LiveClass {
   recordingUrl: string | null
   currentParticipants: number | null
   sessionType: string | null
+  lessonId: string | null
+  lessonTitle: string | null
 }
 
 interface ClassOption {
@@ -56,6 +58,7 @@ const initialForm = {
   recurrencePattern: "",
   recurrenceEndDate: "",
   lobbyEnabled: false,
+  lessonId: "",
 }
 
 export default function TeacherLiveClassesPage() {
@@ -76,6 +79,7 @@ export default function TeacherLiveClassesPage() {
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
   const [reviewMode, setReviewMode] = useState(false)
+  const [lessonOptions, setLessonOptions] = useState<{ id: string; title: string }[]>([])
 
   const statusConfig: Record<string, { label: string; className: string }> = {
     SCHEDULED: { label: ts("scheduled"), className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
@@ -112,6 +116,19 @@ export default function TeacherLiveClassesPage() {
     if (!user) return
     loadData()
   }, [user])
+
+  // Lesson ↔ Live Class: lesson choices for the class picked in the create/edit form
+  useEffect(() => {
+    if (!showForm || !form.classGroupId) {
+      setLessonOptions([])
+      return
+    }
+    let cancelled = false
+    appFetch<{ id: string; title: string }[]>(`/v1/learning/lessons/class/${form.classGroupId}`)
+      .then((data) => { if (!cancelled) setLessonOptions(Array.isArray(data) ? data : []) })
+      .catch(() => { if (!cancelled) setLessonOptions([]) })
+    return () => { cancelled = true }
+  }, [form.classGroupId, showForm])
 
   async function loadData() {
     try {
@@ -173,6 +190,7 @@ export default function TeacherLiveClassesPage() {
       recurrencePattern: lc.recurrencePattern || "",
       recurrenceEndDate: lc.recurrenceEndDate || "",
       lobbyEnabled: lc.lobbyEnabled || false,
+      lessonId: lc.lessonId || "",
     })
     setEditingId(lc.id)
     setShowForm(true)
@@ -215,6 +233,7 @@ export default function TeacherLiveClassesPage() {
       }
         if (form.classGroupId) payload.classGroupId = form.classGroupId
         if (form.subjectId) payload.subjectId = form.subjectId
+        if (form.lessonId) payload.lessonId = form.lessonId
         if (form.sessionType) payload.sessionType = form.sessionType
         if (form.isRecurring && form.recurrencePattern) payload.recurrencePattern = form.recurrencePattern
         if (form.isRecurring && form.recurrenceEndDate) payload.recurrenceEndDate = form.recurrenceEndDate
@@ -414,7 +433,7 @@ export default function TeacherLiveClassesPage() {
               </label>
               <select
                 value={form.classGroupId}
-                onChange={(e) => setForm({ ...form, classGroupId: e.target.value })}
+                onChange={(e) => setForm({ ...form, classGroupId: e.target.value, lessonId: "" })}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
                 <option value="">{t("liveClasses.selectClassOptional")}</option>
@@ -443,6 +462,31 @@ export default function TeacherLiveClassesPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <Video className="mr-1 inline size-3" />
+                {t("liveClasses.relatedLessonLabel")}
+              </label>
+              <select
+                value={form.lessonId}
+                onChange={(e) => setForm({ ...form, lessonId: e.target.value })}
+                disabled={!form.classGroupId}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">
+                  {form.classGroupId ? t("liveClasses.noLessonOption") : t("liveClasses.selectClassFirst")}
+                </option>
+                {lessonOptions.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.title}
+                  </option>
+                ))}
+              </select>
+              {form.classGroupId && lessonOptions.length === 0 && (
+                <p className="mt-1 text-[11px] text-muted-foreground">{t("liveClasses.noLessonsHint")}</p>
+              )}
             </div>
 
             <div className="sm:col-span-2">
@@ -627,6 +671,12 @@ export default function TeacherLiveClassesPage() {
                 <p className="text-foreground">{subjects.find((s) => s.id === form.subjectId)?.name || form.subjectId}</p>
               </div>
             )}
+            {form.lessonId && (
+              <div>
+                <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.relatedLessonLabel")}</span>
+                <p className="text-foreground">{lessonOptions.find((l) => l.id === form.lessonId)?.title || form.lessonId}</p>
+              </div>
+            )}
             <div>
               <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewRecording")}</span>
               <p className="text-foreground">{form.enableRecording ? t("liveClasses.enabledLabel") : t("liveClasses.disabledLabel")}</p>
@@ -707,6 +757,12 @@ export default function TeacherLiveClassesPage() {
                         <span className="flex items-center gap-1">
                           <GraduationCap className="size-3" />
                           {className}
+                        </span>
+                      )}
+                      {lc.lessonId && (
+                        <span className="flex items-center gap-1 text-teal-600 dark:text-teal-400" title={t("liveClasses.relatedLessonLabel")}>
+                          <BookOpen className="size-3" />
+                          {lc.lessonTitle || t("liveClasses.linkedLesson")}
                         </span>
                       )}
                     </div>

@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
+import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.domain.LiveClass.LiveClassStatus;
@@ -17,11 +18,15 @@ import tz.elmkusoma.course.dto.CreateLiveClassRequest;
 import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.learner.service.NotificationService;
+import tz.elmkusoma.learning.domain.Lesson;
+import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
+import tz.elmkusoma.teacher.repository.TeacherAssignmentRepository;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.time.LocalDateTime;
@@ -44,6 +49,10 @@ class LiveClassServiceTest {
     @Mock private LiveClassParticipantRepository participantRepository;
     @Mock private AttendanceRecordRepository attendanceRecordRepository;
     @Mock private CertificateRepository certificateRepository;
+    @Mock private LessonRepository lessonRepository;
+    @Mock private TeacherAssignmentRepository teacherAssignmentRepository;
+    @Mock private NotificationService notificationService;
+    @Mock private AuditService auditService;
 
     @InjectMocks
     private LiveClassServiceImpl liveClassService;
@@ -318,6 +327,186 @@ class LiveClassServiceTest {
 
         assertNotNull(result);
         assertFalse(result.isEmpty());
+    }
+
+    // ---- Lesson ↔ Live Class (link/unlink, authorization, duplicate guard) ----
+
+    @Test
+    void linkLesson_shouldLinkAuthorizedLesson() {
+        UUID classGroupId = UUID.randomUUID();
+        LiveClass lc = buildLiveClass();
+        lc.setClassGroupId(classGroupId);
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+
+        Lesson lesson = buildLessonRow(institutionId, classGroupId, "Geography: Map Reading");
+        UUID lessonId = lesson.getId();
+        when(lessonRepository.findById(lessonId)).thenReturn(Optional.of(lesson));
+        when(teacherAssignmentRepository.findClassGroupIdsByTeacherId(teacherId))
+                .thenReturn(List.of(classGroupId));
+        when(liveClassRepository.findByLessonIdAndIsDeletedFalse(lessonId)).thenReturn(List.of());
+        when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LiveClassResponse response = liveClassService.linkLesson(teacherId, liveClassId, lessonId);
+
+        assertNotNull(response);
+        assertEquals(lessonId, response.getLessonId());
+        assertEquals("Geography: Map Reading", response.getLessonTitle());
+        verify(liveClassRepository).save(lc);
+    }
+
+    @Test
+    void linkLesson_whenLessonFromDifferentInstitution_shouldThrow() {
+        LiveClass lc = buildLiveClass();
+        lc.setClassGroupId(null);
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+
+        Lesson foreign = buildLessonRow(UUID.randomUUID(), null, "Foreign lesson");
+        when(lessonRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> liveClassService.linkLesson(teacherId, liveClassId, foreign.getId()));
+        assertTrue(ex.getMessage().contains("different institution"));
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    @Test
+    void linkLesson_whenLessonClassMismatch_shouldThrow() {
+        LiveClass lc = buildLiveClass();
+        lc.setClassGroupId(UUID.randomUUID());
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+
+        Lesson lesson = buildLessonRow(institutionId, UUID.randomUUID(), "Other class lesson");
+        when(lessonRepository.findById(lesson.getId())).thenReturn(Optional.of(lesson));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> liveClassService.linkLesson(teacherId, liveClassId, lesson.getId()));
+        assertTrue(ex.getMessage().contains("different class"));
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    @Test
+    void linkLesson_whenTeacherNotAssignedToLessonClass_shouldThrow() {
+        UUID classGroupId = UUID.randomUUID();
+        LiveClass lc = buildLiveClass();
+        lc.setClassGroupId(classGroupId);
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+
+        Lesson lesson = buildLessonRow(institutionId, classGroupId, "Colleague lesson");
+        when(lessonRepository.findById(lesson.getId())).thenReturn(Optional.of(lesson));
+        when(teacherAssignmentRepository.findClassGroupIdsByTeacherId(teacherId))
+                .thenReturn(List.of(UUID.randomUUID()));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> liveClassService.linkLesson(teacherId, liveClassId, lesson.getId()));
+        assertTrue(ex.getMessage().contains("not assigned"));
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    @Test
+    void linkLesson_whenLessonAlreadyLinkedToActiveClass_shouldThrow() {
+        UUID classGroupId = UUID.randomUUID();
+        LiveClass lc = buildLiveClass();
+        lc.setClassGroupId(classGroupId);
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+
+        Lesson lesson = buildLessonRow(institutionId, classGroupId, "Duplicated lesson");
+        when(lessonRepository.findById(lesson.getId())).thenReturn(Optional.of(lesson));
+        when(teacherAssignmentRepository.findClassGroupIdsByTeacherId(teacherId))
+                .thenReturn(List.of(classGroupId));
+
+        LiveClass other = buildLiveClass();
+        other.setId(UUID.randomUUID());
+        other.setTitle("Existing scheduled class");
+        other.setStatus(LiveClassStatus.SCHEDULED.name());
+        when(liveClassRepository.findByLessonIdAndIsDeletedFalse(lesson.getId()))
+                .thenReturn(List.of(other));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> liveClassService.linkLesson(teacherId, liveClassId, lesson.getId()));
+        assertTrue(ex.getMessage().contains("already linked"));
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    @Test
+    void linkLesson_whenExistingLinkIsTerminal_shouldAllow() {
+        UUID classGroupId = UUID.randomUUID();
+        LiveClass lc = buildLiveClass();
+        lc.setClassGroupId(classGroupId);
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+
+        Lesson lesson = buildLessonRow(institutionId, classGroupId, "Re-linked lesson");
+        when(lessonRepository.findById(lesson.getId())).thenReturn(Optional.of(lesson));
+        when(teacherAssignmentRepository.findClassGroupIdsByTeacherId(teacherId))
+                .thenReturn(List.of(classGroupId));
+
+        LiveClass past = buildLiveClass();
+        past.setId(UUID.randomUUID());
+        past.setStatus(LiveClassStatus.COMPLETED.name());
+        when(liveClassRepository.findByLessonIdAndIsDeletedFalse(lesson.getId()))
+                .thenReturn(List.of(past));
+        when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LiveClassResponse response = liveClassService.linkLesson(teacherId, liveClassId, lesson.getId());
+
+        assertEquals(lesson.getId(), response.getLessonId());
+        verify(liveClassRepository).save(lc);
+    }
+
+    @Test
+    void unlinkLesson_shouldClearLessonLink() {
+        UUID lessonId = UUID.randomUUID();
+        LiveClass lc = buildLiveClass();
+        lc.setLessonId(lessonId);
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+        when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LiveClassResponse response = liveClassService.unlinkLesson(teacherId, liveClassId);
+
+        assertNull(response.getLessonId());
+        assertNull(lc.getLessonId());
+        verify(liveClassRepository).save(lc);
+    }
+
+    @Test
+    void unlinkLesson_whenNoLinkedLesson_shouldThrow() {
+        LiveClass lc = buildLiveClass();
+        lc.setLessonId(null);
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> liveClassService.unlinkLesson(teacherId, liveClassId));
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    @Test
+    void createLiveClass_withCrossInstitutionLesson_shouldThrow() {
+        Teacher teacher = Teacher.builder().userId(UUID.randomUUID()).build();
+        teacher.setId(teacherId);
+        when(teacherRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
+
+        Lesson foreign = buildLessonRow(UUID.randomUUID(), null, "Foreign lesson");
+        when(lessonRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
+
+        CreateLiveClassRequest request = new CreateLiveClassRequest();
+        request.setTitle("Linked session");
+        request.setScheduledAt(LocalDateTime.now().plusDays(1).toString());
+        request.setDurationMinutes(45);
+        request.setLessonId(foreign.getId());
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> liveClassService.createLiveClass(teacherId, institutionId, request));
+        assertTrue(ex.getMessage().contains("different institution"));
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    private Lesson buildLessonRow(UUID lessonInstitutionId, UUID classGroupId, String title) {
+        Lesson lesson = new Lesson();
+        lesson.setId(UUID.randomUUID());
+        lesson.setTitle(title);
+        lesson.setInstitutionId(lessonInstitutionId);
+        lesson.setClassGroupId(classGroupId);
+        lesson.setIsDeleted(false);
+        return lesson;
     }
 
     private LiveClass buildLiveClass() {

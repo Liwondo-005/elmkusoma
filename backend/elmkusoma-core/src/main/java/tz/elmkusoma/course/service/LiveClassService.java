@@ -22,6 +22,16 @@ public interface LiveClassService {
 
     LiveClassResponse getLiveClassById(UUID liveClassId);
 
+    /**
+     * Link an existing authorized Lesson to this teacher's live class
+     * (Lesson ↔ Live Class). Validates lesson ownership/scope and prevents
+     * duplicate links to the same lesson.
+     */
+    LiveClassResponse linkLesson(UUID teacherId, UUID liveClassId, UUID lessonId);
+
+    /** Remove the Lesson association from this teacher's live class. */
+    LiveClassResponse unlinkLesson(UUID teacherId, UUID liveClassId);
+
     List<LiveClassResponse> getUpcomingClasses(UUID institutionId);
 
     List<LiveClassResponse> getLiveClassesByStatus(UUID institutionId, String status);

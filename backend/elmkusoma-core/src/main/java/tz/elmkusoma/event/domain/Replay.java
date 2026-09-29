@@ -73,4 +73,8 @@ public class Replay extends BaseEntity {
 
     @Transient
     private java.time.LocalDateTime recordedAt;
+
+    /** Lesson ↔ Live Class: derived from live_classes.lesson_id for live-session replays. */
+    @Transient
+    private UUID relatedLessonId;
 }
