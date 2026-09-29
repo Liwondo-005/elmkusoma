@@ -289,7 +289,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   }, [isInProgress, sessionStartMs, getElapsed])
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    // Scroll ONLY the chat panel, never the page: scrollIntoView walks every
+    // scrollable ancestor (including the window), which pushed the player's
+    // top-left/top-right broadcast overlays above the viewport.
+    const end = chatEndRef.current
+    const box = end?.parentElement
+    if (box) box.scrollTo({ top: box.scrollHeight, behavior: "smooth" })
   }, [chat])
 
   useEffect(() => {
