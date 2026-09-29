@@ -69,13 +69,21 @@ class LiveKitIntegrationTest {
     // ==================== Get Participants ====================
 
     @Test
-    void getParticipants_ReturnsList() throws Exception {
+    void getParticipants_NonMemberStudent_Returns403() throws Exception {
         String token = getStudentToken();
         mockMvc.perform(get("/v1/live-session/participants/" + CLASS_ID)
                 .header("Authorization", "Bearer " + token))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data").isArray());
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getParticipants_InstitutionAdmin_ReturnsList() throws Exception {
+        String token = TestTokens.adminToken();
+        mockMvc.perform(get("/v1/live-session/participants/" + CLASS_ID)
+                .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data").isArray());
     }
 
     // ==================== Get Analytics (Teacher Only) ====================

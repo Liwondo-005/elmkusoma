@@ -22,9 +22,7 @@ import java.util.*;
 @Tag(name = "Live Class Interactions", description = "Quizzes, polls, breakout rooms, shared media, and attendance detail")
 public class LiveClassInteractionController {
 
-    private final LiveClassInteractionService interactionService;
-    private final LiveClassSharedMediaRepository sharedMediaRepository;
-    private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
+private final LiveClassInteractionService interactionService;
 
     /** ROLE_TEACHER decides whether the question payload may carry the answer key. */
     private boolean isTeacher(Authentication authentication) {
@@ -220,25 +218,16 @@ public class LiveClassInteractionController {
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId,
             @RequestBody Map<String, Object> body) {
-
-        LiveClassSharedMedia media = LiveClassSharedMedia.builder()
-                .liveClassId(classId)
-                .sharedBy(userId)
-                .mediaType((String) body.getOrDefault("mediaType", "VIDEO"))
-                .title((String) body.get("title"))
-                .url((String) body.get("url"))
-                .durationSeconds(body.get("durationSeconds") != null ? (Integer) body.get("durationSeconds") : null)
-                .sharedAt(LocalDateTime.now())
-                .build();
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(sharedMediaRepository.save(media)));
+        return interactionService.shareMedia(userId, classId, body);
     }
 
     @GetMapping("/classes/{classId}/shared-media")
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Get shared media for a live class")
     public ResponseEntity<ApiResponse<List<LiveClassSharedMedia>>> getSharedMedia(
+            @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId) {
-        return ResponseEntity.ok(ApiResponse.success(sharedMediaRepository.findByLiveClassIdAndIsDeletedFalse(classId)));
+        return interactionService.getSharedMedia(userId, classId);
     }
 
     // ==================== ATTENDANCE DETAIL ====================
@@ -250,25 +239,15 @@ public class LiveClassInteractionController {
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId,
             @RequestBody Map<String, Object> body) {
-
-        LiveClassAttendanceDetail detail = LiveClassAttendanceDetail.builder()
-                .liveClassId(classId)
-                .userId(userId)
-                .build();
-
-        if (body.get("joinedAt") != null) detail.setJoinedAt(LocalDateTime.parse((String) body.get("joinedAt")));
-        if (body.get("leftAt") != null) detail.setLeftAt(LocalDateTime.parse((String) body.get("leftAt")));
-        if (body.get("totalSeconds") != null) detail.setTotalSeconds((Integer) body.get("totalSeconds"));
-        if (body.get("percentage") != null) detail.setPercentage(new java.math.BigDecimal(body.get("percentage").toString()));
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(attendanceDetailRepository.save(detail)));
+        return interactionService.recordAttendanceDetail(userId, classId, body);
     }
 
     @GetMapping("/classes/{classId}/attendance-detail")
     @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','STUDENT')")
     @Operation(summary = "Get detailed attendance for a live class")
     public ResponseEntity<ApiResponse<List<LiveClassAttendanceDetail>>> getAttendanceDetail(
+            @RequestAttribute("userId") UUID userId,
             @PathVariable UUID classId) {
-        return ResponseEntity.ok(ApiResponse.success(attendanceDetailRepository.findByLiveClassIdAndIsDeletedFalse(classId)));
+        return interactionService.getAttendanceDetail(userId, classId);
     }
 }

@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -108,11 +109,29 @@ public class LiveSessionController {
     }
 
     @GetMapping("/participants/{classId}")
-    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER','INSTITUTION_ADMIN','ADMIN')")
     @Operation(summary = "Get live class participants")
     public ResponseEntity<ApiResponse<List<ParticipantInfo>>> getParticipants(
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userRole") String userRole,
             @PathVariable UUID classId) {
+
+        var liveClass = liveClassRepository.findById(classId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
+        }
+        boolean isParticipant = participantRepository
+                .existsByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId);
+        boolean isTeacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                .map(t -> liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(t.getId()))
+                .orElse(false);
+        boolean isAdmin = "ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole);
+        if (!isParticipant && !isTeacher && !isAdmin) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.error("Access denied"));
+        }
 
         List<LiveClassParticipant> participants = participantRepository
                 .findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId);

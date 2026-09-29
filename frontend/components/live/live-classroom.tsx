@@ -29,6 +29,7 @@ import {
   BarChart3,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
+import { useTranslations } from "next-intl"
 import { learnerApi } from "@/lib/learner-api"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -112,6 +113,10 @@ interface BreakoutRoomView {
 }
 
 export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
+  const t = useTranslations("live")
+  const tc = useTranslations("common")
+  const ts = useTranslations("status")
+  const te = useTranslations("events")
   const { user, token } = useAuth()
   const router = useRouter()
   const [participants, setParticipants] = useState<Participant[]>([])
@@ -285,11 +290,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       // return switches rooms without touching the media stream).
       const stream = mediaStateRef.current
       if (stream) {
-        stream.getTracks().forEach((t) => {
-          const source = t.kind === "video" ? Track.Source.Camera : Track.Source.Microphone
+        stream.getTracks().forEach((track) => {
+          const source = track.kind === "video" ? Track.Source.Camera : Track.Source.Microphone
           if (room.localParticipant.getTrackPublication(source)) return
           room.localParticipant
-            .publishTrack(t, { name: t.kind === "video" ? "camera" : "microphone" })
+            .publishTrack(track, { name: track.kind === "video" ? "camera" : "microphone" })
             .catch(() => {})
         })
       }
@@ -436,8 +441,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             if (data.userId !== myUserId) {
               setChat((prev) => [...prev, {
                 userId: "system",
-                userName: "System",
-                message: `${data.userName} joined`,
+                userName: t("systemSender"),
+                message: t("userJoinedMsg", { name: data.userName }),
                 timestamp: data.timestamp,
                 system: true,
               }])
@@ -448,8 +453,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             if (data.userId !== myUserId) {
               setChat((prev) => [...prev, {
                 userId: "system",
-                userName: "System",
-                message: `${data.userName} left`,
+                userName: t("systemSender"),
+                message: t("userLeftMsg", { name: data.userName }),
                 timestamp: data.timestamp,
                 system: true,
               }])
@@ -503,8 +508,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           case "HAND_RAISED":
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `${data.userName} raised their hand`,
+              userName: t("systemSender"),
+              message: t("handRaisedMsg", { name: data.userName }),
               timestamp: data.timestamp,
               system: true,
             }])
@@ -512,8 +517,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           case "HAND_LOWERED":
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `${data.userName} lowered their hand`,
+              userName: t("systemSender"),
+              message: t("handLoweredMsg", { name: data.userName }),
               timestamp: data.timestamp,
               system: true,
             }])
@@ -521,8 +526,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           case "SCREEN_SHARE_STARTED":
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `${data.userName} started screen sharing`,
+              userName: t("systemSender"),
+              message: t("screenShareStartedMsg", { name: data.userName }),
               timestamp: data.timestamp,
               system: true,
             }])
@@ -530,8 +535,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           case "SCREEN_SHARE_STOPPED":
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `${data.userName} stopped screen sharing`,
+              userName: t("systemSender"),
+              message: t("screenShareStoppedMsg", { name: data.userName }),
               timestamp: data.timestamp,
               system: true,
             }])
@@ -540,12 +545,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             if (data.targetUserId === myUserId) {
               setMicEnabled(false)
               setCameraEnabled(false)
-              setJoinError("You have been muted by the teacher.")
+              setJoinError(t("mutedByTeacher"))
             } else {
               setChat((prev) => [...prev, {
                 userId: "system",
-                userName: "System",
-                message: `A participant was muted by the teacher`,
+                userName: t("systemSender"),
+                message: t("participantMutedMsg"),
                 timestamp: data.timestamp,
                 system: true,
               }])
@@ -557,7 +562,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             }
             break
           case "KICKED":
-            setJoinError(data.message || "You have been removed from the class.")
+            setJoinError(data.message || t("removedFromClassFallback"))
             retryCountRef.current = 10
             if (wsRef.current) wsRef.current.close()
             break
@@ -565,8 +570,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             setParticipants((prev) => prev.filter((p) => p.userId !== data.targetUserId))
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `A participant was removed from the class`,
+              userName: t("systemSender"),
+              message: t("participantRemovedMsg"),
               timestamp: data.timestamp,
               system: true,
             }])
@@ -586,8 +591,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             )
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `Quiz started: ${data.title}`,
+              userName: t("systemSender"),
+              message: t("quizStartedMsg", { title: data.title }),
               timestamp: data.timestamp || new Date().toISOString(),
               system: true,
             }])
@@ -599,8 +604,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             if (!isTeacherClient) void ensureQuizLoaded(quizId, true) // evaluation done → refresh my score view
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `Quiz closed: ${data.title || "Untitled quiz"}`,
+              userName: t("systemSender"),
+              message: t("quizClosedMsg", { title: data.title || t("untitledQuiz") }),
               timestamp: data.timestamp || new Date().toISOString(),
               system: true,
             }])
@@ -629,8 +634,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             )
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `Poll: ${data.question}`,
+              userName: t("systemSender"),
+              message: t("pollStartedMsg", { question: data.question }),
               timestamp: data.timestamp || new Date().toISOString(),
               system: true,
             }])
@@ -648,8 +653,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             }
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `Poll closed: ${data.question || ""}`.trim(),
+              userName: t("systemSender"),
+              message: t("pollClosedMsg", { question: data.question || "" }),
               timestamp: data.timestamp || new Date().toISOString(),
               system: true,
             }])
@@ -670,11 +675,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             void refreshBreakoutRooms()
             break
           case "SHARED_MEDIA":
-            setSharedMediaList((prev) => [...prev, { title: data.title || "Shared content", url: data.url, mediaType: data.mediaType || "VIDEO" }])
+            setSharedMediaList((prev) => [...prev, { title: data.title || t("sharedContentFallback"), url: data.url, mediaType: data.mediaType || "VIDEO" }])
             setChat((prev) => [...prev, {
               userId: "system",
-              userName: "System",
-              message: `Media shared: ${data.title || data.url}`,
+              userName: t("systemSender"),
+              message: t("mediaSharedMsg", { title: data.title || data.url }),
               timestamp: data.timestamp || new Date().toISOString(),
               system: true,
             }])
@@ -738,9 +743,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       if (localStream) {
         // Only stop video tracks - a microphone track must stay alive when the
         // camera is turned off while the mic remains on.
-        localStream.getVideoTracks().forEach((t) => {
-          t.stop()
-          localStream.removeTrack(t)
+        localStream.getVideoTracks().forEach((track) => {
+          track.stop()
+          localStream.removeTrack(track)
         })
         if (localStream.getTracks().length === 0) setLocalStream(null)
       }
@@ -770,7 +775,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           }
         }
       } catch (err) {
-        setJoinError("Could not access camera. Please check permissions.")
+        setJoinError(t("cameraPermissionError"))
       }
     }
   }
@@ -778,7 +783,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   async function toggleMic() {
     if (micEnabled) {
       if (localStream) {
-        localStream.getAudioTracks().forEach((t) => { t.enabled = false })
+        localStream.getAudioTracks().forEach((track) => { track.enabled = false })
       }
       setMicEnabled(false)
     } else {
@@ -791,9 +796,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           // The camera was turned on first: capture the mic and merge it into the
           // existing stream so it can actually be published.
           const mic = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
-          mic.getAudioTracks().forEach((t) => stream!.addTrack(t))
+          mic.getAudioTracks().forEach((track) => stream!.addTrack(track))
         }
-        stream.getAudioTracks().forEach((t) => { t.enabled = true })
+        stream.getAudioTracks().forEach((track) => { track.enabled = true })
         setMicEnabled(true)
         const room = roomRef.current
         if (room?.localParticipant) {
@@ -803,7 +808,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           }
         }
       } catch (err) {
-        setJoinError("Could not access microphone. Please check permissions.")
+        setJoinError(t("micPermissionError"))
       }
     }
   }
@@ -811,7 +816,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   async function toggleScreenShare() {
     if (screenSharing) {
       if (screenStream) {
-        screenStream.getTracks().forEach((t) => t.stop())
+        screenStream.getTracks().forEach((track) => track.stop())
         setScreenStream(null)
       }
       setScreenSharing(false)
@@ -847,7 +852,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           wsRef.current.send(JSON.stringify({ type: "SCREEN_SHARE_START" }))
         }
       } catch (err) {
-        setJoinError("Could not share screen. Please check permissions.")
+        setJoinError(t("screenPermissionError"))
       }
     }
   }
@@ -874,7 +879,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
   function kickParticipant(targetUserId: string) {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
-    if (!confirm("Remove this participant from the class?")) return
+    if (!confirm(t("removeParticipantConfirm"))) return
     wsRef.current.send(JSON.stringify({ type: "KICK_PARTICIPANT", userId: targetUserId }))
   }
 
@@ -891,7 +896,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     const isQa = sideTab === "qa"
     wsRef.current.send(JSON.stringify({ type: "CHAT", message: isQa ? `[Q&A] ${trimmed}` : trimmed, messageType: isQa ? "Q&A" : "CHAT" }))
     if (isQa) {
-      setChat((prev) => [...prev, { userId: myUserId, userName: "You", message: trimmed, timestamp: new Date().toISOString(), kind: "QA" }])
+      setChat((prev) => [...prev, { userId: myUserId, userName: t("youSender"), message: trimmed, timestamp: new Date().toISOString(), kind: "QA" }])
     }
     setMessage("")
   }
@@ -916,7 +921,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         if (res.ok) {
           setIsRecording(false)
           setRecordingEgressId(null)
-          setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Recording stopped", timestamp: new Date().toISOString(), system: true }])
+          setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingStoppedMsg"), timestamp: new Date().toISOString(), system: true }])
         }
       } else {
         const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/start`, {
@@ -928,11 +933,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           const egressId = data?.data?.egressId
           setIsRecording(true)
           setRecordingEgressId(egressId || null)
-          setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Recording started", timestamp: new Date().toISOString(), system: true }])
+          setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingStartedMsg"), timestamp: new Date().toISOString(), system: true }])
         }
       }
     } catch {
-      setChat((prev) => [...prev, { userId: "system", userName: "System", message: "Failed to toggle recording", timestamp: new Date().toISOString(), system: true }])
+      setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingToggleFailed"), timestamp: new Date().toISOString(), system: true }])
     }
   }
 
@@ -940,7 +945,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     if (!materialName.trim() || !materialUrl.trim()) return
     setAttachedMaterials((prev) => [...prev, { name: materialName.trim(), url: materialUrl.trim() }])
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "CHAT", message: `📎 Material shared: ${materialName.trim()} - ${materialUrl.trim()}` }))
+      wsRef.current.send(JSON.stringify({ type: "CHAT", message: t("materialSharedChat", { name: materialName.trim(), url: materialUrl.trim() }) }))
     }
     setMaterialName("")
     setMaterialUrl("")
@@ -1024,7 +1029,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     try {
       const qRes = await fetch(`${API_BASE}/v1/live-session/quizzes/${quizId}/questions`, { headers: authHeaders(false) })
       if (!qRes.ok) {
-        const msg = await apiErrorMessage(qRes, "Could not load quiz questions")
+        const msg = await apiErrorMessage(qRes, t("couldNotLoadQuiz"))
         setQuizUI((prev) => ({
           ...prev,
           [quizId]: { questions: [], answers: {}, submitted: false, loading: false, error: msg },
@@ -1048,7 +1053,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     } catch {
       setQuizUI((prev) => ({
         ...prev,
-        [quizId]: { questions: [], answers: {}, submitted: false, loading: false, error: "Could not load quiz questions — check your connection." },
+          [quizId]: { questions: [], answers: {}, submitted: false, loading: false, error: t("couldNotLoadQuizConn") },
       }))
     } finally {
       quizLoadingRef.current.delete(quizId)
@@ -1105,7 +1110,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/breakout-rooms`, { headers: authHeaders(false) }),
       ])
       if (!qRes.ok || !pRes.ok || !bRes.ok) {
-        setInteractiveError("Couldn't load live activities — the server refused access. Rejoin the class and try again.")
+        setInteractiveError(t("activitiesAccessError"))
         return
       }
       const [qBody, pBody, bBody] = await Promise.all([qRes.json(), pRes.json(), bRes.json()])
@@ -1144,7 +1149,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       }
       setInteractiveReady(true)
     } catch {
-      setInteractiveError("Couldn't load live activities — check your connection; they reload on every reconnect.")
+      setInteractiveError(t("activitiesConnError"))
     } finally {
       setInteractiveLoading(false)
     }
@@ -1163,7 +1168,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         body: JSON.stringify({ title: newQuizTitle.trim(), questions: quizQuestionList }),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "Quiz could not be launched"))
+        setActionError(await apiErrorMessage(res, t("quizLaunchError")))
         return
       }
       const body = await res.json()
@@ -1183,7 +1188,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       setNewQuizTitle("")
       setQuizQuestionList([])
     } catch {
-      setActionError("Network error — the quiz was not launched")
+      setActionError(t("quizLaunchNetError"))
     } finally {
       setActionBusy(false)
     }
@@ -1193,7 +1198,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     if (!newPollQuestion.trim() || !liveClass?.id || !newPollOptions.trim() || actionBusy) return
     const options = newPollOptions.split(",").map(o => o.trim()).filter(Boolean)
     if (options.length < 2) {
-      setActionError("A poll needs at least two options")
+      setActionError(t("pollOptionsError"))
       return
     }
     setActionBusy(true)
@@ -1205,7 +1210,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         body: JSON.stringify({ question: newPollQuestion.trim(), options: JSON.stringify(options) }),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "Poll could not be launched"))
+        setActionError(await apiErrorMessage(res, t("pollLaunchError")))
         return
       }
       const body = await res.json()
@@ -1222,7 +1227,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       setNewPollQuestion("")
       setNewPollOptions("")
     } catch {
-      setActionError("Network error — the poll was not launched")
+      setActionError(t("pollLaunchNetError"))
     } finally {
       setActionBusy(false)
     }
@@ -1239,14 +1244,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         body: JSON.stringify({ name: newBreakoutName.trim(), maxParticipants: 10 }),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "Breakout room could not be created"))
+        setActionError(await apiErrorMessage(res, t("breakoutCreateError")))
         return
       }
       await refreshBreakoutRooms()
       setNewBreakoutName("")
       setShowBreakoutModal(false)
     } catch {
-      setActionError("Network error — the breakout room was not created")
+      setActionError(t("breakoutCreateNetError"))
     } finally {
       setActionBusy(false)
     }
@@ -1262,12 +1267,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         headers: authHeaders(false),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "The room could not be opened"))
+        setActionError(await apiErrorMessage(res, t("roomOpenError")))
         return
       }
       await refreshBreakoutRooms()
     } catch {
-      setActionError("Network error — the room was not opened")
+      setActionError(t("roomOpenNetError"))
     } finally {
       setActionBusy(false)
     }
@@ -1283,12 +1288,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         headers: authHeaders(false),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "The room could not be closed"))
+        setActionError(await apiErrorMessage(res, t("roomCloseError")))
         return
       }
       await refreshBreakoutRooms()
     } catch {
-      setActionError("Network error — the room was not closed")
+      setActionError(t("roomCloseNetError"))
     } finally {
       setActionBusy(false)
     }
@@ -1305,12 +1310,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         body: JSON.stringify({ userId }),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "The participant could not be assigned"))
+        setActionError(await apiErrorMessage(res, t("assignError")))
         return
       }
       await refreshBreakoutRooms()
     } catch {
-      setActionError("Network error — the participant was not assigned")
+      setActionError(t("assignNetError"))
     } finally {
       setActionBusy(false)
     }
@@ -1326,7 +1331,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         headers: authHeaders(false),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "The quiz could not be closed"))
+        setActionError(await apiErrorMessage(res, t("quizCloseError")))
         return
       }
       const body = await res.json()
@@ -1334,7 +1339,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       setActiveQuizzes((prev) => prev.map((q) => (q.id === id ? { ...q, status: "CLOSED" } : q)))
       void loadQuizResults(quizId)
     } catch {
-      setActionError("Network error — the quiz was not closed")
+      setActionError(t("quizCloseNetError"))
     } finally {
       setActionBusy(false)
     }
@@ -1353,13 +1358,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         body: JSON.stringify({ optionIndex }),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "Your vote could not be recorded"))
+        setActionError(await apiErrorMessage(res, t("voteError")))
         return
       }
       // Selected only after the server accepted the vote — never optimistic.
       setSelectedPollOption(optionIndex)
     } catch {
-      setActionError("Network error — your vote was not recorded")
+      setActionError(t("voteNetError"))
     } finally {
       setPollVoting(false)
     }
@@ -1379,13 +1384,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         body: JSON.stringify(responses),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "Your answers could not be submitted"))
+        setActionError(await apiErrorMessage(res, t("answersSubmitError")))
       }
       // Reload server truth in both cases: submitted / already-submitted / closed
       // all render from what the server says, never from a local flag flip.
       await ensureQuizLoaded(quizId, true)
     } catch {
-      setActionError("Network error — your answers were not submitted")
+      setActionError(t("answersSubmitNetError"))
     } finally {
       setQuizSubmitting(false)
     }
@@ -1402,13 +1407,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         body: JSON.stringify({}),
       })
       if (!res.ok) {
-        setActionError(await apiErrorMessage(res, "You could not join this room"))
+        setActionError(await apiErrorMessage(res, t("joinRoomError")))
         await refreshBreakoutRooms()
         return
       }
       const body = await res.json()
       const d = body?.data || {}
-      setInBreakout({ roomId, roomName: String(d.roomName || "breakout room") })
+      setInBreakout({ roomId, roomName: String(d.roomName || t("breakoutFallbackName")) })
       if (d.liveKitAvailable && d.liveKitToken && d.liveKitUrl) {
         // Room switch: swapping the token tears down the main room and connects
         // the breakout room through the existing LiveKit effect (no new socket).
@@ -1419,14 +1424,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       }
       setChat(prev => [...prev, {
         userId: "system",
-        userName: "System",
-        message: `You joined breakout room "${d.roomName || ""}"`,
+        userName: t("systemSender"),
+        message: t("breakoutJoinedMsg", { name: d.roomName || "" }),
         timestamp: new Date().toISOString(),
         system: true,
       }])
       await refreshBreakoutRooms()
     } catch {
-      setActionError("Network error — you did not join the room")
+      setActionError(t("joinRoomNetError"))
     } finally {
       setActionBusy(false)
     }
@@ -1486,11 +1491,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       roomRef.current = null
     }
     if (localStream) {
-      localStream.getTracks().forEach((t) => t.stop())
+      localStream.getTracks().forEach((track) => track.stop())
       setLocalStream(null)
     }
     if (screenStream) {
-      screenStream.getTracks().forEach((t) => t.stop())
+      screenStream.getTracks().forEach((track) => track.stop())
       setScreenStream(null)
     }
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -1564,12 +1569,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="size-4" />
-            Back
+            {tc("back")}
           </Link>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={handleLeave}>
-            Leave
+            {t("leaveButton")}
           </Button>
         </div>
       </div>
@@ -1585,7 +1590,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         )}>
           {(playerState === "live" || playerState === "waiting") && <span className="size-1.5 animate-pulse rounded-full bg-white" />}
           {(playerState === "live" || playerState === "waiting")
-            ? "LIVE"
+            ? t("liveBadge")
             : sessionStatus.replace(/_/g, " ")}
         </span>
         <div>
@@ -1603,11 +1608,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           </span>
           <span className="inline-flex items-center gap-1">
             {connected ? (
-              <><Wifi className="size-3 text-teal" /> <span className="text-teal">Connected</span></>
+              <><Wifi className="size-3 text-teal" /> <span className="text-teal">{t("connectedLabel")}</span></>
             ) : reconnecting ? (
-              <><WifiOff className="size-3 text-amber-500 animate-pulse" /> <span className="text-amber-500">Reconnecting...</span></>
+              <><WifiOff className="size-3 text-amber-500 animate-pulse" /> <span className="text-amber-500">{t("reconnectingLabel")}</span></>
             ) : (
-              <><WifiOff className="size-3 text-muted-foreground" /> <span className="text-muted-foreground">Offline</span></>
+              <><WifiOff className="size-3 text-muted-foreground" /> <span className="text-muted-foreground">{t("offlineLabel")}</span></>
             )}
           </span>
         </div>
@@ -1629,21 +1634,21 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
       {interactiveLoading && !interactiveReady && (
         <div className="mb-3 rounded-lg border border-border bg-card p-2 text-xs text-muted-foreground">
-          Loading live activities…
+          {t("loadingActivities")}
         </div>
       )}
 
       {interactiveError && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 flex items-center justify-between">
           <span>{interactiveError}</span>
-          <button onClick={() => { interactiveLoadedRef.current = false; void refreshInteractiveState() }} className="font-medium text-amber-600 underline">Retry</button>
+          <button onClick={() => { interactiveLoadedRef.current = false; void refreshInteractiveState() }} className="font-medium text-amber-600 underline">{tc("retry")}</button>
         </div>
       )}
 
       {serviceMode === "chat-only" && isInProgress && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700">
-          <p className="font-medium">Live service degraded</p>
-          <p className="mt-0.5 text-amber-600">ELMKUSOMA Live is experiencing a temporary technical issue with the real-time media service. You can still participate via chat. We are working to restore full service.</p>
+          <p className="font-medium">{t("degradedTitle")}</p>
+          <p className="mt-0.5 text-amber-600">{t("degradedDesc")}</p>
         </div>
       )}
 
@@ -1658,7 +1663,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             screenStream={screenStream}
             cameraEnabled={cameraEnabled}
             recordingUrl={sessionEnded ? liveClass.recordingUrl : null}
-            scheduledLabel={liveClass.scheduledAt ? `Starts at ${formatTime(liveClass.scheduledAt)}` : "Starts at TBD"}
+            scheduledLabel={liveClass.scheduledAt ? t("startsAtWithTime", { time: formatTime(liveClass.scheduledAt) }) : t("startsAtTbd")}
             onRetry={retryLiveKit}
             pipStream={
               localStream && cameraEnabled && (screenStream || (!isTeacherClient && !remoteVideoTrack))
@@ -1669,30 +1674,30 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             {isInProgress && (
               <>
                 <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent p-3">
-                    <ControlButton active={cameraEnabled} onClick={toggleCamera} label={cameraEnabled ? "Turn off camera" : "Turn on camera"}>
+                    <ControlButton active={cameraEnabled} onClick={toggleCamera} label={cameraEnabled ? t("cameraOffLabel") : t("cameraOnLabel")}>
                       {cameraEnabled ? <Video className="size-4" /> : <VideoOff className="size-4" />}
                     </ControlButton>
-                    <ControlButton active={micEnabled} onClick={toggleMic} label={micEnabled ? "Mute" : "Unmute"}>
+                    <ControlButton active={micEnabled} onClick={toggleMic} label={micEnabled ? t("muteLabel") : t("unmuteLabel")}>
                       {micEnabled ? <Mic className="size-4" /> : <MicOff className="size-4" />}
                     </ControlButton>
-                    <ControlButton active={screenSharing} onClick={toggleScreenShare} label={screenSharing ? "Stop sharing" : "Share screen"}>
+                    <ControlButton active={screenSharing} onClick={toggleScreenShare} label={screenSharing ? t("stopSharingLabel") : t("shareScreenLabel")}>
                       <MonitorUp className="size-4" />
                     </ControlButton>
-                    <ControlButton active={isRecording} onClick={toggleRecording} label={isRecording ? "Stop recording" : "Start recording"}>
+                    <ControlButton active={isRecording} onClick={toggleRecording} label={isRecording ? t("stopRecordingLabel") : t("startRecordingLabel")}>
                       <Circle className={cn("size-4", isRecording && "fill-red-500 text-red-500 animate-pulse")} />
                     </ControlButton>
-                    <ControlButton active={showMaterialInput} onClick={() => setShowMaterialInput(!showMaterialInput)} label="Attach material">
+                    <ControlButton active={showMaterialInput} onClick={() => setShowMaterialInput(!showMaterialInput)} label={t("attachMaterialLabel")}>
                       <Paperclip className="size-4" />
                     </ControlButton>
-                    <ControlButton active={handRaised} onClick={toggleHand} label={handRaised ? "Lower hand" : "Raise hand"}>
+                    <ControlButton active={handRaised} onClick={toggleHand} label={handRaised ? t("lowerHandLabel") : t("raiseHandLabel")}>
                       <Hand className="size-4" />
                     </ControlButton>
                     <button
                       type="button"
                       onClick={() => setShowIssueModal(true)}
-                      aria-label="Report issue"
+                      aria-label={t("reportIssueAria")}
                       className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-red-500/20 text-white hover:bg-red-500/30 transition-colors"
-                      title="Report an issue"
+                      title={t("reportIssueTitle")}
                     >
                       <Flag className="size-4" />
                     </button>
@@ -1703,7 +1708,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                         type="text"
                         value={materialName}
                         onChange={(e) => setMaterialName(e.target.value)}
-                        placeholder="Material name"
+                        placeholder={t("materialNamePlaceholder")}
                         className="h-8 flex-1 rounded border border-white/20 bg-white/10 px-2 text-xs text-white placeholder:text-white/50 outline-none"
                       />
                       <input
@@ -1713,7 +1718,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                         placeholder="https://..."
                         className="h-8 flex-1 rounded border border-white/20 bg-white/10 px-2 text-xs text-white placeholder:text-white/50 outline-none"
                       />
-                      <Button size="sm" className="h-8 text-xs" onClick={handleAttachMaterial}>Share</Button>
+                      <Button size="sm" className="h-8 text-xs" onClick={handleAttachMaterial}>{t("shareButton")}</Button>
                     </div>
                   )}
                 </>
@@ -1721,17 +1726,17 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             </LiveVideoPlayer>
 
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <h2 className="text-xs font-semibold text-foreground mb-2">Class Details</h2>
+            <h2 className="text-xs font-semibold text-foreground mb-2">{t("classDetailsTitle")}</h2>
             <div className="space-y-1 text-xs text-muted-foreground">
-              {liveClass.scheduledAt && <p>Scheduled: {new Date(liveClass.scheduledAt).toLocaleString()}</p>}
-              {liveClass.durationMinutes && <p>Duration: {liveClass.durationMinutes} min</p>}
-              {liveClass.maxParticipants && <p>Max participants: {liveClass.maxParticipants}</p>}
+              {liveClass.scheduledAt && <p>{t("scheduledLine", { datetime: new Date(liveClass.scheduledAt).toLocaleString() })}</p>}
+              {liveClass.durationMinutes && <p>{t("durationLine", { count: liveClass.durationMinutes })}</p>}
+              {liveClass.maxParticipants && <p>{t("maxParticipantsLine", { count: liveClass.maxParticipants })}</p>}
               {liveClass.description && <p className="whitespace-pre-line line-clamp-3">{liveClass.description}</p>}
             </div>
           </div>
           {attachedMaterials.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <h2 className="text-xs font-semibold text-foreground mb-2">Attached Materials</h2>
+              <h2 className="text-xs font-semibold text-foreground mb-2">{t("attachedMaterialsTitle")}</h2>
               <div className="space-y-1.5">
                 {attachedMaterials.map((m, i) => (
                   <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline">
@@ -1747,11 +1752,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         <div className="flex flex-col gap-4 order-1 lg:order-2">
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold text-foreground">Participants ({participants.length})</h2>
+              <h2 className="text-xs font-semibold text-foreground">{t("participantsTitle", { count: participants.length })}</h2>
             </div>
             <div className="mt-3 space-y-1.5 max-h-36 overflow-y-auto">
               {participants.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground">No participants yet</p>
+                <p className="text-[10px] text-muted-foreground">{t("noParticipants")}</p>
               ) : (
                 participants.map((p) => (
                   <div key={p.userId} className="flex items-center gap-2 group">
@@ -1764,18 +1769,18 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-medium text-foreground truncate">
                         {p.userName}
-                        {p.userId === myUserId && <span className="text-muted-foreground"> (you)</span>}
+                        {p.userId === myUserId && <span className="text-muted-foreground">{t("youSuffix")}</span>}
                       </p>
                     </div>
                     {p.userId !== myUserId && (user?.role === "Teacher" || user?.role === "Admin") && (
                       <div className="hidden group-hover:flex items-center gap-0.5">
-                        <button onClick={() => muteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title="Mute">
+                        <button onClick={() => muteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title={t("muteLabel")}>
                           <MicOff className="size-3" />
                         </button>
-                        <button onClick={() => unmuteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title="Unmute">
+                        <button onClick={() => unmuteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title={t("unmuteLabel")}>
                           <Mic className="size-3" />
                         </button>
-                        <button onClick={() => kickParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Remove">
+                        <button onClick={() => kickParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title={t("removeAction")}>
                           <XCircle className="size-3" />
                         </button>
                       </div>
@@ -1790,7 +1795,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xs font-semibold text-amber-700 flex items-center gap-1">
-                  <ListOrdered className="size-3" /> Hand Raise Queue ({handRaiseQueue.length})
+                  <ListOrdered className="size-3" /> {t("handQueueTitle", { count: handRaiseQueue.length })}
                 </h2>
               </div>
               <div className="space-y-1.5">
@@ -1823,7 +1828,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             return (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
                 <h2 className="text-xs font-semibold text-blue-700 flex items-center gap-1 mb-2">
-                  <ClipboardList className="size-3" /> {isActive ? "Active Poll" : "Poll closed"}
+                  <ClipboardList className="size-3" /> {isActive ? t("activePollTitle") : t("pollClosedTitle")}
                 </h2>
                 <p className="text-xs font-medium text-blue-900 mb-2">{poll.question}</p>
                 <div className="space-y-1.5">
@@ -1860,19 +1865,19 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 </div>
                 {!isActive && (
                   <p className="mt-2 text-[10px] text-blue-700">
-                    {tally ? `Final result · ${tally.totalVotes} vote${tally.totalVotes === 1 ? "" : "s"}` : "Poll closed — voting has ended."}
+                    {tally ? t("pollFinalResult", { count: tally.totalVotes }) : t("pollClosedEnded")}
                   </p>
                 )}
                 {isActive && isTeacherClient && (
                   <p className="mt-2 text-[10px] text-blue-700">
-                    {tally ? `Live results · ${tally.totalVotes} vote${tally.totalVotes === 1 ? "" : "s"}` : "Waiting for votes…"}
+                    {tally ? t("pollLiveResult", { count: tally.totalVotes }) : t("waitingVotes")}
                   </p>
                 )}
                 {isActive && !isTeacherClient && myVote === null && pollVoting && (
-                  <p className="mt-2 text-[10px] text-blue-600">Recording your vote…</p>
+                  <p className="mt-2 text-[10px] text-blue-600">{t("recordingVote")}</p>
                 )}
                 {isActive && !isTeacherClient && myVote !== null && (
-                  <p className="mt-2 text-[10px] text-blue-700">✓ Your response has been submitted.</p>
+                  <p className="mt-2 text-[10px] text-blue-700">{t("voteSubmitted")}</p>
                 )}
               </div>
             )
@@ -1892,7 +1897,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             return (
               <div className={cn("rounded-xl border p-4 shadow-sm", isActive ? "border-teal-200 bg-teal-50" : "border-border bg-card")}>
                 <h2 className={cn("mb-1 flex items-center gap-1 text-xs font-semibold", isActive ? "text-teal-700" : "text-foreground")}>
-                  <ListOrdered className="size-3" /> Live Quiz {isActive ? "" : "· closed"}
+                  <ListOrdered className="size-3" /> {t("liveQuizTitle")} {isActive ? "" : t("quizClosedSuffix")}
                 </h2>
                 {relevant.length > 1 && (
                   <div className="mb-2 flex flex-wrap gap-1">
@@ -1905,16 +1910,16 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                           q.id === quiz.id ? "border-teal-400 bg-teal-100 text-teal-800" : "border-border text-muted-foreground",
                         )}
                       >
-                        {q.title || "Untitled"}
+                        {q.title || t("untitled")}
                       </button>
                     ))}
                   </div>
                 )}
-                <p className="mb-2 text-xs font-medium text-foreground">{quiz.title || "Untitled quiz"}</p>
-                {ui?.loading && <p className="text-[10px] text-muted-foreground">Loading questions…</p>}
+                <p className="mb-2 text-xs font-medium text-foreground">{quiz.title || t("untitledQuiz")}</p>
+                {ui?.loading && <p className="text-[10px] text-muted-foreground">{t("loadingQuestions")}</p>}
                 {ui?.error && <p className="text-[10px] text-red-600">{ui.error}</p>}
                 {ui && !ui.loading && !ui.error && ui.questions.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground">This quiz has no questions yet.</p>
+                  <p className="text-[10px] text-muted-foreground">{t("quizNoQuestions")}</p>
                 )}
                 {ui && !ui.loading && ui.questions.length > 0 && (
                   <div className="space-y-3">
@@ -1923,7 +1928,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       const canAnswer = isActive && !ui.submitted && !quizSubmitting
                       return (
                         <div key={q.id} className="rounded-lg border border-teal-100 bg-white p-2">
-                          <p className="text-[11px] font-medium text-foreground">Q{qi + 1}. {q.questionText}</p>
+                          <p className="text-[11px] font-medium text-foreground">{t("questionNumberLine", { index: qi + 1, text: q.questionText })}</p>
                           <div className="mt-1.5 space-y-1">
                             {opts.map((opt) => {
                               const chosen = ui.answers[q.id] === opt
@@ -1947,8 +1952,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                           </div>
                           {ui.submitted && (
                             <p className="mt-1 text-[10px] text-teal-700">
-                              Your answer: {ui.answers[q.id] ?? q.myAnswer ?? "—"}
-                              {!isActive && typeof q.isCorrect === "boolean" && (q.isCorrect ? " · ✓ Correct" : " · ✗ Incorrect")}
+                              {t("yourAnswerLine", { answer: ui.answers[q.id] ?? q.myAnswer ?? "—" })}
+                              {!isActive && typeof q.isCorrect === "boolean" && (q.isCorrect ? t("correctSuffix") : t("incorrectSuffix"))}
                             </p>
                           )}
                         </div>
@@ -1962,18 +1967,18 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                           disabled={quizSubmitting || !allAnswered}
                           onClick={() => void submitQuiz(quiz.id)}
                         >
-                          {quizSubmitting ? "Submitting…" : "Submit answers"}
+                          {quizSubmitting ? t("submittingLabel") : t("submitAnswersButton")}
                         </Button>
                         {!allAnswered && (
-                          <p className="text-[10px] text-muted-foreground">Answer every question to submit.</p>
+                          <p className="text-[10px] text-muted-foreground">{t("answerAllToSubmit")}</p>
                         )}
                       </>
                     )}
                     {ui.submitted && (
-                      <p className="text-[10px] font-medium text-teal-700">✓ Your response has been submitted.</p>
+                      <p className="text-[10px] font-medium text-teal-700">{t("voteSubmitted")}</p>
                     )}
                     {!isActive && !ui.submitted && (
-                      <p className="text-[10px] text-muted-foreground">This quiz is closed — submissions are no longer accepted.</p>
+                      <p className="text-[10px] text-muted-foreground">{t("quizClosedNoSubmit")}</p>
                     )}
                   </div>
                 )}
@@ -1983,8 +1988,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
           {sharedMediaList.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <h2 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">
-                <PlayCircle className="size-3" /> Shared Media
+                <h2 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">
+                <PlayCircle className="size-3" /> {t("sharedMediaTitle")}
               </h2>
               <div className="space-y-1.5">
                 {sharedMediaList.map((m, i) => (
@@ -2000,38 +2005,38 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           {isInProgress && user?.role === "Teacher" && (
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
               <h2 className="text-xs font-semibold text-foreground flex items-center gap-1">
-                <Zap className="size-3" /> Launch Quiz
+                <Zap className="size-3" /> {t("launchQuizTitle")}
               </h2>
               <input
                 type="text"
                 value={newQuizTitle}
                 onChange={e => setNewQuizTitle(e.target.value)}
-                placeholder="Quiz title"
+                placeholder={t("quizTitlePlaceholder")}
                 className="h-8 w-full rounded border border-border bg-muted/60 px-2 text-xs outline-none"
               />
               {quizQuestionList.map((q, i) => (
                 <div key={i} className="rounded border border-border p-2 text-[10px] space-y-1">
-                  <div className="font-medium text-foreground">Q{i + 1}: {q.questionText}</div>
-                  <div className="text-muted-foreground">Options: {q.options}</div>
-                  <div className="text-teal">Answer: {q.correctAnswer}</div>
+                  <div className="font-medium text-foreground">{t("questionNumberLine", { index: i + 1, text: q.questionText })}</div>
+                  <div className="text-muted-foreground">{t("questionOptionsLine", { options: q.options })}</div>
+                  <div className="text-teal">{t("questionAnswerLine", { answer: q.correctAnswer })}</div>
                 </div>
               ))}
               <div className="flex gap-1">
                 <input
                   type="text"
-                  placeholder="Question"
+                  placeholder={t("questionPlaceholder")}
                   className="h-7 flex-1 rounded border border-border bg-muted/60 px-2 text-[10px] outline-none"
                   id="quiz-q-text"
                 />
                 <input
                   type="text"
-                  placeholder="Options (comma-separated)"
+                  placeholder={t("optionsPlaceholder")}
                   className="h-7 flex-1 rounded border border-border bg-muted/60 px-2 text-[10px] outline-none"
                   id="quiz-q-opts"
                 />
                 <input
                   type="text"
-                  placeholder="Correct answer"
+                  placeholder={t("correctAnswerPlaceholder")}
                   className="h-7 flex-1 rounded border border-border bg-muted/60 px-2 text-[10px] outline-none"
                   id="quiz-q-ans"
                 />
@@ -2058,7 +2063,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 disabled={actionBusy || !newQuizTitle.trim() || quizQuestionList.length === 0}
                 onClick={createQuiz}
               >
-                Launch Quiz ({quizQuestionList.length} questions)
+                {t("launchQuizCount", { count: quizQuestionList.length })}
               </Button>
             </div>
           )}
@@ -2071,7 +2076,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             return (
               <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-2">
                 <h2 className="text-xs font-semibold text-foreground flex items-center gap-1">
-                  <Zap className="size-3" /> Live Quizzes
+                  <Zap className="size-3" /> {t("liveQuizzesTitle")}
                 </h2>
                 {list.map(q => {
                   const r = quizResultsById[q.id]
@@ -2080,26 +2085,28 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   return (
                     <div key={q.id} className="rounded-lg border border-border p-2 space-y-1">
                       <p className="text-[11px] font-medium text-foreground">
-                        {q.title || "Untitled quiz"}
-                        {!isActive && <span className="ml-1 text-muted-foreground">· closed</span>}
+                        {q.title || t("untitledQuiz")}
+                        {!isActive && <span className="ml-1 text-muted-foreground">{t("quizClosedSuffix")}</span>}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
                         {r
-                          ? `Answered ${r.answeredCount}/${r.participantCount || r.answeredCount} · Correct ${r.totalCorrect}/${r.totalResponses}${r.totalResponses > 0 ? ` (${accuracy}%)` : ""}`
-                          : "Waiting for responses…"}
+                          ? r.totalResponses > 0
+                            ? t("quizStatsWithAccuracy", { answered: r.answeredCount, total: r.participantCount || r.answeredCount, correct: r.totalCorrect, responses: r.totalResponses, accuracy })
+                            : t("quizStatsNoAccuracy", { answered: r.answeredCount, total: r.participantCount || r.answeredCount, correct: r.totalCorrect, responses: r.totalResponses })
+                          : t("waitingResponses")}
                       </p>
                       {isActive ? (
                         <div className="flex gap-1">
                           <Button size="sm" variant="outline" className="h-5 flex-1 text-[10px]" disabled={actionBusy} onClick={() => void loadQuizResults(q.id)}>
-                            Refresh
+                            {t("refreshButton")}
                           </Button>
                           <Button size="sm" variant="ghost" className="h-5 flex-1 text-[10px] text-destructive" disabled={actionBusy} onClick={() => void closeQuiz(q.id)}>
-                            Close quiz
+                            {t("closeQuizButton")}
                           </Button>
                         </div>
                       ) : (
                         <Button size="sm" variant="outline" className="h-5 w-full text-[10px]" disabled={actionBusy} onClick={() => void loadQuizResults(q.id)}>
-                          View results
+                          {t("viewResultsButton")}
                         </Button>
                       )}
                     </div>
@@ -2112,20 +2119,20 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           {isInProgress && user?.role === "Teacher" && (
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
               <h2 className="text-xs font-semibold text-foreground flex items-center gap-1">
-                <BarChart3 className="size-3" /> Create Poll
+                <BarChart3 className="size-3" /> {t("createPollTitle")}
               </h2>
               <input
                 type="text"
                 value={newPollQuestion}
                 onChange={e => setNewPollQuestion(e.target.value)}
-                placeholder="Poll question"
+                placeholder={t("pollQuestionPlaceholder")}
                 className="h-8 w-full rounded border border-border bg-muted/60 px-2 text-xs outline-none"
               />
               <input
                 type="text"
                 value={newPollOptions}
                 onChange={e => setNewPollOptions(e.target.value)}
-                placeholder="Options (comma-separated)"
+                placeholder={t("optionsPlaceholder")}
                 className="h-8 w-full rounded border border-border bg-muted/60 px-2 text-xs outline-none"
               />
               <Button
@@ -2134,7 +2141,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 disabled={actionBusy || !newPollQuestion.trim() || !newPollOptions.trim()}
                 onClick={createPoll}
               >
-                Launch Poll
+                {t("launchPollButton")}
               </Button>
             </div>
           )}
@@ -2143,24 +2150,24 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xs font-semibold text-foreground flex items-center gap-1">
-                  <Users className="size-3" /> Breakout Rooms
+                  <Users className="size-3" /> {t("breakoutRoomsTitle")}
                 </h2>
                 {isInProgress && user?.role === "Teacher" && (
                   <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setShowBreakoutModal(true)}>
-                    + Create
+                    {t("createBreakoutButton")}
                   </Button>
                 )}
               </div>
               {inBreakout && (
                 <div className="mb-2 space-y-1 rounded-lg border border-teal-200 bg-teal-50 p-2 text-[10px] text-teal-800">
-                  <p className="font-medium">In breakout room: {inBreakout.roomName}</p>
+                  <p className="font-medium">{t("inBreakoutLabel", { name: inBreakout.roomName })}</p>
                   <Button size="sm" variant="outline" className="h-5 text-[10px]" onClick={() => void returnToMainRoom()}>
-                    Return to main room
+                    {t("returnMainRoom")}
                   </Button>
                 </div>
               )}
               {breakoutRooms.length === 0 ? (
-                <p className="text-[10px] text-muted-foreground">No breakout rooms yet</p>
+                <p className="text-[10px] text-muted-foreground">{t("noBreakoutRooms")}</p>
               ) : (
                 <div className="space-y-1.5">
                   {breakoutRooms.map(room => {
@@ -2176,14 +2183,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                             room.status === "ACTIVE" ? "bg-teal animate-pulse" : room.status === "ENDED" ? "bg-gray-400" : "bg-amber-400"
                           )} />
                           <span className="flex-1 font-medium text-foreground">{room.name}</span>
-                          <span className="text-[10px] text-muted-foreground">{room.assignedCount ?? assigned.length}/{room.maxParticipants} assigned</span>
+                          <span className="text-[10px] text-muted-foreground">{t("assignedCountLine", { assigned: room.assignedCount ?? assigned.length, max: room.maxParticipants })}</span>
                           {user?.role === "Teacher" && (
                             <div className="flex gap-1">
                               {room.status === "WAITING" && (
-                                <Button size="sm" variant="ghost" className="h-5 text-[10px] text-teal" disabled={actionBusy} onClick={() => void startBreakoutRoom(room.id)}>Start</Button>
+                                <Button size="sm" variant="ghost" className="h-5 text-[10px] text-teal" disabled={actionBusy} onClick={() => void startBreakoutRoom(room.id)}>{t("startButton")}</Button>
                               )}
                               {room.status === "ACTIVE" && (
-                                <Button size="sm" variant="ghost" className="h-5 text-[10px] text-destructive" disabled={actionBusy} onClick={() => void endBreakoutRoom(room.id)}>End</Button>
+                                <Button size="sm" variant="ghost" className="h-5 text-[10px] text-destructive" disabled={actionBusy} onClick={() => void endBreakoutRoom(room.id)}>{t("endButton")}</Button>
                               )}
                             </div>
                           )}
@@ -2194,17 +2201,17 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                               className="h-5 text-[10px] text-teal"
                               disabled={actionBusy}
                               onClick={() => void joinBreakoutRoom(room.id)}
-                            >{room.assignedToMe ? "Join room" : "Join"}</Button>
+                            >{room.assignedToMe ? t("joinRoomButton") : t("joinButton")}</Button>
                           )}
                         </div>
                         {!isTeacherClient && room.assignedToMe && room.status === "WAITING" && (
-                          <p className="text-[10px] text-amber-600">You are assigned here — waiting for the teacher to open it.</p>
+                          <p className="text-[10px] text-amber-600">{t("assignedWaiting")}</p>
                         )}
                         {!isTeacherClient && room.assignedToMe && room.status === "ENDED" && (
-                          <p className="text-[10px] text-muted-foreground">This room has ended.</p>
+                          <p className="text-[10px] text-muted-foreground">{t("roomEndedMsg")}</p>
                         )}
                         {!isTeacherClient && iAmAssignedElsewhere && (
-                          <p className="text-[10px] text-muted-foreground">You are assigned to another room.</p>
+                          <p className="text-[10px] text-muted-foreground">{t("assignedElsewhere")}</p>
                         )}
                         {assigned.length > 0 && (
                           <div className="flex flex-wrap gap-1">
@@ -2223,7 +2230,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                               if (targetId) void assignParticipantToRoom(room.id, targetId)
                             }}
                           >
-                            <option value="">Assign participant…</option>
+                            <option value="">{t("assignParticipantPlaceholder")}</option>
                             {participants
                               .filter(p => p.role !== "TEACHER" && !assigned.some(a => a.userId === p.userId))
                               .map(p => (
@@ -2241,25 +2248,25 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
           {showBreakoutModal && (
             <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <h3 className="text-xs font-semibold text-foreground mb-2">New Breakout Room</h3>
+              <h3 className="text-xs font-semibold text-foreground mb-2">{t("newBreakoutTitle")}</h3>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={newBreakoutName}
                   onChange={e => setNewBreakoutName(e.target.value)}
-                  placeholder="Room name"
+                  placeholder={t("roomNamePlaceholder")}
                   className="h-8 flex-1 rounded border border-border bg-muted/60 px-2 text-xs outline-none"
                   onKeyDown={e => { if (e.key === "Enter") createBreakoutRoom() }}
                 />
-                <Button size="sm" className="h-8 text-xs" onClick={createBreakoutRoom} disabled={actionBusy || !newBreakoutName.trim()}>Create</Button>
-                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setShowBreakoutModal(false); setNewBreakoutName("") }}>Cancel</Button>
+                <Button size="sm" className="h-8 text-xs" onClick={createBreakoutRoom} disabled={actionBusy || !newBreakoutName.trim()}>{tc("create")}</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setShowBreakoutModal(false); setNewBreakoutName("") }}>{tc("cancel")}</Button>
               </div>
             </div>
           )}
 
           <div className="flex min-h-80 flex-col rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-              <div className="flex gap-1" role="tablist" aria-label="Class side panel">
+              <div className="flex gap-1" role="tablist" aria-label={t("sidePanelAria")}>
                 {(["chat", "qa", "people"] as const).map((tab) => (
                   <button
                     key={tab}
@@ -2269,14 +2276,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     onClick={() => setSideTab(tab)}
                     className={`rounded px-2 py-1 text-[10px] font-semibold uppercase ${sideTab === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
                   >
-                    {tab === "chat" ? "Chat" : tab === "qa" ? "Q&A" : "People"}
+                    {tab === "chat" ? t("chatTab") : tab === "qa" ? t("qaTab") : t("peopleTab")}
                   </button>
                 ))}
               </div>
               <span className="inline-flex items-center gap-1">
                 {connected && <span className="size-1.5 rounded-full bg-teal animate-pulse" />}
                 <span className="text-[10px] text-muted-foreground">
-                  {connected ? "Live" : reconnecting ? "Reconnecting..." : "Offline"}
+                  {connected ? t("liveSmallLabel") : reconnecting ? t("reconnectingLabel") : t("offlineLabel")}
                 </span>
               </span>
             </div>
@@ -2291,15 +2298,15 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                         <button
                           type="button"
                           onClick={() => setParticipantRole(p.userId, p.role === "MODERATOR" ? "LEARNER" : "MODERATOR")}
-                          aria-label={p.role === "MODERATOR" ? `Demote ${p.userName}` : `Promote ${p.userName} to moderator`}
+                          aria-label={p.role === "MODERATOR" ? t("demoteAria", { name: p.userName }) : t("promoteAria", { name: p.userName })}
                           className="rounded p-0.5 text-[10px] text-muted-foreground hover:text-foreground"
                         >
-                          {p.role === "MODERATOR" ? "Demote" : "Promote"}
+                          {p.role === "MODERATOR" ? t("demoteLabel") : t("promoteLabel")}
                         </button>
-                        <button onClick={() => muteParticipant(p.userId)} aria-label={`Mute ${p.userName}`} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
+                        <button onClick={() => muteParticipant(p.userId)} aria-label={t("muteUserAria", { name: p.userName })} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
                           <MicOff className="size-3" />
                         </button>
-                        <button onClick={() => kickParticipant(p.userId)} aria-label={`Remove ${p.userName}`} className="rounded p-0.5 text-destructive">
+                        <button onClick={() => kickParticipant(p.userId)} aria-label={t("removeUserAria", { name: p.userName })} className="rounded p-0.5 text-destructive">
                           <XCircle className="size-3" />
                         </button>
                       </span>
@@ -2307,7 +2314,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                   </div>
                 ))}
                 {participants.length === 0 && (
-                  <p className="text-center text-[11px] text-muted-foreground py-6">No participants yet</p>
+                  <p className="text-center text-[11px] text-muted-foreground py-6">{t("noParticipants")}</p>
                 )}
               </div>
             ) : (
@@ -2319,14 +2326,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 if (visible.length === 0) {
                   return (
                     <p className="text-center text-[11px] text-muted-foreground py-6">
-                      {sideTab === "qa" ? "No questions yet" : "No messages yet"}
+                      {sideTab === "qa" ? t("noQuestions") : t("noMessages")}
                     </p>
                   )
                 }
                 return visible.map((c, i) => (
                   <div key={i} className={cn("flex gap-2", (c.system || c.deleted) && "justify-center")}>
                     {c.system || c.deleted ? (
-                      <span className="text-[10px] text-muted-foreground italic">{c.deleted ? "Message removed" : c.message}</span>
+                      <span className="text-[10px] text-muted-foreground italic">{c.deleted ? t("messageRemoved") : c.message}</span>
                     ) : (
                       <>
                         <span className={cn(
@@ -2346,7 +2353,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                               <button
                                 key={r}
                                 type="button"
-                                aria-label={`React ${r}`}
+                                aria-label={t("reactAria", { emoji: r })}
                                 onClick={() => {
                                   setChat((prev) => prev.map((m) => (m === c ? { ...m, reactions: { ...(m.reactions || {}), [r]: ((m.reactions || {})[r] || 0) + 1 } } : m)))
                                   if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -2361,7 +2368,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                             {(user?.role === "Teacher" || user?.role === "Admin") && c.userId !== myUserId && (
                               <button
                                 type="button"
-                                aria-label="Remove message"
+                                aria-label={t("removeMessageAria")}
                                 onClick={() => {
                                   setChat((prev) => prev.map((m) => (m === c ? { ...m, deleted: true } : m)))
                                   if (c.id && wsRef.current?.readyState === WebSocket.OPEN) {
@@ -2376,7 +2383,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                                 }}
                                 className="rounded px-1 text-[10px] text-destructive hover:bg-destructive/10"
                               >
-                                Remove
+                                {t("removeButton")}
                               </button>
                             )}
                           </div>
@@ -2394,12 +2401,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={sideTab === "qa" ? (isInProgress ? "Ask a question..." : "Q&A during live session") : isInProgress ? "Type a message..." : "Chat during live session"}
+                placeholder={sideTab === "qa" ? (isInProgress ? t("askQuestionPlaceholder") : t("qaDisabledPlaceholder")) : isInProgress ? t("typeMessagePlaceholder") : t("chatDisabledPlaceholder")}
                 disabled={!isInProgress || !connected}
-                aria-label={sideTab === "qa" ? "Ask a question" : "Chat message"}
+                aria-label={sideTab === "qa" ? t("askQuestionAria") : t("chatMessageAria")}
                 className="h-9 flex-1 rounded-lg border border-border bg-muted/60 px-3 text-xs outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background disabled:opacity-50"
               />
-              <Button type="submit" size="icon" className="size-9 shrink-0" aria-label="Send" disabled={!isInProgress || !connected || !message.trim()}>
+              <Button type="submit" size="icon" className="size-9 shrink-0" aria-label={tc("send")} disabled={!isInProgress || !connected || !message.trim()}>
                 <Send className="size-3.5" />
               </Button>
             </form>
@@ -2411,7 +2418,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           <div className="w-full max-w-md rounded-xl bg-card p-5 shadow-xl border border-border" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Flag className="size-4 text-destructive" /> Report an Issue
+                <Flag className="size-4 text-destructive" /> {t("reportIssueTitle")}
               </h3>
               <button onClick={() => setShowIssueModal(false)} className="text-muted-foreground hover:text-foreground">
                 <XCircle className="size-4" />
@@ -2419,41 +2426,41 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             </div>
             {issueSent ? (
               <div className="py-4 text-center">
-                <p className="text-sm text-teal font-medium">Issue reported successfully</p>
-                <p className="text-xs text-muted-foreground mt-1">Thank you for your report. Our team will investigate.</p>
+                <p className="text-sm text-teal font-medium">{t("issueReportedTitle")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("issueReportedDesc")}</p>
                 <Button variant="outline" size="sm" className="mt-4" onClick={() => { setShowIssueModal(false); setIssueSent(false); setIssueDescription("") }}>
-                  Close
+                  {tc("close")}
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-foreground">Issue Type</label>
+                  <label className="text-xs font-medium text-foreground">{t("issueTypeLabel")}</label>
                   <select
                     value={issueType}
                     onChange={e => setIssueType(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-border bg-muted/60 px-3 py-2 text-xs outline-none"
                   >
-                    <option value="CONNECTION_PROBLEM">Connection Problem</option>
-                    <option value="AUDIO_PROBLEM">Audio Problem</option>
-                    <option value="VIDEO_PROBLEM">Video Problem</option>
-                    <option value="CHAT_PROBLEM">Chat Problem</option>
-                    <option value="PARTICIPANT_ISSUE">Participant Issue</option>
-                    <option value="OTHER">Other</option>
+                    <option value="CONNECTION_PROBLEM">{t("connectionProblem")}</option>
+                    <option value="AUDIO_PROBLEM">{t("audioProblem")}</option>
+                    <option value="VIDEO_PROBLEM">{t("videoProblem")}</option>
+                    <option value="CHAT_PROBLEM">{t("chatProblem")}</option>
+                    <option value="PARTICIPANT_ISSUE">{t("participantIssue")}</option>
+                    <option value="OTHER">{t("otherIssue")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-foreground">Description (optional)</label>
+                  <label className="text-xs font-medium text-foreground">{t("descriptionOptionalLabel")}</label>
                   <textarea
                     value={issueDescription}
                     onChange={e => setIssueDescription(e.target.value)}
                     rows={3}
-                    placeholder="Describe the issue..."
+                    placeholder={t("describeIssuePlaceholder")}
                     className="mt-1 w-full rounded-lg border border-border bg-muted/60 px-3 py-2 text-xs outline-none resize-none"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
-                  <Button variant="outline" size="sm" onClick={() => setShowIssueModal(false)}>Cancel</Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowIssueModal(false)}>{tc("cancel")}</Button>
                   <Button
                     size="sm"
                     disabled={issueSubmitting}
@@ -2475,13 +2482,13 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                         })
                         if (res.ok) setIssueSent(true)
                       } catch {
-                        setJoinError("Failed to submit issue report")
+                        setJoinError(t("failedSubmitIssue"))
                       } finally {
                         setIssueSubmitting(false)
                       }
                     }}
                   >
-                    {issueSubmitting ? "Sending..." : "Submit Report"}
+                    {issueSubmitting ? t("sendingLabel") : t("submitReportButton")}
                   </Button>
                 </div>
               </div>

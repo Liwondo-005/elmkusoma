@@ -21,6 +21,7 @@ import {
 import type { LiveClass } from "@/lib/learner-api"
 import { useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
+import { useTranslations } from "next-intl"
 import { LiveInteractivePanel } from "./live-interactive-panel"
 import { ActivityCreator } from "./activity-creator"
 
@@ -44,6 +45,10 @@ interface ChatMessage {
 }
 
 export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
+  const t = useTranslations("live")
+  const tc = useTranslations("common")
+  const tlc = useTranslations("liveClasses")
+  const tev = useTranslations("events")
   const { user, token } = useAuth()
   const [participants, setParticipants] = useState<Participant[]>([])
   const [chat, setChat] = useState<ChatMessage[]>([])
@@ -54,10 +59,11 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const wsRef = useRef<WebSocket | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const retryCountRef = useRef(0)
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const myUserId = user?.id || ""
   const isTeacher = user?.role === "Teacher" || user?.role === "Instructor"
-  const teacherName = liveClass.teacherName || "Your Teacher"
+  const teacherName = liveClass.teacherName || t("teacherFallback")
   const isInProgress = liveClass.status === "IN_PROGRESS" || liveClass.status === "LIVE"
   const [showActivities, setShowActivities] = useState(false)
   const [handRaised, setHandRaised] = useState(false)
@@ -118,8 +124,8 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 ...prev,
                 {
                   userId: "system",
-                  userName: "System",
-                  message: `${data.userName} joined`,
+                  userName: t("systemLabel"),
+                  message: t("participantJoined", { name: data.userName }),
                   timestamp: data.timestamp,
                   system: true,
                 },
@@ -133,8 +139,8 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 ...prev,
                 {
                   userId: "system",
-                  userName: "System",
-                  message: `${data.userName} left`,
+                  userName: t("systemLabel"),
+                  message: t("participantLeft", { name: data.userName }),
                   timestamp: data.timestamp,
                   system: true,
                 },
@@ -186,27 +192,35 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
       ws.onclose = () => {
         setConnected(false)
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current)
+          reconnectTimeoutRef.current = null
+        }
         if (hasJoined && isInProgress && retryCountRef.current < 10) {
           const delay = Math.min(3000 * Math.pow(1.5, retryCountRef.current), 30000)
           retryCountRef.current++
-          setTimeout(connect, delay)
+          reconnectTimeoutRef.current = setTimeout(connect, delay)
         }
       }
 
       ws.onerror = () => {
-        setJoinError("Could not connect to the class. Please try again.")
+        setJoinError(t("connectError"))
       }
     }
 
     connect()
 
     return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
       if (wsRef.current) {
         wsRef.current.close()
         wsRef.current = null
       }
     }
-  }, [hasJoined, isInProgress, token, user, liveClass.id, myUserId])
+  }, [hasJoined, isInProgress, token, user, liveClass.id, myUserId, t])
 
   const sendMessage = useCallback(() => {
     if (!message.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
@@ -224,7 +238,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         ...prev,
         {
           userId: myUserId,
-          userName: "You",
+          userName: t("youLabel"),
           message: trimmed,
           timestamp: new Date().toISOString(),
           kind: "QA",
@@ -232,7 +246,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       ])
     }
     setMessage("")
-  }, [message, sideTab, myUserId])
+  }, [message, sideTab, myUserId, t])
 
   const handleLeave = useCallback(() => {
     if (wsRef.current) {
@@ -260,8 +274,8 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   }, [handRaised])
 
   const getEligibilityStatus = () => {
-    if (isInProgress) return { label: "You're eligible to join", icon: CheckCircle, color: "text-green-600" }
-    return { label: "Waiting for teacher to start", icon: Clock, color: "text-amber-600" }
+    if (isInProgress) return { label: t("eligibleToJoin"), icon: CheckCircle, color: "text-green-600" }
+    return { label: t("waitingForTeacher"), icon: Clock, color: "text-amber-600" }
   }
 
   const eligibility = getEligibilityStatus()
@@ -274,16 +288,16 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             <Users className="size-10 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{liveClass.title || "Live Class"}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{liveClass.title || t("classFallbackTitle")}</h1>
             {liveClass.subjectName && (
               <p className="mt-1 text-sm font-medium text-primary">{liveClass.subjectName}</p>
             )}
             <p className="mt-2 text-sm text-muted-foreground">
-              Teacher: {teacherName}
+              {t("teacherLabel", { name: teacherName })}
             </p>
             {liveClass.durationMinutes && (
               <p className="mt-1 text-xs text-muted-foreground">
-                {liveClass.durationMinutes} minutes
+                {t("durationMinutes", { count: liveClass.durationMinutes })}
               </p>
             )}
           </div>
@@ -291,14 +305,14 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           {!isInProgress ? (
             <div className="rounded-2xl border border-border bg-card p-6">
               <p className="text-sm text-muted-foreground">
-                This class has not started yet. Please wait for your teacher to begin.
+                {t("notStartedYet")}
               </p>
               <Link
                 href="/dashboard/live-classes"
                 className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
               >
                 <ArrowLeft className="size-4" />
-                Go back
+                {tc("goBack")}
               </Link>
             </div>
           ) : (
@@ -306,7 +320,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               onClick={handleJoin}
               className="w-full rounded-2xl bg-primary px-8 py-4 text-lg font-bold text-primary-foreground shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
             >
-              Join Class!
+              {t("joinClassCta")}
             </button>
           )}
 
@@ -329,7 +343,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             )}
           />
           <span className="text-sm font-medium text-foreground">
-            {connected ? "Connected" : "Connecting..."}
+            {connected ? tev("preflight.connected") : t("connecting")}
           </span>
         </div>
         <div className="flex items-center gap-4">
@@ -347,14 +361,14 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             )}
           >
             <Sparkles className="size-4" />
-            Activities
+            {t("activitiesTitle")}
           </button>
               <button
             onClick={handleLeave}
             className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-2 text-sm font-bold text-destructive transition-colors hover:bg-destructive/20"
           >
             <LogOut className="size-4" />
-            Leave Class
+            {t("leaveClass")}
           </button>
           <button
             onClick={() => {
@@ -373,7 +387,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             )}
           >
             <Hand className="size-4" />
-            {handRaised ? "Lower Hand" : "Raise Hand"}
+            {handRaised ? t("lowerHand") : t("raiseHand")}
           </button>
         </div>
       </div>
@@ -395,16 +409,16 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       <Crown className="size-3.5 text-yellow-500" />
                     )}
                     <span className="max-w-[120px] truncate text-xs font-medium text-foreground">
-                      {p.userId === myUserId ? "You" : p.userName}
+                      {p.userId === myUserId ? t("youLabel") : p.userName}
                     </span>
                   </div>
                   {p.role === "TEACHER" && (
                     <span className="mt-0.5 text-[10px] font-semibold text-yellow-600">
-                      Teacher
+                      {tlc("teacher")}
                     </span>
                   )}
                   {"handRaised" in p && (p as any).handRaised && (
-                    <span className="absolute -top-1 -right-1 text-sm" title="Hand raised">✋</span>
+                    <span className="absolute -top-1 -right-1 text-sm" title={t("handRaisedTitle")}>✋</span>
                   )}
                   {isTeacher && p.userId !== myUserId && p.role !== "TEACHER" && (
                     <button
@@ -415,7 +429,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                         }
                       }}
                       className="absolute -bottom-1 -right-1 size-5 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/80"
-                      title={`Remove ${p.userName}`}
+                      title={t("removeParticipant", { name: p.userName })}
                     >
                       ×
                     </button>
@@ -426,7 +440,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           </div>
 
           <div className="border-t border-border bg-card p-4">
-            <div className="mb-2 flex gap-1" role="tablist" aria-label="Chat mode">
+            <div className="mb-2 flex gap-1" role="tablist" aria-label={t("chatModeLabel")}>
               <button
                 type="button"
                 role="tab"
@@ -434,7 +448,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 onClick={() => setSideTab("chat")}
                 className={`rounded-lg px-3 py-1 text-xs font-medium ${sideTab === "chat" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
               >
-                Chat
+                {t("chatTab")}
               </button>
               <button
                 type="button"
@@ -443,7 +457,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 onClick={() => setSideTab("qa")}
                 className={`rounded-lg px-3 py-1 text-xs font-medium ${sideTab === "qa" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
               >
-                Q&A
+                {t("qaTab")}
               </button>
             </div>
             <div className="flex items-center gap-3">
@@ -452,16 +466,16 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder={sideTab === "qa" ? "Ask a question..." : "Type a message..."}
+                placeholder={sideTab === "qa" ? t("qaPlaceholder") : t("chatPlaceholder")}
                 className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
                 disabled={!connected}
-                aria-label={sideTab === "qa" ? "Ask a question" : "Chat message"}
+                aria-label={sideTab === "qa" ? t("askQuestionLabel") : t("chatMessageLabel")}
               />
               <button
                 onClick={sendMessage}
                 disabled={!message.trim() || !connected}
                 className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                aria-label="Send"
+                aria-label={tc("send")}
               >
                 <Send className="size-5" />
               </button>
@@ -481,7 +495,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             <>
               <div className="border-b border-border px-4 py-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">
-                  {sideTab === "qa" ? "Q&A" : "Chat"}
+                  {sideTab === "qa" ? t("qaTab") : t("chatTab")}
                 </h3>
                 {isTeacher && (
                   <div className="flex items-center gap-2">
@@ -494,7 +508,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       }}
                       className="text-[10px] font-medium text-muted-foreground hover:text-foreground"
                     >
-                      Pin
+                      {t("pinAction")}
                     </button>
                     <button
                       onClick={() => {
@@ -506,7 +520,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       }}
                       className="text-[10px] font-medium text-destructive hover:text-destructive/80"
                     >
-                      Clear
+                      {t("clearAction")}
                     </button>
                   </div>
                 )}
@@ -521,7 +535,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       <div className="flex flex-col items-center py-8 text-center">
                         <MessageCircle className="size-8 text-muted-foreground/40" />
                         <p className="mt-2 text-xs text-muted-foreground">
-                          {sideTab === "qa" ? "No questions yet." : "No messages yet. Say hello!"}
+                          {sideTab === "qa" ? t("noQuestionsPrimary") : t("noMessagesPrimary")}
                         </p>
                       </div>
                     )
@@ -531,12 +545,12 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       {visible.map((msg, i) =>
                         msg.system || msg.deleted ? (
                           <div key={i} className="text-center text-xs text-muted-foreground">
-                            {msg.deleted ? "Message removed" : msg.message}
+                            {msg.deleted ? t("messageRemoved") : msg.message}
                           </div>
                         ) : (
                           <div key={i}>
                             <span className="text-xs font-semibold text-foreground">
-                              {msg.userId === myUserId ? "You" : msg.userName}
+                              {msg.userId === myUserId ? t("youLabel") : msg.userName}
                             </span>
                             <p className="mt-0.5 text-sm text-muted-foreground">
                               {msg.message}
@@ -546,7 +560,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                                 <button
                                   key={r}
                                   type="button"
-                                  aria-label={`React ${r}`}
+                                  aria-label={t("reactLabel", { emoji: r })}
                                   onClick={() => {
                                     setChat((prev) =>
                                       prev.map((m) =>
@@ -569,7 +583,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                               {isTeacher && msg.userId !== myUserId && (
                                 <button
                                   type="button"
-                                  aria-label="Remove message"
+                                  aria-label={t("removeMessage")}
                                   onClick={() => {
                                     setChat((prev) =>
                                       prev.map((m) => (m === msg ? { ...m, deleted: true } : m)),
@@ -587,7 +601,7 @@ export function PrimaryLiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                                   }}
                                   className="rounded px-1 text-[10px] text-destructive hover:bg-destructive/10"
                                 >
-                                  Remove
+                                  {t("removeAction")}
                                 </button>
                               )}
                             </div>

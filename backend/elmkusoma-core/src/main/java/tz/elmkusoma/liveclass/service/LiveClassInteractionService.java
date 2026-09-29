@@ -50,6 +50,8 @@ public class LiveClassInteractionService {
     private final LiveClassBreakoutRoomRepository breakoutRoomRepository;
     private final LiveClassBreakoutAssignmentRepository breakoutAssignmentRepository;
     private final LiveClassParticipantRepository participantRepository;
+    private final LiveClassSharedMediaRepository sharedMediaRepository;
+    private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
     private final LiveClassWebSocketHandler webSocketHandler;
     private final LiveKitService liveKitService;
 
@@ -868,6 +870,66 @@ public class LiveClassInteractionService {
             publishBreakoutUpdate(lc.getId(), userId);
         }
         return ResponseEntity.ok(ApiResponse.success("Breakout room ended", null));
+    }
+
+    // ==================== SHARED MEDIA (session-scoped) ====================
+
+    @Transactional
+    public ResponseEntity<ApiResponse<LiveClassSharedMedia>> shareMedia(
+            UUID userId, UUID classId, Map<String, Object> body) {
+        LiveClass lc = loadClass(classId);
+        if (lc == null) return err(404, "Live class not found");
+        if (!canReadClass(lc, userId)) return err(403, "Access denied");
+        LiveClassSharedMedia media = LiveClassSharedMedia.builder()
+                .liveClassId(classId)
+                .sharedBy(userId)
+                .mediaType(body.getOrDefault("mediaType", "VIDEO").toString())
+                .title((String) body.get("title"))
+                .url((String) body.get("url"))
+                .durationSeconds(body.get("durationSeconds") != null ? (Integer) body.get("durationSeconds") : null)
+                .sharedAt(LocalDateTime.now())
+                .build();
+        LiveClassSharedMedia saved = sharedMediaRepository.save(media);
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "RESOURCE_SHARED");
+        event.put("mediaId", saved.getId().toString());
+        event.put("title", saved.getTitle());
+        event.put("timestamp", LocalDateTime.now().toString());
+        publishAfterCommit(classId, event);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(saved));
+    }
+
+    public ResponseEntity<ApiResponse<List<LiveClassSharedMedia>>> getSharedMedia(UUID userId, UUID classId) {
+        LiveClass lc = loadClass(classId);
+        if (lc == null) return err(404, "Live class not found");
+        if (!canReadClass(lc, userId)) return err(403, "Access denied");
+        return ok(sharedMediaRepository.findByLiveClassIdAndIsDeletedFalse(classId));
+    }
+
+    // ==================== ATTENDANCE DETAIL (session-scoped) ====================
+
+    @Transactional
+    public ResponseEntity<ApiResponse<LiveClassAttendanceDetail>> recordAttendanceDetail(
+            UUID userId, UUID classId, Map<String, Object> body) {
+        LiveClass lc = loadClass(classId);
+        if (lc == null) return err(404, "Live class not found");
+        if (!isParticipant(classId, userId)) return err(403, "Access denied");
+        LiveClassAttendanceDetail detail = LiveClassAttendanceDetail.builder()
+                .liveClassId(classId)
+                .userId(userId)
+                .build();
+        if (body.get("joinedAt") != null) detail.setJoinedAt(LocalDateTime.parse((String) body.get("joinedAt")));
+        if (body.get("leftAt") != null) detail.setLeftAt(LocalDateTime.parse((String) body.get("leftAt")));
+        if (body.get("totalSeconds") != null) detail.setTotalSeconds((Integer) body.get("totalSeconds"));
+        if (body.get("percentage") != null) detail.setPercentage(new java.math.BigDecimal(body.get("percentage").toString()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(attendanceDetailRepository.save(detail)));
+    }
+
+    public ResponseEntity<ApiResponse<List<LiveClassAttendanceDetail>>> getAttendanceDetail(UUID userId, UUID classId) {
+        LiveClass lc = loadClass(classId);
+        if (lc == null) return err(404, "Live class not found");
+        if (!canReadClass(lc, userId)) return err(403, "Access denied");
+        return ok(attendanceDetailRepository.findByLiveClassIdAndIsDeletedFalse(classId));
     }
 
     private static String str(Object o) {
