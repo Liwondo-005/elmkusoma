@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 
 import { appFetch } from "@/lib/fetch"
+import { mediaApi } from "@/lib/api"
 
 interface Assignment {
   id: string
@@ -104,6 +105,7 @@ export default function TeacherAssignmentsPage() {
   const [gradeValue, setGradeValue] = useState<string>("")
   const [gradeFeedback, setGradeFeedback] = useState("")
   const [gradingLoading, setGradingLoading] = useState(false)
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
 
   const assignmentTypes = [
     { value: "ESSAY", label: t("assignments.typeEssay") },
@@ -153,21 +155,36 @@ export default function TeacherAssignmentsPage() {
 
   async function loadAllAssignments(): Promise<Assignment[]> {
     const classesRes = await appFetch<ClassOption[]>("/v1/teachers/me/classes")
-    const all: Assignment[] = []
-    for (const cls of classesRes) {
-      try {
-        const data = await appFetch<Assignment[]>(`/v1/learning/assignments/class/${cls.classGroupId}`)
-        const enriched = data.map((a) => ({
-          ...a,
-          className: cls.className,
-          subjectName: cls.subjectName,
-        }))
-        all.push(...enriched)
-      } catch {
-        // skip
+    if (classesRes.length === 0) return []
+    // ONE batch request replaces the per-class loop (N+1).
+    const data = await appFetch<Assignment[]>(
+      `/v1/learning/assignments/classes?ids=${classesRes.map((c) => c.classGroupId).join(",")}`
+    )
+    const classById = new Map(classesRes.map((c) => [c.classGroupId, c]))
+    return data.map((a) => ({
+      ...a,
+      className: classById.get(a.classGroupId)?.className,
+      subjectName: classById.get(a.classGroupId)?.subjectName,
+    }))
+  }
+
+  /** B14: the paperclip now really uploads — the URL lands in `attachments`. */
+  async function handleAttachmentFileSelected(file: File) {
+    setUploadingAttachment(true)
+    setError(null)
+    try {
+      const res = (await mediaApi.upload(file)) as { data?: { url?: string }; url?: string }
+      const url = res?.data?.url || res?.url || ""
+      if (!url) {
+        setError(t("assignments.uploadFailed"))
+        return
       }
+      setForm((f) => ({ ...f, attachments: f.attachments ? `${f.attachments}, ${url}` : url }))
+    } catch {
+      setError(t("assignments.uploadFailed"))
+    } finally {
+      setUploadingAttachment(false)
     }
-    return all
   }
 
   function resetForm() {
@@ -483,9 +500,31 @@ export default function TeacherAssignmentsPage() {
                   placeholder="e.g. assignment-file.pdf"
                   className="h-10 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
                 />
-                <Button type="button" variant="outline" size="icon" className="shrink-0" title={t("assignments.attachFile")}>
-                  <Paperclip className="size-4" />
-                </Button>
+                <label
+                  className={`inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm transition-colors hover:bg-muted ${
+                    uploadingAttachment ? "pointer-events-none opacity-60" : ""
+                  }`}
+                  title={t("assignments.attachFile")}
+                >
+                  {uploadingAttachment ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Paperclip className="size-4" />
+                  )}
+                  <span className="text-xs">
+                    {uploadingAttachment ? t("assignments.uploadingFile") : t("assignments.attachFile")}
+                  </span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    disabled={uploadingAttachment}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) void handleAttachmentFileSelected(f)
+                      e.target.value = ""
+                    }}
+                  />
+                </label>
               </div>
             </div>
           </div>

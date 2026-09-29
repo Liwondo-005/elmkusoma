@@ -122,6 +122,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .subjectId(request.getSubjectId())
                 .maxParticipants(request.getMaxParticipants())
                 .classGroupId(request.getClassGroupId())
+                .lessonId(request.getLessonId())
                 .recordingEnabled(Boolean.TRUE.equals(request.getRecordingEnabled()))
                 .sessionType(request.getSessionType() != null ? LiveClassSessionType.valueOf(request.getSessionType()) : LiveClassSessionType.LECTURE)
                 .broadcastSource(parseBroadcastSource(request.getBroadcastSource()))
@@ -170,6 +171,7 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (request.getDurationMinutes() != null) liveClass.setDurationMinutes(request.getDurationMinutes());
         if (request.getSubjectId() != null) liveClass.setSubjectId(request.getSubjectId());
         if (request.getClassGroupId() != null) liveClass.setClassGroupId(request.getClassGroupId());
+        if (request.getLessonId() != null) liveClass.setLessonId(request.getLessonId());
         if (request.getMaxParticipants() != null) liveClass.setMaxParticipants(request.getMaxParticipants());
         if (request.getRecordingEnabled() != null) liveClass.setRecordingEnabled(request.getRecordingEnabled());
         if (request.getSessionType() != null) {
@@ -475,6 +477,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                     .subjectId(parent.getSubjectId())
                     .maxParticipants(parent.getMaxParticipants())
                     .classGroupId(parent.getClassGroupId())
+                    .lessonId(parent.getLessonId())
                     .recordingEnabled(parent.getRecordingEnabled())
                     .broadcastSource(parent.getBroadcastSource())
                     .timezone(parent.getTimezone())
@@ -523,6 +526,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .teacherId(liveClass.getTeacherId())
                 .subjectId(liveClass.getSubjectId())
                 .classGroupId(liveClass.getClassGroupId())
+                .lessonId(liveClass.getLessonId())
                 .recordingUrl(liveClass.getRecordingUrl())
                 .recordingEnabled(Boolean.TRUE.equals(liveClass.getRecordingEnabled()))
                 .sessionType(liveClass.getSessionType() != null ? liveClass.getSessionType().name() : "LECTURE")

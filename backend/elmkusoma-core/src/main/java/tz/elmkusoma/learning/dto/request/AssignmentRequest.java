@@ -35,4 +35,16 @@ public class AssignmentRequest {
     private String instructions;
 
     private String status;
+
+    /** Optional Lesson link (Lesson ↔ Assignment connection). */
+    private UUID lessonId;
+
+    /** When submissions open (nullable). */
+    private LocalDateTime openDate;
+
+    /** Hard close date (nullable). */
+    private LocalDateTime closeDate;
+
+    /** Accept submissions after due_date, marked late. */
+    private Boolean allowLateSubmission;
 }

@@ -25,4 +25,8 @@ public class SubmissionResponse {
     private LocalDateTime gradedAt;
     private UUID gradedBy;
     private LocalDateTime createdAt;
+    private String submissionText;
+    private String status;
+    private Boolean isDraft;
+    private Boolean isLate;
 }

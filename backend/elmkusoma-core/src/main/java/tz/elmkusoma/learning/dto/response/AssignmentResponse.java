@@ -28,4 +28,8 @@ public class AssignmentResponse {
     private Integer submissionCount;
     private Integer totalStudents;
     private LocalDateTime createdAt;
+    private UUID lessonId;
+    private LocalDateTime openDate;
+    private LocalDateTime closeDate;
+    private Boolean allowLateSubmission;
 }

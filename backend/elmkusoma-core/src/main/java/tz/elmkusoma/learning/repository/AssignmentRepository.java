@@ -19,4 +19,7 @@ public interface AssignmentRepository extends JpaRepository<Assignment, UUID> {
     List<Assignment> findByClassGroupIdAndStatusAndIsDeletedFalse(UUID classGroupId, String status);
 
     List<Assignment> findByClassGroupIdAndStatusInAndIsDeletedFalse(UUID classGroupId, List<String> statuses);
+
+    /** Batch: assignments across several classes in one query. */
+    List<Assignment> findByClassGroupIdInAndIsDeletedFalse(List<UUID> classGroupIds);
 }

@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { useAuth } from "@/lib/auth"
 import { useLocaleContext } from "@/components/locale-provider"
-import { learnerApi } from "@/lib/learner-api"
-import { adminApi, ApiRequestError } from "@/lib/api"
+import { adminApi, ApiRequestError, notificationsApi } from "@/lib/api"
 
 type PaletteMode = "platform" | "organization"
 
@@ -171,18 +170,36 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
   }, [canUsePalette])
 
   useEffect(() => {
-    if (!user || user.role !== "Other Learner") return
-    learnerApi.getUnreadCount().then((data) => {
-      setUnreadCount(data.count)
-    }).catch(() => {})
-    // Poll every 30 seconds
-    const interval = setInterval(() => {
-      learnerApi.getUnreadCount().then((data) => {
+    if (!user) return
+    // One role-safe endpoint for every role (see NotificationController).
+    const load = () => {
+      notificationsApi.getUnreadCount().then((data) => {
         setUnreadCount(data.count)
       }).catch(() => {})
-    }, 30000)
+    }
+    load()
+    // Poll every 30 seconds
+    const interval = setInterval(load, 30000)
     return () => clearInterval(interval)
   }, [user])
+
+  /** Role → that role's notifications page (mirrors the sidebar entries). */
+  function notificationsPath(): string | null {
+    const role = user?.role
+    if (role === "Other Learner") return "/dashboard/learner/notifications-center"
+    if (role === "Teacher" || role === "Instructor") return "/dashboard/teacher/notifications"
+    if (role === "Parent") return "/dashboard/parent/notifications"
+    if (role === "Admin") return "/dashboard/platform-admin/communications"
+    if (role === "Student") {
+      const level = (user?.learningLevel || "").toUpperCase()
+      if (level === "NURSERY") return "/dashboard/nursery/notifications"
+      if (level === "PRIMARY") return "/dashboard/notifications"
+      return "/dashboard/secondary/notifications"
+    }
+    // Institution Admin has no dedicated notifications page yet — bell only
+    // reports the count (routing it to a learner page would 403).
+    return null
+  }
 
   function handleLogout() {
     logout()
@@ -244,13 +261,12 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
             className="relative flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label={tn("notifications")}
             onClick={() => {
-              if (user?.role === "Other Learner") {
-                router.push("/dashboard/learner/notifications-center")
-              }
+              const path = notificationsPath()
+              if (path) router.push(path)
             }}
           >
             <Bell className="size-5" />
-            {user?.role === "Other Learner" && unreadCount > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-orange text-[9px] font-bold text-white">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>

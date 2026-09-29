@@ -51,6 +51,10 @@ public class ReportCard extends BaseEntity {
     @Column(name = "remarks")
     private String remarks;
 
+    /** Class membership at generation time — used for per-class ranking. */
+    @Column(name = "class_group_id")
+    private UUID classGroupId;
+
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private ReportCardStatus status = ReportCardStatus.DRAFT;

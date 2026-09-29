@@ -7,19 +7,18 @@ import {
   teacherApi,
   learningApi,
   assessmentApi,
+  gradingApi,
   type TeacherClassGroup,
-  type TeacherStudent,
   type Assignment,
   type Assessment,
-  type AssignmentSubmission,
-  type AssessmentResult,
 } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { BarChart3, BookOpen, PenTool, Users, AlertCircle } from "lucide-react"
 
-interface GradebookSubmission {
+interface GradebookStudent {
   studentId: string
-  grades: Record<string, number | undefined>
+  fullName?: string
+  admissionNumber?: string
 }
 
 export default function TeacherGradebookPage() {
@@ -32,7 +31,7 @@ export default function TeacherGradebookPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [students, setStudents] = useState<TeacherStudent[]>([])
+  const [students, setStudents] = useState<GradebookStudent[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [assignmentGrades, setAssignmentGrades] = useState<
@@ -79,52 +78,47 @@ export default function TeacherGradebookPage() {
       setAssignmentGrades({})
       setAssessmentScores({})
 
-      const allStudents = await teacherApi.getStudents()
-      const classStudents = allStudents.filter(
-        (s) => s.classGroupId === classGroupId
-      )
-      setStudents(classStudents)
+      // ONE aggregate request replaces the old per-assignment submissions and
+      // per-assessment results loops (N+1): rows carry every learner with their
+      // graded items and scores.
+      const [gradebookResult, assignmentsData, assessmentsData] =
+        await Promise.allSettled([
+          gradingApi.getGradebook(classGroupId),
+          learningApi.getAssignments(classGroupId),
+          assessmentApi.getByClass(classGroupId),
+        ])
 
-      const [assignmentsData, assessmentsData] = await Promise.allSettled([
-        learningApi.getAssignments(classGroupId),
-        assessmentApi.getByClass(classGroupId),
-      ])
+      if (gradebookResult.status === "fulfilled") {
+        const rows = gradebookResult.value.rows ?? []
+        setStudents(
+          rows.map((r) => ({
+            studentId: r.studentId,
+            fullName: r.studentName,
+            admissionNumber: r.admissionNumber,
+          }))
+        )
+        const subGrades: Record<string, Record<string, number | undefined>> = {}
+        const resScores: Record<string, Record<string, number | undefined>> = {}
+        for (const row of rows) {
+          subGrades[row.studentId] = {}
+          resScores[row.studentId] = {}
+          for (const item of row.assignments) {
+            subGrades[row.studentId][item.id] = item.score ?? undefined
+          }
+          for (const item of row.assessments) {
+            resScores[row.studentId][item.id] = item.score ?? undefined
+          }
+        }
+        setAssignmentGrades(subGrades)
+        setAssessmentScores(resScores)
+      }
 
-      const loadedAssignments =
+      setAssignments(
         assignmentsData.status === "fulfilled" ? assignmentsData.value : []
-      const loadedAssessments =
+      )
+      setAssessments(
         assessmentsData.status === "fulfilled" ? assessmentsData.value : []
-
-      setAssignments(loadedAssignments)
-      setAssessments(loadedAssessments)
-
-      const subGrades: Record<string, Record<string, number | undefined>> = {}
-      for (const assignment of loadedAssignments) {
-        try {
-          const submissions = await learningApi.getSubmissions(assignment.id)
-          for (const sub of submissions) {
-            if (!subGrades[sub.studentId]) subGrades[sub.studentId] = {}
-            subGrades[sub.studentId][assignment.id] = sub.grade
-          }
-        } catch {
-          // skip failed assignment submissions
-        }
-      }
-      setAssignmentGrades(subGrades)
-
-      const resScores: Record<string, Record<string, number | undefined>> = {}
-      for (const assessment of loadedAssessments) {
-        try {
-          const results = await assessmentApi.getResults(assessment.id)
-          for (const result of results) {
-            if (!resScores[result.studentId]) resScores[result.studentId] = {}
-            resScores[result.studentId][assessment.id] = result.totalScore
-          }
-        } catch {
-          // skip failed assessment results
-        }
-      }
-      setAssessmentScores(resScores)
+      )
     } catch {
       setError(t("gradebook.loadError"))
     } finally {

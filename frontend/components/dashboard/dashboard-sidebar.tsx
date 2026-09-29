@@ -110,7 +110,9 @@ const secondaryNav: Array<{ label: string; labelKey?: string; href: string; icon
   { label: "My Academic World", labelKey: "myAcademicWorld", href: "/dashboard/secondary", icon: LayoutDashboard },
   { label: "Learn", labelKey: "learn", href: "/dashboard/secondary/learn", icon: BookOpen },
   { label: "Practice", labelKey: "practice", href: "/dashboard/secondary/practice", icon: PenTool },
+  { label: "Assignments", labelKey: "assignments", href: "/dashboard/assignments", icon: ClipboardList },
   { label: "Assess", labelKey: "assess", href: "/dashboard/secondary/assess", icon: Award },
+  { label: "Grades", labelKey: "grades", href: "/dashboard/results", icon: Award },
   { label: "Revision", labelKey: "revision", href: "/dashboard/secondary/revision", icon: TrendingUp },
   { label: "Live", labelKey: "live", href: "/dashboard/secondary/live", icon: Video },
   { label: "Projects", labelKey: "projects", href: "/dashboard/secondary/projects", icon: FileText },
@@ -173,6 +175,8 @@ const collegeNavSections: CollegeNavSection[] = [
   {
     group: "ACADEMICS", groupKey: "groupAcademics",
     items: [
+      { label: "Assignments", labelKey: "assignments", href: "/dashboard/assignments", icon: ClipboardList },
+      { label: "Grades", labelKey: "grades", href: "/dashboard/results", icon: Award },
       { label: "Academic Progress", labelKey: "academicProgress", href: "/dashboard/learner/academic-progress", icon: BarChart3, dotColor: "bg-blue-500" },
       { label: "Academic Record", labelKey: "academicRecord", href: "/dashboard/learner/academic-record", icon: FileBarChart, dotColor: "bg-indigo-500" },
       { label: "Study Planner", labelKey: "studyPlanner", href: "/dashboard/learner/study-planner", icon: Clock, dotColor: "bg-violet-500" },
@@ -224,6 +228,7 @@ const universityNavSections: NavSection[] = [
     children: [
       { label: "My Courses", labelKey: "myCourses", href: "/dashboard/learner/courses", icon: GraduationCap },
       { label: "Continue Learning", labelKey: "continueLearning", href: "/dashboard/learner/my-learning", icon: Play },
+      { label: "My Assignments", labelKey: "myAssignments", href: "/dashboard/assignments", icon: ClipboardList },
       { label: "Resources", labelKey: "resources", href: "/dashboard/learner/resources", icon: Library },
       { label: "Practical Lab", labelKey: "practicalLab", href: "/dashboard/learner/practical-lab", icon: FlaskConical },
       { label: "Assessments", labelKey: "assessments", href: "/dashboard/learner/assessments", icon: ClipboardList },
@@ -338,7 +343,9 @@ const learnerNavSections: LearnerNavSection[] = [
     group: "MY PROGRESS", groupKey: "groupMyProgress",
     items: [
       { label: "Progress", labelKey: "progress", href: "/dashboard/learner/progress", icon: BarChart3 },
+      { label: "Assignments", labelKey: "assignments", href: "/dashboard/assignments", icon: ClipboardList },
       { label: "Assessments", labelKey: "assessments", href: "/dashboard/learner/assessments", icon: ClipboardCheck },
+      { label: "Grades", labelKey: "grades", href: "/dashboard/results", icon: Award },
       { label: "Learning Paths", labelKey: "learningPaths", href: "/dashboard/learner/learning-paths", icon: Map },
       { label: "Goals", labelKey: "goals", href: "/dashboard/learner/goals", icon: Target },
       { label: "Bookmarks", labelKey: "bookmarks", href: "/dashboard/learner/bookmarks", icon: Bookmark },

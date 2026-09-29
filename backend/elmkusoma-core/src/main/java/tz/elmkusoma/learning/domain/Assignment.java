@@ -46,4 +46,20 @@ public class Assignment extends BaseEntity {
 
     @Column(name = "status", length = 20)
     private String status = "PUBLISHED";
+
+    /** Optional Lesson link (Lesson ↔ Assignment connection, nullable). */
+    @Column(name = "lesson_id")
+    private UUID lessonId;
+
+    /** When the assignment opens for submissions (nullable). */
+    @Column(name = "open_date")
+    private LocalDateTime openDate;
+
+    /** Hard close date; after this, submissions are rejected unless late allowed. */
+    @Column(name = "close_date")
+    private LocalDateTime closeDate;
+
+    /** Whether submissions are accepted after due_date (marked late). */
+    @Column(name = "allow_late_submission")
+    private Boolean allowLateSubmission = false;
 }

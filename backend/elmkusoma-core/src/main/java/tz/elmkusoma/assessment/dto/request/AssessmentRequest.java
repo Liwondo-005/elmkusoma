@@ -37,4 +37,10 @@ public class AssessmentRequest {
     private LocalDateTime startsAt;
 
     private LocalDateTime endsAt;
+
+    /** Optional Lesson link (Lesson ↔ Assessment connection). */
+    private UUID lessonId;
+
+    /** Maximum attempts per student (null = unlimited). */
+    private Integer maxAttempts;
 }

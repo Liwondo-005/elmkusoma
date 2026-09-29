@@ -29,6 +29,7 @@ function PrimaryQuizView({
   timeLeft,
   attempt,
   onSelectOption,
+  onTextAnswer,
   onPrev,
   onNext,
   onSubmit,
@@ -43,6 +44,7 @@ function PrimaryQuizView({
   timeLeft: number
   attempt: Attempt | null
   onSelectOption: (qId: string, optId: string) => void
+  onTextAnswer: (qId: string, text: string) => void
   onPrev: () => void
   onNext: () => void
   onSubmit: () => void
@@ -243,7 +245,7 @@ function PrimaryQuizView({
                 rows={4}
                 placeholder={t("assignmentDetail.answerPlaceholderShort")}
                 value={answers[question.id]?.textAnswer || ""}
-                onChange={(e) => {}}
+                onChange={(e) => onTextAnswer(question.id, e.target.value)}
                 className="w-full rounded-2xl border-2 border-border bg-muted/40 px-5 py-4 text-lg text-foreground outline-none focus:border-primary focus:bg-background resize-none transition-colors"
               />
             </div>
@@ -298,6 +300,8 @@ export default function AssessmentDetailPage() {
   const [currentQ, setCurrentQ] = useState(0)
   const [timeLeft, setTimeLeft] = useState(0)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingSavesRef = useRef<Map<string, { selectedOptionId?: string; textAnswer?: string }>>(new Map())
 
   useEffect(() => {
     if (!user || !params.id) return
@@ -319,10 +323,59 @@ export default function AssessmentDetailPage() {
       setAssessment(found)
       const qs = await assessmentApi.getQuestions(params.id as string)
       setQuestions(qs)
+
+      // Resume an existing attempt (refresh / crash / second device).
+      try {
+        const existing = await assessmentApi.getMyAttempt(params.id as string)
+        if (existing && !existing.isCompleted) {
+          setAttempt(existing)
+          const hydrated: Record<string, { selectedOptionId?: string; textAnswer?: string }> = {}
+          for (const a of existing.answers ?? []) {
+            hydrated[a.questionId] = {
+              selectedOptionId: a.selectedOptionId,
+              textAnswer: a.textAnswer,
+            }
+          }
+          setAnswers(hydrated)
+          if (found.timeLimitMinutes && existing.startedAt) {
+            const elapsed = Math.floor((Date.now() - new Date(existing.startedAt).getTime()) / 1000)
+            const remaining = Math.max(found.timeLimitMinutes * 60 - elapsed, 0)
+            startTimer(remaining)
+            if (remaining <= 0) {
+              // Window already elapsed — show as in-progress so auto-submit fires.
+              setState("in_progress")
+              return
+            }
+          }
+          setState("in_progress")
+          return
+        }
+        if (existing && existing.isCompleted && existing.result) {
+          setAttempt(existing)
+          setState("results")
+          return
+        }
+      } catch {
+        // No attempt yet — start fresh.
+      }
       setState("ready")
     } catch {
       setState("ready")
     }
+  }
+
+  function startTimer(seconds: number) {
+    if (timerRef.current) clearInterval(timerRef.current)
+    setTimeLeft(seconds)
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
   }
 
   const startQuiz = useCallback(async () => {
@@ -331,20 +384,32 @@ export default function AssessmentDetailPage() {
       const att = await assessmentApi.startAttempt(assessment.id)
       setAttempt(att)
       if (assessment.timeLimitMinutes) {
-        setTimeLeft(assessment.timeLimitMinutes * 60)
-        timerRef.current = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              if (timerRef.current) clearInterval(timerRef.current)
-              return 0
-            }
-            return prev - 1
-          })
-        }, 1000)
+        startTimer(assessment.timeLimitMinutes * 60)
       }
       setState("in_progress")
     } catch {
-      // ignore
+      // Likely an existing incomplete attempt — try to resume it.
+      try {
+        const existing = await assessmentApi.getMyAttempt(assessment.id)
+        if (existing && !existing.isCompleted) {
+          setAttempt(existing)
+          const hydrated: Record<string, { selectedOptionId?: string; textAnswer?: string }> = {}
+          for (const a of existing.answers ?? []) {
+            hydrated[a.questionId] = {
+              selectedOptionId: a.selectedOptionId,
+              textAnswer: a.textAnswer,
+            }
+          }
+          setAnswers(hydrated)
+          if (assessment.timeLimitMinutes && existing.startedAt) {
+            const elapsed = Math.floor((Date.now() - new Date(existing.startedAt).getTime()) / 1000)
+            startTimer(Math.max(assessment.timeLimitMinutes * 60 - elapsed, 0))
+          }
+          setState("in_progress")
+        }
+      } catch {
+        // ignore
+      }
     }
   }, [assessment, user])
 
@@ -376,11 +441,31 @@ export default function AssessmentDetailPage() {
     }
   }, [state, timeLeft, assessment, autoSubmit])
 
+  /** Debounced autosave: PUTs each changed answer to the server (upsert, never grades). */
+  function persistAnswer(questionId: string, answer: { selectedOptionId?: string; textAnswer?: string }) {
+    if (!attempt || attempt.isCompleted) return
+    pendingSavesRef.current.set(questionId, answer)
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+    autosaveTimerRef.current = setTimeout(() => {
+      const attemptId = attempt.id
+      const pending = pendingSavesRef.current
+      pendingSavesRef.current = new Map()
+      for (const [qid, ans] of pending) {
+        assessmentApi
+          .saveAnswer(attemptId, { questionId: qid, ...ans })
+          .catch(() => {
+            /* offline — submit still carries the full payload */
+          })
+      }
+    }, 600)
+  }
+
   function selectOption(questionId: string, optionId: string) {
     setAnswers((prev) => ({
       ...prev,
       [questionId]: { ...prev[questionId], selectedOptionId: optionId },
     }))
+    persistAnswer(questionId, { ...answers[questionId], selectedOptionId: optionId })
   }
 
   function setTextAnswer(questionId: string, text: string) {
@@ -388,6 +473,7 @@ export default function AssessmentDetailPage() {
       ...prev,
       [questionId]: { ...prev[questionId], textAnswer: text },
     }))
+    persistAnswer(questionId, { ...answers[questionId], textAnswer: text })
   }
 
   function formatTime(seconds: number) {
@@ -429,6 +515,7 @@ export default function AssessmentDetailPage() {
         timeLeft={timeLeft}
         attempt={attempt}
         onSelectOption={selectOption}
+        onTextAnswer={setTextAnswer}
         onPrev={() => setCurrentQ((c) => c - 1)}
         onNext={() => setCurrentQ((c) => c + 1)}
         onSubmit={submitQuiz}

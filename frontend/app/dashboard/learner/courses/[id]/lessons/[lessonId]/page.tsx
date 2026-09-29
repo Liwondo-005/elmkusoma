@@ -314,6 +314,25 @@ export default function LessonViewerPage() {
             <p className="text-sm text-muted-foreground">
               {t("lesson.quizSoon")}
             </p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {currentLesson.contentUrl && (
+                <a
+                  href={currentLesson.contentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <ExternalLink className="size-4 text-primary" />
+                  {t("lesson.openExternal")}
+                </a>
+              )}
+              <Link
+                href="/dashboard/learner/assessments"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                {t("lesson.takeQuiz")}
+              </Link>
+            </div>
           </div>
         )}
 
@@ -323,6 +342,25 @@ export default function LessonViewerPage() {
             <p className="text-sm text-muted-foreground">
               {t("lesson.assignSoon")}
             </p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {currentLesson.contentUrl && (
+                <a
+                  href={currentLesson.contentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <ExternalLink className="size-4 text-primary" />
+                  {t("lesson.openExternal")}
+                </a>
+              )}
+              <Link
+                href="/dashboard/assignments"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                {t("lesson.openAssignments")}
+              </Link>
+            </div>
           </div>
         )}
 

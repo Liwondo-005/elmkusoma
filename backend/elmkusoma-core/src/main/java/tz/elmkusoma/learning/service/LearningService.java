@@ -3,6 +3,7 @@ package tz.elmkusoma.learning.service;
 import tz.elmkusoma.learning.dto.request.AssignmentRequest;
 import tz.elmkusoma.learning.dto.request.LessonRequest;
 import tz.elmkusoma.learning.dto.request.ProgressRequest;
+import tz.elmkusoma.learning.dto.request.SubmissionRequest;
 import tz.elmkusoma.learning.dto.response.*;
 
 import java.util.List;
@@ -34,15 +35,40 @@ public interface LearningService {
 
     AssignmentResponse createAssignment(UUID institutionId, AssignmentRequest request);
 
-    AssignmentResponse updateAssignment(UUID assignmentId, AssignmentRequest request);
+    /** Create with actor context (audit + publisher-scoped notifications). */
+    AssignmentResponse createAssignment(UUID institutionId, AssignmentRequest request, String userEmail, String userRole);
 
-    void deleteAssignment(UUID assignmentId);
+    /** Update with institution + ownership enforcement (creator or admin only). */
+    AssignmentResponse updateAssignment(UUID assignmentId, AssignmentRequest request, UUID institutionId, String userEmail, String userRole);
 
-    List<AssignmentResponse> getAssignmentsByClass(UUID classGroupId);
+    /** Delete with institution + ownership enforcement (creator or admin only). */
+    void deleteAssignment(UUID assignmentId, UUID institutionId, String userEmail, String userRole);
 
-    SubmissionResponse submitAssignment(UUID assignmentId, UUID studentId, UUID institutionId);
+    /** Class-scoped list; learners only receive non-DRAFT items and must be class members. */
+    List<AssignmentResponse> getAssignmentsByClass(UUID classGroupId, UUID institutionId, String userEmail, String userRole);
 
-    List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId);
+    /**
+     * Batch list across several classes in one query (teacher/admin workspace —
+     * replaces per-class loops). Institution-scoped.
+     */
+    List<AssignmentResponse> getAssignmentsByClasses(List<UUID> classGroupIds, UUID institutionId);
 
-    SubmissionResponse gradeSubmission(UUID submissionId, Integer grade, String feedback, UUID gradedBy);
+    /**
+     * Submit (or resubmit while ungraded) an assignment. Persists the learner's typed
+     * answer and attachment reference. Resolves the caller's student profile so the
+     * submission's student_id satisfies the FK to students(id).
+     *
+     * @param callerUserId the authenticated user id (users.id) from the request context
+     */
+    SubmissionResponse submitAssignment(UUID assignmentId, UUID callerUserId, UUID institutionId, SubmissionRequest request);
+
+    /** The caller's own submission for an assignment (null when not submitted yet). */
+    SubmissionResponse getMySubmission(UUID assignmentId, UUID callerUserId);
+
+    /** Submissions for an assignment; institution-scoped to the assignment. */
+    List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId, UUID institutionId);
+
+    /** Grade a submission with institution enforcement + grade-change audit trail. */
+    SubmissionResponse gradeSubmission(UUID submissionId, Integer grade, String feedback, UUID gradedBy,
+                                       UUID institutionId, String userEmail, String userRole);
 }

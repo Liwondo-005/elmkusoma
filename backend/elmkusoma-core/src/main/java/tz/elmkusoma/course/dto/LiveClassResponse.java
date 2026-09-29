@@ -24,6 +24,8 @@ public class LiveClassResponse {
     private UUID teacherId;
     private UUID subjectId;
     private UUID classGroupId;
+    /** Optional Lesson link (Lesson ↔ Live Class connection). */
+    private UUID lessonId;
     private String recordingUrl;
     private Integer currentParticipants;
     private Boolean canJoin;

@@ -14,6 +14,9 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
 
     List<Assessment> findByClassGroupIdAndIsDeletedFalse(UUID classGroupId);
 
+    /** Batch: assessments across several classes in one query. */
+    List<Assessment> findByClassGroupIdInAndIsDeletedFalse(List<UUID> classGroupIds);
+
     List<Assessment> findBySubjectIdAndIsDeletedFalse(UUID subjectId);
 
     List<Assessment> findByInstitutionIdAndIsDeletedFalse(UUID institutionId);

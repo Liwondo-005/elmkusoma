@@ -18,5 +18,7 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 
     List<AssignmentSubmission> findByStudentIdAndIsDeletedFalse(UUID studentId);
 
+    List<AssignmentSubmission> findByStudentIdInAndIsDeletedFalse(java.util.Collection<UUID> studentIds);
+
     long countByAssignmentIdAndIsDeletedFalse(UUID assignmentId);
 }

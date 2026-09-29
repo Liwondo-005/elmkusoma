@@ -26,4 +26,8 @@ public class AssessmentResponse {
     private LocalDateTime startsAt;
     private LocalDateTime endsAt;
     private LocalDateTime createdAt;
+    private String status;
+    private LocalDateTime scheduledAt;
+    private UUID lessonId;
+    private Integer maxAttempts;
 }

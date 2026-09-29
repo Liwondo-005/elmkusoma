@@ -27,6 +27,7 @@ export default function TeacherAssessmentsPage() {
   const [questionsAssessmentId, setQuestionsAssessmentId] = useState<string | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [loadingQuestions, setLoadingQuestions] = useState(false)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const [showAddQuestion, setShowAddQuestion] = useState(false)
   const [questionType, setQuestionType] = useState<"MCQ" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY">("MCQ")
   const [questionText, setQuestionText] = useState("")
@@ -61,16 +62,15 @@ export default function TeacherAssessmentsPage() {
       const classesData = await teacherApi.getClasses()
       setClasses(classesData)
 
-      const allAssessments: Assessment[] = []
-      for (const cls of classesData) {
-        try {
-          const data = await assessmentApi.getByClass(cls.classGroupId)
-          allAssessments.push(...data)
-        } catch {
-          // skip
-        }
+      // ONE batch request replaces the per-class loop (N+1).
+      if (classesData.length === 0) {
+        setAssessments([])
+      } else {
+        const allAssessments = await assessmentApi.getByClasses(
+          classesData.map((cls) => cls.classGroupId)
+        )
+        setAssessments(allAssessments)
       }
-      setAssessments(allAssessments)
     } catch {
       setError(t("assessments.loadError"))
     } finally {
@@ -102,6 +102,35 @@ export default function TeacherAssessmentsPage() {
       setQuestions([])
     } finally {
       setLoadingQuestions(false)
+    }
+  }
+
+  /** Publish (make visible to learners) or unpublish an assessment. */
+  async function togglePublish(a: Assessment) {
+    try {
+      setTogglingId(a.id)
+      setError(null)
+      // The endpoint validates a full body, so send the assessment fields alongside the toggle.
+      const updated = await assessmentApi.update(a.id, {
+        title: a.title,
+        description: a.description,
+        subjectId: a.subjectId,
+        classGroupId: a.classGroupId,
+        totalMarks: a.totalMarks,
+        passMarks: a.passMarks,
+        timeLimitMinutes: a.timeLimitMinutes,
+        isPublished: !a.isPublished,
+      })
+      setAssessments((prev) => prev.map((x) => (x.id === a.id ? { ...x, ...updated } : x)))
+      setSuccess(
+        a.isPublished
+          ? t("assessments.unpublished", { title: a.title })
+          : t("assessments.published", { title: a.title })
+      )
+    } catch {
+      setError(t("assessments.publishError"))
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -305,6 +334,21 @@ export default function TeacherAssessmentsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant={a.isPublished ? "ghost" : "default"}
+                    onClick={() => togglePublish(a)}
+                    disabled={togglingId === a.id}
+                    className="gap-1"
+                    title={a.isPublished ? t("assessments.unpublishBtn") : t("assessments.publishBtn")}
+                  >
+                    <Eye className="size-3" />
+                    {togglingId === a.id
+                      ? "…"
+                      : a.isPublished
+                        ? t("assessments.unpublishBtn")
+                        : t("assessments.publishBtn")}
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"

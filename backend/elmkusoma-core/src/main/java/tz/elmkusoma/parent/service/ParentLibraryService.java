@@ -22,7 +22,9 @@ public class ParentLibraryService {
     private final ResourceRepository resourceRepository;
 
     public ParentLibraryResponse getLibrary(UUID institutionId) {
-        List<Resource> allResources = resourceRepository.findAllAndIsDeletedFalse();
+        // B4: scope to the caller's institution — the unscoped listing leaked
+        // every tenant's resources to this parent-facing endpoint.
+        List<Resource> allResources = resourceRepository.findByInstitutionIdAndIsDeletedFalse(institutionId);
 
         List<LibraryCategory> categories = new ArrayList<>();
 

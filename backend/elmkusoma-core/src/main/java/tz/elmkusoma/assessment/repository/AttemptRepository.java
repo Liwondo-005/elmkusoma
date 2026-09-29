@@ -16,5 +16,8 @@ public interface AttemptRepository extends JpaRepository<Attempt, UUID> {
     Optional<Attempt> findByAssessmentIdAndStudentIdAndIsCompletedAndIsDeletedFalse(
             UUID assessmentId, UUID studentId, Boolean isCompleted);
 
+    long countByAssessmentIdAndStudentIdAndIsCompletedTrueAndIsDeletedFalse(
+            UUID assessmentId, UUID studentId);
+
     List<Attempt> findByAssessmentIdAndIsDeletedFalse(UUID assessmentId);
 }

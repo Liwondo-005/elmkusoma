@@ -55,4 +55,12 @@ public class Assessment extends BaseEntity {
 
     @Column(name = "participant_count")
     private Long participantCount;
+
+    /** Optional Lesson link (Lesson ↔ Live Class connection, nullable). */
+    @Column(name = "lesson_id")
+    private UUID lessonId;
+
+    /** Attempt rule: maximum attempts allowed per student (null = unlimited). */
+    @Column(name = "max_attempts")
+    private Integer maxAttempts;
 }

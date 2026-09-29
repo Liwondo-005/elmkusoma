@@ -81,6 +81,10 @@ public class LiveClass extends BaseEntity {
     @Column(name = "lobby_enabled")
     private Boolean lobbyEnabled = false;
 
+    /** Optional Lesson link (Lesson ↔ Live Class connection, nullable). */
+    @Column(name = "lesson_id")
+    private UUID lessonId;
+
     public enum LiveClassStatus {
         SCHEDULED, STARTING, IN_PROGRESS, LIVE, ENDING, COMPLETED, ENDED, CANCELLED,
         SERVICE_DEGRADED, SERVICE_UNAVAILABLE, RECOVERING

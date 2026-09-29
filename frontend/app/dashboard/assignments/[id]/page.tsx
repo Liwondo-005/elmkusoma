@@ -42,14 +42,15 @@ export default function AssignmentDetailPage() {
       if (found) {
         setAssignment(found)
         try {
-          const subs = await learningApi.getSubmissions(found.id)
-          const mySub = subs.find((s) => s.studentId === user!.id)
+          // Learner-scoped endpoint: resolves users.id → students.id server-side.
+          const mySub = await learningApi.getMySubmission(found.id)
           if (mySub) {
             setSubmission(mySub)
-            if (mySub.content) setContent(mySub.content)
+            const saved = mySub.submissionText ?? mySub.content
+            if (saved) setContent(saved)
           }
         } catch {
-          // no submissions yet
+          // no submission yet
         }
       }
     } catch {
@@ -84,13 +85,11 @@ export default function AssignmentDetailPage() {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      const payload: Record<string, unknown> = {}
+      const payload: { content?: string; fileUrl?: string; draft?: boolean } = {}
       if (content.trim()) payload.content = content.trim()
       if (selectedFile) payload.fileUrl = selectedFile.name
-      await learningApi.submitAssignment(assignment.id)
-      const subs = await learningApi.getSubmissions(assignment.id)
-      const mySub = subs.find((s) => s.studentId === user.id)
-      if (mySub) setSubmission(mySub)
+      const saved = await learningApi.submitAssignment(assignment.id, payload)
+      setSubmission(saved)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("assignmentDetail.submitFailed")
       setSubmitError(msg)
@@ -106,7 +105,7 @@ export default function AssignmentDetailPage() {
 
   function getStatus() {
     if (submission?.grade !== undefined && submission?.grade !== null) return "graded"
-    if (submission) return "submitted"
+    if (submission && !submission.isDraft && submission.status !== "DRAFT") return "submitted"
     return "not_started"
   }
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { BarChart3, Loader2, ChevronDown, AlertCircle, Users, Award, Download } from "lucide-react"
 import { useAuth } from "@/lib/auth"
+import { gradingApi, type RubricSummary } from "@/lib/api"
 import type { ClassGroupInfo, GradingScale } from "@/lib/teacher-api"
 
 interface ReportCardEntry {
@@ -33,7 +34,24 @@ export default function TeacherGradingPage() {
   const [loading, setLoading] = useState(true)
   const [loadingReports, setLoadingReports] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"scales" | "reports">("scales")
+  const [activeTab, setActiveTab] = useState<"scales" | "reports" | "rubrics">("scales")
+  const [rubrics, setRubrics] = useState<RubricSummary[]>([])
+  const [loadingRubrics, setLoadingRubrics] = useState(false)
+  const [rubricsLoaded, setRubricsLoaded] = useState(false)
+
+  // Lazy-load rubrics the first time the tab is opened (B31 display).
+  useEffect(() => {
+    if (activeTab !== "rubrics" || rubricsLoaded) return
+    setLoadingRubrics(true)
+    gradingApi
+      .getRubrics()
+      .then((data) => setRubrics(data))
+      .catch(() => setRubrics([]))
+      .finally(() => {
+        setLoadingRubrics(false)
+        setRubricsLoaded(true)
+      })
+  }, [activeTab, rubricsLoaded])
 
   useEffect(() => {
     async function load() {
@@ -68,19 +86,33 @@ export default function TeacherGradingPage() {
           setReportCards([])
           return
         }
-        const allCards: ReportCardEntry[] = []
-        await Promise.all(
-          students.map(async (s) => {
-            try {
-              const cards = await teacherApi.getReportCardsByStudent(s.id)
-              allCards.push(...cards.map((c) => ({
-                ...c,
-                studentName: `${s.firstName} ${s.lastName}`,
-              })))
-            } catch { /* skip */ }
-          })
+        // ONE batch request replaces the per-student report-card loop (N+1).
+        const nameById = new Map(
+          students.map((s) => [s.id, `${s.firstName} ${s.lastName}`])
         )
-        setReportCards(allCards.sort((a, b) => (b.averageMark ?? 0) - (a.averageMark ?? 0)))
+        const cards = await gradingApi
+          .getReportCardsForStudents(students.map((s) => s.id))
+          .catch(() => [])
+        setReportCards(
+          cards
+            .map((c) => ({
+              id: c.id,
+              studentId: c.studentId,
+              studentName:
+                c.studentName || nameById.get(c.studentId) || "",
+              className: c.className || selectedClass?.name || "",
+              term: c.term || c.termName || "",
+              academicYear: c.academicYear || "",
+              overallGrade: c.overallGrade ?? null,
+              averageMark: c.averageMark ?? null,
+              classRank: c.classRank ?? null,
+              totalStudentsInClass: c.totalStudentsInClass ?? null,
+              remarks: c.remarks ?? null,
+              status: c.status,
+              publishedAt: c.publishedAt ?? null,
+            }))
+            .sort((a, b) => (b.averageMark ?? 0) - (a.averageMark ?? 0))
+        )
       } catch {
         setError(t("grading.loadError"))
         setReportCards([])
@@ -134,6 +166,14 @@ export default function TeacherGradingPage() {
         >
           {t("grading.reportsTab")}
         </button>
+        <button
+          onClick={() => setActiveTab("rubrics")}
+          className={`border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            activeTab === "rubrics" ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {t("grading.rubricsTab", { count: rubrics.length })}
+        </button>
       </div>
 
       {activeTab === "scales" && (
@@ -174,6 +214,65 @@ export default function TeacherGradingPage() {
                             <td className="px-3 py-2 text-muted-foreground">{gb.maxMark}</td>
                             <td className="px-3 py-2 text-muted-foreground">{gb.gpaPoints ?? "—"}</td>
                             <td className="px-3 py-2 text-muted-foreground">{gb.remarks || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === "rubrics" && (
+        <div className="space-y-4">
+          {loadingRubrics ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : rubrics.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border py-12 text-center">
+              <Award className="mx-auto mb-3 size-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">{t("grading.emptyRubrics")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("grading.emptyRubricsDesc")}</p>
+            </div>
+          ) : (
+            rubrics.map((rubric) => (
+              <div key={rubric.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{rubric.name}</p>
+                    {rubric.description && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{rubric.description}</p>
+                    )}
+                  </div>
+                  {rubric.totalPoints != null && (
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                      {t("grading.totalPointsLabel", { points: rubric.totalPoints })}
+                    </span>
+                  )}
+                </div>
+                {(rubric.criteria ?? []).length > 0 && (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          <th className="px-3 py-2">{t("grading.colCriterion")}</th>
+                          <th className="px-3 py-2">{t("grading.colMaxPoints")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(rubric.criteria ?? []).map((c) => (
+                          <tr key={c.id} className="border-b border-border last:border-0">
+                            <td className="px-3 py-2">
+                              <p className="font-medium text-foreground">{c.name}</p>
+                              {c.description && (
+                                <p className="mt-0.5 text-xs text-muted-foreground">{c.description}</p>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">{c.maxPoints ?? "—"}</td>
                           </tr>
                         ))}
                       </tbody>

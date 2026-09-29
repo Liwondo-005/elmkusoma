@@ -8,6 +8,12 @@ import java.util.UUID;
 
 public interface ReportCardService {
 
+    /**
+     * Generate (or regenerate) a report card for a student in a term. Aggregates the
+     * student's graded assignment submissions and assessment results, computes total,
+     * average percentage, overall grade and GPA from the grading scale boundaries, and
+     * refreshes per-class ranks for the term.
+     */
     ReportCardResponse generate(UUID institutionId, GenerateReportCardRequest request);
 
     ReportCardResponse getById(UUID id);
@@ -18,7 +24,11 @@ public interface ReportCardService {
 
     ReportCardResponse getByStudentAndTerm(UUID studentId, UUID termId);
 
-    ReportCardResponse updateStatus(UUID id, String status);
+    /** Batch read: every report card of the given students (one query, for class lists). */
+    List<ReportCardResponse> getByStudentIds(List<UUID> studentIds);
+
+    /** Update status; PUBLISHED releases the card (notifies the learner, audited). */
+    ReportCardResponse updateStatus(UUID id, String status, String userEmail, String userRole);
 
     void calculateClassRanks(UUID termId);
 }

@@ -276,13 +276,20 @@ export interface AssignmentSubmission {
   id: string
   assignmentId: string
   studentId: string
+  studentName?: string
+  /** @deprecated legacy field name; backend returns {@link submissionText}. */
   content?: string
+  /** Learner's typed answer body (assignment_submissions.submission_text). */
+  submissionText?: string
   fileUrl?: string
-  submittedAt: string
+  submittedAt?: string
   grade?: number
   feedback?: string
   gradedAt?: string
   gradedBy?: string
+  status?: "DRAFT" | "SUBMITTED" | "GRADED" | string
+  isDraft?: boolean
+  isLate?: boolean
   createdAt: string
 }
 
@@ -299,10 +306,24 @@ export const learningApi = {
     request<LessonProgress[]>(`/v1/learning/progress/student/${studentId}`),
   getAssignments: (classGroupId: string) =>
     request<Assignment[]>(`/v1/learning/assignments/class/${classGroupId}`),
+  /** Batch: assignments across many classes in one request (teacher workspace). */
+  getAssignmentsByClasses: (classGroupIds: string[]) =>
+    request<Assignment[]>(`/v1/learning/assignments/classes?ids=${classGroupIds.join(",")}`),
   createAssignment: (data: Partial<Assignment>) =>
     request<Assignment>("/v1/learning/assignments", { method: "POST", body: JSON.stringify(data) }),
-  submitAssignment: (assignmentId: string) =>
-    request<AssignmentSubmission>(`/v1/learning/assignments/${assignmentId}/submit`, { method: "POST" }),
+  submitAssignment: (assignmentId: string, data?: { content?: string; fileUrl?: string; draft?: boolean }) =>
+    request<AssignmentSubmission>(`/v1/learning/assignments/${assignmentId}/submit`, {
+      method: "POST",
+      body: JSON.stringify(data ?? {}),
+    }),
+  getMySubmission: async (assignmentId: string) => {
+    const res = await request<AssignmentSubmission | null>(
+      `/v1/learning/assignments/${assignmentId}/my-submission`
+    )
+    // "None yet" is a 200 without a `data` field, which request() falls back to
+    // (the envelope). Only trust a payload that is an actual submission entity.
+    return res && typeof res === "object" && "id" in res ? res : null
+  },
   getSubmissions: (assignmentId: string) =>
     request<AssignmentSubmission[]>(`/v1/learning/assignments/${assignmentId}/submissions`),
   gradeSubmission: (submissionId: string, grade: number, feedback?: string) => {
@@ -381,22 +402,48 @@ export interface AssessmentResult {
 export const assessmentApi = {
   getByClass: (classGroupId: string) =>
     request<Assessment[]>(`/v1/assessments/class/${classGroupId}`),
+  /** Batch: assessments across many classes in one request (teacher workspace). */
+  getByClasses: (classGroupIds: string[]) =>
+    request<Assessment[]>(`/v1/assessments/classes?ids=${classGroupIds.join(",")}`),
   getBySubject: (subjectId: string) =>
     request<Assessment[]>(`/v1/assessments/subject/${subjectId}`),
   create: (data: Partial<Assessment>) =>
     request<Assessment>("/v1/assessments", { method: "POST", body: JSON.stringify(data) }),
+  /** Update an assessment — including publish/unpublish (makes it visible to learners). */
+  update: (id: string, data: Partial<Assessment>) =>
+    request<Assessment>(`/v1/assessments/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   getQuestions: (assessmentId: string) =>
     request<Question[]>(`/v1/assessments/${assessmentId}/questions`),
   addQuestion: (assessmentId: string, data: Partial<Question>) =>
     request<Question>(`/v1/assessments/${assessmentId}/questions`, { method: "POST", body: JSON.stringify(data) }),
   startAttempt: (assessmentId: string) =>
     request<Attempt>(`/v1/assessments/${assessmentId}/start`, { method: "POST" }),
+  /** Resume: returns the learner's attempt (with autosaved answers) or 404/empty. */
+  getMyAttempt: async (assessmentId: string) => {
+    const res = await request<Attempt | null>(`/v1/assessments/${assessmentId}/my-attempt`)
+    // "No attempt yet" is a 200 without `data` — request() would fall back to the
+    // envelope object (truthy). Only accept a real attempt entity (has an id).
+    return res && typeof res === "object" && "id" in res ? res : null
+  },
+  /** Autosave one answer (upsert server-side; never grades until submit). */
+  saveAnswer: (attemptId: string, answer: { questionId: string; selectedOptionId?: string; textAnswer?: string }) =>
+    request<Attempt>(`/v1/assessments/attempts/${attemptId}/answers`, {
+      method: "PUT",
+      body: JSON.stringify(answer),
+    }),
   submitAttempt: (attemptId: string, answers: Array<{ questionId: string; selectedOptionId?: string; textAnswer?: string }>) =>
     request<Attempt>(`/v1/assessments/attempts/${attemptId}/submit`, { method: "POST", body: JSON.stringify({ answers }) }),
   getResults: (assessmentId: string) =>
     request<AssessmentResult[]>(`/v1/assessments/${assessmentId}/results`),
   getResult: (assessmentId: string, studentId: string) =>
     request<AssessmentResult>(`/v1/assessments/${assessmentId}/results/student/${studentId}`),
+}
+
+// Notifications — NotificationController allows EVERY role
+// (STUDENT, OTHER_LEARNER, TEACHER, ADMIN, INSTITUTION_ADMIN, PARENT),
+// so the topbar bell can poll one endpoint for all of them.
+export const notificationsApi = {
+  getUnreadCount: () => request<{ count: number }>("/v1/notifications/unread-count"),
 }
 
 export interface PageResponse<T> {
@@ -1877,15 +1924,93 @@ export const attendanceApi = {
     request<unknown>(`/v1/attendance/summary/student/${studentId}`),
 }
 
+export interface GradebookItem {
+  id: string
+  title: string
+  maxMarks: number
+  /** null when ungraded/unattempted. */
+  score?: number | null
+  /** Assignments: NOT_SUBMITTED | DRAFT | SUBMITTED | GRADED. */
+  status: string
+}
+
+export interface GradebookRow {
+  studentId: string
+  studentName?: string
+  admissionNumber?: string
+  assignments: GradebookItem[]
+  assessments: GradebookItem[]
+  totalObtained: number
+  totalObtainable: number
+  /** null when nothing is graded yet. */
+  averagePercentage?: number | null
+}
+
+export interface GradebookData {
+  classGroupId: string
+  className?: string
+  rows: GradebookRow[]
+}
+
+export interface ReportCardSummary {
+  id: string
+  studentId: string
+  studentName?: string
+  admissionNumber?: string
+  className?: string
+  academicYear?: string | null
+  term?: string | null
+  termName?: string | null
+  totalMarks?: number | null
+  averageMark?: number | null
+  overallGrade?: string | null
+  gpa?: number | null
+  classRank?: number | null
+  totalStudentsInClass?: number | null
+  remarks?: string | null
+  status: string
+  publishedAt?: string | null
+}
+
+export interface RubricCriteriaSummary {
+  id: string
+  name: string
+  description?: string | null
+  maxPoints?: number | null
+  sortOrder?: number | null
+}
+
+export interface RubricSummary {
+  id: string
+  name: string
+  description?: string | null
+  subjectId?: string | null
+  totalPoints?: number | null
+  isActive?: boolean
+  criteria: RubricCriteriaSummary[]
+}
+
 export const gradingApi = {
   getScales: () =>
     request<unknown[]>("/v1/grading/scales"),
+
+  /** Rubric engine (B31): institution rubrics with criteria lines. */
+  getRubrics: () =>
+    request<RubricSummary[]>("/v1/grading/rubrics"),
+
+  /** One-request class gradebook: all learners + submissions + results. */
+  getGradebook: (classGroupId: string) =>
+    request<GradebookData>(`/v1/grading/gradebook/class/${classGroupId}`),
 
   getReportCard: (id: string) =>
     request<unknown>(`/v1/grading/report-cards/${id}`),
 
   getStudentReportCards: (studentId: string) =>
     request<unknown[]>(`/v1/grading/report-cards/student/${studentId}`),
+
+  /** Batch report cards for many learners in one query. */
+  getReportCardsForStudents: (studentIds: string[]) =>
+    request<ReportCardSummary[]>(`/v1/grading/report-cards/for-students?ids=${studentIds.join(",")}`),
 }
 
 // ---------------------------------------------------------------------------

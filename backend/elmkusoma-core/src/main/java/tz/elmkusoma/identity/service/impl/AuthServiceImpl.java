@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.config.security.JwtTokenProvider;
+import tz.elmkusoma.enrollment.domain.Enrollment;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.identity.domain.EmailVerificationToken;
@@ -509,13 +510,24 @@ public class AuthServiceImpl implements AuthService {
 
         var studentOpt = studentRepository.findByUserIdAndIsDeletedFalse(user.getId());
         if (studentOpt.isPresent()) {
+            var studentId = studentOpt.get().getId();
             var assignments = studentClassAssignmentRepository
-                    .findByStudentIdAndIsDeletedFalse(studentOpt.get().getId());
+                    .findByStudentIdAndIsDeletedFalse(studentId);
             classGroupId = assignments.stream()
                     .filter(StudentClassAssignment::getIsActive)
                     .findFirst()
                     .map(a -> a.getClassGroupId().toString())
                     .orElse(null);
+            // Fallback: an ENROLLED enrollment carries the class group when no term-based
+            // class assignment exists yet — learners need a class to see their work.
+            if (classGroupId == null && enrollmentRepository != null) {
+                classGroupId = enrollmentRepository.findByStudentIdAndIsDeletedFalse(studentId)
+                        .stream()
+                        .filter(e -> e.getStatus() == Enrollment.EnrollmentStatus.ENROLLED)
+                        .map(e -> e.getClassGroupId().toString())
+                        .findFirst()
+                        .orElse(null);
+            }
         }
 
         if (user.getInstitutionId() != null) {

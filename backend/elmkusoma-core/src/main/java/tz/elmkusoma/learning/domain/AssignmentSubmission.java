@@ -40,4 +40,18 @@ public class AssignmentSubmission extends BaseEntity {
 
     @Column(name = "graded_by")
     private UUID gradedBy;
+
+    /** Learner's typed answer body (persisted by the submit endpoint). */
+    @Column(name = "submission_text", columnDefinition = "TEXT")
+    private String submissionText;
+
+    /** Workflow state: DRAFT | SUBMITTED | GRADED | RETURNED. */
+    @Column(name = "status", length = 30)
+    private String status = "SUBMITTED";
+
+    @Column(name = "is_draft")
+    private Boolean isDraft = false;
+
+    @Column(name = "is_late")
+    private Boolean isLate = false;
 }

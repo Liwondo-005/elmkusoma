@@ -20,4 +20,6 @@ public interface AssessmentResultRepository extends JpaRepository<AssessmentResu
 
     @Query("SELECT ar FROM AssessmentResult ar WHERE ar.studentId = :studentId AND ar.isDeleted = false ORDER BY ar.createdAt DESC")
     List<AssessmentResult> findByStudentIdAndIsDeletedFalse(@Param("studentId") UUID studentId);
+
+    List<AssessmentResult> findByStudentIdInAndIsDeletedFalse(java.util.Collection<UUID> studentIds);
 }
