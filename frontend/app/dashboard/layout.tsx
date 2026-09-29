@@ -7,6 +7,7 @@ import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { LowBandwidthProvider } from "@/components/primary/low-bandwidth-provider"
+import { CommandPalette } from "@/components/ui/command-palette"
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { locale } = useLocaleContext()
@@ -23,6 +24,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <main className="flex-1 p-4 sm:p-6">{children}</main>
             </div>
           </div>
+          <CommandPalette />
         </LowBandwidthProvider>
       </AuthGuard>
     </NextIntlClientProvider>

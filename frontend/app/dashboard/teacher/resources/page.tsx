@@ -18,8 +18,25 @@ import {
   Trash2,
   Video,
   X,
+  GripVertical,
 } from "lucide-react"
-import { teacherFetch } from "@/lib/teacher-api"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { teacherFetch, teacherApi } from "@/lib/teacher-api"
 
 interface ResourceItem {
   id: string
@@ -125,6 +142,122 @@ function formatDate(iso?: string | null) {
   })
 }
 
+interface SortableResourceRowProps {
+  resource: ResourceItem
+  index: number
+  onEdit: () => void
+  onDelete: () => void
+  deleting: boolean
+  t: ReturnType<typeof useTranslations>
+  tc: ReturnType<typeof useTranslations>
+}
+
+function SortableResourceRow({ resource, index, onEdit, onDelete, deleting, t, tc }: SortableResourceRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: resource.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="rounded-2xl border border-border bg-card p-4 shadow-xs"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <button
+            {...attributes}
+            {...listeners}
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+            aria-label={t("resources.dragHandle")}
+            title={t("resources.dragHandle")}
+          >
+            <GripVertical className="size-5" />
+          </button>
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <TypeIcon type={resource.resourceType} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="truncate text-sm font-semibold text-foreground">{resource.title}</h4>
+              <span
+                className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${typeClass[(resource.resourceType || "").toUpperCase()] || "bg-muted text-muted-foreground"}`}
+              >
+                {typeLabel(resource.resourceType, t)}
+              </span>
+              <span
+                className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${visibilityClass[(resource.visibility || "").toUpperCase()] || "bg-gray-100 text-gray-600"}`}
+              >
+                {visibilityLabel(resource.visibility, t)}
+              </span>
+            </div>
+            {resource.description && (
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{resource.description}</p>
+            )}
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span>
+                {t("resources.colUpdated")}: {formatDate(resource.updatedAt || resource.createdAt)}
+              </span>
+              {resource.mimeType && <span>{resource.mimeType}</span>}
+              {resource.externalUrl && <span>{resource.externalUrl}</span>}
+            </div>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={onEdit}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title={tc("edit")}
+            aria-label={tc("edit")}
+          >
+            <Pencil className="size-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            title={tc("delete")}
+            aria-label={tc("delete")}
+          >
+            {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function typeLabel(resourceType: string, t: ReturnType<typeof useTranslations>) {
+  const map: Record<string, string> = {
+    DOCUMENT: "resources.typeDocument",
+    VIDEO: "resources.typeVideo",
+    IMAGE: "resources.typeImage",
+    AUDIO: "resources.typeAudio",
+    LINK: "resources.typeLink",
+    EXTERNAL_LINK: "resources.typeExternalLink",
+  }
+  const key = map[(resourceType || "").toUpperCase()]
+  return key ? t(key) : resourceType
+}
+
+function visibilityLabel(visibility: string, t: ReturnType<typeof useTranslations>) {
+  const map: Record<string, string> = {
+    PUBLIC: "visibility.public",
+    INSTITUTION: "visibility.institution",
+    CLASS_ONLY: "visibility.classOnly",
+    COURSE_ONLY: "visibility.courseOnly",
+    SCHOOL: "visibility.school",
+    PRIVATE: "visibility.private",
+    DRAFT: "visibility.draft",
+  }
+  const key = map[(visibility || "").toUpperCase()]
+  return key ? t(key) : visibility
+}
+
 export default function TeacherResourcesPage() {
   const { user } = useAuth()
   const t = useTranslations("teacher")
@@ -141,6 +274,18 @@ export default function TeacherResourcesPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState("")
+  const [reordering, setReordering] = useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     if (!user) return
@@ -246,31 +391,34 @@ export default function TeacherResourcesPage() {
     }
   }
 
-  function typeLabel(resourceType: string) {
-    const map: Record<string, string> = {
-      DOCUMENT: "resources.typeDocument",
-      VIDEO: "resources.typeVideo",
-      IMAGE: "resources.typeImage",
-      AUDIO: "resources.typeAudio",
-      LINK: "resources.typeLink",
-      EXTERNAL_LINK: "resources.typeExternalLink",
-    }
-    const key = map[(resourceType || "").toUpperCase()]
-    return key ? t(key) : resourceType
-  }
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
 
-  function visibilityLabel(visibility: string) {
-    const map: Record<string, string> = {
-      PUBLIC: "visibility.public",
-      INSTITUTION: "visibility.institution",
-      CLASS_ONLY: "visibility.classOnly",
-      COURSE_ONLY: "visibility.courseOnly",
-      SCHOOL: "visibility.school",
-      PRIVATE: "visibility.private",
-      DRAFT: "visibility.draft",
+    if (!over || active.id === over.id) return
+
+    const oldIndex = resources.findIndex((r) => r.id === active.id)
+    const newIndex = resources.findIndex((r) => r.id === over.id)
+
+    const newResources = Array.from(resources)
+    const [removed] = newResources.splice(oldIndex, 1)
+    newResources.splice(newIndex, 0, removed)
+
+    const reorderItems = newResources.map((resource, index) => ({
+      id: resource.id,
+      sortOrder: index,
+    }))
+
+    setResources(newResources)
+    setReordering(true)
+
+    try {
+      await teacherApi.reorderResources(reorderItems)
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : t("resources.reorderError"))
+      await loadResources()
+    } finally {
+      setReordering(false)
     }
-    const key = map[(visibility || "").toUpperCase()]
-    return key ? t(key) : visibility
   }
 
   const filtered = resources
@@ -338,7 +486,7 @@ export default function TeacherResourcesPage() {
             <option value="">{tc("allTypes")}</option>
             {RESOURCE_TYPES.map((type) => (
               <option key={type} value={type}>
-                {typeLabel(type)}
+                {typeLabel(type, t)}
               </option>
             ))}
           </select>
@@ -386,7 +534,7 @@ export default function TeacherResourcesPage() {
                 >
                   {RESOURCE_TYPES.map((type) => (
                     <option key={type} value={type}>
-                      {typeLabel(type)}
+                      {typeLabel(type, t)}
                     </option>
                   ))}
                 </select>
@@ -403,7 +551,7 @@ export default function TeacherResourcesPage() {
                 >
                   {VISIBILITIES.map((visibility) => (
                     <option key={visibility} value={visibility}>
-                      {visibilityLabel(visibility)}
+                      {visibilityLabel(visibility, t)}
                     </option>
                   ))}
                 </select>
@@ -507,62 +655,32 @@ export default function TeacherResourcesPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((resource) => (
-            <div key={resource.id} className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <TypeIcon type={resource.resourceType} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="truncate text-sm font-semibold text-foreground">{resource.title}</h4>
-                      <span
-                        className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${typeClass[(resource.resourceType || "").toUpperCase()] || "bg-muted text-muted-foreground"}`}
-                      >
-                        {typeLabel(resource.resourceType)}
-                      </span>
-                      <span
-                        className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${visibilityClass[(resource.visibility || "").toUpperCase()] || "bg-gray-100 text-gray-600"}`}
-                      >
-                        {visibilityLabel(resource.visibility)}
-                      </span>
-                    </div>
-                    {resource.description && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{resource.description}</p>
-                    )}
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span>
-                        {t("resources.colUpdated")}: {formatDate(resource.updatedAt || resource.createdAt)}
-                      </span>
-                      {resource.mimeType && <span>{resource.mimeType}</span>}
-                      {resource.externalUrl && <span>{resource.externalUrl}</span>}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    onClick={() => openEdit(resource)}
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    title={tc("edit")}
-                    aria-label={tc("edit")}
-                  >
-                    <Pencil className="size-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(resource.id)}
-                    disabled={deleting === resource.id}
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    title={tc("delete")}
-                    aria-label={tc("delete")}
-                  >
-                    {deleting === resource.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-                  </button>
-                </div>
-              </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={filtered.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3" role="list" aria-label={t("resources.listLabel")}>
+              {filtered.map((resource, index) => (
+                <SortableResourceRow
+                  key={resource.id}
+                  resource={resource}
+                  index={index}
+                  onEdit={() => openEdit(resource)}
+                  onDelete={() => handleDelete(resource.id)}
+                  deleting={deleting === resource.id}
+                  t={t}
+                  tc={tc}
+                />
+              ))}
             </div>
-          ))}
+          </SortableContext>
+        </DndContext>
+      )}
+      {reordering && (
+        <div className="fixed bottom-4 right-4 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-lg animate-in fade-in slide-in-from-bottom-2">
+          {t("resources.reorderSaving")}
         </div>
       )}
     </div>
