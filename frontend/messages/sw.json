@@ -176,7 +176,10 @@
       "adminDashboard": "Dashibodi ya Msimamizi",
       "adminDashboardDesc": "Usimamizi wa jukwaa",
       "institutions": "Taasisi",
-      "institutionsDesc": "Simamia taasisi"
+      "institutionsDesc": "Simamia taasisi",
+      "assignmentsDesc": "Simamia kazi za darasa",
+      "gradingDesc": "Grading and assessment tools",
+      "attendanceDesc": "Attendance tracking and reports"
     },
     "actions": {
       "createLesson": "Unda Somo",

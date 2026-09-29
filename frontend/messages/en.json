@@ -176,7 +176,10 @@
       "adminDashboard": "Admin Dashboard",
       "adminDashboardDesc": "Platform administration",
       "institutions": "Institutions",
-      "institutionsDesc": "Manage institutions"
+      "institutionsDesc": "Manage institutions",
+      "assignmentsDesc": "Manage assignments and coursework",
+      "gradingDesc": "Grading and assessment tools",
+      "attendanceDesc": "Attendance tracking and reports"
     },
     "actions": {
       "createLesson": "Create Lesson",
