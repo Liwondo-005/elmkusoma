@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Plus, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, Eye, EyeOff, GripVertical, X } from "lucide-react"
+import { BookOpen, Plus, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, Eye, EyeOff, GripVertical, X, Video, Link2, CalendarClock } from "lucide-react"
 import { teacherFetch } from "@/lib/teacher-api"
 
 interface Lesson {
@@ -19,6 +20,18 @@ interface Lesson {
   sortOrder: number
   isPublished: boolean
   createdAt: string
+}
+
+interface LiveClassLite {
+  id: string
+  title: string
+  status: string
+  scheduledAt: string | null
+  durationMinutes: number
+  classGroupId: string | null
+  lessonId: string | null
+  lessonTitle: string | null
+  recordingUrl: string | null
 }
 
 interface ClassOption {
@@ -44,6 +57,7 @@ export default function TeacherLessonsPage() {
   const t = useTranslations("teacher")
   const tn = useTranslations("nav")
   const tc = useTranslations("common")
+  const ts = useTranslations("status")
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [classes, setClasses] = useState<ClassOption[]>([])
   const [selectedClassId, setSelectedClassId] = useState<string>("")
@@ -54,6 +68,13 @@ export default function TeacherLessonsPage() {
   const [form, setForm] = useState(initialForm)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  // Lesson ↔ Live Class
+  const [liveClasses, setLiveClasses] = useState<LiveClassLite[]>([])
+  const [liveBusy, setLiveBusy] = useState(false)
+  const [showCreateLive, setShowCreateLive] = useState(false)
+  const [showLinkPicker, setShowLinkPicker] = useState(false)
+  const [linkTargetId, setLinkTargetId] = useState("")
+  const [liveForm, setLiveForm] = useState({ title: "", scheduledAt: "", durationMinutes: 60 })
 
   useEffect(() => {
     if (!user) return
@@ -73,6 +94,9 @@ export default function TeacherLessonsPage() {
       }))
       const unique = classOptions.filter((c, i, arr) => arr.findIndex((x) => x.classGroupId === c.classGroupId) === i)
       setClasses(unique)
+      teacherFetch<LiveClassLite[]>("/v1/teachers/me/live-classes")
+        .then((data) => setLiveClasses(Array.isArray(data) ? data : []))
+        .catch(() => setLiveClasses([]))
       await loadLessons()
     } catch {
       setError(tc("error.load"))
@@ -150,8 +174,122 @@ export default function TeacherLessonsPage() {
     }
   }
 
+  /** The live class linked to a lesson: active link preferred over terminal ones. */
+  function liveForLesson(lessonId: string): LiveClassLite | null {
+    const matches = liveClasses.filter((lc) => lc.lessonId === lessonId)
+    if (matches.length === 0) return null
+    const active = matches.find((lc) => !["CANCELLED", "COMPLETED", "ENDED"].includes(lc.status))
+    return active || matches[0]
+  }
+
+  function liveStatusMeta(status: string): { label: string; className: string } {
+    switch (status) {
+      case "SCHEDULED": return { label: ts("scheduled"), className: "bg-blue-100 text-blue-700" }
+      case "STARTING": return { label: t("liveClassDetail.statusStarting"), className: "bg-amber-100 text-amber-700" }
+      case "IN_PROGRESS":
+      case "LIVE": return { label: t("liveClassDetail.statusLive"), className: "bg-green-100 text-green-700" }
+      case "ENDING": return { label: t("liveClassDetail.statusEnding"), className: "bg-amber-100 text-amber-700" }
+      case "COMPLETED": return { label: ts("completed"), className: "bg-gray-100 text-gray-700" }
+      case "ENDED": return { label: t("liveClassDetail.statusEnded"), className: "bg-gray-100 text-gray-700" }
+      case "CANCELLED": return { label: ts("cancelled"), className: "bg-red-100 text-red-700" }
+      default: return { label: status, className: "bg-gray-100 text-gray-700" }
+    }
+  }
+
+  function formatLiveDate(iso: string | null) {
+    if (!iso) return ""
+    return new Date(String(iso).replace(" ", "T")).toLocaleString(undefined, {
+      weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    })
+  }
+
+  async function refreshLiveClasses() {
+    try {
+      const data = await teacherFetch<LiveClassLite[]>("/v1/teachers/me/live-classes")
+      setLiveClasses(Array.isArray(data) ? data : [])
+    } catch {
+      /* keep the previous list — non-fatal */
+    }
+  }
+
+  async function handleCreateLiveForLesson() {
+    if (!editingLesson || !liveForm.title || !liveForm.scheduledAt) return
+    setLiveBusy(true)
+    try {
+      const scheduledAt = liveForm.scheduledAt.length === 16 ? `${liveForm.scheduledAt}:00` : liveForm.scheduledAt
+      await teacherFetch("/v1/teachers/me/live-classes", {
+        method: "POST",
+        body: JSON.stringify({
+          title: liveForm.title.trim(),
+          scheduledAt,
+          durationMinutes: Number(liveForm.durationMinutes) || 60,
+          classGroupId: editingLesson.classGroupId || undefined,
+          subjectId: editingLesson.subjectId || undefined,
+          lessonId: editingLesson.id,
+        }),
+      })
+      setShowCreateLive(false)
+      setLiveForm({ title: "", scheduledAt: "", durationMinutes: 60 })
+      await refreshLiveClasses()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("lessons.liveCreateError"))
+    } finally {
+      setLiveBusy(false)
+    }
+  }
+
+  async function handleLinkLive() {
+    if (!editingLesson || !linkTargetId) return
+    setLiveBusy(true)
+    try {
+      const previous = liveForLesson(editingLesson.id)
+      if (previous && previous.id !== linkTargetId) {
+        await teacherFetch(`/v1/teachers/me/live-classes/${previous.id}/lesson`, { method: "DELETE" })
+      }
+      await teacherFetch(`/v1/teachers/me/live-classes/${linkTargetId}/lesson`, {
+        method: "PUT",
+        body: JSON.stringify({ lessonId: editingLesson.id }),
+      })
+      setShowLinkPicker(false)
+      setLinkTargetId("")
+      await refreshLiveClasses()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("lessons.liveLinkError"))
+    } finally {
+      setLiveBusy(false)
+    }
+  }
+
+  async function handleUnlinkLive(liveId: string) {
+    if (!confirm(t("lessons.liveUnlinkConfirm"))) return
+    setLiveBusy(true)
+    try {
+      await teacherFetch(`/v1/teachers/me/live-classes/${liveId}/lesson`, { method: "DELETE" })
+      await refreshLiveClasses()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("lessons.liveUnlinkError"))
+    } finally {
+      setLiveBusy(false)
+    }
+  }
+
+  async function handleStartLiveFromLesson(liveId: string) {
+    setLiveBusy(true)
+    try {
+      await teacherFetch(`/v1/teachers/me/live-classes/${liveId}/start`, { method: "POST" })
+      await refreshLiveClasses()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("lessons.liveStartError"))
+    } finally {
+      setLiveBusy(false)
+    }
+  }
+
   function openEdit(lesson: Lesson) {
     setEditingLesson(lesson)
+    setShowCreateLive(false)
+    setShowLinkPicker(false)
+    setLinkTargetId("")
     setForm({
       title: lesson.title,
       description: lesson.description || "",
@@ -167,6 +305,9 @@ export default function TeacherLessonsPage() {
 
   function openCreate() {
     setEditingLesson(null)
+    setShowCreateLive(false)
+    setShowLinkPicker(false)
+    setLinkTargetId("")
     setForm({ ...initialForm, classGroupId: selectedClassId, subjectId: classes.find((c) => c.classGroupId === selectedClassId)?.subjectId || "" })
     setShowForm(true)
   }
@@ -178,6 +319,17 @@ export default function TeacherLessonsPage() {
       </div>
     )
   }
+
+  const linkedLive = editingLesson ? liveForLesson(editingLesson.id) : null
+  const linkCandidates = editingLesson
+    ? liveClasses.filter(
+        (lc) =>
+          lc.status !== "CANCELLED" &&
+          lc.id !== linkedLive?.id &&
+          (!lc.lessonId || lc.lessonId === editingLesson.id) &&
+          (!lc.classGroupId || lc.classGroupId === editingLesson.classGroupId)
+      )
+    : []
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -221,7 +373,7 @@ export default function TeacherLessonsPage() {
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">{editingLesson ? t("lessons.editLesson") : t("lessons.createLesson")}</h3>
-            <button onClick={() => { setShowForm(false); setEditingLesson(null) }} className="text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
+            <button onClick={() => { setShowForm(false); setEditingLesson(null); setShowCreateLive(false); setShowLinkPicker(false); setLinkTargetId("") }} className="text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -258,8 +410,184 @@ export default function TeacherLessonsPage() {
               </label>
             </div>
           </div>
+
+          {/* LIVE LEARNING — Lesson ↔ Live Class */}
+          <div className="space-y-3 rounded-xl border border-border bg-background/60 p-4">
+            <div className="flex items-center gap-2">
+              <Video className="size-4 text-teal-600" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("lessons.liveSectionTitle")}</span>
+            </div>
+            {!editingLesson ? (
+              <p className="text-xs text-muted-foreground">{t("lessons.liveSaveFirst")}</p>
+            ) : linkedLive ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${liveStatusMeta(linkedLive.status).className}`}>
+                    {liveStatusMeta(linkedLive.status).label}
+                  </span>
+                  <span className="text-sm font-medium text-foreground">{linkedLive.title}</span>
+                  {linkedLive.scheduledAt && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <CalendarClock className="size-3" />
+                      {formatLiveDate(linkedLive.scheduledAt)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/dashboard/teacher/live-classes/${linkedLive.id}`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                  >
+                    {t("lessons.liveView")}
+                  </Link>
+                  {linkedLive.status === "SCHEDULED" && (
+                    <>
+                      <Link
+                        href={`/dashboard/teacher/live-classes/${linkedLive.id}/prepare`}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                      >
+                        {t("lessons.livePrepare")}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleStartLiveFromLesson(linkedLive.id)}
+                        disabled={liveBusy}
+                        className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {liveBusy ? <Loader2 className="size-3 animate-spin" /> : <Video className="size-3" />}
+                        {t("lessons.liveStart")}
+                      </button>
+                    </>
+                  )}
+                  {(linkedLive.status === "IN_PROGRESS" || linkedLive.status === "LIVE") && (
+                    <Link
+                      href={`/live-classes/${linkedLive.id}`}
+                      className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
+                    >
+                      {t("lessons.liveEnter")}
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowLinkPicker((v) => !v)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                  >
+                    <Link2 className="size-3" />
+                    {t("lessons.liveRelink")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUnlinkLive(linkedLive.id)}
+                    disabled={liveBusy}
+                    className="inline-flex items-center gap-1 rounded-lg border border-destructive/30 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                  >
+                    {t("lessons.liveUnlink")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {!showCreateLive && !showLinkPicker && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => { setShowCreateLive(true); setLiveForm({ ...liveForm, title: editingLesson.title }) }}>
+                      <Video className="size-3" /> {t("lessons.liveCreate")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      onClick={() => setShowLinkPicker(true)}
+                      disabled={linkCandidates.length === 0}
+                    >
+                      <Link2 className="size-3" /> {t("lessons.liveLinkExisting")}
+                    </Button>
+                    {linkCandidates.length === 0 && (
+                      <span className="text-xs text-muted-foreground">{t("lessons.liveNoCandidates")}</span>
+                    )}
+                  </div>
+                )}
+
+                {showCreateLive && (
+                  <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="sm:col-span-3">
+                        <label className="text-xs font-medium text-muted-foreground">{t("lessons.liveTitleLabel")}</label>
+                        <input
+                          value={liveForm.title}
+                          onChange={(e) => setLiveForm({ ...liveForm, title: e.target.value })}
+                          placeholder={editingLesson.title}
+                          className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{t("lessons.liveDateLabel")}</label>
+                        <input
+                          type="datetime-local"
+                          value={liveForm.scheduledAt}
+                          onChange={(e) => setLiveForm({ ...liveForm, scheduledAt: e.target.value })}
+                          className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">{t("lessons.liveDurationLabel")}</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={480}
+                          value={liveForm.durationMinutes}
+                          onChange={(e) => setLiveForm({ ...liveForm, durationMinutes: parseInt(e.target.value) || 60 })}
+                          className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleCreateLiveForLesson}
+                        disabled={liveBusy || !liveForm.title || !liveForm.scheduledAt}
+                      >
+                        {liveBusy ? <Loader2 className="size-3 animate-spin" /> : <Video className="size-3" />}
+                        {t("lessons.liveSchedule")}
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreateLive(false)}>{tc("cancel")}</Button>
+                    </div>
+                  </div>
+                )}
+
+                {showLinkPicker && (
+                  <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+                    <label className="text-xs font-medium text-muted-foreground">{t("lessons.livePickExisting")}</label>
+                    <select
+                      value={linkTargetId}
+                      onChange={(e) => setLinkTargetId(e.target.value)}
+                      className="mt-1 w-full appearance-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                    >
+                      <option value="">{t("lessons.livePickPlaceholder")}</option>
+                      {linkCandidates.map((lc) => (
+                        <option key={lc.id} value={lc.id}>
+                          {lc.title} — {formatLiveDate(lc.scheduledAt)}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-2">
+                      <Button type="button" size="sm" onClick={handleLinkLive} disabled={!linkTargetId || liveBusy}>
+                        {liveBusy ? <Loader2 className="size-3 animate-spin" /> : null}
+                        {t("lessons.liveLinkConfirm")}
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => { setShowLinkPicker(false); setLinkTargetId("") }}>
+                        {tc("cancel")}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { setShowForm(false); setEditingLesson(null) }}>{tc("cancel")}</Button>
+            <Button variant="outline" onClick={() => { setShowForm(false); setEditingLesson(null); setShowCreateLive(false); setShowLinkPicker(false); setLinkTargetId("") }}>{tc("cancel")}</Button>
             <Button onClick={handleSave} disabled={saving || !form.title || !form.classGroupId}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : null}
               {editingLesson ? t("announcements.update") : tc("create")}
@@ -283,7 +611,10 @@ export default function TeacherLessonsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {lessons.sort((a, b) => a.sortOrder - b.sortOrder).map((lesson) => (
+          {lessons.sort((a, b) => a.sortOrder - b.sortOrder).map((lesson) => {
+            const lessonLive = liveForLesson(lesson.id)
+            const lessonLiveMeta = lessonLive ? liveStatusMeta(lessonLive.status) : null
+            return (
             <div key={lesson.id} className="rounded-2xl border border-border bg-card p-4 shadow-xs">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 min-w-0">
@@ -294,6 +625,16 @@ export default function TeacherLessonsPage() {
                       <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                         lesson.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
                       }`}>{lesson.isPublished ? t("lessons.published") : t("lessons.draft")}</span>
+                      {lessonLive && lessonLiveMeta && (
+                        <Link
+                          href={`/dashboard/teacher/live-classes/${lessonLive.id}`}
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${lessonLiveMeta.className}`}
+                          title={t("lessons.liveOpenBadge")}
+                        >
+                          <Video className="size-3" />
+                          {lessonLiveMeta.label}
+                        </Link>
+                      )}
                     </div>
                     {lesson.description && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{lesson.description}</p>}
                     <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
@@ -313,7 +654,8 @@ export default function TeacherLessonsPage() {
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

@@ -30,6 +30,8 @@ interface LiveClass {
   canJoin: boolean | null
   createdAt: string
   recordingEnabled: boolean | null
+  lessonId: string | null
+  lessonTitle: string | null
 }
 
 interface Participant {
@@ -284,6 +286,15 @@ export default function LiveClassDetailPage() {
               <div className="flex items-center gap-2 text-sm">
                 <BookOpen className="size-4 shrink-0 text-muted-foreground" />
                 <span className="text-foreground">{liveClass.subjectName}</span>
+              </div>
+            )}
+            {liveClass.lessonId && (
+              <div className="flex items-center gap-2 text-sm">
+                <BookOpen className="size-4 shrink-0 text-teal-600" />
+                <span className="text-teal-600 dark:text-teal-400">
+                  {liveClass.lessonTitle || t("liveClasses.linkedLesson")}
+                </span>
+                <span className="text-[10px] text-muted-foreground">{t("liveClasses.relatedLessonLabel")}</span>
               </div>
             )}
             <div className="flex items-center gap-2 text-sm">

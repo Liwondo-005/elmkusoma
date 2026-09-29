@@ -784,6 +784,7 @@ public class LearnerController {
             fallback.put("isFree", false);
             putLessonProgress(fallback, lessonId, userId);
             fallback.put("materials", buildLessonMaterials(lessonId, userId, userRole, institutionId));
+            fallback.put("liveClass", buildLiveClassSummary(lessonId, institutionId));
             return ResponseEntity.ok(ApiResponse.success(fallback));
         }
         CourseModule module = courseModuleRepository.findById(lesson.getModuleId()).orElse(null);
@@ -843,7 +844,76 @@ public class LearnerController {
 
         result.put("materials", buildLessonMaterials(lessonId, userId, userRole, institutionId));
 
+        // Lesson ↔ Live Class: real live session state for this lesson (null when none)
+        result.put("liveClass", buildLiveClassSummary(lessonId, institutionId));
+
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
+     * Lesson ↔ Live Class: the authoritative live session linked to this lesson,
+     * chosen state-aware (live/starting first, then nearest scheduled, then most
+     * recent past session) and scoped to the caller's institution. Returns null
+     * when no linked live class exists for this institution.
+     */
+    private Map<String, Object> buildLiveClassSummary(UUID lessonId, UUID institutionId) {
+        List<LiveClass> linked = liveClassRepository.findByLessonIdAndIsDeletedFalse(lessonId);
+        if (linked.isEmpty()) {
+            return null;
+        }
+
+        LiveClass best = null;
+        int bestRank = -1;
+        for (LiveClass lc : linked) {
+            if (institutionId != null && lc.getInstitutionId() != null
+                    && !institutionId.equals(lc.getInstitutionId())) {
+                continue;
+            }
+            String st = lc.getStatus();
+            int rank;
+            if ("IN_PROGRESS".equals(st) || "LIVE".equals(st) || "STARTING".equals(st) || "ENDING".equals(st)) {
+                rank = 3;
+            } else if ("SCHEDULED".equals(st)) {
+                rank = 2;
+            } else if ("COMPLETED".equals(st) || "ENDED".equals(st)) {
+                rank = 1;
+            } else {
+                rank = 0;
+            }
+            boolean nearerSchedule = rank == 2 && best != null
+                    && lc.getScheduledAt() != null && best.getScheduledAt() != null
+                    && lc.getScheduledAt().isBefore(best.getScheduledAt());
+            // Equal-rank tie-break: surface the most recently touched session so a
+            // lesson with several terminal live classes shows the one that just
+            // ended (and therefore its attendance/replay) rather than an older one.
+            boolean moreRecentlyUpdated = rank == bestRank && best != null
+                    && lc.getUpdatedAt() != null && best.getUpdatedAt() != null
+                    && lc.getUpdatedAt().isAfter(best.getUpdatedAt());
+            if (rank > bestRank || nearerSchedule || moreRecentlyUpdated) {
+                bestRank = rank;
+                best = lc;
+            }
+        }
+        if (best == null) {
+            return null;
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("id", best.getId());
+        summary.put("title", best.getTitle());
+        summary.put("description", best.getDescription());
+        summary.put("status", best.getStatus());
+        summary.put("scheduledAt", best.getScheduledAt() != null ? best.getScheduledAt().toString() : null);
+        summary.put("durationMinutes", best.getDurationMinutes());
+        summary.put("classGroupId", best.getClassGroupId());
+        summary.put("sessionType", best.getSessionType() != null ? best.getSessionType().name() : "LECTURE");
+        summary.put("recordingEnabled", Boolean.TRUE.equals(best.getRecordingEnabled()));
+        summary.put("recordingUrl", best.getRecordingUrl());
+        summary.put("canJoin", "IN_PROGRESS".equals(best.getStatus()) || "LIVE".equals(best.getStatus()));
+        summary.put("inPast", best.getScheduledAt() != null
+                && best.getScheduledAt().plusMinutes(best.getDurationMinutes() != null ? best.getDurationMinutes() : 60)
+                        .isBefore(java.time.LocalDateTime.now()));
+        return summary;
     }
 
     /** Puts the caller's completion state for a lesson into the response map. */

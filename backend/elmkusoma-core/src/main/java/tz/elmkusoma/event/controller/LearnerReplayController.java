@@ -31,6 +31,7 @@ public class LearnerReplayController {
     private final ReplayProgressRepository progressRepository;
     private final EventRepository eventRepository;
     private final tz.elmkusoma.event.repository.EventMaterialRepository materialRepository;
+    private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Replay>>> getReplays(
@@ -58,6 +59,7 @@ public class LearnerReplayController {
             total = replays.size();
         }
         Map<UUID, ReplayProgress> progressMap = loadProgress(userId, replays);
+        populateRelatedLessonId(replays);
         replays.forEach(r -> enrich(r, userId, progressMap));
         return ResponseEntity.ok()
                 .header("X-Total-Count", String.valueOf(total))
@@ -77,6 +79,10 @@ public class LearnerReplayController {
                     replayRepository.save(r);
                     enrich(r, userId, Map.of());
                     Event event = r.getEventId() != null ? eventRepository.findById(r.getEventId()).orElse(null) : null;
+                    if (event == null && r.getLiveSessionId() != null) {
+                        liveClassRepository.findById(r.getLiveSessionId())
+                                .ifPresent(lc -> r.setRelatedLessonId(lc.getLessonId()));
+                    }
                     Map<String, Object> detail = new HashMap<>();
                     detail.put("replay", r);
                     // §46/§51/§52: related data derived from the linked Event, not hardcoded empties
@@ -87,7 +93,7 @@ public class LearnerReplayController {
                             r.getEventId()));
                     detail.put("relatedCourseId", event != null ? event.getRelatedCourseId() : null);
                     detail.put("relatedModuleId", event != null ? event.getRelatedModuleId() : null);
-                    detail.put("relatedLessonId", event != null ? event.getRelatedLessonId() : null);
+                    detail.put("relatedLessonId", event != null ? event.getRelatedLessonId() : r.getRelatedLessonId());
                     return ResponseEntity.ok(ApiResponse.success(detail));
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -193,6 +199,29 @@ public class LearnerReplayController {
         Map<UUID, ReplayProgress> map = new HashMap<>();
         progressRepository.findByUserIdAndReplayIdIn(userId, ids).forEach(p -> map.put(p.getReplayId(), p));
         return map;
+    }
+
+    /** Lesson ↔ Live Class: live-class replays derive their related lesson from live_classes.lesson_id. */
+    private void populateRelatedLessonId(List<Replay> replays) {
+        List<UUID> sessionIds = replays.stream()
+                .filter(r -> r.getRelatedLessonId() == null && r.getLiveSessionId() != null)
+                .map(Replay::getLiveSessionId)
+                .distinct()
+                .toList();
+        if (sessionIds.isEmpty()) {
+            return;
+        }
+        Map<UUID, UUID> lessonBySession = new HashMap<>();
+        liveClassRepository.findAllById(sessionIds)
+                .forEach(lc -> lessonBySession.put(lc.getId(), lc.getLessonId()));
+        replays.forEach(r -> {
+            if (r.getRelatedLessonId() == null && r.getLiveSessionId() != null) {
+                UUID lessonId = lessonBySession.get(r.getLiveSessionId());
+                if (lessonId != null) {
+                    r.setRelatedLessonId(lessonId);
+                }
+            }
+        });
     }
 
     private void enrich(Replay r, UUID userId, Map<UUID, ReplayProgress> progressMap) {

@@ -8,6 +8,8 @@ import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.attendance.domain.AttendanceRecord;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
+import tz.elmkusoma.audit.domain.AuditLog;
+import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.course.domain.LiveBroadcastSource;
@@ -20,6 +22,9 @@ import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.event.domain.Replay;
 import tz.elmkusoma.event.repository.ReplayRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.learner.service.NotificationService;
+import tz.elmkusoma.learning.domain.Lesson;
+import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.service.LiveKitService;
@@ -28,6 +33,7 @@ import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
+import tz.elmkusoma.teacher.repository.TeacherAssignmentRepository;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.time.LocalDate;
@@ -35,6 +41,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -54,6 +61,10 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final StudentRepository studentRepository;
     private final LiveKitService liveKitService;
     private final ReplayRepository replayRepository;
+    private final LessonRepository lessonRepository;
+    private final TeacherAssignmentRepository teacherAssignmentRepository;
+    private final NotificationService notificationService;
+    private final AuditService auditService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
@@ -133,6 +144,11 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .build();
         liveClass.setInstitutionId(institutionId);
 
+        // Lesson ↔ Live Class: validate ownership/scope + duplicate prevention (§11)
+        if (request.getLessonId() != null) {
+            validateLessonLink(teacherId, liveClass, request.getLessonId(), null);
+        }
+
         if (request.getRecurrenceEndDate() != null && !request.getRecurrenceEndDate().isBlank()) {
             try {
                 liveClass.setRecurrenceEndDate(java.time.LocalDate.parse(request.getRecurrenceEndDate()));
@@ -171,7 +187,11 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (request.getDurationMinutes() != null) liveClass.setDurationMinutes(request.getDurationMinutes());
         if (request.getSubjectId() != null) liveClass.setSubjectId(request.getSubjectId());
         if (request.getClassGroupId() != null) liveClass.setClassGroupId(request.getClassGroupId());
-        if (request.getLessonId() != null) liveClass.setLessonId(request.getLessonId());
+        if (request.getLessonId() != null && !request.getLessonId().equals(liveClass.getLessonId())) {
+            // Lesson ↔ Live Class: same guard as create (ownership/scope + duplicate)
+            validateLessonLink(teacherId, liveClass, request.getLessonId(), liveClassId);
+            liveClass.setLessonId(request.getLessonId());
+        }
         if (request.getMaxParticipants() != null) liveClass.setMaxParticipants(request.getMaxParticipants());
         if (request.getRecordingEnabled() != null) liveClass.setRecordingEnabled(request.getRecordingEnabled());
         if (request.getSessionType() != null) {
@@ -195,6 +215,34 @@ public class LiveClassServiceImpl implements LiveClassService {
         }
 
         LiveClass saved = liveClassRepository.save(liveClass);
+        return mapToResponse(saved);
+    }
+
+    @Override
+    public LiveClassResponse linkLesson(UUID teacherId, UUID liveClassId, UUID lessonId) {
+        LiveClass liveClass = liveClassRepository.findById(liveClassId)
+                .filter(lc -> lc.getTeacherId().equals(teacherId) && !lc.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
+
+        validateLessonLink(teacherId, liveClass, lessonId, liveClassId);
+        liveClass.setLessonId(lessonId);
+        LiveClass saved = liveClassRepository.save(liveClass);
+        log.info("Live class {} linked to lesson {} by teacher {}", liveClassId, lessonId, teacherId);
+        return mapToResponse(saved);
+    }
+
+    @Override
+    public LiveClassResponse unlinkLesson(UUID teacherId, UUID liveClassId) {
+        LiveClass liveClass = liveClassRepository.findById(liveClassId)
+                .filter(lc -> lc.getTeacherId().equals(teacherId) && !lc.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
+
+        if (liveClass.getLessonId() == null) {
+            throw new IllegalArgumentException("Live class has no linked lesson");
+        }
+        liveClass.setLessonId(null);
+        LiveClass saved = liveClassRepository.save(liveClass);
+        log.info("Live class {} unlinked from lesson by teacher {}", liveClassId, teacherId);
         return mapToResponse(saved);
     }
 
@@ -314,8 +362,49 @@ public class LiveClassServiceImpl implements LiveClassService {
                     .build();
             replayRepository.save(replay);
             log.info("Replay created for live class {}: url={}", liveClass.getId(), url);
+            notifyReplayAvailable(liveClass);
+            auditReplayGenerated(liveClass, replay);
         } catch (Exception e) {
             log.warn("Finalize recording/replay skipped for class {}: {}", liveClass.getId(), e.getMessage());
+        }
+    }
+
+    /** §9: existing notification channel — fired only when a replay actually exists. */
+    private void notifyReplayAvailable(LiveClass liveClass) {
+        try {
+            if (notificationService == null || liveClass.getInstitutionId() == null) {
+                return;
+            }
+            UUID teacherUserId = teacherRepository.findById(liveClass.getTeacherId())
+                    .map(Teacher::getUserId).orElse(null);
+            notificationService.notifyInstitutionStudentsExcluding(
+                    liveClass.getInstitutionId(), teacherUserId,
+                    "Recording Available",
+                    "The recording for \"" + liveClass.getTitle() + "\" is now available to watch.",
+                    "REPLAY_AVAILABLE", "live_class", liveClass.getId());
+        } catch (Exception ex) {
+            log.warn("Replay available notification failed for live class {}: {}", liveClass.getId(), ex.getMessage());
+        }
+    }
+
+    /** §13: audit trail for recording/replay generation, via the existing audit service. */
+    private void auditReplayGenerated(LiveClass liveClass, Replay replay) {
+        try {
+            if (auditService == null) {
+                return;
+            }
+            UUID actorUserId = teacherRepository.findById(liveClass.getTeacherId())
+                    .map(Teacher::getUserId).orElse(null);
+            String actorEmail = actorUserId != null
+                    ? userRepository.findById(actorUserId).map(User::getEmail).orElse(null)
+                    : null;
+            auditService.recordAuditLog(liveClass.getInstitutionId(), actorUserId, actorEmail, "TEACHER",
+                    "replay", replay.getId(), replay.getTitle(), AuditLog.AuditAction.CREATE,
+                    null, Map.of(
+                            "liveClassId", String.valueOf(liveClass.getId()),
+                            "recordingUrl", String.valueOf(replay.getRecordingUrl())));
+        } catch (Exception ex) {
+            log.warn("Audit write failed for replay {}: {}", replay.getId(), ex.getMessage());
         }
     }
 
@@ -494,6 +583,49 @@ public class LiveClassServiceImpl implements LiveClassService {
         log.info("Created {} recurring instances for live class {}", count, parent.getId());
     }
 
+    /**
+     * Lesson ↔ Live Class link guard: the lesson must exist, belong to the same
+     * institution (blocks cross-institution links), match the live class's class
+     * when both are set, sit in a class the teacher is assigned to, and must not
+     * already be linked to another active (non-terminal) live class (§11).
+     */
+    private void validateLessonLink(UUID teacherId, LiveClass liveClass, UUID lessonId, UUID excludeLiveClassId) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Lesson", "id", lessonId));
+
+        if (liveClass.getInstitutionId() != null && lesson.getInstitutionId() != null
+                && !liveClass.getInstitutionId().equals(lesson.getInstitutionId())) {
+            throw new IllegalArgumentException("Lesson belongs to a different institution");
+        }
+
+        if (liveClass.getClassGroupId() != null && lesson.getClassGroupId() != null
+                && !liveClass.getClassGroupId().equals(lesson.getClassGroupId())) {
+            throw new IllegalArgumentException("Lesson belongs to a different class than this live class");
+        }
+
+        if (lesson.getClassGroupId() != null
+                && !teacherAssignmentRepository.findClassGroupIdsByTeacherId(teacherId)
+                        .contains(lesson.getClassGroupId())) {
+            throw new IllegalArgumentException("You are not assigned to the lesson's class");
+        }
+
+        List<LiveClass> linked = liveClassRepository.findByLessonIdAndIsDeletedFalse(lessonId);
+        for (LiveClass other : linked) {
+            if (excludeLiveClassId != null && excludeLiveClassId.equals(other.getId())) {
+                continue;
+            }
+            String st = other.getStatus();
+            boolean terminal = LiveClassStatus.CANCELLED.name().equals(st)
+                    || LiveClassStatus.COMPLETED.name().equals(st)
+                    || LiveClassStatus.ENDED.name().equals(st);
+            if (!terminal) {
+                throw new IllegalArgumentException("Lesson is already linked to live class \""
+                        + other.getTitle() + "\" — edit, relink or cancel it first");
+            }
+        }
+    }
+
     private LiveClassResponse mapToResponse(LiveClass liveClass) {
         String subjectName = null;
         if (liveClass.getSubjectId() != null) {
@@ -513,6 +645,12 @@ public class LiveClassServiceImpl implements LiveClassService {
         long currentParticipants = participantRepository
                 .countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(liveClass.getId());
 
+        String lessonTitle = null;
+        if (liveClass.getLessonId() != null) {
+            lessonTitle = lessonRepository.findById(liveClass.getLessonId())
+                    .map(Lesson::getTitle).orElse(null);
+        }
+
         return LiveClassResponse.builder()
                 .id(liveClass.getId())
                 .title(liveClass.getTitle())
@@ -527,6 +665,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .subjectId(liveClass.getSubjectId())
                 .classGroupId(liveClass.getClassGroupId())
                 .lessonId(liveClass.getLessonId())
+                .lessonTitle(lessonTitle)
                 .recordingUrl(liveClass.getRecordingUrl())
                 .recordingEnabled(Boolean.TRUE.equals(liveClass.getRecordingEnabled()))
                 .sessionType(liveClass.getSessionType() != null ? liveClass.getSessionType().name() : "LECTURE")

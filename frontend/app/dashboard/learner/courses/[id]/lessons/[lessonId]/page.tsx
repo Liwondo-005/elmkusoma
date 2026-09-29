@@ -12,9 +12,11 @@ import {
   type CourseLesson,
   type Enrollment,
   type LessonMaterial,
+  type LiveLessonSummary,
   setLastAccessedLesson,
 } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
+import { LessonLiveCard } from "@/components/learner/lesson-live-card"
 import {
   ArrowLeft,
   CheckCircle,
@@ -51,6 +53,7 @@ export default function LessonViewerPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [materials, setMaterials] = useState<LessonMaterial[]>([])
+  const [liveClass, setLiveClass] = useState<LiveLessonSummary | null>(null)
   const [completing, setCompleting] = useState(false)
   const [completed, setCompleted] = useState(false)
   const [bookmarked, setBookmarked] = useState(false)
@@ -70,6 +73,7 @@ export default function LessonViewerPage() {
 
       setCourseData(courseResp)
       setMaterials(lessonDetail?.materials || [])
+      setLiveClass(lessonDetail?.liveClass ?? null)
       const existing = enrollments.find((e) => e.courseId === courseId)
       setEnrollment(existing || null)
 
@@ -416,6 +420,8 @@ export default function LessonViewerPage() {
           )}
         </div>
       </div>
+
+      <LessonLiveCard liveClass={liveClass} />
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <h2 className="mb-3 text-sm font-semibold text-foreground">{t("lesson.materials")}</h2>

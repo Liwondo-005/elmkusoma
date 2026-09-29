@@ -1687,7 +1687,31 @@
       "titleLabel": "Title *",
       "titlePlaceholder": "Lesson title",
       "unpublish": "Unpublish",
-      "updateError": "Failed to update lesson"
+      "updateError": "Failed to update lesson",
+      "liveSectionTitle": "Live Learning",
+      "liveSaveFirst": "Save the lesson first, then schedule or link a live class for it.",
+      "liveCreate": "Create live class",
+      "liveLinkExisting": "Link existing",
+      "liveNoCandidates": "No live classes available to link.",
+      "livePickExisting": "Choose a live class",
+      "livePickPlaceholder": "Select a live class…",
+      "liveLinkConfirm": "Link to lesson",
+      "liveCreateError": "Failed to create the live class.",
+      "liveLinkError": "Failed to link the live class.",
+      "liveUnlinkError": "Failed to unlink the live class.",
+      "liveUnlinkConfirm": "Remove this live class from the lesson?",
+      "liveStartError": "Failed to start the live class.",
+      "liveTitleLabel": "Live class title",
+      "liveDateLabel": "Date & time",
+      "liveDurationLabel": "Duration (minutes)",
+      "liveSchedule": "Schedule live class",
+      "liveView": "View",
+      "livePrepare": "Prepare",
+      "liveStart": "Start live",
+      "liveEnter": "Enter classroom",
+      "liveRelink": "Relink",
+      "liveUnlink": "Unlink",
+      "liveOpenBadge": "Open live class"
     },
     "mediaLibrary": {
       "allFilter": "All",
@@ -1910,7 +1934,12 @@
       "patternBiweekly": "Bi-weekly",
       "patternMonthly": "Monthly",
       "reviewTitle": "Review Live Class",
-      "backToEdit": "Back to Edit"
+      "backToEdit": "Back to Edit",
+      "relatedLessonLabel": "Related lesson",
+      "noLessonOption": "No lesson (not linked)",
+      "selectClassFirst": "Select a class first",
+      "noLessonsHint": "No lessons in this class yet.",
+      "linkedLesson": "Linked lesson"
     },
     "livePrepare": {
       "allPassed": "All checks passed. You are ready to go live.",
@@ -3261,6 +3290,18 @@
       "downloadLabel": "Download {title}",
       "moreHint": "Looking for more materials?",
       "browseAll": "Browse all Resources"
+    },
+    "lessonLive": {
+      "sectionTitle": "Live class",
+      "liveNow": "LIVE NOW",
+      "scheduled": "Scheduled",
+      "ended": "Ended",
+      "cancelled": "Cancelled",
+      "join": "Join live class",
+      "viewDetails": "View details",
+      "watchRecording": "Watch recording",
+      "noRecording": "No recording available for this session.",
+      "cancelledNote": "This live class was cancelled."
     }
   },
   "nursery": {
