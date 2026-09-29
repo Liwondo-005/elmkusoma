@@ -10,6 +10,7 @@ import tz.elmkusoma.attendance.domain.AttendanceRecord;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
+import tz.elmkusoma.course.domain.LiveBroadcastSource;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.domain.LiveClass.LiveClassStatus;
 import tz.elmkusoma.course.domain.LiveClassSessionType;
@@ -123,6 +124,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .classGroupId(request.getClassGroupId())
                 .recordingEnabled(Boolean.TRUE.equals(request.getRecordingEnabled()))
                 .sessionType(request.getSessionType() != null ? LiveClassSessionType.valueOf(request.getSessionType()) : LiveClassSessionType.LECTURE)
+                .broadcastSource(parseBroadcastSource(request.getBroadcastSource()))
                 .timezone(request.getTimezone() != null ? request.getTimezone() : "Africa/Dar_es_Salaam")
                 .isRecurring(Boolean.TRUE.equals(request.getIsRecurring()))
                 .recurrencePattern(request.getRecurrencePattern())
@@ -172,6 +174,9 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (request.getRecordingEnabled() != null) liveClass.setRecordingEnabled(request.getRecordingEnabled());
         if (request.getSessionType() != null) {
             liveClass.setSessionType(LiveClassSessionType.valueOf(request.getSessionType()));
+        }
+        if (request.getBroadcastSource() != null) {
+            liveClass.setBroadcastSource(parseBroadcastSource(request.getBroadcastSource()));
         }
 
         if (liveClass.getScheduledAt() != null) {
@@ -471,6 +476,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                     .maxParticipants(parent.getMaxParticipants())
                     .classGroupId(parent.getClassGroupId())
                     .recordingEnabled(parent.getRecordingEnabled())
+                    .broadcastSource(parent.getBroadcastSource())
                     .timezone(parent.getTimezone())
                     .isRecurring(true)
                     .recurrencePattern(parent.getRecurrencePattern())
@@ -520,6 +526,9 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .recordingUrl(liveClass.getRecordingUrl())
                 .recordingEnabled(Boolean.TRUE.equals(liveClass.getRecordingEnabled()))
                 .sessionType(liveClass.getSessionType() != null ? liveClass.getSessionType().name() : "LECTURE")
+                .broadcastSource(liveClass.getBroadcastSource() != null
+                        ? liveClass.getBroadcastSource().name()
+                        : LiveBroadcastSource.BROWSER.name())
                 .timezone(liveClass.getTimezone() != null ? liveClass.getTimezone() : "Africa/Dar_es_Salaam")
                 .isRecurring(Boolean.TRUE.equals(liveClass.getIsRecurring()))
                 .recurrencePattern(liveClass.getRecurrencePattern())
@@ -529,6 +538,23 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .canJoin("IN_PROGRESS".equals(liveClass.getStatus()) || "LIVE".equals(liveClass.getStatus()))
                 .createdAt(liveClass.getCreatedAt() != null ? liveClass.getCreatedAt().toString() : null)
                 .build();
+    }
+
+    /**
+     * Null/blank keeps the historical default (BROWSER = laptop camera workflow),
+     * so older clients and stored rows behave exactly as before. An unknown value
+     * fails loudly instead of silently downgrading the teacher's choice.
+     */
+    private LiveBroadcastSource parseBroadcastSource(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return LiveBroadcastSource.BROWSER;
+        }
+        try {
+            return LiveBroadcastSource.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid broadcast source: " + raw
+                    + ". Supported: BROWSER, MOBILE, USB_CAMERA, PROFESSIONAL_CAMERA, OBS, ENCODER, STUDIO, OTHER");
+        }
     }
 
     private LocalDateTime parseDateTime(String dateTimeStr) {

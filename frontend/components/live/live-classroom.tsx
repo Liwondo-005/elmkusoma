@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 import { Room, RoomEvent, Track, Participant as LKParticipant, TrackPublication } from "livekit-client"
 import { LiveVideoPlayer, type LivePlayerState } from "@/components/live/live-video-player"
+import { useMediaDevices } from "@/hooks/use-media-devices"
 
 interface Participant {
   userId: string
@@ -54,6 +55,8 @@ interface ChatMessage {
   kind?: "CHAT" | "QA"
   reactions?: Record<string, number>
   deleted?: boolean
+  /** Q&A workflow: ISO timestamp when a teacher marked the question answered. */
+  answeredAt?: string | null
 }
 
 interface HandRaiseEntry {
@@ -148,6 +151,15 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [remoteVideoTrack, setRemoteVideoTrack] = useState<TrackPublication | null>(null)
   const [remoteAudioTrack, setRemoteAudioTrack] = useState<TrackPublication | null>(null)
   const [sessionStatus, setSessionStatus] = useState(liveClass.status)
+  // Broadcast source + real device selection: the laptop camera is ONE source
+  // among phone/USB/professional-camera/OBS/encoder/studio sources. Devices come
+  // from the browser's enumerateDevices — never hardcoded names.
+  const [broadcastSource, setBroadcastSource] = useState<string>(liveClass.broadcastSource || "BROWSER")
+  const { cameras, microphones, hasLabels, requestPermission } = useMediaDevices()
+  const [selectedCameraId, setSelectedCameraId] = useState("")
+  const [selectedMicId, setSelectedMicId] = useState("")
+  const [sourceBusy, setSourceBusy] = useState(false)
+  const [sourceError, setSourceError] = useState("")
   const [roomState, setRoomState] = useState<"idle" | "connecting" | "connected" | "reconnecting" | "error">("idle")
   const [showIssueModal, setShowIssueModal] = useState(false)
   const [issueType, setIssueType] = useState("CONNECTION_PROBLEM")
@@ -557,7 +569,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           case "CHAT_MESSAGE": {
             const raw = String(data.message || "")
             const isQa = raw.startsWith("[Q&A]")
-            setChat((prev) => [...prev, { id: data.id ?? data.messageId ?? null, userId: data.userId, userName: data.userName, message: isQa ? raw.slice(6).trim() : raw, timestamp: data.timestamp, kind: isQa ? "QA" : "CHAT" }])
+            setChat((prev) => [...prev, { id: data.id ?? data.messageId ?? null, userId: data.userId, userName: data.userName, message: isQa ? raw.slice(6).trim() : raw, timestamp: data.timestamp, kind: isQa ? "QA" : "CHAT", answeredAt: data.answeredAt ?? null }])
             break
           }
           case "CHAT_HISTORY":
@@ -570,8 +582,20 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 timestamp: m.timestamp,
                 kind: String(m.message || "").startsWith("[Q&A]") ? "QA" : "CHAT",
                 deleted: Boolean(m.deleted || m.isDeleted),
+                answeredAt: m.answeredAt ?? null,
               }))
               setChat((prev) => [...history, ...prev])
+            }
+            break
+          case "QA_ANSWERED":
+            if (data.messageId) {
+              setChat((prev) =>
+                prev.map((m) =>
+                  m.id === data.messageId
+                    ? { ...m, answeredAt: data.answered ? data.timestamp || new Date().toISOString() : null }
+                    : m,
+                ),
+              )
             }
             break
           case "MESSAGE_DELETED":
@@ -621,6 +645,27 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               system: true,
             }])
             break
+          case "SOURCE_CHANGED": {
+            // The teacher switched source/device mid-session (camera → USB camera,
+            // camera → screen, browser → OBS ingest...). Update the badge and leave
+            // a visible trail; the stage itself follows the republished track.
+            const nextSource = typeof data.source === "string" && data.source ? data.source : null
+            if (nextSource) setBroadcastSource(nextSource)
+            const sourceLabel =
+              typeof data.label === "string" && data.label
+                ? data.label
+                : (nextSource || "").replace(/_/g, " ")
+            if (sourceLabel) {
+              setChat((prev) => [...prev, {
+                userId: "system",
+                userName: "System",
+                message: `Broadcast source switched: ${sourceLabel}`,
+                timestamp: data.timestamp || new Date().toISOString(),
+                system: true,
+              }])
+            }
+            break
+          }
           case "PARTICIPANT_MUTED":
             if (data.targetUserId === myUserId) {
               setMicEnabled(false)
@@ -841,7 +886,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       })
     } else {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: selectedCameraId ? { deviceId: { exact: selectedCameraId } } : true,
+          audio: false,
+        })
         // Merge into the existing stream instead of replacing it, so a microphone
         // track captured earlier (or later) is never dropped.
         setLocalStream((prev) => {
@@ -873,13 +921,14 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     } else {
       try {
         let stream = localStream
+        const micConstraints: boolean | MediaTrackConstraints = selectedMicId ? { deviceId: { exact: selectedMicId } } : true
         if (!stream) {
-          stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+          stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: micConstraints })
           setLocalStream(stream)
         } else if (stream.getAudioTracks().length === 0) {
           // The camera was turned on first: capture the mic and merge it into the
           // existing stream so it can actually be published.
-          const mic = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+          const mic = await navigator.mediaDevices.getUserMedia({ video: false, audio: micConstraints })
           mic.getAudioTracks().forEach((track) => stream!.addTrack(track))
         }
         stream.getAudioTracks().forEach((track) => { track.enabled = true })
@@ -894,6 +943,143 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       } catch (err) {
         setJoinError(t("micPermissionError"))
       }
+    }
+  }
+
+  /** Tell participants what now feeds the stage (persisted server-side as SOURCE_CHANGED). */
+  function announceSource(kind: "camera" | "microphone", deviceId: string) {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) return
+    const list = kind === "camera" ? cameras : microphones
+    const label = list.find((d) => d.deviceId === deviceId)?.label || ""
+    wsRef.current.send(JSON.stringify({
+      type: "SOURCE_UPDATE",
+      source: broadcastSource,
+      label: label ? `${kind === "camera" ? "Camera" : "Microphone"}: ${label}` : kind,
+    }))
+  }
+
+  /**
+   * Switch to another camera (built-in → USB → capture card...) WITHOUT ending
+   * the session: acquire the new track, replace it in the local preview, and
+   * republish it through the existing LiveKit room. Failure of the republish is
+   * reported honestly instead of pretending viewers see the new device.
+   */
+  async function switchCameraDevice(deviceId: string) {
+    if (!deviceId || deviceId === selectedCameraId || sourceBusy) return
+    setSelectedCameraId(deviceId)
+    if (!cameraEnabled) return // applies the next time the camera is turned on
+    setSourceBusy(true)
+    setSourceError("")
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId } },
+        audio: false,
+      })
+      const newTrack = stream.getVideoTracks()[0]
+      if (!newTrack) throw new Error("The selected camera produced no video track")
+      const oldTracks = localStream ? [...localStream.getVideoTracks()] : []
+
+      setLocalStream((prev) => {
+        if (!prev) return stream
+        oldTracks.forEach((t) => {
+          prev.removeTrack(t)
+          t.stop()
+        })
+        prev.addTrack(newTrack)
+        return prev
+      })
+      setVideoTracks((prev) => new Map(prev).set("local-camera", stream))
+
+      const room = roomRef.current
+      if (room?.localParticipant) {
+        for (const old of oldTracks) {
+          try {
+            room.localParticipant.unpublishTrack(old)
+          } catch {
+            // track was never published — nothing to remove
+          }
+        }
+        try {
+          await room.localParticipant.publishTrack(newTrack, { name: "camera" })
+        } catch {
+          setSourceError("Camera switched locally, but re-publishing to the live room failed — viewers may still see the previous camera.")
+        }
+      }
+      announceSource("camera", deviceId)
+    } catch (err) {
+      const name = (err as { name?: string })?.name || ""
+      setSourceError(
+        name === "NotAllowedError"
+          ? "Permission to use this camera was denied."
+          : name === "NotReadableError"
+            ? "This camera is already in use by another application."
+            : name === "OverconstrainedError" || name === "NotFoundError"
+              ? "This camera is no longer available — it may have been unplugged."
+              : "Could not switch camera."
+      )
+    } finally {
+      setSourceBusy(false)
+    }
+  }
+
+  /** Switch to another microphone without ending the session (same republish flow). */
+  async function switchMicDevice(deviceId: string) {
+    if (!deviceId || deviceId === selectedMicId || sourceBusy) return
+    setSelectedMicId(deviceId)
+    if (!micEnabled) return // applies the next time the mic is turned on
+    setSourceBusy(true)
+    setSourceError("")
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: { deviceId: { exact: deviceId } },
+      })
+      const newTrack = stream.getAudioTracks()[0]
+      if (!newTrack) throw new Error("The selected microphone produced no audio track")
+      newTrack.enabled = true
+      const oldTracks = localStream ? [...localStream.getAudioTracks()] : []
+
+      const merged = localStream || stream
+      oldTracks.forEach((t) => {
+        merged.removeTrack(t)
+        t.stop()
+      })
+      if (localStream) {
+        merged.addTrack(newTrack)
+        setLocalStream(merged)
+      } else {
+        setLocalStream(stream)
+      }
+
+      const room = roomRef.current
+      if (room?.localParticipant) {
+        for (const old of oldTracks) {
+          try {
+            room.localParticipant.unpublishTrack(old)
+          } catch {
+            // track was never published — nothing to remove
+          }
+        }
+        try {
+          await room.localParticipant.publishTrack(newTrack, { name: "microphone" })
+        } catch {
+          setSourceError("Microphone switched locally, but re-publishing to the live room failed — viewers may still hear the previous microphone.")
+        }
+      }
+      announceSource("microphone", deviceId)
+    } catch (err) {
+      const name = (err as { name?: string })?.name || ""
+      setSourceError(
+        name === "NotAllowedError"
+          ? "Permission to use this microphone was denied."
+          : name === "NotReadableError"
+            ? "This microphone is already in use by another application."
+            : name === "OverconstrainedError" || name === "NotFoundError"
+              ? "This microphone is no longer available — it may have been unplugged."
+              : "Could not switch microphone."
+      )
+    } finally {
+      setSourceBusy(false)
     }
   }
 
@@ -994,6 +1180,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
   async function toggleRecording() {
     if (!liveClass?.id) return
+    // Recording is teacher/admin-only on the server (403 for anyone else) —
+    // never show/allow the action for learners.
+    if (!isTeacherClient && user?.role !== "Admin") return
     try {
       const token = localStorage.getItem("elmkusoma_access_token")
       const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
@@ -1769,9 +1958,11 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     <ControlButton active={screenSharing} onClick={toggleScreenShare} label={screenSharing ? t("stopSharingLabel") : t("shareScreenLabel")}>
                       <MonitorUp className="size-4" />
                     </ControlButton>
-                    <ControlButton active={isRecording} onClick={toggleRecording} label={isRecording ? t("stopRecordingLabel") : t("startRecordingLabel")}>
-                      <Circle className={cn("size-4", isRecording && "fill-red-500 text-red-500 animate-pulse")} />
-                    </ControlButton>
+                    {(isTeacherClient || user?.role === "Admin") && (
+                      <ControlButton active={isRecording} onClick={toggleRecording} label={isRecording ? t("stopRecordingLabel") : t("startRecordingLabel")}>
+                        <Circle className={cn("size-4", isRecording && "fill-red-500 text-red-500 animate-pulse")} />
+                      </ControlButton>
+                    )}
                     <ControlButton active={showMaterialInput} onClick={() => setShowMaterialInput(!showMaterialInput)} label={t("attachMaterialLabel")}>
                       <Paperclip className="size-4" />
                     </ControlButton>
@@ -1814,6 +2005,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <h2 className="text-xs font-semibold text-foreground mb-2">{t("classDetailsTitle")}</h2>
             <div className="space-y-1 text-xs text-muted-foreground">
+              <p>{t("sourceLine", { source: broadcastSource.replace(/_/g, " ") })}</p>
               {liveClass.scheduledAt && <p>{t("scheduledLine", { datetime: new Date(liveClass.scheduledAt).toLocaleString() })}</p>}
               {liveClass.durationMinutes && <p>{t("durationLine", { count: liveClass.durationMinutes })}</p>}
               {liveClass.maxParticipants && <p>{t("maxParticipantsLine", { count: liveClass.maxParticipants })}</p>}
@@ -1836,6 +2028,57 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         </div>
 
         <div className="flex flex-col gap-4 order-1 lg:order-2">
+          {(isTeacherClient || user?.role === "Admin") && isInProgress && (
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xs font-semibold text-foreground">Broadcast Source</h2>
+                <span className="max-w-[140px] truncate rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  {broadcastSource.replace(/_/g, " ")}
+                </span>
+              </div>
+
+              {!hasLabels && (
+                <button
+                  type="button"
+                  onClick={requestPermission}
+                  className="mt-2 w-full rounded-lg border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:bg-accent"
+                >
+                  Allow device access to list cameras & microphones
+                </button>
+              )}
+
+              <div className="mt-2 space-y-1.5">
+                <select
+                  value={selectedCameraId}
+                  onChange={(e) => switchCameraDevice(e.target.value)}
+                  disabled={sourceBusy || cameras.length === 0}
+                  aria-label="Camera source"
+                  className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-foreground disabled:opacity-60"
+                >
+                  <option value="">{cameras.length > 0 ? "Default camera" : "No cameras found"}</option>
+                  {cameras.map((c) => (
+                    <option key={c.deviceId} value={c.deviceId}>{c.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedMicId}
+                  onChange={(e) => switchMicDevice(e.target.value)}
+                  disabled={sourceBusy || microphones.length === 0}
+                  aria-label="Microphone source"
+                  className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-foreground disabled:opacity-60"
+                >
+                  <option value="">{microphones.length > 0 ? "Default microphone" : "No microphones found"}</option>
+                  {microphones.map((m) => (
+                    <option key={m.deviceId} value={m.deviceId}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {sourceBusy && <p className="mt-1.5 text-[10px] text-muted-foreground">Switching source...</p>}
+              {sourceError && <p className="mt-1.5 text-[10px] text-red-500">{sourceError}</p>}
+            </div>
+          )}
+
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold text-foreground">{t("participantsTitle", { count: participants.length })}</h2>
@@ -2432,6 +2675,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                           <div className="flex items-baseline gap-1.5">
                             <span className="text-[11px] font-semibold text-foreground">{c.userName}</span>
                             <span className="text-[9px] text-muted-foreground">{formatTime(c.timestamp)}</span>
+                            {sideTab === "qa" && c.answeredAt && (
+                              <span className="rounded bg-accent/15 px-1 text-[9px] font-medium text-accent">Answered</span>
+                            )}
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">{c.message}</p>
                           <div className="mt-0.5 flex gap-1">
@@ -2470,6 +2716,22 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                                 className="rounded px-1 text-[10px] text-destructive hover:bg-destructive/10"
                               >
                                 {t("removeButton")}
+                              </button>
+                            )}
+                            {sideTab === "qa" && (user?.role === "Teacher" || user?.role === "Admin") && c.id && (
+                              <button
+                                type="button"
+                                aria-label={c.answeredAt ? "Reopen question" : "Mark question answered"}
+                                onClick={() => {
+                                  const nextAnswered = c.answeredAt ? null : new Date().toISOString()
+                                  setChat((prev) => prev.map((m) => (m === c ? { ...m, answeredAt: nextAnswered } : m)))
+                                  if (wsRef.current?.readyState === WebSocket.OPEN) {
+                                    wsRef.current.send(JSON.stringify({ type: "QA_MARK_ANSWERED", messageId: c.id }))
+                                  }
+                                }}
+                                className={cn("rounded px-1 text-[10px] hover:bg-primary/10", c.answeredAt ? "text-accent" : "text-primary")}
+                              >
+                                {c.answeredAt ? "Reopen" : "Mark answered"}
                               </button>
                             )}
                           </div>

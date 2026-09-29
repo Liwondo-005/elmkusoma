@@ -1367,6 +1367,9 @@ public class LearnerController {
                 .recordingUrl(lc.getRecordingUrl())
                 .recordingEnabled(Boolean.TRUE.equals(lc.getRecordingEnabled()))
                 .sessionType(lc.getSessionType() != null ? lc.getSessionType().name() : "LECTURE")
+                .broadcastSource(lc.getBroadcastSource() != null
+                        ? lc.getBroadcastSource().name()
+                        : LiveBroadcastSource.BROWSER.name())
                 .canJoin("IN_PROGRESS".equals(lc.getStatus()) || "LIVE".equals(lc.getStatus()))
                 .createdAt(lc.getCreatedAt() != null ? lc.getCreatedAt().toString() : null)
                 .build();

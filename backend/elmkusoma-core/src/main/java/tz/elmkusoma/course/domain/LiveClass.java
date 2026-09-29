@@ -54,6 +54,15 @@ public class LiveClass extends BaseEntity {
     @Column(name = "session_type", length = 30)
     private LiveClassSessionType sessionType = LiveClassSessionType.LECTURE;
 
+    /**
+     * Declared broadcast source (browser, phone, USB camera, OBS, encoder, studio...).
+     * Defaults to BROWSER so every pre-existing session keeps meaning "laptop camera
+     * workflow" without any migration of stored rows.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "broadcast_source", length = 30)
+    private LiveBroadcastSource broadcastSource = LiveBroadcastSource.BROWSER;
+
     @Column(name = "timezone", length = 50)
     private String timezone = "Africa/Dar_es_Salaam";
 

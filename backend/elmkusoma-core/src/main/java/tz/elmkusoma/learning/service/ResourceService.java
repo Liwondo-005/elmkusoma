@@ -361,6 +361,46 @@ public class ResourceService {
         return "ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole);
     }
 
+    // ── Reorder Resources ──
+    @Transactional
+    public List<ResourceResponse> reorderResources(List<ReorderItem> items, UUID institutionId, UUID userId, String userRole) {
+        if (items == null || items.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> resourceIds = items.stream().map(ReorderItem::getId).collect(Collectors.toList());
+        List<Resource> resources = resourceRepository.findAllById(resourceIds);
+
+        if (resources.size() != resourceIds.size()) {
+            throw new ResourceNotFoundException("One or more resources not found");
+        }
+
+        for (Resource resource : resources) {
+            if (!resource.getInstitutionId().equals(institutionId)) {
+                throw new SecurityException("Access denied to resource");
+            }
+            if ((resource.getUploadedBy() == null || !resource.getUploadedBy().equals(userId)) && !isAdminRole(userRole)) {
+                throw new SecurityException("You do not own this resource");
+            }
+        }
+
+        for (ReorderItem item : items) {
+            Resource resource = resources.stream()
+                    .filter(r -> r.getId().equals(item.id()))
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException("Resource not found: " + item.id()));
+            resource.setSortOrder(item.sortOrder());
+        }
+
+        List<Resource> savedResources = resourceRepository.saveAll(resources);
+        return savedResources.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    public record ReorderItem(UUID id, Integer sortOrder) {
+        public UUID getId() { return id; }
+        public Integer getSortOrder() { return sortOrder; }
+    }
+
     private void validateLessonAccess(UUID lessonId, UUID institutionId) {
         lessonRepository.findById(lessonId)
                 .filter(l -> !l.getIsDeleted())

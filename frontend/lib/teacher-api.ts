@@ -204,6 +204,110 @@ export interface TeacherScheduleItem {
   room: string | null
 }
 
+export interface PresignedUploadResponse {
+  uploadUrl: string
+  videoTutorialId: string
+  fields?: Record<string, string>
+}
+
+export interface VideoTutorialCreate {
+  title: string
+  description?: string
+  visibility: string
+  lessonId?: string
+  tags?: string[]
+  sortOrder?: number
+}
+
+export interface VideoTutorialItem {
+  id: string
+  title: string
+  description: string | null
+  recordingUrl: string | null
+  status: string
+  visibility: string
+  durationSeconds: number | null
+  createdAt: string
+}
+
+export interface ResourceItem {
+  id: string
+  title: string
+  description?: string | null
+  resourceType: string
+  visibility: string
+  mimeType?: string | null
+  fileSize?: number | null
+  storageUrl?: string | null
+  externalUrl?: string | null
+  lessonId?: string | null
+  sortOrder?: number | null
+  isDownloadable?: boolean | null
+  isPreviewable?: boolean | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+export async function getPresignedUploadUrl(
+  fileName: string,
+  contentType: string
+): Promise<PresignedUploadResponse> {
+  return teacherFetch<PresignedUploadResponse>(
+    `/v1/video-tutorials/presigned-upload?fileName=${encodeURIComponent(fileName)}&contentType=${encodeURIComponent(contentType)}`
+  )
+}
+
+export async function uploadFileToPresignedUrl(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<void> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
+  let institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") : null
+  if (!institutionId && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("elmkusoma_current_user")
+      if (raw) {
+        const user = JSON.parse(raw)
+        if (user?.institutionId) institutionId = user.institutionId
+      }
+    } catch {}
+  }
+  if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(Math.round((event.loaded / event.total) * 100))
+      }
+    })
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve()
+      } else {
+        reject(new Error(`Upload failed: ${xhr.status}`))
+      }
+    })
+    xhr.addEventListener("error", () => reject(new Error("Upload failed")))
+    xhr.addEventListener("abort", () => reject(new Error("Upload aborted")))
+    xhr.open("PUT", uploadUrl)
+    xhr.setRequestHeader("Content-Type", file.type)
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`)
+    }
+    xhr.setRequestHeader("X-Institution-Id", institutionId)
+    xhr.send(file)
+  })
+}
+
+export async function createVideoTutorial(data: VideoTutorialCreate): Promise<VideoTutorialItem> {
+  return teacherFetch<VideoTutorialItem>("/v1/video-tutorials", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
 export const teacherApi = {
   getClasses: () => teacherFetch<{ classGroupId: string; className: string; classSection: string; subjectId: string; subjectName: string; academicYear: string; enrolledStudents: number; totalAssignments: number; totalLessons: number }[]>("/v1/teachers/me/classes"),
   getStudents: () => teacherFetch<StudentInClass[]>("/v1/teachers/me/students"),
@@ -246,4 +350,11 @@ export const teacherApi = {
     teacherFetch<ReportCard[]>(`/v1/grading/report-cards/term/${termId}`),
   getReportCardsByStudent: (studentId: string) =>
     teacherFetch<ReportCard[]>(`/v1/grading/report-cards/student/${studentId}`),
+
+  reorderResources: (items: { id: string; sortOrder: number }[]) =>
+    teacherFetch<ResourceItem[]>("/v1/resources/reorder", { method: "PUT", body: JSON.stringify(items) }),
+
+  getPresignedUploadUrl,
+  uploadFileToPresignedUrl,
+  createVideoTutorial,
 }

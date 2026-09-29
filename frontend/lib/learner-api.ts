@@ -270,6 +270,8 @@ export interface LiveClass {
   recordingUrl: string | null
   canJoin: boolean | null
   createdAt: string
+  /** Declared broadcast source: BROWSER, MOBILE, USB_CAMERA, PROFESSIONAL_CAMERA, OBS, ENCODER, STUDIO, OTHER */
+  broadcastSource?: string
 }
 
 export interface LiveSessionJoinResponse {

@@ -50,6 +50,7 @@ const initialForm = {
   subjectId: "",
   enableRecording: false,
   sessionType: "LECTURE",
+  broadcastSource: "BROWSER",
   timezone: "Africa/Dar_es_Salaam",
   isRecurring: false,
   recurrencePattern: "",
@@ -166,6 +167,7 @@ export default function TeacherLiveClassesPage() {
       subjectId: lc.subjectId || "",
       enableRecording: lc.recordingEnabled || false,
       sessionType: lc.sessionType || "LECTURE",
+      broadcastSource: lc.broadcastSource || "BROWSER",
       timezone: lc.timezone || "Africa/Dar_es_Salaam",
       isRecurring: lc.isRecurring || false,
       recurrencePattern: lc.recurrencePattern || "",
@@ -206,6 +208,7 @@ export default function TeacherLiveClassesPage() {
         durationMinutes: Number(form.durationMinutes) || 60,
         maxParticipants: Number(form.maxParticipants) || 50,
         recordingEnabled: form.enableRecording,
+        broadcastSource: form.broadcastSource,
         timezone: form.timezone,
         isRecurring: form.isRecurring,
         lobbyEnabled: form.lobbyEnabled,
@@ -366,6 +369,31 @@ export default function TeacherLiveClassesPage() {
                   <option key={st.value} value={st.value}>{st.label}</option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("liveClasses.broadcastSourceLabel")}</label>
+              <select
+                value={form.broadcastSource}
+                onChange={(e) => setForm({ ...form, broadcastSource: e.target.value })}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              >
+                {(
+                  [
+                    "BROWSER",
+                    "MOBILE",
+                    "USB_CAMERA",
+                    "PROFESSIONAL_CAMERA",
+                    "OBS",
+                    "ENCODER",
+                    "STUDIO",
+                    "OTHER",
+                  ] as const
+                ).map((src) => (
+                  <option key={src} value={src}>{t(`livePrepare.source.${src}`)}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">{t("liveClasses.broadcastSourceHint")}</p>
             </div>
 
             <div className="sm:col-span-2">
@@ -602,6 +630,10 @@ export default function TeacherLiveClassesPage() {
             <div>
               <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewRecording")}</span>
               <p className="text-foreground">{form.enableRecording ? t("liveClasses.enabledLabel") : t("liveClasses.disabledLabel")}</p>
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.broadcastSourceLabel")}</span>
+              <p className="text-foreground">{t(`livePrepare.source.${form.broadcastSource}`)}</p>
             </div>
             <div>
               <span className="text-xs font-medium text-muted-foreground">{t("liveClasses.reviewTimezone")}</span>

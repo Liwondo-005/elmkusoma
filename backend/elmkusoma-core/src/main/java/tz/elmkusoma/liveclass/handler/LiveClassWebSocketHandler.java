@@ -125,12 +125,14 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             case "OBSERVER_JOIN" -> handleJoin(session, classId, payload, "OBSERVER");
             case "CHAT", "Q&A", "QA", "REACTION" -> handleChat(session, classId, payload, normalizeMessageType(type, payload));
             case "DELETE_MESSAGE" -> handleDeleteMessage(session, classId, payload);
+            case "QA_MARK_ANSWERED" -> handleMarkAnswered(session, classId, payload);
             case "SET_PARTICIPANT_ROLE" -> handleSetParticipantRole(session, classId, payload);
             case "LEAVE" -> handleLeave(session, classId);
             case "RAISE_HAND" -> handleRaiseHand(session, classId, payload);
             case "LOWER_HAND" -> handleLowerHand(session, classId);
             case "SCREEN_SHARE_START" -> handleScreenShareStart(session, classId);
             case "SCREEN_SHARE_STOP" -> handleScreenShareStop(session, classId);
+            case "SOURCE_UPDATE" -> handleSourceUpdate(session, classId, payload);
             case "MUTE_PARTICIPANT" -> handleMuteParticipant(session, classId, payload);
             case "UNMUTE_PARTICIPANT" -> handleUnmuteParticipant(session, classId, payload);
             case "KICK_PARTICIPANT" -> handleKickParticipant(session, classId, payload);
@@ -293,6 +295,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                 msg.put("message", m.getMessage());
                 msg.put("messageType", m.getMessageType() != null ? m.getMessageType() : "CHAT");
                 msg.put("timestamp", m.getSentAt().toString());
+                msg.put("answeredAt", m.getAnsweredAt() != null ? m.getAnsweredAt().toString() : null);
+                msg.put("answeredBy", m.getAnsweredBy() != null ? m.getAnsweredBy().toString() : null);
                 return msg;
             }).toList());
             sendMessage(session, historyEvent);
@@ -369,6 +373,9 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
 
         Map<String, Object> chatEvent = new HashMap<>();
         chatEvent.put("type", "CHAT_MESSAGE");
+        // Persisted id so moderation (DELETE_MESSAGE / QA_MARK_ANSWERED) can target
+        // live messages; older clients ignoring the field are unaffected.
+        chatEvent.put("id", chatMessage.getId() != null ? chatMessage.getId().toString() : null);
         chatEvent.put("messageType", messageType);
         chatEvent.put("userId", userId.toString());
         chatEvent.put("userName", displayName);
@@ -421,6 +428,72 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         event.put("timestamp", LocalDateTime.now().toString());
         broadcastToClass(classId, event, null);
         log.info("Teacher {} deleted chat message {} in class {}", userId, messageId, classId);
+    }
+
+    /**
+     * §Q&A workflow: teacher toggles a learner question between answered and open.
+     * Persists answeredAt/answeredBy on the message and broadcasts QA_ANSWERED so
+     * every participant's badge updates live. Teacher-only, same fence as moderation.
+     */
+    private void handleMarkAnswered(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+        UUID userId = (UUID) session.getAttributes().get("userId");
+        if (userId == null) {
+            sendError(session, "Authentication required");
+            return;
+        }
+        if (!isTeacher(userId, classId)) {
+            sendError(session, "Only teachers can mark questions answered");
+            return;
+        }
+        Object messageIdRaw = payload.get("messageId");
+        if (messageIdRaw == null) {
+            sendError(session, "messageId required");
+            return;
+        }
+        UUID messageId;
+        try {
+            messageId = UUID.fromString(messageIdRaw.toString());
+        } catch (IllegalArgumentException e) {
+            sendError(session, "Invalid messageId");
+            return;
+        }
+        Optional<LiveClassChatMessage> message = chatMessageRepository.findById(messageId)
+                .filter(m -> classId.equals(m.getLiveClassId()))
+                .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()));
+        if (message.isEmpty()) {
+            sendError(session, "Message not found");
+            return;
+        }
+        LiveClassChatMessage target = message.get();
+        boolean isQuestion = "Q&A".equals(target.getMessageType())
+                || (target.getMessage() != null && target.getMessage().startsWith("[Q&A]"));
+        if (!isQuestion) {
+            sendError(session, "Only Q&A questions can be marked answered");
+            return;
+        }
+
+        boolean answered;
+        if (target.getAnsweredAt() != null) {
+            target.setAnsweredAt(null);
+            target.setAnsweredBy(null);
+            answered = false;
+        } else {
+            target.setAnsweredAt(LocalDateTime.now());
+            target.setAnsweredBy(userId);
+            answered = true;
+        }
+        chatMessageRepository.save(target);
+
+        recordEvent(classId, userId, "QA_ANSWERED", messageId + (answered ? " answered" : " reopened"));
+
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "QA_ANSWERED");
+        event.put("messageId", messageId.toString());
+        event.put("answered", answered);
+        event.put("answeredBy", userId.toString());
+        event.put("timestamp", LocalDateTime.now().toString());
+        broadcastToClass(classId, event, null);
+        log.info("Teacher {} {} question {} in class {}", userId, answered ? "marked" : "reopened", messageId, classId);
     }
 
     private void handleLeave(WebSocketSession session, UUID classId) throws IOException {
@@ -828,6 +901,38 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.error("Failed to record session event: {}", eventType, e);
         }
+    }
+
+    /**
+     * The teacher switched the broadcast source mid-session (built-in camera →
+     * USB camera, camera → screen, browser → OBS ingest...). The media itself
+     * switches locally through the existing LiveKit/WebRTC track republish — this
+     * only tells every participant what now feeds the stage and leaves an
+     * auditable session event (observability: source connected/disconnected).
+     */
+    private void handleSourceUpdate(WebSocketSession session, UUID classId, Map<String, Object> payload) throws IOException {
+        UUID userId = (UUID) session.getAttributes().get("userId");
+        if (!isTeacher(userId, classId)) {
+            sendError(session, "Only the teacher can change the broadcast source");
+            return;
+        }
+        String source = payload.get("source") instanceof String s ? s.trim() : "";
+        String label = payload.get("label") instanceof String l ? l.trim() : "";
+        if (source.isEmpty() || source.length() > 30 || label.length() > 120) {
+            sendError(session, "Invalid source");
+            return;
+        }
+
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "SOURCE_CHANGED");
+        event.put("source", source);
+        event.put("label", label);
+        event.put("changedBy", userId.toString());
+        event.put("timestamp", LocalDateTime.now().toString());
+        broadcastToClass(classId, event, null);
+
+        recordEvent(classId, userId, "SOURCE_CHANGED", label.isEmpty() ? source : source + " | " + label);
+        log.info("Source changed in live class {} by teacher {}: {}", classId, userId, source);
     }
 
     /**

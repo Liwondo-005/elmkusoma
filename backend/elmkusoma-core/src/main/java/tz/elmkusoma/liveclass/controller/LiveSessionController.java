@@ -457,6 +457,158 @@ public class LiveSessionController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    // ------------------------------------------------------------------
+    // External ingest: OBS / hardware encoder / studio -> existing room
+    // ------------------------------------------------------------------
+
+    /**
+     * Shared guard for the ingest endpoints: the class exists, belongs to the
+     * caller's institution, and the caller is the owning teacher or an admin.
+     * Returns null when authorized, otherwise the error response to send.
+     */
+    private ResponseEntity<ApiResponse<Map<String, Object>>> denyIngestAccess(
+            LiveClass liveClass, UUID userId, UUID institutionId) {
+        if (liveClass == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
+        }
+        if (liveClass.getInstitutionId() == null || !liveClass.getInstitutionId().equals(institutionId)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+        boolean allowed;
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
+        if (liveClass.getTeacherId() != null && teacher != null && liveClass.getTeacherId().equals(teacher.getId())) {
+            allowed = true;
+        } else {
+            User user = userRepository.findById(userId).orElse(null);
+            allowed = user != null && (user.getRole() == User.Role.ADMIN
+                    || user.getRole() == User.Role.INSTITUTION_ADMIN);
+        }
+        if (!allowed) {
+            return ResponseEntity.status(403).body(ApiResponse.error(
+                    "Only the teacher of this class can manage its ingest source"));
+        }
+        return null;
+    }
+
+    @GetMapping("/classes/{classId}/ingress")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
+    @Operation(summary = "Inspect external ingest (OBS/encoder/studio) endpoints for a live class")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getIngress(
+            @PathVariable UUID classId,
+            @RequestAttribute UUID userId,
+            @RequestAttribute UUID institutionId) {
+
+        LiveClass liveClass = liveClassRepository.findById(classId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        ResponseEntity<ApiResponse<Map<String, Object>>> denied = denyIngestAccess(liveClass, userId, institutionId);
+        if (denied != null) {
+            return denied;
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        boolean configured = liveKitService.isIngressConfigured();
+        payload.put("configured", configured);
+        if (!configured) {
+            // Honest state instead of a fake endpoint: nothing is pushed anywhere.
+            payload.put("ingresses", List.of());
+            payload.put("message", "External ingest (WHIP/RTMP/SRT) is not configured on this server. "
+                    + "Deploy LiveKit Ingress and set LIVEKIT_INGRESS_ENABLED=true to enable OBS/encoder/studio sources.");
+            return ResponseEntity.ok(ApiResponse.success(payload));
+        }
+        payload.put("ingresses", liveKitService.listIngress(classId));
+        return ResponseEntity.ok(ApiResponse.success(payload));
+    }
+
+    @PostMapping("/classes/{classId}/ingress")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
+    @Operation(summary = "Create an ingest endpoint (WHIP/RTMP/SRT) that pushes OBS/encoder/studio into this live class")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createIngress(
+            @PathVariable UUID classId,
+            @RequestAttribute UUID userId,
+            @RequestAttribute UUID institutionId,
+            @RequestBody(required = false) Map<String, String> body) {
+
+        LiveClass liveClass = liveClassRepository.findById(classId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        ResponseEntity<ApiResponse<Map<String, Object>>> denied = denyIngestAccess(liveClass, userId, institutionId);
+        if (denied != null) {
+            return denied;
+        }
+
+        if (!liveKitService.isIngressConfigured()) {
+            return ResponseEntity.status(503).body(ApiResponse.error(
+                    "External ingest is not configured on this server. Ask your administrator to deploy "
+                    + "LiveKit Ingress and set LIVEKIT_INGRESS_ENABLED=true."));
+        }
+
+        String protocol = body != null ? body.get("protocol") : null;
+        if (protocol == null || protocol.isBlank()) {
+            protocol = "WHIP";
+        }
+
+        Map<String, String> ingress;
+        try {
+            ingress = liveKitService.createIngress(classId, protocol,
+                    "ingress-" + classId, "ELMKUSOMA Ingest " + classId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+        if (ingress == null) {
+            return ResponseEntity.status(502).body(ApiResponse.error(
+                    "The LiveKit server rejected the ingest request"));
+        }
+
+        Map<String, Object> payload = new HashMap<>(ingress);
+        payload.put("configured", true);
+        log.info("Ingest endpoint created for class {} by user {} (protocol={})", classId, userId, protocol);
+        return ResponseEntity.ok(ApiResponse.success("Ingest endpoint created", payload));
+    }
+
+    @DeleteMapping("/classes/{classId}/ingress")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
+    @Operation(summary = "Remove all ingest endpoints for a live class")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteIngress(
+            @PathVariable UUID classId,
+            @RequestAttribute UUID userId,
+            @RequestAttribute UUID institutionId) {
+
+        LiveClass liveClass = liveClassRepository.findById(classId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        ResponseEntity<ApiResponse<Map<String, Object>>> denied = denyIngestAccess(liveClass, userId, institutionId);
+        if (denied != null) {
+            return denied;
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        if (!liveKitService.isIngressConfigured()) {
+            payload.put("configured", false);
+            payload.put("removed", 0);
+            return ResponseEntity.ok(ApiResponse.success(payload));
+        }
+
+        int removed = 0;
+        int failed = 0;
+        for (Map<String, String> ingress : liveKitService.listIngress(classId)) {
+            String ingressId = ingress.get("ingressId");
+            if (ingressId == null) {
+                continue;
+            }
+            if (liveKitService.deleteIngress(ingressId)) {
+                removed++;
+            } else {
+                failed++;
+            }
+        }
+        payload.put("configured", true);
+        payload.put("removed", removed);
+        payload.put("failed", failed);
+        log.info("Ingest cleanup for class {} by user {}: removed={}, failed={}", classId, userId, removed, failed);
+        return ResponseEntity.ok(ApiResponse.success(payload));
+    }
+
     @GetMapping("/calendar/{classId}/export")
     @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Export live class as .ics calendar event")

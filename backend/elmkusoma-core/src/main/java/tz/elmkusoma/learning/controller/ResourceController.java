@@ -1,4 +1,5 @@
 package tz.elmkusoma.learning.controller;
+import java.util.stream.Collectors;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +24,7 @@ import tz.elmkusoma.learning.service.ResourceService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/v1/resources")
@@ -259,4 +261,20 @@ public class ResourceController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Download recorded", analyticsService.recordDownload(resourceId, institutionId)));
     }
-}
+
+    @PutMapping("/reorder")
+    @Operation(summary = "Reorder resources")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    public ResponseEntity<ApiResponse<List<ResourceResponse>>> reorderResources(
+            @Valid @RequestBody List<ReorderRequest> items,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+        List<tz.elmkusoma.learning.service.ResourceService.ReorderItem> serviceItems = items.stream()
+                .map(r -> new tz.elmkusoma.learning.service.ResourceService.ReorderItem(r.id(), r.sortOrder()))
+                .collect(Collectors.toList());
+        List<ResourceResponse> response = resourceService.reorderResources(serviceItems, institutionId, userId, userRole);
+        return ResponseEntity.ok(ApiResponse.success("Resources reordered successfully", response));
+    }
+
+    public record ReorderRequest(UUID id, Integer sortOrder) {}}

@@ -35,4 +35,5 @@ public class LiveClassResponse {
     private String recurrencePattern;
     private String recurrenceEndDate;
     private Boolean lobbyEnabled;
+    private String broadcastSource;
 }

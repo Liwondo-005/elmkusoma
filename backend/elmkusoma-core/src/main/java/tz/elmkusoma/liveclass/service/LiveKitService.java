@@ -283,6 +283,143 @@ public class LiveKitService {
     }
 
     /**
+     * True when ingest (WHIP/RTMP/SRT from OBS, encoders, studios) can actually run.
+     * Reads the livekit.ingress.* config that previously existed but was never used.
+     */
+    public boolean isIngressConfigured() {
+        return config.isIngressEnabled();
+    }
+
+    /**
+     * Creates a LiveKit ingress that pushes an external source (OBS, hardware
+     * encoder, studio) into this class's EXISTING room — the same room browser
+     * participants already join, so chat/Q&A/polls/attendance keep working.
+     *
+     * @param protocol WHIP, RTMP or SRT (what the production equipment speaks)
+     * @return ingressId / inputUrl / streamKey / status, or null when rejected
+     */
+    public Map<String, String> createIngress(UUID classId, String protocol, String participantIdentity, String participantName) {
+        if (!config.isIngressEnabled()) {
+            log.warn("Ingress not enabled, cannot create ingest for class={}", classId);
+            return null;
+        }
+        String inputType = switch (protocol == null ? "" : protocol.trim().toUpperCase()) {
+            case "WHIP" -> "WHIP_INPUT";
+            case "RTMP" -> "RTMP_INPUT";
+            case "SRT" -> "SRT_INPUT";
+            default -> null;
+        };
+        if (inputType == null) {
+            throw new IllegalArgumentException("Unsupported ingest protocol: " + protocol + ". Use WHIP, RTMP or SRT");
+        }
+        try {
+            // Ingress publishes into the room, so the room must exist (idempotent).
+            ensureRoom(classId);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("inputType", inputType);
+            request.put("name", "liveclass-" + classId);
+            request.put("roomName", generateRoomName(classId));
+            request.put("participantIdentity", participantIdentity);
+            request.put("participantName", participantName);
+            // Transcoded output is always decodable by browser participants regardless
+            // of what the encoder sends (AAC/HEVC → H264/Opus).
+            request.put("transcode", true);
+
+            String body = objectMapper.writeValueAsString(request);
+            String result = callTwirp("livekit.Ingress", "CreateIngress", body);
+            if (result == null) {
+                return null;
+            }
+            JsonNode json = objectMapper.readTree(result);
+            Map<String, String> ingress = new HashMap<>();
+            ingress.put("ingressId", protoText(json, "ingress_id", "ingressId"));
+            ingress.put("inputUrl", protoText(json, "input_url", "inputUrl"));
+            ingress.put("streamKey", protoText(json, "stream_key", "streamKey"));
+            ingress.put("status", protoText(json, "status", "status"));
+            ingress.put("protocol", protocol.toUpperCase());
+            log.info("Created ingress for class={} protocol={} ingressId={}", classId, protocol, ingress.get("ingressId"));
+            return ingress;
+
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to create ingress for class={}", classId, e);
+            return null;
+        }
+    }
+
+    /**
+     * Lists the ingest endpoints currently registered for this class's room —
+     * the source of truth lives in LiveKit, so no credentials are duplicated
+     * into the database.
+     */
+    public List<Map<String, String>> listIngress(UUID classId) {
+        if (!config.isIngressEnabled()) {
+            return List.of();
+        }
+        try {
+            Map<String, Object> request = new HashMap<>();
+            request.put("roomName", generateRoomName(classId));
+            String body = objectMapper.writeValueAsString(request);
+            String result = callTwirp("livekit.Ingress", "ListIngress", body);
+            if (result == null) {
+                return List.of();
+            }
+            JsonNode items = objectMapper.readTree(result).path("items");
+            List<Map<String, String>> out = new ArrayList<>();
+            if (items.isArray()) {
+                for (JsonNode item : items) {
+                    Map<String, String> ingress = new HashMap<>();
+                    ingress.put("ingressId", protoText(item, "ingress_id", "ingressId"));
+                    ingress.put("inputUrl", protoText(item, "input_url", "inputUrl"));
+                    ingress.put("streamKey", protoText(item, "stream_key", "streamKey"));
+                    ingress.put("status", protoText(item, "status", "status"));
+                    ingress.put("inputType", protoText(item, "input_type", "inputType"));
+                    ingress.put("participantIdentity", protoText(item, "participant_identity", "participantIdentity"));
+                    out.add(ingress);
+                }
+            }
+            return out;
+        } catch (Exception e) {
+            log.error("Failed to list ingress for class={}", classId, e);
+            return List.of();
+        }
+    }
+
+    /**
+     * Removes an ingest endpoint (teacher stopped using OBS/encoder).
+     */
+    public boolean deleteIngress(String ingressId) {
+        if (!config.isIngressEnabled() || ingressId == null || ingressId.isBlank()) {
+            return false;
+        }
+        try {
+            Map<String, Object> request = new HashMap<>();
+            request.put("ingressId", ingressId);
+            String body = objectMapper.writeValueAsString(request);
+            String result = callTwirp("livekit.Ingress", "DeleteIngress", body);
+            if (result != null) {
+                log.info("Deleted ingress {}", ingressId);
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            log.error("Failed to delete ingress {}", ingressId, e);
+            return false;
+        }
+    }
+
+    /** Reads a proto-json string field under both its snake_case and camelCase names. */
+    private String protoText(JsonNode node, String snake, String camel) {
+        String v = node.path(snake).asText(null);
+        if (v == null || v.isEmpty()) {
+            v = node.path(camel).asText(null);
+        }
+        return v != null && !v.isEmpty() ? v : null;
+    }
+
+    /**
      * True when recording can actually run: egress enabled AND a storage destination
      * (bucket + credentials) is configured. LiveKit rejects file outputs without one.
      */
