@@ -2,25 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2, X } from "lucide-react"
-import { platformAdminApi, type AdminAccount, type AdminCreatePayload, type AdminUpdatePayload } from "@/lib/platform-admin-api"
-
-const ROLES = [
-  "ADMIN",
-  "INSTITUTION_ADMIN",
-  "NATIONAL_ADMIN",
-  "REGIONAL_ADMIN",
-  "DISTRICT_ADMIN",
-] as const
-
-const EMPTY_FORM = {
-  firstName: "",
-  lastName: "",
-  email: "",
-  phone: "",
-  password: "",
-  role: "ADMIN",
-  isActive: true,
-}
+import { platformAdminApi, type AdminAccount } from "@/lib/platform-admin-api"
 
 interface AdminFormModalProps {
   open: boolean
@@ -39,9 +21,11 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
     password: "",
     role: "ADMIN",
     isActive: true,
+    institutionId: undefined as string | undefined,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [institutions, setInstitutions] = useState<{ id: string; name: string; code: string }[]>([])
 
   useEffect(() => {
     if (!open) return
@@ -55,6 +39,7 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
         password: "",
         role: admin.role ?? "ADMIN",
         isActive: admin.isActive ?? true,
+        institutionId: admin.institutionId ?? undefined,
       })
     } else {
       setForm({
@@ -65,14 +50,14 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
         password: "",
         role: "ADMIN",
         isActive: true,
+        institutionId: undefined,
       })
     }
   }, [open, admin])
 
-  if (!open) return null
-
-  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm((prev) => ({ ...prev, [key]: e.target.value }))
+  useEffect(() => {
+    platformAdminApi.listInstitutions().then((resp) => setInstitutions(resp.content || []))
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,13 +80,18 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
     setError(null)
     try {
       if (isEdit && admin) {
-        await platformAdminApi.updateAdmin(admin.userId, {
+        const updatePayload: any = {
           firstName,
           lastName,
           phone: form.phone?.trim() || undefined,
           role: form.role,
           isActive: form.isActive,
-        })
+          institutionId: form.institutionId,
+        }
+        if (form.password) {
+          updatePayload.password = form.password
+        }
+        await platformAdminApi.updateAdmin(admin.userId, updatePayload)
         onSaved("Admin updated successfully")
       } else {
         await platformAdminApi.createAdmin({
@@ -111,6 +101,7 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
           phone: form.phone?.trim() || undefined,
           password: form.password,
           role: form.role,
+          institutionId: form.institutionId,
         })
         onSaved("Admin created successfully")
       }
@@ -122,10 +113,7 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
     }
   }
 
-  const inputClass =
-    "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-  const labelClass = "block text-xs font-medium text-muted-foreground mb-1.5"
-  const selectClass = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+  if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -179,6 +167,18 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
               </select>
             </div>
             <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Institution *</label>
+              <select value={form.institutionId ?? ""} onChange={(e) => setForm((p) => ({ ...p, institutionId: e.target.value === "" ? undefined : e.target.value }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring">
+                <option value="">-- Select Institution --</option>
+                {institutions.map((inst) => (
+                  <option key={inst.id} value={inst.id}>{inst.name} ({inst.code})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Status</label>
               <select value={form.isActive ? "true" : "false"} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.value === "true" }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring">
                 <option value="true">Active</option>
@@ -191,6 +191,13 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Password *</label>
               <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required minLength={8} placeholder="Min 8 characters" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          )}
+
+          {isEdit && (
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">New Password (optional)</label>
+              <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} minLength={8} placeholder="Leave blank to keep current password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
             </div>
           )}
 

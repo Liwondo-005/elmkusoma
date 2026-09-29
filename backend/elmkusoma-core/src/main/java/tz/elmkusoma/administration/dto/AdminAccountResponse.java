@@ -21,6 +21,7 @@ public class AdminAccountResponse {
     private String assignedRoleName;
     private List<String> permissions;
     private String scope;           // PLATFORM or institution id
+    private UUID institutionId;     // For INSTITUTION_ADMIN role
     private Boolean isActive;
     private LocalDateTime createdAt;
     private String createdBy;

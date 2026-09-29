@@ -570,6 +570,7 @@ export interface AdminAccount {
   assignedRoleName: string | null; permissions: string[]; scope: string | null
   isActive: boolean | null; createdAt: string | null; createdBy: string | null
   lastModifiedAt: string | null; expiresAt: string | null; recentActionCount: number | null
+  institutionId?: string
 }
 
 export interface AdminCreatePayload {
@@ -588,6 +589,8 @@ export interface AdminUpdatePayload {
   phone?: string
   role?: string
   isActive?: boolean
+  institutionId?: string
+  password?: string
 }
 
 export interface OffboardingStep {

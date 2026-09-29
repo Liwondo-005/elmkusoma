@@ -2283,6 +2283,7 @@ public class PlatformAdminService {
                         .role(roleName).assignedRoleName(roleName)
                         .permissions(perms)
                         .scope(u.getInstitutionId() != null ? u.getInstitutionId().toString() : "PLATFORM")
+                        .institutionId(u.getInstitutionId())
                         .isActive(u.getIsActive()).createdAt(u.getCreatedAt())
                         .createdBy(u.getCreatedBy()).lastModifiedAt(u.getUpdatedAt())
                         .recentActionCount(recent)
@@ -2723,12 +2724,13 @@ private ServiceSummaryResponse toServiceSummary(PlatformService s) {
                 .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
+                .institutionId(request.getInstitutionId())
                 .isActive(true)
                 .isEmailVerified(false)
                 .build();
         user = userRepository.save(user);
         writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", user.getId(), user.getEmail(), "CREATE",
-                Map.of(), Map.of("email", user.getEmail(), "role", user.getRole().name()));
+                Map.of(), Map.of("email", user.getEmail(), "role", user.getRole().name(), "institutionId", request.getInstitutionId()));
         log.info("Admin created: {}", user.getEmail());
         return toAdminAccount(user);
     }
@@ -2738,6 +2740,7 @@ private ServiceSummaryResponse toServiceSummary(PlatformService s) {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         String oldRole = user.getRole() != null ? user.getRole().name() : null;
+        UUID oldInstitutionId = user.getInstitutionId();
 
         if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
         if (request.getLastName() != null) user.setLastName(request.getLastName());
@@ -2755,9 +2758,16 @@ private ServiceSummaryResponse toServiceSummary(PlatformService s) {
             }
             user.setIsActive(request.getIsActive());
         }
+        if (request.getInstitutionId() != null) {
+            user.setInstitutionId(request.getInstitutionId());
+        }
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
         userRepository.save(user);
         writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", userId, user.getEmail(), "UPDATE",
-                Map.of("role", oldRole), Map.of("role", user.getRole() != null ? user.getRole().name() : null));
+                Map.of("role", oldRole, "institutionId", oldInstitutionId),
+                Map.of("role", user.getRole() != null ? user.getRole().name() : null, "institutionId", user.getInstitutionId()));
         log.info("Admin updated: {}", user.getEmail());
         return toAdminAccount(user);
     }
@@ -2808,6 +2818,7 @@ private ServiceSummaryResponse toServiceSummary(PlatformService s) {
                 .assignedRoleName(user.getRole() != null ? user.getRole().name() : null)
                 .permissions(permissions)
                 .scope(scope)
+                .institutionId(user.getInstitutionId())
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .build();

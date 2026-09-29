@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -35,6 +36,9 @@ public class User extends BaseEntity {
     @Column(name = "role", nullable = false)
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @Column(name = "institution_id")
+    private UUID institutionId;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
@@ -103,6 +107,14 @@ public class User extends BaseEntity {
         FORM_4,
         FORM_5,
         FORM_6
+    }
+
+    public UUID getInstitutionId() {
+        return institutionId;
+    }
+
+    public void setInstitutionId(UUID institutionId) {
+        this.institutionId = institutionId;
     }
 
     public String getFullName() {

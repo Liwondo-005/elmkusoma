@@ -435,7 +435,9 @@
     "accessCenter": "Access & Permissions",
     "gradingDesc": "Grading and assessment tools",
     "attendanceDesc": "Attendance tracking and reports",
-    "reportsDesc": "Analytics and reports"
+    "reportsDesc": "Analytics and reports",
+    "adminDashboardDesc": "Admin dashboard and management",
+    "institutionsDesc": "Manage institutions and schools"
   },
   "dashboard": {
     "welcomeBack": "Welcome back",
@@ -7753,5 +7755,10 @@
     "youLabel": "You",
     "noMessagesPrimary": "No messages yet. Say hello!",
     "noQuestionsPrimary": "No questions yet."
+  },
+  "categories": {
+    "admin": "Admin",
+    "help": "Help",
+    "recent": "Recent"
   }
 }

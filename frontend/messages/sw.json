@@ -435,7 +435,9 @@
     "accessCenter": "Ufikiaji na Ruhusa",
     "gradingDesc": "Grading and assessment tools",
     "attendanceDesc": "Attendance tracking and reports",
-    "reportsDesc": "Analytics and reports"
+    "reportsDesc": "Analytics and reports",
+    "adminDashboardDesc": "Admin dashboard and management",
+    "institutionsDesc": "Manage institutions and schools"
   },
   "dashboard": {
     "welcomeBack": "Karibu Tena",
@@ -7626,5 +7628,10 @@
     "youLabel": "Wewe",
     "noMessagesPrimary": "Hakuna jumbe bado. Sema habari!",
     "noQuestionsPrimary": "Hakuna maswali bado."
+  },
+  "categories": {
+    "admin": "Admin",
+    "help": "Help",
+    "recent": "Recent"
   }
 }

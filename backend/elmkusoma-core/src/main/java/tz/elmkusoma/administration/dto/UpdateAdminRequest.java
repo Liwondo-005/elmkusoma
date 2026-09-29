@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import tz.elmkusoma.shared.domain.User;
+import java.util.UUID;
 
 @Data
 public class UpdateAdminRequest {
@@ -19,4 +20,9 @@ public class UpdateAdminRequest {
     private User.Role role;
     
     private Boolean isActive;
+    
+    private UUID institutionId;
+    
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    private String password;
 }
