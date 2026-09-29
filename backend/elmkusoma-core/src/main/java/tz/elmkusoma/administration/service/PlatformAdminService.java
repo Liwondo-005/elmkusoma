@@ -360,7 +360,7 @@ public class PlatformAdminService {
         userRepository.save(user);
         writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
                 "USER", userId, user.getEmail(), "UPDATE",
-                Map.of("role", oldRole), Map.of("role", user.getRole() != null ? user.getRole().name() : null));
+                auditValues("role", oldRole), auditValues("role", user.getRole() != null ? user.getRole().name() : null));
         log.info("User updated by platform admin: {}", user.getEmail());
         return toUserSummary(user);
     }
@@ -551,6 +551,14 @@ public class PlatformAdminService {
                 .serviceName(svc != null ? svc.getName() : null).serviceCode(svc != null ? svc.getCode() : null)
                 .status(ent.getStatus()).seatsUsed(ent.getSeatsUsed()).maxSeats(ent.getMaxSeats())
                 .expiresAt(ent.getExpiresAt()).createdAt(ent.getCreatedAt()).build();
+    }
+
+    private static Map<String, Object> auditValues(Object... keyValues) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < keyValues.length; i += 2) {
+            values.put((String) keyValues[i], keyValues[i + 1]);
+        }
+        return values;
     }
 
     private void writeAudit(UUID institutionId, String entityType, UUID entityId, String entityName, String action,
@@ -2730,7 +2738,7 @@ private ServiceSummaryResponse toServiceSummary(PlatformService s) {
                 .build();
         user = userRepository.save(user);
         writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", user.getId(), user.getEmail(), "CREATE",
-                Map.of(), Map.of("email", user.getEmail(), "role", user.getRole().name(), "institutionId", request.getInstitutionId()));
+                Map.of(), auditValues("email", user.getEmail(), "role", user.getRole().name(), "institutionId", request.getInstitutionId()));
         log.info("Admin created: {}", user.getEmail());
         return toAdminAccount(user);
     }
@@ -2766,8 +2774,8 @@ private ServiceSummaryResponse toServiceSummary(PlatformService s) {
         }
         userRepository.save(user);
         writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", userId, user.getEmail(), "UPDATE",
-                Map.of("role", oldRole, "institutionId", oldInstitutionId),
-                Map.of("role", user.getRole() != null ? user.getRole().name() : null, "institutionId", user.getInstitutionId()));
+                auditValues("role", oldRole, "institutionId", oldInstitutionId),
+                auditValues("role", user.getRole() != null ? user.getRole().name() : null, "institutionId", user.getInstitutionId()));
         log.info("Admin updated: {}", user.getEmail());
         return toAdminAccount(user);
     }
@@ -2802,7 +2810,7 @@ private ServiceSummaryResponse toServiceSummary(PlatformService s) {
         }
         userRepository.save(user);
         writeAudit(PLATFORM_INSTITUTION_ID, "ADMIN", userId, user.getEmail(), "ROLE_CHANGE",
-                Map.of("role", oldRole), Map.of("role", newRole.toUpperCase()));
+                auditValues("role", oldRole), auditValues("role", newRole.toUpperCase()));
         log.info("Admin role updated: {} -> {}", user.getEmail(), newRole);
         return toAdminAccount(user);
     }
