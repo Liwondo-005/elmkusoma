@@ -42,4 +42,11 @@ public class CreateLiveClassRequest {
     private String recurrenceEndDate;
 
     private Boolean lobbyEnabled;
+
+    /**
+     * Declared broadcast source: BROWSER, MOBILE, USB_CAMERA, PROFESSIONAL_CAMERA,
+     * OBS, ENCODER, STUDIO, OTHER. Optional — null/blank means BROWSER (the
+     * existing laptop-camera default), keeping older clients fully compatible.
+     */
+    private String broadcastSource;
 }

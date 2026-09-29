@@ -116,6 +116,103 @@ class LiveClassServiceTest {
     }
 
     @Test
+    void createLiveClass_withoutBroadcastSource_shouldDefaultToBrowser() {
+        Teacher teacher = Teacher.builder().userId(UUID.randomUUID()).build();
+        teacher.setId(teacherId);
+        when(teacherRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
+
+        CreateLiveClassRequest request = new CreateLiveClassRequest();
+        request.setTitle("Chemistry 101");
+        request.setScheduledAt(LocalDateTime.now().plusDays(1).toString());
+        request.setDurationMinutes(60);
+
+        when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> {
+            LiveClass saved = inv.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            saved.setCreatedAt(LocalDateTime.now());
+            return saved;
+        });
+
+        LiveClassResponse response = liveClassService.createLiveClass(teacherId, institutionId, request);
+
+        // Older clients that never send broadcastSource keep the exact pre-existing
+        // behaviour: a browser/laptop-camera sourced session.
+        assertEquals("BROWSER", response.getBroadcastSource());
+    }
+
+    @Test
+    void createLiveClass_withExternalUsbCamera_shouldEchoSource() {
+        Teacher teacher = Teacher.builder().userId(UUID.randomUUID()).build();
+        teacher.setId(teacherId);
+        when(teacherRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
+
+        CreateLiveClassRequest request = new CreateLiveClassRequest();
+        request.setTitle("Lab Demo");
+        request.setScheduledAt(LocalDateTime.now().plusDays(1).toString());
+        request.setDurationMinutes(45);
+        request.setBroadcastSource("USB_CAMERA");
+
+        when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> {
+            LiveClass saved = inv.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            saved.setCreatedAt(LocalDateTime.now());
+            return saved;
+        });
+
+        LiveClassResponse response = liveClassService.createLiveClass(teacherId, institutionId, request);
+
+        assertEquals("USB_CAMERA", response.getBroadcastSource());
+    }
+
+    @Test
+    void createLiveClass_whenUnknownBroadcastSource_shouldThrowWithSupportedList() {
+        Teacher teacher = Teacher.builder().userId(UUID.randomUUID()).build();
+        teacher.setId(teacherId);
+        when(teacherRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
+
+        CreateLiveClassRequest request = new CreateLiveClassRequest();
+        request.setTitle("Bad source");
+        request.setScheduledAt(LocalDateTime.now().plusDays(1).toString());
+        request.setDurationMinutes(60);
+        request.setBroadcastSource("TOASTER");
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> liveClassService.createLiveClass(teacherId, institutionId, request));
+        assertTrue(ex.getMessage().contains("USB_CAMERA"));
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    @Test
+    void updateLiveClass_shouldChangeBroadcastSource() {
+        LiveClass lc = buildLiveClass();
+        lc.setStatus("SCHEDULED");
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+        when(liveClassRepository.findOverlappingForTeacher(eq(teacherId), any(), any()))
+                .thenReturn(new java.util.ArrayList<>(List.of()));
+        when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateLiveClassRequest request = new CreateLiveClassRequest();
+        request.setBroadcastSource("OBS");
+
+        LiveClassResponse response = liveClassService.updateLiveClass(teacherId, liveClassId, request);
+
+        assertEquals("OBS", response.getBroadcastSource());
+    }
+
+    @Test
+    void updateLiveClass_whenInProgress_shouldRejectSourceChange() {
+        LiveClass lc = buildLiveClass();
+        lc.setStatus("IN_PROGRESS");
+        when(liveClassRepository.findById(liveClassId)).thenReturn(Optional.of(lc));
+
+        CreateLiveClassRequest request = new CreateLiveClassRequest();
+        request.setBroadcastSource("STUDIO");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> liveClassService.updateLiveClass(teacherId, liveClassId, request));
+    }
+
+    @Test
     void createLiveClass_whenTeacherNotFound_shouldThrow() {
         when(teacherRepository.findById(teacherId)).thenReturn(Optional.empty());
 

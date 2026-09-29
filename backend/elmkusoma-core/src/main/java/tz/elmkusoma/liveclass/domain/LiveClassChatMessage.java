@@ -32,4 +32,11 @@ public class LiveClassChatMessage extends BaseEntity {
     @Column(name = "sent_at", nullable = false)
     @Builder.Default
     private java.time.LocalDateTime sentAt = java.time.LocalDateTime.now();
+
+    /** Q&A workflow: set when a teacher marks the question answered (V91). */
+    @Column(name = "answered_at")
+    private java.time.LocalDateTime answeredAt;
+
+    @Column(name = "answered_by")
+    private java.util.UUID answeredBy;
 }
