@@ -386,6 +386,7 @@ const teacherNavSections: TeacherNavSection[] = [
     group: "TEACHING", groupKey: "groupTeaching",
     items: [
       { label: "Lessons", labelKey: "lessons", href: "/dashboard/teacher/lessons", icon: BookOpen },
+      { label: "Learning Offerings", labelKey: "learningOfferings", href: "/dashboard/teacher/learning-offerings", icon: Compass },
       { label: "Resources", labelKey: "teacherResources", href: "/dashboard/teacher/resources", icon: Library },
       { label: "Assignments", labelKey: "assignments", href: "/dashboard/teacher/assignments", icon: FileText },
       { label: "Assessments", labelKey: "assessments", href: "/dashboard/teacher/assessments", icon: PenTool },

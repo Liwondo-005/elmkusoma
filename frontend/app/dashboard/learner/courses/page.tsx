@@ -4,9 +4,9 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
-import { learnerApi, type CourseSummary, type Enrollment } from "@/lib/learner-api"
+import { learnerApi, type CourseSummary, type Enrollment, type LearningOffering } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { BookOpen, Search, ArrowRight, Loader2, AlertCircle, Filter } from "lucide-react"
+import { BookOpen, Search, ArrowRight, Loader2, AlertCircle, Filter, Compass, User } from "lucide-react"
 
 export default function LearnerCoursesPage() {
   const t = useTranslations("highered")
@@ -19,22 +19,55 @@ export default function LearnerCoursesPage() {
   const [search, setSearch] = useState("")
   const [levelFilter, setLevelFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [tab, setTab] = useState<"courses" | "offerings">("courses")
+  const [offerings, setOfferings] = useState<LearningOffering[]>([])
+  const [offeringsLoading, setOfferingsLoading] = useState(false)
+  const [offeringsError, setOfferingsError] = useState<string | null>(null)
+  const [offeringsLoaded, setOfferingsLoaded] = useState(false)
+  const [offeringSearch, setOfferingSearch] = useState("")
+  const [offeringLevel, setOfferingLevel] = useState("all")
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
     loadData()
   }, [user])
 
+  useEffect(() => {
+    if (tab === "offerings" && !offeringsLoaded && !offeringsLoading) {
+      loadOfferings()
+    }
+  }, [tab, offeringsLoaded, offeringsLoading])
+
+  async function loadOfferings() {
+    try {
+      setOfferingsLoading(true)
+      setOfferingsError(null)
+      const data = await learnerApi.getOfferings({ size: 50 })
+      setOfferings(data)
+      setOfferingsLoaded(true)
+    } catch {
+      setOfferingsError(t("offerings.loadError"))
+    } finally {
+      setOfferingsLoading(false)
+    }
+  }
+
+  function asArray<T>(value: T[] | { content?: T[] } | null | undefined): T[] {
+    if (Array.isArray(value)) return value
+    if (value && typeof value === "object" && Array.isArray(value.content)) return value.content
+    return []
+  }
+
   async function loadData() {
     try {
       setLoading(true)
       setError(null)
       const [coursesData, enrollmentsData] = await Promise.all([
-        learnerApi.getCourses().catch(() => []),
-        learnerApi.getEnrollments().catch(() => []),
+        learnerApi.getCourses().catch(() => [] as CourseSummary[]),
+        learnerApi.getEnrollments().catch(() => [] as Enrollment[]),
       ])
-      setCourses(coursesData)
-      setEnrollments(enrollmentsData)
+      setCourses(asArray(coursesData))
+      setEnrollments(asArray(enrollmentsData))
     } catch {
       setError(tc("error.load"))
     } finally {
@@ -62,6 +95,16 @@ export default function LearnerCoursesPage() {
     return matchesSearch && matchesLevel && matchesCategory
   })
 
+  const offeringLevels = [...new Set(offerings.map((o) => o.educationLevel).filter(Boolean))] as string[]
+
+  const filteredOfferings = offerings.filter((offering) => {
+    const matchesSearch = offeringSearch === "" ||
+      offering.title.toLowerCase().includes(offeringSearch.toLowerCase()) ||
+      (offering.description?.toLowerCase().includes(offeringSearch.toLowerCase()) ?? false)
+    const matchesLevel = offeringLevel === "all" || offering.educationLevel === offeringLevel
+    return matchesSearch && matchesLevel
+  })
+
   if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
   }
@@ -71,6 +114,29 @@ export default function LearnerCoursesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("courses.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("courses.subtitle")}</p>
+      </div>
+
+      <div className="flex gap-1 rounded-lg border border-border bg-muted p-1 w-fit" role="tablist">
+        <button
+          role="tab"
+          aria-selected={tab === "courses"}
+          onClick={() => setTab("courses")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === "courses" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {t("courses.title")}
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === "offerings"}
+          onClick={() => setTab("offerings")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            tab === "offerings" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {t("offerings.tabLabel")}
+        </button>
       </div>
 
       {error && (
@@ -83,6 +149,8 @@ export default function LearnerCoursesPage() {
         </div>
       )}
 
+      {tab === "courses" && (
+      <>
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -197,6 +265,122 @@ export default function LearnerCoursesPage() {
               </Link>
             )
           })}
+        </div>
+      )}
+      </>
+      )}
+
+      {tab === "offerings" && (
+        <div className="space-y-4">
+          {offeringsError && (
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="size-4 shrink-0" />
+                {offeringsError}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOfferingsLoaded(false)
+                    loadOfferings()
+                  }}
+                  className="ml-auto text-xs underline"
+                >
+                  {tc("retry")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {offeringsLoading ? (
+            <LoadingState />
+          ) : (
+            <>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="search"
+                    value={offeringSearch}
+                    onChange={(e) => setOfferingSearch(e.target.value)}
+                    placeholder={t("offerings.searchPlaceholder")}
+                    className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-ring"
+                  />
+                </div>
+                <select
+                  value={offeringLevel}
+                  onChange={(e) => setOfferingLevel(e.target.value)}
+                  className="h-10 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                >
+                  <option value="all">{tc("allLevels")}</option>
+                  {offeringLevels.map((level) => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </div>
+
+              {filteredOfferings.length === 0 ? (
+                <EmptyState
+                  icon={<Compass className="size-10 text-primary/40" />}
+                  title={
+                    offeringSearch || offeringLevel !== "all"
+                      ? t("offerings.emptySearch")
+                      : t("offerings.emptyTitle")
+                  }
+                  description={t("offerings.emptyDesc")}
+                />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredOfferings.map((offering) => (
+                    <Link
+                      key={offering.id}
+                      href={`/dashboard/learner/offerings/${offering.id}`}
+                      className="group rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      {offering.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={offering.thumbnailUrl}
+                          alt=""
+                          className="mb-3 h-28 w-full rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="mb-3 flex h-28 w-full items-center justify-center rounded-xl bg-primary/10">
+                          <Compass className="size-10 text-primary/40" />
+                        </div>
+                      )}
+                      <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-primary">
+                        {offering.title}
+                      </h3>
+                      {offering.description && (
+                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{offering.description}</p>
+                      )}
+                      <div className="mt-3 flex items-center gap-2 flex-wrap">
+                        {offering.educationLevel && (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            {offering.educationLevel}
+                          </span>
+                        )}
+                        {offering.subjectName && (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {offering.subjectName}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                          <User className="size-3.5 shrink-0" />
+                          <span className="truncate">{t("offerings.byTeacher", { name: offering.ownerName ?? "—" })}</span>
+                        </span>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+                          {t("offerings.viewOffering")} <ArrowRight className="size-3" />
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
