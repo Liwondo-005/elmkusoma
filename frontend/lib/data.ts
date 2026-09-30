@@ -2348,7 +2348,7 @@ export const institutions: Institution[] = [
     educationLevel: "Universities",
     description: "Tanzania's oldest and largest university, offering a wide range of programs across multiple faculties.",
     location: "Dar es Salaam",
-    images: ["/images/schools/universities/Udsm-1.jpg", "/images/schools/universities/Udsm-2.jpg", "/images/schools/universities/Udsm-3.jpg"],
+    images: ["/images/schools/universities/udsm-1.jpg", "/images/schools/universities/udsm-2.jpg", "/images/schools/universities/udsm-3.jpg", "/images/schools/universities/udsm-4.jpg"],
     ownership: "Government",
     verified: true,
     students: 35000,
