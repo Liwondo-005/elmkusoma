@@ -11,6 +11,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Slf4j
 @Configuration
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        name = "media.storage", havingValue = "minio", matchIfMissing = true)
 public class MinioConfig {
 
     @Value("${minio.endpoint}")

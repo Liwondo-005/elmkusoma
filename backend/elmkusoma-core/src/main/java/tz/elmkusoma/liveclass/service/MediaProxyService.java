@@ -111,4 +111,44 @@ public class MediaProxyService {
             throw new RuntimeException("Media service unavailable", e);
         }
     }
+
+    /**
+     * Fetches stored bytes through an authorized (presigned/signed) URL so the
+     * caller can stream them to the user after its own access checks.
+     */
+    public byte[] fetchBytes(String url) {
+        try {
+            // The URL arrives pre-encoded (signed/presigned). Passing a String
+            // would re-run URI-template expansion and double-encode it
+            // (key=%2F -> %252F), which fails signature validation downstream.
+            // The URI overload bypasses template handling entirely.
+            ResponseEntity<byte[]> response = restTemplate.getForEntity(java.net.URI.create(url), byte[].class);
+            byte[] body = response.getBody();
+            if (body == null) {
+                throw new RuntimeException("Empty storage response");
+            }
+            return body;
+        } catch (RuntimeException e) {
+            log.error("Failed to fetch stored bytes: {}", e.getMessage());
+            throw new RuntimeException("Stored content unavailable", e);
+        }
+    }
+
+    /** Best-effort removal of a replaced object from the existing media store. */
+    public void deleteMedia(Long mediaId, String bearerToken) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            if (bearerToken != null && !bearerToken.isBlank()) {
+                headers.set("Authorization", bearerToken.startsWith("Bearer ") ? bearerToken : "Bearer " + bearerToken);
+            }
+            restTemplate.exchange(
+                    mediaServiceUrl + "/api/v1/media/" + mediaId,
+                    HttpMethod.DELETE,
+                    new HttpEntity<>(headers),
+                    Map.class
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Media delete failed", e);
+        }
+    }
 }

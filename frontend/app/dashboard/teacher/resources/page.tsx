@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import {
   AlertCircle,
+  Check,
   ChevronDown,
   FileText,
   Link2,
@@ -15,7 +16,9 @@ import {
   Pencil,
   Plus,
   Search,
+  Share2,
   Trash2,
+  Upload,
   Video,
   X,
   GripVertical,
@@ -36,7 +39,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { teacherFetch, teacherApi } from "@/lib/teacher-api"
+import { teacherFetch, teacherApi, saveResourceWithFile } from "@/lib/teacher-api"
 
 interface ResourceItem {
   id: string
@@ -52,6 +55,12 @@ interface ResourceItem {
   sortOrder?: number | null
   isDownloadable?: boolean | null
   isPreviewable?: boolean | null
+  processingStatus?: string | null
+  processingError?: string | null
+  pageCount?: number | null
+  width?: number | null
+  height?: number | null
+  durationSeconds?: number | null
   createdAt?: string | null
   updatedAt?: string | null
 }
@@ -65,14 +74,31 @@ const initialForm = {
   description: "",
   resourceType: "DOCUMENT",
   visibility: "DRAFT",
-  storageUrl: "",
   externalUrl: "",
-  mimeType: "",
-  fileSize: "",
   lessonId: "",
-  sortOrder: 0,
   isDownloadable: true,
   isPreviewable: false,
+}
+
+/** File pickers restricted to what each type actually accepts. */
+const FILE_ACCEPT: Record<string, string> = {
+  VIDEO: "video/*",
+  IMAGE: "image/*",
+  AUDIO: "audio/*",
+  DOCUMENT: "application/pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.odt",
+}
+
+function isLinkType(resourceType: string) {
+  return resourceType === "LINK" || resourceType === "EXTERNAL_LINK"
+}
+
+function isValidHttpUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === "http:" || url.protocol === "https:"
+  } catch {
+    return false
+  }
 }
 
 const visibilityClass: Record<string, string> = {
@@ -147,12 +173,14 @@ interface SortableResourceRowProps {
   index: number
   onEdit: () => void
   onDelete: () => void
+  onShare: () => void
+  copied: boolean
   deleting: boolean
   t: ReturnType<typeof useTranslations>
   tc: ReturnType<typeof useTranslations>
 }
 
-function SortableResourceRow({ resource, index, onEdit, onDelete, deleting, t, tc }: SortableResourceRowProps) {
+function SortableResourceRow({ resource, index, onEdit, onDelete, onShare, copied, deleting, t, tc }: SortableResourceRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: resource.id })
 
   const style = {
@@ -194,6 +222,19 @@ function SortableResourceRow({ resource, index, onEdit, onDelete, deleting, t, t
               >
                 {visibilityLabel(resource.visibility, t)}
               </span>
+              {resource.processingStatus && resource.processingStatus !== "READY" && (
+                <span
+                  className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    resource.processingStatus === "FAILED"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {resource.processingStatus === "FAILED"
+                    ? t("resources.statusFailed")
+                    : t("resources.statusProcessing")}
+                </span>
+              )}
             </div>
             {resource.description && (
               <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{resource.description}</p>
@@ -203,11 +244,33 @@ function SortableResourceRow({ resource, index, onEdit, onDelete, deleting, t, t
                 {t("resources.colUpdated")}: {formatDate(resource.updatedAt || resource.createdAt)}
               </span>
               {resource.mimeType && <span>{resource.mimeType}</span>}
-              {resource.externalUrl && <span>{resource.externalUrl}</span>}
+              {resource.pageCount != null && (
+                <span>
+                  {resource.pageCount}{" "}
+                  {resource.pageCount === 1 ? t("resources.page") : t("resources.pages")}
+                </span>
+              )}
+              {resource.durationSeconds != null && (
+                <span>{t("resources.duration", { seconds: resource.durationSeconds })}</span>
+              )}
+              {resource.width != null && resource.height != null && (
+                <span>
+                  {resource.width}×{resource.height}
+                </span>
+              )}
+              {resource.externalUrl && <span className="truncate">{resource.externalUrl}</span>}
             </div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={onShare}
+            className={`rounded-lg p-1.5 hover:bg-primary/10 ${copied ? "text-teal-600" : "text-muted-foreground hover:text-primary"}`}
+            title={copied ? t("resources.linkCopied") : t("resources.shareLink")}
+            aria-label={copied ? t("resources.linkCopied") : t("resources.shareLink")}
+          >
+            {copied ? <Check className="size-4" /> : <Share2 className="size-4" />}
+          </button>
           <button
             onClick={onEdit}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -275,6 +338,10 @@ export default function TeacherResourcesPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState("")
   const [reordering, setReordering] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [editingHasFile, setEditingHasFile] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -312,12 +379,17 @@ export default function TeacherResourcesPage() {
     setForm(initialForm)
     setEditingId(null)
     setShowForm(false)
+    setFile(null)
+    setUploadProgress(null)
+    setEditingHasFile(false)
   }
 
   function openCreate() {
     setForm(initialForm)
     setEditingId(null)
     setShowForm(true)
+    setFile(null)
+    setEditingHasFile(false)
   }
 
   function openEdit(resource: ResourceItem) {
@@ -326,17 +398,43 @@ export default function TeacherResourcesPage() {
       description: resource.description || "",
       resourceType: resource.resourceType || "DOCUMENT",
       visibility: resource.visibility || "DRAFT",
-      storageUrl: resource.storageUrl || "",
       externalUrl: resource.externalUrl || "",
-      mimeType: resource.mimeType || "",
-      fileSize: resource.fileSize != null ? String(resource.fileSize) : "",
       lessonId: resource.lessonId || "",
-      sortOrder: resource.sortOrder || 0,
       isDownloadable: resource.isDownloadable !== false,
       isPreviewable: resource.isPreviewable === true,
     })
     setEditingId(resource.id)
+    setEditingHasFile(!!resource.storageUrl)
+    setFile(null)
     setShowForm(true)
+  }
+
+  /**
+   * Type switch cleans up state that no longer applies: crossing between a
+   * file-based type and a link type drops the other side's value so nothing
+   * stale can be submitted.
+   */
+  function handleTypeChange(nextType: string) {
+    const willBeLink = isLinkType(nextType)
+    setForm((prev) => ({
+      ...prev,
+      resourceType: nextType,
+      externalUrl: willBeLink ? prev.externalUrl : "",
+    }))
+    setFile(null)
+  }
+
+  async function handleShare(resource: ResourceItem) {
+    // Share/Copy Link always points at the protected learner route — never at
+    // a raw storage URL.
+    const url = `${window.location.origin}/dashboard/learner/resources/${resource.id}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedId(resource.id)
+      setTimeout(() => setCopiedId((prev) => (prev === resource.id ? null : prev)), 2000)
+    } catch {
+      setError(t("resources.shareCopyError"))
+    }
   }
 
   async function handleSave() {
@@ -346,34 +444,68 @@ export default function TeacherResourcesPage() {
       setError(t("resources.invalidLessonId"))
       return
     }
+
+    const linkType = isLinkType(form.resourceType)
+    const externalUrl = form.externalUrl.trim()
+
+    if (linkType && !isValidHttpUrl(externalUrl)) {
+      setError(t("resources.externalUrlInvalid"))
+      return
+    }
+    if (!linkType && !file && (!editingId || !editingHasFile)) {
+      setError(t("resources.fileRequired"))
+      return
+    }
+
     setSaving(true)
     setError(null)
+    setUploadProgress(null)
     try {
       const payload = {
         title: form.title.trim(),
         description: form.description.trim() || undefined,
-        resourceType: form.resourceType === "LINK" ? "EXTERNAL_LINK" : form.resourceType,
+        resourceType: form.resourceType,
         visibility: form.visibility,
-        storageUrl: form.storageUrl.trim() || undefined,
-        externalUrl: form.externalUrl.trim() || undefined,
-        mimeType: form.mimeType.trim() || undefined,
-        fileSize: form.fileSize.trim() ? Number(form.fileSize) || undefined : undefined,
         lessonId: lessonId || undefined,
-        sortOrder: Number(form.sortOrder) || 0,
+        externalUrl: linkType ? externalUrl : undefined,
         isDownloadable: form.isDownloadable,
         isPreviewable: form.isPreviewable,
       }
-      if (editingId) {
-        await teacherFetch(`/v1/resources/${editingId}`, { method: "PUT", body: JSON.stringify(payload) })
+
+      let result: ResourceItem | null = null
+      if (file) {
+        // Multipart: the server reads the real bytes to extract metadata and
+        // stores them through the media service.
+        result = await saveResourceWithFile(payload, file, {
+          resourceId: editingId ?? undefined,
+          onProgress: (p) => setUploadProgress(p),
+        })
+      } else if (editingId) {
+        result = await teacherFetch<ResourceItem>(`/v1/resources/${editingId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        })
       } else {
-        await teacherFetch("/v1/resources", { method: "POST", body: JSON.stringify(payload) })
+        result = await teacherFetch<ResourceItem>("/v1/resources", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        })
       }
-      resetForm()
+
+      if (result?.processingStatus === "FAILED") {
+        // The row exists but storage/extraction failed — surface the real
+        // error instead of pretending success.
+        setError(result.processingError || t("resources.processingFailed"))
+      } else {
+        resetForm()
+      }
       await loadResources()
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : t("resources.saveError"))
     } finally {
       setSaving(false)
+      setUploadProgress(null)
+      setFile(null)
     }
   }
 
@@ -529,7 +661,7 @@ export default function TeacherResourcesPage() {
               <div className="relative mt-1">
                 <select
                   value={form.resourceType}
-                  onChange={(e) => setForm({ ...form, resourceType: e.target.value })}
+                  onChange={(e) => handleTypeChange(e.target.value)}
                   className="w-full appearance-none rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground focus:border-primary focus:outline-none"
                 >
                   {RESOURCE_TYPES.map((type) => (
@@ -558,42 +690,43 @@ export default function TeacherResourcesPage() {
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">{t("resources.storageUrlLabel")}</label>
-              <input
-                value={form.storageUrl}
-                onChange={(e) => setForm({ ...form, storageUrl: e.target.value })}
-                placeholder="https://..."
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">{t("resources.externalUrlLabel")}</label>
-              <input
-                value={form.externalUrl}
-                onChange={(e) => setForm({ ...form, externalUrl: e.target.value })}
-                placeholder="https://..."
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">{t("resources.mimeTypeLabel")}</label>
-              <input
-                value={form.mimeType}
-                onChange={(e) => setForm({ ...form, mimeType: e.target.value })}
-                placeholder="application/pdf"
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">{t("resources.fileSizeLabel")}</label>
-              <input
-                type="number"
-                value={form.fileSize}
-                onChange={(e) => setForm({ ...form, fileSize: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
-            </div>
+            {isLinkType(form.resourceType) ? (
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  {t("resources.externalUrlLabel")} *
+                </label>
+                <input
+                  value={form.externalUrl}
+                  onChange={(e) => setForm({ ...form, externalUrl: e.target.value })}
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://..."
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">{t("resources.linkTypeHint")}</p>
+              </div>
+            ) : (
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  {editingId && editingHasFile ? t("resources.replaceFileLabel") : t("resources.fileLabel")} *
+                </label>
+                <input
+                  type="file"
+                  accept={FILE_ACCEPT[form.resourceType]}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1 file:text-xs file:font-medium file:text-primary focus:border-primary focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">{t("resources.fileHint")}</p>
+                {file && (
+                  <p className="mt-1 text-xs text-foreground">
+                    {file.name} · {(file.size / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                )}
+                {!file && editingHasFile && (
+                  <p className="mt-1 text-xs text-muted-foreground">{t("resources.keepExistingFile")}</p>
+                )}
+              </div>
+            )}
             <div>
               <label className="text-xs font-medium text-muted-foreground">{t("resources.lessonIdLabel")}</label>
               <input
@@ -605,12 +738,7 @@ export default function TeacherResourcesPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">{t("resources.sortOrderLabel")}</label>
-              <input
-                type="number"
-                value={form.sortOrder}
-                onChange={(e) => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })}
-                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
+              <p className="mt-2 text-xs text-muted-foreground">{t("resources.sortOrderAuto")}</p>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 sm:col-span-2">
               <label className="flex items-center gap-2">
@@ -633,14 +761,41 @@ export default function TeacherResourcesPage() {
               </label>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={resetForm}>
-              {tc("cancel")}
-            </Button>
-            <Button onClick={handleSave} disabled={saving || !form.title.trim()}>
-              {saving ? <Loader2 className="size-4 animate-spin" /> : null}
-              {editingId ? tc("save") : tc("create")}
-            </Button>
+          <div className="space-y-3">
+            {uploadProgress != null && (
+              <div aria-live="polite">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{t("resources.uploading")}</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-200"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={resetForm} disabled={saving}>
+                {tc("cancel")}
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={
+                  saving ||
+                  !form.title.trim() ||
+                  (!isLinkType(form.resourceType) && !file && (!editingId || !editingHasFile))
+                }
+              >
+                {saving ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                {saving && uploadProgress != null
+                  ? `${t("resources.uploading")} ${uploadProgress}%`
+                  : editingId
+                    ? tc("save")
+                    : tc("create")}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -669,6 +824,8 @@ export default function TeacherResourcesPage() {
                   index={index}
                   onEdit={() => openEdit(resource)}
                   onDelete={() => handleDelete(resource.id)}
+                  onShare={() => handleShare(resource)}
+                  copied={copiedId === resource.id}
                   deleting={deleting === resource.id}
                   t={t}
                   tc={tc}

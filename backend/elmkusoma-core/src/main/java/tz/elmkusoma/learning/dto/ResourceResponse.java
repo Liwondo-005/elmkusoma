@@ -21,6 +21,8 @@ public class ResourceResponse {
     private UUID lessonId;
     private UUID moduleId;
     private UUID courseId;
+    /** Backward-compatible derived context id (lesson → module → course). */
+    private UUID subjectId;
     private UUID uploadedBy;
     private String uploadedByName;
     private String title;

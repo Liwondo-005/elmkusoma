@@ -48,6 +48,16 @@ class ResourceVisibilitySecurityTest {
     private StudentSavedResourceRepository savedResourceRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private tz.elmkusoma.course.repository.CourseRepository courseRepository;
+    @Mock
+    private tz.elmkusoma.course.repository.CourseModuleRepository courseModuleRepository;
+    @Mock
+    private tz.elmkusoma.liveclass.service.MediaProxyService mediaProxyService;
+    @Mock
+    private ResourceMetadataExtractor metadataExtractor;
+    @Mock
+    private tz.elmkusoma.audit.service.AuditService auditService;
 
     @InjectMocks
     private ResourceService service;
@@ -133,6 +143,7 @@ class ResourceVisibilitySecurityTest {
                 .uploadedBy(uploadedBy)
                 .title("Existing resource")
                 .resourceType(Resource.ResourceType.PDF)
+                .storageUrl("https://storage.test/existing.pdf")
                 .visibility(Resource.ResourceVisibility.PRIVATE)
                 .sortOrder(0)
                 .isDeleted(deleted)
@@ -152,6 +163,7 @@ class ResourceVisibilitySecurityTest {
         return ResourceRequest.builder()
                 .title(title)
                 .resourceType("PDF")
+                .storageUrl("https://storage.test/upload.pdf")
                 .visibility("PUBLIC")
                 .build();
     }
@@ -340,6 +352,7 @@ class ResourceVisibilitySecurityTest {
                 .lessonId(lessonId)
                 .title("Linked resource")
                 .resourceType("PDF")
+                .storageUrl("https://storage.test/linked.pdf")
                 .visibility("PUBLIC")
                 .build();
     }

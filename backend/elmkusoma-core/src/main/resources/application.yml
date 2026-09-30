@@ -7,6 +7,13 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
+  # Resource uploads: the media service accepts up to 50MB — core must not
+  # reject the multipart before the server can read the real bytes.
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 60MB
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:elmkusoma}?sslmode=disable
     username: ${DB_USERNAME:postgres}

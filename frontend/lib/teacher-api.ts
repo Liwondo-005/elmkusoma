@@ -244,8 +244,97 @@ export interface ResourceItem {
   sortOrder?: number | null
   isDownloadable?: boolean | null
   isPreviewable?: boolean | null
+  processingStatus?: string | null
+  processingError?: string | null
+  pageCount?: number | null
+  width?: number | null
+  height?: number | null
+  durationSeconds?: number | null
   createdAt?: string | null
   updatedAt?: string | null
+}
+
+export interface ResourcePayload {
+  title: string
+  description?: string | null
+  resourceType: string
+  visibility: string
+  lessonId?: string | null
+  courseId?: string | null
+  moduleId?: string | null
+  externalUrl?: string | null
+  storageUrl?: string | null
+  isDownloadable?: boolean
+  isPreviewable?: boolean
+  tagNames?: string[]
+}
+
+function authInstitutionHeaders(): Record<string, string> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
+  let institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") : null
+  if (!institutionId && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("elmkusoma_current_user")
+      if (raw) {
+        const user = JSON.parse(raw)
+        if (user?.institutionId) institutionId = user.institutionId
+      }
+    } catch {}
+  }
+  if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
+  return {
+    "X-Institution-Id": institutionId,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
+/**
+ * Creates or replaces a resource file through the multipart endpoint: the
+ * server reads the real bytes to extract metadata (MIME type, dimensions,
+ * duration, pages) and stores them via the media service — the client never
+ * reports fabricated metadata.
+ */
+export function saveResourceWithFile(
+  payload: ResourcePayload,
+  file: File,
+  options?: { resourceId?: string; onProgress?: (progress: number) => void }
+): Promise<ResourceItem> {
+  return new Promise<ResourceItem>((resolve, reject) => {
+    const form = new FormData()
+    form.append("request", new Blob([JSON.stringify(payload)], { type: "application/json" }))
+    form.append("file", file, file.name)
+
+    const xhr = new XMLHttpRequest()
+    const method = options?.resourceId ? "PUT" : "POST"
+    const url = `${API_BASE_URL}${options?.resourceId ? `/v1/resources/${options.resourceId}` : "/v1/resources"}`
+    xhr.open(method, url)
+    const headers = authInstitutionHeaders()
+    Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable && options?.onProgress) {
+        options.onProgress(Math.round((event.loaded / event.total) * 100))
+      }
+    })
+    xhr.addEventListener("load", () => {
+      let body: Record<string, unknown> = {}
+      try {
+        body = JSON.parse(xhr.responseText || "{}")
+      } catch {}
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve((body.data ?? body) as ResourceItem)
+      } else {
+        reject(new Error(
+          (typeof body.error === "string" && body.error) ||
+            (typeof body.message === "string" && body.message) ||
+            `Upload failed: ${xhr.status}`
+        ))
+      }
+    })
+    xhr.addEventListener("error", () => reject(new Error("Network error during upload")))
+    xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")))
+    xhr.send(form)
+  })
 }
 
 export async function getPresignedUploadUrl(

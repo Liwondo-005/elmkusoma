@@ -31,10 +31,8 @@ public class ResourceAnnotationService {
 
     @Transactional
     public ResourceAnnotationResponse createAnnotation(UUID resourceId, ResourceAnnotationRequest request,
-                                                       UUID institutionId, UUID studentId) {
-        Resource resource = resourceRepository.findById(resourceId)
-                .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
-                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
+                                                       UUID institutionId, UUID studentId, String userRole) {
+        Resource resource = requireVisibleResource(resourceId, institutionId, studentId, userRole);
 
         if (request.getParentAnnotationId() != null
                 && !annotationRepository.existsById(request.getParentAnnotationId())) {
@@ -58,15 +56,32 @@ public class ResourceAnnotationService {
     }
 
     @Transactional(readOnly = true)
-    public List<ResourceAnnotationResponse> listAnnotations(UUID resourceId, UUID institutionId, String userRole) {
-        resourceRepository.findById(resourceId)
-                .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
-                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
+    public List<ResourceAnnotationResponse> listAnnotations(UUID resourceId, UUID institutionId,
+                                                            UUID userId, String userRole) {
+        requireVisibleResource(resourceId, institutionId, userId, userRole);
 
         List<ResourceAnnotation> annotations =
                 annotationRepository.findByResourceIdAndIsDeletedFalseOrderByCreatedAtDesc(resourceId);
-        Map<UUID, String> names = resolveStudentNames(annotations);
-        return annotations.stream().map(a -> toResponse(a, names)).collect(Collectors.toList());
+        boolean isAdmin = ResourceService.isAdminRole(userRole);
+        // Private notes stay private: only their author (or an admin) sees them.
+        List<ResourceAnnotation> visible = annotations.stream()
+                .filter(a -> isAdmin || !Boolean.TRUE.equals(a.getIsPrivate())
+                        || (userId != null && userId.equals(a.getStudentId())))
+                .collect(Collectors.toList());
+        Map<UUID, String> names = resolveStudentNames(visible);
+        return visible.stream().map(a -> toResponse(a, names)).collect(Collectors.toList());
+    }
+
+    /** Annotations are only reachable through the same visibility gate as reads. */
+    private Resource requireVisibleResource(UUID resourceId, UUID institutionId, UUID userId, String userRole) {
+        Resource resource = resourceRepository.findById(resourceId)
+                .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
+                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
+        if (!ResourceService.canSeeResource(resource, userId, userRole)) {
+            throw new SecurityException("Access denied to resource");
+        }
+        return resource;
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +94,7 @@ public class ResourceAnnotationService {
     @Transactional
     public void deleteAnnotation(UUID annotationId, UUID institutionId, UUID actorId) {
         ResourceAnnotation annotation = annotationRepository.findById(annotationId)
+                .filter(a -> institutionId == null || institutionId.equals(a.getInstitutionId()))
                 .orElseThrow(() -> new RuntimeException("Annotation not found"));
         boolean isOwner = actorId != null && actorId.equals(annotation.getStudentId());
         if (!isOwner) {

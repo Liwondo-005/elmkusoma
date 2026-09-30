@@ -7,7 +7,20 @@ import { useAuth } from "@/lib/auth"
 import { useTranslations } from "next-intl"
 import { learnerApi, type Resource, type ResourceAnnotation } from "@/lib/learner-api"
 import { LoadingState } from "@/components/learner/shared"
-import { FileText, Video, Music, Image, Download, ArrowLeft, AlertCircle, Bookmark, BookmarkCheck, MessageSquare, Trash2, Send } from "lucide-react"
+import {
+  FileText, Video, Music, Image, Download, ArrowLeft, AlertCircle, Bookmark, BookmarkCheck,
+  MessageSquare, Trash2, Send, Loader2, Link2, ExternalLink,
+} from "lucide-react"
+
+function isLinkType(type?: string) {
+  return type === "LINK" || type === "EXTERNAL_LINK"
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 export default function ResourceDetailPage() {
   const { user, loading: authLoading } = useAuth()
@@ -26,6 +39,9 @@ export default function ResourceDetailPage() {
   const [annotationText, setAnnotationText] = useState("")
   const [annotationPrivate, setAnnotationPrivate] = useState(true)
   const [annotationSubmitting, setAnnotationSubmitting] = useState(false)
+  const [contentUrl, setContentUrl] = useState<string | null>(null)
+  const [contentError, setContentError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -37,8 +53,25 @@ export default function ResourceDetailPage() {
     try {
       setLoading(true)
       setError(null)
+      setContentUrl(null)
+      setContentError(null)
       const data = await learnerApi.getResource(resourceId)
       setResource(data)
+
+      // Resolve an authorized content URL only once the resource is actually
+      // ready; the backend re-checks visibility/relationship before issuing it.
+      const link = isLinkType(data.resourceType)
+      const ready = (data.processingStatus ?? "READY") === "READY"
+      if (!link && ready) {
+        learnerApi
+          .getResourceContentUrl(resourceId)
+          .then((url) => {
+            setContentUrl(url)
+            // Record the view only after access has been re-authorized.
+            learnerApi.recordResourceView(resourceId).catch(() => {})
+          })
+          .catch((e) => setContentError(e instanceof Error ? e.message : t("res.contentUnavailable")))
+      }
 
       learnerApi.getRelatedResources(resourceId).then(setRelatedResources).catch(() => {})
       learnerApi.checkBookmark("resource", resourceId).then((isBookmarked) => setIsBookmarked(isBookmarked)).catch(() => {})
@@ -46,6 +79,19 @@ export default function ResourceDetailPage() {
       setError(t("res.loadError"))
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDownload() {
+    if (!resource) return
+    try {
+      setDownloading(true)
+      setError(null)
+      await learnerApi.downloadResource(resource.id, resource.title || "resource")
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : t("res.downloadError"))
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -103,6 +149,8 @@ export default function ResourceDetailPage() {
       case "VIDEO": return <Video className="size-8 text-red-500" />
       case "AUDIO": return <Music className="size-8 text-purple-500" />
       case "IMAGE": return <Image className="size-8 text-blue-500" />
+      case "LINK":
+      case "EXTERNAL_LINK": return <Link2 className="size-8 text-teal-600" />
       default: return <FileText className="size-8 text-teal" />
     }
   }
@@ -113,9 +161,15 @@ export default function ResourceDetailPage() {
       VIDEO: "bg-red-500/10 text-red-500",
       AUDIO: "bg-purple-500/10 text-purple-500",
       IMAGE: "bg-orange/10 text-orange",
+      LINK: "bg-teal-500/10 text-teal-600",
+      EXTERNAL_LINK: "bg-teal-500/10 text-teal-600",
     }
     return colors[type?.toUpperCase()] || "bg-muted text-muted-foreground"
   }
+
+  const processingState = resource ? (resource.processingStatus ?? "READY") : "READY"
+  const linkResource = resource ? isLinkType(resource.resourceType) : false
+  const downloadable = resource ? resource.isDownloadable !== false && !linkResource : false
 
   if (authLoading || loading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <div aria-busy="true"><LoadingState /></div>
@@ -175,7 +229,7 @@ export default function ResourceDetailPage() {
             )}
             <div className="mt-3 flex items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getResourceTypeBadge(resource.resourceType)}`}>
-                {resource.resourceType}
+                {typeLabel(resource.resourceType, t)}
               </span>
               <span className="text-xs text-muted-foreground">
                 {t("res.addedOn", { date: new Date(resource.createdAt).toLocaleDateString() })}
@@ -183,17 +237,30 @@ export default function ResourceDetailPage() {
             </div>
           </div>
         </div>
-        <div className="mt-6 flex gap-3">
-          <a
-            href={resource.storageUrl || resource.fileUrl || resource.thumbnailUrl || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t("res.downloadLabel", { title: resource.title })}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Download className="size-4" />
-            {t("res.download")}
-          </a>
+        <div className="mt-6 flex flex-wrap gap-3">
+          {linkResource && resource.externalUrl && (
+            <a
+              href={resource.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t("res.openLinkLabel", { title: resource.title })}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <ExternalLink className="size-4" />
+              {t("res.openLink")}
+            </a>
+          )}
+          {downloadable && processingState === "READY" && (
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              aria-label={t("res.downloadLabel", { title: resource.title })}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              {t("res.download")}
+            </button>
+          )}
           <button
             onClick={toggleBookmark}
             disabled={bookmarkLoading}
@@ -204,6 +271,89 @@ export default function ResourceDetailPage() {
             {isBookmarked ? t("res.bookmarked") : t("res.bmShort")}
           </button>
         </div>
+      </div>
+
+      {/* ── Content viewer: type-specific, fed by the authorized content URL ── */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+        {processingState !== "READY" ? (
+          <div aria-live="polite" className="flex items-center gap-2 text-sm">
+            {processingState === "FAILED" ? (
+              <>
+                <AlertCircle className="size-4 text-destructive" />
+                <span className="text-destructive">{t("res.statusFailed")}</span>
+              </>
+            ) : (
+              <>
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                <span className="text-muted-foreground">{t("res.statusProcessing")}</span>
+              </>
+            )}
+          </div>
+        ) : linkResource ? (
+          <div className="space-y-3">
+            <a
+              href={resource.externalUrl || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              <ExternalLink className="size-4" /> {t("res.openLink")}
+            </a>
+            <p className="break-all text-xs text-muted-foreground">{resource.externalUrl}</p>
+          </div>
+        ) : contentError ? (
+          <div role="alert" className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" /> {contentError}
+          </div>
+        ) : !contentUrl ? (
+          <div aria-busy="true" className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> {t("res.loadingContent")}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div aria-label={t("res.viewerLabel", { title: resource.title })}>
+              {resource.resourceType === "VIDEO" ? (
+                <video
+                  controls
+                  preload="metadata"
+                  src={contentUrl}
+                  className="max-h-[70vh] w-full rounded-xl bg-black"
+                />
+              ) : resource.resourceType === "AUDIO" ? (
+                <audio controls preload="metadata" src={contentUrl} className="w-full" />
+              ) : resource.resourceType === "IMAGE" ? (
+                <img
+                  src={contentUrl}
+                  alt={resource.title}
+                  className="mx-auto max-h-[70vh] rounded-xl"
+                />
+              ) : (
+                <iframe
+                  src={contentUrl}
+                  title={resource.title}
+                  className="h-[70vh] w-full rounded-xl border-0"
+                />
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              {resource.mimeType && <span>{resource.mimeType}</span>}
+              {resource.pageCount != null && (
+                <span>
+                  {resource.pageCount} {resource.pageCount === 1 ? t("res.page") : t("res.pages")}
+                </span>
+              )}
+              {resource.durationSeconds != null && (
+                <span>{t("res.duration", { seconds: resource.durationSeconds })}</span>
+              )}
+              {resource.width != null && resource.height != null && (
+                <span>
+                  {resource.width}×{resource.height}
+                </span>
+              )}
+              {resource.fileSize != null && <span>{formatSize(resource.fileSize)}</span>}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
@@ -300,7 +450,7 @@ export default function ResourceDetailPage() {
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-semibold text-foreground truncate">{rr.title}</h3>
                     <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {rr.resourceType}
+                      {typeLabel(rr.resourceType, t)}
                     </span>
                   </div>
                 </div>
@@ -311,4 +461,17 @@ export default function ResourceDetailPage() {
       )}
     </div>
   )
+}
+
+function typeLabel(resourceType: string, t: ReturnType<typeof useTranslations>) {
+  const map: Record<string, string> = {
+    DOCUMENT: "res.typeDocument",
+    VIDEO: "res.typeVideo",
+    IMAGE: "res.typeImage",
+    AUDIO: "res.typeAudio",
+    LINK: "res.typeLink",
+    EXTERNAL_LINK: "res.typeExternalLink",
+  }
+  const key = map[(resourceType || "").toUpperCase()]
+  return key ? t(key) : resourceType
 }

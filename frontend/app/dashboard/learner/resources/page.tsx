@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { learnerApi, type Resource } from "@/lib/learner-api"
 import { EmptyState, LoadingState } from "@/components/learner/shared"
-import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, AlertCircle, Bookmark, BookmarkCheck, ArrowRight } from "lucide-react"
+import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, AlertCircle, Bookmark, BookmarkCheck, ArrowRight, Loader2, Link2 } from "lucide-react"
 import Link from "next/link"
 
 export default function LearnerResourcesPage() {
@@ -20,6 +20,7 @@ export default function LearnerResourcesPage() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -83,6 +84,8 @@ export default function LearnerResourcesPage() {
       case "VIDEO": return <Video className="size-5 text-red-500" />
       case "AUDIO": return <Music className="size-5 text-purple-500" />
       case "IMAGE": return <Image className="size-5 text-blue-500" />
+      case "LINK":
+      case "EXTERNAL_LINK": return <Link2 className="size-5 text-teal-600" />
       default: return <FileText className="size-5 text-teal" />
     }
   }
@@ -93,8 +96,30 @@ export default function LearnerResourcesPage() {
       VIDEO: "bg-red-500/10 text-red-500",
       AUDIO: "bg-purple-500/10 text-purple-500",
       IMAGE: "bg-orange/10 text-orange",
+      LINK: "bg-teal-500/10 text-teal-600",
+      EXTERNAL_LINK: "bg-teal-500/10 text-teal-600",
     }
     return colors[type?.toUpperCase()] || "bg-muted text-muted-foreground"
+  }
+
+  /**
+   * Downloads go through the backend-authorized endpoint — never a raw
+   * storage URL — and only exist for file resources the owner allows to be
+   * downloaded.
+   */
+  async function handleDownload(e: React.MouseEvent, resource: Resource) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (downloadingId) return
+    try {
+      setDownloadingId(resource.id)
+      setError(null)
+      await learnerApi.downloadResource(resource.id, resource.title || "resource")
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : t("resources.downloadError"))
+    } finally {
+      setDownloadingId(null)
+    }
   }
 
   const types = [...new Set(resources.map((r) => r.resourceType).filter(Boolean))]
@@ -148,7 +173,7 @@ export default function LearnerResourcesPage() {
         >
           <option value="all">{tc("allTypes")}</option>
           {types.map((type) => (
-            <option key={type} value={type}>{type}</option>
+            <option key={type} value={type}>{typeLabel(type, t)}</option>
           ))}
         </select>
       </div>
@@ -187,7 +212,7 @@ export default function LearnerResourcesPage() {
               </div>
               <div className="mt-3 flex items-center justify-between">
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getResourceTypeBadge(resource.resourceType)}`}>
-                  {resource.resourceType}
+                  {typeLabel(resource.resourceType, t)}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -201,19 +226,24 @@ export default function LearnerResourcesPage() {
                       <Bookmark className="size-4" />
                     )}
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      const url = resource.storageUrl || resource.fileUrl || resource.thumbnailUrl
-                      if (url) window.open(url, "_blank", "noopener,noreferrer")
-                    }}
-                    aria-label={`${tc("download")} ${resource.title}`}
-                    className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Download className="size-3" />
-                    {tc("download")}
-                  </button>
+                  {resource.resourceType !== "LINK" &&
+                    resource.resourceType !== "EXTERNAL_LINK" &&
+                    resource.isDownloadable !== false && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDownload(e, resource)}
+                        disabled={downloadingId === resource.id}
+                        aria-label={`${tc("download")} ${resource.title}`}
+                        className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {downloadingId === resource.id ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Download className="size-3" />
+                        )}
+                        {tc("download")}
+                      </button>
+                    )}
                 </div>
               </div>
               <p className="mt-2 text-[10px] text-muted-foreground">
@@ -255,4 +285,17 @@ export default function LearnerResourcesPage() {
       </div>
     </div>
   )
+}
+
+function typeLabel(resourceType: string, t: ReturnType<typeof useTranslations>) {
+  const map: Record<string, string> = {
+    DOCUMENT: "resources.typeDocument",
+    VIDEO: "resources.typeVideo",
+    IMAGE: "resources.typeImage",
+    AUDIO: "resources.typeAudio",
+    LINK: "resources.typeLink",
+    EXTERNAL_LINK: "resources.typeExternalLink",
+  }
+  const key = map[(resourceType || "").toUpperCase()]
+  return key ? t(key) : resourceType
 }
