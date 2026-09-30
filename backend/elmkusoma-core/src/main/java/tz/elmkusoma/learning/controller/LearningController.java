@@ -154,7 +154,7 @@ public class LearningController {
     @Operation(summary = "Update lesson progress for a student")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<ProgressResponse>> updateProgress(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userId") UUID studentId,
             @Valid @RequestBody ProgressRequest request) {
         ProgressResponse response = learningService.updateProgress(institutionId, studentId, request);
@@ -207,7 +207,7 @@ public class LearningController {
     @Operation(summary = "Create a new assignment")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<AssignmentResponse>> createAssignment(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole,
             @Valid @RequestBody AssignmentRequest request) {
@@ -221,7 +221,7 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<AssignmentResponse>> updateAssignment(
             @PathVariable UUID id,
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole,
             @Valid @RequestBody AssignmentRequest request) {
@@ -234,7 +234,7 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<Void>> deleteAssignment(
             @PathVariable UUID id,
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole) {
         learningService.deleteAssignment(id, institutionId, userEmail, userRole);
@@ -246,7 +246,7 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<AssignmentResponse>>> getAssignments(
             @PathVariable UUID classGroupId,
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole) {
         List<AssignmentResponse> response = learningService.getAssignmentsByClass(
@@ -259,7 +259,7 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<AssignmentResponse>>> getAssignmentsByClasses(
             @RequestParam("ids") List<UUID> ids,
-            @RequestHeader("X-Institution-Id") UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId) {
         List<AssignmentResponse> response = learningService.getAssignmentsByClasses(ids, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -270,7 +270,7 @@ public class LearningController {
     public ResponseEntity<ApiResponse<SubmissionResponse>> submitAssignment(
             @PathVariable UUID id,
             @RequestAttribute("userId") UUID callerUserId,
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestBody(required = false) SubmissionRequest request) {
         SubmissionResponse response = learningService.submitAssignment(id, callerUserId, institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -292,7 +292,7 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(
             @PathVariable UUID id,
-            @RequestHeader("X-Institution-Id") UUID institutionId) {
+            @RequestAttribute("institutionId") UUID institutionId) {
         List<SubmissionResponse> response = learningService.getSubmissionsByAssignment(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -304,7 +304,7 @@ public class LearningController {
             @PathVariable UUID id,
             @RequestParam Integer grade,
             @RequestParam(required = false) String feedback,
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userId") UUID gradedBy,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole) {

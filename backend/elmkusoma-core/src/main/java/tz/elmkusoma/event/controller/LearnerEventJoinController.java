@@ -78,6 +78,9 @@ public class LearnerEventJoinController {
                 .filter(e -> !Boolean.TRUE.equals(e.getIsDeleted()))
                 .orElseThrow(() -> new ResourceNotFoundException("Event", "id", eventId));
 
+        if (institutionId != null && headerInstitutionId != null && !institutionId.equals(headerInstitutionId)) {
+            throw new ForbiddenException("Institution mismatch");
+        }
         UUID callerInstitutionId = institutionId != null ? institutionId : headerInstitutionId;
         if (callerInstitutionId == null || event.getInstitutionId() == null
                 || !event.getInstitutionId().equals(callerInstitutionId)) {
