@@ -57,6 +57,10 @@ class ResourceManagementFlowTest {
     @Mock private MediaProxyService mediaProxyService;
     @Mock private AuditService auditService;
     @Mock private tz.elmkusoma.learning.repository.ResourceAnnotationRepository annotationRepository;
+    @Mock private tz.elmkusoma.common.ClassAccessGuard classAccessGuard;
+    @Mock private tz.elmkusoma.learner.repository.LearnerEnrollmentRepository learnerEnrollmentRepository;
+    @Mock private tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
+    @Mock private tz.elmkusoma.learner.service.NotificationService notificationService;
 
     private ResourceService service;
     private ResourceAnnotationService annotationService;
@@ -66,8 +70,9 @@ class ResourceManagementFlowTest {
         // Real extractor: metadata assertions run against actual encoded bytes.
         service = new ResourceService(resourceRepository, lessonRepository, tagRepository, taggingRepository,
                 savedResourceRepository, userRepository, courseRepository, courseModuleRepository,
-                mediaProxyService, new ResourceMetadataExtractor(), auditService);
-        annotationService = new ResourceAnnotationService(annotationRepository, resourceRepository, userRepository);
+                mediaProxyService, new ResourceMetadataExtractor(), auditService,
+                classAccessGuard, learnerEnrollmentRepository, institutionRepository, notificationService);
+        annotationService = new ResourceAnnotationService(annotationRepository, resourceRepository, userRepository, service);
         lenient().when(resourceRepository.save(any(Resource.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 

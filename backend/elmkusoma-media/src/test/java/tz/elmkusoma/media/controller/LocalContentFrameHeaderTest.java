@@ -39,9 +39,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         properties = {
                 "media.storage=local",
                 "media.local.dir=${java.io.tmpdir}/elmkusoma-frame-test",
-                // The filter Base64-decodes the shared HS256 secret; the yml
-                // fallback (a plain sentence) is not Base64, so the slice needs
-                // a real one — deployments inject JWT_SECRET from the environment.
+                // The filter Base64-decodes the shared HS256 secret. The yml has
+                // no default for jwt.secret (environment-authoritative), so this
+                // standalone slice injects one explicitly.
                 "jwt.secret=dGVzdC1qd3Qtc2VjcmV0LWtleS10aGF0LWlzLWJhc2U2NA=="
         })
 @AutoConfigureMockMvc

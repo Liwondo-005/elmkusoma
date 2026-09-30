@@ -443,7 +443,7 @@ public class LearnerController {
                     .findByInstitutionIdAndVisibilities(institutionId, allowedVisibilities)
                     .stream()
                     .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
-                    .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
+                    .filter(r -> resourceService.canRead(r, userId, userRole))
                     .collect(Collectors.toList());
             if (type != null && !type.isEmpty() && !"all".equalsIgnoreCase(type)) {
                 try {
@@ -479,7 +479,7 @@ public class LearnerController {
         return resourceRepository.findById(id)
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .filter(r -> institutionId.equals(r.getInstitutionId()))
-                .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
+                .filter(r -> resourceService.canRead(r, userId, userRole))
                 // Safe response DTO: storage internals stay on the server.
                 .map(r -> ResponseEntity.ok(ApiResponse.success(resourceService.toResponse(r))))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Resource not found")));
@@ -942,7 +942,7 @@ public class LearnerController {
             if (institutionId != null && !institutionId.equals(resource.getInstitutionId())) {
                 continue;
             }
-            if (!ResourceService.canSeeResource(resource, userId, userRole)) {
+            if (!resourceService.canRead(resource, userId, userRole)) {
                 continue;
             }
             Map<String, Object> material = new LinkedHashMap<>();
@@ -1076,7 +1076,7 @@ public class LearnerController {
             SearchResultResponse result;
             // Resource search honors the same visibility gate as every read path.
             java.util.function.Predicate<Resource> visibleToCaller =
-                    r -> ResourceService.canSeeResource(r, userId, userRole);
+                    r -> resourceService.canRead(r, userId, userRole);
 
             if ("COURSE".equalsIgnoreCase(type)) {
                 List<Course> filteredCourses = courseRepository.searchPublishedByInstitutionWithAllFilters(institutionId, query, level, category, fromDate, toDate)
@@ -1188,7 +1188,7 @@ public class LearnerController {
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 // Never probe another institution's resource, never leak invisible ones.
                 .filter(r -> institutionId.equals(r.getInstitutionId()))
-                .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
+                .filter(r -> resourceService.canRead(r, userId, userRole))
                 .orElse(null);
         if (resource == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Resource not found"));
@@ -1196,7 +1196,7 @@ public class LearnerController {
         List<Resource> related = resourceRepository.findRelatedResources(
                 institutionId, id, resource.getSubjectId(), resource.getResourceType());
         List<ResourceSearchResult> response = related.stream()
-                .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
+                .filter(r -> resourceService.canRead(r, userId, userRole))
                 .limit(6)
                 .map(this::toResourceSearchResult)
                 .collect(Collectors.toList());

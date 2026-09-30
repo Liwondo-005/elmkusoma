@@ -28,6 +28,7 @@ public class ResourceAnnotationService {
     private final ResourceAnnotationRepository annotationRepository;
     private final ResourceRepository resourceRepository;
     private final UserRepository userRepository;
+    private final ResourceService resourceService;
 
     @Transactional
     public ResourceAnnotationResponse createAnnotation(UUID resourceId, ResourceAnnotationRequest request,
@@ -81,6 +82,9 @@ public class ResourceAnnotationService {
         if (!ResourceService.canSeeResource(resource, userId, userRole)) {
             throw new SecurityException("Access denied to resource");
         }
+        // annotations ride on the same eligibility rule as the resource itself:
+        // an unentitled learner must not read private notes on hidden content
+        resourceService.assertEligible(resource, userId, userRole);
         return resource;
     }
 

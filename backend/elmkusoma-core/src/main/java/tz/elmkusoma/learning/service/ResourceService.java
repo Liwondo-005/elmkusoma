@@ -10,8 +10,12 @@ import org.springframework.web.multipart.MultipartFile;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.common.ClassAccessGuard;
 import tz.elmkusoma.course.repository.CourseModuleRepository;
 import tz.elmkusoma.course.repository.CourseRepository;
+import tz.elmkusoma.learner.domain.LearnerEnrollment;
+import tz.elmkusoma.learner.repository.LearnerEnrollmentRepository;
+import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.learning.domain.Resource;
 import tz.elmkusoma.learning.domain.ResourceTag;
 import tz.elmkusoma.learning.domain.ResourceTagging;
@@ -28,7 +32,10 @@ import tz.elmkusoma.liveclass.service.MediaProxyService;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
 import java.io.IOException;
@@ -58,10 +65,18 @@ public class ResourceService {
     private final MediaProxyService mediaProxyService;
     private final ResourceMetadataExtractor metadataExtractor;
     private final AuditService auditService;
+    // Existing domain models reused for governance, eligibility and notification
+    // audience — no new parallel services were introduced.
+    private final ClassAccessGuard classAccessGuard;
+    private final LearnerEnrollmentRepository learnerEnrollmentRepository;
+    private final InstitutionRepository institutionRepository;
+    private final NotificationService notificationService;
 
     private static final List<String> STUDENT_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION");
     private static final List<String> TEACHER_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
     private static final List<String> ADMIN_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
+    /** Roles whose resource reads must satisfy course/class eligibility. */
+    private static final List<String> LEARNER_ROLES = List.of("STUDENT", "OTHER_LEARNER", "LEARNER");
 
     // ── Create Resource (JSON path: URL-based types and pre-stored files) ──
     @Transactional
@@ -104,6 +119,7 @@ public class ResourceService {
         }
         log.info("Created resource: {} for institution: {}", resource.getId(), institutionId);
         auditResource(institutionId, userId, userRole, resource, AuditLog.AuditAction.CREATE, null);
+        notifyResourcePublished(resource, userId);
         return mapToResponse(resource);
     }
 
@@ -175,6 +191,7 @@ public class ResourceService {
             saved = resourceRepository.save(saved);
         }
         auditResource(institutionId, userId, userRole, saved, AuditLog.AuditAction.CREATE, null);
+        notifyResourcePublished(saved, userId);
         return mapToResponse(saved);
     }
 
@@ -353,13 +370,10 @@ public class ResourceService {
     @Transactional(readOnly = true)
     public ResourceResponse getResource(UUID resourceId, UUID institutionId, UUID userId, String userRole) {
         Resource resource = resourceRepository.findById(resourceId)
-                .filter(r -> r.getInstitutionId().equals(institutionId))
-                .filter(r -> !r.getIsDeleted())
+                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
 
-        if (!canAccessResource(resource, userId, userRole)) {
-            throw new SecurityException("Access denied to resource");
-        }
+        requireReadAccess(resource, institutionId, userId, userRole);
 
         return mapToResponse(resource);
     }
@@ -370,35 +384,66 @@ public class ResourceService {
                                                 UUID lessonId, UUID moduleId, UUID courseId,
                                                 String resourceType, String visibility,
                                                 int page, int size) {
+        return listResources(institutionId, userId, userRole, lessonId, moduleId, courseId,
+                resourceType, visibility, page, size, null);
+    }
+
+    /**
+     * Server-side listing with an optional title/description query. Jurisdiction
+     * admins (REGIONAL/DISTRICT) are scoped to the institutions of their
+     * jurisdiction; everyone else stays inside their own institution with the
+     * existing visibility rules, plus learner eligibility.
+     */
+    @Transactional(readOnly = true)
+    public List<ResourceResponse> listResources(UUID institutionId, UUID userId, String userRole,
+                                                UUID lessonId, UUID moduleId, UUID courseId,
+                                                String resourceType, String visibility,
+                                                int page, int size, String q) {
+        if (isJurisdictionRole(userRole)) {
+            return jurisdictionResources(userId, userRole).stream()
+                    .filter(r -> matchesContextFilters(r, lessonId, moduleId, courseId))
+                    .filter(r -> matchesQuery(r, q))
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+        }
+
+        if (institutionId == null) {
+            throw new SecurityException("Access denied to resources");
+        }
+
         List<String> allowedVisibilities = getAllowedVisibilities(userRole);
+        List<Resource> base;
 
         if (lessonId != null) {
-            return resourceRepository.findVisibleByLessonId(lessonId, allowedVisibilities)
+            base = resourceRepository.findVisibleByLessonId(lessonId, allowedVisibilities)
                     .stream()
-                    .filter(r -> canSeeResource(r, userId, userRole))
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
+                    // institution predicate: a foreign lesson id must never list
+                    // another tenant's resources
+                    .filter(r -> institutionId.equals(r.getInstitutionId()))
+                    .toList();
+        } else if (moduleId != null) {
+            base = resourceRepository.findVisibleByModuleId(moduleId, allowedVisibilities)
+                    .stream()
+                    .filter(r -> institutionId.equals(r.getInstitutionId()))
+                    .toList();
+        } else if (courseId != null) {
+            base = resourceRepository.findVisibleByCourseId(courseId, allowedVisibilities)
+                    .stream()
+                    .filter(r -> institutionId.equals(r.getInstitutionId()))
+                    .toList();
+        } else if (q != null && !q.isBlank()) {
+            base = resourceRepository.searchByInstitutionIdAndIsDeletedFalse(institutionId, q)
+                    .stream()
+                    .filter(r -> r.getVisibility() != null
+                            && allowedVisibilities.contains(r.getVisibility().name()))
+                    .toList();
+        } else {
+            base = resourceRepository.findByInstitutionIdAndVisibilities(institutionId, allowedVisibilities);
         }
 
-        if (moduleId != null) {
-            return resourceRepository.findVisibleByModuleId(moduleId, allowedVisibilities)
-                    .stream()
-                    .filter(r -> canSeeResource(r, userId, userRole))
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
-        }
-
-        if (courseId != null) {
-            return resourceRepository.findVisibleByCourseId(courseId, allowedVisibilities)
-                    .stream()
-                    .filter(r -> canSeeResource(r, userId, userRole))
-                    .map(this::mapToResponse)
-                    .collect(Collectors.toList());
-        }
-
-        List<Resource> resources = resourceRepository.findByInstitutionIdAndVisibilities(institutionId, allowedVisibilities);
-        return resources.stream()
-                .filter(r -> canSeeResource(r, userId, userRole))
+        return base.stream()
+                .filter(r -> matchesQuery(r, q))
+                .filter(r -> canRead(r, userId, userRole))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -407,6 +452,7 @@ public class ResourceService {
     @Transactional
     public ResourceResponse updateResource(UUID resourceId, ResourceRequest request, UUID institutionId, UUID userId, String userRole) {
         Resource resource = loadOwnedResource(resourceId, institutionId, userId, userRole);
+        Resource.ResourceVisibility previousVisibility = resource.getVisibility();
 
         if (request.getTitle() != null) resource.setTitle(request.getTitle());
         if (request.getDescription() != null) resource.setDescription(request.getDescription());
@@ -445,6 +491,7 @@ public class ResourceService {
 
         Resource savedResource = resourceRepository.save(resource);
         auditResource(institutionId, userId, userRole, savedResource, AuditLog.AuditAction.UPDATE, null);
+        notifyIfBecameLearnerVisible(previousVisibility, savedResource, userId);
         return mapToResponse(savedResource);
     }
 
@@ -501,6 +548,7 @@ public class ResourceService {
         }
 
         Long previousMediaId = resource.getMediaId();
+        Resource.ResourceVisibility previousVisibility = resource.getVisibility();
         resource.setResourceType(type);
         if (request.getTitle() != null) resource.setTitle(request.getTitle());
         if (request.getDescription() != null) resource.setDescription(request.getDescription());
@@ -552,6 +600,7 @@ public class ResourceService {
 
         Resource saved = resourceRepository.save(resource);
         auditResource(institutionId, userId, userRole, saved, AuditLog.AuditAction.UPDATE, null);
+        notifyIfBecameLearnerVisible(previousVisibility, saved, userId);
 
         // Best-effort cleanup of the replaced object in the existing media store.
         if (previousMediaId != null && !previousMediaId.equals(saved.getMediaId())) {
@@ -671,7 +720,7 @@ public class ResourceService {
                 .filter(Objects::nonNull)
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
-                .filter(r -> institutionId == null || canSeeResource(r, studentId, userRole))
+                .filter(r -> institutionId == null || canRead(r, studentId, userRole))
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -751,16 +800,258 @@ public class ResourceService {
         return new ResourceDownload(resolveContentType(resource), buildDownloadFileName(resource), bytes);
     }
 
-    /** Read gate for content endpoints: institution + state + visibility. */
+    /**
+     * Read gate for content endpoints: jurisdiction → institution → state →
+     * visibility → learner eligibility. Out-of-scope reads fail exactly like
+     * before — 404 for institution/jurisdiction misses (no existence oracle),
+     * 403 for visibility/eligibility denials.
+     */
     public Resource requireVisible(UUID resourceId, UUID institutionId, UUID userId, String userRole) {
         Resource resource = resourceRepository.findById(resourceId)
-                .filter(r -> r.getInstitutionId().equals(institutionId))
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
+        requireReadAccess(resource, institutionId, userId, userRole);
+        return resource;
+    }
+
+    private void requireReadAccess(Resource resource, UUID institutionId, UUID userId, String userRole) {
+        if (isJurisdictionRole(userRole)) {
+            // Regional/district governance: read inside the authorized
+            // jurisdiction only, regardless of which institution the row
+            // belongs to. Never reachable by merely knowing a UUID.
+            if (!withinJurisdiction(resource, userId, userRole)) {
+                throw new ResourceNotFoundException("Resource not found");
+            }
+            return;
+        }
+        if (institutionId == null || !institutionId.equals(resource.getInstitutionId())) {
+            throw new ResourceNotFoundException("Resource not found");
+        }
         if (!canSeeResource(resource, userId, userRole)) {
             throw new SecurityException("Access denied to resource");
         }
+        assertEligible(resource, userId, userRole);
+    }
+
+    // ── Jurisdiction scope (reuses the OversightController region/district rule) ──
+
+    private static boolean isJurisdictionRole(String userRole) {
+        return "REGIONAL_ADMIN".equals(userRole) || "DISTRICT_ADMIN".equals(userRole);
+    }
+
+    /** Region (regional admin) or district (district admin) match against the resource's institution. */
+    private boolean withinJurisdiction(Resource resource, UUID userId, String userRole) {
+        if (resource == null || resource.getInstitutionId() == null || userId == null) {
+            return false;
+        }
+        Institution institution = institutionRepository.findByIdAndIsDeletedFalse(resource.getInstitutionId())
+                .orElse(null);
+        if (institution == null) {
+            return false;
+        }
+        if ("REGIONAL_ADMIN".equals(userRole)) {
+            UUID userRegionId = userRepository.findById(userId).map(User::getRegionId).orElse(null);
+            return userRegionId != null && userRegionId.equals(institution.getRegionId());
+        }
+        if ("DISTRICT_ADMIN".equals(userRole)) {
+            UUID userDistrictId = userRepository.findById(userId).map(User::getDistrictId).orElse(null);
+            return userDistrictId != null && userDistrictId.equals(institution.getDistrictId());
+        }
+        return false;
+    }
+
+    /** All non-deleted resources of the institutions inside the caller's jurisdiction. */
+    private List<Resource> jurisdictionResources(UUID userId, String userRole) {
+        if (userId == null) {
+            return List.of();
+        }
+        if ("REGIONAL_ADMIN".equals(userRole)) {
+            UUID regionId = userRepository.findById(userId).map(User::getRegionId).orElse(null);
+            if (regionId == null) {
+                return List.of();
+            }
+            List<UUID> institutionIds = institutionRepository.findByRegionIdAndIsDeletedFalse(regionId)
+                    .stream().map(Institution::getId).toList();
+            return institutionIds.isEmpty()
+                    ? List.of()
+                    : resourceRepository.findByInstitutionIdInAndIsDeletedFalse(institutionIds);
+        }
+        if ("DISTRICT_ADMIN".equals(userRole)) {
+            UUID districtId = userRepository.findById(userId).map(User::getDistrictId).orElse(null);
+            if (districtId == null) {
+                return List.of();
+            }
+            List<UUID> institutionIds = institutionRepository.findByDistrictIdAndIsDeletedFalse(districtId)
+                    .stream().map(Institution::getId).toList();
+            return institutionIds.isEmpty()
+                    ? List.of()
+                    : resourceRepository.findByInstitutionIdInAndIsDeletedFalse(institutionIds);
+        }
+        return List.of();
+    }
+
+    private static boolean matchesContextFilters(Resource resource, UUID lessonId, UUID moduleId, UUID courseId) {
+        if (lessonId != null) {
+            return lessonId.equals(resource.getLessonId());
+        }
+        if (moduleId != null) {
+            return moduleId.equals(resource.getModuleId());
+        }
+        if (courseId != null) {
+            return courseId.equals(resource.getCourseId());
+        }
+        return true;
+    }
+
+    private static boolean matchesQuery(Resource resource, String q) {
+        if (q == null || q.isBlank()) {
+            return true;
+        }
+        String needle = q.trim().toLowerCase(Locale.ROOT);
+        if (resource.getTitle() != null && resource.getTitle().toLowerCase(Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        return resource.getDescription() != null
+                && resource.getDescription().toLowerCase(Locale.ROOT).contains(needle);
+    }
+
+    // ── Learner eligibility (existing enrollment/class-membership model) ──
+
+    /**
+     * A learner may only read a resource when they belong to the audiences the
+     * resource is attached to: course → {@code learner_enrollments}, lesson →
+     * class membership via the existing {@link ClassAccessGuard}. Standalone
+     * resources (no course/lesson link) stay governed by institution +
+     * visibility alone. Teachers/admins are never subject to this gate.
+     */
+    public void assertEligible(Resource resource, UUID userId, String userRole) {
+        if (resource == null || userId == null || !LEARNER_ROLES.contains(userRole)) {
+            return;
+        }
+        if (resource.getCourseId() != null) {
+            boolean enrolled = learnerEnrollmentRepository
+                    .findByUserIdAndCourseIdAndIsDeletedFalse(userId, resource.getCourseId())
+                    .isPresent();
+            if (!enrolled) {
+                throw new SecurityException("You are not enrolled in the course for this resource");
+            }
+        }
+        if (resource.getLessonId() != null) {
+            lessonRepository.findById(resource.getLessonId())
+                    .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                    .ifPresent(lesson -> {
+                        if (lesson.getClassGroupId() != null) {
+                            String email = userRepository.findById(userId).map(User::getEmail).orElse(null);
+                            classAccessGuard.assertLearnerCanAccessClass(email, lesson.getClassGroupId());
+                        }
+                    });
+        }
+    }
+
+    /** Non-throwing form for list filters. */
+    public boolean isEligible(Resource resource, UUID userId, String userRole) {
+        try {
+            assertEligible(resource, userId, userRole);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** Single read predicate for callers outside this service: visibility + eligibility. */
+    public boolean canRead(Resource resource, UUID userId, String userRole) {
+        return canSeeResource(resource, userId, userRole) && isEligible(resource, userId, userRole);
+    }
+
+    /**
+     * Analytics scope: institution admins own their institution's numbers and
+     * teachers own their own resources — another teacher must never read
+     * engagement data outside their scope.
+     */
+    public Resource requireAnalyticsAccess(UUID resourceId, UUID institutionId, UUID userId, String userRole) {
+        Resource resource = requireVisible(resourceId, institutionId, userId, userRole);
+        if (!isAdminRole(userRole)
+                && (resource.getUploadedBy() == null || !resource.getUploadedBy().equals(userId))) {
+            throw new SecurityException("Resource analytics are limited to the resource owner");
+        }
         return resource;
+    }
+
+    // ── Publish notifications (existing NotificationService, server-side audience) ──
+
+    /** Hidden content is never announced; everything else notifies the eligible audience. */
+    private void notifyResourcePublished(Resource resource, UUID publisherId) {
+        try {
+            if (resource == null || resource.getVisibility() == null) {
+                return;
+            }
+            String visibility = resource.getVisibility().name();
+            if ("PRIVATE".equals(visibility) || "DRAFT".equals(visibility)) {
+                return;
+            }
+            String title = "New resource available";
+            String message = "New resource available: " + resource.getTitle();
+
+            List<UUID> audience = null;
+            boolean institutionFallback = false;
+
+            if (resource.getLessonId() != null) {
+                audience = lessonRepository.findById(resource.getLessonId())
+                        .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                        .map(l -> classAccessGuard.resolveClassStudentUserIds(l.getClassGroupId()))
+                        .orElse(List.of());
+                if (audience.isEmpty()) {
+                    // no class audience modelled → same fallback the lesson
+                    // publisher uses (and the guard's own fail-open read rule)
+                    institutionFallback = true;
+                }
+            } else if (resource.getCourseId() != null) {
+                audience = learnerEnrollmentRepository.findByCourseIdAndIsDeletedFalse(resource.getCourseId())
+                        .stream()
+                        .map(LearnerEnrollment::getUserId)
+                        .distinct()
+                        .toList();
+                if (audience.isEmpty()) {
+                    // course eligibility is strict — nobody is entitled yet,
+                    // so nobody gets announced
+                    return;
+                }
+            } else {
+                institutionFallback = true;
+            }
+
+            if (institutionFallback) {
+                notificationService.notifyInstitutionStudentsExcluding(
+                        resource.getInstitutionId(), publisherId, title, message,
+                        "RESOURCE_PUBLISHED", "resource", resource.getId());
+                return;
+            }
+            for (UUID studentUserId : audience) {
+                if (studentUserId == null || studentUserId.equals(publisherId)) {
+                    continue;
+                }
+                notificationService.notifyUser(studentUserId, title, message,
+                        "RESOURCE_PUBLISHED", "resource", resource.getId());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to notify learners about resource {}: {}",
+                    resource != null ? resource.getId() : null, e.getMessage());
+        }
+    }
+
+    private void notifyIfBecameLearnerVisible(Resource.ResourceVisibility previousVisibility,
+                                              Resource resource, UUID publisherId) {
+        if (resource == null || resource.getVisibility() == null) {
+            return;
+        }
+        boolean wasHidden = previousVisibility == null
+                || "PRIVATE".equals(previousVisibility.name())
+                || "DRAFT".equals(previousVisibility.name());
+        boolean isHidden = "PRIVATE".equals(resource.getVisibility().name())
+                || "DRAFT".equals(resource.getVisibility().name());
+        if (wasHidden && !isHidden) {
+            notifyResourcePublished(resource, publisherId);
+        }
     }
 
     /** Students must never receive a resource that is still processing or failed. */

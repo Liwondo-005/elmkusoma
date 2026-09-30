@@ -32,6 +32,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -78,6 +79,15 @@ class EventD03ComplianceTest {
 
     @Autowired
     private EventRepository eventRepository;
+
+    /** Same probe LiveKitRealServerTest uses — TCP reachability of the dev server. */
+    private static boolean liveKitListening() {
+        try (java.net.Socket s = new java.net.Socket("127.0.0.1", 7880)) {
+            return s.isConnected();
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     @BeforeEach
     void seedCrossInstitutionFixtures() {
@@ -544,6 +554,11 @@ class EventD03ComplianceTest {
 
     @Test
     void joinEvent_RegisteredLive_Returns200WithToken() throws Exception {
+        // Environment-dependent: liveKitAvailable is only true when a LiveKit
+        // server answers on 7880 (same guard LiveKitRealServerTest already
+        // uses). Runs in full when the server is up; skips, never weakens,
+        // when it is absent.
+        assumeTrue(liveKitListening(), "LiveKit not listening on 7880 — start docker-compose.livekit.yml");
         String eventId = createEvent(
                 "{\"title\":\"Join Live Event\",\"eventType\":\"LECTURE\","
                         + "\"startsAt\":\"" + future() + "\",\"status\":\"PUBLISHED\","

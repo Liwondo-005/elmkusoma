@@ -31,7 +31,7 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/v1/resources")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
 @Tag(name = "Resource Management", description = "Unified resource management for learning content")
 public class ResourceController {
 
@@ -39,14 +39,31 @@ public class ResourceController {
     private final ResourceAnnotationService annotationService;
     private final ResourceAnalyticsService analyticsService;
 
+    /**
+     * Institution-scoped endpoints must never run with a missing scope.
+     * {@code institutionId} arrives as an optional request attribute (a
+     * jurisdiction admin has no institution), and method security already
+     * denies those roles — this guard covers the remaining case of an
+     * institution-less caller whose role IS allowed: without it a null scope
+     * would either bypass institution checks or blow up as a 500 deep inside
+     * the service. Backend stays authoritative: absent scope ⇒ 403.
+     */
+    private UUID requireInstitutionScope(UUID institutionId) {
+        if (institutionId == null) {
+            throw new SecurityException("Access denied: institution scope required");
+        }
+        return institutionId;
+    }
+
     @PostMapping
     @Operation(summary = "Create a new resource")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<ResourceResponse>> createResource(
             @Valid @RequestBody ResourceRequest request,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userRole", required = false) String userRole) {
+        requireInstitutionScope(institutionId);
         ResourceResponse response = resourceService.createResource(request, institutionId, userId, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Resource created successfully", response));
@@ -58,10 +75,11 @@ public class ResourceController {
     public ResponseEntity<ApiResponse<ResourceResponse>> createResourceWithFile(
             @RequestPart("request") @Valid ResourceRequest request,
             @RequestPart("file") MultipartFile file,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "userRole", required = false) String userRole,
             @RequestHeader(value = "Authorization", required = false) String authorization) {
+        requireInstitutionScope(institutionId);
         ResourceResponse response = resourceService.createResourceWithFile(
                 request, file, institutionId, userId, userRole, authorization);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -70,10 +88,10 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}")
     @Operation(summary = "Get a specific resource")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<ApiResponse<ResourceResponse>> getResource(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
         ResourceResponse response = resourceService.getResource(resourceId, institutionId, userId, userRole);
@@ -82,10 +100,10 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}/content-url")
     @Operation(summary = "Authorized view URL for a resource's real content")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<ApiResponse<String>> getResourceContentUrl(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole,
             @RequestHeader(value = "Authorization", required = false) String authorization) {
@@ -95,10 +113,10 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}/download")
     @Operation(summary = "Authorized download of a resource's real content")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<byte[]> downloadResource(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole,
             @RequestHeader(value = "Authorization", required = false) String authorization) {
@@ -120,9 +138,9 @@ public class ResourceController {
 
     @GetMapping
     @Operation(summary = "List resources")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<ApiResponse<List<ResourceResponse>>> listResources(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole,
             @RequestParam(required = false) UUID lessonId,
@@ -130,10 +148,11 @@ public class ResourceController {
             @RequestParam(required = false) UUID courseId,
             @RequestParam(required = false) String resourceType,
             @RequestParam(required = false) String visibility,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         List<ResourceResponse> resources = resourceService.listResources(
-                institutionId, userId, userRole, lessonId, moduleId, courseId, resourceType, visibility, page, size);
+                institutionId, userId, userRole, lessonId, moduleId, courseId, resourceType, visibility, page, size, q);
         return ResponseEntity.ok(ApiResponse.success(resources));
     }
 
@@ -143,9 +162,10 @@ public class ResourceController {
     public ResponseEntity<ApiResponse<ResourceResponse>> updateResource(
             @PathVariable UUID resourceId,
             @Valid @RequestBody ResourceRequest request,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         ResourceResponse response = resourceService.updateResource(resourceId, request, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Resource updated successfully", response));
     }
@@ -157,10 +177,11 @@ public class ResourceController {
             @PathVariable UUID resourceId,
             @RequestPart("request") @Valid ResourceRequest request,
             @RequestPart("file") MultipartFile file,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole,
             @RequestHeader(value = "Authorization", required = false) String authorization) {
+        requireInstitutionScope(institutionId);
         ResourceResponse response = resourceService.updateResourceWithFile(
                 resourceId, request, file, institutionId, userId, userRole, authorization);
         return ResponseEntity.ok(ApiResponse.success("Resource updated successfully", response));
@@ -171,9 +192,10 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<Void>> deleteResource(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         resourceService.deleteResource(resourceId, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Resource deleted successfully", null));
     }
@@ -184,9 +206,10 @@ public class ResourceController {
     public ResponseEntity<ApiResponse<ResourceResponse>> addTag(
             @PathVariable UUID resourceId,
             @RequestParam String tagName,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         ResourceResponse response = resourceService.addTag(resourceId, tagName, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Tag added successfully", response));
     }
@@ -197,9 +220,10 @@ public class ResourceController {
     public ResponseEntity<ApiResponse<Void>> removeTag(
             @PathVariable UUID resourceId,
             @PathVariable UUID tagId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         resourceService.removeTag(resourceId, tagId, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Tag removed successfully", null));
     }
@@ -209,9 +233,10 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<Void>> saveResource(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         resourceService.saveResource(userId, resourceId, institutionId, userRole);
         return ResponseEntity.ok(ApiResponse.success("Resource saved successfully", null));
     }
@@ -230,9 +255,10 @@ public class ResourceController {
     @Operation(summary = "Get student's saved resources")
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ResourceResponse>>> getSavedResources(
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         List<ResourceResponse> resources = resourceService.getSavedResources(userId, institutionId, userRole);
         return ResponseEntity.ok(ApiResponse.success(resources));
     }
@@ -254,9 +280,10 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ResourceAnnotationResponse>>> listAnnotations(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         List<ResourceAnnotationResponse> annotations =
                 annotationService.listAnnotations(resourceId, institutionId, userId, userRole);
         return ResponseEntity.ok(ApiResponse.success(annotations));
@@ -268,9 +295,10 @@ public class ResourceController {
     public ResponseEntity<ApiResponse<ResourceAnnotationResponse>> createAnnotation(
             @PathVariable UUID resourceId,
             @Valid @RequestBody ResourceAnnotationRequest request,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         ResourceAnnotationResponse response =
                 annotationService.createAnnotation(resourceId, request, institutionId, userId, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -283,8 +311,9 @@ public class ResourceController {
     public ResponseEntity<ApiResponse<Void>> deleteAnnotation(
             @PathVariable UUID resourceId,
             @PathVariable UUID annotationId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId) {
+        requireInstitutionScope(institutionId);
         annotationService.deleteAnnotation(annotationId, institutionId, userId);
         return ResponseEntity.ok(ApiResponse.success("Annotation deleted successfully", null));
     }
@@ -304,12 +333,15 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<ResourceAnalyticsSummary>> getAnalyticsSummary(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole,
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate) {
-        resourceService.requireVisible(resourceId, institutionId, userId, userRole);
+        requireInstitutionScope(institutionId);
+        // Owner-or-admin scope: a different teacher must never read another
+        // resource's engagement numbers.
+        resourceService.requireAnalyticsAccess(resourceId, institutionId, userId, userRole);
         ResourceAnalyticsSummary summary =
                 analyticsService.getSummary(resourceId, institutionId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(summary));
@@ -320,12 +352,13 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<ResourceAnalytics>>> getAnalyticsDaily(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole,
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate) {
-        resourceService.requireVisible(resourceId, institutionId, userId, userRole);
+        requireInstitutionScope(institutionId);
+        resourceService.requireAnalyticsAccess(resourceId, institutionId, userId, userRole);
         List<ResourceAnalytics> rows =
                 analyticsService.getDaily(resourceId, institutionId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(rows));
@@ -336,11 +369,12 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<Boolean>> recordView(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
         // The recorder only records — summaries stay restricted to the roles
         // allowed on GET /analytics above.
+        requireInstitutionScope(institutionId);
         resourceService.requireVisible(resourceId, institutionId, userId, userRole);
         analyticsService.recordView(resourceId, institutionId);
         return ResponseEntity.ok(ApiResponse.success("View recorded", true));
@@ -351,9 +385,10 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<Boolean>> recordDownload(
             @PathVariable UUID resourceId,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         resourceService.requireVisible(resourceId, institutionId, userId, userRole);
         analyticsService.recordDownload(resourceId, institutionId);
         return ResponseEntity.ok(ApiResponse.success("Download recorded", true));
@@ -364,9 +399,10 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<ResourceResponse>>> reorderResources(
             @Valid @RequestBody List<ReorderRequest> items,
-            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        requireInstitutionScope(institutionId);
         List<tz.elmkusoma.learning.service.ResourceService.ReorderItem> serviceItems = items.stream()
                 .map(r -> new tz.elmkusoma.learning.service.ResourceService.ReorderItem(r.id(), r.sortOrder()))
                 .collect(Collectors.toList());

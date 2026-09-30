@@ -76,7 +76,10 @@ media:
     base-url: ${MEDIA_LOCAL_BASE_URL:http://localhost:8083}
 
 jwt:
-  secret: ${JWT_SECRET:your-256-bit-secret-key-change-in-production-elmkusoma-media-service}
+  # Required, environment-authoritative: same contract as elmkusoma-core.
+  # No embedded default — a missing JWT_SECRET must fail startup loudly
+  # instead of silently signing with an invalid (non-Base64) placeholder.
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
 
 logging:

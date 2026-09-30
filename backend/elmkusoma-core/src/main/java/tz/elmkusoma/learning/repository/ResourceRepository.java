@@ -17,6 +17,9 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
 
     List<Resource> findByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
+    /** Jurisdiction-scoped listing (regional/district governance reads). */
+    List<Resource> findByInstitutionIdInAndIsDeletedFalse(java.util.Collection<UUID> institutionIds);
+
     List<Resource> findByLessonIdAndIsDeletedFalse(UUID lessonId);
 
     List<Resource> findByModuleIdAndIsDeletedFalse(UUID moduleId);

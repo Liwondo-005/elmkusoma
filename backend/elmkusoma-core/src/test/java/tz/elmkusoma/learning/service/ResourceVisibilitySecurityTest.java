@@ -58,6 +58,14 @@ class ResourceVisibilitySecurityTest {
     private ResourceMetadataExtractor metadataExtractor;
     @Mock
     private tz.elmkusoma.audit.service.AuditService auditService;
+    @Mock
+    private tz.elmkusoma.common.ClassAccessGuard classAccessGuard;
+    @Mock
+    private tz.elmkusoma.learner.repository.LearnerEnrollmentRepository learnerEnrollmentRepository;
+    @Mock
+    private tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
+    @Mock
+    private tz.elmkusoma.learner.service.NotificationService notificationService;
 
     @InjectMocks
     private ResourceService service;
