@@ -2224,7 +2224,7 @@ export const institutions: Institution[] = [
     educationLevel: "Colleges",
     description: "Focused on transport logistics, maritime studies and automotive engineering.",
     location: "Dar es Salaam",
-    images: ["/images/schools/colleges/tit-1.jpg", "/images/schools/colleges/tit-2.jpg", "/images/schools/colleges/tit-3.jpg"],
+    images: ["/images/schools/colleges/nit-1.jpg", "/images/schools/colleges/nit-2.jpg", "/images/schools/colleges/nit-3.jpg"],
     ownership: "Government",
     verified: true,
     students: 2100,
