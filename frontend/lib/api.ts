@@ -1541,6 +1541,31 @@ export const courseApi = {
       method: "DELETE",
     }),
 
+  uploadThumbnail: async (file: File): Promise<{ url: string }> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    const headers: Record<string, string> = {}
+    const token = getToken()
+    const institutionId = getInstitutionId()
+    if (token) headers["Authorization"] = `Bearer ${token}`
+    if (institutionId) headers["X-Institution-Id"] = institutionId
+    const res = await fetch(`${API_BASE_URL}/v1/courses/thumbnail`, {
+      method: "POST",
+      headers,
+      body: formData,
+    })
+    let body: Record<string, unknown>
+    try {
+      body = await res.json()
+    } catch {
+      throw new ApiRequestError(`Server returned non-JSON response (${res.status})`, res.status, null)
+    }
+    if (!res.ok || body.success === false) {
+      throw new ApiRequestError(String(body.error || body.message || `Upload failed (${res.status})`), res.status, body)
+    }
+    return body.data as { url: string }
+  },
+
   togglePublish: (courseId: string) =>
     request<Course>(`/v1/courses/${courseId}/toggle-publish`, {
       method: "POST",

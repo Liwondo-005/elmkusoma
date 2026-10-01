@@ -6320,7 +6320,13 @@
       "category": "Category",
       "selectCategory": "Select category",
       "published3": "Published",
-      "featured": "Featured"
+      "featured": "Featured",
+      "image": "Picha ya kozi",
+      "imageHint": "Inaonyeshwa kwenye kadi za kozi za ukurasa wa mwanzo. JPG, PNG, WebP au GIF hadi MB 5.",
+      "chooseImage": "Chagua picha",
+      "uploading": "Inapakia…",
+      "removeImage": "Ondoa picha",
+      "imageUploadFailed": "Kupakia picha kumeshindwa"
     },
     "departments": {
       "failedToLoadDepartments": "Imeshindwa to pakia departments",

@@ -51,6 +51,7 @@ public class SecurityConfig {
             "/v1/institutions/{id}",
             "/v1/webhooks/livekit",
             "/v1/webhooks/**",
+            "/v1/content/**",
             "/ws/**"
     };
 

@@ -6430,7 +6430,13 @@
       "category": "Category",
       "selectCategory": "Select category",
       "published3": "Published",
-      "featured": "Featured"
+      "featured": "Featured",
+      "image": "Course image",
+      "imageHint": "Shown on homepage course cards. JPG, PNG, WebP, or GIF up to 5 MB.",
+      "chooseImage": "Choose image",
+      "uploading": "Uploading…",
+      "removeImage": "Remove image",
+      "imageUploadFailed": "Image upload failed"
     },
     "departments": {
       "failedToLoadDepartments": "Failed to load departments",
