@@ -604,7 +604,17 @@ export const learnerApi = {
       body: JSON.stringify(data),
     }),
   getDashboard: () => learnerFetch<DashboardData>("/v1/learner/me/dashboard"),
-  getCourses: () => learnerFetch<CourseSummary[]>("/v1/learner/courses"),
+  getCourses: async (params?: { page?: number; size?: number }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.page != null) searchParams.set("page", String(Math.max(0, params.page - 1)))
+    if (params?.size != null) searchParams.set("size", String(params.size))
+    const qs = searchParams.toString()
+    // Backend returns a Spring Page ({content: [...]}) since pagination;
+    // accept a plain array too for backward compatibility.
+    const data = await learnerFetch<{ content?: CourseSummary[] } | CourseSummary[]>(`/v1/learner/courses${qs ? `?${qs}` : ""}`)
+    if (Array.isArray(data)) return data
+    return data.content ?? []
+  },
   getCourse: (id: string) => learnerFetch<CourseDetail>(`/v1/learner/courses/${id}`),
   getCourseModules: (courseId: string) => learnerFetch<CourseModuleSummary[]>(`/v1/learner/courses/${courseId}/modules`),
   getModuleLessons: (moduleId: string) => learnerFetch<CourseLesson[]>(`/v1/learner/courses/modules/${moduleId}/lessons`),

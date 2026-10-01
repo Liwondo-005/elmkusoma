@@ -33,8 +33,8 @@ export default function LearnerCoursesPage() {
         learnerApi.getCourses().catch(() => []),
         learnerApi.getEnrollments().catch(() => []),
       ])
-      setCourses(coursesData)
-      setEnrollments(enrollmentsData)
+      setCourses(Array.isArray(coursesData) ? coursesData : [])
+      setEnrollments(Array.isArray(enrollmentsData) ? enrollmentsData : [])
     } catch {
       setError(tc("error.load"))
     } finally {
