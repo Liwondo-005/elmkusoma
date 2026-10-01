@@ -117,7 +117,6 @@ Save To: frontend/public/images/schools/universities/
 | udsm-1.jpg | "university dar es salaam" |
 | udsm-2.jpg | "university campus africa" |
 | udsm-3.jpg | "university graduation" |
-| udsm-4.jpg | "university library" |
 | udom-1.jpg | "university dodoma" |
 | udom-2.jpg | "university campus building" |
 | udom-3.jpg | "university students lecture" |
