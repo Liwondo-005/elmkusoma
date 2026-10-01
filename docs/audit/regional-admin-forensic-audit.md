@@ -32,7 +32,7 @@
 - Test accounts (password `password` for all; hashes reset to the admin hash — documented environment fixture, not product behaviour):
   `regional.dar@test.com` (REGIONAL_ADMIN, Dar es Salaam), `regional.aru@test.com` (Arusha), `district.ila@test.com` (Ilala district), `district.arc@test.com`, `admin@elmkusoma.go.tz` (ADMIN), `teacherb@test.com` (TEACHER), `shamsa@gmail.com` (STUDENT, used only for the proxy-bounce test).
 - **Seeding gap repaired (FACT):** every regional institution had **0 active memberships**, so announcement recipient resolution could only ever return 409. One existing teacher (`teacherb@test.com`) was attached to *Test Primary School Ilala* exactly the way `AuthServiceImpl.ensureMembership` does at registration (same SQL run, `UPDATE users.institution_id` + `INSERT institution_memberships`). Label: environment fixture, recorded here for full disclosure.
-- Flyway state: `V110` row in `flyway_schema_history` renumbered to `V111` (source renumbered it in commit `4067900`), stale `target/classes` duplicates cleared with `mvn clean`. `V114__seed_geographic_jurisdiction_links.sql` applied (renumbered from V112 after upstream landed their own `V112`/`V113`; the local history row for the superseded version was removed and the idempotent seed re-applied on the next boot together with upstream's migrations). All pre-existing breakage, repaired — not introduced by this work.
+- Flyway state: `V110` row in `flyway_schema_history` renumbered to `V111` (source renumbered it in commit `4067900`), stale `target/classes` duplicates cleared with `mvn clean`. `V115__seed_geographic_jurisdiction_links.sql` applied (renumbered from V112, then V114, as upstream claimed those numbers with their own `V112`/`V113`/`V114`; the local history row for the superseded version was removed and the idempotent seed re-applied on the next boot together with upstream's migrations). All pre-existing breakage, repaired — not introduced by this work.
 
 ---
 
@@ -119,7 +119,7 @@ Recipient `teacherb@test.com`: `GET /v1/notifications/unread-count` → **`{"cou
 | 16 | Command palette entries for regional role | IMPLEMENTED | `frontend/components/ui/command-palette.tsx:31,195,377` | type-checked + build green |
 | 17 | Workspace resolution & role routing | IMPLEMENTED | `frontend/lib/workspace.ts:26` → `/dashboard/district`; regional entries added earlier for `Regional Admin` | E2E #6 |
 | 18 | Platform-admin institution geography fields | IMPLEMENTED | `InstitutionSummaryResponse`/`InstitutionDetailResponse` + `PlatformAdminService` expose `regionId/districtId`; `institution-form-modal.tsx` region/district selects | build/type gates |
-| 19 | Geographic seed data | IMPLEMENTED | `V114__seed_geographic_jurisdiction_links.sql` (applied, after upstream V112/V113) | §B district→institution linkage |
+| 19 | Geographic seed data | IMPLEMENTED | `V115__seed_geographic_jurisdiction_links.sql` (applied after upstream V112/V113/V114) | §B district→institution linkage |
 | 20 | i18n for new chrome | IMPLEMENTED | `nav` (18), `commandPalette.nav` (9), `platformAdmin.institutionForm` (6) keys in `en.json` + `sw.json` | insert-only diff verified earlier |
 | 21 | Regional search (scoped) | IMPLEMENTED | `…/regional-admin/search/page.tsx` (was an empty directory = dead link; page now written) + `GET /v1/regional-admin/search` | §C leak tests, E2E #5 |
 | 22 | Jurisdiction-leak fix in shared oversight API | IMPLEMENTED | `OversightController.verifyRegionScope/verifyDistrictScope` | §C oversight 403/200 matrix |
@@ -139,7 +139,7 @@ Recipient `teacherb@test.com`: `GET /v1/notifications/unread-count` → **`{"cou
 | CORS allow-list hardcoded to `localhost:3000` | Pre-existing | **Changed** to origin patterns `http://localhost:*` / `http://127.0.0.1:*` (+prod domains), credentials preserved | preflight from `:3001` → 200 + `Access-Control-Allow-Origin` |
 | E2E config pinned to `localhost:3000` | Pre-existing | **Made configurable** via `PLAYWRIGHT_BASE_URL` (defaults unchanged) | `playwright.config.ts` |
 | Flyway “more than one migration with version 105” + `V110/V111` numbering drift | Pre-existing | **Repaired** (`mvn clean`, history row renumber) | clean boot, V110–V111 applied |
-| Version clash on `V112` after upstream added their own `V112`/`V113` during integration | Integration | **Renumbered** this work's migration to `V114`, dropped the superseded history row, re-applied idempotently | boot log: `Successfully applied 3 migrations … now at version v114` |
+| Version clash on `V112` after upstream added their own `V112`/`V113` during integration | Integration | **Renumbered** this work's migration to `V115` (after upstream claimed V112–V114), dropped the superseded history row, re-applied idempotently | boot log: `Successfully applied migrations … now at version v115` |
 | District Admin lands on `/dashboard/district`, not the regional workspace | **Pre-existing product decision** (`workspace.ts:26`, “District Education Oversight”) | **Kept** — regional workspace remains deep-linkable for that role (proxy allows both) | E2E #6 |
 | Zero memberships in regional institutions → announcements always 409 | Pre-existing seeding gap | Documented + one membership fixture added (§2) | §D/§E now exercise happy path |
 
