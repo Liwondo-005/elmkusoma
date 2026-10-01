@@ -28,6 +28,7 @@ export function CommandPalette() {
   const isOrgAdmin = user?.role === "Institution Admin"
   const isTeacher = user?.role === "Teacher" || user?.role === "Instructor"
   const isLearner = user?.role === "Other Learner" || user?.role === "Student"
+  const isRegional = user?.role === "Regional Admin" || user?.role === "District Admin"
 
   const navigationItems = useMemo((): ItemType[] => {
     const items: ItemType[] = [
@@ -191,8 +192,94 @@ export function CommandPalette() {
       )
     }
 
+    if (isRegional) {
+      items.push(
+        {
+          id: "nav-regional-overview",
+          title: tn("overview"),
+          description: t("nav.governanceDesc"),
+          category: t("categories.navigation"),
+          icon: <Shield className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin"),
+          keywords: ["regional", "district", "overview", "command center", "governance"],
+        },
+        {
+          id: "nav-regional-districts",
+          title: tn("districts"),
+          description: t("nav.districtsDesc"),
+          category: t("categories.navigation"),
+          icon: <Shield className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/districts"),
+          keywords: ["district", "geography", "region"],
+        },
+        {
+          id: "nav-regional-institutions",
+          title: tn("institutions"),
+          description: t("nav.institutionsDesc"),
+          category: t("categories.navigation"),
+          icon: <Users className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/institutions"),
+          keywords: ["institution", "school", "find"],
+        },
+        {
+          id: "nav-regional-learners",
+          title: tn("learners"),
+          description: t("nav.learnersDesc"),
+          category: t("categories.navigation"),
+          icon: <GraduationCap className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/learners"),
+          keywords: ["learner", "student", "find"],
+        },
+        {
+          id: "nav-regional-teachers",
+          title: tn("teachers"),
+          description: t("nav.teachersDesc"),
+          category: t("categories.navigation"),
+          icon: <Users className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/teachers"),
+          keywords: ["teacher", "instructor", "find"],
+        },
+        {
+          id: "nav-regional-reports",
+          title: tn("reports"),
+          description: t("nav.reportsDesc"),
+          category: t("categories.navigation"),
+          icon: <ClipboardList className="size-4" />,
+          action: () => router.push("/oversight/reports"),
+          keywords: ["report", "analytics", "open"],
+        },
+        {
+          id: "nav-regional-verification",
+          title: tn("verification"),
+          description: t("nav.verificationDesc"),
+          category: t("categories.navigation"),
+          icon: <ClipboardCheck className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/governance/verification"),
+          keywords: ["verification", "review", "governance"],
+        },
+        {
+          id: "nav-regional-data-quality",
+          title: tn("dataQuality"),
+          description: t("nav.dataQualityDesc"),
+          category: t("categories.navigation"),
+          icon: <Shield className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/governance/data-quality"),
+          keywords: ["data quality", "governance", "open"],
+        },
+        {
+          id: "nav-regional-search",
+          title: tn("search"),
+          description: t("placeholder"),
+          category: t("categories.navigation"),
+          icon: <Search className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/search"),
+          keywords: ["search", "find", "jurisdiction"],
+        },
+      )
+    }
+
     return items
-  }, [router, isAdmin, isOrgAdmin, isTeacher, isLearner, t, tn])
+  }, [router, isAdmin, isOrgAdmin, isTeacher, isLearner, isRegional, t, tn])
 
   const actionItems = useMemo((): ItemType[] => {
     const items: ItemType[] = []
@@ -287,8 +374,32 @@ export function CommandPalette() {
       )
     }
 
+    if (isRegional) {
+      items.push(
+        {
+          id: "action-create-announcement",
+          title: tn("regionalAnnouncements"),
+          description: t("nav.announcementsDesc"),
+          category: t("categories.actions"),
+          shortcut: "⌘N",
+          icon: <Plus className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/communication?compose=1"),
+          keywords: ["announcement", "create", "communicate", "regional"],
+        },
+        {
+          id: "action-review-verification",
+          title: tn("verification"),
+          description: t("nav.verificationDesc"),
+          category: t("categories.actions"),
+          icon: <ClipboardCheck className="size-4" />,
+          action: () => router.push("/dashboard/regional-admin/governance/verification"),
+          keywords: ["review", "verification", "approve", "reject"],
+        },
+      )
+    }
+
     return items
-  }, [router, isAdmin, isOrgAdmin, isTeacher, isLearner, t])
+  }, [router, isAdmin, isOrgAdmin, isTeacher, isLearner, isRegional, t])
 
   const adminItems = useMemo((): ItemType[] => {
     if (!isAdmin && !isOrgAdmin) return []

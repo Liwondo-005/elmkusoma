@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test"
 
+// PLAYWRIGHT_BASE_URL lets E2E run against a non-default port when 3000 is
+// already serving another local project.
+const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000"
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -10,7 +14,7 @@ export default defineConfig({
   timeout: 180_000,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: baseUrl,
     trace: "on-first-retry",
   },
   projects: [
@@ -21,7 +25,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:3000",
+    url: baseUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

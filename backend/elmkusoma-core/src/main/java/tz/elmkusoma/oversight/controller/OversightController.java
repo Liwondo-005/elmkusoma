@@ -23,6 +23,7 @@ public class OversightController {
     private final OversightService oversightService;
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
+    private final tz.elmkusoma.oversight.repository.DistrictRepository districtRepository;
 
     private UUID getUserRegionId(UUID userId) {
         return userRepository.findById(userId)
@@ -62,6 +63,35 @@ public class OversightController {
         }
     }
 
+    /** Backend-authoritative region scope check for REGIONAL_ADMIN / DISTRICT_ADMIN callers. */
+    private void verifyRegionScope(UUID userId, UUID regionId) {
+        String role = getUserRole(userId);
+        if ("NATIONAL_ADMIN".equals(role) || "ADMIN".equals(role)) return;
+        UUID ownRegionId = getUserRegionId(userId);
+        if (ownRegionId == null || !ownRegionId.equals(regionId)) {
+            throw new ForbiddenException("access", "region outside your jurisdiction");
+        }
+    }
+
+    /** Backend-authoritative district scope check for REGIONAL_ADMIN / DISTRICT_ADMIN callers. */
+    private void verifyDistrictScope(UUID userId, UUID districtId) {
+        String role = getUserRole(userId);
+        if ("NATIONAL_ADMIN".equals(role) || "ADMIN".equals(role)) return;
+        if ("REGIONAL_ADMIN".equals(role)) {
+            tz.elmkusoma.oversight.domain.District district = districtRepository.findById(districtId)
+                    .orElseThrow(() -> new RuntimeException("District not found"));
+            UUID ownRegionId = getUserRegionId(userId);
+            if (ownRegionId == null || !ownRegionId.equals(district.getRegionId())) {
+                throw new ForbiddenException("access", "district outside your region");
+            }
+        } else if ("DISTRICT_ADMIN".equals(role)) {
+            UUID ownDistrictId = getUserDistrictId(userId);
+            if (ownDistrictId == null || !ownDistrictId.equals(districtId)) {
+                throw new ForbiddenException("access", "district outside your jurisdiction");
+            }
+        }
+    }
+
     @GetMapping("/dashboard")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<OversightDashboardResponse> getDashboard(
@@ -83,26 +113,35 @@ public class OversightController {
     }
 
     @GetMapping("/regions")
-    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'NATIONAL_ADMIN', 'REGIONAL_ADMIN')")
     public ResponseEntity<List<RegionResponse>> getRegions() {
         return ResponseEntity.ok(oversightService.getAllRegions());
     }
 
     @GetMapping("/regions/{regionId}/districts")
-    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN')")
-    public ResponseEntity<List<DistrictResponse>> getDistricts(@PathVariable UUID regionId) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    public ResponseEntity<List<DistrictResponse>> getDistricts(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID regionId) {
+        verifyRegionScope(userId, regionId);
         return ResponseEntity.ok(oversightService.getDistrictsByRegion(regionId));
     }
 
     @GetMapping("/regions/{regionId}/institutions")
-    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN')")
-    public ResponseEntity<List<InstitutionSummary>> getInstitutionsByRegion(@PathVariable UUID regionId) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'NATIONAL_ADMIN', 'REGIONAL_ADMIN')")
+    public ResponseEntity<List<InstitutionSummary>> getInstitutionsByRegion(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID regionId) {
+        verifyRegionScope(userId, regionId);
         return ResponseEntity.ok(oversightService.getInstitutionsByRegion(regionId));
     }
 
     @GetMapping("/districts/{districtId}/institutions")
-    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
-    public ResponseEntity<List<InstitutionSummary>> getInstitutionsByDistrict(@PathVariable UUID districtId) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    public ResponseEntity<List<InstitutionSummary>> getInstitutionsByDistrict(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID districtId) {
+        verifyDistrictScope(userId, districtId);
         return ResponseEntity.ok(oversightService.getInstitutionsByDistrict(districtId));
     }
 

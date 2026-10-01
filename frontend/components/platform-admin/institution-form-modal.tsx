@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2, X } from "lucide-react"
-import { platformAdminApi, INSTITUTION_TYPES, type InstitutionFormPayload, type InstitutionSummary } from "@/lib/platform-admin-api"
+import { platformAdminApi, INSTITUTION_TYPES, type InstitutionFormPayload, type InstitutionSummary, type OversightRegionOption, type OversightDistrictOption } from "@/lib/platform-admin-api"
 
 interface InstitutionFormModalProps {
   open: boolean
@@ -23,6 +23,8 @@ const EMPTY_FORM: InstitutionFormPayload = {
   address: "",
   city: "",
   country: "Tanzania",
+  regionId: "",
+  districtId: "",
 }
 
 export function InstitutionFormModal({ open, institution, onClose, onSaved }: InstitutionFormModalProps) {
@@ -32,6 +34,31 @@ export function InstitutionFormModal({ open, institution, onClose, onSaved }: In
   const [form, setForm] = useState<InstitutionFormPayload>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [regions, setRegions] = useState<OversightRegionOption[]>([])
+  const [districts, setDistricts] = useState<OversightDistrictOption[]>([])
+  const [geoLoading, setGeoLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    platformAdminApi.listOversightRegions().then(setRegions).catch(() => setRegions([]))
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const regionId = form.regionId
+    if (!regionId) {
+      setDistricts([])
+      return
+    }
+    let cancelled = false
+    setGeoLoading(true)
+    platformAdminApi
+      .listOversightDistricts(regionId)
+      .then((res) => { if (!cancelled) setDistricts(res) })
+      .catch(() => { if (!cancelled) setDistricts([]) })
+      .finally(() => { if (!cancelled) setGeoLoading(false) })
+    return () => { cancelled = true }
+  }, [open, form.regionId])
 
   useEffect(() => {
     if (!open) return
@@ -48,6 +75,8 @@ export function InstitutionFormModal({ open, institution, onClose, onSaved }: In
         address: (institution as { address?: string }).address ?? "",
         city: institution.city ?? "",
         country: (institution as { country?: string }).country ?? "Tanzania",
+        regionId: institution.regionId ?? "",
+        districtId: institution.districtId ?? "",
       })
     } else {
       setForm(EMPTY_FORM)
@@ -80,6 +109,8 @@ export function InstitutionFormModal({ open, institution, onClose, onSaved }: In
         address: form.address?.trim() || undefined,
         city: form.city?.trim() || undefined,
         country: form.country?.trim() || undefined,
+        regionId: form.regionId?.trim() || undefined,
+        districtId: form.districtId?.trim() || undefined,
       }
       if (isEdit && institution) {
         await platformAdminApi.updateInstitution(institution.id, payload)
@@ -138,6 +169,38 @@ export function InstitutionFormModal({ open, institution, onClose, onSaved }: In
             <div>
               <label className={labelClass}>{t("institutionForm.labelCity")}</label>
               <input type="text" value={form.city} onChange={set("city")} maxLength={100} placeholder={t("institutionForm.phCity")} className={inputClass} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>{t("institutionForm.labelRegion")}</label>
+              <select
+                value={form.regionId ?? ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, regionId: e.target.value, districtId: "" }))}
+                className={inputClass}
+              >
+                <option value="">{t("institutionForm.phRegion")}</option>
+                {regions.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>{t("institutionForm.labelDistrict")}</label>
+              <select
+                value={form.districtId ?? ""}
+                onChange={set("districtId")}
+                disabled={!form.regionId || geoLoading}
+                className={inputClass}
+              >
+                <option value="">
+                  {!form.regionId ? t("institutionForm.phSelectRegionFirst") : geoLoading ? t("institutionForm.loadingDistricts") : t("institutionForm.phDistrict")}
+                </option>
+                {districts.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 

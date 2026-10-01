@@ -63,6 +63,8 @@ public class InstitutionServiceImpl implements InstitutionService {
                 .address(request.getAddress())
                 .city(request.getCity())
                 .country(request.getCountry() != null && !request.getCountry().isBlank() ? request.getCountry() : "Tanzania")
+                .regionId(request.getRegionId())
+                .districtId(request.getDistrictId())
                 .isActive(true)
                 .isDeleted(false)
                 .build();
@@ -124,6 +126,8 @@ public class InstitutionServiceImpl implements InstitutionService {
         if (request.getAddress() != null) institution.setAddress(request.getAddress());
         if (request.getCity() != null) institution.setCity(request.getCity());
         if (request.getCountry() != null) institution.setCountry(request.getCountry());
+        if (request.getRegionId() != null) institution.setRegionId(request.getRegionId());
+        if (request.getDistrictId() != null) institution.setDistrictId(request.getDistrictId());
 
         institution = institutionRepository.save(institution);
         log.info("Institution updated: {} (ID: {})", institution.getName(), institution.getId());
@@ -180,6 +184,8 @@ public class InstitutionServiceImpl implements InstitutionService {
                 .address(institution.getAddress())
                 .city(institution.getCity())
                 .country(institution.getCountry())
+                .regionId(institution.getRegionId())
+                .districtId(institution.getDistrictId())
                 .createdAt(institution.getCreatedAt())
                 .build();
     }

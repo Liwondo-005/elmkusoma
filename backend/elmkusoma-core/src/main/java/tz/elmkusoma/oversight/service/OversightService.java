@@ -271,6 +271,27 @@ public class OversightService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Public wrappers so governance layers (e.g. Regional Admin) can reuse the
+     * existing analytics calculations for arbitrary institution sets instead of
+     * duplicating them.
+     */
+    public Double jurisdictionAttendanceRate(List<UUID> institutionIds) {
+        return calculateAttendanceRate(institutionIds);
+    }
+
+    public Double jurisdictionAveragePerformance(List<UUID> institutionIds) {
+        return calculateAveragePerformance(institutionIds);
+    }
+
+    public Double jurisdictionCurriculumProgress(List<UUID> institutionIds) {
+        return calculateCurriculumProgress(institutionIds);
+    }
+
+    public List<UUID> jurisdictionInstitutionIds(UUID regionId, UUID districtId) {
+        return getInstitutionIdsInJurisdiction(regionId, districtId);
+    }
+
     public List<RegionResponse> getAllRegions() {
         return regionRepository.findByIsDeletedFalseOrderByCreatedAtDesc().stream()
                 .map(r -> {
@@ -873,9 +894,24 @@ public class OversightService {
     }
 
     private boolean verifyJurisdictionAccess(UUID userId, UUID institutionId) {
-        // Platform super-admin (ADMIN) may observe any session
+        // Platform super-admin / national admin may observe any session
         String role = userRepository.findById(userId).map(u -> u.getRole().name()).orElse("");
-        if ("ADMIN".equals(role)) return true;
+        if ("ADMIN".equals(role) || "NATIONAL_ADMIN".equals(role)) return true;
+
+        Institution institution = institutionRepository.findById(institutionId).orElse(null);
+        if (institution != null) {
+            // Regional admins may observe any institution inside their own region
+            if ("REGIONAL_ADMIN".equals(role)) {
+                java.util.UUID userRegionId = userRepository.findById(userId).map(User::getRegionId).orElse(null);
+                if (userRegionId != null && userRegionId.equals(institution.getRegionId())) return true;
+            }
+            // District admins may observe any institution inside their own district
+            if ("DISTRICT_ADMIN".equals(role)) {
+                java.util.UUID userDistrictId = userRepository.findById(userId).map(User::getDistrictId).orElse(null);
+                if (userDistrictId != null && userDistrictId.equals(institution.getDistrictId())) return true;
+            }
+        }
+
         // Otherwise require active membership in the institution
         return membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, institutionId);
     }
