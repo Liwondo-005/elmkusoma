@@ -34,12 +34,28 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/v1/media/health").permitAll()
+                        // Local storage backend: authorized by HMAC-signed URLs
+                        // instead of a JWT (uploads are always signed).
+                        .requestMatchers("/api/v1/media/local-content").permitAll()
+                        .requestMatchers("/api/v1/media/local-upload").permitAll()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(
                         new org.springframework.security.web.authentication.HttpStatusEntryPoint(
                                 org.springframework.http.HttpStatus.UNAUTHORIZED)))
+                // The core learner viewer embeds local-content in a cross-origin
+                // iframe (app on :3000, media on :8083) — Spring Security's default
+                // X-Frame-Options: DENY blanked that viewer. Keep DENY everywhere
+                // else; local-content is byte content authorized by signed URL and
+                // must be frameable.
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.disable())
+                        .addHeaderWriter((request, response) -> {
+                            if (!request.getRequestURI().startsWith("/api/v1/media/local-content")) {
+                                response.setHeader("X-Frame-Options", "DENY");
+                            }
+                        }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

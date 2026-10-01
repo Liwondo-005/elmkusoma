@@ -222,8 +222,15 @@ export interface Resource {
   mimeType?: string
   fileSize?: number | null
   durationSeconds?: number | null
+  pageCount?: number | null
+  width?: number | null
+  height?: number | null
+  externalUrl?: string | null
   visibility?: string
-  processingStatus?: string
+  processingStatus?: string | null
+  processingError?: string | null
+  isDownloadable?: boolean | null
+  isPreviewable?: boolean | null
   resourceType: string
   subjectId: string | null
   institutionId: string
@@ -754,6 +761,53 @@ export const learnerApi = {
     learnerFetch<void>(`/v1/resources/${resourceId}/annotations/${annotationId}`, { method: "DELETE" }),
   getRelatedResources: (resourceId: string) =>
     learnerFetch<Resource[]>(`/v1/learner/resources/${resourceId}/related`),
+
+  // ── Authorized content access ──────────────────────────────────────────
+  /** Backend-authorized, short-lived URL for viewing the real content. */
+  getResourceContentUrl: (resourceId: string) =>
+    learnerFetch<string>(`/v1/resources/${resourceId}/content-url`),
+  /** Records a view after the backend has re-checked access. */
+  recordResourceView: (resourceId: string) =>
+    learnerFetch<boolean>(`/v1/resources/${resourceId}/analytics/view`, { method: "POST" }),
+  /**
+   * Backend-authorized download: bytes are fetched with credentials and saved
+   * through a temporary object URL — the storage URL is never handed out.
+   */
+  downloadResource: async (resourceId: string, fallbackName: string) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
+    let institutionId = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_institution_id") : null
+    if (!institutionId && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("elmkusoma_current_user")
+        if (raw) {
+          const user = JSON.parse(raw)
+          if (user?.institutionId) institutionId = user.institutionId
+        }
+      } catch {}
+    }
+    if (!institutionId) institutionId = "a0000000-0000-0000-0000-000000000001"
+    const res = await fetch(`${API_BASE_URL}/v1/resources/${resourceId}/download`, {
+      headers: {
+        "X-Institution-Id": institutionId,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new LearnerApiError(statusMessage(res.status, body), res.status, String(body.code || ""))
+    }
+    const disposition = res.headers.get("Content-Disposition") || ""
+    const match = disposition.match(/filename="?([^";]+)"?/)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = match ? match[1] : fallbackName
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
 
   getGoals: () => learnerFetch<LearningGoal[]>("/v1/learner/me/goals"),
   createGoal: (data: GoalInput) =>

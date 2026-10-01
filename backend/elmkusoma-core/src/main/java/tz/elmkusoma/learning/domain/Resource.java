@@ -79,6 +79,14 @@ public class Resource extends BaseEntity {
     @Column(name = "thumbnail_url", length = 500)
     private String thumbnailUrl;
 
+    /**
+     * Row id of the stored byte object inside the existing media service
+     * (media_files.id).  Null for URL-based resources and for legacy rows that
+     * were created with a storage URL only.
+     */
+    @Column(name = "media_id")
+    private Long mediaId;
+
     @Column(name = "duration_seconds")
     private Integer durationSeconds;
 
@@ -129,7 +137,7 @@ public class Resource extends BaseEntity {
 
     public enum ResourceType {
         PDF, DOCUMENT, PRESENTATION, SPREADSHEET, IMAGE, VIDEO,
-        AUDIO, EXTERNAL_LINK, LIVE_RECORDING, ARCHIVE, OTHER
+        AUDIO, EXTERNAL_LINK, LINK, LIVE_RECORDING, ARCHIVE, OTHER
     }
 
     public enum ResourceVisibility {
@@ -137,12 +145,13 @@ public class Resource extends BaseEntity {
     }
 
     // Helper methods
+    /** LINK and EXTERNAL_LINK are both URL resources (no stored bytes). */
     public boolean isExternalLink() {
-        return resourceType == ResourceType.EXTERNAL_LINK;
+        return resourceType == ResourceType.EXTERNAL_LINK || resourceType == ResourceType.LINK;
     }
 
     public boolean isFileBased() {
-        return resourceType != ResourceType.EXTERNAL_LINK;
+        return !isExternalLink();
     }
 
     public boolean isVideo() {

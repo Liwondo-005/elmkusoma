@@ -63,6 +63,14 @@ minio:
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket: ${MINIO_BUCKET:elmkusoma-media}
 
+# Storage backend: "minio" (default, production) or "local" (filesystem store
+# used where a MinIO process is unavailable). Same API, same database rows.
+media:
+  storage: ${MEDIA_STORAGE:minio}
+  local:
+    dir: ${MEDIA_LOCAL_DIR:${java.io.tmpdir}/elmkusoma-media}
+    base-url: ${MEDIA_LOCAL_BASE_URL:http://localhost:8083}
+
 jwt:
   secret: ${JWT_SECRET:your-256-bit-secret-key-change-in-production-elmkusoma-media-service}
   expiration: ${JWT_EXPIRATION:86400000}

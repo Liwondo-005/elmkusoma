@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import tz.elmkusoma.learning.domain.Resource;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -62,4 +63,13 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
 
     @Query("SELECT r FROM Resource r WHERE r.institutionId = :institutionId AND r.isDeleted = false AND r.id <> :resourceId AND (r.resourceType = :resourceType OR r.lessonId = :lessonId) ORDER BY r.createdAt DESC")
     List<Resource> findRelatedResources(@Param("institutionId") UUID institutionId, @Param("resourceId") UUID resourceId, @Param("lessonId") UUID lessonId, @Param("resourceType") Resource.ResourceType resourceType);
+
+    // Automatic sort order: highest existing order in each resource context
+    Optional<Resource> findTopByLessonIdAndIsDeletedFalseOrderBySortOrderDesc(UUID lessonId);
+
+    Optional<Resource> findTopByModuleIdAndIsDeletedFalseOrderBySortOrderDesc(UUID moduleId);
+
+    Optional<Resource> findTopByCourseIdAndIsDeletedFalseOrderBySortOrderDesc(UUID courseId);
+
+    Optional<Resource> findTopByInstitutionIdAndIsDeletedFalseOrderBySortOrderDesc(UUID institutionId);
 }

@@ -64,6 +64,7 @@ public class LearnerController {
     private final CourseModuleRepository courseModuleRepository;
     private final CourseLessonRepository courseLessonRepository;
     private final ResourceRepository resourceRepository;
+    private final tz.elmkusoma.learning.service.ResourceService resourceService;
     private final VideoTutorialRepository videoTutorialRepository;
     private final LessonRepository lessonRepository;
     private final LiveClassRepository liveClassRepository;
@@ -429,7 +430,7 @@ public class LearnerController {
 
     @GetMapping("/resources")
     @Operation(summary = "Browse all resources with optional type filter")
-    public ResponseEntity<ApiResponse<Page<Resource>>> browseResources(
+    public ResponseEntity<ApiResponse<Page<tz.elmkusoma.learning.dto.ResourceResponse>>> browseResources(
             @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole,
@@ -453,9 +454,13 @@ public class LearnerController {
                 } catch (IllegalArgumentException ignored) {
                 }
             }
-            List<Resource> paged = visible.stream().skip((long) page * size).limit(size).collect(Collectors.toList());
-            Page<Resource> resources = new org.springframework.data.domain.PageImpl<>(
-                    paged, PageRequest.of(page, size), visible.size());
+            List<tz.elmkusoma.learning.dto.ResourceResponse> mapped = visible.stream()
+                    .map(resourceService::toResponse)
+                    .collect(Collectors.toList());
+            List<tz.elmkusoma.learning.dto.ResourceResponse> paged =
+                    mapped.stream().skip((long) page * size).limit(size).collect(Collectors.toList());
+            Page<tz.elmkusoma.learning.dto.ResourceResponse> resources = new org.springframework.data.domain.PageImpl<>(
+                    paged, PageRequest.of(page, size), mapped.size());
             return ResponseEntity.ok(ApiResponse.success(resources));
         } catch (Exception ex) {
             log.error("Failed to browse resources: {}", ex.getMessage(), ex);
@@ -466,7 +471,7 @@ public class LearnerController {
 
     @GetMapping("/resources/{id}")
     @Operation(summary = "Get resource detail")
-    public ResponseEntity<ApiResponse<Resource>> getResourceDetail(
+    public ResponseEntity<ApiResponse<tz.elmkusoma.learning.dto.ResourceResponse>> getResourceDetail(
             @PathVariable UUID id,
             @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
@@ -475,7 +480,8 @@ public class LearnerController {
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .filter(r -> institutionId.equals(r.getInstitutionId()))
                 .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
-                .map(r -> ResponseEntity.ok(ApiResponse.success(r)))
+                // Safe response DTO: storage internals stay on the server.
+                .map(r -> ResponseEntity.ok(ApiResponse.success(resourceService.toResponse(r))))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Resource not found")));
     }
 
@@ -1051,6 +1057,8 @@ public class LearnerController {
     @Operation(summary = "Search courses, resources, live classes, and announcements with filters")
     public ResponseEntity<ApiResponse<SearchResultResponse>> search(
             @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole,
             @RequestParam String q,
             @RequestParam(defaultValue = "ALL") String type,
             @RequestParam(required = false) String level,
@@ -1066,10 +1074,13 @@ public class LearnerController {
             LocalDateTime fromDate = parseDate(dateFrom);
             LocalDateTime toDate = parseDate(dateTo) != null ? parseDate(dateTo).plusDays(1) : null;
             SearchResultResponse result;
+            // Resource search honors the same visibility gate as every read path.
+            java.util.function.Predicate<Resource> visibleToCaller =
+                    r -> ResourceService.canSeeResource(r, userId, userRole);
 
             if ("COURSE".equalsIgnoreCase(type)) {
                 List<Course> filteredCourses = courseRepository.searchPublishedByInstitutionWithAllFilters(institutionId, query, level, category, fromDate, toDate)
-                        .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
+                        .stream().skip((long) page * size).limit(size).collect(Collectors.toList());
                 result = SearchResultResponse.builder()
                         .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
                         .resources(Collections.emptyList())
@@ -1078,7 +1089,7 @@ public class LearnerController {
                         .build();
             } else if ("RESOURCE".equalsIgnoreCase(type)) {
                 List<Resource> resources = resourceRepository.searchByInstitutionIdAndIsDeletedFalse(institutionId, query)
-                        .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
+                        .stream().filter(visibleToCaller).skip((long) page * size).limit(size).collect(Collectors.toList());
                 result = SearchResultResponse.builder()
                         .courses(Collections.emptyList())
                         .resources(resources.stream().map(this::toResourceSearchResult).collect(Collectors.toList()))
@@ -1103,11 +1114,11 @@ public class LearnerController {
                         .build();
             } else {
                 List<Course> filteredCourses = courseRepository.searchPublishedByInstitutionWithAllFilters(institutionId, query, level, category, fromDate, toDate)
-                        .stream().limit(size).skip((long) page * size).collect(Collectors.toList());
+                        .stream().skip((long) page * size).limit(size).collect(Collectors.toList());
                 result = SearchResultResponse.builder()
                         .courses(filteredCourses.stream().map(this::toCourseSummaryResponse).collect(Collectors.toList()))
                         .resources(resourceRepository.searchByInstitutionIdAndIsDeletedFalse(institutionId, query)
-                                .stream().limit(size).skip((long) page * size).map(this::toResourceSearchResult).collect(Collectors.toList()))
+                                .stream().filter(visibleToCaller).skip((long) page * size).limit(size).map(this::toResourceSearchResult).collect(Collectors.toList()))
                         .liveClasses(liveClassRepository.searchByInstitutionIdAndQuery(institutionId, query)
                                 .stream().limit(size).skip((long) page * size).map(this::toLiveClassSearchResult).collect(Collectors.toList()))
                         .announcements(announcementRepository.searchByInstitutionIdAndQuery(institutionId, query)
@@ -1168,16 +1179,24 @@ public class LearnerController {
 
     @GetMapping("/resources/{id}/related")
     @Operation(summary = "Get related resources based on subject")
-    public ResponseEntity<ApiResponse<List<ResourceSearchResult>>> getRelatedResources(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<ResourceSearchResult>>> getRelatedResources(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
         Resource resource = resourceRepository.findById(id)
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                // Never probe another institution's resource, never leak invisible ones.
+                .filter(r -> institutionId.equals(r.getInstitutionId()))
+                .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
                 .orElse(null);
         if (resource == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Resource not found"));
         }
         List<Resource> related = resourceRepository.findRelatedResources(
-                resource.getInstitutionId(), id, resource.getSubjectId(), resource.getResourceType());
+                institutionId, id, resource.getSubjectId(), resource.getResourceType());
         List<ResourceSearchResult> response = related.stream()
+                .filter(r -> ResourceService.canSeeResource(r, userId, userRole))
                 .limit(6)
                 .map(this::toResourceSearchResult)
                 .collect(Collectors.toList());
