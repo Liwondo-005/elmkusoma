@@ -23,7 +23,11 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
   flyway:
-    enabled: false
+    enabled: true
+    # Dedicated history table: core owns flyway_schema_history (V001-V113+);
+    # media manages only its own db/migration scripts (V001...) here.
+    table: flyway_media_history
+    baseline-on-migrate: true
   data:
     redis:
       host: ${REDIS_HOST:localhost}

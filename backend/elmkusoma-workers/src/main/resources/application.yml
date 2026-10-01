@@ -6,9 +6,9 @@ spring:
     name: elmkusoma-workers
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/elmkusoma
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:elmkusoma}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -24,7 +24,11 @@ spring:
         format_sql: true
 
   flyway:
-    enabled: false
+    enabled: true
+    # Dedicated history table: core owns flyway_schema_history;
+    # workers manages only its own db/migration scripts (V001...) here.
+    table: flyway_workers_history
+    baseline-on-migrate: true
 
   data:
     redis:
@@ -86,6 +90,11 @@ management:
     web:
       exposure:
         include: health,info
+  # Gmail app-password is provisioned per environment; don't fail the
+  # service health check when mail isn't configured yet.
+  health:
+    mail:
+      enabled: false
   endpoint:
     health:
       show-details: when-authorized
