@@ -35,6 +35,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "GEOGRAPHY", titleKey: "groupGeography", items: [
       { label: "Districts", labelKey: "districts", href: "/dashboard/regional-admin/districts", icon: MapPin },
+      { label: "Wards", labelKey: "wards", href: "/dashboard/regional-admin/wards", icon: MapPin },
       { label: "Schools & Institutions", labelKey: "schoolsAndInstitutions", href: "/dashboard/regional-admin/institutions", icon: Building2 },
     ],
   },
@@ -72,6 +73,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "REPORTS & ANALYTICS", titleKey: "groupReportsAnalytics", items: [
       { label: "Regional Reports", labelKey: "regionalReports", href: "/oversight/reports", icon: FileBarChart, external: true },
+      { label: "Scheduled Reports", labelKey: "scheduledReports", href: "/dashboard/regional-admin/scheduled-reports", icon: FileBarChart },
       { label: "Analytics", labelKey: "analytics", href: "/oversight", icon: Activity, external: true },
     ],
   },

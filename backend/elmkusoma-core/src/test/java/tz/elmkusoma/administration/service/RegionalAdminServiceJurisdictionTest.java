@@ -8,9 +8,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tz.elmkusoma.administration.domain.PlatformNotification;
+import tz.elmkusoma.administration.domain.ScheduledReport;
 import tz.elmkusoma.administration.domain.VerificationRecord;
 import tz.elmkusoma.administration.dto.AnnouncementDetailResponse;
 import tz.elmkusoma.administration.dto.CreateAnnouncementRequest;
+import tz.elmkusoma.administration.dto.CreateScheduledReportRequest;
+import tz.elmkusoma.administration.dto.ScheduledReportSummary;
+import tz.elmkusoma.administration.dto.WardSummary;
+import tz.elmkusoma.administration.repository.ScheduledReportRepository;
+import tz.elmkusoma.administration.repository.ScheduledReportRunRepository;
 import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.audit.repository.AuditLogRepository;
 import tz.elmkusoma.audit.repository.SecurityEventRepository;
@@ -26,8 +32,10 @@ import tz.elmkusoma.administration.repository.PlatformNotificationRepository;
 import tz.elmkusoma.administration.repository.VerificationRecordRepository;
 import tz.elmkusoma.oversight.domain.District;
 import tz.elmkusoma.oversight.domain.Region;
+import tz.elmkusoma.oversight.domain.Ward;
 import tz.elmkusoma.oversight.repository.DistrictRepository;
 import tz.elmkusoma.oversight.repository.RegionRepository;
+import tz.elmkusoma.oversight.repository.WardRepository;
 import tz.elmkusoma.oversight.service.OversightService;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
@@ -88,6 +96,9 @@ class RegionalAdminServiceJurisdictionTest {
     @Mock private PlatformNotificationRepository platformNotificationRepository;
     @Mock private LearnerNotificationRepository learnerNotificationRepository;
     @Mock private SubjectRepository subjectRepository;
+    @Mock private WardRepository wardRepository;
+    @Mock private ScheduledReportRepository scheduledReportRepository;
+    @Mock private ScheduledReportRunRepository scheduledReportRunRepository;
     @Mock private ObjectMapper objectMapper;
     @InjectMocks private RegionalAdminService service;
 
@@ -131,6 +142,30 @@ class RegionalAdminServiceJurisdictionTest {
         i.setDistrictId(districtId);
         i.setIsActive(true);
         return i;
+    }
+
+    private Ward ward(UUID id, UUID districtId, String code) {
+        Ward w = new Ward();
+        w.setId(id);
+        w.setDistrictId(districtId);
+        w.setName("Ward " + code);
+        w.setCode(code);
+        w.setIsActive(true);
+        return w;
+    }
+
+    private ScheduledReport report(UUID id, UUID ownerId, UUID regionId, UUID districtId) {
+        ScheduledReport r = new ScheduledReport();
+        r.setId(id);
+        r.setUserId(ownerId);
+        r.setRegionId(regionId);
+        r.setDistrictId(districtId);
+        r.setReportType("PERFORMANCE");
+        r.setTitle("Monthly performance");
+        r.setFrequency("MONTHLY");
+        r.setStatus("ACTIVE");
+        r.setRunCount(0);
+        return r;
     }
 
     // ── role & jurisdiction resolution ──
@@ -379,4 +414,145 @@ class RegionalAdminServiceJurisdictionTest {
         // with no institutions in scope there is nothing to report on.
         assertThat(service.getDataQuality(CALLER).getTotalIssues()).isZero();
     }
+
+    // ── ward dimension scope ──
+
+    @Test
+    @DisplayName("District admin ward list is limited to their own district")
+    void districtAdminSeesOnlyOwnDistrictWards() {
+        when(userRepository.findById(CALLER)).thenReturn(Optional.of(
+                user(User.Role.DISTRICT_ADMIN, REGION_A, DISTRICT_A)));
+        when(regionRepository.findById(REGION_A)).thenReturn(Optional.of(region(REGION_A, "A")));
+        when(districtRepository.findById(DISTRICT_A)).thenReturn(Optional.of(district(DISTRICT_A, REGION_A, "A1")));
+        when(institutionRepository.findByDistrictIdAndIsDeletedFalse(DISTRICT_A)).thenReturn(List.of());
+        when(wardRepository.findByDistrictIdInAndIsDeletedFalse(List.of(DISTRICT_A)))
+                .thenReturn(List.of(ward(UUID.fromString("44444444-4444-4444-4444-444444444401"), DISTRICT_A, "A1-W")));
+        when(districtRepository.findById(DISTRICT_A)).thenReturn(Optional.of(district(DISTRICT_A, REGION_A, "A1")));
+        when(regionRepository.findById(REGION_A)).thenReturn(Optional.of(region(REGION_A, "A")));
+        lenient().when(institutionRepository.countByWardIdAndIsDeletedFalse(any())).thenReturn(0L);
+
+        var page = service.getWards(CALLER, 0, 20, null, null);
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).getDistrictId()).isEqualTo(DISTRICT_A);
+        verify(wardRepository).findByDistrictIdInAndIsDeletedFalse(List.of(DISTRICT_A));
+    }
+
+    @Test
+    @DisplayName("District admin cannot filter wards by a sibling district")
+    void districtAdminCannotFilterSiblingDistrictWards() {
+        when(userRepository.findById(CALLER)).thenReturn(Optional.of(
+                user(User.Role.DISTRICT_ADMIN, REGION_A, DISTRICT_A)));
+        when(regionRepository.findById(REGION_A)).thenReturn(Optional.of(region(REGION_A, "A")));
+        when(districtRepository.findById(DISTRICT_A)).thenReturn(Optional.of(district(DISTRICT_A, REGION_A, "A1")));
+        when(institutionRepository.findByDistrictIdAndIsDeletedFalse(DISTRICT_A)).thenReturn(List.of());
+        when(districtRepository.findById(DISTRICT_A2)).thenReturn(Optional.of(district(DISTRICT_A2, REGION_A, "A2")));
+
+        assertThatThrownBy(() -> service.getWards(CALLER, 0, 20, null, DISTRICT_A2))
+                .isInstanceOf(ForbiddenException.class);
+        verify(wardRepository, never()).findByDistrictIdInAndIsDeletedFalse(anyList());
+    }
+
+    @Test
+    @DisplayName("Regional admin cannot open a ward of another region")
+    void regionalAdminCannotOpenForeignWard() {
+        when(userRepository.findById(CALLER)).thenReturn(Optional.of(
+                user(User.Role.REGIONAL_ADMIN, REGION_A, null)));
+        when(regionRepository.findById(REGION_A)).thenReturn(Optional.of(region(REGION_A, "A")));
+        when(institutionRepository.findByRegionIdAndIsDeletedFalse(REGION_A)).thenReturn(List.of());
+        when(wardRepository.findById(UNKNOWN)).thenReturn(Optional.of(
+                ward(UNKNOWN, DISTRICT_B, "B1-W")));
+        when(districtRepository.findById(DISTRICT_B)).thenReturn(Optional.of(district(DISTRICT_B, REGION_B, "B1")));
+
+        assertThatThrownBy(() -> service.getWardDetail(CALLER, UNKNOWN))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    // ── scheduled report scope ──
+
+    @Test
+    @DisplayName("Scheduled report creation binds the caller's jurisdiction, never client input")
+    void scheduledReportCreationBindsCallerJurisdiction() {
+        when(userRepository.findById(CALLER)).thenReturn(Optional.of(
+                user(User.Role.REGIONAL_ADMIN, REGION_A, null)));
+        when(regionRepository.findById(REGION_A)).thenReturn(Optional.of(region(REGION_A, "A")));
+        when(institutionRepository.findByRegionIdAndIsDeletedFalse(REGION_A)).thenReturn(List.of());
+        when(scheduledReportRepository.save(any(ScheduledReport.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        CreateScheduledReportRequest req = new CreateScheduledReportRequest(
+                "Attendance digest", "ATTENDANCE", "WEEKLY", "team@example.org");
+        ScheduledReportSummary summary = service.createScheduledReport(CALLER, req);
+
+        assertThat(summary.getRegionId()).isEqualTo(REGION_A);
+        assertThat(summary.getDistrictId()).isNull();
+        assertThat(summary.getNextRunAt()).isNotNull();
+        assertThat(summary.getStatus()).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    @DisplayName("A user cannot touch a scheduled report they do not own")
+    void scheduledReportOwnershipIsEnforced() {
+        when(userRepository.findById(CALLER)).thenReturn(Optional.of(
+                user(User.Role.REGIONAL_ADMIN, REGION_A, null)));
+        when(regionRepository.findById(REGION_A)).thenReturn(Optional.of(region(REGION_A, "A")));
+        when(institutionRepository.findByRegionIdAndIsDeletedFalse(REGION_A)).thenReturn(List.of());
+        UUID reportId = UUID.fromString("55555555-5555-5555-5555-555555555501");
+        when(scheduledReportRepository.findById(reportId)).thenReturn(Optional.of(
+                report(reportId, UUID.fromString("00000000-0000-0000-0000-0000000000b2"), REGION_A, null)));
+
+        assertThatThrownBy(() -> service.getScheduledReportRuns(CALLER, reportId))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    @DisplayName("Scheduled report list hides reports from other jurisdictions")
+    void scheduledReportListHidesForeignReports() {
+        when(userRepository.findById(CALLER)).thenReturn(Optional.of(
+                user(User.Role.REGIONAL_ADMIN, REGION_A, null)));
+        when(regionRepository.findById(REGION_A)).thenReturn(Optional.of(region(REGION_A, "A")));
+        when(institutionRepository.findByRegionIdAndIsDeletedFalse(REGION_A)).thenReturn(List.of());
+        when(scheduledReportRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(CALLER))
+                .thenReturn(List.of(
+                        report(UUID.fromString("55555555-5555-5555-5555-555555555502"), CALLER, REGION_A, null),
+                        report(UUID.fromString("55555555-5555-5555-5555-555555555503"), CALLER, REGION_B, null)));
+        lenient().when(regionRepository.findById(REGION_B)).thenReturn(Optional.of(region(REGION_B, "B")));
+
+        var reports = service.getScheduledReports(CALLER);
+
+        assertThat(reports).hasSize(1);
+        assertThat(reports.get(0).getRegionId()).isEqualTo(REGION_A);
+    }
+
+    @Test
+    @DisplayName("A due report executes inside the owner scope and produces a real run row")
+    void dueReportExecutesInOwnerScope() throws Exception {
+        when(userRepository.findById(CALLER)).thenReturn(Optional.of(
+                user(User.Role.REGIONAL_ADMIN, REGION_A, null)));
+        when(regionRepository.findById(REGION_A)).thenReturn(Optional.of(region(REGION_A, "A")));
+        when(institutionRepository.findByRegionIdAndIsDeletedFalse(REGION_A)).thenReturn(List.of());
+        UUID reportId = UUID.fromString("55555555-5555-5555-5555-555555555504");
+        ScheduledReport due = report(reportId, CALLER, REGION_A, null);
+        due.setNextRunAt(java.time.LocalDateTime.now().minusMinutes(1));
+        when(scheduledReportRepository.findDue(eq("ACTIVE"), any()))
+                .thenReturn(List.of(due));
+        when(scheduledReportRepository.save(any(ScheduledReport.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(oversightService.getDashboard(REGION_A, null)).thenReturn(
+                tz.elmkusoma.oversight.dto.OversightDashboardResponse.builder()
+                        .totalInstitutions(1L).totalTeachers(2L).totalStudents(3L)
+                        .attendanceRate(80.0).averagePerformance(65.0).build());
+        lenient().when(objectMapper.writeValueAsString(any())).thenReturn("{\"institutions\":1}");
+        lenient().when(scheduledReportRunRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        int executed = service.runDueScheduledReports();
+
+        assertThat(executed).isEqualTo(1);
+        assertThat(due.getRunCount()).isEqualTo(1);
+        assertThat(due.getLastRunAt()).isNotNull();
+        assertThat(due.getNextRunAt()).isAfter(java.time.LocalDateTime.now());
+        verify(scheduledReportRunRepository).save(any());
+        verify(notificationService).notifyUser(eq(CALLER), any(), any(), any(), any(), eq(reportId));
+    }
+
 }

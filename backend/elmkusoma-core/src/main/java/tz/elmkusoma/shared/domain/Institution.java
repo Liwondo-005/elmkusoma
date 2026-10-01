@@ -51,6 +51,9 @@ public class Institution {
     @Column(name = "district_id")
     private UUID districtId;
 
+    @Column(name = "ward_id")
+    private UUID wardId;
+
     @Column(name = "country", nullable = false)
     private String country = "Tanzania";
 

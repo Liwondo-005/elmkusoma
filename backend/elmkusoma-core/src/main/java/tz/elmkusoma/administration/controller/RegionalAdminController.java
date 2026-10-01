@@ -56,7 +56,7 @@ public class RegionalAdminController {
         return ResponseEntity.ok(ApiResponse.success(regionalAdminService.getPulse(userId)));
     }
 
-    // ── Geography drill-down: Region → District → (Ward gap) → Institution ──
+    // ── Geography drill-down: Region → District → Ward → Institution ──
 
     @GetMapping("/regions")
     @Operation(summary = "Region(s) the caller is authorized to govern")
@@ -382,5 +382,86 @@ public class RegionalAdminController {
             @RequestParam String q,
             @RequestParam(defaultValue = "20") int limit) {
         return ResponseEntity.ok(ApiResponse.success(regionalAdminService.search(userId, q, limit)));
+    }
+
+    // ── Ward dimension (PROMPT §23) ──
+
+    @GetMapping("/wards")
+    @Operation(summary = "Wards inside the caller's jurisdiction (district-admin sees own district only)")
+    public ResponseEntity<ApiResponse<PageResponse<WardSummary>>> getWards(
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID districtId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                regionalAdminService.getWards(userId, page, size, search, districtId)));
+    }
+
+    @GetMapping("/wards/{wardId}")
+    @Operation(summary = "Ward detail with its institutions")
+    public ResponseEntity<ApiResponse<WardDetailResponse>> getWardDetail(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID wardId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                regionalAdminService.getWardDetail(userId, wardId)));
+    }
+
+    // ── Scheduled reports (PROMPT §45) ──
+
+    @GetMapping("/scheduled-reports")
+    @Operation(summary = "Scheduled reports owned by the caller inside their jurisdiction")
+    public ResponseEntity<ApiResponse<List<ScheduledReportSummary>>> getScheduledReports(
+            @RequestAttribute("userId") UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                regionalAdminService.getScheduledReports(userId)));
+    }
+
+    @PostMapping("/scheduled-reports")
+    @Operation(summary = "Create a scheduled report (DAILY/WEEKLY/MONTHLY, bound to caller jurisdiction)")
+    public ResponseEntity<ApiResponse<ScheduledReportSummary>> createScheduledReport(
+            @RequestAttribute("userId") UUID userId,
+            @Valid @RequestBody CreateScheduledReportRequest request) {
+        ScheduledReportSummary created =
+                regionalAdminService.createScheduledReport(userId, request);
+        return ResponseEntity.status(201)
+                .body(ApiResponse.success("Scheduled report created", created));
+    }
+
+    @PutMapping("/scheduled-reports/{reportId}")
+    @Operation(summary = "Update title/status/frequency/recipients of an owned scheduled report")
+    public ResponseEntity<ApiResponse<ScheduledReportSummary>> updateScheduledReport(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID reportId,
+            @Valid @RequestBody UpdateScheduledReportRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Scheduled report updated",
+                regionalAdminService.updateScheduledReport(userId, reportId, request)));
+    }
+
+    @DeleteMapping("/scheduled-reports/{reportId}")
+    @Operation(summary = "Delete (soft) an owned scheduled report")
+    public ResponseEntity<ApiResponse<Void>> deleteScheduledReport(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID reportId) {
+        regionalAdminService.deleteScheduledReport(userId, reportId);
+        return ResponseEntity.ok(ApiResponse.success("Scheduled report deleted", null));
+    }
+
+    @PostMapping("/scheduled-reports/{reportId}/run")
+    @Operation(summary = "Run an owned scheduled report immediately")
+    public ResponseEntity<ApiResponse<ScheduledReportRunSummary>> runScheduledReportNow(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID reportId) {
+        return ResponseEntity.ok(ApiResponse.success("Scheduled report executed",
+                regionalAdminService.runScheduledReportNow(userId, reportId)));
+    }
+
+    @GetMapping("/scheduled-reports/{reportId}/runs")
+    @Operation(summary = "Run history of an owned scheduled report")
+    public ResponseEntity<ApiResponse<List<ScheduledReportRunSummary>>> getScheduledReportRuns(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable UUID reportId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                regionalAdminService.getScheduledReportRuns(userId, reportId)));
     }
 }
