@@ -2,8 +2,8 @@ package tz.elmkusoma.workers.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -25,8 +25,10 @@ public class RabbitMQConfig {
     public static final String EMAIL_ROUTING_KEY = "elmkusoma.email";
 
     @Bean
-    public DirectExchange elmkusomaExchange() {
-        return new DirectExchange(EXCHANGE_NAME, true, false);
+    public TopicExchange elmkusomaExchange() {
+        // Must match realtime's declaration: same name AND type (topic).
+        // Exact routing keys below behave identically under a topic exchange.
+        return new TopicExchange(EXCHANGE_NAME, true, false);
     }
 
     @Bean
@@ -50,22 +52,22 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding notificationBinding(Queue notificationQueue, DirectExchange elmkusomaExchange) {
+    public Binding notificationBinding(Queue notificationQueue, TopicExchange elmkusomaExchange) {
         return BindingBuilder.bind(notificationQueue).to(elmkusomaExchange).with(NOTIFICATION_ROUTING_KEY);
     }
 
     @Bean
-    public Binding reportBinding(Queue reportQueue, DirectExchange elmkusomaExchange) {
+    public Binding reportBinding(Queue reportQueue, TopicExchange elmkusomaExchange) {
         return BindingBuilder.bind(reportQueue).to(elmkusomaExchange).with(REPORT_ROUTING_KEY);
     }
 
     @Bean
-    public Binding certificateBinding(Queue certificateQueue, DirectExchange elmkusomaExchange) {
+    public Binding certificateBinding(Queue certificateQueue, TopicExchange elmkusomaExchange) {
         return BindingBuilder.bind(certificateQueue).to(elmkusomaExchange).with(CERTIFICATE_ROUTING_KEY);
     }
 
     @Bean
-    public Binding emailBinding(Queue emailQueue, DirectExchange elmkusomaExchange) {
+    public Binding emailBinding(Queue emailQueue, TopicExchange elmkusomaExchange) {
         return BindingBuilder.bind(emailQueue).to(elmkusomaExchange).with(EMAIL_ROUTING_KEY);
     }
 

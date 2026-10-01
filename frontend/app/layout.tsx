@@ -1,13 +1,15 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import { Inter as V0_Font_Inter, Geist_Mono as V0_Font_Geist_Mono, Source_Serif_4 as V0_Font_Source_Serif_4 } from 'next/font/google'
 import { Providers } from './providers'
 
-// Initialize fonts
-const _inter = V0_Font_Inter({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"] })
-const _geistMono = V0_Font_Geist_Mono({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"] })
-const _sourceSerif_4 = V0_Font_Source_Serif_4({ subsets: ['latin'], weight: ["200","300","400","500","600","700","800","900"] })
+// NOTE: Google Fonts (next/font/google) removed — the build/dev environment has
+// no reliable access to fonts.googleapis.com, which made Turbopack emit CSS
+// referencing @vercel/turbopack-next/internal/font/google/font and crash with
+// "Module not found". The font objects were also never applied (body uses
+// font-sans), so system font stacks in globals.css take over with zero visual
+// regression for the current UI. Reintroduce via next/font/local (self-hosted
+// woff2) if branded webfonts are required.
 
 // Canonical site URL (shared with app/sitemap.ts and app/robots.ts).
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://elmkusoma.co.tz'
