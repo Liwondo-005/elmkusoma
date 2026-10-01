@@ -465,7 +465,9 @@
     "attendanceDesc": "Attendance tracking and reports",
     "reportsDesc": "Analytics and reports",
     "adminDashboardDesc": "Admin dashboard and management",
-    "institutionsDesc": "Manage institutions and schools"
+    "institutionsDesc": "Manage institutions and schools",
+    "wards": "Wards",
+    "scheduledReports": "Scheduled Reports"
   },
   "dashboard": {
     "welcomeBack": "Welcome back",

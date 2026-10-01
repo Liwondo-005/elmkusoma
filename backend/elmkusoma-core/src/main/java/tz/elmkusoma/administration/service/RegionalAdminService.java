@@ -9,9 +9,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.administration.domain.PlatformNotification;
+import tz.elmkusoma.administration.domain.ScheduledReport;
+import tz.elmkusoma.administration.domain.ScheduledReportRun;
 import tz.elmkusoma.administration.domain.VerificationRecord;
 import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.repository.PlatformNotificationRepository;
+import tz.elmkusoma.administration.repository.ScheduledReportRepository;
+import tz.elmkusoma.administration.repository.ScheduledReportRunRepository;
 import tz.elmkusoma.administration.repository.VerificationRecordRepository;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.repository.AuditLogRepository;
@@ -32,6 +36,8 @@ import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.oversight.domain.District;
 import tz.elmkusoma.oversight.domain.Region;
+import tz.elmkusoma.oversight.domain.Ward;
+import tz.elmkusoma.oversight.repository.WardRepository;
 import tz.elmkusoma.oversight.dto.*;
 import tz.elmkusoma.oversight.service.OversightService;
 import tz.elmkusoma.shared.domain.Institution;
@@ -59,8 +65,11 @@ import java.util.stream.Collectors;
  *       delegate to the existing {@link OversightService}; verification review
  *       delegates to {@link PlatformAdminService}; notifications reuse
  *       {@link NotificationService}; announcements reuse {@link PlatformNotification}.</li>
- *   <li><b>No invented domain</b> — no Ward geography (documented gap), no
- *       scheduled-report scheduler (documented gap), no synthetic metrics.</li>
+ *   <li><b>Ward dimension &amp; scheduled reports</b> — the §23 ward geography
+ *       and §45 scheduled-report scheduler are now first-class: wards are scoped
+ *       through their district/region like every other geography, scheduled
+ *       reports are owner- and jurisdiction-bound and materialised by the shared
+ *       Spring scheduler from real oversight figures (never synthetic).</li>
  * </ul>
  */
 @Service
@@ -82,6 +91,9 @@ public class RegionalAdminService {
 
     private final tz.elmkusoma.oversight.repository.RegionRepository regionRepository;
     private final tz.elmkusoma.oversight.repository.DistrictRepository districtRepository;
+    private final WardRepository wardRepository;
+    private final ScheduledReportRepository scheduledReportRepository;
+    private final ScheduledReportRunRepository scheduledReportRunRepository;
     private final UserRepository userRepository;
     private final InstitutionRepository institutionRepository;
     private final InstitutionMembershipRepository membershipRepository;
@@ -785,6 +797,13 @@ public class RegionalAdminService {
                         "INSTITUTION", inst.getId(), inst.getName(),
                         "Assign a region to this institution (Platform Admin → Institutions → Edit).", now));
             }
+            if (inst.getWardId() == null && inst.getDistrictId() != null) {
+                issues.add(issue("MISSING_GEOGRAPHY", "MEDIUM",
+                        "Institution has no ward link",
+                        inst.getName() + " is linked to a district but not to a ward, so ward-level governance cannot see it.",
+                        "INSTITUTION", inst.getId(), inst.getName(),
+                        "Assign a ward to this institution once ward-level addresses are collected.", now));
+            }
             if (inst.getEmail() == null || inst.getEmail().isBlank()) {
                 issues.add(issue("MISSING_CONTACT", "MEDIUM",
                         "Institution has no contact email",
@@ -1390,6 +1409,371 @@ public class RegionalAdminService {
             names.put(institution.getId(), institution.getName());
         }
         return names;
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Ward dimension (PROMPT §23)
+    // ────────────────────────────────────────────────────────────────────────
+
+    public PageResponse<WardSummary> getWards(UUID userId, int page, int size,
+                                              String search, UUID districtId) {
+        Scope scope = resolveScope(userId);
+        List<UUID> districtIds;
+        if (districtId != null) {
+            assertDistrictInScope(scope, districtId);
+            districtIds = List.of(districtId);
+        } else if (scope.districtId() != null) {
+            districtIds = List.of(scope.districtId());
+        } else {
+            districtIds = districtRepository.findByRegionIdAndIsDeletedFalse(scope.regionId())
+                    .stream().map(District::getId).toList();
+        }
+        List<Ward> wards = districtIds.isEmpty() ? List.of()
+                : wardRepository.findByDistrictIdInAndIsDeletedFalse(districtIds);
+        String q = normalize(search);
+        if (!q.isEmpty()) {
+            wards = wards.stream()
+                    .filter(w -> contains(w.getName(), q) || contains(w.getCode(), q))
+                    .toList();
+        }
+        wards = wards.stream()
+                .sorted(Comparator.comparing(Ward::getName, Comparator.nullsLast(String::compareTo)))
+                .toList();
+
+        int safeSize = clampSize(size);
+        int from = clampPage(page, wards.size(), safeSize) * safeSize;
+        List<Ward> slice = wards.isEmpty() ? List.of()
+                : wards.subList(from, Math.min(wards.size(), from + safeSize));
+        return toPageResponse(
+                slice.stream().map(this::toWardSummary).toList(),
+                from / safeSize, safeSize, wards.size());
+    }
+
+    public WardDetailResponse getWardDetail(UUID userId, UUID wardId) {
+        Scope scope = resolveScope(userId);
+        Ward ward = wardRepository.findById(wardId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ward not found"));
+        District district = districtRepository.findById(ward.getDistrictId())
+                .orElseThrow(() -> new ResourceNotFoundException("District not found"));
+        assertDistrictInScope(scope, district.getId());
+        Region region = regionRepository.findById(district.getRegionId()).orElse(null);
+
+        List<Institution> institutions =
+                institutionRepository.findByWardIdAndIsDeletedFalse(wardId);
+        List<UUID> ids = institutions.stream().map(Institution::getId).toList();
+
+        return WardDetailResponse.builder()
+                .id(ward.getId())
+                .name(ward.getName())
+                .code(ward.getCode())
+                .isActive(ward.getIsActive())
+                .districtId(district.getId())
+                .districtName(district.getName())
+                .districtCode(district.getCode())
+                .regionId(district.getRegionId())
+                .regionName(region != null ? region.getName() : null)
+                .regionCode(region != null ? region.getCode() : null)
+                .institutionCount((long) ids.size())
+                .institutions(institutions.stream().map(this::toInstitutionSummary).toList())
+                .build();
+    }
+
+    private WardSummary toWardSummary(Ward ward) {
+        District district = districtRepository.findById(ward.getDistrictId()).orElse(null);
+        Region region = district != null
+                ? regionRepository.findById(district.getRegionId()).orElse(null)
+                : null;
+        long institutions = institutionRepository.countByWardIdAndIsDeletedFalse(ward.getId());
+        return WardSummary.builder()
+                .id(ward.getId())
+                .name(ward.getName())
+                .code(ward.getCode())
+                .isActive(ward.getIsActive())
+                .districtId(ward.getDistrictId())
+                .districtName(district != null ? district.getName() : null)
+                .districtCode(district != null ? district.getCode() : null)
+                .regionId(district != null ? district.getRegionId() : null)
+                .regionName(region != null ? region.getName() : null)
+                .regionCode(region != null ? region.getCode() : null)
+                .institutionCount(institutions)
+                .build();
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Scheduled reports (PROMPT §45)
+    // ────────────────────────────────────────────────────────────────────────
+
+    public List<ScheduledReportSummary> getScheduledReports(UUID userId) {
+        Scope scope = resolveScope(userId);
+        return scheduledReportRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(r -> reportInScope(r, scope))
+                .map(this::toScheduledReportSummary)
+                .toList();
+    }
+
+    @Transactional
+    public ScheduledReportSummary createScheduledReport(UUID userId, CreateScheduledReportRequest request) {
+        Scope scope = resolveScope(userId);
+        ScheduledReport report = ScheduledReport.builder()
+                .userId(userId)
+                .regionId(scope.regionId())
+                .districtId(scope.districtId())
+                .reportType(request.getReportType())
+                .title(request.getTitle())
+                .frequency(request.getFrequency())
+                .recipients(request.getRecipients())
+                .status("ACTIVE")
+                .nextRunAt(nextRunBoundary(request.getFrequency(), LocalDateTime.now()))
+                .runCount(0)
+                .build();
+        report = scheduledReportRepository.save(report);
+        log.info("Scheduled report created: {} type={} freq={} owner={}",
+                report.getId(), report.getReportType(), report.getFrequency(), userId);
+        return toScheduledReportSummary(report);
+    }
+
+    @Transactional
+    public ScheduledReportSummary updateScheduledReport(UUID userId, UUID reportId,
+                                                        UpdateScheduledReportRequest request) {
+        Scope scope = resolveScope(userId);
+        ScheduledReport report = ownedReport(userId, reportId, scope);
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            report.setTitle(request.getTitle());
+        }
+        if (request.getStatus() != null) {
+            report.setStatus(request.getStatus());
+            if ("ACTIVE".equals(request.getStatus()) && report.getNextRunAt() == null) {
+                report.setNextRunAt(nextRunBoundary(report.getFrequency(), LocalDateTime.now()));
+            }
+        }
+        if (request.getFrequency() != null) {
+            report.setFrequency(request.getFrequency());
+            report.setNextRunAt(nextRunBoundary(request.getFrequency(), LocalDateTime.now()));
+        }
+        if (request.getRecipients() != null) {
+            report.setRecipients(request.getRecipients());
+        }
+        return toScheduledReportSummary(scheduledReportRepository.save(report));
+    }
+
+    @Transactional
+    public void deleteScheduledReport(UUID userId, UUID reportId) {
+        Scope scope = resolveScope(userId);
+        ScheduledReport report = ownedReport(userId, reportId, scope);
+        report.setIsDeleted(true);
+        report.setStatus("PAUSED");
+        report.setNextRunAt(null);
+        scheduledReportRepository.save(report);
+        log.info("Scheduled report {} deleted by {}", reportId, userId);
+    }
+
+    @Transactional
+    public ScheduledReportRunSummary runScheduledReportNow(UUID userId, UUID reportId) {
+        Scope scope = resolveScope(userId);
+        ScheduledReport report = ownedReport(userId, reportId, scope);
+        return executeRun(report, scope, true);
+    }
+
+    public List<ScheduledReportRunSummary> getScheduledReportRuns(UUID userId, UUID reportId) {
+        Scope scope = resolveScope(userId);
+        ownedReport(userId, reportId, scope);
+        return scheduledReportRunRepository.findByScheduledReportIdOrderByRunAtDesc(reportId)
+                .stream()
+                .map(r -> ScheduledReportRunSummary.builder()
+                        .id(r.getId())
+                        .scheduledReportId(r.getScheduledReportId())
+                        .runAt(r.getRunAt())
+                        .status(r.getStatus())
+                        .summary(r.getSummary())
+                        .error(r.getError())
+                        .build())
+                .toList();
+    }
+
+    /**
+     * Materialise every due ACTIVE scheduled report. Invoked by the shared
+     * Spring scheduler ({@code RegionalReportScheduler}); each report runs in
+     * its owner's scope so a jurisdiction change can never leak data.
+     */
+    @Transactional
+    public int runDueScheduledReports() {
+        LocalDateTime now = LocalDateTime.now();
+        List<ScheduledReport> due = scheduledReportRepository.findDue("ACTIVE", now);
+        int executed = 0;
+        for (ScheduledReport report : due) {
+            try {
+                Scope scope = resolveScope(report.getUserId());
+                executeRun(report, scope, false);
+                executed++;
+            } catch (Exception ex) {
+                log.warn("Scheduled report {} failed: {}", report.getId(), ex.getMessage());
+                failRun(report, ex.getMessage());
+            }
+        }
+        return executed;
+    }
+
+    private ScheduledReportRunSummary executeRun(ScheduledReport report, Scope scope,
+                                                 boolean ownerTriggered) {
+        String summary;
+        try {
+            summary = buildReportSnapshot(report, scope);
+        } catch (Exception ex) {
+            failRun(report, ex.getMessage());
+            if (ownerTriggered) {
+                throw new IllegalStateException("Could not build report snapshot: " + ex.getMessage(), ex);
+            }
+            return ScheduledReportRunSummary.builder()
+                    .scheduledReportId(report.getId())
+                    .runAt(LocalDateTime.now())
+                    .status("FAILED")
+                    .error(ex.getMessage())
+                    .build();
+        }
+        LocalDateTime now = LocalDateTime.now();
+        ScheduledReportRun run = ScheduledReportRun.builder()
+                .scheduledReportId(report.getId())
+                .runAt(now)
+                .status("SUCCESS")
+                .summary(summary)
+                .error(null)
+                .build();
+        scheduledReportRunRepository.save(run);
+        report.setLastRunAt(now);
+        report.setRunCount((report.getRunCount() == null ? 0 : report.getRunCount()) + 1);
+        report.setNextRunAt(nextRunBoundary(report.getFrequency(), now));
+        scheduledReportRepository.save(report);
+
+        if (!ownerTriggered) {
+            try {
+                notificationService.notifyUser(report.getUserId(),
+                        "Scheduled report ready",
+                        report.getTitle() + " was generated (" + report.getFrequency().toLowerCase(Locale.ROOT)
+                                + ", " + report.getReportType() + ").",
+                        ANNOUNCEMENT_TYPE, "SCHEDULED_REPORT", report.getId());
+            } catch (Exception ex) {
+                log.warn("Could not notify owner of scheduled report {}: {}", report.getId(), ex.getMessage());
+            }
+        }
+        log.info("Scheduled report {} executed by {}", report.getId(),
+                ownerTriggered ? "owner" : "scheduler");
+        return ScheduledReportRunSummary.builder()
+                .id(run.getId())
+                .scheduledReportId(run.getScheduledReportId())
+                .runAt(run.getRunAt())
+                .status(run.getStatus())
+                .summary(run.getSummary())
+                .build();
+    }
+
+    private void failRun(ScheduledReport report, String error) {
+        LocalDateTime now = LocalDateTime.now();
+        scheduledReportRunRepository.save(ScheduledReportRun.builder()
+                .scheduledReportId(report.getId())
+                .runAt(now)
+                .status("FAILED")
+                .summary(null)
+                .error(error != null ? error : "unknown error")
+                .build());
+        report.setLastRunAt(now);
+        report.setRunCount((report.getRunCount() == null ? 0 : report.getRunCount()) + 1);
+        report.setStatus("PAUSED");
+        report.setNextRunAt(null);
+        scheduledReportRepository.save(report);
+    }
+
+    private String buildReportSnapshot(ScheduledReport report, Scope scope) throws Exception {
+        OversightDashboardResponse dashboard =
+                oversightService.getDashboard(scope.regionId(), scope.districtId());
+        DataQualityResponse dq = computeDataQuality(scope);
+        long pending = inScopeVerifications(scope).stream()
+                .filter(v -> "PENDING".equalsIgnoreCase(v.getStatus())).count();
+
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("reportId", report.getId());
+        snapshot.put("title", report.getTitle());
+        snapshot.put("reportType", report.getReportType());
+        snapshot.put("frequency", report.getFrequency());
+        snapshot.put("jurisdiction", scope.districtId() != null
+                ? (scope.district() != null ? scope.district().getName() : scope.districtId())
+                : (scope.region() != null ? scope.region().getName() : scope.regionId()));
+        snapshot.put("generatedAt", LocalDateTime.now().toString());
+        snapshot.put("institutions", dashboard.getTotalInstitutions());
+        snapshot.put("teachers", dashboard.getTotalTeachers());
+        snapshot.put("learners", dashboard.getTotalStudents());
+        snapshot.put("attendanceRate", dashboard.getAttendanceRate());
+        snapshot.put("averagePerformance", dashboard.getAveragePerformance());
+        snapshot.put("pendingVerifications", pending);
+        snapshot.put("dataQualityIssues", dq.getTotalIssues());
+        snapshot.put("dataQualityCritical", dq.getCriticalIssues());
+        return objectMapper.writeValueAsString(snapshot);
+    }
+
+    private ScheduledReport ownedReport(UUID userId, UUID reportId, Scope scope) {
+        ScheduledReport report = scheduledReportRepository.findById(reportId)
+                .orElseThrow(() -> new ResourceNotFoundException("Scheduled report not found"));
+        if (!userId.equals(report.getUserId())) {
+            throw new ForbiddenException("You do not own this scheduled report");
+        }
+        if (!reportInScope(report, scope)) {
+            throw new ForbiddenException("Scheduled report is outside your jurisdiction");
+        }
+        return report;
+    }
+
+    private boolean reportInScope(ScheduledReport report, Scope scope) {
+        if (scope.districtId() != null) {
+            return scope.districtId().equals(report.getDistrictId());
+        }
+        if (report.getDistrictId() != null) {
+            return false;
+        }
+        return scope.regionId().equals(report.getRegionId());
+    }
+
+    private ScheduledReportSummary toScheduledReportSummary(ScheduledReport report) {
+        String jurisdiction;
+        if (report.getDistrictId() != null) {
+            jurisdiction = districtName(report.getDistrictId());
+        } else if (report.getRegionId() != null) {
+            jurisdiction = regionRepository.findById(report.getRegionId())
+                    .map(Region::getName).orElse(null);
+        } else {
+            jurisdiction = null;
+        }
+        return ScheduledReportSummary.builder()
+                .id(report.getId())
+                .title(report.getTitle())
+                .reportType(report.getReportType())
+                .frequency(report.getFrequency())
+                .status(report.getStatus())
+                .recipients(report.getRecipients())
+                .regionId(report.getRegionId())
+                .districtId(report.getDistrictId())
+                .jurisdiction(jurisdiction)
+                .nextRunAt(report.getNextRunAt())
+                .lastRunAt(report.getLastRunAt())
+                .runCount(report.getRunCount())
+                .createdAt(report.getCreatedAt())
+                .build();
+    }
+
+    /** Next 02:00 boundary for DAILY / next Monday for WEEKLY / 1st of month for MONTHLY. */
+    private static LocalDateTime nextRunBoundary(String frequency, LocalDateTime from) {
+        LocalDateTime tomorrow = from.toLocalDate().plusDays(1)
+                .atTime(2, 0, 0, 0);
+        if (frequency == null) return tomorrow;
+        return switch (frequency) {
+            case "WEEKLY" -> {
+                LocalDateTime d = tomorrow;
+                while (d.getDayOfWeek() != DayOfWeek.MONDAY) d = d.plusDays(1);
+                yield d;
+            }
+            case "MONTHLY" -> from.toLocalDate().withDayOfMonth(1).plusMonths(1)
+                    .atTime(2, 0, 0, 0);
+            default -> tomorrow;
+        };
     }
 
     private String institutionName(Scope scope, UUID institutionId) {
