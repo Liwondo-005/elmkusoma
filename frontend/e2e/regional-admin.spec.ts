@@ -57,7 +57,8 @@ test("institutions page shows real schools with jurisdiction-scoped search", asy
   // Real seeded institution from this jurisdiction.
   await expect(page.getByText("Test Primary School Ilala").first()).toBeVisible({ timeout: 15000 })
 
-  const search = page.locator('input[type="search"]').first()
+  // Scope to the list's own search form — the top bar has a global search input too.
+  const search = page.locator('form[role="search"] input[type="search"]')
   await search.fill("Kinondoni")
   await search.press("Enter")
   await expect(page.getByText("Test Secondary School Kinondoni").first()).toBeVisible({ timeout: 15000 })
@@ -96,6 +97,64 @@ test("district admin can open the regional workspace for their district", async 
   await page.waitForURL("**/dashboard/regional-admin", { timeout: 25000 })
   await expect(page.getByRole("heading", { name: /Regional Education Command Center/ })).toBeVisible()
   await expect(page.getByText("Ilala").first()).toBeVisible({ timeout: 15000 })
+})
+
+test("wards page shows real ward geography with jurisdiction-scoped search", async ({ page }) => {
+  await login(page, REGIONAL.email, REGIONAL.password)
+  await page.waitForURL("**/dashboard/regional-admin", { timeout: 25000 })
+
+  await page.goto("/dashboard/regional-admin/wards")
+  await page.waitForURL("**/regional-admin/wards", { timeout: 20000 })
+  await expect(page.getByRole("heading", { name: "Wards", exact: true })).toBeVisible()
+  await expect(page.locator('[data-testid="wards-page"]')).toBeVisible()
+
+  // Real seeded wards of this jurisdiction (Ilala + Kinondoni).
+  await expect(page.getByText("Kariakoo").first()).toBeVisible({ timeout: 15000 })
+  await expect(page.getByText("Mchikichini").first()).toBeVisible({ timeout: 15000 })
+
+  // Scope check: an Arusha ward must never appear for a Dar user.
+  // Scope to the list's own search form — the top bar has a global search input too.
+  const search = page.locator('form[role="search"] input[type="search"]')
+  await search.fill("Njiro")
+  await search.press("Enter")
+  await expect(page.getByText("No wards found")).toBeVisible({ timeout: 15000 })
+  await expect(page.getByText("Njiro")).toHaveCount(0)
+
+  await search.fill("")
+  await search.press("Enter")
+  await page.locator('a[href*="/dashboard/regional-admin/wards/"]').first().click()
+  await page.waitForURL(/\/dashboard\/regional-admin\/wards\/[0-9a-f-]+/, { timeout: 20000 })
+  await expect(page.locator('[data-testid="ward-detail-page"]')).toBeVisible()
+})
+
+test("scheduled reports can be created, run and deleted with real snapshots", async ({ page }) => {
+  await login(page, REGIONAL.email, REGIONAL.password)
+  await page.waitForURL("**/dashboard/regional-admin", { timeout: 25000 })
+
+  await page.goto("/dashboard/regional-admin/scheduled-reports")
+  await page.waitForURL("**/regional-admin/scheduled-reports", { timeout: 20000 })
+  await expect(page.getByRole("heading", { name: "Scheduled Reports" })).toBeVisible()
+
+  const title = `E2E governance digest ${Date.now()}`
+  const form = page.locator('[data-testid="scheduled-reports-page"] form').first()
+  await form.locator('input[placeholder="e.g. Monthly attendance digest"]').fill(title)
+  await form.locator('select').first().selectOption("GOVERNANCE")
+  await form.locator('select').nth(1).selectOption("DAILY")
+  await form.getByRole("button", { name: "Create report" }).click()
+
+  // New card appears with its jurisdiction and schedule.
+  await expect(page.getByText(title)).toBeVisible({ timeout: 15000 })
+  const card = page.locator("div.rounded-2xl.border", { hasText: title }).first()
+  await expect(card.getByText("Dar es Salaam")).toBeVisible()
+
+  // Run it now — the run history must show a real SUCCESS snapshot.
+  await card.getByRole("button", { name: "Run now" }).click()
+  await expect(card.getByText("SUCCESS").first()).toBeVisible({ timeout: 15000 })
+  await expect(card.getByText(/"institutions"/).first()).toBeVisible({ timeout: 15000 })
+
+  // Clean up so the fixture stays reusable across runs.
+  await page.getByRole("button", { name: `Delete ${title}` }).click()
+  await expect(page.getByText(title)).toHaveCount(0, { timeout: 15000 })
 })
 
 test("proxy bounces non-regional roles away from the regional workspace", async ({ page }) => {

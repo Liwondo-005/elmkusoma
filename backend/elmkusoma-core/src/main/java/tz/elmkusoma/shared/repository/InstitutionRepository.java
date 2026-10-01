@@ -42,6 +42,10 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID> 
 
     List<Institution> findByDistrictIdAndIsDeletedFalse(UUID districtId);
 
+    List<Institution> findByWardIdAndIsDeletedFalse(UUID wardId);
+
+    long countByWardIdAndIsDeletedFalse(UUID wardId);
+
     @Query("SELECT COUNT(i) FROM Institution i WHERE i.id IN :institutionIds AND i.isDeleted = false")
     long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 

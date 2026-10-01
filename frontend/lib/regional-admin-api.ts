@@ -532,6 +532,74 @@ export interface NotificationSummary {
   createdAt: string
 }
 
+export interface WardSummary {
+  id: string
+  name: string
+  code: string
+  isActive: boolean
+  districtId: string
+  districtName: string | null
+  districtCode: string | null
+  regionId: string | null
+  regionName: string | null
+  regionCode: string | null
+  institutionCount: number
+}
+
+export interface WardDetail {
+  id: string
+  name: string
+  code: string
+  isActive: boolean
+  districtId: string
+  districtName: string
+  districtCode: string
+  regionId: string
+  regionName: string | null
+  regionCode: string | null
+  institutionCount: number
+  institutions: OversightInstitution[]
+}
+
+export interface ScheduledReport {
+  id: string
+  title: string
+  reportType: string
+  frequency: string
+  status: string
+  recipients: string | null
+  regionId: string | null
+  districtId: string | null
+  jurisdiction: string | null
+  nextRunAt: string | null
+  lastRunAt: string | null
+  runCount: number | null
+  createdAt: string | null
+}
+
+export interface ScheduledReportRun {
+  id: string
+  scheduledReportId: string
+  runAt: string
+  status: string
+  summary: string | null
+  error: string | null
+}
+
+export interface CreateScheduledReportPayload {
+  title: string
+  reportType: string
+  frequency: string
+  recipients?: string
+}
+
+export interface UpdateScheduledReportPayload {
+  title?: string
+  status?: string
+  frequency?: string
+  recipients?: string
+}
+
 export interface SearchResult {
   type: string
   id: string
@@ -620,6 +688,29 @@ export const regionalAdminApi = {
     regionalFetch<{ count: number }>("/v1/regional-admin/notifications/unread-count"),
   markNotificationRead: (notificationId: string) =>
     regionalFetch<void>(`/v1/regional-admin/notifications/${notificationId}/read`, { method: "PUT" }),
+
+  listWards: (params: { page?: number; size?: number; search?: string; districtId?: string } = {}) =>
+    regionalFetch<PageResponse<WardSummary>>(`/v1/regional-admin/wards${qs({ page: params.page ?? 0, size: params.size ?? 20, search: params.search, districtId: params.districtId })}`),
+  getWard: (wardId: string) => regionalFetch<WardDetail>(`/v1/regional-admin/wards/${wardId}`),
+
+  listScheduledReports: () =>
+    regionalFetch<ScheduledReport[]>("/v1/regional-admin/scheduled-reports"),
+  createScheduledReport: (payload: CreateScheduledReportPayload) =>
+    regionalFetch<ScheduledReport>("/v1/regional-admin/scheduled-reports", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateScheduledReport: (reportId: string, payload: UpdateScheduledReportPayload) =>
+    regionalFetch<ScheduledReport>(`/v1/regional-admin/scheduled-reports/${reportId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteScheduledReport: (reportId: string) =>
+    regionalFetch<void>(`/v1/regional-admin/scheduled-reports/${reportId}`, { method: "DELETE" }),
+  runScheduledReport: (reportId: string) =>
+    regionalFetch<ScheduledReportRun>(`/v1/regional-admin/scheduled-reports/${reportId}/run`, { method: "POST" }),
+  listScheduledReportRuns: (reportId: string) =>
+    regionalFetch<ScheduledReportRun[]>(`/v1/regional-admin/scheduled-reports/${reportId}/runs`),
 
   search: (q: string, limit = 20) =>
     regionalFetch<SearchResult[]>(`/v1/regional-admin/search${qs({ q, limit })}`),
