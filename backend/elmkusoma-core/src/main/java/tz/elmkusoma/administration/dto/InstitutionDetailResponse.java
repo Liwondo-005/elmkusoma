@@ -19,6 +19,8 @@ public class InstitutionDetailResponse {
     private String address;
     private String city;
     private String region;
+    private UUID regionId;
+    private UUID districtId;
     private String country;
     private String phone;
     private String email;

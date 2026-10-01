@@ -10,4 +10,9 @@ import java.util.UUID;
 public interface PlatformNotificationRepository extends JpaRepository<PlatformNotification, UUID> {
     Page<PlatformNotification> findByIsDeletedFalseOrderBySentAtDesc(Pageable pageable);
     long countByIsDeletedFalse();
+
+    Page<PlatformNotification> findByNotificationTypeAndTargetAudienceContainingAndIsDeletedFalseOrderBySentAtDesc(
+            String notificationType, String audienceNeedle, Pageable pageable);
+
+    long countByNotificationTypeAndTargetAudienceContainingAndIsDeletedFalse(String notificationType, String audienceNeedle);
 }

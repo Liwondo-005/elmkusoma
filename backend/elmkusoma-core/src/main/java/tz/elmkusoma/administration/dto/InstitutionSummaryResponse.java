@@ -18,6 +18,8 @@ public class InstitutionSummaryResponse {
     private String type;
     private String city;
     private String region;
+    private UUID regionId;
+    private UUID districtId;
     private Boolean isActive;
     private String status;
     private java.time.LocalDateTime createdAt;

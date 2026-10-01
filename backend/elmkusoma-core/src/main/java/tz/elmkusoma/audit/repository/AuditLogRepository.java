@@ -58,4 +58,9 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     @Modifying
     @Query("UPDATE AuditLog a SET a.archivedAt = CURRENT_TIMESTAMP WHERE a.createdAt < :cutoff AND a.archivedAt IS NULL")
     int archiveOlderThan(@Param("cutoff") LocalDateTime cutoff);
+
+    @Query("SELECT a FROM AuditLog a WHERE a.institutionId IN :institutionIds AND (:entityType IS NULL OR a.entityType = :entityType) ORDER BY a.createdAt DESC")
+    Page<AuditLog> findByInstitutionIdsAndEntitytype(
+            @Param("institutionIds") java.util.List<UUID> institutionIds,
+            @Param("entityType") String entityType, Pageable pageable);
 }

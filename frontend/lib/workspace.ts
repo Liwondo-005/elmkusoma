@@ -24,7 +24,7 @@ export function resolveWorkspace(
     case "National Admin":
       return "/dashboard/national"
     case "Regional Admin":
-      return "/dashboard/regional"
+      return "/dashboard/regional-admin"
     case "District Admin":
       return "/dashboard/district"
     case "Student": {

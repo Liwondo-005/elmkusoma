@@ -72,4 +72,10 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
     Optional<Resource> findTopByCourseIdAndIsDeletedFalseOrderBySortOrderDesc(UUID courseId);
 
     Optional<Resource> findTopByInstitutionIdAndIsDeletedFalseOrderBySortOrderDesc(UUID institutionId);
+
+    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.institutionId IN :institutionIds ORDER BY r.createdAt DESC")
+    Page<Resource> findByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") java.util.List<UUID> institutionIds, Pageable pageable);
+
+    @Query("SELECT r FROM Resource r WHERE r.isDeleted = false AND r.institutionId IN :institutionIds AND (:query = '' OR LOWER(r.title) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY r.createdAt DESC")
+    Page<Resource> searchByInstitutionIds(@Param("institutionIds") java.util.List<UUID> institutionIds, @Param("query") String query, Pageable pageable);
 }

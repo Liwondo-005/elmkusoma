@@ -22,5 +22,7 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
     @Query("SELECT t FROM Teacher t WHERE t.userId = :userId AND t.institutionId = :institutionId AND t.isDeleted = false")
     Optional<Teacher> findByUserIdAndInstitutionId(@Param("userId") UUID userId, @Param("institutionId") UUID institutionId);
 
+    Optional<Teacher> findFirstByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID userId);
+
     boolean existsByUserIdAndInstitutionIdAndIsDeletedFalse(UUID userId, UUID institutionId);
 }

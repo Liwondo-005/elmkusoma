@@ -46,7 +46,7 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID> 
     long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 
     @Query(value = "SELECT COUNT(*) FROM (SELECT a.institution_id FROM institutions i " +
-            "JOIN attendance_summary a ON a.institution_id = i.id " +
+            "JOIN attendance_summaries a ON a.institution_id = i.id " +
             "WHERE i.id IN :institutionIds AND i.is_deleted = false AND a.is_deleted = false " +
             "GROUP BY a.institution_id HAVING AVG(a.attendance_percentage) < :threshold) sub", nativeQuery = true)
     long countByInstitutionIdsAndAttendanceBelow(@Param("institutionIds") List<UUID> institutionIds, @Param("threshold") double threshold);

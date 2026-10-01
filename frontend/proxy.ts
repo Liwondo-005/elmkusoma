@@ -9,6 +9,7 @@ const studentRoutes = ["/dashboard/courses", "/dashboard/lessons", "/dashboard/a
 const parentRoutes = ["/dashboard/parent"]
 const nationalRoutes = ["/dashboard/national"]
 const regionalRoutes = ["/dashboard/regional"]
+const regionalAdminRoutes = ["/dashboard/regional-admin"]
 const districtRoutes = ["/dashboard/district"]
 
 export function proxy(request: NextRequest) {
@@ -35,7 +36,10 @@ export function proxy(request: NextRequest) {
         const isStudentRoute = studentRoutes.some((r) => pathname.startsWith(r))
         const isParentRoute = parentRoutes.some((r) => pathname.startsWith(r))
         const isNationalRoute = nationalRoutes.some((r) => pathname.startsWith(r))
-        const isRegionalRoute = regionalRoutes.some((r) => pathname.startsWith(r))
+        const isRegionalRoute = regionalRoutes.some(
+          (r) => pathname.startsWith(r) && !pathname.startsWith("/dashboard/regional-admin"),
+        )
+        const isRegionalAdminRoute = regionalAdminRoutes.some((r) => pathname.startsWith(r))
         const isDistrictRoute = districtRoutes.some((r) => pathname.startsWith(r))
 
         if (isTeacherRoute && role !== "Teacher" && role !== "Instructor") {
@@ -60,6 +64,9 @@ export function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
         if (isNationalRoute && role !== "National Admin") {
+          return NextResponse.redirect(new URL("/dashboard", request.url))
+        }
+        if (isRegionalAdminRoute && role !== "Regional Admin" && role !== "District Admin") {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
         if (isRegionalRoute && role !== "Regional Admin") {

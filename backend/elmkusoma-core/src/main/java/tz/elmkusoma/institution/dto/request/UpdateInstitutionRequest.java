@@ -25,4 +25,8 @@ public class UpdateInstitutionRequest {
     private String city;
 
     private String country;
+
+    private java.util.UUID regionId;
+
+    private java.util.UUID districtId;
 }

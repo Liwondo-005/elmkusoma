@@ -90,6 +90,25 @@ export interface CourseDetail {
   modules: CourseModuleSummary[]
 }
 
+export interface LearningOffering {
+  id: string
+  title: string
+  description: string | null
+  thumbnailUrl: string | null
+  educationLevel: string | null
+  visibility: string
+  status: string
+  subjectId: string | null
+  subjectName: string | null
+  courseId: string | null
+  courseTitle: string | null
+  ownerId: string
+  ownerName: string | null
+  teacherId: string | null
+  institutionId: string | null
+  createdAt: string
+}
+
 export interface CourseModuleSummary {
   id: string
   title: string
@@ -631,6 +650,18 @@ export const learnerApi = {
       body: JSON.stringify({ courseId }),
     }),
   getEnrollments: () => learnerFetch<Enrollment[]>("/v1/learner/me/enrollments"),
+  getOfferings: async (params?: { page?: number; size?: number; q?: string; educationLevel?: string }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.page != null) searchParams.set("page", String(Math.max(0, params.page)))
+    if (params?.size != null) searchParams.set("size", String(params.size))
+    if (params?.q) searchParams.set("q", params.q)
+    if (params?.educationLevel) searchParams.set("educationLevel", params.educationLevel)
+    const qs = searchParams.toString()
+    const data = await learnerFetch<{ content?: LearningOffering[] } | LearningOffering[]>(`/v1/learner/offerings${qs ? `?${qs}` : ""}`)
+    if (Array.isArray(data)) return data
+    return data.content ?? []
+  },
+  getOffering: (id: string) => learnerFetch<LearningOffering>(`/v1/learner/offerings/${id}`),
   getProgress: (courseId: string) => learnerFetch<CourseProgress>(`/v1/learner/me/progress/${courseId}`),
   updateProgress: (lessonId: string, completionPercentage: number) =>
     learnerFetch<void>("/v1/learner/me/progress", {

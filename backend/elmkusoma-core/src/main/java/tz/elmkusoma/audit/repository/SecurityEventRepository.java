@@ -44,4 +44,10 @@ public interface SecurityEventRepository extends JpaRepository<SecurityEvent, UU
     long countByResolvedFalse();
 
     List<SecurityEvent> findByResolvedFalse();
+
+    @Query("SELECT COUNT(s) FROM SecurityEvent s WHERE s.institutionId IN :institutionIds AND s.resolved = false AND s.isDeleted = false")
+    long countUnresolvedByInstitutionIds(@Param("institutionIds") java.util.List<UUID> institutionIds);
+
+    @Query("SELECT COUNT(s) FROM SecurityEvent s WHERE s.institutionId IN :institutionIds AND s.severity = 'CRITICAL' AND s.resolved = false AND s.isDeleted = false")
+    long countCriticalUnresolvedByInstitutionIds(@Param("institutionIds") java.util.List<UUID> institutionIds);
 }

@@ -26,5 +26,7 @@ public class InstitutionResponse {
     private String address;
     private String city;
     private String country;
+    private java.util.UUID regionId;
+    private java.util.UUID districtId;
     private LocalDateTime createdAt;
 }

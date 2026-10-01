@@ -46,4 +46,10 @@ public interface VideoTutorialRepository extends JpaRepository<VideoTutorial, UU
     long countByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
     long countByLessonIdAndIsDeletedFalse(UUID lessonId);
+
+    @Query("SELECT v FROM VideoTutorial v WHERE v.isDeleted = false AND v.institutionId IN :institutionIds ORDER BY v.createdAt DESC")
+    Page<VideoTutorial> findByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") java.util.List<UUID> institutionIds, Pageable pageable);
+
+    @Query("SELECT v FROM VideoTutorial v WHERE v.isDeleted = false AND v.institutionId IN :institutionIds AND (:query = '' OR LOWER(v.title) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY v.createdAt DESC")
+    Page<VideoTutorial> searchByInstitutionIds(@Param("institutionIds") java.util.List<UUID> institutionIds, @Param("query") String query, Pageable pageable);
 }

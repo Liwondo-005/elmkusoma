@@ -120,6 +120,8 @@ export interface InstitutionSummary {
   type: string
   city: string
   region: string
+  regionId?: string | null
+  districtId?: string | null
   isActive: boolean
   status?: string
   createdAt: string
@@ -146,6 +148,24 @@ export interface InstitutionFormPayload {
   address?: string
   city?: string
   country?: string
+  regionId?: string
+  districtId?: string
+}
+
+export interface OversightRegionOption {
+  id: string
+  name: string
+  code: string
+  isActive: boolean
+}
+
+export interface OversightDistrictOption {
+  id: string
+  name: string
+  code: string
+  regionId: string
+  regionName: string
+  isActive: boolean
 }
 
 export const INSTITUTION_TYPES = [
@@ -660,6 +680,9 @@ export const platformAdminApi = {
     platformFetch<InstitutionDetail>(`/v1/platform-admin/institutions`, { method: "POST", body: JSON.stringify(payload) }),
   updateInstitution: (id: string, payload: InstitutionFormPayload) =>
     platformFetch<InstitutionDetail>(`/v1/platform-admin/institutions/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  listOversightRegions: () => platformFetch<OversightRegionOption[]>("/v1/oversight/regions"),
+  listOversightDistricts: (regionId: string) =>
+    platformFetch<OversightDistrictOption[]>(`/v1/oversight/regions/${regionId}/districts`),
   deleteInstitution: (id: string) =>
     platformFetch<null>(`/v1/platform-admin/institutions/${id}`, { method: "DELETE" }),
   listOrgMembers: (institutionId: string) =>

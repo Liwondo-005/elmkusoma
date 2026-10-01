@@ -62,6 +62,36 @@ export interface TeacherQualification {
   certificateUrl: string | null
 }
 
+export interface LearningOffering {
+  id: string
+  title: string
+  description: string | null
+  thumbnailUrl: string | null
+  educationLevel: string | null
+  visibility: string
+  status: string
+  subjectId: string | null
+  subjectName: string | null
+  courseId: string | null
+  courseTitle: string | null
+  ownerId: string
+  ownerName: string | null
+  teacherId: string | null
+  institutionId: string | null
+  createdAt: string
+}
+
+export interface LearningOfferingInput {
+  title: string
+  description?: string
+  subjectId?: string | null
+  courseId?: string | null
+  educationLevel?: string | null
+  visibility?: string
+  status?: string
+  independent?: boolean
+}
+
 export interface ClassGroupInfo {
   id: string
   name: string
@@ -442,6 +472,14 @@ export const teacherApi = {
 
   reorderResources: (items: { id: string; sortOrder: number }[]) =>
     teacherFetch<ResourceItem[]>("/v1/resources/reorder", { method: "PUT", body: JSON.stringify(items) }),
+
+  getOfferings: () => teacherFetch<LearningOffering[]>("/v1/teachers/me/offerings"),
+  createOffering: (data: LearningOfferingInput) =>
+    teacherFetch<LearningOffering>("/v1/teachers/me/offerings", { method: "POST", body: JSON.stringify(data) }),
+  updateOffering: (id: string, data: LearningOfferingInput) =>
+    teacherFetch<LearningOffering>(`/v1/teachers/me/offerings/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteOffering: (id: string) =>
+    teacherFetch<void>(`/v1/teachers/me/offerings/${id}`, { method: "DELETE" }),
 
   getPresignedUploadUrl,
   uploadFileToPresignedUrl,

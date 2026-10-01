@@ -49,4 +49,27 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.isDeleted = false AND u.role IN (tz.elmkusoma.shared.domain.User.Role.STUDENT, tz.elmkusoma.shared.domain.User.Role.OTHER_LEARNER, tz.elmkusoma.shared.domain.User.Role.LEARNER) AND u.institutionId IS NULL")
     long countStudentsWithoutInstitution();
+
+    /** Jurisdiction-scoped, searchable, paged lookup across a set of roles. */
+    @Query("SELECT u FROM User u WHERE u.isDeleted = false AND u.role IN :roles AND (u.institutionId IN :institutionIds OR u.regionId = :regionId) AND (:query = '' OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY u.createdAt DESC")
+    Page<User> findScopedByRoles(@Param("roles") java.util.List<User.Role> roles, @Param("query") String query,
+                                 @Param("institutionIds") java.util.List<UUID> institutionIds,
+                                 @Param("regionId") UUID regionId, Pageable pageable);
+
+    /** Same as {@link #findScopedByRoles} for regions whose jurisdiction has no linked institutions yet. */
+    @Query("SELECT u FROM User u WHERE u.isDeleted = false AND u.role IN :roles AND u.regionId = :regionId AND (:query = '' OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY u.createdAt DESC")
+    Page<User> findScopedByRolesAndRegion(@Param("roles") java.util.List<User.Role> roles, @Param("query") String query,
+                                          @Param("regionId") UUID regionId, Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE u.isDeleted = false AND (:query = '' OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))) AND u.institutionId IN :institutionIds AND u.role IN (tz.elmkusoma.shared.domain.User.Role.STUDENT, tz.elmkusoma.shared.domain.User.Role.OTHER_LEARNER, tz.elmkusoma.shared.domain.User.Role.LEARNER, tz.elmkusoma.shared.domain.User.Role.TEACHER, tz.elmkusoma.shared.domain.User.Role.INSTRUCTOR, tz.elmkusoma.shared.domain.User.Role.INSTITUTION_ADMIN) ORDER BY u.createdAt DESC")
+    Page<User> findScopedBySearch(@Param("query") String query,
+                                  @Param("institutionIds") java.util.List<UUID> institutionIds, Pageable pageable);
+
+    /** Data-quality check: active users sharing an email address inside a jurisdiction. */
+    @Query("SELECT u.email FROM User u WHERE u.isDeleted = false AND u.institutionId IN :institutionIds GROUP BY u.email HAVING COUNT(u) > 1")
+    List<String> findDuplicateEmailsInScope(@Param("institutionIds") java.util.List<UUID> institutionIds);
+
+    /** Data-quality check: learners carrying a region but no institution link. */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.isDeleted = false AND u.regionId = :regionId AND u.role IN (tz.elmkusoma.shared.domain.User.Role.STUDENT, tz.elmkusoma.shared.domain.User.Role.OTHER_LEARNER, tz.elmkusoma.shared.domain.User.Role.LEARNER) AND u.institutionId IS NULL")
+    long countLearnersWithoutInstitutionInRegion(@Param("regionId") UUID regionId);
 }
