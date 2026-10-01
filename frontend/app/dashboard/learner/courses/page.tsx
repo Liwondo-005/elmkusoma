@@ -26,6 +26,8 @@ export default function LearnerCoursesPage() {
   const [offeringsLoaded, setOfferingsLoaded] = useState(false)
   const [offeringSearch, setOfferingSearch] = useState("")
   const [offeringLevel, setOfferingLevel] = useState("all")
+  const [offeringSubject, setOfferingSubject] = useState("all")
+  const [offeringTeacher, setOfferingTeacher] = useState("all")
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -96,13 +98,17 @@ export default function LearnerCoursesPage() {
   })
 
   const offeringLevels = [...new Set(offerings.map((o) => o.educationLevel).filter(Boolean))] as string[]
+  const offeringSubjects = [...new Set(offerings.map((o) => o.subjectName).filter(Boolean))] as string[]
+  const offeringTeachers = [...new Set(offerings.map((o) => o.ownerName).filter(Boolean))] as string[]
 
   const filteredOfferings = offerings.filter((offering) => {
     const matchesSearch = offeringSearch === "" ||
       offering.title.toLowerCase().includes(offeringSearch.toLowerCase()) ||
       (offering.description?.toLowerCase().includes(offeringSearch.toLowerCase()) ?? false)
     const matchesLevel = offeringLevel === "all" || offering.educationLevel === offeringLevel
-    return matchesSearch && matchesLevel
+    const matchesSubject = offeringSubject === "all" || offering.subjectName === offeringSubject
+    const matchesTeacher = offeringTeacher === "all" || offering.ownerName === offeringTeacher
+    return matchesSearch && matchesLevel && matchesSubject && matchesTeacher
   })
 
   if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
@@ -295,7 +301,7 @@ export default function LearnerCoursesPage() {
             <LoadingState />
           ) : (
             <>
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <input
@@ -316,13 +322,33 @@ export default function LearnerCoursesPage() {
                     <option key={level} value={level}>{level}</option>
                   ))}
                 </select>
+                <select
+                  value={offeringSubject}
+                  onChange={(e) => setOfferingSubject(e.target.value)}
+                  className="h-10 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                >
+                  <option value="all">{t("offerings.allSubjects")}</option>
+                  {offeringSubjects.map((subject) => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
+                <select
+                  value={offeringTeacher}
+                  onChange={(e) => setOfferingTeacher(e.target.value)}
+                  className="h-10 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                >
+                  <option value="all">{t("offerings.allTeachers")}</option>
+                  {offeringTeachers.map((teacher) => (
+                    <option key={teacher} value={teacher}>{teacher}</option>
+                  ))}
+                </select>
               </div>
 
               {filteredOfferings.length === 0 ? (
                 <EmptyState
                   icon={<Compass className="size-10 text-primary/40" />}
                   title={
-                    offeringSearch || offeringLevel !== "all"
+                    offeringSearch || offeringLevel !== "all" || offeringSubject !== "all" || offeringTeacher !== "all"
                       ? t("offerings.emptySearch")
                       : t("offerings.emptyTitle")
                   }

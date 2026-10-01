@@ -3837,6 +3837,8 @@
       "exploreCourses": "Vinjari Kozi"
     },
     "offerings": {
+      "allSubjects": "Masomo Yote",
+      "allTeachers": "Walimu Wote",
       "back": "Rudi Kugundua",
       "byTeacher": "Na {name}",
       "courseLabel": "Maudhui ya Kozi",

@@ -4415,6 +4415,8 @@
       "exploreCourses": "Explore Courses"
     },
     "offerings": {
+      "allSubjects": "All Subjects",
+      "allTeachers": "All Teachers",
       "back": "Back to Explore",
       "byTeacher": "By {name}",
       "courseLabel": "Course Content",
