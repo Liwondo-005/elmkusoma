@@ -439,11 +439,26 @@ export const assessmentApi = {
     request<AssessmentResult>(`/v1/assessments/${assessmentId}/results/student/${studentId}`),
 }
 
+export interface NotificationItem {
+  id: string
+  title: string
+  message: string
+  notificationType: string
+  targetType: string | null
+  targetId: string | null
+  isRead: boolean
+  createdAt: string
+}
+
 // Notifications — NotificationController allows EVERY role
-// (STUDENT, OTHER_LEARNER, TEACHER, ADMIN, INSTITUTION_ADMIN, PARENT),
-// so the topbar bell can poll one endpoint for all of them.
+// (STUDENT, OTHER_LEARNER, TEACHER, ADMIN, INSTITUTION_ADMIN, PARENT,
+// NATIONAL_ADMIN, REGIONAL_ADMIN, DISTRICT_ADMIN), so the topbar bell can
+// poll one endpoint for all of them (Nationaladmin.md §23).
 export const notificationsApi = {
   getUnreadCount: () => request<{ count: number }>("/v1/notifications/unread-count"),
+  list: () => request<NotificationItem[]>("/v1/notifications"),
+  markRead: (id: string) => request<void>(`/v1/notifications/${id}/read`, { method: "PUT" }),
+  markAllRead: () => request<void>("/v1/notifications/read-all", { method: "PUT" }),
 }
 
 export interface PageResponse<T> {
@@ -2520,5 +2535,206 @@ export const primaryApi = {
   },
   async askAI(question: string): Promise<{ answer: string }> {
     return fetchJSON<{ answer: string }>(`/v1/primary/me/ai-guide/ask`, { method: "POST", body: JSON.stringify({ question }) })
+  },
+}
+
+// ── Oversight / National Command Center (docs/Nationaladmin.md) ────────────────
+// Every endpoint below is jurisdiction-scoped server-side from the JWT; the
+// optional scope only narrows within the caller's own authority.
+
+export interface OversightScope {
+  regionId?: string | null
+  districtId?: string | null
+}
+
+function oversightPath(path: string, scope?: OversightScope): string {
+  if (!scope?.regionId && !scope?.districtId) return path
+  const params = new URLSearchParams()
+  if (scope.regionId) params.set("regionId", scope.regionId)
+  if (scope.districtId) params.set("districtId", scope.districtId)
+  return `${path}?${params.toString()}`
+}
+
+export interface OversightDashboard {
+  totalInstitutions: number
+  totalTeachers: number
+  totalStudents: number
+  totalUsers: number
+  activeLiveClasses: number
+  totalLessons: number
+  totalClasses: number
+  totalCourses: number
+  totalSubjects: number
+  totalRegions: number
+  totalDistricts: number
+  attendanceRate: number
+  averagePerformance: number
+  curriculumProgress: number
+  alertsCount: number
+  jurisdictionSummary: { type: string; name: string; code: string }
+  topRegions: Array<{
+    regionName: string
+    regionCode: string
+    institutionCount: number
+    teacherCount: number
+    studentCount: number
+    attendanceRate: number
+    averagePerformance: number
+  }>
+  recentAlerts: Array<{
+    id: string
+    type: string
+    message: string
+    severity: string
+    institutionName: string
+    timestamp: string
+  }>
+}
+
+export interface OversightRegion {
+  id: string
+  name: string
+  code: string
+  isActive: boolean
+  institutionCount: number
+  teacherCount: number
+  studentCount: number
+}
+
+export interface OversightDistrict {
+  id: string
+  name: string
+  code: string
+  regionId: string | null
+  regionName: string | null
+  isActive: boolean
+  institutionCount: number
+  teacherCount: number
+  studentCount: number
+}
+
+export interface OversightAttentionItem {
+  id: string
+  category: string
+  type: string
+  title: string
+  message: string
+  severity: string
+  jurisdiction: string | null
+  jurisdictionId: string | null
+  timestamp: string | null
+}
+
+export interface OversightAttention {
+  items: OversightAttentionItem[]
+  summary: {
+    total: number
+    high: number
+    medium: number
+    low: number
+    attendance: number
+    performance: number
+    verification: number
+    contentReport: number
+    dataQuality: number
+  }
+}
+
+export interface OversightDataQualityCheck {
+  id: string
+  title: string
+  description: string
+  severity: string
+  affectedCount: number
+  sample: string[]
+}
+
+export interface OversightDataQuality {
+  score: number
+  totalIssues: number
+  checks: OversightDataQualityCheck[]
+}
+
+export interface OversightReport {
+  id: string
+  title: string
+  description: string
+  type: string
+  icon: string
+  color: string
+  available: boolean
+}
+
+export interface OversightAnnouncement {
+  id: string
+  title: string
+  content: string
+  priority: string
+  audienceType: string | null
+  audienceRegionId: string | null
+  audienceRegionName: string | null
+  audienceDistrictId: string | null
+  audienceDistrictName: string | null
+  status: string | null
+  scheduledAt: string | null
+  publishedAt: string | null
+  createdAt: string | null
+  authorName: string | null
+  institutionName: string | null
+}
+
+export interface OversightSearchResult {
+  type: string
+  id: string
+  title: string
+  subtitle: string | null
+}
+
+export const oversightApi = {
+  dashboard: (scope?: OversightScope) =>
+    fetchJSON<OversightDashboard>(oversightPath("/v1/oversight/dashboard", scope)),
+  regions: () => fetchJSON<OversightRegion[]>("/v1/oversight/regions"),
+  districts: (regionId: string) =>
+    fetchJSON<OversightDistrict[]>(`/v1/oversight/regions/${regionId}/districts`),
+  attention: (scope?: OversightScope) =>
+    fetchJSON<OversightAttention>(oversightPath("/v1/oversight/attention", scope)),
+  dataQuality: (scope?: OversightScope) =>
+    fetchJSON<OversightDataQuality>(oversightPath("/v1/oversight/data-quality", scope)),
+  reports: () => fetchJSON<OversightReport[]>("/v1/oversight/reports"),
+  search: (query: string, scope?: OversightScope) =>
+    fetchJSON<OversightSearchResult[]>(
+      oversightPath(`/v1/oversight/search?q=${encodeURIComponent(query)}`, scope),
+    ),
+  announcements: (scope?: OversightScope) =>
+    fetchJSON<OversightAnnouncement[]>(oversightPath("/v1/oversight/announcements", scope)),
+  createAnnouncement: (body: {
+    title: string
+    content: string
+    priority?: string
+    audienceType: string
+    audienceRegionId?: string | null
+    audienceDistrictId?: string | null
+    scheduledAt?: string | null
+  }) =>
+    fetchJSON<OversightAnnouncement>("/v1/oversight/announcements", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Real CSV export — downloads the file generated from live aggregations. */
+  async exportReport(
+    reportId: string,
+    scope?: OversightScope,
+  ): Promise<{ filename: string; blob: Blob }> {
+    const token = getToken()
+    const res = await fetch(
+      `${API_BASE_URL}${oversightPath(`/v1/oversight/reports/${reportId}/export`, scope)}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    )
+    if (!res.ok) {
+      throw new ApiRequestError(`Export failed (${res.status})`, res.status, null)
+    }
+    const disposition = res.headers.get("Content-Disposition") || ""
+    const match = disposition.match(/filename=([^;]+)/)
+    return { filename: match ? match[1] : `${reportId}.csv`, blob: await res.blob() }
   },
 }

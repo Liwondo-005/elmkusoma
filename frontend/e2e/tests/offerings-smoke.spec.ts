@@ -68,7 +68,7 @@ async function ensureOtherLearner(page) {
 test("teacher can create and delete a learning offering", async ({ page }) => {
   test.setTimeout(120000);
   const missing = trackMissing(page);
-  await apiLogin(page, "teacher1@darms.edu.tz", "Test123!");
+  await apiLogin(page, "teacher1@darms.edu.tz", "password");
   page.on("dialog", (d) => d.accept());
 
   await page.goto(`${BASE}/dashboard/teacher/learning-offerings`, { waitUntil: "domcontentloaded" });
@@ -92,7 +92,7 @@ test("teacher can create and delete a learning offering", async ({ page }) => {
 test("learner explore tab shows offerings and detail page renders", async ({ page }) => {
   test.setTimeout(120000);
   const missing = trackMissing(page);
-  const t = await apiLogin(page, "teacher1@darms.edu.tz", "Test123!");
+  const t = await apiLogin(page, "teacher1@darms.edu.tz", "password");
   const s = await ensureOtherLearner(page);
   expect(s.user.role).toBe("Other Learner");
 
@@ -141,7 +141,7 @@ test("learner explore tab shows offerings and detail page renders", async ({ pag
 
 test("draft offerings are hidden from learners", async ({ page }) => {
   test.setTimeout(120000);
-  const t = await apiLogin(page, "teacher1@darms.edu.tz", "Test123!");
+  const t = await apiLogin(page, "teacher1@darms.edu.tz", "password");
   await ensureOtherLearner(page);
 
   const createRes = await page.request.post(`${API}/v1/teachers/me/offerings`, {

@@ -1,17 +1,21 @@
 package tz.elmkusoma.oversight.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import tz.elmkusoma.exception.ForbiddenException;
+import tz.elmkusoma.administration.dto.GlobalSearchResult;
 import tz.elmkusoma.oversight.dto.*;
+import tz.elmkusoma.oversight.service.OversightGovernanceService;
+import tz.elmkusoma.oversight.service.OversightScopeResolver;
+import tz.elmkusoma.oversight.service.OversightScopeResolver.Scope;
 import tz.elmkusoma.oversight.service.OversightService;
 import tz.elmkusoma.shared.domain.Institution;
-import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
-import tz.elmkusoma.shared.repository.UserRepository;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,101 +25,31 @@ import java.util.UUID;
 public class OversightController {
 
     private final OversightService oversightService;
-    private final UserRepository userRepository;
+    private final OversightGovernanceService governanceService;
+    private final OversightScopeResolver scopeResolver;
     private final InstitutionRepository institutionRepository;
-    private final tz.elmkusoma.oversight.repository.DistrictRepository districtRepository;
-
-    private UUID getUserRegionId(UUID userId) {
-        return userRepository.findById(userId)
-                .map(User::getRegionId)
-                .orElse(null);
-    }
-
-    private UUID getUserDistrictId(UUID userId) {
-        return userRepository.findById(userId)
-                .map(User::getDistrictId)
-                .orElse(null);
-    }
-
-    private String getUserRole(UUID userId) {
-        return userRepository.findById(userId)
-                .map(u -> u.getRole().name())
-                .orElse(null);
-    }
-
-    private void verifyInstitutionJurisdiction(UUID userId, UUID institutionId) {
-        String role = getUserRole(userId);
-        if ("NATIONAL_ADMIN".equals(role)) return;
-
-        Institution institution = institutionRepository.findById(institutionId)
-                .orElseThrow(() -> new RuntimeException("Institution not found"));
-
-        if ("REGIONAL_ADMIN".equals(role)) {
-            UUID userRegionId = getUserRegionId(userId);
-            if (userRegionId == null || !userRegionId.equals(institution.getRegionId())) {
-                throw new ForbiddenException("access", "institution outside your region");
-            }
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            UUID userDistrictId = getUserDistrictId(userId);
-            if (userDistrictId == null || !userDistrictId.equals(institution.getDistrictId())) {
-                throw new ForbiddenException("access", "institution outside your district");
-            }
-        }
-    }
-
-    /** Backend-authoritative region scope check for REGIONAL_ADMIN / DISTRICT_ADMIN callers. */
-    private void verifyRegionScope(UUID userId, UUID regionId) {
-        String role = getUserRole(userId);
-        if ("NATIONAL_ADMIN".equals(role) || "ADMIN".equals(role)) return;
-        UUID ownRegionId = getUserRegionId(userId);
-        if (ownRegionId == null || !ownRegionId.equals(regionId)) {
-            throw new ForbiddenException("access", "region outside your jurisdiction");
-        }
-    }
-
-    /** Backend-authoritative district scope check for REGIONAL_ADMIN / DISTRICT_ADMIN callers. */
-    private void verifyDistrictScope(UUID userId, UUID districtId) {
-        String role = getUserRole(userId);
-        if ("NATIONAL_ADMIN".equals(role) || "ADMIN".equals(role)) return;
-        if ("REGIONAL_ADMIN".equals(role)) {
-            tz.elmkusoma.oversight.domain.District district = districtRepository.findById(districtId)
-                    .orElseThrow(() -> new RuntimeException("District not found"));
-            UUID ownRegionId = getUserRegionId(userId);
-            if (ownRegionId == null || !ownRegionId.equals(district.getRegionId())) {
-                throw new ForbiddenException("access", "district outside your region");
-            }
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            UUID ownDistrictId = getUserDistrictId(userId);
-            if (ownDistrictId == null || !ownDistrictId.equals(districtId)) {
-                throw new ForbiddenException("access", "district outside your jurisdiction");
-            }
-        }
-    }
 
     @GetMapping("/dashboard")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<OversightDashboardResponse> getDashboard(
-            @RequestAttribute("userId") UUID userId) {
-        String role = getUserRole(userId);
-        UUID regionId = null;
-        UUID districtId = null;
-
-        if ("REGIONAL_ADMIN".equals(role)) {
-            regionId = getUserRegionId(userId);
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            districtId = getUserDistrictId(userId);
-            if (districtId != null) {
-                regionId = getUserRegionId(userId);
-            }
-        }
-
-        return ResponseEntity.ok(oversightService.getDashboard(regionId, districtId));
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(oversightService.getDashboard(scope.regionId(), scope.districtId()));
     }
 
     @GetMapping("/regions")
     @PreAuthorize("hasAnyRole('ADMIN', 'NATIONAL_ADMIN', 'REGIONAL_ADMIN')")
-    public ResponseEntity<List<RegionResponse>> getRegions() {
-        return ResponseEntity.ok(oversightService.getAllRegions());
+    public ResponseEntity<List<RegionResponse>> getRegions(
+            @RequestAttribute("userId") UUID userId) {
+        Scope scope = scopeResolver.resolve(userId, null, null);
+        List<RegionResponse> regions = oversightService.getAllRegions();
+        if (scope.regionId() != null) {
+            UUID ownRegionId = scope.regionId();
+            regions = regions.stream().filter(r -> ownRegionId.equals(r.getId())).toList();
+        }
+        return ResponseEntity.ok(regions);
     }
 
     @GetMapping("/regions/{regionId}/districts")
@@ -123,8 +57,8 @@ public class OversightController {
     public ResponseEntity<List<DistrictResponse>> getDistricts(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID regionId) {
-        verifyRegionScope(userId, regionId);
-        return ResponseEntity.ok(oversightService.getDistrictsByRegion(regionId));
+        Scope scope = scopeResolver.resolve(userId, regionId, null);
+        return ResponseEntity.ok(oversightService.getDistrictsByRegion(scope.regionId()));
     }
 
     @GetMapping("/regions/{regionId}/institutions")
@@ -132,8 +66,8 @@ public class OversightController {
     public ResponseEntity<List<InstitutionSummary>> getInstitutionsByRegion(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID regionId) {
-        verifyRegionScope(userId, regionId);
-        return ResponseEntity.ok(oversightService.getInstitutionsByRegion(regionId));
+        Scope scope = scopeResolver.resolve(userId, regionId, null);
+        return ResponseEntity.ok(oversightService.getInstitutionsByRegion(scope.regionId()));
     }
 
     @GetMapping("/districts/{districtId}/institutions")
@@ -141,8 +75,8 @@ public class OversightController {
     public ResponseEntity<List<InstitutionSummary>> getInstitutionsByDistrict(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID districtId) {
-        verifyDistrictScope(userId, districtId);
-        return ResponseEntity.ok(oversightService.getInstitutionsByDistrict(districtId));
+        Scope scope = scopeResolver.resolve(userId, null, districtId);
+        return ResponseEntity.ok(oversightService.getInstitutionsByDistrict(scope.districtId()));
     }
 
     @GetMapping("/institutions/{institutionId}")
@@ -150,137 +84,93 @@ public class OversightController {
     public ResponseEntity<InstitutionDetailResponse> getInstitutionDetail(
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID institutionId) {
-        verifyInstitutionJurisdiction(userId, institutionId);
+        Institution institution = institutionRepository.findById(institutionId)
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException(
+                        "Institution", "id", institutionId));
+        verifyInstitutionInScope(userId, institution);
         return ResponseEntity.ok(oversightService.getInstitutionDetail(institutionId));
+    }
+
+    private void verifyInstitutionInScope(UUID userId, Institution institution) {
+        // Reuses the same rule as every other endpoint: the institution must
+        // fall inside the caller's resolved jurisdiction.
+        Scope scope = scopeResolver.resolve(userId, null, null);
+        if (scope.districtId() != null) {
+            if (!scope.districtId().equals(institution.getDistrictId())) {
+                throw new tz.elmkusoma.exception.ForbiddenException("institution", "access");
+            }
+        } else if (scope.regionId() != null) {
+            if (!scope.regionId().equals(institution.getRegionId())) {
+                throw new tz.elmkusoma.exception.ForbiddenException("institution", "access");
+            }
+        }
     }
 
     @GetMapping("/schools")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<List<InstitutionSummary>> getSchools(
-            @RequestAttribute("userId") UUID userId) {
-        String role = getUserRole(userId);
-        UUID regionId = null;
-        UUID districtId = null;
-
-        if ("REGIONAL_ADMIN".equals(role)) {
-            regionId = getUserRegionId(userId);
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            districtId = getUserDistrictId(userId);
-            if (districtId != null) {
-                regionId = getUserRegionId(userId);
-            }
-        }
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
 
         List<InstitutionSummary> schools;
-        if (districtId != null) {
-            schools = oversightService.getInstitutionsByDistrict(districtId);
-        } else if (regionId != null) {
-            schools = oversightService.getInstitutionsByRegion(regionId);
+        if (scope.districtId() != null) {
+            schools = oversightService.getInstitutionsByDistrict(scope.districtId());
         } else {
-            schools = oversightService.getInstitutionsByRegion(null);
+            schools = oversightService.getInstitutionsByRegion(scope.regionId());
         }
-
         return ResponseEntity.ok(schools);
     }
 
     @GetMapping("/performance")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<PerformanceResponse> getPerformance(
-            @RequestAttribute("userId") UUID userId) {
-        String role = getUserRole(userId);
-        UUID regionId = null;
-        UUID districtId = null;
-
-        if ("REGIONAL_ADMIN".equals(role)) {
-            regionId = getUserRegionId(userId);
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            districtId = getUserDistrictId(userId);
-            if (districtId != null) {
-                regionId = getUserRegionId(userId);
-            }
-        }
-
-        return ResponseEntity.ok(oversightService.getPerformance(regionId, districtId));
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(oversightService.getPerformance(scope.regionId(), scope.districtId()));
     }
 
     @GetMapping("/attendance")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<AttendanceResponse> getAttendance(
-            @RequestAttribute("userId") UUID userId) {
-        String role = getUserRole(userId);
-        UUID regionId = null;
-        UUID districtId = null;
-
-        if ("REGIONAL_ADMIN".equals(role)) {
-            regionId = getUserRegionId(userId);
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            districtId = getUserDistrictId(userId);
-            if (districtId != null) {
-                regionId = getUserRegionId(userId);
-            }
-        }
-
-        return ResponseEntity.ok(oversightService.getAttendance(regionId, districtId));
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(oversightService.getAttendance(scope.regionId(), scope.districtId()));
     }
 
     @GetMapping("/curriculum")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<CurriculumResponse> getCurriculum(
-            @RequestAttribute("userId") UUID userId) {
-        String role = getUserRole(userId);
-        UUID regionId = null;
-        UUID districtId = null;
-
-        if ("REGIONAL_ADMIN".equals(role)) {
-            regionId = getUserRegionId(userId);
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            districtId = getUserDistrictId(userId);
-            if (districtId != null) {
-                regionId = getUserRegionId(userId);
-            }
-        }
-
-        return ResponseEntity.ok(oversightService.getCurriculum(regionId, districtId));
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(oversightService.getCurriculum(scope.regionId(), scope.districtId()));
     }
 
     @GetMapping("/assessments")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<AssessmentsResponse> getAssessments(
-            @RequestAttribute("userId") UUID userId) {
-        String role = getUserRole(userId);
-        UUID regionId = null;
-        UUID districtId = null;
-
-        if ("REGIONAL_ADMIN".equals(role)) {
-            regionId = getUserRegionId(userId);
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            districtId = getUserDistrictId(userId);
-            if (districtId != null) {
-                regionId = getUserRegionId(userId);
-            }
-        }
-
-        return ResponseEntity.ok(oversightService.getAssessments(regionId, districtId));
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(oversightService.getAssessments(scope.regionId(), scope.districtId()));
     }
 
     @GetMapping("/live-classes")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<LiveClassesResponse> getLiveClasses(
-            @RequestAttribute("userId") UUID userId) {
-        String role = getUserRole(userId);
-        UUID regionId = null;
-        UUID districtId = null;
-
-        if ("REGIONAL_ADMIN".equals(role)) {
-            regionId = getUserRegionId(userId);
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            districtId = getUserDistrictId(userId);
-            if (districtId != null) {
-                regionId = getUserRegionId(userId);
-            }
-        }
-
-        return ResponseEntity.ok(oversightService.getLiveClasses(regionId, districtId));
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(oversightService.getLiveClasses(scope.regionId(), scope.districtId()));
     }
 
     @GetMapping("/reports")
@@ -292,21 +182,59 @@ public class OversightController {
     @GetMapping("/alerts")
     @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<AlertsResponse> getAlerts(
-            @RequestAttribute("userId") UUID userId) {
-        String role = getUserRole(userId);
-        UUID regionId = null;
-        UUID districtId = null;
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(oversightService.getAlerts(scope.regionId(), scope.districtId()));
+    }
 
-        if ("REGIONAL_ADMIN".equals(role)) {
-            regionId = getUserRegionId(userId);
-        } else if ("DISTRICT_ADMIN".equals(role)) {
-            districtId = getUserDistrictId(userId);
-            if (districtId != null) {
-                regionId = getUserRegionId(userId);
-            }
-        }
+    @GetMapping("/attention")
+    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    public ResponseEntity<AttentionResponse> getAttention(
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(governanceService.getAttention(scope.regionId(), scope.districtId()));
+    }
 
-        return ResponseEntity.ok(oversightService.getAlerts(regionId, districtId));
+    @GetMapping("/data-quality")
+    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    public ResponseEntity<DataQualityResponse> getDataQuality(
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(governanceService.getDataQuality(scope.regionId(), scope.districtId()));
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    public ResponseEntity<List<GlobalSearchResult>> search(
+            @RequestAttribute("userId") UUID userId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        return ResponseEntity.ok(governanceService.search(q, type, scope.regionId(), scope.districtId()));
+    }
+
+    @GetMapping("/reports/{reportId}/export")
+    @PreAuthorize("hasAnyRole('NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    public ResponseEntity<byte[]> exportReport(
+            @RequestAttribute("userId") UUID userId,
+            @PathVariable String reportId,
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) UUID districtId) {
+        Scope scope = scopeResolver.resolve(userId, regionId, districtId);
+        String csv = governanceService.exportReport(reportId, scope.regionId(), scope.districtId());
+        String filename = reportId + "_" + LocalDate.now() + ".csv";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, "text/csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .body(csv.getBytes(StandardCharsets.UTF_8));
     }
 
     @GetMapping("/live-classes/{liveClassId}/observe")

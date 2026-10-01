@@ -138,7 +138,8 @@
     "searchOrganization": "Search organization...",
     "searchOrganizationPlaceholder": "Search people, courses and live classes in this organization",
     "searchForbidden": "You are not authorized to search this resource.",
-    "searchFailed": "Search failed. Try again."
+    "searchFailed": "Search failed. Try again.",
+    "searchOversight": "Search oversight"
   },
   "commandPalette": {
     "title": "Command Palette",
@@ -188,7 +189,8 @@
       "reportsDesc": "Open regional reports and analytics",
       "announcementsDesc": "Create a regional announcement",
       "governanceDesc": "Regional governance workspace",
-      "pulseDesc": "Regional education pulse"
+      "pulseDesc": "Regional education pulse",
+      "oversightDesc": "Open the oversight command center"
     },
     "actions": {
       "createLesson": "Create Lesson",
@@ -206,7 +208,13 @@
       "bookmark": "Bookmark",
       "bookmarkDesc": "Save current page",
       "history": "History",
-      "historyDesc": "View recent activity"
+      "historyDesc": "View recent activity",
+      "sendAnnouncement": "Send Announcement",
+      "sendAnnouncementDesc": "Compose an announcement for your jurisdiction",
+      "exportReport": "Export Report",
+      "exportReportDesc": "Download a jurisdiction report as CSV",
+      "runDataQuality": "Run Data Quality",
+      "runDataQualityDesc": "Check data integrity across your jurisdiction"
     },
     "admin": {
       "users": "Users",
@@ -234,7 +242,7 @@
   "nav": {
     "audit": "Audit",
     "compliance": "Compliance",
-    "dataQuality": "Data Quality",
+    "dataQuality": "Data quality",
     "districts": "Districts",
     "educationStaff": "Education Staff",
     "groupGeography": "GEOGRAPHY",
@@ -250,7 +258,7 @@
     "liveLearning": "Live Learning",
     "liveClasses": "Live Classes",
     "progress": "Progress",
-    "quickActions": "Quick Actions",
+    "quickActions": "Quick actions",
     "regionalAnnouncements": "Regional Announcements",
     "regionalPulse": "Regional Pulse",
     "regionalReports": "Regional Reports",
@@ -467,7 +475,14 @@
     "adminDashboardDesc": "Admin dashboard and management",
     "institutionsDesc": "Manage institutions and schools",
     "wards": "Wards",
-    "scheduledReports": "Scheduled Reports"
+    "scheduledReports": "Scheduled Reports",
+    "groupEducation": "Education",
+    "nationalScope": "National scope",
+    "regionalScope": "Regional scope",
+    "districtScope": "District scope",
+    "sendAnnouncement": "Send announcement",
+    "exportReport": "Export report",
+    "runDataQuality": "Run data quality"
   },
   "dashboard": {
     "welcomeBack": "Welcome back",
@@ -2528,7 +2543,8 @@
         "visibilityInstitution": "Institution",
         "visibilitySchool": "School",
         "visibilityPublic": "Public",
-        "visibilityDraft": "Draft"
+        "visibilityDraft": "Draft",
+        "upload": "Upload"
       },
       "uploadError": "Failed to upload video",
       "uploading": "Uploading...",
@@ -6904,7 +6920,27 @@
       "performance": "Performance",
       "recentAlertsRequiringAttention": "Recent Alerts Requiring Attention",
       "national": "National",
-      "overviewFallback": "Overview"
+      "overviewFallback": "Overview",
+      "allRegions": "All regions",
+      "allDistricts": "All districts",
+      "attentionCenter": "Attention center",
+      "classes": "Classes",
+      "courses": "Courses",
+      "curriculum": "Curriculum",
+      "dataQuality": "Data quality",
+      "districts": "Districts",
+      "errorLoading": "Could not load oversight data.",
+      "learners": "Learners",
+      "learningPulse": "Learning pulse",
+      "liveClasses": "Live classes",
+      "noAttentionItems": "Nothing needs attention right now.",
+      "regions": "Regions",
+      "resetScope": "Reset scope",
+      "scopeApplied": "Scope applied",
+      "subjects": "Subjects",
+      "total": "Total",
+      "verifications": "Verifications",
+      "viewAllAlerts": "View all alerts"
     },
     "performance": {
       "loadingPerformanceAnalytics": "Loading performance analytics...",
@@ -6930,7 +6966,12 @@
       "loadingReports": "Loading reports...",
       "reportsCenter": "Reports Center",
       "generateAndDownloadJurisdiction": "Generate and download jurisdiction-scoped reports",
-      "generate": "Generate"
+      "generate": "Generate",
+      "downloaded": "Downloaded",
+      "downloading": "Generating…",
+      "empty": "No reports available.",
+      "exportFailed": "Export failed. Please try again.",
+      "loadFailed": "Could not load reports."
     },
     "schools": {
       "institutionsInYourJurisdiction": "Institutions in Your Jurisdiction ({p0})",
@@ -6993,6 +7034,55 @@
       "region": "Region",
       "code": "Code",
       "institutions": "Institutions"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Your oversight notifications",
+      "all": "All",
+      "unread": "Unread",
+      "empty": "No notifications yet.",
+      "emptyUnread": "No unread notifications.",
+      "loadFailed": "Could not load notifications.",
+      "loading": "Loading notifications...",
+      "markAllRead": "Mark all read",
+      "markRead": "Mark read"
+    },
+    "dataQuality": {
+      "title": "Data Quality",
+      "subtitle": "Integrity checks across your jurisdiction",
+      "loading": "Running data quality checks...",
+      "loadFailed": "Could not load data quality results.",
+      "refresh": "Refresh",
+      "score": "score",
+      "affectedRecords": "affected records",
+      "noIssues": "No data quality issues found."
+    },
+    "announcements": {
+      "title": "Announcements",
+      "subtitle": "Broadcast updates to institutions in your jurisdiction",
+      "loading": "Loading announcements...",
+      "loadFailed": "Could not load announcements.",
+      "create": "New announcement",
+      "cancel": "Cancel",
+      "createTitle": "Compose announcement",
+      "titleLabel": "Title",
+      "contentLabel": "Message",
+      "priorityLabel": "Priority",
+      "audienceLabel": "Audience",
+      "audienceNationwide": "Nationwide",
+      "audienceRegion": "Region",
+      "audienceDistrict": "District",
+      "audienceInstitution": "Institution",
+      "scheduleLabel": "Schedule (optional)",
+      "regionLabel": "Region",
+      "selectRegion": "Select a region",
+      "districtLabel": "District",
+      "selectDistrict": "Select a district",
+      "publish": "Publish",
+      "created": "Announcement published.",
+      "createFailed": "Could not publish the announcement.",
+      "empty": "No announcements yet.",
+      "statusScheduled": "Scheduled"
     }
   },
   "public": {
@@ -7363,11 +7453,6 @@
     },
     "videoPlayer": {
       "defaultTitle": "Video"
-    }
-  },
-  "??": {
-    "institutionDetail": {
-      "browseMore": "Browse More"
     }
   },
   "home": {

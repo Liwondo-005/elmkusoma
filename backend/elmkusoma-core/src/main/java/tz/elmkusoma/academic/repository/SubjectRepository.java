@@ -19,4 +19,7 @@ public interface SubjectRepository extends JpaRepository<Subject, UUID> {
 
     @Query("SELECT s FROM Subject s WHERE s.institutionId IN :institutionIds AND s.isDeleted = false")
     List<Subject> findByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
+
+    @Query("SELECT COUNT(s) FROM Subject s WHERE s.institutionId IN :institutionIds AND s.isDeleted = false")
+    long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 }

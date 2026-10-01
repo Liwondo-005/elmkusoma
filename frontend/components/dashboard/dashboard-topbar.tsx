@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth"
 import { useLocaleContext } from "@/components/locale-provider"
 import { adminApi, ApiRequestError, notificationsApi } from "@/lib/api"
 
-type PaletteMode = "platform" | "organization"
+type PaletteMode = "platform" | "organization" | "authority"
 
 interface PaletteResult {
   type: string
@@ -34,6 +34,7 @@ function GlobalSearchDropdown({
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const isPlatform = mode === "platform"
+  const isAuthority = mode === "authority"
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -43,7 +44,23 @@ function GlobalSearchDropdown({
       setLoading(true)
       setError(null)
       try {
-        if (isPlatform) {
+        if (isAuthority) {
+          // Nationaladmin.md §28 — delegates to the shared oversight search,
+          // which filters every row to the caller's jurisdiction server-side.
+          const token = localStorage.getItem("elmkusoma_access_token")
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/v1/oversight/search?q=${encodeURIComponent(query)}`, {
+            headers: { Authorization: `Bearer ${token || ""}` },
+          })
+          if (res.ok) {
+            const json = await res.json()
+            const all: PaletteResult[] = json.data || json || []
+            // Keep only result types with a real oversight destination —
+            // a search hit must never become a dead link.
+            setResults(all.filter((r) => r.type === "INSTITUTION" || r.type === "LIVE_CLASS"))
+          } else {
+            setError(res.status === 403 ? t("searchForbidden") : t("searchFailed"))
+          }
+        } else if (isPlatform) {
           const token = document.cookie.match(/elmkusoma_access_token=([^;]+)/)?.[1]
           const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/v1/platform-admin/search?q=${encodeURIComponent(query)}&limit=10`, {
             headers: { Authorization: `Bearer ${decodeURIComponent(token || "")}` },
@@ -66,9 +83,16 @@ function GlobalSearchDropdown({
       } finally { setLoading(false) }
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, isPlatform, t])
+  }, [query, isPlatform, isAuthority, t])
 
   function navigateTo(type: string, id: string) {
+    if (isAuthority) {
+      // Only jurisdiction-scoped result types with a real destination.
+      if (type === "INSTITUTION") router.push(`/oversight/schools/${id}`)
+      else router.push("/oversight/live-classes")
+      onClose()
+      return
+    }
     if (!isPlatform) {
       if (type === "COURSE") router.push("/dashboard/admin/courses")
       else if (type === "LIVE_CLASS") router.push("/dashboard/admin/live-operations")
@@ -103,7 +127,7 @@ function GlobalSearchDropdown({
           <input
             ref={inputRef}
             type="text"
-            placeholder={isPlatform ? t("searchPlatform") : t("searchOrganizationPlaceholder")}
+            placeholder={isAuthority ? t("searchOversight") : isPlatform ? t("searchPlatform") : t("searchOrganizationPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-muted-foreground" />
@@ -153,10 +177,21 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
   const router = useRouter()
   const isAdmin = user?.role === "Admin"
   const isOrgAdmin = user?.role === "Institution Admin"
+  const isAuthority =
+    user?.role === "National Admin" ||
+    user?.role === "Regional Admin" ||
+    user?.role === "District Admin"
   // §020/§065 — the palette must only open for roles whose search endpoint the
   // caller is actually authorized to hit: platform search is ADMIN-only, org
-  // admins get the institution-scoped search instead.
-  const paletteMode: PaletteMode | null = isAdmin ? "platform" : isOrgAdmin ? "organization" : null
+  // admins get the institution-scoped search, authority roles get the
+  // jurisdiction-filtered oversight search (Nationaladmin.md §28).
+  const paletteMode: PaletteMode | null = isAdmin
+    ? "platform"
+    : isOrgAdmin
+      ? "organization"
+      : isAuthority
+        ? "authority"
+        : null
   const canUsePalette = paletteMode !== null
 
   useEffect(() => {
@@ -186,6 +221,9 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
   /** Role → that role's notifications page (mirrors the sidebar entries). */
   function notificationsPath(): string | null {
     const role = user?.role
+    if (role === "National Admin" || role === "Regional Admin" || role === "District Admin") {
+      return "/oversight/notifications"
+    }
     if (role === "Other Learner") return "/dashboard/learner/notifications-center"
     if (role === "Teacher" || role === "Instructor") return "/dashboard/teacher/notifications"
     if (role === "Parent") return "/dashboard/parent/notifications"
@@ -231,7 +269,7 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
           <button onClick={() => setSearchOpen(true)}
             className="hidden items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted sm:flex">
             <Search className="size-4" />
-            <span>{isAdmin ? t("searchPlatform") : t("searchOrganization")}</span>
+            <span>{isAdmin ? t("searchPlatform") : isAuthority ? t("searchOversight") : t("searchOrganization")}</span>
             <kbd className="ml-4 rounded-md border border-border px-1.5 py-0.5 text-[10px]">Ctrl+K</kbd>
           </button>
         ) : (

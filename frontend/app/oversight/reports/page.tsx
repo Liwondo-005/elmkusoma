@@ -4,98 +4,40 @@ import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react"
 import { useRequireAuth } from "@/lib/auth"
-import { Building2, Users, GraduationCap, MapPin, TrendingUp, BarChart3, FileBarChart, FileText, Download, Calendar, ClipboardList, Award, BookOpen, Video, AlertTriangle } from "lucide-react"
-
-interface Report {
-  id: string
-  title: string
-  description: string
-  type: string
-  icon: string
-  color: string
-  available: boolean
-}
-
-const reportTypes: Report[] = [
-  {
-    id: "school-performance",
-    title: "School Performance Report",
-    description: "Comprehensive academic performance analysis across all schools in jurisdiction",
-    type: "Academic",
-    icon: "Award",
-    color: "bg-purple-500/10 text-purple-600",
-    available: true,
-  },
-  {
-    id: "attendance-report",
-    title: "Attendance Report",
-    description: "Detailed attendance analytics with trends, patterns, and at-risk identification",
-    type: "Attendance",
-    icon: "ClipboardList",
-    color: "bg-teal-500/10 text-teal-600",
-    available: true,
-  },
-  {
-    id: "teacher-activity",
-    title: "Teacher Activity Report",
-    description: "Teacher workload, class assignments, live class sessions, and engagement metrics",
-    type: "HR",
-    icon: "Users",
-    color: "bg-blue-500/10 text-blue-600",
-    available: true,
-  },
-  {
-    id: "student-statistics",
-    title: "Student Statistics Report",
-    description: "Enrollment trends, demographics, progression, and outcome analytics",
-    type: "Demographics",
-    icon: "GraduationCap",
-    color: "bg-green-500/10 text-green-600",
-    available: true,
-  },
-  {
-    id: "assessment-report",
-    title: "Assessment Report",
-    description: "Assessment activity, completion rates, score distributions, and grading analytics",
-    type: "Assessment",
-    icon: "FileText",
-    color: "bg-indigo-500/10 text-indigo-600",
-    available: true,
-  },
-  {
-    id: "curriculum-progress",
-    title: "Curriculum Progress Report",
-    description: "Lesson completion rates, topic coverage, and curriculum pacing analysis",
-    type: "Curriculum",
-    icon: "BookOpen",
-    color: "bg-pink-500/10 text-pink-600",
-    available: true,
-  },
-  {
-    id: "live-class-activity",
-    title: "Live Class Activity Report",
-    description: "Live class schedules, participation rates, teacher performance, and session analytics",
-    type: "Live Classes",
-    icon: "Video",
-    color: "bg-red-500/10 text-red-600",
-    available: true,
-  },
-  {
-    id: "school-comparison",
-    title: "School Comparison Report",
-    description: "Side-by-side school comparison across all key metrics and indicators",
-    type: "Comparison",
-    icon: "BarChart3",
-    color: "bg-orange-500/10 text-orange-600",
-    available: true,
-  },
-]
+import {
+  Users,
+  GraduationCap,
+  TrendingUp,
+  BarChart3,
+  FileBarChart,
+  FileText,
+  Download,
+  ClipboardList,
+  Award,
+  BookOpen,
+  Video,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react"
+import { oversightApi, type OversightReport } from "@/lib/api"
 
 export default function OversightReportsPage() {
   const t = useTranslations("oversight");
   const { user, loading: authLoading } = useRequireAuth()
+  const [reportTypes, setReportTypes] = useState<OversightReport[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (authLoading) {
+  useEffect(() => {
+    if (authLoading || !user) return
+    oversightApi
+      .reports()
+      .then(setReportTypes)
+      .catch(() => setError(t("reports.loadFailed")))
+      .finally(() => setLoading(false))
+  }, [authLoading, user, t])
+
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-muted-foreground">{t("reports.loadingReports")}</div>
@@ -118,6 +60,19 @@ export default function OversightReportsPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          <AlertTriangle className="size-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {!error && reportTypes.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">
+          {t("reports.empty")}
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {reportTypes.map((report) => (
           <ReportCard key={report.id} report={report} />
@@ -127,8 +82,12 @@ export default function OversightReportsPage() {
   )
 }
 
-function ReportCard({ report }: { report: Report }) {
+function ReportCard({ report }: { report: OversightReport }) {
   const t = useTranslations("oversight")
+  const [downloading, setDownloading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
   const icons: Record<string, React.ReactNode> = {
     Award: <Award className="size-5" />,
     ClipboardList: <ClipboardList className="size-5" />,
@@ -142,28 +101,60 @@ function ReportCard({ report }: { report: Report }) {
 
   const Icon = icons[report.icon] || <FileBarChart className="size-5" />
 
+  async function download() {
+    setDownloading(true)
+    setError(null)
+    setDone(false)
+    try {
+      const { filename, blob } = await oversightApi.exportReport(report.id)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setDone(true)
+    } catch {
+      setError(t("reports.exportFailed"))
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 hover:bg-muted/50 transition-colors cursor-pointer">
+    <div className="rounded-2xl border border-border bg-card p-5 transition-colors hover:bg-muted/50">
       <div className="flex items-start gap-3">
         <div className={`flex size-10 items-center justify-center rounded-xl ${report.color}`}>
           {Icon}
         </div>
         <div className="flex-1">
           <h3 className="font-medium text-foreground">{report.title}</h3>
-          <p className="text-sm text-muted-foreground mt-1">{report.description}</p>
-          <div className="flex items-center gap-2 mt-3">
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
+          <p className="mt-1 text-sm text-muted-foreground">{report.description}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
               {report.type}
             </span>
             {report.available && (
-              <button className="text-primary hover:underline text-sm flex items-center gap-1">
-                <Download className="size-3" />
-                {t("reports.generate")}</button>
+              <button
+                type="button"
+                onClick={download}
+                disabled={downloading}
+                className="flex items-center gap-1 text-sm font-medium text-primary hover:underline disabled:opacity-60"
+              >
+                {downloading ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Download className="size-3" />
+                )}
+                {downloading ? t("reports.downloading") : done ? t("reports.downloaded") : t("reports.generate")}
+              </button>
             )}
           </div>
+          {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
         </div>
       </div>
     </div>
   )
 }
-

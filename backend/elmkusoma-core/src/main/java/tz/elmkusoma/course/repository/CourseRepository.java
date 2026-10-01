@@ -77,4 +77,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
     @Query("SELECT c FROM Course c WHERE c.isDeleted = false AND c.institutionId IN :institutionIds AND (:query = '' OR LOWER(c.title) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY c.createdAt DESC")
     Page<Course> searchByInstitutionIds(@Param("institutionIds") java.util.List<UUID> institutionIds, @Param("query") String query, Pageable pageable);
+
+    @Query("SELECT COUNT(c) FROM Course c WHERE c.institutionId IN :institutionIds AND c.isDeleted = false")
+    long countByInstitutionIdsAndIsDeletedFalse(@Param("institutionIds") List<UUID> institutionIds);
 }

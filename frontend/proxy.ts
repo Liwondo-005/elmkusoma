@@ -11,11 +11,38 @@ const nationalRoutes = ["/dashboard/national"]
 const regionalRoutes = ["/dashboard/regional"]
 const regionalAdminRoutes = ["/dashboard/regional-admin"]
 const districtRoutes = ["/dashboard/district"]
+// Nationaladmin.md §7/§39 — the authority command center is only for the
+// education-authority roles (plus platform Admin, matching the backend's
+// OversightScopeResolver). The APIs re-check every request; this gate keeps
+// unauthorized shells from rendering at all.
+const oversightRoles = ["National Admin", "Regional Admin", "District Admin", "Admin"]
 
 export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get("elmkusoma_access_token")
   const currentUser = request.cookies.get("elmkusoma_current_user")
   const pathname = request.nextUrl.pathname
+
+  if (pathname.startsWith("/oversight")) {
+    if (!accessToken && !currentUser) {
+      const loginUrl = new URL("/login", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    if (currentUser) {
+      try {
+        const user = JSON.parse(decodeURIComponent(currentUser.value))
+        if (!oversightRoles.includes(user.role)) {
+          return NextResponse.redirect(new URL("/dashboard", request.url))
+        }
+      } catch {
+        // Invalid cookie, treat as unauthenticated
+        const loginUrl = new URL("/login", request.url)
+        loginUrl.searchParams.set("redirect", pathname)
+        return NextResponse.redirect(loginUrl)
+      }
+    }
+  }
 
   if (pathname.startsWith("/dashboard")) {
     if (!accessToken && !currentUser) {
@@ -85,5 +112,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/oversight/:path*"],
 }
