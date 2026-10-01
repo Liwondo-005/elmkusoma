@@ -2261,7 +2261,7 @@ export const institutions: Institution[] = [
     educationLevel: "Vocational",
     description: "One of Tanzania's largest VETA centers offering hands-on training in construction, automotive and electrical trades.",
     location: "Dar es Salaam",
-    images: ["/images/schools/vocational/Dar%20es%20salaam%20regional%20training%20and%20service%20centre-1.jpg", "/images/schools/vocational/Dar%20es%20salaam%20regional%20training%20and%20service%20centre-2.jpg", "/images/schools/vocational/Dar%20es%20salaam%20regional%20training%20and%20service%20centre-3.jpg"],
+    images: ["/images/schools/vocational/Dar%20es%20Salaam%20Regional%20Vocational%20Training%20and%20Service%20Centre-1.jpg", "/images/schools/vocational/Dar%20es%20Salaam%20Regional%20Vocational%20Training%20and%20Service%20Centre-2.jpg", "/images/schools/vocational/Dar%20es%20Salaam%20Regional%20Vocational%20Training%20and%20Service%20Centre-3.jpg"],
     ownership: "Government",
     verified: true,
     students: 1800,
