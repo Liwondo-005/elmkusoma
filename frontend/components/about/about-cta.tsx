@@ -36,13 +36,13 @@ export function AboutCta() {
               </div>
             </div>
 
-            <div className="relative hidden h-full min-h-80 lg:block">
+            <div className="relative h-72 sm:h-96 lg:h-full lg:min-h-80">
               <Image
                 src="/images/cta-learner.png"
                 alt="Students learning on ELMKUSOMA"
                 fill
-                className="object-cover"
-                sizes="50vw"
+                className="object-contain"
+                sizes="(max-width: 1024px) 100vw, 50vw"
               />
             </div>
           </div>
