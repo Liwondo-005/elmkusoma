@@ -14,6 +14,7 @@ import tz.elmkusoma.assessment.repository.AssessmentRepository;
 import tz.elmkusoma.attendance.domain.AttendanceSummary;
 import tz.elmkusoma.attendance.repository.AttendanceSummaryRepository;
 import tz.elmkusoma.course.domain.LiveClass;
+import tz.elmkusoma.course.repository.CourseRepository;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.grading.domain.ReportCard;
 import tz.elmkusoma.grading.repository.ReportCardRepository;
@@ -55,6 +56,7 @@ public class OversightService {
     private final LiveClassRepository liveClassRepository;
     private final AssessmentRepository assessmentRepository;
     private final SubjectRepository subjectRepository;
+    private final CourseRepository courseRepository;
 
     @Value("${app.websocket.url:ws://localhost:8080}")
     private String websocketBaseUrl;
@@ -96,6 +98,8 @@ public class OversightService {
 
         long totalClasses = classGroupRepository.countByInstitutionIdsAndIsDeletedFalse(institutionIds);
         long totalLessons = lessonRepository.countByInstitutionIdsAndIsDeletedFalse(institutionIds);
+        long totalCourses = institutionIds.isEmpty() ? 0L : courseRepository.countByInstitutionIdsAndIsDeletedFalse(institutionIds);
+        long totalSubjects = institutionIds.isEmpty() ? 0L : subjectRepository.countByInstitutionIdsAndIsDeletedFalse(institutionIds);
         long activeLiveClasses = liveClassRepository.countByInstitutionIdsAndStatusAndIsDeletedFalse(institutionIds, "IN_PROGRESS");
 
         long totalRegions = jurisdictionType.equals("national") ? regionRepository.count() : 1;
@@ -124,6 +128,8 @@ public class OversightService {
                 .totalUsers(totalUsers)
                 .totalClasses(totalClasses)
                 .totalLessons(totalLessons)
+                .totalCourses(totalCourses)
+                .totalSubjects(totalSubjects)
                 .activeLiveClasses(activeLiveClasses)
                 .totalRegions(totalRegions)
                 .totalDistricts(totalDistricts)
@@ -137,7 +143,7 @@ public class OversightService {
                 .build();
     }
 
-    private List<UUID> getInstitutionIdsInJurisdiction(UUID regionId, UUID districtId) {
+    public List<UUID> getInstitutionIdsInJurisdiction(UUID regionId, UUID districtId) {
         if (districtId != null) {
             return institutionRepository.findByDistrictIdAndIsDeletedFalse(districtId)
                     .stream().map(i -> i.getId()).collect(Collectors.toList());

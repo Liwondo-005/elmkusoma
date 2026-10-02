@@ -109,8 +109,8 @@ function parseElapsed(text: string | null): number {
 test.beforeAll(async ({ playwright, request }) => {
   test.setTimeout(180_000)
   apiRequest = await playwright.request.newContext()
-  teacherToken = await login(request, "teacher1@darms.edu.tz", "Test123!")
-  studentToken = await login(request, "student1@darms.edu.tz", "Test123!")
+  teacherToken = await login(request, "teacher1@darms.edu.tz", "password")
+  studentToken = await login(request, "student1@darms.edu.tz", "password")
 
   const list = await request.get(`${API}/v1/teachers/me/live-classes`, {
     headers: { Authorization: `Bearer ${teacherToken}`, "X-Institution-Id": INST },

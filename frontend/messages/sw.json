@@ -147,7 +147,8 @@
     "notFound": {
       "title": "Ukurasa haukupatikana",
       "description": "Ukurasa unaoutafuta haupo au umehamishwa."
-    }
+    },
+    "searchOversight": "Tafuta usimamizi"
   },
   "commandPalette": {
     "title": "Paleti ya Amri",
@@ -197,7 +198,8 @@
       "reportsDesc": "Fungua ripoti na takwimu za kikanda",
       "announcementsDesc": "Tengeneza tangazo la kikanda",
       "governanceDesc": "Kazi za utawala wa kikanda",
-      "pulseDesc": "Mdundo wa elimu wa kikanda"
+      "pulseDesc": "Mdundo wa elimu wa kikanda",
+      "oversightDesc": "Fungua kituo cha kusimamia elimu"
     },
     "actions": {
       "createLesson": "Unda Somo",
@@ -215,7 +217,13 @@
       "bookmark": "Alamisha",
       "bookmarkDesc": "Hifadhi ukurasa huu",
       "history": "Historia",
-      "historyDesc": "Tazama shughuli za hivi karibuni"
+      "historyDesc": "Tazama shughuli za hivi karibuni",
+      "sendAnnouncement": "Tuma tangazo",
+      "sendAnnouncementDesc": "Andika tangazo kwa eneo lako la mamlaka",
+      "exportReport": "Hamisha ripoti",
+      "exportReportDesc": "Pakua ripoti ya eneo kama CSV",
+      "runDataQuality": "Endesha ubora wa data",
+      "runDataQualityDesc": "Angalia uadilifu wa data katika eneo lako"
     },
     "admin": {
       "users": "Watumiaji",
@@ -243,7 +251,7 @@
   "nav": {
     "audit": "Ukaguzi",
     "compliance": "Uzingatiaji Sheria",
-    "dataQuality": "Ubora wa Data",
+    "dataQuality": "Ubora wa data",
     "districts": "Wilaya",
     "educationStaff": "Wafanyakazi wa Elimu",
     "groupGeography": "JIOGRAFIA",
@@ -259,7 +267,7 @@
     "liveLearning": "Masomo ya Moja kwa Moja",
     "liveClasses": "Masomo ya Moja kwa Moja",
     "progress": "Maendeleo",
-    "quickActions": "Vitendo vya Haraka",
+    "quickActions": "Vitendo vya haraka",
     "regionalAnnouncements": "Matangazo ya Kikanda",
     "regionalPulse": "Mdundo wa Mkoa",
     "regionalReports": "Ripoti za Kikanda",
@@ -479,7 +487,14 @@
     "scheduledReports": "Ripoti Zilizopangwa",
     "educationGovernance": "Utawala wa Elimu",
     "jurisdictionType": "Mamlaka ya {type}",
-    "resolvingJurisdiction": "Inatafuta mamlaka…"
+    "resolvingJurisdiction": "Inatafuta mamlaka…",
+    "groupEducation": "Elimu",
+    "nationalScope": "Kiwango cha kitaifa",
+    "regionalScope": "Kiwango cha mkoa",
+    "districtScope": "Kiwango cha wilaya",
+    "sendAnnouncement": "Tuma tangazo",
+    "exportReport": "Hamisha ripoti",
+    "runDataQuality": "Endesha ubora wa data"
   },
   "dashboard": {
     "welcomeBack": "Karibu Tena",
@@ -1454,7 +1469,6 @@
     "myAssessments": "Mitihani Yangu",
     "allAssessments": "Mitihani Yote",
     "noAssessments": "Hakuna mitihani",
-    "upcoming": "Inayokuja",
     "ongoing": "Inaendelea",
     "completed": "Imekamilika",
     "startAssessment": "Anza Mtihani",
@@ -1571,7 +1585,6 @@
     "popularBooks": "Vitabu Maarufu"
   },
   "gamification": {
-    "badges": "Nishani",
     "streaks": "Mfuatano",
     "points": "Alama",
     "rewards": "Zawadi",
@@ -2563,7 +2576,8 @@
         "visibilityInstitution": "Taasisi",
         "visibilitySchool": "Shule",
         "visibilityPublic": "Umma",
-        "visibilityDraft": "Rasimu"
+        "visibilityDraft": "Rasimu",
+        "upload": "Pakia"
       },
       "uploadError": "Imeshindwa kupakia video",
       "uploading": "Inapakia...",
@@ -2607,21 +2621,6 @@
       "emptyTitle": "Bado hakuna walimu",
       "emptyDesc": "Walimu wako wataonekana hapa mara watakapopangiwa madarasa yako."
     }
-  },
-  "roles": {
-    "student": "Mwanafunzi",
-    "otherLearner": "Mwanafunzi Mwingine",
-    "teacher": "Mwalimu",
-    "instructor": "Mkufunzi",
-    "parent": "Mzazi",
-    "admin": "Msimamizi",
-    "institutionAdmin": "Msimamizi wa Taasisi",
-    "nationalAdmin": "Msimamizi wa Kitaifa",
-    "regionalAdmin": "Msimamizi wa Mkoa",
-    "districtAdmin": "Msimamizi wa Wilaya",
-    "providerAdmin": "Msimamizi wa Mtoa Huduma",
-    "providerStaff": "Mtumishi wa Mtoa Huduma",
-    "unknown": "Mtumiaji"
   },
   "profile": {
     "title": "Wasifu",
@@ -2821,20 +2820,6 @@
   "learner": {
     "myLearningWorld": "Ulimwengu Wangu wa Kujifunza",
     "welcomeBack": "Karibu Tena",
-    "greeting": {
-      "morning": "Habari za asubuhi",
-      "afternoon": "Habari za mchana",
-      "evening": "Habari za jioni",
-      "journeySubtitle": "Endelea na safari yako ya kujifunza."
-    },
-    "continueCard": {
-      "startTitle": "Safari yako ya kujifunza inaanzia hapa",
-      "startDesc": "Anza somo ili uone maendeleo yako hapa.",
-      "startButton": "Anza Kujifunza",
-      "title": "Endelea Kujifunza",
-      "progress": "Maendeleo",
-      "resume": "Endelea"
-    },
     "whatNext": "Nini Kifuate?",
     "allCaughtUp": "Umeisha kila kitu!",
     "continueLearning": "Endelea Kujifunza",
@@ -3478,6 +3463,20 @@
       "watchRecording": "Tazama rekodi",
       "noRecording": "Hakuna rekodi ya kipindi hiki.",
       "cancelledNote": "Kipindi hiki cha moja kwa moja kimeghairiwa."
+    },
+    "greeting": {
+      "morning": "Habari za asubuhi",
+      "afternoon": "Habari za mchana",
+      "evening": "Habari za jioni",
+      "journeySubtitle": "Endelea na safari yako ya kujifunza."
+    },
+    "continueCard": {
+      "startTitle": "Safari yako ya kujifunza inaanzia hapa",
+      "startDesc": "Anza somo ili uone maendeleo yako hapa.",
+      "startButton": "Anza Kujifunza",
+      "title": "Endelea Kujifunza",
+      "progress": "Maendeleo",
+      "resume": "Endelea"
     }
   },
   "nursery": {
@@ -4596,9 +4595,6 @@
   },
   "events": {
     "title": "Matukio na Warsha",
-    "myEvents": "Matukio Yangu",
-    "discover": "Gundua Matukio",
-    "liveNow": "Hai Sasa",
     "upcoming": {
       "badge": "Yajayo",
       "register": "Jisajili",
@@ -4651,81 +4647,16 @@
       "newRecordings": "Rekodi Mpya",
       "processingNote": "Kurekodi zinazochakatwa zitaonekana hapa zikiwa tayari."
     },
-    "recordings": "Kurekodi",
-    "allEvents": "Matukio Yote",
-    "eventDetails": "Maelezo ya Tukio",
-    "register": "Jiandikishe",
-    "registered_label": "Umesajiliwa!",
-    "viewEvent": "Tazama Tukio",
-    "addToCalendar": "Ongeza kwenye Kalenda",
-    "joinNow": "Jiunge Sasa",
-    "watchReplay": "Tazama Kurejeshwa",
-    "replayAvailable": "Kurejeshwa Kunapatikana",
-    "recordingProcessing": "Kurekodi Kinaendelea",
-    "noEvents": "Hakuna matukio bado.",
-    "noReplays": "Hakuna kurejeshwa bado.",
-    "noUpcoming": "Hakuna matukio yanayokuja.",
-    "noRegistered": "Hakuna matukio yaliyosajiliwa.",
-    "scheduleComingSoon": "Ratiba ya tukio inakuja hivi karibuni.",
-    "sessionNotStarted": "Kikao hiki bado kimeanza.",
-    "startsAt": "Inaanza saa",
-    "duration": "Muda",
-    "minutes": "dakika",
-    "presenter": "Mtiririko",
-    "capacity": "Uwezo",
-    "spotsLeft": "nafasi zimebaki",
-    "full": "Imejaa",
-    "cancelled": "Imefutwa",
-    "rescheduled": "Imepangwa upya",
-    "eventType": "Aina ya Tukio",
-    "relatedCourse": "Kozi Inayohusiana",
-    "materials": "Vifaa",
-    "accessRequirements": "Mahitaji ya Kufikia",
-    "preparingSession": "Kuandaa kikao chako...",
     "checkingAccess": "Kukagua ufikiaji...",
-    "accessGranted": "Ufikiaji umetolewa",
-    "preFlightChecks": "Kagua Kabla ya Kuanza",
-    "micCheck": "Kagua Kipaza Sauti",
-    "cameraCheck": "Kagua Kamera",
-    "speakerCheck": "Kagua Kijia Sauti",
-    "networkCheck": "Kagua Mtandao",
-    "allSystemsReady": "Mifumo yote iko tayari!",
-    "joinLive": "Jiunge Moja kwa Moja",
     "waitingRoom": "Chumba cha Kusubiri",
-    "sessionWillAppear": "Kikao kitaonekana hapa kinapoanza.",
-    "refreshStatus": "Sasisha Hali",
-    "returnToEvent": "Rudi kwenye Tukio",
-    "connectionInterrupted": "Muunganisho umekatwa.",
-    "tryingToReconnect": "Inajaribu kuungana tena...",
-    "retry": "Jaribu Tena",
-    "leaveSession": "Ondoka Kwenye Kikao",
-    "endSession": "Maliza Kikao",
     "sessionEnded": "Kikao Kimeisha",
     "attendanceRecorded": "Mahudhurio yamerekodwa",
-    "continueWatching": "Endelea Kutazama",
-    "continueFrom": "Endelea kutoka",
-    "relatedLearning": "Kujifunza Inayohusiana",
-    "relatedLesson": "Somo Inayohusiana",
-    "relatedResource": "Rasilimali Inayohusiana",
-    "upcomingEvent": "Tukio Lijalo",
-    "before": "Kabla",
     "during": {
       "connection": "Kagua muunganisho wako kabla ya kujiunga; tumia mtandao thabiti ikiwezekana.",
       "attendance": "Kaa kikao kizima ili mahudhurio yako yaweze kurekodiwa.",
       "questions": "Tumia chati au Maswali kuuliza wakati wa kikao.",
       "reconnect": "Ukikatika, rudi hapa na ujiunge tena kupitia ukurasa huu wa tukio."
     },
-    "after": "Baada",
-    "provider": "Mtoaji",
-    "institution": "Taasisi",
-    "timezone": "Saa ya Eneo",
-    "sessionSummary": "Muhtasari wa Kikao",
-    "registered_count": "Waliyosajiliwa",
-    "joined": "Wamejiunga",
-    "attendance": "Mahudhurio",
-    "participation": "Ushiriki",
-    "recordingStatus": "Hali ya Kurekodi",
-    "replayStatus": "Hali ya Kurejeshwa",
     "preflight": {
       "title": "Kaguo Kabla ya Kuanza",
       "subtitle": "Kagua kifaa chako kabla ya kujiunga na kikao cha moja kwa moja",
@@ -6605,7 +6536,13 @@
       "category": "Category",
       "selectCategory": "Select category",
       "published3": "Published",
-      "featured": "Featured"
+      "featured": "Featured",
+      "image": "Picha ya kozi",
+      "imageHint": "Inaonyeshwa kwenye kadi za kozi za ukurasa wa mwanzo. JPG, PNG, WebP au GIF hadi MB 5.",
+      "chooseImage": "Chagua picha",
+      "uploading": "Inapakia…",
+      "removeImage": "Ondoa picha",
+      "imageUploadFailed": "Kupakia picha kumeshindwa"
     },
     "departments": {
       "failedToLoadDepartments": "Imeshindwa to pakia departments",
@@ -7071,7 +7008,27 @@
       "performance": "Utendaji",
       "recentAlertsRequiringAttention": "Tahadhari za Hivi Karibuni Zinazohitaji Uangalizi",
       "national": "Kitaifa",
-      "overviewFallback": "Muhtasari"
+      "overviewFallback": "Muhtasari",
+      "allRegions": "Mikoa yote",
+      "allDistricts": "Wilaya zote",
+      "attentionCenter": "Yaliyohitaji mwitikio",
+      "classes": "Madarasa",
+      "courses": "Kozi",
+      "curriculum": "Mtaala",
+      "dataQuality": "Ubora wa data",
+      "districts": "Wilaya",
+      "errorLoading": "Imeshindwa kupakua data ya usimamizi.",
+      "learners": "Wanafunzi",
+      "learningPulse": "Mdundo wa kujifunza",
+      "liveClasses": "Madarasa moja kwa moja",
+      "noAttentionItems": "Hakuna kinachohitaji mwitikio sasa hivi.",
+      "regions": "Mikoa",
+      "resetScope": "Weka upya kiwango",
+      "scopeApplied": "Kiwango kimewekwa",
+      "subjects": "Masomo",
+      "total": "Jumla",
+      "verifications": "Uthibitishaji",
+      "viewAllAlerts": "Angalia alarma zote"
     },
     "performance": {
       "loadingPerformanceAnalytics": "Inapakia utendaji uchanganuzi...",
@@ -7097,7 +7054,12 @@
       "loadingReports": "Inapakia ripoti...",
       "reportsCenter": "Ripoti Kituo",
       "generateAndDownloadJurisdiction": "Generate and download jurisdiction-scoped ripoti",
-      "generate": "Generate"
+      "generate": "Generate",
+      "downloaded": "Imepakuliwa",
+      "downloading": "Inatengeneza…",
+      "empty": "Hakuna ripoti zinazopatikana.",
+      "exportFailed": "Uhamishaji umeshindwa. Jaribu tena.",
+      "loadFailed": "Imeshindwa kupakua ripoti."
     },
     "schools": {
       "institutionsInYourJurisdiction": "Taasisi in Your Jurisdiction ({p0})",
@@ -7160,6 +7122,55 @@
       "region": "Mkoa",
       "code": "Code",
       "institutions": "Taasisi"
+    },
+    "notifications": {
+      "title": "Arifa",
+      "subtitle": "Arifa zako za usimamizi",
+      "all": "Zote",
+      "unread": "Zisizosomwa",
+      "empty": "Bado hakuna arifa.",
+      "emptyUnread": "Hakuna arifa mpya.",
+      "loadFailed": "Imeshindwa kupakua arifa.",
+      "loading": "Inapakua arifa...",
+      "markAllRead": "Soma zote",
+      "markRead": "Soma"
+    },
+    "dataQuality": {
+      "title": "Ubora wa data",
+      "subtitle": "Ukaguzi wa uadilifu wa data katika eneo lako",
+      "loading": "Inaendesha ukaguzi wa ubora wa data...",
+      "loadFailed": "Imeshindwa kupakua matokeo ya ubora wa data.",
+      "refresh": "Sasisha",
+      "score": "alama",
+      "affectedRecords": "rekodi zilizoathiriwa",
+      "noIssues": "Hakuna matatizo ya ubora wa data yaliyopatikana."
+    },
+    "announcements": {
+      "title": "Tangazo",
+      "subtitle": "Tangaza masasisho kwa taasisi katika eneo lako",
+      "loading": "Inapakua tangazo...",
+      "loadFailed": "Imeshindwa kupakua tangazo.",
+      "create": "Tangazo jipya",
+      "cancel": "Ghairi",
+      "createTitle": "Andika tangazo",
+      "titleLabel": "Kichwa",
+      "contentLabel": "Ujumbe",
+      "priorityLabel": "Kipaumbele",
+      "audienceLabel": "Hadhira",
+      "audienceNationwide": "Kitaifa",
+      "audienceRegion": "Mkoa",
+      "audienceDistrict": "Wilaya",
+      "audienceInstitution": "Taasisi",
+      "scheduleLabel": "Ratiba (hiari)",
+      "regionLabel": "Mkoa",
+      "selectRegion": "Chagua mkoa",
+      "districtLabel": "Wilaya",
+      "selectDistrict": "Chagua wilaya",
+      "publish": "Chapisha",
+      "created": "Tangazo limechapishwa.",
+      "createFailed": "Imeshindwa kuchapisha tangazo.",
+      "empty": "Bado hakuna tangazo.",
+      "statusScheduled": "Imepangwa"
     }
   },
   "public": {
@@ -8106,6 +8117,21 @@
     "admin": "Admin",
     "help": "Help",
     "recent": "Recent"
+  },
+  "roles": {
+    "student": "Mwanafunzi",
+    "otherLearner": "Mwanafunzi Mwingine",
+    "teacher": "Mwalimu",
+    "instructor": "Mkufunzi",
+    "parent": "Mzazi",
+    "admin": "Msimamizi",
+    "institutionAdmin": "Msimamizi wa Taasisi",
+    "nationalAdmin": "Msimamizi wa Kitaifa",
+    "regionalAdmin": "Msimamizi wa Mkoa",
+    "districtAdmin": "Msimamizi wa Wilaya",
+    "providerAdmin": "Msimamizi wa Mtoa Huduma",
+    "providerStaff": "Mtumishi wa Mtoa Huduma",
+    "unknown": "Mtumiaji"
   },
   "??": {
     "institutionDetail": {

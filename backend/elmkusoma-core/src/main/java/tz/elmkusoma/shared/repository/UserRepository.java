@@ -72,4 +72,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     /** Data-quality check: learners carrying a region but no institution link. */
     @Query("SELECT COUNT(u) FROM User u WHERE u.isDeleted = false AND u.regionId = :regionId AND u.role IN (tz.elmkusoma.shared.domain.User.Role.STUDENT, tz.elmkusoma.shared.domain.User.Role.OTHER_LEARNER, tz.elmkusoma.shared.domain.User.Role.LEARNER) AND u.institutionId IS NULL")
     long countLearnersWithoutInstitutionInRegion(@Param("regionId") UUID regionId);
+    // ── Jurisdictional announcement audience (Nationaladmin.md §23) ─────────
+    List<User> findByIsActiveTrueAndIsDeletedFalse();
+
+    List<User> findByRegionIdAndIsActiveTrueAndIsDeletedFalse(UUID regionId);
+
+    List<User> findByDistrictIdAndIsActiveTrueAndIsDeletedFalse(UUID districtId);
 }

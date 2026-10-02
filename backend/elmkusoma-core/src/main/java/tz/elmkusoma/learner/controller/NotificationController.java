@@ -17,7 +17,9 @@ import java.util.UUID;
 // clients call the /api/v1/* form directly against the backend base URL.
 @RequestMapping({"/api/v1/notifications", "/v1/notifications"})
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'TEACHER', 'ADMIN', 'INSTITUTION_ADMIN', 'PARENT')")
+// §Nationaladmin.md — oversight roles share the same inbox (unread-count bell is
+// polled by DashboardTopbar for every authenticated user).
+@PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'TEACHER', 'ADMIN', 'INSTITUTION_ADMIN', 'PARENT', 'NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
 public class NotificationController {
 
     private final NotificationService notificationService;

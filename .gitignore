@@ -11,6 +11,7 @@ backend/.env
 # Build artifacts
 backend/*/target/
 backend/*.log
+backend/*/uploads/
 frontend/.next/
 frontend/node_modules/
 

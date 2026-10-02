@@ -73,6 +73,7 @@ public class LearnerController {
     private final CertificateRepository certificateRepository;
     private final CertificateTemplateRepository certificateTemplateRepository;
     private final UserRepository userRepository;
+    private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
     private final LiveClassParticipantRepository liveClassParticipantRepository;
     private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
     private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
@@ -583,11 +584,61 @@ public class LearnerController {
     // ── Announcements ────────────────────────────────────────────────────
 
     @GetMapping("/announcements")
-    @Operation(summary = "Browse all announcements for institution")
+    @Operation(summary = "Browse announcements for institution plus national/region/district broadcasts")
     public ResponseEntity<ApiResponse<List<Announcement>>> browseAnnouncements(
-            @RequestAttribute("institutionId") UUID institutionId) {
-        List<Announcement> announcements = announcementRepository.findByInstitutionIdAndIsDeletedFalse(institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId) {
+        List<Announcement> announcements = new ArrayList<>(announcementRepository
+                .findByInstitutionIdAndIsDeletedFalse(institutionId));
+
+        User user = userRepository.findById(userId).orElse(null);
+        Set<UUID> seen = new HashSet<>();
+        announcements.forEach(a -> seen.add(a.getId()));
+
+        // Nationaladmin.md §23 — jurisdictional broadcasts reach learners too.
+        for (Announcement jurisdictional : announcementRepository.findJurisdictionalAndIsDeletedFalse()) {
+            if (seen.contains(jurisdictional.getId())) continue;
+            if (!"PUBLISHED".equals(jurisdictional.getStatus())
+                    && jurisdictional.getStatus() != null) {
+                continue;
+            }
+            if (announcementVisibleToLearner(jurisdictional, user, institutionId)) {
+                announcements.add(jurisdictional);
+                seen.add(jurisdictional.getId());
+            }
+        }
+
+        announcements.sort(Comparator.comparing(
+                Announcement::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
         return ResponseEntity.ok(ApiResponse.success(announcements));
+    }
+
+    private boolean announcementVisibleToLearner(Announcement announcement, User user, UUID institutionId) {
+        String audience = announcement.getAudienceType();
+        if (audience == null) return false;
+        if ("NATIONWIDE".equals(audience)) return true;
+
+        UUID instRegionId = null;
+        UUID instDistrictId = null;
+        if (institutionId != null) {
+            var institution = institutionRepository.findById(institutionId).orElse(null);
+            if (institution != null) {
+                instRegionId = institution.getRegionId();
+                instDistrictId = institution.getDistrictId();
+            }
+        }
+        if (instRegionId == null && user != null) {
+            instRegionId = user.getRegionId();
+            instDistrictId = user.getDistrictId();
+        }
+
+        return switch (audience) {
+            case "REGION" -> announcement.getAudienceRegionId() != null
+                    && announcement.getAudienceRegionId().equals(instRegionId);
+            case "DISTRICT" -> announcement.getAudienceDistrictId() != null
+                    && announcement.getAudienceDistrictId().equals(instDistrictId);
+            default -> false;
+        };
     }
 
     // ── Bookmarks ────────────────────────────────────────────────────────

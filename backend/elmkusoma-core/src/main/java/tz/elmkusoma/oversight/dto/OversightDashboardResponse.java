@@ -14,6 +14,8 @@ public class OversightDashboardResponse {
     private Long activeLiveClasses;
     private Long totalLessons;
     private Long totalClasses;
+    private Long totalCourses;
+    private Long totalSubjects;
     private Long totalRegions;
     private Long totalDistricts;
     private Double attendanceRate;

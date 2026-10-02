@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react"
-import { BookOpen, Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2, X, Check, Search, Filter } from "lucide-react"
+import { BookOpen, Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2, X, Check, Search, Filter, Image as ImageIcon, Upload } from "lucide-react"
 import { courseApi, getInstitutionId, type Course, type CourseStats } from "@/lib/api"
 
 const LEVELS = ["ALL_LEVELS", "NURSERY", "PRIMARY", "SECONDARY", "COLLEGE", "VETA", "UNIVERSITY"]
@@ -20,12 +20,15 @@ export default function CoursesPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterLevel, setFilterLevel] = useState("")
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     title: "",
     description: "",
     level: "ALL_LEVELS",
     category: "",
+    thumbnailUrl: "",
     isPublished: false,
     isFeatured: false,
   })
@@ -67,6 +70,22 @@ export default function CoursesPage() {
     }
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    try {
+      setUploadingImage(true)
+      setImageError(null)
+      const { url } = await courseApi.uploadThumbnail(file)
+      setForm((prev) => ({ ...prev, thumbnailUrl: url }))
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : t("courses.imageUploadFailed"))
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   const handleDelete = async (courseId: string) => {
     if (!confirm(t("courses.areYouSureYou"))) return
     try {
@@ -93,6 +112,7 @@ export default function CoursesPage() {
       description: course.description || "",
       level: course.level,
       category: course.category || "",
+      thumbnailUrl: course.thumbnailUrl || "",
       isPublished: course.isPublished,
       isFeatured: course.isFeatured,
     })
@@ -100,7 +120,7 @@ export default function CoursesPage() {
   }
 
   const resetForm = () => {
-    setForm({ title: "", description: "", level: "ALL_LEVELS", category: "", isPublished: false, isFeatured: false })
+    setForm({ title: "", description: "", level: "ALL_LEVELS", category: "", thumbnailUrl: "", isPublished: false, isFeatured: false })
   }
 
   const filteredCourses = courses.filter((c) => {
@@ -280,6 +300,37 @@ export default function CoursesPage() {
                   className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                   placeholder={t("courses.briefDescriptionOfThe")}
                 />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground">{t("courses.image")}</label>
+                <div className="mt-1 flex items-center gap-3">
+                  {form.thumbnailUrl ? (
+                    <img src={form.thumbnailUrl} alt="" className="h-20 w-32 rounded-xl border border-border object-cover" />
+                  ) : (
+                    <div className="flex h-20 w-32 items-center justify-center rounded-xl border border-dashed border-border text-muted-foreground">
+                      <ImageIcon className="size-5" />
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted">
+                      {uploadingImage ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+                      {uploadingImage ? t("courses.uploading") : t("courses.chooseImage")}
+                      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+                    </label>
+                    {form.thumbnailUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, thumbnailUrl: "" })}
+                        className="w-fit text-xs text-destructive hover:underline"
+                      >
+                        {t("courses.removeImage")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {imageError && <p className="mt-1.5 text-xs text-destructive">{imageError}</p>}
+                <p className="mt-1.5 text-xs text-muted-foreground">{t("courses.imageHint")}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

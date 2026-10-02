@@ -48,6 +48,20 @@ public class CoreScheduler {
     private final EventRegistrationRepository registrationRepository;
     private final LearnerNotificationRepository learnerNotificationRepository;
     private final NotificationService notificationService;
+    private final tz.elmkusoma.oversight.service.OversightAnnouncementService oversightAnnouncementService;
+
+    /** Nationaladmin.md §23 — publish scheduled jurisdictional announcements. */
+    @Scheduled(fixedRate = 60000)
+    public void publishDueAnnouncements() {
+        try {
+            int published = oversightAnnouncementService.publishDueAnnouncements();
+            if (published > 0) {
+                log.info("Published {} due jurisdictional announcement(s)", published);
+            }
+        } catch (Exception e) {
+            log.warn("Announcement publish sweep failed: {}", e.getMessage());
+        }
+    }
 
     @Scheduled(fixedRate = 3600000)
     public void cleanupExpiredTokens() {

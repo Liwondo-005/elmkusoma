@@ -22,11 +22,13 @@ export function resolveWorkspace(
     case "Other Learner":
       return "/dashboard/learner"
     case "National Admin":
-      return "/dashboard/national"
+      // Nationaladmin.md §8 — one Command Center per governance model; the
+      // role-resolved jurisdiction (not the URL) decides what it shows.
+      return "/oversight"
     case "Regional Admin":
-      return "/dashboard/regional-admin"
+      return "/oversight"
     case "District Admin":
-      return "/dashboard/district"
+      return "/oversight"
     case "Student": {
       const level = (user.learningLevel || "").toUpperCase()
       if (level === "NURSERY") return "/dashboard/nursery"

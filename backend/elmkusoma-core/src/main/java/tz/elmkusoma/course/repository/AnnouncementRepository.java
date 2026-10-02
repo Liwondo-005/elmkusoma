@@ -33,4 +33,12 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, UUID
 
     @Query("SELECT a FROM Announcement a WHERE a.isDeleted = false AND a.institutionId = :institutionId AND (LOWER(a.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(a.content) LIKE LOWER(CONCAT('%', :query, '%'))) ORDER BY a.createdAt DESC")
     List<Announcement> searchByInstitutionIdAndQuery(@Param("institutionId") UUID institutionId, @Param("query") String query);
+
+    // ── Jurisdictional audiences (Nationaladmin.md §23) ─────────────────────
+
+    @Query("SELECT a FROM Announcement a WHERE a.isDeleted = false AND a.audienceType IS NOT NULL ORDER BY a.createdAt DESC")
+    List<Announcement> findJurisdictionalAndIsDeletedFalse();
+
+    @Query("SELECT a FROM Announcement a WHERE a.isDeleted = false AND a.status = 'SCHEDULED' AND a.scheduledAt IS NOT NULL AND a.scheduledAt <= :now")
+    List<Announcement> findDueScheduled(@Param("now") java.time.LocalDateTime now);
 }

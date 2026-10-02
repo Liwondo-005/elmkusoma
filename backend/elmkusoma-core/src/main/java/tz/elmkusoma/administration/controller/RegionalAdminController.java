@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.administration.dto.*;
+import tz.elmkusoma.administration.dto.DataQualityResponse;
 import tz.elmkusoma.administration.service.RegionalAdminService;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.common.PageResponse;

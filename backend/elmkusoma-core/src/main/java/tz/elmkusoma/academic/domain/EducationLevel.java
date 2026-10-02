@@ -6,5 +6,7 @@ public enum EducationLevel {
     SECONDARY,
     COLLEGE,
     VETA,
-    UNIVERSITY
+    UNIVERSITY,
+    O_LEVEL,
+    A_LEVEL
 }

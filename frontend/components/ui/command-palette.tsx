@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useMemo } from "react"
-import { X, Search, Zap, HelpCircle, Users, Shield, BookOpen, Plus, Upload, Calendar, Settings, LayoutDashboard, GraduationCap, Film, FileText, Clock, LifeBuoy, BookMarked, ExternalLink, ClipboardList, Award, ClipboardCheck } from "lucide-react"
+import { X, Search, Zap, HelpCircle, Users, Shield, BookOpen, Plus, Upload, Calendar, Settings, LayoutDashboard, GraduationCap, Film, FileText, Clock, LifeBuoy, BookMarked, ExternalLink, ClipboardList, Award, ClipboardCheck, Building2, AlertTriangle, Megaphone, Download, FlaskConical } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/lib/auth"
@@ -29,6 +29,13 @@ export function CommandPalette() {
   const isTeacher = user?.role === "Teacher" || user?.role === "Instructor"
   const isLearner = user?.role === "Other Learner" || user?.role === "Student"
   const isRegional = user?.role === "Regional Admin" || user?.role === "District Admin"
+  // Nationaladmin.md §30 — governance roles get their own command set; the
+  // generic learner/admin entries would resolve to routes they cannot access.
+  const isAuthority =
+    user?.role === "National Admin" ||
+    user?.role === "Regional Admin" ||
+    user?.role === "District Admin"
+  const isNational = user?.role === "National Admin"
 
   const navigationItems = useMemo((): ItemType[] => {
     const items: ItemType[] = [
@@ -39,59 +46,125 @@ export function CommandPalette() {
         category: t("categories.navigation"),
         shortcut: "⌘1",
         icon: <LayoutDashboard className="size-4" />,
-        action: () => router.push("/dashboard"),
+        action: () => router.push(isAuthority ? "/oversight" : "/dashboard"),
         keywords: ["home", "overview", "main"],
       },
-      {
-        id: "nav-courses",
-        title: tn("courses"),
-        description: t("nav.coursesDesc"),
-        category: t("categories.navigation"),
-        shortcut: "⌘2",
-        icon: <GraduationCap className="size-4" />,
-        action: () => router.push(isLearner ? "/dashboard/learner/courses" : isTeacher ? "/dashboard/teacher/courses" : "/dashboard/admin/courses"),
-        keywords: ["course", "class", "subject"],
-      },
-      {
-        id: "nav-resources",
-        title: tn("resources"),
-        description: t("nav.resourcesDesc"),
-        category: t("categories.navigation"),
-        shortcut: "⌘3",
-        icon: <BookOpen className="size-4" />,
-        action: () => router.push(isLearner ? "/dashboard/learner/resources" : isTeacher ? "/dashboard/teacher/resources" : "/dashboard/admin/resources"),
-        keywords: ["resource", "material", "document"],
-      },
-      {
-        id: "nav-videos",
-        title: tn("videoLibrary"),
-        description: t("nav.videosDesc"),
-        category: t("categories.navigation"),
-        shortcut: "⌘4",
-        icon: <Film className="size-4" />,
-        action: () => router.push(isLearner ? "/dashboard/learner/video-library" : isTeacher ? "/dashboard/teacher/video-library" : "/dashboard/admin/videos"),
-        keywords: ["video", "media", "recording"],
-      },
-      {
-        id: "nav-lessons",
-        title: tn("lessons"),
-        description: t("nav.lessonsDesc"),
-        category: t("categories.navigation"),
-        shortcut: "⌘5",
-        icon: <FileText className="size-4" />,
-        action: () => router.push(isLearner ? "/dashboard/learner/my-learning" : isTeacher ? "/dashboard/teacher/lessons" : "/dashboard/admin/lessons"),
-        keywords: ["lesson", "session", "lecture"],
-      },
-      {
-        id: "nav-calendar",
-        title: tn("calendar"),
-        description: t("nav.calendarDesc"),
-        category: t("categories.navigation"),
-        shortcut: "⌘6",
-        icon: <Calendar className="size-4" />,
-        action: () => router.push("/dashboard/learner/calendar"),
-        keywords: ["calendar", "schedule", "event", "date"],
-      },
+    ]
+
+    if (isAuthority) {
+      // Authority roles: every target is a real oversight route.
+      items.push(
+        {
+          id: "nav-oversight-schools",
+          title: tn("schools"),
+          description: t("nav.oversightDesc"),
+          category: t("categories.navigation"),
+          icon: <Building2 className="size-4" />,
+          action: () => router.push("/oversight/schools"),
+          keywords: ["school", "institution", "oversight"],
+        },
+        {
+          id: "nav-oversight-performance",
+          title: tn("performance"),
+          description: t("nav.oversightDesc"),
+          category: t("categories.navigation"),
+          icon: <ClipboardList className="size-4" />,
+          action: () => router.push("/oversight/performance"),
+          keywords: ["performance", "scores", "oversight"],
+        },
+        {
+          id: "nav-oversight-attendance",
+          title: tn("attendance"),
+          description: t("nav.oversightDesc"),
+          category: t("categories.navigation"),
+          icon: <ClipboardCheck className="size-4" />,
+          action: () => router.push("/oversight/attendance"),
+          keywords: ["attendance", "absence", "oversight"],
+        },
+        {
+          id: "nav-oversight-alerts",
+          title: tn("alerts"),
+          description: t("nav.oversightDesc"),
+          category: t("categories.navigation"),
+          icon: <AlertTriangle className="size-4" />,
+          action: () => router.push("/oversight/alerts"),
+          keywords: ["alert", "attention", "warning"],
+        },
+        {
+          id: "nav-oversight-reports",
+          title: tn("reports"),
+          description: t("nav.oversightDesc"),
+          category: t("categories.navigation"),
+          icon: <FileText className="size-4" />,
+          action: () => router.push("/oversight/reports"),
+          keywords: ["report", "export", "csv"],
+        },
+        {
+          id: "nav-oversight-notifications",
+          title: tn("notifications"),
+          description: t("nav.oversightDesc"),
+          category: t("categories.navigation"),
+          icon: <Users className="size-4" />,
+          action: () => router.push("/oversight/notifications"),
+          keywords: ["notification", "inbox", "message"],
+        },
+      )
+    } else {
+      items.push(
+        {
+          id: "nav-courses",
+          title: tn("courses"),
+          description: t("nav.coursesDesc"),
+          category: t("categories.navigation"),
+          shortcut: "⌘2",
+          icon: <GraduationCap className="size-4" />,
+          action: () => router.push(isLearner ? "/dashboard/learner/courses" : isTeacher ? "/dashboard/teacher/courses" : "/dashboard/admin/courses"),
+          keywords: ["course", "class", "subject"],
+        },
+        {
+          id: "nav-resources",
+          title: tn("resources"),
+          description: t("nav.resourcesDesc"),
+          category: t("categories.navigation"),
+          shortcut: "⌘3",
+          icon: <BookOpen className="size-4" />,
+          action: () => router.push(isLearner ? "/dashboard/learner/resources" : isTeacher ? "/dashboard/teacher/resources" : "/dashboard/admin/resources"),
+          keywords: ["resource", "material", "document"],
+        },
+        {
+          id: "nav-videos",
+          title: tn("videoLibrary"),
+          description: t("nav.videosDesc"),
+          category: t("categories.navigation"),
+          shortcut: "⌘4",
+          icon: <Film className="size-4" />,
+          action: () => router.push(isLearner ? "/dashboard/learner/video-library" : isTeacher ? "/dashboard/teacher/video-library" : "/dashboard/admin/videos"),
+          keywords: ["video", "media", "recording"],
+        },
+        {
+          id: "nav-lessons",
+          title: tn("lessons"),
+          description: t("nav.lessonsDesc"),
+          category: t("categories.navigation"),
+          shortcut: "⌘5",
+          icon: <FileText className="size-4" />,
+          action: () => router.push(isLearner ? "/dashboard/learner/my-learning" : isTeacher ? "/dashboard/teacher/lessons" : "/dashboard/admin/lessons"),
+          keywords: ["lesson", "session", "lecture"],
+        },
+        {
+          id: "nav-calendar",
+          title: tn("calendar"),
+          description: t("nav.calendarDesc"),
+          category: t("categories.navigation"),
+          shortcut: "⌘6",
+          icon: <Calendar className="size-4" />,
+          action: () => router.push("/dashboard/learner/calendar"),
+          keywords: ["calendar", "schedule", "event", "date"],
+        },
+      )
+    }
+
+    items.push(
       {
         id: "nav-settings",
         title: tn("settings"),
@@ -101,8 +174,8 @@ export function CommandPalette() {
         icon: <Settings className="size-4" />,
         action: () => router.push("/dashboard/settings"),
         keywords: ["settings", "preferences", "config"],
-      },
-    ]
+      }
+    )
 
     if (isLearner) {
       items.push(
@@ -279,7 +352,7 @@ export function CommandPalette() {
     }
 
     return items
-  }, [router, isAdmin, isOrgAdmin, isTeacher, isLearner, isRegional, t, tn])
+  }, [router, isAdmin, isOrgAdmin, isTeacher, isLearner, isRegional, isAuthority, t, tn])
 
   const actionItems = useMemo((): ItemType[] => {
     const items: ItemType[] = []
@@ -398,8 +471,42 @@ export function CommandPalette() {
       )
     }
 
+    if (isAuthority) {
+      if (isNational) {
+        items.push({
+          id: "action-send-announcement",
+          title: t("actions.sendAnnouncement"),
+          description: t("actions.sendAnnouncementDesc"),
+          category: t("categories.actions"),
+          icon: <Megaphone className="size-4" />,
+          action: () => router.push("/oversight/announcements?action=create"),
+          keywords: ["announcement", "broadcast", "message", "send"],
+        })
+      }
+      items.push(
+        {
+          id: "action-export-report",
+          title: t("actions.exportReport"),
+          description: t("actions.exportReportDesc"),
+          category: t("categories.actions"),
+          icon: <Download className="size-4" />,
+          action: () => router.push("/oversight/reports"),
+          keywords: ["export", "report", "csv", "download"],
+        },
+        {
+          id: "action-data-quality",
+          title: t("actions.runDataQuality"),
+          description: t("actions.runDataQualityDesc"),
+          category: t("categories.actions"),
+          icon: <FlaskConical className="size-4" />,
+          action: () => router.push("/oversight/data-quality"),
+          keywords: ["data", "quality", "integrity", "checks"],
+        },
+      )
+    }
+
     return items
-  }, [router, isAdmin, isOrgAdmin, isTeacher, isLearner, isRegional, t])
+  }, [router, isAdmin, isOrgAdmin, isTeacher, isLearner, isRegional, isAuthority, isNational, t, tn])
 
   const adminItems = useMemo((): ItemType[] => {
     if (!isAdmin && !isOrgAdmin) return []
