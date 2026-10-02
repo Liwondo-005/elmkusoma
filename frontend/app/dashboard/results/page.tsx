@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { dashboardApi, academicApi, type StudentResult } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
@@ -46,6 +47,10 @@ function getGradeBg(grade: string) {
 }
 
 export default function ResultsPage() {
+  const t = useTranslations("results")
+  const tg = useTranslations("teacher")
+  const tl = useTranslations("lessons")
+  const tm = useTranslations("secondary")
   const { user } = useRequireAuth()
   const [results, setResults] = useState<StudentResult[]>([])
   const [loading, setLoading] = useState(true)
@@ -95,8 +100,8 @@ export default function ResultsPage() {
     }
   }
 
-  function resolveTerm(id: string) { return names.termNames[id] || `Term ${id?.slice(0, 8) || "N/A"}` }
-  function resolveYear(id: string) { return names.yearNames[id] || `Year ${id?.slice(0, 8) || "N/A"}` }
+  function resolveTerm(id: string) { return names.termNames[id] || `${t("termLabel")} ${id?.slice(0, 8) || "N/A"}` }
+  function resolveYear(id: string) { return names.yearNames[id] || `${t("yearLabel")} ${id?.slice(0, 8) || "N/A"}` }
   function resolveSubject(id: string) { return names.subjectNames[id] || id?.slice(0, 8) || "—" }
 
   if (loading) {
@@ -114,15 +119,15 @@ export default function ResultsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">My Results</h1>
-        <p className="mt-1 text-sm text-muted-foreground">View your report cards and subject grades.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("myResults")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {results.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <Award className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Results Yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground">Your results will appear here once published by your teacher.</p>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noResults")}</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("emptyDesc")}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -151,12 +156,12 @@ export default function ResultsPage() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-2xl font-extrabold text-foreground">{result.averageMark?.toFixed(1) ?? "—"}</p>
-                      <p className="text-xs text-muted-foreground">Average</p>
+                      <p className="text-xs text-muted-foreground">{tg("colAverage")}</p>
                     </div>
                     {result.classRank && (
                       <div className="text-right">
                         <p className="text-lg font-bold text-primary">#{result.classRank}</p>
-                        <p className="text-xs text-muted-foreground">Rank</p>
+                        <p className="text-xs text-muted-foreground">{t("rank")}</p>
                       </div>
                     )}
                     {isExpanded ? <ChevronUp className="size-5 text-muted-foreground" /> : <ChevronDown className="size-5 text-muted-foreground" />}
@@ -167,16 +172,16 @@ export default function ResultsPage() {
                   <div className="border-t border-border p-5">
                     {result.subjectGrades && result.subjectGrades.length > 0 ? (
                       <div className="space-y-2">
-                        <h4 className="text-sm font-semibold text-foreground mb-3">Subject Grades</h4>
+                        <h4 className="text-sm font-semibold text-foreground mb-3">{t("subjectGradesTitle")}</h4>
                     <div className="rounded-xl border border-border overflow-hidden">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="bg-muted/50">
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Subject</th>
-                            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Marks</th>
-                            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Grade</th>
-                            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Points</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Remarks</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{tl("subject")}</th>
+                            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">{tm("marks")}</th>
+                            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">{t("grade")}</th>
+                            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">{t("pointsLabel")}</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{tg("colRemarks")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -194,20 +199,20 @@ export default function ResultsPage() {
                     </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No subject grades available for this term.</p>
+                      <p className="text-sm text-muted-foreground">{t("noSubjectGrades")}</p>
                     )}
 
                     {result.remarks && (
                       <div className="mt-4 space-y-2">
                         <div className="rounded-xl bg-muted/50 p-3">
-                          <p className="text-xs font-medium text-muted-foreground">Remarks</p>
+                          <p className="text-xs font-medium text-muted-foreground">{tg("colRemarks")}</p>
                           <p className="mt-1 text-sm text-foreground">{result.remarks}</p>
                         </div>
                       </div>
                     )}
                     {result.overallGrade && (
                       <div className="mt-2">
-                        <span className="text-sm font-semibold text-primary">Overall Grade: {result.overallGrade}</span>
+                        <span className="text-sm font-semibold text-primary">{t("overallGrade")}: {result.overallGrade}</span>
                       </div>
                     )}
                   </div>
@@ -238,6 +243,9 @@ function PrimaryResultsView({
   expandedId: string | null
   setExpandedId: (id: string | null) => void
 }) {
+  const t = useTranslations("results")
+  const tg = useTranslations("teacher")
+  const tp = useTranslations("progress")
   const totalSubjects = new Set(
     results.flatMap((r) => (r.subjectGrades || []).map((sg) => sg.subjectId))
   ).size
@@ -278,8 +286,8 @@ function PrimaryResultsView({
               <Award className="size-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">My Results</h1>
-              <p className="text-sm text-muted-foreground">See how well you did!</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("myResults")}</h1>
+              <p className="text-sm text-muted-foreground">{t("primarySubtitle")}</p>
             </div>
           </div>
         </div>
@@ -288,9 +296,9 @@ function PrimaryResultsView({
           <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary/10">
             <Award className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No Results Yet!</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noResults")}</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Keep learning and your results will appear here soon. You are doing great!
+            {t("emptyEncouragement")}
           </p>
           <div className="mt-4 flex items-center justify-center gap-1 text-amber-500">
             <Star className="size-4 fill-current" />
@@ -311,8 +319,8 @@ function PrimaryResultsView({
             <Award className="size-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">My Results</h1>
-            <p className="text-sm text-muted-foreground">See how well you did!</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("myResults")}</h1>
+            <p className="text-sm text-muted-foreground">{t("primarySubtitle")}</p>
           </div>
         </div>
       </div>
@@ -326,7 +334,7 @@ function PrimaryResultsView({
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{totalSubjects}</p>
-              <p className="text-xs text-muted-foreground">Total Subjects</p>
+              <p className="text-xs text-muted-foreground">{t("totalSubjects")}</p>
             </div>
           </div>
         </div>
@@ -337,7 +345,7 @@ function PrimaryResultsView({
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{avgScore.toFixed(1)}</p>
-              <p className="text-xs text-muted-foreground">Average Score</p>
+              <p className="text-xs text-muted-foreground">{tp("averageScore")}</p>
             </div>
           </div>
         </div>
@@ -348,7 +356,7 @@ function PrimaryResultsView({
             </div>
             <div>
               <p className="text-lg font-extrabold text-foreground truncate">{bestSubject?.name || "—"}</p>
-              <p className="text-xs text-muted-foreground">Best Subject</p>
+              <p className="text-xs text-muted-foreground">{t("bestSubject")}</p>
             </div>
           </div>
         </div>
@@ -359,7 +367,7 @@ function PrimaryResultsView({
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{termsCompleted}</p>
-              <p className="text-xs text-muted-foreground">Terms Completed</p>
+              <p className="text-xs text-muted-foreground">{t("termsCompleted")}</p>
             </div>
           </div>
         </div>
@@ -394,20 +402,20 @@ function PrimaryResultsView({
                     <p className="text-2xl font-extrabold text-foreground">
                       {result.averageMark?.toFixed(1) ?? "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">Average</p>
+                    <p className="text-xs text-muted-foreground">{tg("colAverage")}</p>
                   </div>
                   {result.overallGrade && (
                     <div className="text-right">
                       <span className={`inline-block rounded-lg px-3 py-1 text-sm font-bold border ${getGradeColor(result.overallGrade)}`}>
                         {result.overallGrade}
                       </span>
-                      <p className="text-xs text-muted-foreground mt-0.5">Grade</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t("grade")}</p>
                     </div>
                   )}
                   {result.classRank && (
                     <div className="text-right">
                       <p className="text-lg font-bold text-primary">#{result.classRank}</p>
-                      <p className="text-xs text-muted-foreground">Rank</p>
+                      <p className="text-xs text-muted-foreground">{t("rank")}</p>
                     </div>
                   )}
                   {isExpanded ? <ChevronUp className="size-5 text-muted-foreground" /> : <ChevronDown className="size-5 text-muted-foreground" />}
@@ -418,7 +426,7 @@ function PrimaryResultsView({
                 <div className="border-t border-border p-5">
                   {result.subjectGrades && result.subjectGrades.length > 0 ? (
                     <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-foreground">Subject Grades</h4>
+                      <h4 className="text-sm font-semibold text-foreground">{t("subjectGradesTitle")}</h4>
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {result.subjectGrades.map((sg, i) => (
                           <div
@@ -437,7 +445,7 @@ function PrimaryResultsView({
                               <span className="text-2xl font-extrabold text-foreground">
                                 {sg.marksObtained}
                               </span>
-                              <span className="text-xs text-muted-foreground">marks</span>
+                              <span className="text-xs text-muted-foreground">{t("marksSuffix")}</span>
                             </div>
                             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                               <div
@@ -455,18 +463,18 @@ function PrimaryResultsView({
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No subject grades available for this term.</p>
+                    <p className="text-sm text-muted-foreground">{t("noSubjectGrades")}</p>
                   )}
 
                   {result.overallGrade && (
                     <div className="mt-4 flex items-center gap-2 rounded-xl bg-muted/50 p-3">
                       <span className={`size-3 rounded-full ${getGradeBg(result.overallGrade)}`} />
                       <span className="text-sm font-semibold text-foreground">
-                        Overall Grade: {result.overallGrade}
+                        {t("overallGrade")}: {result.overallGrade}
                       </span>
                       {result.classRank && (
                         <span className="text-sm text-muted-foreground ml-auto">
-                          Class Rank: #{result.classRank}
+                          {t("classRankLabel")}: #{result.classRank}
                         </span>
                       )}
                     </div>
@@ -474,7 +482,7 @@ function PrimaryResultsView({
 
                   {result.remarks && (
                     <div className="mt-3 rounded-xl bg-primary/5 border border-primary/10 p-3">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Teacher Remarks</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">{t("teacherRemarksTitle")}</p>
                       <p className="text-sm text-foreground">{result.remarks}</p>
                     </div>
                   )}

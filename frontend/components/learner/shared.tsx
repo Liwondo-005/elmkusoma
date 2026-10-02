@@ -5,8 +5,9 @@ import { useTranslations } from "next-intl"
 import { Loader2 } from "lucide-react"
 
 export function LearnerHeader({ firstName, level, subtitle }: { firstName: string; level?: string; subtitle?: string }) {
+  const t = useTranslations("learner")
   const hour = new Date().getHours()
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
+  const greeting = hour < 12 ? t("greeting.morning") : hour < 18 ? t("greeting.afternoon") : t("greeting.evening")
 
   return (
     <header role="banner">
@@ -14,7 +15,7 @@ export function LearnerHeader({ firstName, level, subtitle }: { firstName: strin
         {greeting}, {firstName}!
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        {subtitle || "Continue your learning journey."}
+        {subtitle || t("greeting.journeySubtitle")}
       </p>
     </header>
   )
@@ -31,19 +32,20 @@ export function ContinueLearningCard({
   progress?: number
   onResume?: () => void
 }) {
+  const t = useTranslations("learner")
   if (!title) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center" role="region" aria-label="Start learning">
+      <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center" role="region" aria-label={t("continueCard.startButton")}>
         <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10">
           <svg className="size-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
         </div>
-        <h3 className="text-sm font-semibold text-foreground">Your learning journey starts here</h3>
-        <p className="mt-1 text-xs text-muted-foreground">Begin a lesson to see your progress here.</p>
+        <h3 className="text-sm font-semibold text-foreground">{t("continueCard.startTitle")}</h3>
+        <p className="mt-1 text-xs text-muted-foreground">{t("continueCard.startDesc")}</p>
         {onResume && (
-          <button onClick={onResume} className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90" aria-label="Start learning">
-            Start Learning
+          <button onClick={onResume} className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90" aria-label={t("continueCard.startButton")}>
+            {t("continueCard.startButton")}
           </button>
         )}
       </div>
@@ -51,14 +53,14 @@ export function ContinueLearningCard({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label="Continue learning">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Continue Learning</p>
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-xs" role="region" aria-label={t("continueCard.title")}>
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("continueCard.title")}</p>
       <h3 className="mt-2 text-base font-semibold text-foreground">{title}</h3>
       {subject && <p className="mt-0.5 text-xs text-muted-foreground">{subject}</p>}
       {progress !== undefined && (
         <div className="mt-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Progress</span>
+            <span className="text-muted-foreground">{t("continueCard.progress")}</span>
             <span className="font-semibold text-teal">{progress}%</span>
           </div>
           <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
@@ -67,8 +69,8 @@ export function ContinueLearningCard({
         </div>
       )}
       {onResume && (
-        <button onClick={onResume} className="mt-4 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90" aria-label="Resume learning">
-          Resume
+        <button onClick={onResume} className="mt-4 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90" aria-label={t("continueCard.resume")}>
+          {t("continueCard.resume")}
         </button>
       )}
     </div>

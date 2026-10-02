@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2, AlertCircle, CheckCircle2, XCircle, MessageSquareWarning, ShieldCheck, KeyRound } from "lucide-react"
 import { platformAdminApi, type DelegatedTask } from "@/lib/platform-admin-api"
 
 export default function DelegatedWorkPage() {
+  const t = useTranslations("platformAdmin")
+  const tc = useTranslations("common")
   const [tasks, setTasks] = useState<DelegatedTask[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,12 +27,12 @@ export default function DelegatedWorkPage() {
 
   const decide = async (task: DelegatedTask, status: string) => {
     if (status !== "APPROVED" && !notes.trim()) {
-      setError("Notes are required when rejecting or requesting changes"); return
+      setError(t("delegatedWork.notesRequired")); return
     }
     setBusy(task.verificationId); setError(null); setFlash(null)
     try {
       await platformAdminApi.reviewProviderVerification(task.verificationId, status, notes || undefined)
-      setFlash(`Verification ${status.toLowerCase()} under delegation ${task.authority}`)
+      setFlash(t("delegatedWork.verificationFlash", { status: status.toLowerCase(), authority: task.authority }))
       setNotes("")
       setTasks((prev) => prev.filter((t) => t.verificationId !== task.verificationId))
     } catch (e: any) {
@@ -41,10 +44,10 @@ export default function DelegatedWorkPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-          <KeyRound className="size-6 text-primary" /> My Delegated Work
+          <KeyRound className="size-6 text-primary" /> {t("delegatedWork.title")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Verification tasks covered by your active administrative delegations. Every decision is authorized server-side against your delegation scope.
+          {t("delegatedWork.subtitle")}
         </p>
       </div>
 
@@ -56,12 +59,12 @@ export default function DelegatedWorkPage() {
       ) : tasks.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-10 text-center">
           <ShieldCheck className="mx-auto size-10 text-green-500/50" />
-          <p className="mt-3 text-sm font-medium text-foreground">No delegated tasks</p>
-          <p className="mt-1 text-xs text-muted-foreground">You have no active delegations covering pending verifications. Contact a platform administrator if you expect delegated authority.</p>
+          <p className="mt-3 text-sm font-medium text-foreground">{t("delegatedWork.emptyTitle")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("delegatedWork.emptyDesc")}</p>
         </div>
       ) : (
         <div className="space-y-3">
-          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Reviewer notes (required to reject or request changes)…" className="w-full rounded-xl border border-border bg-card px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("delegatedWork.notesPlaceholder")} className="w-full rounded-xl border border-border bg-card px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
           {tasks.map((task) => (
             <div key={`${task.delegationId}-${task.verificationId}`} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -73,16 +76,16 @@ export default function DelegatedWorkPage() {
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{task.scope}</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {task.entityType} · submitted {task.submittedAt ? new Date(task.submittedAt).toLocaleString("en-GB") : "—"}
+                    {task.entityType} · {t("delegatedWork.submittedLabel")} {task.submittedAt ? new Date(task.submittedAt).toLocaleString("en-GB") : "—"}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => decide(task, "APPROVED")} disabled={busy !== null} className="inline-flex items-center gap-1 rounded-xl bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50">
-                    {busy === task.verificationId ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle2 className="size-3" />} Verify</button>
+                    {busy === task.verificationId ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle2 className="size-3" />} {tc("verifyButton")}</button>
                   <button onClick={() => decide(task, "CHANGES_REQUIRED")} disabled={busy !== null} className="inline-flex items-center gap-1 rounded-xl border border-orange-300 px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50">
-                    <MessageSquareWarning className="size-3" /> Request changes</button>
+                    <MessageSquareWarning className="size-3" /> {t("delegatedWork.requestChanges")}</button>
                   <button onClick={() => decide(task, "REJECTED")} disabled={busy !== null} className="inline-flex items-center gap-1 rounded-xl border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">
-                    <XCircle className="size-3" /> Reject</button>
+                    <XCircle className="size-3" /> {t("verifications.reject")}</button>
                 </div>
               </div>
             </div>

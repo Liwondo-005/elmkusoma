@@ -17,7 +17,12 @@
       "save": "Imeshindwa kuhifadhi mabadiliko",
       "create": "Imeshindwa kuunda",
       "update": "Imeshindwa kusasisha",
-      "delete": "Imeshindwa kufuta"
+      "delete": "Imeshindwa kufuta",
+      "pageLoad": "Hitilafu isiyotarajiwa imetokea wakati wa kupakia ukurasa huu. Unaweza kujaribu tena, au kurudi kwenye ukurasa wa mwanzo.",
+      "critical": "Hitilafu kubwa imetokea wakati wa kupakia ELMKUSOMA. Unaweza kujaribu tena au kurudi kwenye ukurasa wa mwanzo.",
+      "homepage": "Ukurasa wa Mwanzo",
+      "reference": "Rejea: {digest}",
+      "unexpected": "Hitilafu isiyotarajiwa imetokea."
     },
     "retry": "Jaribu Tena",
     "confirm": "Thibitisha",
@@ -59,7 +64,7 @@
     "review": "Pitia",
     "progress": "Maendeleo",
     "inProgress": "Inaendelea",
-    "generalLearner": "Mfunzaji Mjumla",
+    "generalLearner": "Mwanafunzi Mjumla",
     "searchPlatform": "Tafuta kwenye jukwaa...",
     "searchCourses": "Tafuta kozi, masomo...",
     "searching": "Inatafuta...",
@@ -138,7 +143,11 @@
     "searchOrganization": "Tafuta katika shirika...",
     "searchOrganizationPlaceholder": "Tafuta watu, kozi na madarasa moja kwa moja katika shirika hili",
     "searchForbidden": "Huna ruhusa ya kutafuta rasilimali hii.",
-    "searchFailed": "Utafutaji umeshindikana. Jaribu tena."
+    "searchFailed": "Utafutaji umeshindikana. Jaribu tena.",
+    "notFound": {
+      "title": "Ukurasa haukupatikana",
+      "description": "Ukurasa unaoutafuta haupo au umehamishwa."
+    }
   },
   "commandPalette": {
     "title": "Paleti ya Amri",
@@ -467,7 +476,10 @@
     "adminDashboardDesc": "Admin dashboard and management",
     "institutionsDesc": "Manage institutions and schools",
     "wards": "Ward",
-    "scheduledReports": "Ripoti Zilizopangwa"
+    "scheduledReports": "Ripoti Zilizopangwa",
+    "educationGovernance": "Utawala wa Elimu",
+    "jurisdictionType": "Mamlaka ya {type}",
+    "resolvingJurisdiction": "Inatafuta mamlaka…"
   },
   "dashboard": {
     "welcomeBack": "Karibu Tena",
@@ -573,7 +585,9 @@
     "viewDetails": "Tazama Maelezo",
     "viewPortfolio": "Tazama Kanzidata",
     "failedToLoadDashboard": "Imeshindikana kupakia data ya dashibodi",
-    "learningFeed": "Mpito wa Kujifunza"
+    "learningFeed": "Mpito wa Kujifunza",
+    "coursesSubtitle": "Endelea kujifunza ulipoishia.",
+    "coursesEmptyDesc": "Bado hujaandikishwa kwenye kozi yoyote."
   },
   "primary": {
     "myTeacher": "Mwalimu Wangu",
@@ -630,7 +644,15 @@
       "step4Title": "Somo gani?",
       "step4Desc": "Chagua somo la kazi hii",
       "step5Title": "Hifadhi kwenye Mkoba Wangu",
-      "step5Desc": "Uko tayari kuhifadhi kiumbe chako?"
+      "step5Desc": "Uko tayari kuhifadhi kiumbe chako?",
+      "typeEssay": "Insha",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "filterAll": "Zote",
+      "emptyTitle": "Bado hakuna ujumbe.",
+      "recording": "Inarekodi",
+      "saving": "Inahifadhi...",
+      "save": "Hifadhi Wasifu"
     },
     "assessments": {
       "areaTanzania": "Ugunduzi wa Tanzania",
@@ -661,7 +683,10 @@
       "emptyTitle": "Hakuna Mitihani",
       "emptyDesc": "Hakuna mitihani iliyochapishwa bado.",
       "passMarks": "Alama za Kufauru",
-      "timeLimit": "Kikomo cha Muda"
+      "timeLimit": "Kikomo cha Muda",
+      "available": "Zinapatikana",
+      "startQuiz": "Anza Mtihani",
+      "totalMarks": "Jumla ya Alama"
     },
     "aiGuide": {
       "greeting": "Halo {name}! Mimi ni Mwongozo wako wa Kujifunza wa AI. Niulize chochote kuhusu masomo yako, nami nitakusaidia kuelewa vizuri. Ungependa kujifunza nini leo?",
@@ -675,7 +700,8 @@
       "suggestToday": "Nimejifunza nini leo?",
       "title": "Mwongozo wa Kujifunza wa AI",
       "subtitle": "Niulize chochote kuhusu masomo yako",
-      "aiLabel": "Mwongozo wa AI"
+      "aiLabel": "Mwongozo wa AI",
+      "dashboard": "Dashibodi"
     },
     "quiz": {
       "backToQuizzes": "Rudi kwenye Maswali",
@@ -700,7 +726,13 @@
       "passedDesc": "Umefaulu tathmini hii.",
       "failedDesc": "Hukufauru safari hii. Pitia nyenzo na ujaribu tena.",
       "failed": "IMESHINDWA",
-      "exitQuiz": "Toka Jaribio"
+      "exitQuiz": "Toka Jaribio",
+      "minutesCount": "{count} dakika",
+      "keepTrying": "Endelea kujaribu!",
+      "passed": "Umefaulu",
+      "questionCount": "maswali",
+      "marksCount": "{count} alama",
+      "passMark": "Alama ya Kufuzu"
     },
     "assignmentDetail": {
       "answerPlaceholderShort": "Andika jibu lako hapa...",
@@ -733,13 +765,24 @@
       "submitTitle": "Wasilisha Kazi Yako",
       "writtenAnswer": "Jibu Lililoandikwa",
       "uploadOptional": "Pakia Faili (hiari)",
-      "dragDrop": "Buruta na udondoshe au bofya ili kupakia"
+      "dragDrop": "Buruta na udondoshe au bofya ili kupakia",
+      "back": "Rudi",
+      "scoreLabel": "Alama",
+      "graded": "Imesahihishwa",
+      "attachments": "Viambatisho"
     },
     "lessonDetail": {
       "previous": "Iliyotangulia",
       "markPct": "Weka Alama 25%",
       "markComplete": "Weka Alama Imekamilika",
-      "backToLessons": "Rudi kwenye Masomo"
+      "backToLessons": "Rudi kwenye Masomo",
+      "next": "Endelea",
+      "back": "Rudi",
+      "notFound": "Mwanafunzi Hakupatikana",
+      "percentComplete": "{pct}% imekamilika",
+      "attachments": "Viambatisho",
+      "progressTitle": "Maendeleo ya Masomo",
+      "completion": "Ukamilishaji"
     },
     "assignments": {
       "submit": "Wasilisha",
@@ -756,7 +799,9 @@
       "title": "Kazi",
       "subtitle": "Angalia na wasilisha kazi zako.",
       "emptyTitle": "Hakuna Kazi",
-      "emptyDesc": "Hakuna kazi zilizotolewa bado."
+      "emptyDesc": "Hakuna kazi zilizotolewa bado.",
+      "marksCount": "{count} alama",
+      "view": "Tazama"
     },
     "attend": {
       "excellentDesc": "Unahudhuria shule mara kwa mara sana. Endelea hivyo!",
@@ -775,7 +820,11 @@
       "noRecords": "Hakuna Rekodi",
       "noRecordsDesc": "Hakuna rekodi za mahudhurio za mwezi huu.",
       "colIn": "Kuingia",
-      "colOut": "Kutoka"
+      "colOut": "Kutoka",
+      "excellent": "Hongera!",
+      "colDate": "Tarehe",
+      "colStatus": "Hali",
+      "colRemarks": "Maoni"
     },
     "challenge": {
       "answerPlaceholder": "Andika jibu lako hapa...",
@@ -785,7 +834,12 @@
       "title": "Eneo la Changamoto",
       "subtitle": "Jaribu ujuzi wako kwa maswali magumu!",
       "emptyTitle": "Hakuna changamoto bado",
-      "emptyDesc": "Rudi tena hivi karibuni kwa changamoto mpya!"
+      "emptyDesc": "Rudi tena hivi karibuni kwa changamoto mpya!",
+      "submitting": "Inawasilisha...",
+      "submit": "Wasilisha",
+      "points": "Alama",
+      "total": "Jumla",
+      "start": "Anza"
     },
     "discovery": {
       "primaryOnlyDesc": "Badilisha hadi akaunti ya mwanafunzi wa shule ya msingi ili ugundue udadisi wako.",
@@ -811,7 +865,10 @@
       "startWondering": "Anza Kushangaa",
       "groupTitle": "{type}",
       "emptyGroup": "Hakuna {type} bado",
-      "resolved": "Imetatuliwa"
+      "resolved": "Imetatuliwa",
+      "typeLabel": "Aina",
+      "subjectLabel": "Somo",
+      "open": "Fungua"
     },
     "evidence": {
       "generalSubject": "Kawaida",
@@ -841,7 +898,12 @@
       "emptyStart": "Anza kujifunza ili kukusanya ushahidi wako wa kwanza!",
       "emptyFiltered": "Hakuna ushahidi unaolingana na vichujio vyako",
       "emptyStartDesc": "Kamilisha masomo, unda miradi, na shiriki darasani ili kujenga mkusanyiko wako wa ushahidi.",
-      "emptyFilteredDesc": "Jaribu kurekebisha vichujio vyako ili uone ushahidi zaidi."
+      "emptyFilteredDesc": "Jaribu kurekebisha vichujio vyako ili uone ushahidi zaidi.",
+      "typeLabel": "Aina",
+      "filterAll": "Zote",
+      "subjectLabel": "Somo",
+      "descLabel": "Maelezo",
+      "badges": "Beji"
     },
     "journey": {
       "primaryOnlyDesc": "Badilisha hadi akaunti ya mwanafunzi wa shule ya msingi ili uone ramani ya safari yako ya kujifunza.",
@@ -856,7 +918,8 @@
       "lessonsCount": "{done} / {total} masomo",
       "inProgressCount": "{count} yanaendelea",
       "emptyTitle": "Safari yako inakungoja!",
-      "browseLessons": "Vinjari Masomo"
+      "browseLessons": "Vinjari Masomo",
+      "title": "Masomo"
     },
     "labs": {
       "primaryOnlyDesc": "Badilisha hadi akaunti ya mwanafunzi wa shule ya msingi ili uanze kufanya majaribio.",
@@ -879,7 +942,9 @@
       "pointsCount": "{count} pointi",
       "totalLabs": "Jumla ya Maabara",
       "avgScore": "Wastani wa Alama",
-      "emptyTitle": "Hakuna maabara bado"
+      "emptyTitle": "Hakuna maabara bado",
+      "doneBadge": "Imekamilika",
+      "filterAll": "Zote"
     },
     "learnProfile": {
       "primaryOnlyDesc": "Badilisha hadi akaunti ya mwanafunzi wa shule ya msingi ili uweke wasifu wako.",
@@ -912,7 +977,16 @@
       "styleTitle": "Mtindo wa Kujifunza",
       "strengthsTitle": "Uwezo",
       "interestsTitle": "Mapendeleo",
-      "goalsTitle": "Malengo"
+      "goalsTitle": "Malengo",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "emptyTitle": "Bado hakuna ujumbe.",
+      "createButton": "Unda Kiolezo",
+      "editTitle": "Hariri Tangazo",
+      "createTitle": "Unda Tukio",
+      "totalPoints": "Jumla ya Alama",
+      "noData": "Hakuna Data ya Alama",
+      "noDataDesc": "Hakuna kazi au mitihani iliyopatikana kwa darasa hili."
     },
     "lessons": {
       "searchPlaceholder": "Tafuta masomo...",
@@ -923,7 +997,13 @@
       "emptyDefault": "Mwalimu wako ataongeza masomo hivi karibuni.",
       "groupSummary": "{done} kati ya {total} masomo yamekamilika",
       "emptyTitleGeneral": "Hakuna Masomo",
-      "emptyGeneralDesc": "Masomo yataonekana hapa mwalimu wako atakapoyachapisha."
+      "emptyGeneralDesc": "Masomo yataonekana hapa mwalimu wako atakapoyachapisha.",
+      "emptyTitle": "Bado hakuna ujumbe.",
+      "done": "Imekamilika",
+      "start": "Anza",
+      "viewAll": "Tazama Zote",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha."
     },
     "live": {
       "emptyDesc": "Mwalimu wako atapanga vipindi vya moja kwa moja hivi karibuni. Rudi tena baadaye!",
@@ -945,14 +1025,24 @@
       "upcomingTitle": "Madarasa Yajayo",
       "scheduledBadge": "Yaliyopangwa",
       "maxCount": "Upeo {count}",
-      "pastTitle": "Madarasa Yaliyopita"
+      "pastTitle": "Madarasa Yaliyopita",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "emptyTitle": "Bado hakuna ujumbe.",
+      "waiting": "Inasubiri video",
+      "upcomingBadge": "IJAYO",
+      "watchReplay": "Tazama Marudio",
+      "replays": "Marudio",
+      "minutesCount": "{count} dakika"
     },
     "inbox": {
       "loadError": "Imeshindwa kupakia ujumbe",
       "emptyTitle": "Hakuna ujumbe bado",
       "emptyDesc": "Ujumbe kutoka kwa walimu, wakufunzi na msaada utaonekana hapa.",
       "learnerFallback": "Mwanafunzi",
-      "unreadCount": "{count} zisizosomwa"
+      "unreadCount": "{count} zisizosomwa",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha."
     },
     "mistakes": {
       "primaryOnlyDesc": "Badilisha hadi akaunti ya mwanafunzi wa shule ya msingi ili uanze kujifunza kutokana na makosa.",
@@ -972,7 +1062,14 @@
       "wrongLabel": "Jibu Lako Lisilo Sahihi",
       "correctLabel": "Jibu Sahihi",
       "explainLabel": "Maelezo",
-      "yourAnswer": "Jibu Lako"
+      "yourAnswer": "Jibu Lako",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "total": "Jumla",
+      "formTitle": "Tengeneza Cheti Kipya",
+      "emptyTitle": "Bado hakuna ujumbe.",
+      "addFirst": "Ongeza ingizo lako la kwanza",
+      "correctAnswer": "Jibu Sahihi"
     },
     "reading": {
       "filterAll": "Zote",
@@ -989,7 +1086,10 @@
       "emptyFav": "Weka alama hadithi unazopenda ili uzione hapa.",
       "emptyDefault": "Matukio mapya ya kusoma yataonekana hapa hivi karibuni. Rudi tena!",
       "wordsCount": "maneno {count}",
-      "minsCount": "{count} dakika"
+      "minsCount": "{count} dakika",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "emptyTitle": "Bado hakuna ujumbe."
     },
     "teachers": {
       "loadError": "Imeshindwa kupakia walimu wako",
@@ -997,10 +1097,16 @@
       "emailButton": "Barua Pepe",
       "askButton": "Uliza Swali",
       "countLine": "{count} walimu",
-      "subjectsLine": "{count} masomo"
+      "subjectsLine": "{count} masomo",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "emptyTitle": "Bado hakuna ujumbe."
     },
     "notifs": {
-      "emptyDesc": "Utaona taarifa kuhusu masomo, kazi na vipindi vya moja kwa moja hapa."
+      "emptyDesc": "Utaona taarifa kuhusu masomo, kazi na vipindi vya moja kwa moja hapa.",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "emptyTitle": "Bado hakuna ujumbe."
     },
     "passport": {
       "official": "Pasipoti Rasmi ya Kujifunza",
@@ -1066,7 +1172,12 @@
       "progressTo": "{pct}% hadi {name}",
       "stampsTitle": "Mkusanyiko wa Mihuri",
       "collected": "{done} / {total} zimekusanywa",
-      "totalStamps": "Jumla ya Mihuri"
+      "totalStamps": "Jumla ya Mihuri",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "studentFallback": "Mwanafunzi",
+      "badgesEarned": "Beji Zilizopatikana",
+      "emptyTitle": "Bado hakuna ujumbe."
     },
     "profilePage": {
       "saveError": "Imeshindwa kuhifadhi wasifu",
@@ -1076,7 +1187,20 @@
       "levelLowerSecondary": "Shule ya Sekondari Kidato cha Chini",
       "levelAdvancedSecondary": "Shule ya Sekondari Kidato cha Juu",
       "levelVocational": "Ufundi",
-      "bioLabel": "Wasifu"
+      "bioLabel": "Wasifu",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "studentFallback": "Mwanafunzi",
+      "fullName": "Jina Kamili",
+      "emailLabel": "Barua Pepe",
+      "levelNursery": "Awali",
+      "levelPrimary": "Msingi",
+      "levelCollege": "Chuo",
+      "levelUniversity": "Chuo Kikuu",
+      "bioPlaceholder": "Waeleze wengine kukuhusu...",
+      "saving": "Inahifadhi...",
+      "save": "Hifadhi Wasifu",
+      "saved": "Imehifadhiwa!"
     },
     "growth": {
       "attExcellent": "Mahudhurio mazuri sana! Endelea hivyo!",
@@ -1099,7 +1223,17 @@
       "statAttendance": "Kiwango cha Mahudhurio",
       "statAverage": "Wastani wa Jumla",
       "myProgressDesc": "Fuatilia safari yako ya kujifunza kwenye kozi zote.",
-      "detailed": "Maendeleo ya Kina"
+      "detailed": "Maendeleo ya Kina",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "subjects": "Masomo",
+      "overall": "Maendeleo ya Jumla",
+      "milestones": "Hatua Muhimu",
+      "emptyTitle": "Bado hakuna ujumbe.",
+      "attendance": "Mahudhurio",
+      "thisMonth": "Mwezi Huu",
+      "myProgress": "Maendeleo Yangu",
+      "overallCompletion": "Ukamilishaji wa jumla"
     },
     "quests": {
       "primaryOnlyDesc": "Badilisha hadi akaunti ya mwanafunzi wa shule ya msingi ili uanze safari yako ya misheni.",
@@ -1127,7 +1261,12 @@
       "missionsTitle": "Misheni za Ulimwengu Halisi",
       "missionsSubtitle": "Tumia unachojifunza katika ulimwengu halisi!",
       "noMissions": "Hakuna misheni bado",
-      "noMissionsDesc": "Mwalimu wako ataunda misheni za ulimwengu halisi kwa ajili yako."
+      "noMissionsDesc": "Mwalimu wako ataunda misheni za ulimwengu halisi kwa ajili yako.",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "completedOn": " · Imekamilika {date}",
+      "emptyTitle": "Bado hakuna ujumbe.",
+      "instructions": "Maelekezo"
     },
     "settingsPage": {
       "deleteButton": "Futa Akaunti",
@@ -1149,7 +1288,9 @@
       "danger": "Eneo Hatari",
       "deleteTitle": "Futa Akaunti",
       "saved": "Imehifadhiwa kwenye kifaa hiki.",
-      "deleteDesc": "Futa akaunti yako na data zote kabisa"
+      "deleteDesc": "Futa akaunti yako na data zote kabisa",
+      "notifications": "Arifa",
+      "privacy": "Faragha"
     },
     "speak": {
       "primaryOnlyDesc": "Badilisha hadi akaunti ya mwanafunzi wa shule ya msingi ili uanze kuunda.",
@@ -1173,7 +1314,14 @@
       "totalTime": "Jumla ya Muda",
       "titleLabel": "Kichwa",
       "creationsTitle": "Ubunifu Wangu",
-      "portfolioEmpty": "Kanzidata yako iko tupu"
+      "portfolioEmpty": "Kanzidata yako iko tupu",
+      "title": "Masomo",
+      "subtitle": "Madarasa uliyopangiwa kufundisha.",
+      "formTitle": "Tengeneza Cheti Kipya",
+      "typeLabel": "Aina",
+      "descLabel": "Maelezo",
+      "subjectLabel": "Somo",
+      "emptyTitle": "Bado hakuna ujumbe."
     },
     "academicTab": {
       "terms": "Masharti",
@@ -1189,7 +1337,10 @@
       "emptySubjects": "Hakuna masomo yaliyopatikana.",
       "emptyClasses": "Hakuna makundi ya madarasa yaliyopatikana.",
       "sectionLine": "Sehemu {s}",
-      "capacityLine": "· Uwezo: {n}"
+      "capacityLine": "· Uwezo: {n}",
+      "subjects": "Masomo",
+      "classes": "Madarasa",
+      "current": "Sasa"
     },
     "create": {
       "drawing": "Kuchora",
@@ -1204,7 +1355,9 @@
       "videoDesc": "Unda na shiriki video",
       "title": "Unda",
       "subtitle": "Onyesha ubunifu wako na shiriki kazi yako.",
-      "startCreating": "Anza Kuunda"
+      "startCreating": "Anza Kuunda",
+      "writing": "Kuandika",
+      "reading": "Kusoma"
     },
     "family": {
       "quizNight": "Usiku wa Maswali ya Familia",
@@ -1220,7 +1373,8 @@
       "title": "Kujifunza kwa Familia",
       "subtitle": "Jifunzeni pamoja na familia yenu!",
       "copied": "Imenakiliwa!",
-      "recent": "Shughuli za Hivi Karibuni za Familia"
+      "recent": "Shughuli za Hivi Karibuni za Familia",
+      "share": "Shiriki"
     },
     "together": {
       "withPartner": "na {name}",
@@ -1349,7 +1503,22 @@
     "viewCertificate": "Tazama Cheti",
     "downloadCertificate": "Pakia Cheti",
     "resultDetails": "Maelezo ya Matokeo",
-    "subjectResults": "Matokeo ya Somo"
+    "subjectResults": "Matokeo ya Somo",
+    "subtitle": "Tazama kadi zako za ripoti na alama za masomo.",
+    "emptyDesc": "Matokeo yako yataonekana hapa mara mwalimu wako atakapoyachapisha.",
+    "subjectGradesTitle": "Alama za Masomo",
+    "pointsLabel": "Pointi",
+    "noSubjectGrades": "Hakuna alama za masomo kwa muhula huu.",
+    "termLabel": "Muhula",
+    "yearLabel": "Mwaka",
+    "primarySubtitle": "Tazama ulivyofanya!",
+    "emptyEncouragement": "Endelea kujifunza na matokeo yako yataonekana hapa hivi karibuni. Unafanya vizuri!",
+    "totalSubjects": "Jumla ya Masomo",
+    "bestSubject": "Somo Bora",
+    "termsCompleted": "Mihula Iliyokamilika",
+    "marksSuffix": "alama",
+    "classRankLabel": "Nafasi Darasani",
+    "teacherRemarksTitle": "Maoni ya Mwalimu"
   },
   "attendance": {
     "title": "Mahudhurio",
@@ -1463,7 +1632,14 @@
       "noStudents": "Hakuna wanafunzi waliojiandikisha kwenye madarasa yako bado.",
       "searchPlaceholder": "Tafuta kwa jina, barua pepe, au nambari ya usajili...",
       "subtitle": "Wanafunzi waliojiandikisha kwenye madarasa yako. Jumla {count}.",
-      "title": "Wanafunzi Wangu"
+      "title": "Wanafunzi Wangu",
+      "managementTitle": "Usimamizi wa Wanafunzi",
+      "managementSubtitle": "Tazama na simamia wanafunzi wote waliosajiliwa.",
+      "totalLabel": "Jumla ya Wanafunzi",
+      "activeLabel": "Wanafunzi Hai",
+      "inactiveLabel": "Wanafunzi Wasio Hai",
+      "managementSearchPlaceholder": "Tafuta kwa jina, namba ya udahili, au barua pepe...",
+      "colGender": "Jinsia"
     },
     "analytics": {
       "avgAttendance": "Wastani wa Mahudhurio",
@@ -2419,7 +2595,33 @@
       "private": "Binafsi",
       "public": "Umma",
       "school": "Shule"
+    },
+    "primaryProgress": {
+      "recentActivity": "Shughuli za Hivi Karibuni"
+    },
+    "myTeacherPage": {
+      "loadError": "Imeshindwa kupakia walimu. Tafadhali jaribu tena.",
+      "subtitleSw": "Mwalimu Wangu",
+      "totalTeachers": "Jumla ya Walimu",
+      "subjectsCovered": "Masomo Yanayofundishwa",
+      "emptyTitle": "Bado hakuna walimu",
+      "emptyDesc": "Walimu wako wataonekana hapa mara watakapopangiwa madarasa yako."
     }
+  },
+  "roles": {
+    "student": "Mwanafunzi",
+    "otherLearner": "Mwanafunzi Mwingine",
+    "teacher": "Mwalimu",
+    "instructor": "Mkufunzi",
+    "parent": "Mzazi",
+    "admin": "Msimamizi",
+    "institutionAdmin": "Msimamizi wa Taasisi",
+    "nationalAdmin": "Msimamizi wa Kitaifa",
+    "regionalAdmin": "Msimamizi wa Mkoa",
+    "districtAdmin": "Msimamizi wa Wilaya",
+    "providerAdmin": "Msimamizi wa Mtoa Huduma",
+    "providerStaff": "Mtumishi wa Mtoa Huduma",
+    "unknown": "Mtumiaji"
   },
   "profile": {
     "title": "Wasifu",
@@ -2619,6 +2821,20 @@
   "learner": {
     "myLearningWorld": "Ulimwengu Wangu wa Kujifunza",
     "welcomeBack": "Karibu Tena",
+    "greeting": {
+      "morning": "Habari za asubuhi",
+      "afternoon": "Habari za mchana",
+      "evening": "Habari za jioni",
+      "journeySubtitle": "Endelea na safari yako ya kujifunza."
+    },
+    "continueCard": {
+      "startTitle": "Safari yako ya kujifunza inaanzia hapa",
+      "startDesc": "Anza somo ili uone maendeleo yako hapa.",
+      "startButton": "Anza Kujifunza",
+      "title": "Endelea Kujifunza",
+      "progress": "Maendeleo",
+      "resume": "Endelea"
+    },
     "whatNext": "Nini Kifuate?",
     "allCaughtUp": "Umeisha kila kitu!",
     "continueLearning": "Endelea Kujifunza",
@@ -3033,7 +3249,8 @@
       "itemFallback": "kipengee",
       "viewItemUnavailable": "Angalia {title} (haipatikani)",
       "removeItem": "Ondoa alama ya {title}",
-      "discoverLink": "Gundua maudhui mapya"
+      "discoverLink": "Gundua maudhui mapya",
+      "discover": "Gundua"
     },
     "certs": {
       "loadError": "Imeshindwa kupakia vyeti",
@@ -3055,7 +3272,8 @@
       "verifyLabel": "Hakiki cheti {title}",
       "downloadLabel": "Pakua cheti {title}",
       "browseHint": "Vinjari kozi ili upate vyeti.",
-      "fileVerify": "Thibitisha kupitia: {url}"
+      "fileVerify": "Thibitisha kupitia: {url}",
+      "title": "Vyeti"
     },
     "lesson": {
       "notFound": "Somo halikupatikana",
@@ -3084,7 +3302,9 @@
       "materials": "Rasilimali",
       "materialsEmpty": "Hakuna rasilimali zilizounganishwa na somo hili bado.",
       "materialResource": "Rasilimali",
-      "materialVideo": "Video"
+      "materialVideo": "Video",
+      "courseFallback": "Kozi",
+      "allLessons": "Masomo Yote"
     },
     "course": {
       "loadError": "Imeshindwa kupakia maelezo ya kozi",
@@ -3103,7 +3323,10 @@
       "contentTitle": "Maudhui ya Kozi",
       "modCount": "{count} masomo",
       "emptyModule": "Hakuna masomo katika moduli hii bado.",
-      "relatedTitle": "Kozi Zinazohusiana"
+      "relatedTitle": "Kozi Zinazohusiana",
+      "saved": "Imehifadhiwa",
+      "save": "Hifadhi",
+      "startLearning": "Anza Kujifunza"
     },
     "history": {
       "savedFallback": "Kipengee Kilichohifadhiwa",
@@ -3117,7 +3340,12 @@
       "title": "Historia ya Kujifunza",
       "subtitle": "Shughuli zako za kujifunza na vipengee ulivyohifadhi.",
       "emptySearch": "Hakuna historia inayolingana",
-      "emptySearchDesc": "Jaribu kurekebisha utafutaji au vichujio vyako."
+      "emptySearchDesc": "Jaribu kurekebisha utafutaji au vichujio vyako.",
+      "untitledCourse": "Kozi Isiyo na Kichwa",
+      "completed": "imekamilika",
+      "enrolled": "Amesajiliwa",
+      "emptyTitle": "Bado hakuna violezo.",
+      "emptyDesc": "Hakuna matamko kwa sasa. Angalia tena baadaye."
     },
     "lclasses": {
       "loadError": "Imeshindwa kupakia vipindi vya moja kwa moja",
@@ -3140,7 +3368,12 @@
       "addBm": "Weka alama",
       "upcomingTitle": "Madarasa Yajayo",
       "maxLine": "Upeo wa washiriki {count}",
-      "pastTitle": "Madarasa Yaliyopita"
+      "pastTitle": "Madarasa Yaliyopita",
+      "title": "Vyeti",
+      "subtitle": "Tengeneza, toa na simamia vyeti.",
+      "emptyTitle": "Bado hakuna violezo.",
+      "emptySearch": "Jaribu neno tofauti la utafutaji",
+      "minutesCount": "{count} dakika"
     },
     "mods": {
       "emptyTitle": "Hakuna moduli bado",
@@ -3152,7 +3385,11 @@
       "creditsCount": "{count} mikopo",
       "progressLabel": "Maendeleo",
       "gradeLabel": "Gredi:",
-      "finalGrade": "Gredi ya Mwisho"
+      "finalGrade": "Gredi ya Mwisho",
+      "loadError": "Imeshindwa kupakia matamko",
+      "subtitle": "Tengeneza, toa na simamia vyeti.",
+      "backLink": "Rudi kwenye Madarasa ya Moja kwa Moja",
+      "overallProgress": "Maendeleo ya Jumla"
     },
     "kit": {
       "loadError": "Imeshindwa kupakia kifaa cha kujifunzia",
@@ -3162,7 +3399,8 @@
       "noResourcesDesc": "Rasilimali za kujifunzia zitaonekana hapa mara wakufunzi watakapozichapisha.",
       "learnerFallback": "Mwanafunzi",
       "tabBookmarks": "Alama",
-      "tabResources": "Rasilimali"
+      "tabResources": "Rasilimali",
+      "searchPlaceholder": "Tafuta historia..."
     },
     "prog": {
       "loadError": "Imeshindwa kupakia data ya maendeleo",
@@ -3174,7 +3412,13 @@
       "inProgressBadge": "Inaendelea",
       "lessonsLine": "{done} kati ya {total} masomo yamekamilika",
       "modLessons": "{count} masomo",
-      "enrolledOn": "Alijiandikisha {date}"
+      "enrolledOn": "Alijiandikisha {date}",
+      "title": "Vyeti",
+      "subtitle": "Tengeneza, toa na simamia vyeti.",
+      "totalCourses": "Jumla ya Kozi",
+      "inProgress": "inaendelea",
+      "avgProgress": "Wastani wa Maendeleo",
+      "completedOn": " · Imekamilika {date}"
     },
     "res": {
       "loadError": "Imeshindwa kupakia rasilimali",
@@ -3212,7 +3456,16 @@
       "aboutContact": "Kwa mabadiliko ya akaunti au maombi ya kufuta, tafadhali wasiliana na msimamizi wako.",
       "roleLabel": "Jukumu",
       "levelLabel": "Kiwango cha Kujifunza",
-      "passwordDesc": "Sasisha nenosiri la akaunti yako"
+      "passwordDesc": "Sasisha nenosiri la akaunti yako",
+      "title": "Vyeti",
+      "subtitle": "Tengeneza, toa na simamia vyeti.",
+      "account": "Akaunti",
+      "fullName": "Jina Kamili",
+      "emailLabel": "Barua Pepe",
+      "security": "Usalama",
+      "passwordLabel": "Nenosiri",
+      "change": "Badilisha…",
+      "about": "Kuhusu"
     },
     "lessonLive": {
       "sectionTitle": "Kipindi cha moja kwa moja",
@@ -6236,6 +6489,22 @@
       "titleAdd": "Ongeza Mtumiaji",
       "titleEdit": "Hariri Mtumiaji",
       "updatedOk": "Mtumiaji amesasishwa kwa mafanikio"
+    },
+    "delegatedWork": {
+      "title": "Kazi Yangu Niliyokabidhiwa",
+      "subtitle": "Kazi za uthibitishaji chini ya ukabidhi wako wa kiutawala. Kila uamuzi unaidhinishwa na seva kulingana na mamlaka yako.",
+      "notesRequired": "Maelezo yanahitajika unapokataa au kuomba mabadiliko",
+      "verificationFlash": "Uthibitishaji {status} chini ya ukabidhi {authority}",
+      "emptyTitle": "Hakuna kazi zilizokabidhiwa",
+      "emptyDesc": "Huna ukabidhi hai wa uthibitishaji unaosubiri. Wasiliana na msimamizi wa jukwaa kama unatarajia mamlaka.",
+      "notesPlaceholder": "Maelezo ya mkaguzi (yanahitajika kukataa au kuomba mabadiliko)…",
+      "submittedLabel": "iliwasilishwa",
+      "requestChanges": "Omba mabadiliko"
+    },
+    "sidebar": {
+      "statusTitle": "Hali ya Jukwaa",
+      "checking": "Inakaguliwa...",
+      "statusLine": "DB: {db} | API: {api}"
     }
   },
   "admin": {
@@ -6251,7 +6520,21 @@
       "action": "Kitendo",
       "target": "Target",
       "details": "Maelezo",
-      "noAuditLogsFound": "Hakuna ukaguzi logs kupatikana"
+      "noAuditLogsFound": "Hakuna ukaguzi logs kupatikana",
+      "auditSubtitle": "Kumbukumbu za ukaguzi wa mfumo, mipasho ya shughuli, na matukio ya usalama.",
+      "activityFeedLabel": "Mlisho wa Shughuli",
+      "securityEventsLabel": "Matukio ya Usalama",
+      "emptyDesc": "Shughuli zitaonekana hapa zinapotokea.",
+      "loadActivityError": "Imeshindwa kupakia shughuli",
+      "noActivityTitle": "Bado hakuna shughuli",
+      "noActivityDesc": "Shughuli za hivi karibuni zitaonekana hapa.",
+      "loadSecurityError": "Imeshindwa kupakia matukio ya usalama",
+      "resolveError": "Imeshindwa kutatua tukio",
+      "noSecurityTitle": "Hakuna matukio ya usalama",
+      "noSecurityDesc": "Matukio ya usalama yataonekana hapa.",
+      "resolvedLabel": "Imetatuliwa",
+      "resolveButton": "Tatua",
+      "resolvingButton": "Inatatua..."
     },
     "competencies": {
       "failedToLoadCompetencies": "Imeshindwa to pakia competencies",
@@ -6962,7 +7245,8 @@
     },
     "liveClassesIndex": {
       "badge": "Kujifunza Moja kwa Moja",
-      "subtitle": "Jiunge na vipindi vya moja kwa moja, wasiliana na walimu na wanafunzi moja kwa moja. Vinjari vinavyoendelea sasa, vinavyokuja, au pitia vilivyopita."
+      "subtitle": "Jiunge na vipindi vya moja kwa moja, wasiliana na walimu na wanafunzi moja kwa moja. Vinjari vinavyoendelea sasa, vinavyokuja, au pitia vilivyopita.",
+      "title": "Wasiliana nasi"
     },
     "notesIndex": {
       "badge": "Maktaba ya Kidijitali",
@@ -6988,7 +7272,9 @@
       "s4t": "4. Usalama wa Data",
       "s4b": "Tunatumia hatua za usalama za kiwango cha sekta kulinda taarifa zako za kibinafsi, ikiwemo hifadhi ya nenosiri iliyosimbwa, usambazaji salama wa data, na ukaguzi wa mara kwa mara wa usalama. Hata hivyo, hakuna njia ya usambazaji kupitia Mtandao iliyo salama kwa 100%.",
       "s9t": "9. Wasiliana Nasi",
-      "s9pre": "Ikiwa una maswali kuhusu Sera hii ya Faragha, tafadhali wasiliana nasi kupitia"
+      "s9pre": "Ikiwa una maswali kuhusu Sera hii ya Faragha, tafadhali wasiliana nasi kupitia",
+      "title": "Wasiliana nasi",
+      "updated": "Lengo limesasishwa"
     },
     "support": {
       "subtitle": "Tupo hapa kukusaidia. Wasiliana nasi au vinjari maswali yanayoulizwa mara kwa mara.",
@@ -7014,7 +7300,13 @@
       "callUs": "Tupigie Simu",
       "whatsapp": "WhatsApp",
       "whatsappDesc": "Wasiliana nasi kupitia WhatsApp",
-      "faqTitle": "Maswali Yanayoulizwa Mara kwa Mara"
+      "faqTitle": "Maswali Yanayoulizwa Mara kwa Mara",
+      "title": "Wasiliana nasi",
+      "formTitle": "Tutumie ujumbe",
+      "nameLabel": "Jina Lako",
+      "emailLabel": "Barua Pepe",
+      "subjectLabel": "Mada",
+      "messageLabel": "Ujumbe"
     },
     "terms": {
       "s10t": "Masharti haya yanasimamiwa na sheria za Jamhuri ya Muungano wa Tanzania. Migogoro yoyote itatatuliwa katika",
@@ -7038,7 +7330,10 @@
       "s9t": "9. Kusitisha",
       "s9b": "Tunaweza kusimamisha au kusitisha akaunti yako wakati wowote kwa ukiukaji wa masharti haya. Unaweza pia kufuta akaunti yako wakati wowote kupitia mipangilio ya akaunti yako. Baada ya kusitishwa, haki yako ya kutumia jukwaa inakoma mara moja.",
       "s11t": "11. Mawasiliano",
-      "s11pre": "Kwa maswali kuhusu Masharti haya, wasiliana nasi kupitia"
+      "s11pre": "Kwa maswali kuhusu Masharti haya, wasiliana nasi kupitia",
+      "title": "Wasiliana nasi",
+      "updated": "Lengo limesasishwa",
+      "s8b": "sera mpya kwenye ukurasa huu na kusasisha tarehe ya Mwisho kusasishwa."
     },
     "facultyDetail": {
       "coursesCount": "{count} kozi",
@@ -7811,5 +8106,618 @@
     "admin": "Admin",
     "help": "Help",
     "recent": "Recent"
+  },
+  "??": {
+    "institutionDetail": {
+      "browseMore": "Vinjari Zaidi"
+    }
+  },
+  "regionalAdmin": {
+    "audit": {
+      "description": "Vitendo vilivyorekodiwa kwenye taasisi, watumiaji na maudhui yaliyo katika mamlaka yako.",
+      "emptyHint": "Vitendo vilivyorekodiwa katika mamlaka yako vitaonekana hapa.",
+      "emptyTitle": "Hakuna kumbukumbu za ukaguzi zinazolingana na kichujio hiki.",
+      "entityLabel": "Aina ya huluki",
+      "searchPlaceholder": "Tafuta kumbukumbu za ukaguzi…",
+      "title": "Ukaguzi",
+      "unknownActor": "Mtendaji asiyejulikana"
+    },
+    "compliance": {
+      "checksTitle": "Ukaguzi ({count})",
+      "compliantBadge": "Inazingatia",
+      "description": "Ukaguzi wa kiutawala kwa taasisi na kumbukumbu zilizo katika mamlaka yako.",
+      "emptyTitle": "Hakuna ukaguzi wa uzingatiaji uliorudishwa kwa mamlaka yako.",
+      "failedBadge": "Imeshindwa",
+      "lastCheckedLabel": "Ilipoangaliwa mwisho",
+      "loadError": "Imeshindwa kupakia ukaguzi wa uzingatiaji.",
+      "loadingLabel": "Inapakia ukaguzi wa uzingatiaji…",
+      "notCompliantBadge": "Haizingatii",
+      "passedBadge": "Imepitishwa",
+      "remediationLabel": "Marekebisho:",
+      "statFailed": "Zilizoshindwa",
+      "statPassed": "Zilizopitishwa",
+      "statTotal": "Jumla ya ukaguzi",
+      "summaryTitle": "Muhtasari",
+      "title": "Uzingatiaji"
+    },
+    "communication": {
+      "audienceLabel": "Hadhira",
+      "contentLabel": "Maudhui",
+      "contentPlaceholder": "Ujumbe kamili unaoonekana kwa kila mpokeaji",
+      "contentRequired": "Maudhui ya ujumbe yanahitajika.",
+      "description": "Tuma matangazo kwa hadhira zilizothibitishwa katika mamlaka yako — wapokeaji wote hupatikana upande wa seva kutoka wilaya na taasisi zako.",
+      "districtRequired": "Chagua angalau wilaya moja.",
+      "districtsSelected": "Wilaya ({count} zimechaguliwa)",
+      "emptyHint": "Matangazo unayotuma kwenye mamlaka yako yataorodheshwa hapa.",
+      "emptyTitle": "Hakuna matangazo yaliyotumwa bado.",
+      "expiresLabel": "Inaisha {date}",
+      "institutionRequired": "Chagua angalau taasisi moja.",
+      "institutionsSelected": "Taasisi ({count} zimechaguliwa)",
+      "loadDistrictsError": "Imeshindwa kupakia wilaya.",
+      "loadInstitutionsError": "Imeshindwa kupakia taasisi.",
+      "loadingAnnouncements": "Inapakia matangazo…",
+      "loadingDistricts": "Inapakia wilaya…",
+      "loadingInstitutions": "Inapakia taasisi…",
+      "newAnnouncement": "Tangazo jipya",
+      "newAnnouncementHeading": "Tangazo jipya",
+      "noDistrictsAvailable": "Hakuna wilaya zinazopatikana katika mamlaka yako.",
+      "noInstitutionsAvailable": "Hakuna taasisi zilizorudishwa kwa mamlaka yako.",
+      "priorityLabel": "Kipaumbele",
+      "recipientsCount": "Wapokeaji {count}",
+      "recipientsFootnote": "Wapokeaji huhesabiwa na seva. Hadhira kubwa hukataliwa na hitilafu ya kikomo iliyo wazi.",
+      "searchPlaceholder": "Tafuta matangazo…",
+      "sendAction": "Tuma tangazo",
+      "sendError": "Imeshindwa kutuma tangazo.",
+      "sendingLabel": "Inatuma…",
+      "sentByLabel": "Imetumwa na {name}",
+      "sentHeading": "Matangazo yaliyotumwa",
+      "sentNotice": "Imetumwa kwa wapokeaji {count}.",
+      "title": "Matangazo ya Mkoa",
+      "titleLabel": "Kichwa",
+      "titlePlaceholder": "Ufunguzi wa muhula na ratiba ya mitihani",
+      "titleRequired": "Kichwa kinahitajika."
+    },
+    "courses": {
+      "description": "Kozi zilizochapishwa na taasisi zilizo katika mamlaka yako — kila kozi imefungwa kwenye mkoa au wilaya yako.",
+      "draft": "Rasimu",
+      "emptyHint": "Jaribu neno tofauti la utafutaji kupata kozi zinazopatikana katika mkoa au wilaya yako.",
+      "emptyTitle": "Hakuna kozi zilizopatikana katika mamlaka yako",
+      "noInstitution": "Hakuna taasisi",
+      "published": "Imechapishwa",
+      "searchPlaceholder": "Tafuta kozi kwa kichwa…",
+      "title": "Kozi"
+    },
+    "dataQuality": {
+      "description": "Matokeo halisi ya ubora wa data yaliyogunduliwa katika mamlaka yako (viungo vilivyokosekana, marudio, mapengo).",
+      "emptyHint": "Viungo vilivyokosekana, marudio na mapengo ya kumbukumbu vitaonekana hapa pindi jukwaa linapoyagundua.",
+      "emptyTitle": "Hakuna matokeo ya ubora wa data yaliyogunduliwa katika mamlaka yako.",
+      "footnote": "Kila tokeo hapo juu liligunduliwa kutoka kumbukumbu zilizohifadhiwa katika mamlaka yako.",
+      "loadError": "Imeshindwa kupakia matokeo ya ubora wa data.",
+      "loadingLabel": "Inapakia matokeo ya ubora wa data…",
+      "severityFindingsTitle": "Matokeo ya {severity}",
+      "statCritical": "Muhimu",
+      "statInfo": "Taarifa",
+      "statTotal": "Jumla ya masuala",
+      "statWarnings": "Maonyo",
+      "suggestedActionLabel": "Hatua inayopendekezwa:",
+      "title": "Ubora wa Data"
+    },
+    "districtDetail": {
+      "accessError": "Wilaya hii iko nje ya mamlaka yako au haipo. Wasiliana na msimamizi wako ikiwa unaamini hii ni hitilafu.",
+      "backLink": "← Wilaya",
+      "colActions": "Vitendo",
+      "colCode": "Msimbo",
+      "colLearners": "Wanafunzi",
+      "colName": "Jina",
+      "colStatus": "Hali",
+      "colTeachers": "Walimu",
+      "colType": "Aina",
+      "emptyHint": "Taasisi zitaonekana hapa pindi zinapoundwa na kuunganishwa na wilaya hii.",
+      "emptyTitle": "Hakuna taasisi katika wilaya hii",
+      "errorDescription": "Mgawanyo wa wilaya wa taasisi na utendaji.",
+      "errorTitle": "Wilaya",
+      "governanceLink": "Utawala",
+      "institutionsHeading": "Taasisi katika {name}",
+      "loadError": "Imeshindwa kupakia wilaya hii.",
+      "loadingDescription": "Inapakia wilaya…",
+      "loadingLabel": "Inapakia wilaya…",
+      "loadingTitle": "Wilaya",
+      "notFoundError": "Wilaya hii haikupatikana.",
+      "statAttendance": "Mahudhurio",
+      "statCurriculum": "Maendeleo ya mtaala",
+      "statInstitutions": "Taasisi",
+      "statLearners": "Wanafunzi",
+      "statPerformance": "Utendaji wastani",
+      "statSchools": "Shule",
+      "statTeachers": "Walimu",
+      "totalLabel": "Jumla {count}"
+    },
+    "districts": {
+      "description": "Chimba kutoka mkoa wako hadi wilaya zake, na kutoka kila wilaya hadi taasisi inazosimamia.",
+      "emptyHint": "Mamlaka yako haina wilaya za kuonyesha bado.",
+      "emptyTitle": "Hakuna wilaya katika mkoa huu",
+      "loadDistrictsError": "Imeshindwa kupakia wilaya.",
+      "loadRegionsError": "Imeshindwa kupakia mikoa.",
+      "loadingDistricts": "Inapakia wilaya…",
+      "loadingRegions": "Inapakia mikoa…",
+      "noRegionAccessHint": "Akaunti yako imefungwa kwenye wilaya moja (Msimamizi wa Wilaya), kwa hivyo hakuna mikoa iliyoorodheshwa hapa. Tumia dashibodi ya wilaya yako kuona taasisi unazosimamia.",
+      "noRegionAccessTitle": "Hakuna ufikiaji wa ngazi ya mkoa kwa akaunti hii",
+      "regionLabel": "Mkoa",
+      "statAttendance": "Mahudhurio",
+      "statDistricts": "Wilaya",
+      "statInstitutions": "Taasisi",
+      "statLearners": "Wanafunzi",
+      "statPerformance": "Utendaji wastani",
+      "statSchools": "Shule",
+      "statTeachers": "Walimu",
+      "switchRegionAriaLabel": "Badilisha mkoa",
+      "title": "Wilaya"
+    },
+    "institutionDetail": {
+      "accessError": "Taasisi hii iko nje ya mamlaka yako au haipo. Wasiliana na msimamizi wako ikiwa unaamini hii ni hitilafu.",
+      "analyticsAttendanceHint": "Mienendo ya kila siku na shule zilizo hatarini kukosa.",
+      "analyticsAttendanceTitle": "Mahudhurio",
+      "analyticsFootnote": "Takwimu zimefungwa kwenye mamlaka sawa na rekodi hii.",
+      "analyticsPerformanceHint": "Linganisha matokeo ya tathmini katika mamlaka yako.",
+      "analyticsPerformanceTitle": "Utendaji",
+      "analyticsProfileHint": "Mahudhurio, utendaji na mtaala wa taasisi hii.",
+      "analyticsProfileTitle": "Wasifu wa shule",
+      "analyticsTitle": "Takwimu za mamlaka",
+      "backLink": "← Shule na Taasisi",
+      "dataQualityTitle": "Ubora wa data",
+      "errorDescription": "Rekodi ya utawala ya taasisi katika mamlaka yako.",
+      "errorTitle": "Taasisi",
+      "fieldAddress": "Anwani",
+      "fieldCity": "Jiji",
+      "fieldDistrict": "Wilaya",
+      "fieldEmail": "Barua pepe ya mawasiliano",
+      "fieldPhone": "Simu ya mawasiliano",
+      "fieldRegion": "Mkoa",
+      "jurisdictionTitle": "Mamlaka na utambulisho",
+      "loadError": "Imeshindwa kupakia taasisi hii.",
+      "loadingDescription": "Inapakia rekodi ya utawala…",
+      "loadingLabel": "Inapakia taasisi…",
+      "loadingTitle": "Taasisi",
+      "noFindingsHint": "Ukaguzi wa kiotomatiki haujaashiria chochote kwa rekodi hii.",
+      "noFindingsTitle": "Hakuna matokeo ya ubora wa data kwa taasisi hii.",
+      "notFoundError": "Taasisi hii haikupatikana.",
+      "notProvided": "Haijatolewa",
+      "openVerificationQueue": "Fungua foleni ya uthibitishaji →",
+      "statAttendance": "Mahudhurio",
+      "statClasses": "Madarasa",
+      "statCurriculum": "Maendeleo ya mtaala",
+      "statLearners": "Wanafunzi",
+      "statLessons": "Masomo",
+      "statLiveClasses": "Madarasa ya moja kwa moja",
+      "statPerformance": "Utendaji wastani",
+      "statTeachers": "Walimu",
+      "statusLabel": "Hali",
+      "unknownStatus": "HAIJULIKANI",
+      "verificationHint": "Rekodi za uthibitishaji, nyaraka zilizowasilishwa na maamuzi ya mapitio zinapatikana kwenye foleni ya pamoja ya uthibitishaji.",
+      "verificationTitle": "Uthibitishaji"
+    },
+    "institutions": {
+      "allDistricts": "Wilaya zote",
+      "description": "Kila shule, chuo, chuo kikuu na taasisi ya TVET katika mamlaka yako — chuja kwa wilaya au aina, kisha fungua moja kukagua utawala wake.",
+      "emptyHint": "Jaribu neno tofauti la utafutaji, au futa vichujio vya wilaya na aina kuona kila taasisi unayoweza kufikia.",
+      "emptyTitle": "Hakuna taasisi zilizopatikana katika mamlaka yako",
+      "filterDistrictAriaLabel": "Chuja taasisi kwa wilaya",
+      "filterTypeAriaLabel": "Chuja taasisi kwa aina",
+      "learnersLabel": "Wanafunzi",
+      "loadDistrictsError": "Imeshindwa kupakia wilaya.",
+      "loadingDistricts": "Inapakia wilaya…",
+      "loadingDistrictsAriaLabel": "Inapakia wilaya",
+      "noLocation": "Hakuna eneo",
+      "searchPlaceholder": "Tafuta taasisi kwa jina au msimbo…",
+      "teachersLabel": "Walimu",
+      "title": "Shule na Taasisi"
+    },
+    "learners": {
+      "allDistricts": "Wilaya zote",
+      "description": "Wanafunzi waliosajiliwa katika taasisi zilizo katika mamlaka yako — kila rekodi imefungwa kwenye mkoa au wilaya yako.",
+      "emptyHint": "Jaribu neno tofauti la utafutaji, au futa kichujio cha wilaya kuona kila mwanafunzi unayeweza kufikia.",
+      "emptyTitle": "Hakuna wanafunzi waliopatikana katika mamlaka yako",
+      "filterAriaLabel": "Chuja wanafunzi kwa wilaya",
+      "joinedLabel": "Alijiunga",
+      "loadDistrictsError": "Imeshindwa kupakia wilaya.",
+      "loadingDistricts": "Inapakia wilaya…",
+      "loadingDistrictsAriaLabel": "Inapakia wilaya",
+      "noInstitution": "Hakuna taasisi",
+      "searchPlaceholder": "Tafuta wanafunzi kwa jina au barua pepe…",
+      "title": "Wanafunzi"
+    },
+    "notificationsList": {
+      "description": "Arifa za kiutendaji zilizotolewa kwa akaunti yako ya mkoa.",
+      "emptyHint": "Ujumbe kuhusu uthibitishaji, matangazo na arifa za usimamizi vitaonekana hapa.",
+      "emptyTitle": "Huna arifa.",
+      "markReadError": "Imeshindwa kuashiria arifa hii kama imesomwa.",
+      "saving": "Inahifadhi…",
+      "searchPlaceholder": "Tafuta arifa…",
+      "title": "Arifa",
+      "unreadBadge": "Haijasomwa"
+    },
+    "overview": {
+      "allClearHint": "Hakuna kipengee kinachohitaji hatua ya mkoa kwa sasa.",
+      "allClearTitle": "Shwari katika mamlaka yako",
+      "attentionAriaLabel": "Tahadhari ya mkoa inayohitajika",
+      "attentionHeading": "Tahadhari ya Mkoa Inayohitajika",
+      "colAttendance": "Mahudhurio",
+      "colDistrict": "Wilaya",
+      "colInstitutions": "Taasisi",
+      "colLearners": "Wanafunzi",
+      "colPerformance": "Utendaji",
+      "colTeachers": "Walimu",
+      "districtsHeading": "Wilaya katika mamlaka yako",
+      "heroDescription": "Taasisi halisi, watu na shughuli za kujifunza katika mamlaka yako iliyoidhinishwa — kila takwimu imefungwa upande wa seva kwenye mkoa au wilaya yako.",
+      "heroTitle": "Kituo cha Amri cha Elimu cha Mkoa",
+      "jurisdictionHeading": "Muhtasari wa mamlaka",
+      "kpiAttendance": "Mahudhurio",
+      "kpiCourses": "Kozi",
+      "kpiCoursesSub": "Masomo {count}",
+      "kpiDistricts": "Wilaya",
+      "kpiLearners": "Wanafunzi",
+      "kpiLiveClasses": "Madarasa ya Moja kwa Moja",
+      "kpiLiveClassesSub": "Vipindi {count} kwa jumla",
+      "kpiPendingVerification": "Uthibitishaji Unaosubiri",
+      "kpiPendingVerificationSub": "Matokeo {count} ya ubora wa data",
+      "kpiSchools": "Shule na Taasisi",
+      "kpiSchoolsSub": "Shule {count}",
+      "kpiTeachers": "Walimu",
+      "kpiTeachersSub": "Taasisi zilizo katika wigo",
+      "kpisAriaLabel": "Viashiria vya mamlaka",
+      "lastUpdatedLabel": "Ilisasishwa mwisho",
+      "loadError": "Imeshindwa kupakia kituo cha amri cha mkoa.",
+      "noData": "Hakuna data inayopatikana katika mamlaka yako.",
+      "noQuickActions": "Hakuna vitendo vya haraka vinavyopatikana.",
+      "openLink": "Fungua",
+      "openPulseLink": "Fungua mpigo →",
+      "pulseAlerts": "Arifa",
+      "pulseCompletedToday": "Zilizokamilika leo",
+      "pulseFooter": "Mahudhurio {attendance} · Utendaji wastani {performance} · Maendeleo ya mtaala {curriculum}",
+      "pulseHeading": "Mpigo wa Elimu wa Mkoa",
+      "pulseLessonsPublished": "Masomo yaliyochapishwa",
+      "pulseLiveNow": "Moja kwa moja sasa",
+      "pulsePendingVerifications": "Uthibitishaji unaosubiri",
+      "pulseScheduledToday": "Vilivyopangwa leo",
+      "pulseUnavailable": "Data ya mpigo haipatikani.",
+      "quickActionsHeading": "Vitendo vya Haraka",
+      "refreshAction": "Onyesha upya",
+      "resolvingJurisdiction": "Inatambua mamlaka…",
+      "verificationQueueLabel": "Foleni ya uthibitishaji",
+      "viewAllLink": "Tazama zote →"
+    },
+    "pulse": {
+      "allFailedError": "Imeshindwa kupakia mpigo wa mkoa. Angalia muunganisho wako na ujaribu tena.",
+      "assessmentsLoadError": "Imeshindwa kupakia tathmini kwa mamlaka yako.",
+      "assessmentsTitle": "Tathmini",
+      "attendanceByInstitution": "Mahudhurio kwa taasisi",
+      "attendanceLoadError": "Imeshindwa kupakia mahudhurio kwa mamlaka yako.",
+      "attendanceTitle": "Mahudhurio",
+      "averageScoreHint": "Kwenye tathmini zilizokamilika",
+      "averageScoreLabel": "Alama wastani",
+      "colAssessments": "Tathmini",
+      "colAverage": "Wastani",
+      "colInstitution": "Taasisi",
+      "colPassRate": "Kiwango cha kufaulu",
+      "colStudents": "Wanafunzi",
+      "completedLabel": "Zilizokamilika",
+      "curriculumLoadError": "Imeshindwa kupakia maendeleo ya mtaala kwa mamlaka yako.",
+      "curriculumTitle": "Mtaala",
+      "description": "Shughuli moja kwa moja katika mamlaka yako yenye kipimo, thamani na wigo — bila mienendo ya kubuni.",
+      "lastUpdatedLabel": "Ilisasishwa mwisho",
+      "lessonsCompletedHint": "kati ya masomo {count}",
+      "lessonsCompletedLabel": "Masomo yaliyokamilika",
+      "loadingLabel": "Inapakia mpigo wa mkoa…",
+      "metricsAriaLabel": "Vipimo vya mpigo",
+      "metricsHeading": "Vipimo vya mpigo",
+      "metricsUnavailable": "Vipimo vya mpigo havipatikani kwa mamlaka yako.",
+      "noAssessmentsForJurisdiction": "Hakuna kumbukumbu za tathmini zilizorudishwa kwa mamlaka yako.",
+      "noAttendanceForJurisdiction": "Hakuna kumbukumbu za mahudhurio zilizorudishwa kwa mamlaka yako.",
+      "noAttendanceRecords": "Hakuna kumbukumbu za mahudhurio za taasisi zilizorudishwa.",
+      "noCurriculumForJurisdiction": "Hakuna kumbukumbu za mtaala zilizorudishwa kwa mamlaka yako.",
+      "noPerformanceForJurisdiction": "Hakuna kumbukumbu za utendaji zilizorudishwa kwa mamlaka yako.",
+      "noSchoolPerformance": "Hakuna kumbukumbu za utendaji za shule zilizorudishwa.",
+      "noSubjectProgress": "Hakuna kumbukumbu za maendeleo ya masomo zilizorudishwa.",
+      "overallAttendanceLabel": "Kiwango cha jumla cha mahudhurio",
+      "overallAverageLabel": "Wastani wa jumla",
+      "overallProgressLabel": "Maendeleo ya jumla",
+      "passRateLabel": "Kiwango cha kufaulu",
+      "pendingGradingLabel": "Zinasubiri kusahihishwa",
+      "performanceLoadError": "Imeshindwa kupakia utendaji kwa mamlaka yako.",
+      "performanceTitle": "Utendaji",
+      "progressBySubject": "Maendeleo kwa somo",
+      "pulseLoadError": "Imeshindwa kupakia vipimo vya mpigo.",
+      "reportCardsLabel": "Ripoti za wanafunzi",
+      "schoolsAtRiskLabel": "Shule zilizo hatarini",
+      "schoolsBehindHint": "{count} zimechelewa",
+      "schoolsOnTrackLabel": "Shule zinazoendelea vizuri",
+      "scopeLabel": "Wigo: mamlaka yako · Kipindi: Kumbukumbu zote zilizopo",
+      "statAlerts": "Arifa",
+      "statCompletedToday": "Zilizokamilika leo",
+      "statLearners": "Wanafunzi",
+      "statLiveNow": "Moja kwa moja sasa",
+      "statLiveNowHint": "Madarasa ya moja kwa moja yanayoendelea",
+      "statPendingVerifications": "Uthibitishaji unaosubiri",
+      "statPublishedLessons": "Masomo yaliyochapishwa",
+      "statPublishedLessonsHint": "kati ya masomo {count} kwa jumla",
+      "statScheduledToday": "Vilivyopangwa leo",
+      "statTeachers": "Walimu",
+      "statWeekTotal": "Jumla ya wiki hii",
+      "studentsLabel": "Wanafunzi",
+      "title": "Mpigo wa Mkoa",
+      "totalAssessmentsLabel": "Jumla ya tathmini"
+    },
+    "resources": {
+      "description": "Nyenzo za kujifunza zilizopakiwa na taasisi zilizo katika mamlaka yako — kila faili limefungwa kwenye mkoa au wilaya yako.",
+      "emptyHint": "Jaribu neno tofauti la utafutaji kupata nyenzo zinazopatikana katika mkoa au wilaya yako.",
+      "emptyTitle": "Hakuna nyenzo za kujifunza zilizopatikana katika mamlaka yako",
+      "noInstitution": "Hakuna taasisi",
+      "searchPlaceholder": "Tafuta nyenzo kwa kichwa…",
+      "title": "Nyenzo za Kujifunza"
+    },
+    "scheduledReports": {
+      "activateAction": "Washa",
+      "createAction": "Unda ripoti",
+      "creatingLabel": "Inaunda…",
+      "deleteAriaLabel": "Futa {title}",
+      "description": "Ripoti zinazozalishwa kiotomatiki katika mamlaka yako kutoka takwimu halisi za usimamizi — kamwe data ya kubuni.",
+      "emptyHint": "Unda ripoti yako ya kwanza hapo juu — itazalishwa kwa ratiba katika mamlaka yako.",
+      "emptyTitle": "Hakuna ripoti zilizopangwa bado",
+      "frequencyDaily": "Kila siku",
+      "frequencyLabel": "Mzunguko",
+      "frequencyMonthly": "Kila mwezi",
+      "frequencyWeekly": "Kila wiki",
+      "genericError": "Hitilafu imetokea.",
+      "hideHistoryAction": "Ficha historia ya uzalishaji",
+      "jurisdictionFallback": "Mamlaka",
+      "lastRunLabel": "Uzalishaji wa mwisho",
+      "loadingLabel": "Inapakia ripoti zilizopangwa…",
+      "loadingRuns": "Inapakia historia ya uzalishaji…",
+      "newHeading": "Ripoti mpya iliyopangwa",
+      "nextRunLabel": "Uzalishaji ujao",
+      "noRunsYet": "Hakuna uzalishaji bado — ripoti hii haijazalishwa.",
+      "pauseAction": "Sitisha",
+      "recipientsLabel": "Wapokeaji",
+      "recipientsPlaceholder": "barua pepe zilizotenganishwa na koma",
+      "runNowAction": "Zalisha sasa",
+      "runsLabel": "Uzalishaji",
+      "showHistoryAction": "Onyesha historia ya uzalishaji",
+      "title": "Ripoti Zilizopangwa",
+      "titleLabel": "Kichwa",
+      "titlePlaceholder": "k.m. Muhtasari wa mahudhurio wa kila mwezi",
+      "titleRequired": "Kichwa kinahitajika.",
+      "typeAttendance": "Mahudhurio",
+      "typeDataQuality": "Ubora wa data",
+      "typeGovernance": "Utawala",
+      "typeLabel": "Aina ya ripoti",
+      "typeLearners": "Wanafunzi",
+      "typePerformance": "Utendaji"
+    },
+    "searchPage": {
+      "description": "Tafuta wilaya, taasisi, watu na kumbukumbu za kujifunza katika mamlaka yako iliyoidhinishwa. Kila tokeo limefungwa upande wa seva.",
+      "inputAriaLabel": "Tafuta kumbukumbu za mamlaka",
+      "inputPlaceholder": "Tafuta kwa jina, msimbo au barua pepe…",
+      "noMatchesHint": "Jaribu neno tofauti — matokeo hayajumuishi kamwe kumbukumbu kutoka mikoa au wilaya nyingine.",
+      "noMatchesTitle": "Hakuna matokeo katika mamlaka yako",
+      "resultsCount": "Matokeo {count}",
+      "searchingLabel": "Inatafuta katika mamlaka yako…",
+      "startHint": "Ingiza angalau herufi mbili. Matokeo yanajumuisha tu wilaya, taasisi, walimu, wafanyakazi na wanafunzi ulioidhinishwa kuwaona.",
+      "startTitle": "Anza kuandika kutafuta",
+      "title": "Utafutaji",
+      "unavailableError": "Utafutaji haupatikani kwa sasa."
+    },
+    "shared": {
+      "dismiss": "Ondoa",
+      "open": "Fungua",
+      "loading": "Inapakia…",
+      "loadError": "Imeshindwa kupakia data.",
+      "pageStatus": "Ukurasa {page} kati ya {pages} · {total} kwa jumla"
+    },
+    "staff": {
+      "allDistricts": "Wilaya zote",
+      "description": "Wasimamizi wa taasisi na wafanyakazi wasaidizi katika mamlaka yako — kila rekodi imefungwa kwenye mkoa au wilaya yako.",
+      "emptyHint": "Jaribu neno tofauti la utafutaji, au futa kichujio cha wilaya kuona kila mfanyakazi unayeweza kufikia.",
+      "emptyTitle": "Hakuna wafanyakazi wa elimu waliopatikana katika mamlaka yako",
+      "filterAriaLabel": "Chuja wafanyakazi wa elimu kwa wilaya",
+      "joinedLabel": "Alijiunga",
+      "loadDistrictsError": "Imeshindwa kupakia wilaya.",
+      "loadingDistricts": "Inapakia wilaya…",
+      "loadingDistrictsAriaLabel": "Inapakia wilaya",
+      "noInstitution": "Hakuna taasisi",
+      "searchPlaceholder": "Tafuta wafanyakazi wa elimu kwa jina au barua pepe…",
+      "title": "Wafanyakazi wa Elimu"
+    },
+    "teachers": {
+      "allDistricts": "Wilaya zote",
+      "description": "Walimu wanaofanya kazi katika taasisi zilizo katika mamlaka yako — kila rekodi imefungwa kwenye mkoa au wilaya yako.",
+      "emptyHint": "Jaribu neno tofauti la utafutaji, au futa kichujio cha wilaya kuona kila mwalimu unayeweza kufikia.",
+      "emptyTitle": "Hakuna walimu waliopatikana katika mamlaka yako",
+      "filterAriaLabel": "Chuja walimu kwa wilaya",
+      "joinedLabel": "Alijiunga",
+      "loadDistrictsError": "Imeshindwa kupakia wilaya.",
+      "loadingDistricts": "Inapakia wilaya…",
+      "loadingDistrictsAriaLabel": "Inapakia wilaya",
+      "noInstitution": "Hakuna taasisi",
+      "searchPlaceholder": "Tafuta walimu kwa jina au barua pepe…",
+      "title": "Walimu"
+    },
+    "verification": {
+      "approveAction": "Idhinisha",
+      "description": "Kagua uthibitishaji wa huluki unaosubiri katika mamlaka yako.",
+      "detailLoadError": "Imeshindwa kupakia uthibitishaji huu.",
+      "documentsLabel": "Nyaraka",
+      "emptyHint": "Uthibitishaji unaowasilishwa na huluki zilizo katika mamlaka yako utaonekana hapa.",
+      "emptyTitle": "Hakuna uthibitishaji unaolingana na kichujio hiki.",
+      "hideAction": "Ficha",
+      "loadingDetails": "Inapakia maelezo ya uthibitishaji…",
+      "noDocuments": "Hakuna nyaraka zilizowekwa.",
+      "notesPlaceholder": "Maelezo yanayoonekana kwa mtoa (hiari)",
+      "rejectAction": "Kataa",
+      "requestChangesAction": "Omba marekebisho",
+      "reviewAction": "Kagua",
+      "reviewSaveError": "Imeshindwa kuhifadhi mapitio.",
+      "reviewSavedNotice": "Mapitio yamehifadhiwa kwa {name} — hali sasa ni {status}.",
+      "reviewedByLabel": "Imekaguliwa na {name}",
+      "reviewerNotesLabel": "Maelezo ya mkaguzi",
+      "savingLabel": "Inahifadhi…",
+      "searchPlaceholder": "Tafuta uthibitishaji…",
+      "statusLabel": "Hali",
+      "submittedByLabel": "Imewasilishwa na {name}",
+      "title": "Uthibitishaji"
+    },
+    "videos": {
+      "description": "Video za mafunzo zilizoundwa na taasisi zilizo katika mamlaka yako — kila video imefungwa kwenye mkoa au wilaya yako.",
+      "durationLabel": "Muda",
+      "emptyHint": "Jaribu neno tofauti la utafutaji kupata video za mafunzo zinazopatikana katika mkoa au wilaya yako.",
+      "emptyTitle": "Hakuna video za mafunzo zilizopatikana katika mamlaka yako",
+      "noInstitution": "Hakuna taasisi",
+      "searchPlaceholder": "Tafuta video za mafunzo kwa kichwa…",
+      "title": "Video za Mafunzo"
+    },
+    "wardDetail": {
+      "accessError": "Kata hii iko nje ya mamlaka yako au haipo. Wasiliana na msimamizi wako ikiwa unaamini hii ni hitilafu.",
+      "backLink": "← Kata zote",
+      "emptyHint": "Taasisi huunganishwa na kata pindi anwani za ngazi ya kata zinapokusanywa. Hadi wakati huo zinaonekana kwenye ukurasa wa wilaya tu.",
+      "emptyTitle": "Hakuna taasisi zilizounganishwa na kata hii bado",
+      "errorDescription": "Maelezo ya kata",
+      "errorTitle": "Kata",
+      "institutionsHeading": "Taasisi katika kata hii",
+      "loadError": "Imeshindwa kupakia kata hii.",
+      "loadingDescription": "Inapakia kata…",
+      "loadingLabel": "Inapakia kata…",
+      "loadingTitle": "Kata",
+      "noRegion": "Hakuna mkoa",
+      "notFoundError": "Kata hii haikupatikana.",
+      "scopeFootnote": "Jiografia ya kata imefungwa kwenye mamlaka yako — taasisi na hesabu zinazoonyeshwa hapa zimechujwa upande wa seva.",
+      "statDistrict": "Wilaya",
+      "statInstitutions": "Taasisi",
+      "statRegion": "Mkoa",
+      "statWardCode": "Msimbo wa kata"
+    },
+    "wards": {
+      "allDistricts": "Wilaya zote",
+      "description": "Jiografia ya ngazi ya kata katika mamlaka yako — tabaka kati ya wilaya na taasisi.",
+      "emptyHint": "Kata za mamlaka yako hazijaongezwa bado, au hakuna inayolingana na utafutaji wako.",
+      "emptyTitle": "Hakuna kata zilizopatikana",
+      "filterAriaLabel": "Chuja kata kwa wilaya",
+      "institutionsLabel": "Taasisi",
+      "loadDistrictsError": "Imeshindwa kupakia wilaya.",
+      "noDistrict": "Hakuna wilaya",
+      "noRegion": "Hakuna mkoa",
+      "searchPlaceholder": "Tafuta kata kwa jina au msimbo…",
+      "title": "Kata"
+    }
+  },
+  "provider": {
+    "dashboard": {
+      "title": "Dashibodi ya Mtoa Huduma",
+      "subtitle": "Simamia programu zako za elimu isiyo rasmi",
+      "networkError": "Hitilafu ya mtandao",
+      "programs": "Programu",
+      "sessions": "Vipindi",
+      "certificatesIssued": "Vyeti Vilivyotolewa",
+      "managePrograms": "Simamia Programu",
+      "viewSessions": "Tazama Vipindi",
+      "manageLearners": "Simamia Wanafunzi"
+    },
+    "assessments": {
+      "subtitle": "Simamia tathmini za wanafunzi",
+      "searchPlaceholder": "Tafuta tathmini...",
+      "empty": "Hakuna tathmini zilizopatikana.",
+      "marksSuffix": "alama",
+      "draftFallback": "Rasimu"
+    },
+    "attendance": {
+      "subtitle": "Fuatilia mahudhurio ya wanafunzi",
+      "searchPlaceholder": "Tafuta kwa jina la mwanafunzi...",
+      "empty": "Hakuna rekodi za mahudhurio zilizopatikana.",
+      "unknownFallback": "Haijulikani"
+    },
+    "certificates": {
+      "subtitle": "Simamia na utoe vyeti",
+      "searchPlaceholder": "Tafuta kwa jina au namba ya mfululizo...",
+      "empty": "Hakuna vyeti vilivyopatikana.",
+      "titleFallback": "Cheti"
+    },
+    "learners": {
+      "subtitle": "Simamia wanafunzi walioandikishwa wa elimu isiyo rasmi",
+      "addLearner": "Ongeza Mwanafunzi",
+      "searchPlaceholder": "Tafuta wanafunzi...",
+      "empty": "Hakuna wanafunzi waliopatikana.",
+      "noContactFallback": "Hakuna taarifa za mawasiliano"
+    },
+    "materials": {
+      "title": "Nyenzo",
+      "subtitle": "Simamia nyenzo za kujifunzia",
+      "addMaterial": "Ongeza Nyenzo",
+      "searchPlaceholder": "Tafuta nyenzo...",
+      "empty": "Hakuna nyenzo zilizopatikana.",
+      "fileFallback": "Faili",
+      "availableFallback": "Inapatikana"
+    },
+    "programs": {
+      "title": "Programu",
+      "subtitle": "Simamia programu zako za elimu isiyo rasmi",
+      "createProgram": "Unda Programu",
+      "searchPlaceholder": "Tafuta programu...",
+      "empty": "Hakuna programu zilizopatikana.",
+      "noDescriptionFallback": "Hakuna maelezo"
+    },
+    "sessions": {
+      "title": "Vipindi",
+      "subtitle": "Simamia vipindi vya mafunzo",
+      "createSession": "Unda Kipindi",
+      "searchPlaceholder": "Tafuta vipindi...",
+      "empty": "Hakuna vipindi vilivyopatikana.",
+      "noDateFallback": "Hakuna tarehe iliyowekwa"
+    },
+    "settings": {
+      "subtitle": "Sanidi wasifu wako wa mtoa elimu isiyo rasmi",
+      "providerInfoTitle": "Taarifa za Mtoa Huduma",
+      "providerNameLabel": "Jina la Mtoa Huduma",
+      "providerNamePlaceholder": "Weka jina la mtoa huduma",
+      "contactEmailLabel": "Barua pepe ya Mawasiliano",
+      "contactPhoneLabel": "Simu ya Mawasiliano",
+      "addressLabel": "Anwani",
+      "addressPlaceholder": "Weka anwani",
+      "saveChanges": "Hifadhi Mabadiliko"
+    }
+  },
+  "subscription": {
+    "title": "Usajili",
+    "subtitle": "Chagua mpango unaokufaa kujifunza.",
+    "recommendedBadge": "INAPENDEKEZWA",
+    "currentPlanButton": "Mpango wa Sasa",
+    "upgradeButton": "Boresha",
+    "customPrice": "Maalum",
+    "plans": {
+      "free": {
+        "name": "Bure",
+        "period": "milele",
+        "f1": "Kupata kozi za bure",
+        "f2": "Madarasa ya moja kwa moja ya msingi",
+        "f3": "Maktaba ya kidijitali (ndogo)",
+        "f4": "Msaada wa jamii"
+      },
+      "premium": {
+        "name": "Premium",
+        "period": "/mwezi",
+        "f1": "Vipengele vyote vya bure",
+        "f2": "Madarasa ya moja kwa moja bila kikomo",
+        "f3": "Maktaba kamili ya kidijitali",
+        "f4": "Nyenzo zinazopakuliwa",
+        "f5": "Msaada wa kipaumbele",
+        "f6": "Vyeti"
+      },
+      "institution": {
+        "name": "Taasisi",
+        "f1": "Vipengele vyote vya Premium",
+        "f2": "Uandikishaji wa pamoja",
+        "f3": "Dashibodi ya msimamizi",
+        "f4": "Chapa maalum",
+        "f5": "Msaada maalum",
+        "f6": "Upatikanaji wa API"
+      }
+    }
   }
 }

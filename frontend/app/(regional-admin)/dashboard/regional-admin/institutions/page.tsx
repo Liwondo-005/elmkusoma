@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { Building2, School } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type DistrictInfo,
@@ -12,7 +13,11 @@ import { Chip, ErrorState, PageHeader, PagedList } from "@/components/dashboard/
 
 const TYPES = ["SCHOOL", "COLLEGE", "UNIVERSITY", "TVET", "OTHER"]
 
-function renderItem(item: RegionalInstitution) {
+function renderItem(
+  item: RegionalInstitution,
+  t: ReturnType<typeof useTranslations>,
+  ts: ReturnType<typeof useTranslations>,
+) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start gap-4">
@@ -26,31 +31,31 @@ function renderItem(item: RegionalInstitution) {
               <p className="truncate text-xs text-muted-foreground">{item.code}</p>
             </div>
             <Chip tone={item.isActive ? "success" : "danger"}>
-              {item.isActive ? "Active" : "Inactive"}
+              {item.isActive ? ts("active") : ts("inactive")}
             </Chip>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Chip tone="info">{item.type}</Chip>
             <span className="truncate text-xs text-muted-foreground">
-              {[item.districtName, item.regionName].filter(Boolean).join(" · ") || "No location"}
+              {[item.districtName, item.regionName].filter(Boolean).join(" · ") || t("institutions.noLocation")}
             </span>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
               <span>
-                Teachers <span className="font-semibold tabular-nums text-foreground">{item.teacherCount ?? "—"}</span>
+                {t("institutions.teachersLabel")} <span className="font-semibold tabular-nums text-foreground">{item.teacherCount ?? "—"}</span>
               </span>
               <span>
-                Learners <span className="font-semibold tabular-nums text-foreground">{item.studentCount ?? "—"}</span>
+                {t("institutions.learnersLabel")} <span className="font-semibold tabular-nums text-foreground">{item.studentCount ?? "—"}</span>
               </span>
             </div>
             <Link
               href={`/dashboard/regional-admin/institutions/${item.id}`}
               className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
             >
-              Open →
+              {t("shared.open")} →
             </Link>
           </div>
         </div>
@@ -60,6 +65,9 @@ function renderItem(item: RegionalInstitution) {
 }
 
 export default function RegionalInstitutionsPage() {
+  const t = useTranslations("regionalAdmin")
+  const ts = useTranslations("status")
+  const tc = useTranslations("common")
   const [districts, setDistricts] = useState<DistrictInfo[]>([])
   const [filtersLoading, setFiltersLoading] = useState(true)
   const [filtersError, setFiltersError] = useState<string | null>(null)
@@ -101,11 +109,11 @@ export default function RegionalInstitutionsPage() {
       setDistricts(unique)
     } catch (e) {
       setDistricts([])
-      setFiltersError(e instanceof Error ? e.message : "Unable to load districts.")
+      setFiltersError(e instanceof Error ? e.message : t("institutions.loadDistrictsError"))
     } finally {
       setFiltersLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     loadFilters()
@@ -130,10 +138,10 @@ export default function RegionalInstitutionsPage() {
         <select
           value={districtId}
           onChange={(e) => setDistrictId(e.target.value)}
-          aria-label="Filter institutions by district"
+          aria-label={t("institutions.filterDistrictAriaLabel")}
           className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">All districts</option>
+          <option value="">{t("institutions.allDistricts")}</option>
           {districts.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
@@ -141,22 +149,22 @@ export default function RegionalInstitutionsPage() {
       ) : filtersLoading ? (
         <select
           disabled
-          aria-label="Loading districts"
+          aria-label={t("institutions.loadingDistrictsAriaLabel")}
           className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-muted-foreground opacity-60 outline-none"
         >
-          <option>Loading districts…</option>
+          <option>{t("institutions.loadingDistricts")}</option>
         </select>
       ) : null}
 
       <select
         value={type}
         onChange={(e) => setType(e.target.value)}
-        aria-label="Filter institutions by type"
+        aria-label={t("institutions.filterTypeAriaLabel")}
         className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
       >
-        <option value="">All types</option>
-        {TYPES.map((t) => (
-          <option key={t} value={t}>{t}</option>
+        <option value="">{tc("allTypes")}</option>
+        {TYPES.map((ty) => (
+          <option key={ty} value={ty}>{ty}</option>
         ))}
       </select>
     </>
@@ -165,8 +173,8 @@ export default function RegionalInstitutionsPage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Schools & Institutions"
-        description="Every school, college, university and TVET institution inside your jurisdiction — filter by district or type, then open one to review its governance."
+        title={t("institutions.title")}
+        description={t("institutions.description")}
       />
 
       {filtersError && <ErrorState message={filtersError} onRetry={loadFilters} />}
@@ -174,10 +182,10 @@ export default function RegionalInstitutionsPage() {
       <PagedList<RegionalInstitution>
         key={`${districtId}|${type}`}
         fetcher={fetcher}
-        renderItem={renderItem}
-        searchPlaceholder="Search institutions by name or code…"
-        emptyTitle="No institutions found in your jurisdiction"
-        emptyHint="Try a different search term, or clear the district and type filters to see every institution you can access."
+        renderItem={(item) => renderItem(item, t, ts)}
+        searchPlaceholder={t("institutions.searchPlaceholder")}
+        emptyTitle={t("institutions.emptyTitle")}
+        emptyHint={t("institutions.emptyHint")}
         emptyIcon={<School className="size-10" />}
         toolbar={toolbar}
       />

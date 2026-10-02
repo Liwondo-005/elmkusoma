@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/auth"
+import { useAuth, translateRole } from "@/lib/auth"
 import { useTranslations } from "next-intl"
 import { Eye, EyeOff, CheckCircle, ShieldCheck, RefreshCw } from "lucide-react"
 
@@ -33,6 +33,7 @@ const CAPTCHA_STYLES: React.CSSProperties[] = [
 
 export default function RegisterPage() {
   const t = useTranslations("auth")
+  const tr = useTranslations("roles")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
@@ -283,7 +284,7 @@ export default function RegisterPage() {
                     <option value="">{t("selectRole")}</option>
                     {roles.map((role) => (
                       <option key={role} value={role}>
-                        {role}
+                        {translateRole(role, tr)}
                       </option>
                     ))}
                   </select>

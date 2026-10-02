@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl"
 import { Menu, X, Bell, Search, Globe, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
-import { useAuth } from "@/lib/auth"
+import { useAuth, translateRole } from "@/lib/auth"
 import { useLocaleContext } from "@/components/locale-provider"
 import { adminApi, ApiRequestError, notificationsApi } from "@/lib/api"
 
@@ -144,6 +144,7 @@ function GlobalSearchDropdown({
 export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate: () => void) => React.ReactNode }) {
   const t = useTranslations("common")
   const tn = useTranslations("nav")
+  const tr = useTranslations("roles")
   const { locale, setLocale } = useLocaleContext()
   const [open, setOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -216,7 +217,7 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur sm:px-6" role="banner" aria-label="Top navigation">
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur sm:px-6" role="banner" aria-label={t("mainNavigation")}>
         <Button
           variant="ghost"
           size="icon"
@@ -283,9 +284,9 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
               </span>
               <div className="hidden text-left sm:block">
                 <p className="text-sm font-semibold leading-tight text-foreground">
-                  {user?.name || "Student"}
+                  {user?.name || tr("student")}
                 </p>
-                <p className="text-xs text-muted-foreground capitalize">{user?.role || "Student"}</p>
+                <p className="text-xs text-muted-foreground capitalize">{translateRole(user?.role, tr)}</p>
               </div>
             </button>
 

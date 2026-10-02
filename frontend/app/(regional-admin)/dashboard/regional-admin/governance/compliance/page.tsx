@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { CheckCircle2, ShieldCheck, XCircle } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type ComplianceCheck,
@@ -19,7 +20,12 @@ import {
   formatDateTime,
 } from "@/components/dashboard/regional-admin/ui"
 
-function CheckRow({ check }: { check: ComplianceCheck }) {
+function CheckRow({
+  check, t,
+}: {
+  check: ComplianceCheck
+  t: ReturnType<typeof useTranslations>
+}) {
   return (
     <li className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-start gap-3">
@@ -33,17 +39,17 @@ function CheckRow({ check }: { check: ComplianceCheck }) {
             <h3 className="text-sm font-bold text-foreground">{check.name}</h3>
             <Chip tone="muted">{check.category}</Chip>
             <Chip tone={check.passed ? "success" : "danger"}>
-              {check.passed ? "Passed" : "Failed"}
+              {check.passed ? t("compliance.passedBadge") : t("compliance.failedBadge")}
             </Chip>
           </div>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{check.description}</p>
           {!check.passed && check.remediation && (
             <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              <span className="font-semibold">Remediation:</span> {check.remediation}
+              <span className="font-semibold">{t("compliance.remediationLabel")}</span> {check.remediation}
             </p>
           )}
           <p className="mt-2 text-xs text-muted-foreground">
-            Last checked: {formatDateTime(check.lastChecked)}
+            {t("compliance.lastCheckedLabel")}: {formatDateTime(check.lastChecked)}
           </p>
         </div>
       </div>
@@ -52,6 +58,7 @@ function CheckRow({ check }: { check: ComplianceCheck }) {
 }
 
 export default function CompliancePage() {
+  const t = useTranslations("regionalAdmin")
   const [data, setData] = useState<ComplianceResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,11 +70,11 @@ export default function CompliancePage() {
       setData(await regionalAdminApi.getCompliance())
     } catch (e) {
       setData(null)
-      setError(e instanceof Error ? e.message : "Unable to load compliance checks.")
+      setError(e instanceof Error ? e.message : t("compliance.loadError"))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     load()
@@ -79,8 +86,8 @@ export default function CompliancePage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Compliance"
-        description="Governance checks for institutions and records inside your jurisdiction."
+        title={t("compliance.title")}
+        description={t("compliance.description")}
       />
 
       {data && data.note && (
@@ -91,22 +98,22 @@ export default function CompliancePage() {
 
       {error && <ErrorState message={error} onRetry={load} />}
 
-      {loading && <LoadingState label="Loading compliance checks…" />}
+      {loading && <LoadingState label={t("compliance.loadingLabel")} />}
 
       {!loading && !error && data && (
         <>
           <Panel
-            title="Summary"
+            title={t("compliance.summaryTitle")}
             actions={
               <Chip tone={data.isCompliant ? "success" : "danger"}>
-                {data.isCompliant ? "Compliant" : "Not compliant"}
+                {data.isCompliant ? t("compliance.compliantBadge") : t("compliance.notCompliantBadge")}
               </Chip>
             }
           >
             <div className="grid gap-4 sm:grid-cols-3">
-              <StatCard label="Checks passed" value={data.passedChecks} tone="success" />
-              <StatCard label="Checks failed" value={data.failedChecks} tone="danger" />
-              <StatCard label="Total checks" value={data.totalChecks} />
+              <StatCard label={t("compliance.statPassed")} value={data.passedChecks} tone="success" />
+              <StatCard label={t("compliance.statFailed")} value={data.failedChecks} tone="danger" />
+              <StatCard label={t("compliance.statTotal")} value={data.totalChecks} />
             </div>
             <div className="mt-4">
               <ProgressBar value={passPercent} />
@@ -115,14 +122,14 @@ export default function CompliancePage() {
 
           {data.checks.length === 0 ? (
             <EmptyState
-              title="No compliance checks were returned for your jurisdiction."
+              title={t("compliance.emptyTitle")}
               icon={<ShieldCheck className="size-10" />}
             />
           ) : (
-            <Panel title={`Checks (${data.checks.length})`}>
+            <Panel title={t("compliance.checksTitle", { count: data.checks.length })}>
               <ul className="space-y-3">
                 {data.checks.map((check) => (
-                  <CheckRow key={check.id} check={check} />
+                  <CheckRow key={check.id} check={check} t={t} />
                 ))}
               </ul>
             </Panel>

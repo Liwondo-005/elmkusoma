@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { useSearchParams } from "next/navigation"
 import { CheckCircle2, Plus, Send, X, XCircle } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type AnnouncementSummary,
@@ -33,6 +34,8 @@ function errorMessage(e: unknown, fallback: string): string {
 }
 
 function AnnouncementsContent() {
+  const t = useTranslations("regionalAdmin")
+  const tc = useTranslations("common")
   const searchParams = useSearchParams()
 
   const [composeOpen, setComposeOpen] = useState(searchParams.get("compose") === "1")
@@ -67,11 +70,11 @@ function AnnouncementsContent() {
       )
       setDistricts(lists.flat())
     } catch (e) {
-      setOptionsError(errorMessage(e, "Unable to load districts."))
+      setOptionsError(errorMessage(e, t("communication.loadDistrictsError")))
     } finally {
       setOptionsLoading(false)
     }
-  }, [])
+  }, [t])
 
   const loadInstitutions = useCallback(async () => {
     setOptionsLoading(true)
@@ -80,11 +83,11 @@ function AnnouncementsContent() {
       const page = await regionalAdminApi.listInstitutions({ size: 100 })
       setInstitutions(page.content)
     } catch (e) {
-      setOptionsError(errorMessage(e, "Unable to load institutions."))
+      setOptionsError(errorMessage(e, t("communication.loadInstitutionsError")))
     } finally {
       setOptionsLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (searchParams.get("compose") === "1") setComposeOpen(true)
@@ -114,13 +117,13 @@ function AnnouncementsContent() {
   }
 
   function validate(): string | null {
-    if (!title.trim()) return "Title is required."
-    if (!content.trim()) return "Message content is required."
+    if (!title.trim()) return t("communication.titleRequired")
+    if (!content.trim()) return t("communication.contentRequired")
     if (audienceType === "DISTRICTS" && districtIds.length === 0) {
-      return "Select at least one district."
+      return t("communication.districtRequired")
     }
     if (audienceType === "INSTITUTIONS" && institutionIds.length === 0) {
-      return "Select at least one institution."
+      return t("communication.institutionRequired")
     }
     return null
   }
@@ -144,7 +147,7 @@ function AnnouncementsContent() {
         ...(audienceType === "DISTRICTS" ? { targetDistrictIds: districtIds } : {}),
         ...(audienceType === "INSTITUTIONS" ? { targetInstitutionIds: institutionIds } : {}),
       })
-      setSuccess(`Sent to ${created.recipientCount} recipients.`)
+      setSuccess(t("communication.sentNotice", { count: created.recipientCount }))
       setTitle("")
       setContent("")
       setPriority("NORMAL")
@@ -154,7 +157,7 @@ function AnnouncementsContent() {
       setComposeOpen(false)
       setReloadKey((k) => k + 1)
     } catch (e) {
-      setFormError(errorMessage(e, "Unable to send the announcement."))
+      setFormError(errorMessage(e, t("communication.sendError")))
     } finally {
       setSubmitting(false)
     }
@@ -167,8 +170,8 @@ function AnnouncementsContent() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Regional Announcements"
-        description="Send announcements to validated audiences inside your jurisdiction — all recipients are resolved server-side from your districts and institutions."
+        title={t("communication.title")}
+        description={t("communication.description")}
         actions={
           <button
             type="button"
@@ -179,7 +182,7 @@ function AnnouncementsContent() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             {composeOpen ? <X className="size-4" /> : <Plus className="size-4" />}
-            {composeOpen ? "Close" : "New announcement"}
+            {composeOpen ? tc("close") : t("communication.newAnnouncement")}
           </button>
         }
       />
@@ -194,47 +197,47 @@ function AnnouncementsContent() {
             onClick={() => setSuccess(null)}
             className="text-xs font-semibold underline"
           >
-            Dismiss
+            {t("shared.dismiss")}
           </button>
         </div>
       )}
 
       {composeOpen && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="text-sm font-bold text-foreground">New announcement</h2>
+          <h2 className="text-sm font-bold text-foreground">{t("communication.newAnnouncementHeading")}</h2>
 
           <form onSubmit={submit} className="mt-4 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label htmlFor="announcement-title" className={labelClass}>
-                  Title
+                  {t("communication.titleLabel")}
                 </label>
                 <input
                   id="announcement-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Term opening and examination timetable"
+                  placeholder={t("communication.titlePlaceholder")}
                   className={`mt-1.5 ${fieldClass}`}
                 />
               </div>
 
               <div className="sm:col-span-2">
                 <label htmlFor="announcement-content" className={labelClass}>
-                  Content
+                  {t("communication.contentLabel")}
                 </label>
                 <textarea
                   id="announcement-content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   rows={5}
-                  placeholder="Full message shown to every recipient"
+                  placeholder={t("communication.contentPlaceholder")}
                   className={`mt-1.5 ${fieldClass}`}
                 />
               </div>
 
               <div>
                 <label htmlFor="announcement-priority" className={labelClass}>
-                  Priority
+                  {t("communication.priorityLabel")}
                 </label>
                 <select
                   id="announcement-priority"
@@ -252,7 +255,7 @@ function AnnouncementsContent() {
 
               <div>
                 <label htmlFor="announcement-audience" className={labelClass}>
-                  Audience
+                  {t("communication.audienceLabel")}
                 </label>
                 <select
                   id="announcement-audience"
@@ -275,8 +278,8 @@ function AnnouncementsContent() {
 
             {audienceType === "DISTRICTS" && (
               <div className="rounded-xl border border-border bg-muted/20 p-4">
-                <p className={labelClass}>Districts ({districtIds.length} selected)</p>
-                {optionsLoading && <LoadingState label="Loading districts…" />}
+                <p className={labelClass}>{t("communication.districtsSelected", { count: districtIds.length })}</p>
+                {optionsLoading && <LoadingState label={t("communication.loadingDistricts")} />}
                 {optionsError && (
                   <div className="mt-2">
                     <ErrorState message={optionsError} onRetry={loadDistricts} />
@@ -284,7 +287,7 @@ function AnnouncementsContent() {
                 )}
                 {!optionsLoading && !optionsError && districts.length === 0 && (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    No districts are available inside your jurisdiction.
+                    {t("communication.noDistrictsAvailable")}
                   </p>
                 )}
                 {!optionsLoading && districts.length > 0 && (
@@ -311,8 +314,8 @@ function AnnouncementsContent() {
 
             {audienceType === "INSTITUTIONS" && (
               <div className="rounded-xl border border-border bg-muted/20 p-4">
-                <p className={labelClass}>Institutions ({institutionIds.length} selected)</p>
-                {optionsLoading && <LoadingState label="Loading institutions…" />}
+                <p className={labelClass}>{t("communication.institutionsSelected", { count: institutionIds.length })}</p>
+                {optionsLoading && <LoadingState label={t("communication.loadingInstitutions")} />}
                 {optionsError && (
                   <div className="mt-2">
                     <ErrorState message={optionsError} onRetry={loadInstitutions} />
@@ -320,7 +323,7 @@ function AnnouncementsContent() {
                 )}
                 {!optionsLoading && !optionsError && institutions.length === 0 && (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    No institutions were returned for your jurisdiction.
+                    {t("communication.noInstitutionsAvailable")}
                   </p>
                 )}
                 {!optionsLoading && institutions.length > 0 && (
@@ -358,11 +361,10 @@ function AnnouncementsContent() {
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="size-4" />
-                {submitting ? "Sending…" : "Send announcement"}
+                {submitting ? t("communication.sendingLabel") : t("communication.sendAction")}
               </button>
               <p className="text-xs text-muted-foreground">
-                Recipients are counted by the server. Large audiences are rejected with an explicit
-                limit error.
+                {t("communication.recipientsFootnote")}
               </p>
             </div>
           </form>
@@ -370,13 +372,13 @@ function AnnouncementsContent() {
       )}
 
       <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-sm font-bold text-foreground">Sent announcements</h2>
+        <h2 className="text-sm font-bold text-foreground">{t("communication.sentHeading")}</h2>
         <div className="mt-4">
           <PagedList<AnnouncementSummary>
             fetcher={fetcher}
-            searchPlaceholder="Search announcements…"
-            emptyTitle="No announcements have been sent yet."
-            emptyHint="Announcements you send to your jurisdiction will be listed here."
+            searchPlaceholder={t("communication.searchPlaceholder")}
+            emptyTitle={t("communication.emptyTitle")}
+            emptyHint={t("communication.emptyHint")}
             renderItem={(item) => (
               <article className="rounded-2xl border border-border bg-muted/20 p-4">
                 <div className="flex flex-wrap items-center gap-2">
@@ -389,11 +391,11 @@ function AnnouncementsContent() {
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">
-                    {item.recipientCount.toLocaleString()} recipients
+                    {t("communication.recipientsCount", { count: item.recipientCount.toLocaleString() })}
                   </span>
-                  <span>Sent by {item.sentBy}</span>
+                  <span>{t("communication.sentByLabel", { name: item.sentBy })}</span>
                   <span>{formatDateTime(item.sentAt)}</span>
-                  {item.expiresAt && <span>Expires {formatDate(item.expiresAt)}</span>}
+                  {item.expiresAt && <span>{t("communication.expiresLabel", { date: formatDate(item.expiresAt) })}</span>}
                 </div>
               </article>
             )}
@@ -405,8 +407,9 @@ function AnnouncementsContent() {
 }
 
 export default function RegionalAnnouncementsPage() {
+  const t = useTranslations("regionalAdmin")
   return (
-    <Suspense fallback={<LoadingState label="Loading announcements…" />}>
+    <Suspense fallback={<LoadingState label={t("communication.loadingAnnouncements")} />}>
       <AnnouncementsContent />
     </Suspense>
   )

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { FileSearch } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type AuditLogSummary,
@@ -25,6 +26,8 @@ function actionTone(action: string): "success" | "info" | "danger" | "warning" |
 }
 
 export default function AuditPage() {
+  const t = useTranslations("regionalAdmin")
+  const tc = useTranslations("common")
   const [entityType, setEntityType] = useState("")
 
   // entityType is part of the fetcher identity so PagedList refetches on change.
@@ -37,16 +40,16 @@ export default function AuditPage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Audit"
-        description="Recorded actions on institutions, users and content inside your jurisdiction."
+        title={t("audit.title")}
+        description={t("audit.description")}
       />
 
       <PagedList<AuditLogSummary>
         key={entityType}
         fetcher={fetcher}
-        searchPlaceholder="Search audit logs…"
-        emptyTitle="No audit entries match this filter."
-        emptyHint="Actions recorded inside your jurisdiction will appear here."
+        searchPlaceholder={t("audit.searchPlaceholder")}
+        emptyTitle={t("audit.emptyTitle")}
+        emptyHint={t("audit.emptyHint")}
         emptyIcon={<FileSearch className="size-10" />}
         toolbar={
           <div className="flex items-center gap-2">
@@ -54,7 +57,7 @@ export default function AuditPage() {
               htmlFor="audit-entity-type"
               className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
             >
-              Entity
+              {t("audit.entityLabel")}
             </label>
             <select
               id="audit-entity-type"
@@ -64,7 +67,7 @@ export default function AuditPage() {
             >
               {ENTITY_TYPES.map((option) => (
                 <option key={option || "all"} value={option}>
-                  {option || "All"}
+                  {option || tc("all")}
                 </option>
               ))}
             </select>
@@ -81,7 +84,7 @@ export default function AuditPage() {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span>
-                <span className="font-semibold text-foreground">{log.actorName || "Unknown actor"}</span>
+                <span className="font-semibold text-foreground">{log.actorName || t("audit.unknownActor")}</span>
                 {log.actorRole && <> · {log.actorRole}</>}
               </span>
               {log.institutionName && <span>{log.institutionName}</span>}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { AlertTriangle, Database } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type DataQualityIssue,
@@ -27,7 +28,7 @@ function severityTone(severity: string): "danger" | "warning" | "info" | "muted"
   return "muted"
 }
 
-function IssueCard({ issue }: { issue: DataQualityIssue }) {
+function IssueCard({ issue, t }: { issue: DataQualityIssue; t: ReturnType<typeof useTranslations> }) {
   return (
     <article className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
@@ -43,7 +44,7 @@ function IssueCard({ issue }: { issue: DataQualityIssue }) {
       </div>
       {issue.suggestedAction && (
         <p className="mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">Suggested action:</span>{" "}
+          <span className="font-semibold text-foreground">{t("dataQuality.suggestedActionLabel")}</span>{" "}
           {issue.suggestedAction}
         </p>
       )}
@@ -52,6 +53,7 @@ function IssueCard({ issue }: { issue: DataQualityIssue }) {
 }
 
 export default function DataQualityPage() {
+  const t = useTranslations("regionalAdmin")
   const [data, setData] = useState<DataQualityResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,11 +65,11 @@ export default function DataQualityPage() {
       setData(await regionalAdminApi.getDataQuality())
     } catch (e) {
       setData(null)
-      setError(e instanceof Error ? e.message : "Unable to load data quality findings.")
+      setError(e instanceof Error ? e.message : t("dataQuality.loadError"))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     load()
@@ -84,27 +86,27 @@ export default function DataQualityPage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Data Quality"
-        description="Real data-quality findings detected in your jurisdiction (missing links, duplicates, gaps)."
+        title={t("dataQuality.title")}
+        description={t("dataQuality.description")}
       />
 
       {error && <ErrorState message={error} onRetry={load} />}
 
-      {loading && <LoadingState label="Loading data quality findings…" />}
+      {loading && <LoadingState label={t("dataQuality.loadingLabel")} />}
 
       {!loading && !error && data && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total issues" value={data.totalIssues} />
-            <StatCard label="Critical" value={data.criticalIssues} tone="danger" />
-            <StatCard label="Warnings" value={data.warningIssues} tone="warning" />
-            <StatCard label="Info" value={data.infoIssues} />
+            <StatCard label={t("dataQuality.statTotal")} value={data.totalIssues} />
+            <StatCard label={t("dataQuality.statCritical")} value={data.criticalIssues} tone="danger" />
+            <StatCard label={t("dataQuality.statWarnings")} value={data.warningIssues} tone="warning" />
+            <StatCard label={t("dataQuality.statInfo")} value={data.infoIssues} />
           </div>
 
           {data.issues.length === 0 ? (
             <EmptyState
-              title="No data quality findings detected in your jurisdiction."
-              hint="Missing links, duplicates and record gaps will appear here as soon as the platform detects them."
+              title={t("dataQuality.emptyTitle")}
+              hint={t("dataQuality.emptyHint")}
               icon={<Database className="size-10" />}
             />
           ) : (
@@ -115,12 +117,12 @@ export default function DataQualityPage() {
                 return (
                   <Panel
                     key={severity}
-                    title={`${severity} findings`}
+                    title={t("dataQuality.severityFindingsTitle", { severity })}
                     actions={<Chip tone={severityTone(severity)}>{issues.length}</Chip>}
                   >
                     <div className="space-y-3">
                       {issues.map((issue) => (
-                        <IssueCard key={issue.id} issue={issue} />
+                        <IssueCard key={issue.id} issue={issue} t={t} />
                       ))}
                     </div>
                   </Panel>
@@ -132,7 +134,7 @@ export default function DataQualityPage() {
           {data.issues.length > 0 && (
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
               <AlertTriangle className="size-3.5" />
-              Every finding above was detected from stored records inside your jurisdiction.
+              {t("dataQuality.footnote")}
             </p>
           )}
         </>

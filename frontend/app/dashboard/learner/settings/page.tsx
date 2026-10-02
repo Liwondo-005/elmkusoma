@@ -1,6 +1,6 @@
 "use client"
 
-import { useAuth } from "@/lib/auth"
+import { useAuth, translateRole } from "@/lib/auth"
 import { useTranslations } from "next-intl"
 import { LoadingState } from "@/components/learner/shared"
 import { Settings, User, Mail, Shield, GraduationCap, Key, ExternalLink } from "lucide-react"
@@ -10,6 +10,7 @@ export default function LearnerSettingsPage() {
   const { user, loading: authLoading } = useAuth()
   const t = useTranslations("learner")
   const tc = useTranslations("common")
+  const tr = useTranslations("roles")
 
   if (authLoading || (user?.role !== "Other Learner" && user?.role !== "Student")) {
     return <LoadingState />
@@ -49,7 +50,7 @@ export default function LearnerSettingsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">{t("lsettings.roleLabel")}</p>
-              <p className="text-sm text-muted-foreground">{user?.role}</p>
+              <p className="text-sm text-muted-foreground">{translateRole(user?.role, tr)}</p>
             </div>
           </div>
           {user?.learningLevel && (

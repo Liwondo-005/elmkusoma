@@ -1,10 +1,12 @@
 "use client"
 
 import { Globe } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { useLocaleContext } from "@/components/locale-provider"
 
 export function LocaleSwitcher() {
   const { locale, setLocale } = useLocaleContext()
+  const t = useTranslations("common")
 
   return (
     <div className="flex items-center gap-1.5 text-sm">
@@ -13,8 +15,8 @@ export function LocaleSwitcher() {
         type="button"
         onClick={() => setLocale(locale === "en" ? "sw" : "en")}
         className="rounded-md px-2 py-1 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        aria-label="Change language"
-        title={locale === "en" ? "Badilisha lugha" : "Change language"}
+        aria-label={t("changeLanguage")}
+        title={t("changeLanguage")}
       >
         {locale === "en" ? "EN" : "SW"}
       </button>

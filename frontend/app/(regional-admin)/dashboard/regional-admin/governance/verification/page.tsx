@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { CheckCircle2, ChevronDown, ChevronUp, FileText, ShieldCheck } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type VerificationDetail,
@@ -39,6 +40,7 @@ function VerificationCard({
   onToggle: () => void
   onReviewed: (message: string) => void
 }) {
+  const t = useTranslations("regionalAdmin")
   const [detail, setDetail] = useState<VerificationDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,11 +56,11 @@ function VerificationCard({
     try {
       setDetail(await regionalAdminApi.getVerification(item.id))
     } catch (e) {
-      setError(message(e, "Unable to load this verification."))
+      setError(message(e, t("verification.detailLoadError")))
     } finally {
       setLoading(false)
     }
-  }, [item.id])
+  }, [item.id, t])
 
   useEffect(() => {
     if (open && !attempted) load()
@@ -79,10 +81,10 @@ function VerificationCard({
       setDetail(updated)
       setNotes("")
       onReviewed(
-        `Review saved for ${item.entityName} — status is now ${updated.status.replace("_", " ").toLowerCase()}.`,
+        t("verification.reviewSavedNotice", { name: item.entityName, status: updated.status.replace("_", " ").toLowerCase() }),
       )
     } catch (e) {
-      setSubmitError(message(e, "Unable to save the review."))
+      setSubmitError(message(e, t("verification.reviewSaveError")))
     } finally {
       setSubmitting(false)
     }
@@ -98,7 +100,7 @@ function VerificationCard({
             <Chip tone={statusTone(item.status)}>{item.status}</Chip>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {item.verificationType} · Submitted by {item.submittedBy} · {formatDateTime(item.submittedAt)}
+            {item.verificationType} · {t("verification.submittedByLabel", { name: item.submittedBy })} · {formatDateTime(item.submittedAt)}
           </p>
         </div>
         <button
@@ -108,14 +110,14 @@ function VerificationCard({
           className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted"
         >
           <ShieldCheck className="size-3.5" />
-          {open ? "Hide" : "Review"}
+          {open ? t("verification.hideAction") : t("verification.reviewAction")}
           {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
         </button>
       </div>
 
       {open && (
         <div className="mt-4 space-y-4 border-t border-border pt-4">
-          {loading && <LoadingState label="Loading verification details…" />}
+          {loading && <LoadingState label={t("verification.loadingDetails")} />}
 
           {!loading && error && <ErrorState message={error} onRetry={load} />}
 
@@ -124,10 +126,10 @@ function VerificationCard({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Documents
+                    {t("verification.documentsLabel")}
                   </p>
                   {detail.documents.length === 0 ? (
-                    <p className="mt-2 text-sm text-muted-foreground">No documents attached.</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{t("verification.noDocuments")}</p>
                   ) : (
                     <ul className="mt-2 space-y-1.5">
                       {detail.documents.map((doc, i) => (
@@ -145,7 +147,7 @@ function VerificationCard({
 
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Reviewer notes
+                    {t("verification.reviewerNotesLabel")}
                   </p>
                   <p className="mt-2 text-sm text-foreground">
                     {detail.reviewerNotes ? (
@@ -156,7 +158,7 @@ function VerificationCard({
                   </p>
                   {(detail.reviewedBy || detail.reviewedAt) && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Reviewed by {detail.reviewedBy || "—"}
+                      {t("verification.reviewedByLabel", { name: detail.reviewedBy || "—" })}
                       {detail.reviewedAt && <> · {formatDateTime(detail.reviewedAt)}</>}
                     </p>
                   )}
@@ -169,14 +171,14 @@ function VerificationCard({
                     htmlFor={`review-notes-${item.id}`}
                     className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
                   >
-                    Reviewer notes
+                    {t("verification.reviewerNotesLabel")}
                   </label>
                   <textarea
                     id={`review-notes-${item.id}`}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
-                    placeholder="Notes shown to the submitter (optional)"
+                    placeholder={t("verification.notesPlaceholder")}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                   />
                   {submitError && <p className="text-sm text-destructive">{submitError}</p>}
@@ -187,7 +189,7 @@ function VerificationCard({
                       disabled={submitting}
                       className={`${ACTION_CLASS} bg-emerald-600 text-white hover:bg-emerald-700`}
                     >
-                      <CheckCircle2 className="size-3.5" /> Approve
+                      <CheckCircle2 className="size-3.5" /> {t("verification.approveAction")}
                     </button>
                     <button
                       type="button"
@@ -195,7 +197,7 @@ function VerificationCard({
                       disabled={submitting}
                       className={`${ACTION_CLASS} bg-amber-500 text-white hover:bg-amber-600`}
                     >
-                      Request changes
+                      {t("verification.requestChangesAction")}
                     </button>
                     <button
                       type="button"
@@ -203,10 +205,10 @@ function VerificationCard({
                       disabled={submitting}
                       className={`${ACTION_CLASS} bg-red-600 text-white hover:bg-red-700`}
                     >
-                      Reject
+                      {t("verification.rejectAction")}
                     </button>
                     {submitting && (
-                      <span className="self-center text-xs text-muted-foreground">Saving…</span>
+                      <span className="self-center text-xs text-muted-foreground">{t("verification.savingLabel")}</span>
                     )}
                   </div>
                 </div>
@@ -220,6 +222,8 @@ function VerificationCard({
 }
 
 export default function VerificationPage() {
+  const t = useTranslations("regionalAdmin")
+  const tc = useTranslations("common")
   const [status, setStatus] = useState("")
   const [reloadKey, setReloadKey] = useState(0)
   const [openId, setOpenId] = useState<string | null>(null)
@@ -236,8 +240,8 @@ export default function VerificationPage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Verification"
-        description="Review pending entity verifications inside your jurisdiction."
+        title={t("verification.title")}
+        description={t("verification.description")}
       />
 
       {notice && (
@@ -250,7 +254,7 @@ export default function VerificationPage() {
             onClick={() => setNotice(null)}
             className="text-xs font-semibold underline"
           >
-            Dismiss
+            {t("shared.dismiss")}
           </button>
         </div>
       )}
@@ -258,16 +262,16 @@ export default function VerificationPage() {
       <PagedList<VerificationSummary>
         key={status}
         fetcher={fetcher}
-        searchPlaceholder="Search verifications…"
-        emptyTitle="No verifications match this filter."
-        emptyHint="Verifications submitted by entities inside your jurisdiction will appear here."
+        searchPlaceholder={t("verification.searchPlaceholder")}
+        emptyTitle={t("verification.emptyTitle")}
+        emptyHint={t("verification.emptyHint")}
         toolbar={
           <div className="flex items-center gap-2">
             <label
               htmlFor="verification-status"
               className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
             >
-              Status
+              {t("verification.statusLabel")}
             </label>
             <select
               id="verification-status"
@@ -281,7 +285,7 @@ export default function VerificationPage() {
             >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option || "all"} value={option}>
-                  {option || "All"}
+                  {option || tc("all")}
                 </option>
               ))}
             </select>

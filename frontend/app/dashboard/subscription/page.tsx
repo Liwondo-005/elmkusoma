@@ -1,54 +1,58 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { CheckCircle } from "lucide-react"
 
-const plans = [
-  {
-    name: "Free",
-    price: "0",
-    period: "forever",
-    features: ["Access to free courses", "Basic live classes", "Digital library (limited)", "Community support"],
-    current: true,
-  },
-  {
-    name: "Premium",
-    price: "25,000",
-    period: "/month",
-    features: ["All free features", "Unlimited live classes", "Full digital library", "Downloadable materials", "Priority support", "Certificates"],
-    current: false,
-    highlighted: true,
-  },
-  {
-    name: "Institution",
-    price: "Custom",
-    period: "",
-    features: ["All premium features", "Bulk enrollment", "Admin dashboard", "Custom branding", "Dedicated support", "API access"],
-    current: false,
-  },
-]
-
 export default function DashboardSubscriptionPage() {
+  const t = useTranslations("subscription")
+  const plans = [
+    {
+      id: "free",
+      name: t("plans.free.name"),
+      price: "0",
+      period: t("plans.free.period"),
+      features: [t("plans.free.f1"), t("plans.free.f2"), t("plans.free.f3"), t("plans.free.f4")],
+      current: true,
+    },
+    {
+      id: "premium",
+      name: t("plans.premium.name"),
+      price: "25,000",
+      period: t("plans.premium.period"),
+      features: [t("plans.premium.f1"), t("plans.premium.f2"), t("plans.premium.f3"), t("plans.premium.f4"), t("plans.premium.f5"), t("plans.premium.f6")],
+      current: false,
+      highlighted: true,
+    },
+    {
+      id: "institution",
+      name: t("plans.institution.name"),
+      price: "Custom",
+      period: "",
+      features: [t("plans.institution.f1"), t("plans.institution.f2"), t("plans.institution.f3"), t("plans.institution.f4"), t("plans.institution.f5"), t("plans.institution.f6")],
+      current: false,
+    },
+  ]
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Subscription</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Choose the plan that fits your learning needs.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-3">
         {plans.map((plan) => (
           <div
-            key={plan.name}
+            key={plan.id}
             className={`rounded-2xl border bg-card p-6 shadow-xs ${plan.highlighted ? "border-primary border-2" : "border-border"}`}
           >
             {plan.highlighted && (
               <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
-                RECOMMENDED
+                {t("recommendedBadge")}
               </span>
             )}
             <h3 className="mt-3 text-lg font-bold text-foreground">{plan.name}</h3>
             <div className="mt-2 flex items-baseline gap-1">
-              <span className="text-3xl font-extrabold text-foreground">{plan.price === "Custom" ? "" : "TZS"} {plan.price}</span>
+              <span className="text-3xl font-extrabold text-foreground">{plan.price === "Custom" ? t("customPrice") : `TZS ${plan.price}`}</span>
               {plan.period && <span className="text-sm text-muted-foreground">{plan.period}</span>}
             </div>
             <ul className="mt-5 space-y-3">
@@ -69,7 +73,7 @@ export default function DashboardSubscriptionPage() {
               }`}
               disabled={plan.current}
             >
-              {plan.current ? "Current Plan" : "Upgrade"}
+              {plan.current ? t("currentPlanButton") : t("upgradeButton")}
             </button>
           </div>
         ))}

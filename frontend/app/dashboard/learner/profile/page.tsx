@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAuth } from "@/lib/auth"
+import { useAuth, translateRole } from "@/lib/auth"
 import { learnerApi, type LearnerProfile, type ProfileUpdate } from "@/lib/learner-api"
 import { announce } from "@/lib/announce"
 import { LoadingState } from "@/components/learner/shared"
@@ -31,6 +31,7 @@ export default function LearnerProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const t = useTranslations("profile")
   const tc = useTranslations("common")
+  const tr = useTranslations("roles")
 
   useEffect(() => {
     if (!user || (user.role !== "Other Learner" && user.role !== "Student")) return
@@ -192,7 +193,7 @@ export default function LearnerProfilePage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">{t("role")}</label>
-            <p className="text-sm text-foreground">{tc("generalLearner")}</p>
+            <p className="text-sm text-foreground">{translateRole(user?.role, tr)}</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">{t("learningLevel")}</label>

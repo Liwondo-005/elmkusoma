@@ -1,8 +1,11 @@
 "use client"
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function SettingsPage() {
+  const t = useTranslations("provider")
+  const tn = useTranslations("nav")
   const [providerName, setProviderName] = useState("")
   const [contactEmail, setContactEmail] = useState("")
   const [contactPhone, setContactPhone] = useState("")
@@ -11,23 +14,23 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Configure your NFE provider profile</p>
+        <h1 className="text-3xl font-bold tracking-tight">{tn("settings")}</h1>
+        <p className="text-muted-foreground">{t("settings.subtitle")}</p>
       </div>
       <Card>
-        <CardHeader><CardTitle>Provider Information</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t("settings.providerInfoTitle")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">Provider Name</label>
+            <label className="text-sm font-medium text-foreground">{t("settings.providerNameLabel")}</label>
             <input
               value={providerName}
               onChange={(e) => setProviderName(e.target.value)}
-              placeholder="Enter provider name"
+              placeholder={t("settings.providerNamePlaceholder")}
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Contact Email</label>
+            <label className="text-sm font-medium text-foreground">{t("settings.contactEmailLabel")}</label>
             <input
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
@@ -36,7 +39,7 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Contact Phone</label>
+            <label className="text-sm font-medium text-foreground">{t("settings.contactPhoneLabel")}</label>
             <input
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
@@ -45,17 +48,17 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Address</label>
+            <label className="text-sm font-medium text-foreground">{t("settings.addressLabel")}</label>
             <textarea
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Enter address"
+              placeholder={t("settings.addressPlaceholder")}
               rows={3}
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <button className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Save Changes
+            {t("settings.saveChanges")}
           </button>
         </CardContent>
       </Card>

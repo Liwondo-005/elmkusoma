@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Building2, GraduationCap, MapPin, Search, User, Users, Briefcase, BookOpen, ShieldCheck } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { regionalAdminApi, type SearchResult } from "@/lib/regional-admin-api"
 import { Chip, EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/dashboard/regional-admin/ui"
 
@@ -40,6 +41,7 @@ function ResultRow({ item }: { item: SearchResult }) {
 }
 
 export default function RegionalSearchPage() {
+  const t = useTranslations("regionalAdmin")
   const params = useSearchParams()
   const router = useRouter()
   const [input, setInput] = useState(params.get("q") ?? "")
@@ -64,13 +66,13 @@ export default function RegionalSearchPage() {
       setResults(res)
       setSearched(true)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Search is unavailable right now.")
+      setError(e instanceof Error ? e.message : t("searchPage.unavailableError"))
       setResults([])
       setSearched(true)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -89,8 +91,8 @@ export default function RegionalSearchPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Search"
-        description="Search districts, institutions, people and learning records inside your authorized jurisdiction. Every result is scoped server-side."
+        title={t("searchPage.title")}
+        description={t("searchPage.description")}
       />
 
       <form
@@ -108,8 +110,8 @@ export default function RegionalSearchPage() {
           autoFocus
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Search by name, code or email…"
-          aria-label="Search jurisdiction records"
+          placeholder={t("searchPage.inputPlaceholder")}
+          aria-label={t("searchPage.inputAriaLabel")}
           className="w-full rounded-xl border border-border bg-background py-3 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
       </form>
@@ -117,23 +119,23 @@ export default function RegionalSearchPage() {
       {error && <ErrorState message={error} onRetry={() => load(query)} />}
 
       {loading ? (
-        <LoadingState label="Searching your jurisdiction…" />
+        <LoadingState label={t("searchPage.searchingLabel")} />
       ) : !searched ? (
         <EmptyState
-          title="Start typing to search"
-          hint="Enter at least two characters. Results only include districts, institutions, teachers, staff and learners you are authorized to see."
+          title={t("searchPage.startTitle")}
+          hint={t("searchPage.startHint")}
           icon={<Search className="size-10" />}
         />
       ) : results.length === 0 ? (
         <EmptyState
-          title="No matches in your jurisdiction"
-          hint="Try a different term — results never include records from other regions or districts."
+          title={t("searchPage.noMatchesTitle")}
+          hint={t("searchPage.noMatchesHint")}
           icon={<Search className="size-10" />}
         />
       ) : (
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            {results.length} result{results.length === 1 ? "" : "s"}
+            {t("searchPage.resultsCount", { count: results.length })}
           </p>
           {results.map((item) => (
             <ResultRow key={`${item.type}-${item.id}`} item={item} />

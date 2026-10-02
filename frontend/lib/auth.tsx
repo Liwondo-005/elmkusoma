@@ -132,6 +132,40 @@ function mapRoleToFrontend(backendRole: string): string {
   return roleMap[backendRole] || backendRole
 }
 
+/**
+ * Display-only role localization. Maps the frontend display role
+ * (see mapRoleToFrontend) to a `roles.*` i18n key. Guards and RBAC must
+ * keep comparing the raw display/backend strings — never the translation.
+ */
+export function roleToI18nKey(role: string | null | undefined): string {
+  const keyMap: Record<string, string> = {
+    Student: "student",
+    "Other Learner": "otherLearner",
+    Teacher: "teacher",
+    Instructor: "instructor",
+    Parent: "parent",
+    Admin: "admin",
+    "Institution Admin": "institutionAdmin",
+    "National Admin": "nationalAdmin",
+    "Regional Admin": "regionalAdmin",
+    "District Admin": "districtAdmin",
+    "Provider Admin": "providerAdmin",
+    "Provider Staff": "providerStaff",
+  }
+  return (role && keyMap[role]) || "unknown"
+}
+
+/** Translate a display role via a `roles` namespace translator. Falls back to the raw role. */
+export function translateRole(role: string | null | undefined, tRoles: (key: string) => string): string {
+  if (!role) return tRoles("unknown")
+  try {
+    const translated = tRoles(roleToI18nKey(role))
+    return translated || role
+  } catch {
+    return role
+  }
+}
+
 function mapRoleToBackend(frontendRole: string): string {
   const roleMap: Record<string, string> = {
     Student: "STUDENT",

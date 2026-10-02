@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { primaryApi, type TeacherInfo } from "@/lib/api"
 import { type LearningLevel, primarySubjects } from "@/lib/learner-config"
@@ -35,6 +36,8 @@ function getInitialColor(firstName: string): string {
 }
 
 export default function MyTeacherPage() {
+  const t = useTranslations("teacher")
+  const tc = useTranslations("common")
   const { user } = useRequireAuth()
   const [teachers, setTeachers] = useState<TeacherInfo[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,7 +56,7 @@ export default function MyTeacherPage() {
       const data = await primaryApi.getTeachers()
       setTeachers(data)
     } catch {
-      setError("Failed to load teachers. Please try again.")
+      setError(t("myTeacherPage.loadError"))
       setTeachers([])
     } finally {
       setLoading(false)
@@ -77,8 +80,8 @@ export default function MyTeacherPage() {
           <GraduationCap className="size-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">My Teacher</h1>
-          <p className="text-sm text-muted-foreground">Mwalimu Wangu</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("myTeacher")}</h1>
+          <p className="text-sm text-muted-foreground">{t("myTeacherPage.subtitleSw")}</p>
         </div>
       </div>
 
@@ -90,7 +93,7 @@ export default function MyTeacherPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{teachers.length}</p>
-              <p className="text-xs text-muted-foreground">Total Teachers</p>
+              <p className="text-xs text-muted-foreground">{t("myTeacherPage.totalTeachers")}</p>
             </div>
           </div>
         </div>
@@ -101,7 +104,7 @@ export default function MyTeacherPage() {
             </div>
             <div>
               <p className="text-2xl font-extrabold text-foreground">{uniqueSubjects.length}</p>
-              <p className="text-xs text-muted-foreground">Subjects Covered</p>
+              <p className="text-xs text-muted-foreground">{t("myTeacherPage.subjectsCovered")}</p>
             </div>
           </div>
         </div>
@@ -115,7 +118,7 @@ export default function MyTeacherPage() {
             onClick={loadTeachers}
             className="mt-2 text-sm font-medium text-red-700 underline hover:no-underline"
           >
-            Try again
+            {tc("retry")}
           </button>
         </div>
       )}
@@ -125,9 +128,9 @@ export default function MyTeacherPage() {
           <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
             <GraduationCap className="size-8 text-primary" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No teachers yet</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("myTeacherPage.emptyTitle")}</h3>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Your teachers will appear here once assigned to your classes.
+            {t("myTeacherPage.emptyDesc")}
           </p>
         </div>
       ) : (
@@ -166,7 +169,7 @@ export default function MyTeacherPage() {
                     className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
                   >
                     <Mail className="size-3" />
-                    Email
+                    {t("email")}
                   </a>
                 )}
                 <Link
@@ -174,7 +177,7 @@ export default function MyTeacherPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   <MessageSquare className="size-3" />
-                  Send Message
+                  {t("sendMessage")}
                 </Link>
               </div>
             </div>

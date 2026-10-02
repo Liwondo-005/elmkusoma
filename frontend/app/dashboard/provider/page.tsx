@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 
@@ -16,6 +17,10 @@ interface ProviderStats {
 }
 
 export default function ProviderDashboardPage() {
+  const t = useTranslations("provider")
+  const tn = useTranslations("nav")
+  const ts = useTranslations("status")
+  const tc = useTranslations("common")
   const [stats, setStats] = useState<ProviderStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,10 +41,10 @@ export default function ProviderDashboardPage() {
           const data = await res.json()
           setStats(data.data || data)
         } else {
-          setError("Failed to load stats")
+          setError(tc("error.load"))
         }
       } catch {
-        setError("Network error")
+        setError(t("dashboard.networkError"))
       } finally {
         setLoading(false)
       }
@@ -56,8 +61,8 @@ export default function ProviderDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Provider Dashboard</h1>
-        <p className="text-muted-foreground">Manage your non-formal education programs</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("dashboard.title")}</h1>
+        <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
       </div>
 
       {error && (
@@ -67,38 +72,38 @@ export default function ProviderDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Providers</CardTitle>
+            <CardTitle className="text-sm font-medium">{tn("providers")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalProviders ?? 0}</div>
-            <p className="text-xs text-muted-foreground">{stats?.activeProviders ?? 0} active</p>
+            <p className="text-xs text-muted-foreground">{stats?.activeProviders ?? 0} {ts("active").toLowerCase()}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Programs</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("dashboard.programs")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalPrograms ?? 0}</div>
-            <p className="text-xs text-muted-foreground">{stats?.activePrograms ?? 0} active</p>
+            <p className="text-xs text-muted-foreground">{stats?.activePrograms ?? 0} {ts("active").toLowerCase()}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Learners</CardTitle>
+            <CardTitle className="text-sm font-medium">{tn("learners")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalLearners ?? 0}</div>
-            <p className="text-xs text-muted-foreground">{stats?.activeLearners ?? 0} active</p>
+            <p className="text-xs text-muted-foreground">{stats?.activeLearners ?? 0} {ts("active").toLowerCase()}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("dashboard.sessions")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalSessions ?? 0}</div>
-            <p className="text-xs text-muted-foreground">{stats?.completedSessions ?? 0} completed</p>
+            <p className="text-xs text-muted-foreground">{stats?.completedSessions ?? 0} {ts("completed").toLowerCase()}</p>
           </CardContent>
         </Card>
       </div>
@@ -106,7 +111,7 @@ export default function ProviderDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Certificates Issued</CardTitle>
+            <CardTitle>{t("dashboard.certificatesIssued")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats?.totalCertificates ?? 0}</div>
@@ -114,12 +119,12 @@ export default function ProviderDashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>{tn("quickActions")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <a href="/dashboard/provider/programs" className="block rounded-xl border border-border px-4 py-3 text-sm font-medium hover:bg-muted transition-colors">Manage Programs</a>
-            <a href="/dashboard/provider/sessions" className="block rounded-xl border border-border px-4 py-3 text-sm font-medium hover:bg-muted transition-colors">View Sessions</a>
-            <a href="/dashboard/provider/learners" className="block rounded-xl border border-border px-4 py-3 text-sm font-medium hover:bg-muted transition-colors">Manage Learners</a>
+            <a href="/dashboard/provider/programs" className="block rounded-xl border border-border px-4 py-3 text-sm font-medium hover:bg-muted transition-colors">{t("dashboard.managePrograms")}</a>
+            <a href="/dashboard/provider/sessions" className="block rounded-xl border border-border px-4 py-3 text-sm font-medium hover:bg-muted transition-colors">{t("dashboard.viewSessions")}</a>
+            <a href="/dashboard/provider/learners" className="block rounded-xl border border-border px-4 py-3 text-sm font-medium hover:bg-muted transition-colors">{t("dashboard.manageLearners")}</a>
           </CardContent>
         </Card>
       </div>

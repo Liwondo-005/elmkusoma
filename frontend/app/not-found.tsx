@@ -1,10 +1,15 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { cookies } from "next/headers"
+import { getTranslations } from "next-intl/server"
 import { Logo } from "@/components/logo"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-export default function NotFound() {
+export default async function NotFound() {
+  const cookieStore = await cookies()
+  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value
+  const t = await getTranslations({ locale: cookieLocale === "sw" ? "sw" : "en", namespace: "common" })
   return (
     <div className="flex min-h-dvh flex-col bg-muted/40">
       <header className="border-b border-border bg-background/90 backdrop-blur">
@@ -17,10 +22,10 @@ export default function NotFound() {
         <div className="text-center">
           <p className="text-8xl font-extrabold text-primary">404</p>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
-            Page not found
+            {t("notFound.title")}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            The page you&apos;re looking for doesn&apos;t exist or has been moved.
+            {t("notFound.description")}
           </p>
           <Link
             href="/"
@@ -30,7 +35,7 @@ export default function NotFound() {
             )}
           >
             <ArrowLeft className="mr-2 size-4" />
-            Back to Home
+            {t("verifyBackHome")}
           </Link>
         </div>
       </main>

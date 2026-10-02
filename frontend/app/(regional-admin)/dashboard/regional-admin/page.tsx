@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import {
   MapPin, School, Users, GraduationCap, BookOpen, Video, ClipboardCheck,
   ShieldCheck, Activity, RefreshCw, Loader2, AlertTriangle, Bell, Zap,
@@ -61,6 +62,8 @@ const SEVERITY_STYLES: Record<string, { card: string; chip: string }> = {
 }
 
 export default function RegionalAdminOverview() {
+  const t = useTranslations("regionalAdmin")
+  const tc = useTranslations("common")
   const [dashboard, setDashboard] = useState<RegionalDashboard | null>(null)
   const [attention, setAttention] = useState<AttentionItem[]>([])
   const [pulse, setPulse] = useState<RegionalPulse | null>(null)
@@ -76,11 +79,11 @@ export default function RegionalAdminOverview() {
       regionalAdminApi.getPulse(),
     ])
     if (d.status === "fulfilled") setDashboard(d.value)
-    else setError("Unable to load the regional command center.")
+    else setError(t("overview.loadError"))
     if (a.status === "fulfilled") setAttention(a.value)
     if (p.status === "fulfilled") setPulse(p.value)
     setLoading(false)
-  }, [])
+  }, [t])
 
   useEffect(() => {
     load()
@@ -98,14 +101,13 @@ export default function RegionalAdminOverview() {
         <div className="relative">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70">
             <MapPin className="size-3.5" />
-            {jurisdiction ? `${jurisdiction.name} · ${jurisdiction.code}` : "Resolving jurisdiction…"}
+            {jurisdiction ? `${jurisdiction.name} · ${jurisdiction.code}` : t("overview.resolvingJurisdiction")}
           </div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
-            Regional Education Command Center
+            {t("overview.heroTitle")}
           </h1>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/80">
-            Real institutions, people and learning activity inside your authorized jurisdiction — every figure is
-            scoped server-side to your region or district.
+            {t("overview.heroDescription")}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
@@ -113,18 +115,18 @@ export default function RegionalAdminOverview() {
               onClick={load}
               className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-primary shadow-sm transition-colors hover:bg-white/90"
             >
-              <RefreshCw className="size-4" /> Refresh
+              <RefreshCw className="size-4" /> {t("overview.refreshAction")}
             </button>
             <Link
               href="/dashboard/regional-admin/governance/verification"
               className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/20"
             >
               <ShieldCheck className="size-4" />
-              Verification queue{dashboard ? ` (${dashboard.pendingVerifications})` : ""}
+              {t("overview.verificationQueueLabel")}{dashboard ? ` (${dashboard.pendingVerifications})` : ""}
             </Link>
             {dashboard && (
               <span className="text-xs text-white/75">
-                Last updated: {new Date(dashboard.lastUpdated).toLocaleString()}
+                {t("overview.lastUpdatedLabel")}: {new Date(dashboard.lastUpdated).toLocaleString()}
               </span>
             )}
           </div>
@@ -141,15 +143,15 @@ export default function RegionalAdminOverview() {
             onClick={load}
             className="rounded-lg border border-red-200 bg-white px-3 py-1 text-xs font-semibold"
           >
-            Retry
+            {tc("retry")}
           </button>
         </div>
       )}
 
       {/* KPIs */}
-      <section aria-label="Jurisdiction indicators">
+      <section aria-label={t("overview.kpisAriaLabel")}>
         <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          Jurisdiction overview
+          {t("overview.jurisdictionHeading")}
         </h2>
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -159,25 +161,25 @@ export default function RegionalAdminOverview() {
           </div>
         ) : dashboard ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi icon={MapPin} label="Districts" value={dashboard.totalDistricts} href="/dashboard/regional-admin/districts" accent="#2563eb" />
-            <Kpi icon={School} label="Schools & Institutions" value={dashboard.totalInstitutions} sub={`${dashboard.totalSchools} schools`} href="/dashboard/regional-admin/institutions" accent="#059669" />
-            <Kpi icon={GraduationCap} label="Teachers" value={dashboard.totalTeachers} sub="Institutions in scope" href="/dashboard/regional-admin/teachers" accent="#7c3aed" />
-            <Kpi icon={Users} label="Learners" value={dashboard.totalLearners} href="/dashboard/regional-admin/learners" accent="#d97706" />
-            <Kpi icon={BookOpen} label="Courses" value={dashboard.totalCourses} sub={`${dashboard.totalLessons} lessons`} href="/dashboard/regional-admin/learning/courses" accent="#0891b2" />
-            <Kpi icon={Video} label="Live Classes" value={dashboard.activeLiveClasses} sub={`${dashboard.totalClasses} total sessions`} href="/oversight/live-classes" accent="#db2777" />
-            <Kpi icon={ClipboardCheck} label="Attendance" value={pct(dashboard.attendanceRate)} href="/oversight/attendance" accent="#16a34a" />
-            <Kpi icon={ShieldCheck} label="Pending Verification" value={dashboard.pendingVerifications} sub={`${dashboard.dataQualityIssues} data quality findings`} href="/dashboard/regional-admin/governance/verification" accent="#dc2626" />
+            <Kpi icon={MapPin} label={t("overview.kpiDistricts")} value={dashboard.totalDistricts} href="/dashboard/regional-admin/districts" accent="#2563eb" />
+            <Kpi icon={School} label={t("overview.kpiSchools")} value={dashboard.totalInstitutions} sub={t("overview.kpiSchoolsSub", { count: dashboard.totalSchools })} href="/dashboard/regional-admin/institutions" accent="#059669" />
+            <Kpi icon={GraduationCap} label={t("overview.kpiTeachers")} value={dashboard.totalTeachers} sub={t("overview.kpiTeachersSub")} href="/dashboard/regional-admin/teachers" accent="#7c3aed" />
+            <Kpi icon={Users} label={t("overview.kpiLearners")} value={dashboard.totalLearners} href="/dashboard/regional-admin/learners" accent="#d97706" />
+            <Kpi icon={BookOpen} label={t("overview.kpiCourses")} value={dashboard.totalCourses} sub={t("overview.kpiCoursesSub", { count: dashboard.totalLessons })} href="/dashboard/regional-admin/learning/courses" accent="#0891b2" />
+            <Kpi icon={Video} label={t("overview.kpiLiveClasses")} value={dashboard.activeLiveClasses} sub={t("overview.kpiLiveClassesSub", { count: dashboard.totalClasses })} href="/oversight/live-classes" accent="#db2777" />
+            <Kpi icon={ClipboardCheck} label={t("overview.kpiAttendance")} value={pct(dashboard.attendanceRate)} href="/oversight/attendance" accent="#16a34a" />
+            <Kpi icon={ShieldCheck} label={t("overview.kpiPendingVerification")} value={dashboard.pendingVerifications} sub={t("overview.kpiPendingVerificationSub", { count: dashboard.dataQualityIssues })} href="/dashboard/regional-admin/governance/verification" accent="#dc2626" />
           </div>
         ) : (
           <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-            No data available in your jurisdiction.
+            {t("overview.noData")}
           </div>
         )}
       </section>
 
       {/* Attention */}
       <section
-        aria-label="Regional attention required"
+        aria-label={t("overview.attentionAriaLabel")}
         className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/50 to-white p-5 shadow-sm"
       >
         <div className="mb-4 flex items-center justify-between">
@@ -185,7 +187,7 @@ export default function RegionalAdminOverview() {
             <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500 text-white">
               <AlertTriangle className="size-4" />
             </span>
-            Regional Attention Required
+            {t("overview.attentionHeading")}
           </h2>
           <span className="rounded-full bg-red-500 px-2.5 py-1 text-xs font-bold text-white">
             {attention.length}
@@ -199,9 +201,9 @@ export default function RegionalAdminOverview() {
         ) : attention.length === 0 ? (
           <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 p-8 text-center">
             <CheckCircle2 className="mx-auto size-10 text-emerald-500" />
-            <p className="mt-3 text-sm font-semibold text-foreground">All clear in your jurisdiction</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("overview.allClearTitle")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              No items currently require regional action.
+              {t("overview.allClearHint")}
             </p>
           </div>
         ) : (
@@ -242,10 +244,10 @@ export default function RegionalAdminOverview() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <Activity className="size-4 text-primary" /> Regional Education Pulse
+              <Activity className="size-4 text-primary" /> {t("overview.pulseHeading")}
             </h2>
             <Link href="/dashboard/regional-admin/pulse" className="text-xs font-semibold text-primary hover:underline">
-              Open pulse →
+              {t("overview.openPulseLink")}
             </Link>
           </div>
           {loading ? (
@@ -256,12 +258,12 @@ export default function RegionalAdminOverview() {
           ) : pulse ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
-                { label: "Live now", value: pulse.liveNow, icon: Video, color: "text-pink-600" },
-                { label: "Scheduled today", value: pulse.scheduledToday, icon: ClipboardCheck, color: "text-blue-600" },
-                { label: "Completed today", value: pulse.completedToday, icon: CheckCircle2, color: "text-emerald-600" },
-                { label: "Lessons published", value: pulse.publishedLessons, icon: BookOpen, color: "text-violet-600" },
-                { label: "Alerts", value: pulse.alertsCount, icon: Bell, color: "text-amber-600" },
-                { label: "Pending verifications", value: pulse.pendingVerifications, icon: ShieldCheck, color: "text-red-600" },
+                { label: t("overview.pulseLiveNow"), value: pulse.liveNow, icon: Video, color: "text-pink-600" },
+                { label: t("overview.pulseScheduledToday"), value: pulse.scheduledToday, icon: ClipboardCheck, color: "text-blue-600" },
+                { label: t("overview.pulseCompletedToday"), value: pulse.completedToday, icon: CheckCircle2, color: "text-emerald-600" },
+                { label: t("overview.pulseLessonsPublished"), value: pulse.publishedLessons, icon: BookOpen, color: "text-violet-600" },
+                { label: t("overview.pulseAlerts"), value: pulse.alertsCount, icon: Bell, color: "text-amber-600" },
+                { label: t("overview.pulsePendingVerifications"), value: pulse.pendingVerifications, icon: ShieldCheck, color: "text-red-600" },
               ].map((m) => (
                 <div key={m.label} className="rounded-xl border border-border bg-muted/20 p-4">
                   <div className="flex items-center gap-2">
@@ -273,12 +275,11 @@ export default function RegionalAdminOverview() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Pulse data unavailable.</p>
+            <p className="text-sm text-muted-foreground">{t("overview.pulseUnavailable")}</p>
           )}
           {dashboard && (
             <p className="mt-4 text-xs text-muted-foreground">
-              Attendance {pct(dashboard.attendanceRate)} · Average performance {pct(dashboard.averagePerformance)} ·
-              Curriculum progress {pct(dashboard.curriculumProgress)}
+              {t("overview.pulseFooter", { attendance: pct(dashboard.attendanceRate), performance: pct(dashboard.averagePerformance), curriculum: pct(dashboard.curriculumProgress) })}
             </p>
           )}
         </section>
@@ -286,7 +287,7 @@ export default function RegionalAdminOverview() {
         {/* Quick actions */}
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
-            <Zap className="size-4 text-emerald-600" /> Quick Actions
+            <Zap className="size-4 text-emerald-600" /> {t("overview.quickActionsHeading")}
           </h2>
           <div className="grid grid-cols-2 gap-2">
             {(dashboard?.quickActions ?? []).map((action) => (
@@ -310,7 +311,7 @@ export default function RegionalAdminOverview() {
               </Link>
             ))}
             {!loading && (dashboard?.quickActions?.length ?? 0) === 0 && (
-              <p className="col-span-2 text-xs text-muted-foreground">No quick actions available.</p>
+              <p className="col-span-2 text-xs text-muted-foreground">{t("overview.noQuickActions")}</p>
             )}
           </div>
         </section>
@@ -321,22 +322,22 @@ export default function RegionalAdminOverview() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <MapPin className="size-4 text-primary" /> Districts in your jurisdiction
+              <MapPin className="size-4 text-primary" /> {t("overview.districtsHeading")}
             </h2>
             <Link href="/dashboard/regional-admin/districts" className="text-xs font-semibold text-primary hover:underline">
-              View all →
+              {t("overview.viewAllLink")}
             </Link>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-[11px] uppercase tracking-widest text-muted-foreground">
-                  <th className="px-3 py-2 font-bold">District</th>
-                  <th className="px-3 py-2 font-bold">Institutions</th>
-                  <th className="px-3 py-2 font-bold">Teachers</th>
-                  <th className="px-3 py-2 font-bold">Learners</th>
-                  <th className="px-3 py-2 font-bold">Attendance</th>
-                  <th className="px-3 py-2 font-bold">Performance</th>
+                  <th className="px-3 py-2 font-bold">{t("overview.colDistrict")}</th>
+                  <th className="px-3 py-2 font-bold">{t("overview.colInstitutions")}</th>
+                  <th className="px-3 py-2 font-bold">{t("overview.colTeachers")}</th>
+                  <th className="px-3 py-2 font-bold">{t("overview.colLearners")}</th>
+                  <th className="px-3 py-2 font-bold">{t("overview.colAttendance")}</th>
+                  <th className="px-3 py-2 font-bold">{t("overview.colPerformance")}</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
@@ -354,7 +355,7 @@ export default function RegionalAdminOverview() {
                     <td className="px-3 py-2.5 tabular-nums">{pct(d.averagePerformance)}</td>
                     <td className="px-3 py-2.5 text-right">
                       <Link href={`/dashboard/regional-admin/districts/${d.id}`} className="text-xs font-semibold text-primary hover:underline">
-                        Open →
+                        {t("overview.openLink")} →
                       </Link>
                     </td>
                   </tr>

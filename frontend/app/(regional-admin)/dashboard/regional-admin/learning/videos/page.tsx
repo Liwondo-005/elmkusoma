@@ -1,6 +1,7 @@
 "use client"
 
 import { Film } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { regionalAdminApi, type VideoTutorialSummary } from "@/lib/regional-admin-api"
 import { Chip, PageHeader, PagedList, formatDate } from "@/components/dashboard/regional-admin/ui"
 
@@ -26,13 +27,16 @@ function statusTone(status: string): "success" | "warning" | "danger" | "muted" 
   return "muted"
 }
 
-function renderItem(item: VideoTutorialSummary) {
+function renderItem(
+  item: VideoTutorialSummary,
+  t: ReturnType<typeof useTranslations>,
+) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{item.title}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{item.institutionName ?? "No institution"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{item.institutionName ?? t("videos.noInstitution")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Chip tone={statusTone(item.status)}>{item.status}</Chip>
@@ -40,26 +44,27 @@ function renderItem(item: VideoTutorialSummary) {
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Duration {formatDuration(item.durationSeconds)}</span>
+        <span className="text-xs text-muted-foreground">{t("videos.durationLabel")} {formatDuration(item.durationSeconds)}</span>
       </div>
     </div>
   )
 }
 
 export default function RegionalVideosPage() {
+  const t = useTranslations("regionalAdmin")
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Video Tutorials"
-        description="Video tutorials created by institutions inside your jurisdiction — every video is scoped to your region or district."
+        title={t("videos.title")}
+        description={t("videos.description")}
       />
 
       <PagedList
         fetcher={fetchVideos}
-        renderItem={renderItem}
-        searchPlaceholder="Search video tutorials by title…"
-        emptyTitle="No video tutorials found in your jurisdiction"
-        emptyHint="Try a different search term to find video tutorials available in your region or district."
+        renderItem={(item) => renderItem(item, t)}
+        searchPlaceholder={t("videos.searchPlaceholder")}
+        emptyTitle={t("videos.emptyTitle")}
+        emptyHint={t("videos.emptyHint")}
         emptyIcon={<Film className="size-10" />}
       />
     </div>

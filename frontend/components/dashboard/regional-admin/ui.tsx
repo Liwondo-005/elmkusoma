@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, type ReactNode } from "react"
 import {
   Loader2, Inbox, XCircle, RefreshCw, Search, ChevronLeft,
 } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import type { PageResponse } from "@/lib/regional-admin-api"
 
@@ -58,11 +59,12 @@ export function StatCard({ label, value, hint, tone = "default" }: {
   )
 }
 
-export function LoadingState({ label = "Loading…" }: { label?: string }) {
+export function LoadingState({ label }: { label?: string }) {
+  const t = useTranslations("regionalAdmin")
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
       <Loader2 className="size-8 animate-spin" />
-      <p className="text-sm">{label}</p>
+      <p className="text-sm">{label ?? t("shared.loading")}</p>
     </div>
   )
 }
@@ -78,6 +80,7 @@ export function EmptyState({ title, hint, icon }: { title: string; hint?: string
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const tc = useTranslations("common")
   return (
     <div className="flex items-center justify-between rounded-2xl border border-destructive/20 bg-destructive/5 px-5 py-4 text-sm text-destructive">
       <span className="flex items-center gap-2">
@@ -89,7 +92,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
           onClick={onRetry}
           className="inline-flex items-center gap-1 rounded-lg border border-destructive/30 bg-background px-3 py-1 text-xs font-semibold"
         >
-          <RefreshCw className="size-3" /> Retry
+          <RefreshCw className="size-3" /> {tc("retry")}
         </button>
       )}
     </div>
@@ -162,6 +165,8 @@ export function PagedList<T>({
   const [data, setData] = useState<PageResponse<T> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const t = useTranslations("regionalAdmin")
+  const tc = useTranslations("common")
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState("")
   const [input, setInput] = useState("")
@@ -173,7 +178,7 @@ export function PagedList<T>({
       const res = await fetcher({ page, size: pageSize, search: search || undefined })
       setData(res)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to load data.")
+      setError(e instanceof Error ? e.message : t("shared.loadError"))
     } finally {
       setLoading(false)
     }
@@ -224,10 +229,10 @@ export function PagedList<T>({
             disabled={page === 0}
             className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            <ChevronLeft className="size-4" /> Previous
+            <ChevronLeft className="size-4" /> {tc("previous")}
           </button>
           <span className="text-sm text-muted-foreground">
-            Page {page + 1} of {Math.max(1, data.totalPages)} · {data.totalElements.toLocaleString()} total
+            {t("shared.pageStatus", { page: page + 1, pages: Math.max(1, data.totalPages), total: data.totalElements.toLocaleString() })}
           </span>
           <button
             type="button"
@@ -235,7 +240,7 @@ export function PagedList<T>({
             disabled={page >= data.totalPages - 1}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
-            Next
+            {tc("next")}
           </button>
         </div>
       )}

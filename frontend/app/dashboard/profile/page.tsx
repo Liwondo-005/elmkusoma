@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "@/lib/auth"
+import { useAuth, translateRole } from "@/lib/auth"
 import { useTranslations } from "next-intl"
 import { learnerApi } from "@/lib/learner-api"
 import { Camera } from "lucide-react"
@@ -9,6 +9,7 @@ import { Camera } from "lucide-react"
 export default function DashboardProfilePage() {
   const { user } = useAuth()
   const t = useTranslations("primary")
+  const tr = useTranslations("roles")
   const ts = useTranslations("status")
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -52,9 +53,9 @@ export default function DashboardProfilePage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-foreground">{user?.name || t("profilePage.studentFallback")}</h2>
-            <p className="text-sm text-muted-foreground">{user?.email || "student@example.com"}</p>
+            <p className="text-sm text-muted-foreground">{user?.email || ""}</p>
             <span className="mt-1 inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary capitalize">
-              {user?.role || "Student"}
+              {translateRole(user?.role, tr)}
             </span>
           </div>
         </div>

@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { studentApi, type Student } from "@/lib/api"
 
 export default function StudentsPage() {
+  const t = useTranslations("teacher")
+  const tc = useTranslations("common")
   const { user } = useAuth()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -28,7 +31,7 @@ export default function StudentsPage() {
         setTotalCount(total)
         setActiveCount(active)
       })
-      .catch((e) => setError(e.message || "Failed to load students"))
+      .catch((e) => setError(e.message || t("students.loadError")))
       .finally(() => setLoading(false))
   }, [institutionId])
 
@@ -44,21 +47,21 @@ export default function StudentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Student Management</h1>
-        <p className="text-muted-foreground">View and manage all registered students.</p>
+        <h1 className="text-2xl font-bold">{t("students.managementTitle")}</h1>
+        <p className="text-muted-foreground">{t("students.managementSubtitle")}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Total Students</p>
+          <p className="text-sm text-muted-foreground">{t("students.totalLabel")}</p>
           <p className="text-2xl font-bold">{totalCount}</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Active Students</p>
+          <p className="text-sm text-muted-foreground">{t("students.activeLabel")}</p>
           <p className="text-2xl font-bold text-green-600">{activeCount}</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Inactive Students</p>
+          <p className="text-sm text-muted-foreground">{t("students.inactiveLabel")}</p>
           <p className="text-2xl font-bold text-orange-600">{totalCount - activeCount}</p>
         </div>
       </div>
@@ -66,7 +69,7 @@ export default function StudentsPage() {
       <div className="flex items-center gap-3">
         <input
           type="text"
-          placeholder="Search by name, admission number, or email..."
+          placeholder={t("students.managementSearchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 rounded-lg border border-border bg-card px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
@@ -86,19 +89,19 @@ export default function StudentsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Admission #</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Gender</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Enrolled</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("students.colAdmission")}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("students.colName")}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("email")}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("students.colGender")}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("students.colStatus")}</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">{tc("enrolled")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                    No students found.
+                    {t("students.emptyTitle")}
                   </td>
                 </tr>
               ) : (

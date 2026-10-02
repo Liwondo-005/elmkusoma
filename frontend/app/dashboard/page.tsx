@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { useRequireAuth } from "@/lib/auth"
 import { dashboardApi, primaryApi, type DashboardSummary, type ContinueLearningItem, type RecentActivity } from "@/lib/api"
 import { BookOpen, FileText, Loader2, PenTool, BarChart3, ArrowRight, Award, Users, TrendingUp, Clock, CheckCircle, Compass, Play, Star, Calendar, Video, ChevronRight, Sparkles, Lightbulb, Target, Map, GraduationCap } from "lucide-react"
@@ -353,8 +354,9 @@ function PrimaryDashboard({
   gamification: { streak: number; points: number; badgeCount: number; loading: boolean }
 }) {
   const router = useRouter()
+  const tg = useTranslations("learner")
   const hour = new Date().getHours()
-  const greetingTime = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+  const greetingTime = hour < 12 ? tg("greeting.morning") : hour < 17 ? tg("greeting.afternoon") : tg("greeting.evening")
   const [teacherInfo, setTeacherInfo] = useState<{ count: number; firstName: string } | null>(null)
 
   useEffect(() => {

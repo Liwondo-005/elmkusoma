@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { BookOpen, School } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type AssessmentsResponse,
@@ -20,8 +21,6 @@ import {
   StatCard,
   formatDateTime,
 } from "@/components/dashboard/regional-admin/ui"
-
-const SCOPE_LABEL = "Scope: your jurisdiction · Period: All available records"
 
 type Section<T> = { data: T | null; error: string | null }
 
@@ -53,16 +52,18 @@ function ProgressStat({
 
 function PanelShell({
   title, error, onRetry, children,
+  scopeLabel,
 }: {
   title: string
   error: string | null
   onRetry: () => void
   children: ReactNode
+  scopeLabel: string
 }) {
   return (
     <Panel
       title={title}
-      actions={<span className="text-xs text-muted-foreground">{SCOPE_LABEL}</span>}
+      actions={<span className="text-xs text-muted-foreground">{scopeLabel}</span>}
     >
       {error ? <ErrorState message={error} onRetry={onRetry} /> : children}
     </Panel>
@@ -78,6 +79,8 @@ function pct(value: number | null | undefined): string {
 }
 
 export default function RegionalPulsePage() {
+  const t = useTranslations("regionalAdmin")
+  const scopeLabel = t("pulse.scopeLabel")
   const [pulse, setPulse] = useState<Section<RegionalPulse>>({ data: null, error: null })
   const [attendance, setAttendance] = useState<Section<AttendanceResponse>>({
     data: null,
@@ -106,13 +109,13 @@ export default function RegionalPulsePage() {
       regionalAdminApi.getAssessments(),
       regionalAdminApi.getPerformance(),
     ])
-    setPulse(settle(p, "Unable to load the pulse metrics."))
-    setAttendance(settle(a, "Unable to load attendance for your jurisdiction."))
-    setCurriculum(settle(c, "Unable to load curriculum progress for your jurisdiction."))
-    setAssessments(settle(s, "Unable to load assessments for your jurisdiction."))
-    setPerformance(settle(f, "Unable to load performance for your jurisdiction."))
+    setPulse(settle(p, t("pulse.pulseLoadError")))
+    setAttendance(settle(a, t("pulse.attendanceLoadError")))
+    setCurriculum(settle(c, t("pulse.curriculumLoadError")))
+    setAssessments(settle(s, t("pulse.assessmentsLoadError")))
+    setPerformance(settle(f, t("pulse.performanceLoadError")))
     setLoading(false)
-  }, [])
+  }, [t])
 
   useEffect(() => {
     load()
@@ -139,29 +142,29 @@ export default function RegionalPulsePage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Regional Pulse"
-        description="Live activity across your jurisdiction with metric, value and scope — no synthetic trends."
+        title={t("pulse.title")}
+        description={t("pulse.description")}
       />
 
       {allFailed && (
         <ErrorState
-          message="Unable to load the regional pulse. Check your connection and try again."
+          message={t("pulse.allFailedError")}
           onRetry={load}
         />
       )}
 
-      {loading && <LoadingState label="Loading regional pulse…" />}
+      {loading && <LoadingState label={t("pulse.loadingLabel")} />}
 
       {!loading && !allFailed && (
         <>
-          <section aria-label="Pulse metrics" className="space-y-3">
+          <section aria-label={t("pulse.metricsAriaLabel")} className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Pulse metrics
+                {t("pulse.metricsHeading")}
               </h2>
               {pulse.data && (
                 <p className="text-xs text-muted-foreground">
-                  {SCOPE_LABEL} · Last updated: {formatDateTime(pulse.data.lastUpdated)}
+                  {scopeLabel} · {t("pulse.lastUpdatedLabel")}: {formatDateTime(pulse.data.lastUpdated)}
                 </p>
               )}
             </div>
@@ -171,51 +174,51 @@ export default function RegionalPulsePage() {
             ) : pulse.data ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard
-                  label="Live now"
+                  label={t("pulse.statLiveNow")}
                   value={pulse.data.liveNow}
-                  hint="Live classes in progress"
+                  hint={t("pulse.statLiveNowHint")}
                 />
-                <StatCard label="Scheduled today" value={pulse.data.scheduledToday} />
-                <StatCard label="Completed today" value={pulse.data.completedToday} />
-                <StatCard label="This week total" value={pulse.data.totalThisWeek} />
-                <StatCard label="Teachers" value={pulse.data.teachers} />
-                <StatCard label="Learners" value={pulse.data.learners} />
+                <StatCard label={t("pulse.statScheduledToday")} value={pulse.data.scheduledToday} />
+                <StatCard label={t("pulse.statCompletedToday")} value={pulse.data.completedToday} />
+                <StatCard label={t("pulse.statWeekTotal")} value={pulse.data.totalThisWeek} />
+                <StatCard label={t("pulse.statTeachers")} value={pulse.data.teachers} />
+                <StatCard label={t("pulse.statLearners")} value={pulse.data.learners} />
                 <StatCard
-                  label="Published lessons"
+                  label={t("pulse.statPublishedLessons")}
                   value={pulse.data.publishedLessons}
-                  hint={`of ${pulse.data.totalLessons.toLocaleString()} total lessons`}
+                  hint={t("pulse.statPublishedLessonsHint", { count: pulse.data.totalLessons.toLocaleString() })}
                 />
                 <StatCard
-                  label="Pending verifications"
+                  label={t("pulse.statPendingVerifications")}
                   value={pulse.data.pendingVerifications}
                   tone={pulse.data.pendingVerifications > 0 ? "warning" : "default"}
                 />
                 <StatCard
-                  label="Alerts"
+                  label={t("pulse.statAlerts")}
                   value={pulse.data.alertsCount}
                   tone={pulse.data.alertsCount > 0 ? "danger" : "default"}
                 />
               </div>
             ) : (
-              <EmptyState title="Pulse metrics are unavailable for your jurisdiction." />
+              <EmptyState title={t("pulse.metricsUnavailable")} />
             )}
           </section>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <PanelShell title="Attendance" error={attendance.error} onRetry={load}>
+            <PanelShell title={t("pulse.attendanceTitle")} error={attendance.error} onRetry={load} scopeLabel={scopeLabel}>
               {attendance.data ? (
                 <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-3">
                     <ProgressStat
-                      label="Overall attendance rate"
+                      label={t("pulse.overallAttendanceLabel")}
                       value={attendance.data.overallRate}
                     />
                     <StatCard
-                      label="Students"
+                      label={t("pulse.studentsLabel")}
                       value={attendance.data.totalStudents ?? "—"}
                     />
                     <StatCard
-                      label="Schools at risk"
+                      label={t("pulse.schoolsAtRiskLabel")}
                       value={attendance.data.schoolsAtRisk ?? "—"}
                       tone={(attendance.data.schoolsAtRisk ?? 0) > 0 ? "danger" : "default"}
                     />
@@ -223,11 +226,11 @@ export default function RegionalPulsePage() {
 
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Attendance by institution
+                      {t("pulse.attendanceByInstitution")}
                     </p>
                     {attendance.data.schoolAttendance.length === 0 ? (
                       <p className="mt-2 text-sm text-muted-foreground">
-                        No institution attendance records were returned.
+                        {t("pulse.noAttendanceRecords")}
                       </p>
                     ) : (
                       <ul className="mt-2 space-y-2">
@@ -248,38 +251,38 @@ export default function RegionalPulsePage() {
                   </div>
                 </div>
               ) : (
-                <EmptyState title="No attendance records were returned for your jurisdiction." />
+                <EmptyState title={t("pulse.noAttendanceForJurisdiction")} />
               )}
             </PanelShell>
 
-            <PanelShell title="Curriculum" error={curriculum.error} onRetry={load}>
+            <PanelShell title={t("pulse.curriculumTitle")} error={curriculum.error} onRetry={load} scopeLabel={scopeLabel}>
               {curriculum.data ? (
                 <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-3">
                     <ProgressStat
-                      label="Overall progress"
+                      label={t("pulse.overallProgressLabel")}
                       value={curriculum.data.overallProgress}
                     />
                     <StatCard
-                      label="Lessons completed"
+                      label={t("pulse.lessonsCompletedLabel")}
                       value={curriculum.data.completedLessons ?? "—"}
-                      hint={`of ${curriculum.data.totalLessons ?? 0} lessons`}
+                      hint={t("pulse.lessonsCompletedHint", { count: curriculum.data.totalLessons ?? 0 })}
                     />
                     <StatCard
-                      label="Schools on track"
+                      label={t("pulse.schoolsOnTrackLabel")}
                       value={curriculum.data.schoolsOnTrack ?? "—"}
-                      hint={`${curriculum.data.schoolsBehind ?? 0} behind`}
+                      hint={t("pulse.schoolsBehindHint", { count: curriculum.data.schoolsBehind ?? 0 })}
                       tone={(curriculum.data.schoolsBehind ?? 0) > 0 ? "warning" : "success"}
                     />
                   </div>
 
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      Progress by subject
+                      {t("pulse.progressBySubject")}
                     </p>
                     {curriculum.data.subjectProgress.length === 0 ? (
                       <p className="mt-2 text-sm text-muted-foreground">
-                        No subject progress records were returned.
+                        {t("pulse.noSubjectProgress")}
                       </p>
                     ) : (
                       <ul className="mt-2 space-y-2">
@@ -303,73 +306,73 @@ export default function RegionalPulsePage() {
                   </div>
                 </div>
               ) : (
-                <EmptyState title="No curriculum records were returned for your jurisdiction." />
+                <EmptyState title={t("pulse.noCurriculumForJurisdiction")} />
               )}
             </PanelShell>
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <PanelShell title="Assessments" error={assessments.error} onRetry={load}>
+            <PanelShell title={t("pulse.assessmentsTitle")} error={assessments.error} onRetry={load} scopeLabel={scopeLabel}>
               {assessments.data ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <StatCard
-                    label="Total assessments"
+                    label={t("pulse.totalAssessmentsLabel")}
                     value={assessments.data.totalAssessments ?? "—"}
                   />
                   <StatCard
-                    label="Completed"
+                    label={t("pulse.completedLabel")}
                     value={assessments.data.completedAssessments ?? "—"}
                   />
                   <StatCard
-                    label="Average score"
+                    label={t("pulse.averageScoreLabel")}
                     value={score(assessments.data.averageScore)}
-                    hint="Across completed assessments"
+                    hint={t("pulse.averageScoreHint")}
                   />
-                  <StatCard label="Pass rate" value={pct(assessments.data.passRate)} />
+                  <StatCard label={t("pulse.passRateLabel")} value={pct(assessments.data.passRate)} />
                   <StatCard
-                    label="Pending grading"
+                    label={t("pulse.pendingGradingLabel")}
                     value={assessments.data.pendingGrading ?? "—"}
                     tone={(assessments.data.pendingGrading ?? 0) > 0 ? "warning" : "default"}
                   />
                 </div>
               ) : (
-                <EmptyState title="No assessment records were returned for your jurisdiction." />
+                <EmptyState title={t("pulse.noAssessmentsForJurisdiction")} />
               )}
             </PanelShell>
 
-            <PanelShell title="Performance" error={performance.error} onRetry={load}>
+            <PanelShell title={t("pulse.performanceTitle")} error={performance.error} onRetry={load} scopeLabel={scopeLabel}>
               {performance.data ? (
                 <div className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard
-                      label="Overall average"
+                      label={t("pulse.overallAverageLabel")}
                       value={score(performance.data.overallAverage)}
                     />
-                    <StatCard label="Pass rate" value={pct(performance.data.passRate)} />
+                    <StatCard label={t("pulse.passRateLabel")} value={pct(performance.data.passRate)} />
                     <StatCard
-                      label="Total assessments"
+                      label={t("pulse.totalAssessmentsLabel")}
                       value={performance.data.totalAssessments ?? "—"}
                     />
                     <StatCard
-                      label="Report cards"
+                      label={t("pulse.reportCardsLabel")}
                       value={performance.data.totalReportCards ?? "—"}
                     />
                   </div>
 
                   {schoolsSorted.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      No school performance records were returned.
+                      {t("pulse.noSchoolPerformance")}
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead>
                           <tr className="border-b border-border text-[11px] uppercase tracking-widest text-muted-foreground">
-                            <th className="px-3 py-2 font-bold">Institution</th>
-                            <th className="px-3 py-2 font-bold">Average</th>
-                            <th className="px-3 py-2 font-bold">Pass rate</th>
-                            <th className="px-3 py-2 font-bold">Students</th>
-                            <th className="px-3 py-2 font-bold">Assessments</th>
+                            <th className="px-3 py-2 font-bold">{t("pulse.colInstitution")}</th>
+                            <th className="px-3 py-2 font-bold">{t("pulse.colAverage")}</th>
+                            <th className="px-3 py-2 font-bold">{t("pulse.colPassRate")}</th>
+                            <th className="px-3 py-2 font-bold">{t("pulse.colStudents")}</th>
+                            <th className="px-3 py-2 font-bold">{t("pulse.colAssessments")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -406,7 +409,7 @@ export default function RegionalPulsePage() {
                   )}
                 </div>
               ) : (
-                <EmptyState title="No performance records were returned for your jurisdiction." />
+                <EmptyState title={t("pulse.noPerformanceForJurisdiction")} />
               )}
             </PanelShell>
           </div>

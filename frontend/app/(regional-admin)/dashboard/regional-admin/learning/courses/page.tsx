@@ -1,23 +1,27 @@
 "use client"
 
 import { BookOpen } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { regionalAdminApi, type CourseSummary } from "@/lib/regional-admin-api"
 import { Chip, PageHeader, PagedList, formatDate } from "@/components/dashboard/regional-admin/ui"
 
 const fetchCourses = (params: { page: number; size: number; search?: string }) =>
   regionalAdminApi.listCourses(params)
 
-function renderItem(item: CourseSummary) {
+function renderItem(
+  item: CourseSummary,
+  t: ReturnType<typeof useTranslations>,
+) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{item.title}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{item.institutionName ?? "No institution"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{item.institutionName ?? t("courses.noInstitution")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Chip tone={item.isPublished ? "success" : "muted"}>
-            {item.isPublished ? "Published" : "Draft"}
+            {item.isPublished ? t("courses.published") : t("courses.draft")}
           </Chip>
           <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
         </div>
@@ -32,19 +36,20 @@ function renderItem(item: CourseSummary) {
 }
 
 export default function RegionalCoursesPage() {
+  const t = useTranslations("regionalAdmin")
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Courses"
-        description="Courses published by institutions inside your jurisdiction — every course is scoped to your region or district."
+        title={t("courses.title")}
+        description={t("courses.description")}
       />
 
       <PagedList
         fetcher={fetchCourses}
-        renderItem={renderItem}
-        searchPlaceholder="Search courses by title…"
-        emptyTitle="No courses found in your jurisdiction"
-        emptyHint="Try a different search term to find courses available in your region or district."
+        renderItem={(item) => renderItem(item, t)}
+        searchPlaceholder={t("courses.searchPlaceholder")}
+        emptyTitle={t("courses.emptyTitle")}
+        emptyHint={t("courses.emptyHint")}
         emptyIcon={<BookOpen className="size-10" />}
       />
     </div>

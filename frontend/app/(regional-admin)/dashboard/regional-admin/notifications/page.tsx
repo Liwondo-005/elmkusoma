@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { Bell, CheckCheck } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type NotificationSummary,
@@ -19,6 +20,8 @@ function NotificationRow({
   item: NotificationSummary
   onMarked: () => void
 }) {
+  const t = useTranslations("regionalAdmin")
+  const tn = useTranslations("notifications")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,7 +32,7 @@ function NotificationRow({
       await regionalAdminApi.markNotificationRead(item.id)
       onMarked()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to mark this notification as read.")
+      setError(e instanceof Error ? e.message : t("notificationsList.markReadError"))
     } finally {
       setBusy(false)
     }
@@ -48,7 +51,7 @@ function NotificationRow({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-bold text-foreground">{item.title}</h3>
             <Chip tone="info">{item.notificationType}</Chip>
-            {!item.isRead && <Chip tone="default">Unread</Chip>}
+            {!item.isRead && <Chip tone="default">{t("notificationsList.unreadBadge")}</Chip>}
           </div>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{item.message}</p>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
@@ -61,7 +64,7 @@ function NotificationRow({
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1 text-xs font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCheck className="size-3.5" />
-              {busy ? "Saving…" : "Mark as read"}
+              {busy ? t("notificationsList.saving") : tn("markAsRead")}
             </button>
           </div>
           {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
@@ -72,6 +75,7 @@ function NotificationRow({
 }
 
 export default function NotificationsPage() {
+  const t = useTranslations("regionalAdmin")
   const [reloadKey, setReloadKey] = useState(0)
 
   // reloadKey is part of the fetcher identity so the list refetches after a read.
@@ -84,15 +88,15 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Notifications"
-        description="Operational notifications generated for your regional account."
+        title={t("notificationsList.title")}
+        description={t("notificationsList.description")}
       />
 
       <PagedList<NotificationSummary>
         fetcher={fetcher}
-        searchPlaceholder="Search notifications…"
-        emptyTitle="You have no notifications."
-        emptyHint="Messages about verifications, announcements and oversight alerts will appear here."
+        searchPlaceholder={t("notificationsList.searchPlaceholder")}
+        emptyTitle={t("notificationsList.emptyTitle")}
+        emptyHint={t("notificationsList.emptyHint")}
         emptyIcon={<Bell className="size-10" />}
         renderItem={(item) => (
           <NotificationRow item={item} onMarked={() => setReloadKey((k) => k + 1)} />

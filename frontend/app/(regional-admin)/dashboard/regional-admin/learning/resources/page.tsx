@@ -1,6 +1,7 @@
 "use client"
 
 import { Library } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { regionalAdminApi, type ResourceSummary } from "@/lib/regional-admin-api"
 import { Chip, PageHeader, PagedList, formatDate } from "@/components/dashboard/regional-admin/ui"
 
@@ -20,14 +21,17 @@ function formatFileSize(bytes: number | null): string {
   return `${value.toFixed(1)} ${units[i]}`
 }
 
-function renderItem(item: ResourceSummary) {
+function renderItem(
+  item: ResourceSummary,
+  t: ReturnType<typeof useTranslations>,
+) {
   const kind = [item.type, item.mimeType].filter(Boolean).join(" · ")
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{item.title}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{item.institutionName ?? "No institution"}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{item.institutionName ?? t("resources.noInstitution")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="text-xs tabular-nums text-muted-foreground">{formatFileSize(item.fileSize)}</span>
@@ -43,19 +47,20 @@ function renderItem(item: ResourceSummary) {
 }
 
 export default function RegionalResourcesPage() {
+  const t = useTranslations("regionalAdmin")
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Learning Resources"
-        description="Learning resources uploaded by institutions inside your jurisdiction — every file is scoped to your region or district."
+        title={t("resources.title")}
+        description={t("resources.description")}
       />
 
       <PagedList
         fetcher={fetchResources}
-        renderItem={renderItem}
-        searchPlaceholder="Search resources by title…"
-        emptyTitle="No learning resources found in your jurisdiction"
-        emptyHint="Try a different search term to find resources available in your region or district."
+        renderItem={(item) => renderItem(item, t)}
+        searchPlaceholder={t("resources.searchPlaceholder")}
+        emptyTitle={t("resources.emptyTitle")}
+        emptyHint={t("resources.emptyHint")}
         emptyIcon={<Library className="size-10" />}
       />
     </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Shield, Activity, AlertTriangle, Loader2, CheckCircle } from "lucide-react"
 import {
   auditApi,
@@ -12,12 +13,6 @@ import {
 
 type Tab = "logs" | "activity" | "security"
 
-const tabs: { key: Tab; label: string; icon: typeof Shield }[] = [
-  { key: "logs", label: "Audit Logs", icon: Shield },
-  { key: "activity", label: "Activity Feed", icon: Activity },
-  { key: "security", label: "Security Events", icon: AlertTriangle },
-]
-
 function formatDate(iso: string) {
   try {
     return new Date(iso).toLocaleString()
@@ -27,14 +22,21 @@ function formatDate(iso: string) {
 }
 
 export default function AuditPage() {
+  const t = useTranslations("admin")
+  const tn = useTranslations("nav")
+  const tabs: { key: Tab; label: string; icon: typeof Shield }[] = [
+    { key: "logs", label: tn("auditLogs"), icon: Shield },
+    { key: "activity", label: t("audit.activityFeedLabel"), icon: Activity },
+    { key: "security", label: t("audit.securityEventsLabel"), icon: AlertTriangle },
+  ]
   const [activeTab, setActiveTab] = useState<Tab>("logs")
   const institutionId = getInstitutionId()
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Audit</h1>
-        <p className="mt-1 text-sm text-muted-foreground">System audit logs, activity feed, and security events.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{tn("audit")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("audit.auditSubtitle")}</p>
       </div>
 
       <div className="flex gap-1 rounded-xl border border-border bg-muted p-1">
@@ -56,7 +58,7 @@ export default function AuditPage() {
 
       {!institutionId ? (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-10 text-center">
-          <p className="text-sm font-medium text-destructive">No institution context found. Please log in again.</p>
+          <p className="text-sm font-medium text-destructive">{t("overview.noInstitutionContextFound")}</p>
         </div>
       ) : activeTab === "logs" ? (
         <AuditLogs institutionId={institutionId} />
@@ -70,6 +72,7 @@ export default function AuditPage() {
 }
 
 function AuditLogs({ institutionId }: { institutionId: string }) {
+  const t = useTranslations("admin")
   const [logs, setLogs] = useState<AuditLogResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -78,17 +81,17 @@ function AuditLogs({ institutionId }: { institutionId: string }) {
     auditApi
       .listLogs(institutionId)
       .then(setLogs)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load audit logs"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("audit.failedToLoadAudit")))
       .finally(() => setLoading(false))
-  }, [institutionId])
+  }, [institutionId, t])
 
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
   if (error) return <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-10 text-center"><p className="text-sm font-medium text-destructive">{error}</p></div>
   if (logs.length === 0) return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
       <Shield className="size-10 text-muted-foreground/50" />
-      <p className="mt-4 text-sm font-medium text-foreground">No audit logs</p>
-      <p className="mt-1 text-sm text-muted-foreground">Activity will appear here as it occurs.</p>
+      <p className="mt-4 text-sm font-medium text-foreground">{t("audit.noAuditLogsFound")}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{t("audit.emptyDesc")}</p>
     </div>
   )
 
@@ -123,6 +126,7 @@ function AuditLogs({ institutionId }: { institutionId: string }) {
 }
 
 function ActivityFeed({ institutionId }: { institutionId: string }) {
+  const t = useTranslations("admin")
   const [activities, setActivities] = useState<ActivityFeedResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -131,17 +135,17 @@ function ActivityFeed({ institutionId }: { institutionId: string }) {
     auditApi
       .listActivity(institutionId)
       .then(setActivities)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load activity"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("audit.loadActivityError")))
       .finally(() => setLoading(false))
-  }, [institutionId])
+  }, [institutionId, t])
 
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
   if (error) return <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-10 text-center"><p className="text-sm font-medium text-destructive">{error}</p></div>
   if (activities.length === 0) return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
       <Activity className="size-10 text-muted-foreground/50" />
-      <p className="mt-4 text-sm font-medium text-foreground">No activity yet</p>
-      <p className="mt-1 text-sm text-muted-foreground">Recent activity will appear here.</p>
+      <p className="mt-4 text-sm font-medium text-foreground">{t("audit.noActivityTitle")}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{t("audit.noActivityDesc")}</p>
     </div>
   )
 
@@ -168,6 +172,7 @@ function ActivityFeed({ institutionId }: { institutionId: string }) {
 }
 
 function SecurityEvents({ institutionId }: { institutionId: string }) {
+  const t = useTranslations("admin")
   const [events, setEvents] = useState<SecurityEventResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -177,9 +182,9 @@ function SecurityEvents({ institutionId }: { institutionId: string }) {
     auditApi
       .listSecurityEvents(institutionId)
       .then(setEvents)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load security events"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("audit.loadSecurityError")))
       .finally(() => setLoading(false))
-  }, [institutionId])
+  }, [institutionId, t])
 
   async function handleResolve(eventId: string) {
     setResolving(eventId)
@@ -187,7 +192,7 @@ function SecurityEvents({ institutionId }: { institutionId: string }) {
       const updated = await auditApi.resolveSecurityEvent(eventId)
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)))
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to resolve event")
+      setError(err instanceof Error ? err.message : t("audit.resolveError"))
     } finally {
       setResolving(null)
     }
@@ -198,8 +203,8 @@ function SecurityEvents({ institutionId }: { institutionId: string }) {
   if (events.length === 0) return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-20 text-center">
       <Shield className="size-10 text-muted-foreground/50" />
-      <p className="mt-4 text-sm font-medium text-foreground">No security events</p>
-      <p className="mt-1 text-sm text-muted-foreground">Security events will appear here.</p>
+      <p className="mt-4 text-sm font-medium text-foreground">{t("audit.noSecurityTitle")}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{t("audit.noSecurityDesc")}</p>
     </div>
   )
 
@@ -226,7 +231,7 @@ function SecurityEvents({ institutionId }: { institutionId: string }) {
                 <span className="text-xs font-medium text-foreground">{e.eventType}</span>
                 {e.resolved && (
                   <span className="flex items-center gap-1 rounded bg-teal/10 px-2 py-0.5 text-[10px] font-medium text-teal">
-                    <CheckCircle className="size-3" /> Resolved
+                    <CheckCircle className="size-3" /> {t("audit.resolvedLabel")}
                   </span>
                 )}
               </div>
@@ -244,7 +249,7 @@ function SecurityEvents({ institutionId }: { institutionId: string }) {
                   disabled={resolving === e.id}
                   className="flex h-7 items-center gap-1.5 rounded-lg border border-border px-2.5 text-[10px] font-medium text-foreground hover:bg-muted disabled:opacity-50"
                 >
-                  <CheckCircle className="size-3" /> {resolving === e.id ? "Resolving..." : "Resolve"}
+                  <CheckCircle className="size-3" /> {resolving === e.id ? t("audit.resolvingButton") : t("audit.resolveButton")}
                 </button>
               )}
             </div>

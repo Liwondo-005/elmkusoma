@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { CalendarClock, History, Play, Plus, Trash2 } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type CreateScheduledReportPayload,
@@ -13,21 +14,21 @@ import {
 } from "@/components/dashboard/regional-admin/ui"
 
 const REPORT_TYPES = [
-  { value: "PERFORMANCE", label: "Performance" },
-  { value: "ATTENDANCE", label: "Attendance" },
-  { value: "LEARNERS", label: "Learners" },
-  { value: "DATA_QUALITY", label: "Data quality" },
-  { value: "GOVERNANCE", label: "Governance" },
+  { value: "PERFORMANCE", labelKey: "scheduledReports.typePerformance" },
+  { value: "ATTENDANCE", labelKey: "scheduledReports.typeAttendance" },
+  { value: "LEARNERS", labelKey: "scheduledReports.typeLearners" },
+  { value: "DATA_QUALITY", labelKey: "scheduledReports.typeDataQuality" },
+  { value: "GOVERNANCE", labelKey: "scheduledReports.typeGovernance" },
 ]
 
 const FREQUENCIES = [
-  { value: "DAILY", label: "Daily" },
-  { value: "WEEKLY", label: "Weekly" },
-  { value: "MONTHLY", label: "Monthly" },
+  { value: "DAILY", labelKey: "scheduledReports.frequencyDaily" },
+  { value: "WEEKLY", labelKey: "scheduledReports.frequencyWeekly" },
+  { value: "MONTHLY", labelKey: "scheduledReports.frequencyMonthly" },
 ]
 
-function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : "Something went wrong."
+function errMsg(e: unknown, fallback: string): string {
+  return e instanceof Error ? e.message : fallback
 }
 
 function statusTone(status: string): "success" | "warning" | "danger" {
@@ -37,6 +38,7 @@ function statusTone(status: string): "success" | "warning" | "danger" {
 }
 
 function RunHistory({ reportId }: { reportId: string }) {
+  const t = useTranslations("regionalAdmin")
   const [runs, setRuns] = useState<ScheduledReportRun[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,16 +49,16 @@ function RunHistory({ reportId }: { reportId: string }) {
     regionalAdminApi
       .listScheduledReportRuns(reportId)
       .then((r) => { if (active) setRuns(r) })
-      .catch((e) => { if (active) setError(errMsg(e)) })
+      .catch((e) => { if (active) setError(errMsg(e, t("scheduledReports.genericError"))) })
     return () => { active = false }
-  }, [reportId])
+  }, [reportId, t])
 
   if (error) return <ErrorState message={error} />
-  if (runs === null) return <LoadingState label="Loading run history…" />
+  if (runs === null) return <LoadingState label={t("scheduledReports.loadingRuns")} />
   if (runs.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        No runs yet — this report has not been generated.
+        {t("scheduledReports.noRunsYet")}
       </p>
     )
   }
@@ -88,6 +90,7 @@ function RunHistory({ reportId }: { reportId: string }) {
 }
 
 export default function ScheduledReportsPage() {
+  const t = useTranslations("regionalAdmin")
   const [reports, setReports] = useState<ScheduledReport[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -112,11 +115,11 @@ export default function ScheduledReportsPage() {
       setReports(list)
     } catch (e) {
       setReports([])
-      setError(errMsg(e))
+      setError(errMsg(e, t("scheduledReports.genericError")))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     load()
@@ -127,7 +130,7 @@ export default function ScheduledReportsPage() {
   async function createReport(e: React.FormEvent) {
     e.preventDefault()
     if (!form.title.trim()) {
-      setCreateError("A title is required.")
+      setCreateError(t("scheduledReports.titleRequired"))
       return
     }
     setCreating(true)
@@ -141,7 +144,7 @@ export default function ScheduledReportsPage() {
       setForm({ title: "", reportType: "PERFORMANCE", frequency: "MONTHLY", recipients: "" })
       setRefresh((k) => k + 1)
     } catch (e2) {
-      setCreateError(errMsg(e2))
+      setCreateError(errMsg(e2, t("scheduledReports.genericError")))
     } finally {
       setCreating(false)
     }
@@ -154,7 +157,7 @@ export default function ScheduledReportsPage() {
       setOpenRuns(report.id)
       setRefresh((k) => k + 1)
     } catch (e) {
-      setActionError(errMsg(e))
+      setActionError(errMsg(e, t("scheduledReports.genericError")))
     }
   }
 
@@ -166,7 +169,7 @@ export default function ScheduledReportsPage() {
       })
       setRefresh((k) => k + 1)
     } catch (e) {
-      setActionError(errMsg(e))
+      setActionError(errMsg(e, t("scheduledReports.genericError")))
     }
   }
 
@@ -176,15 +179,15 @@ export default function ScheduledReportsPage() {
       await regionalAdminApi.deleteScheduledReport(report.id)
       setRefresh((k) => k + 1)
     } catch (e) {
-      setActionError(errMsg(e))
+      setActionError(errMsg(e, t("scheduledReports.genericError")))
     }
   }
 
   return (
     <div className="space-y-6 pb-8" data-testid="scheduled-reports-page">
       <PageHeader
-        title="Scheduled Reports"
-        description="Reports generated automatically inside your jurisdiction from real oversight figures — never synthetic data."
+        title={t("scheduledReports.title")}
+        description={t("scheduledReports.description")}
       />
 
       <form
@@ -192,48 +195,48 @@ export default function ScheduledReportsPage() {
         className="rounded-2xl border border-border bg-card p-5 shadow-sm"
       >
         <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Plus className="size-4" /> New scheduled report
+          <Plus className="size-4" /> {t("scheduledReports.newHeading")}
         </h2>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <label className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Title</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("scheduledReports.titleLabel")}</span>
             <input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="e.g. Monthly attendance digest"
+              placeholder={t("scheduledReports.titlePlaceholder")}
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
           </label>
           <label className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Report type</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("scheduledReports.typeLabel")}</span>
             <select
               value={form.reportType}
               onChange={(e) => setForm({ ...form, reportType: e.target.value })}
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
-              {REPORT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+              {REPORT_TYPES.map((ty) => (
+                <option key={ty.value} value={ty.value}>{t(ty.labelKey)}</option>
               ))}
             </select>
           </label>
           <label className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Frequency</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("scheduledReports.frequencyLabel")}</span>
             <select
               value={form.frequency}
               onChange={(e) => setForm({ ...form, frequency: e.target.value })}
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
               {FREQUENCIES.map((f) => (
-                <option key={f.value} value={f.value}>{f.label}</option>
+                <option key={f.value} value={f.value}>{t(f.labelKey)}</option>
               ))}
             </select>
           </label>
           <label className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recipients (optional)</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("scheduledReports.recipientsLabel")}</span>
             <input
               value={form.recipients ?? ""}
               onChange={(e) => setForm({ ...form, recipients: e.target.value })}
-              placeholder="comma-separated emails"
+              placeholder={t("scheduledReports.recipientsPlaceholder")}
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
           </label>
@@ -246,7 +249,7 @@ export default function ScheduledReportsPage() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
           >
             <Plus className="size-4" />
-            {creating ? "Creating…" : "Create report"}
+            {creating ? t("scheduledReports.creatingLabel") : t("scheduledReports.createAction")}
           </button>
         </div>
       </form>
@@ -254,14 +257,14 @@ export default function ScheduledReportsPage() {
       {actionError && <ErrorState message={actionError} onRetry={() => setActionError(null)} />}
 
       {loading ? (
-        <LoadingState label="Loading scheduled reports…" />
+        <LoadingState label={t("scheduledReports.loadingLabel")} />
       ) : error ? (
         <ErrorState message={error} onRetry={retry} />
       ) : !reports || reports.length === 0 ? (
         <EmptyState
           icon={<CalendarClock className="size-10" />}
-          title="No scheduled reports yet"
-          hint="Create your first report above — it will be generated on schedule inside your jurisdiction."
+          title={t("scheduledReports.emptyTitle")}
+          hint={t("scheduledReports.emptyHint")}
         />
       ) : (
         <div className="space-y-4">
@@ -274,11 +277,11 @@ export default function ScheduledReportsPage() {
                     <Chip tone={statusTone(report.status)}>{report.status}</Chip>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {REPORT_TYPES.find((t) => t.value === report.reportType)?.label ?? report.reportType}
+                    {REPORT_TYPES.find((ty) => ty.value === report.reportType) ? t(REPORT_TYPES.find((ty) => ty.value === report.reportType)!.labelKey) : report.reportType}
                     {" · "}
-                    {FREQUENCIES.find((f) => f.value === report.frequency)?.label ?? report.frequency}
+                    {FREQUENCIES.find((f) => f.value === report.frequency) ? t(FREQUENCIES.find((f) => f.value === report.frequency)!.labelKey) : report.frequency}
                     {" · "}
-                    {report.jurisdiction ?? "Jurisdiction"}
+                    {report.jurisdiction ?? t("scheduledReports.jurisdictionFallback")}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -286,17 +289,17 @@ export default function ScheduledReportsPage() {
                     onClick={() => runNow(report)}
                     className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                   >
-                    <Play className="size-3.5" /> Run now
+                    <Play className="size-3.5" /> {t("scheduledReports.runNowAction")}
                   </button>
                   <button
                     onClick={() => toggleStatus(report)}
                     className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                   >
-                    {report.status === "ACTIVE" ? "Pause" : "Activate"}
+                    {report.status === "ACTIVE" ? t("scheduledReports.pauseAction") : t("scheduledReports.activateAction")}
                   </button>
                   <button
                     onClick={() => remove(report)}
-                    aria-label={`Delete ${report.title}`}
+                    aria-label={t("scheduledReports.deleteAriaLabel", { title: report.title })}
                     className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="size-3.5" />
@@ -306,19 +309,19 @@ export default function ScheduledReportsPage() {
 
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Next run</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("scheduledReports.nextRunLabel")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold text-foreground">{formatDateTime(report.nextRunAt)}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Last run</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("scheduledReports.lastRunLabel")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold text-foreground">{formatDateTime(report.lastRunAt)}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Runs</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("scheduledReports.runsLabel")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{report.runCount ?? 0}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Recipients</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("scheduledReports.recipientsLabel")}</dt>
                   <dd className="mt-0.5 truncate text-sm font-semibold text-foreground">{report.recipients || "—"}</dd>
                 </div>
               </dl>
@@ -329,7 +332,7 @@ export default function ScheduledReportsPage() {
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
                 >
                   <History className="size-3.5" />
-                  {openRuns === report.id ? "Hide run history" : "Show run history"}
+                  {openRuns === report.id ? t("scheduledReports.hideHistoryAction") : t("scheduledReports.showHistoryAction")}
                 </button>
                 {openRuns === report.id && (
                   <div className="mt-3">

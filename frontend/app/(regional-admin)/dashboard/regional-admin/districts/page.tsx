@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { MapPin } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   regionalAdminApi,
   type DistrictInfo,
@@ -27,8 +28,8 @@ interface DistrictRow {
   averagePerformance: number | null
 }
 
-function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : "Unable to load districts."
+function errMsg(e: unknown, fallback: string): string {
+  return e instanceof Error ? e.message : fallback
 }
 
 function pct(value: number | null): string {
@@ -54,6 +55,8 @@ function buildRows(districts: DistrictInfo[], detail: RegionDetail | null): Dist
 }
 
 export default function RegionalDistrictsPage() {
+  const t = useTranslations("regionalAdmin")
+  const ts = useTranslations("status")
   const [regions, setRegions] = useState<RegionInfo[] | null>(null)
   const [regionsError, setRegionsError] = useState<string | null>(null)
   const [regionId, setRegionId] = useState("")
@@ -76,9 +79,9 @@ export default function RegionalDistrictsPage() {
       setRegions(list)
       setRegionId((prev) => (prev && list.some((r) => r.id === prev) ? prev : list[0]?.id ?? ""))
     } catch (e) {
-      setRegionsError(e instanceof Error ? e.message : "Unable to load regions.")
+      setRegionsError(e instanceof Error ? e.message : t("districts.loadRegionsError"))
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     loadRegions()
@@ -105,16 +108,16 @@ export default function RegionalDistrictsPage() {
     ]).then(([districtsRes, detailRes]) => {
       if (!active) return
       if (districtsRes.status === "fulfilled") setDistricts(districtsRes.value)
-      else setDistrictsError(errMsg(districtsRes.reason))
+      else setDistrictsError(errMsg(districtsRes.reason, t("districts.loadDistrictsError")))
       if (detailRes.status === "fulfilled") setDetail(detailRes.value)
-      else setDetailError(errMsg(detailRes.reason))
+      else setDetailError(errMsg(detailRes.reason, t("districts.loadDistrictsError")))
       setDistrictsLoading(false)
       setDetailLoading(false)
     })
     return () => {
       active = false
     }
-  }, [regionId, refresh])
+  }, [regionId, refresh, t])
 
   const retry = () => setRefresh((k) => k + 1)
 
@@ -122,8 +125,8 @@ export default function RegionalDistrictsPage() {
     return (
       <div className="space-y-6 pb-8">
         <PageHeader
-          title="Districts"
-          description="Drill down from your region to its districts, and from each district to the institutions it oversees."
+          title={t("districts.title")}
+          description={t("districts.description")}
         />
         <ErrorState message={regionsError} onRetry={loadRegions} />
       </div>
@@ -134,10 +137,10 @@ export default function RegionalDistrictsPage() {
     return (
       <div className="space-y-6 pb-8">
         <PageHeader
-          title="Districts"
-          description="Drill down from your region to its districts, and from each district to the institutions it oversees."
+          title={t("districts.title")}
+          description={t("districts.description")}
         />
-        <LoadingState label="Loading regions…" />
+        <LoadingState label={t("districts.loadingRegions")} />
       </div>
     )
   }
@@ -146,13 +149,13 @@ export default function RegionalDistrictsPage() {
     return (
       <div className="space-y-6 pb-8">
         <PageHeader
-          title="Districts"
-          description="Drill down from your region to its districts, and from each district to the institutions it oversees."
+          title={t("districts.title")}
+          description={t("districts.description")}
         />
         <EmptyState
           icon={<MapPin className="size-10" />}
-          title="No region-level access for this account"
-          hint="Your account is scoped to a single district (District Admin), so no regions are listed here. Use your district dashboard to see the institutions you manage."
+          title={t("districts.noRegionAccessTitle")}
+          hint={t("districts.noRegionAccessHint")}
         />
       </div>
     )
@@ -164,16 +167,16 @@ export default function RegionalDistrictsPage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Districts"
-        description="Drill down from your region to its districts, and from each district to the institutions it oversees."
+        title={t("districts.title")}
+        description={t("districts.description")}
         actions={
           showRegionSwitcher ? (
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="text-[10px] font-bold uppercase tracking-widest">Region</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest">{t("districts.regionLabel")}</span>
               <select
                 value={regionId}
                 onChange={(e) => setRegionId(e.target.value)}
-                aria-label="Switch region"
+                aria-label={t("districts.switchRegionAriaLabel")}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
                 {regions.map((r) => (
@@ -191,23 +194,23 @@ export default function RegionalDistrictsPage() {
         <div className="h-24 animate-pulse rounded-2xl border border-border bg-card" />
       ) : detail ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <StatCard label="Districts" value={detail.districtCount} hint={`${detail.name} · ${detail.code}`} />
-          <StatCard label="Institutions" value={detail.institutionCount} />
-          <StatCard label="Teachers" value={detail.teacherCount} />
-          <StatCard label="Learners" value={detail.learnerCount} />
-          <StatCard label="Attendance" value={pct(detail.attendanceRate)} />
-          <StatCard label="Avg. performance" value={pct(detail.averagePerformance)} />
+          <StatCard label={t("districts.statDistricts")} value={detail.districtCount} hint={`${detail.name} · ${detail.code}`} />
+          <StatCard label={t("districts.statInstitutions")} value={detail.institutionCount} />
+          <StatCard label={t("districts.statTeachers")} value={detail.teacherCount} />
+          <StatCard label={t("districts.statLearners")} value={detail.learnerCount} />
+          <StatCard label={t("districts.statAttendance")} value={pct(detail.attendanceRate)} />
+          <StatCard label={t("districts.statPerformance")} value={pct(detail.averagePerformance)} />
         </div>
       ) : null}
 
       {districtsLoading ? (
-        <LoadingState label="Loading districts…" />
+        <LoadingState label={t("districts.loadingDistricts")} />
       ) : districtsError ? (
         <ErrorState message={districtsError} onRetry={retry} />
       ) : rows.length === 0 ? (
         <EmptyState
-          title="No districts in this region"
-          hint="Your jurisdiction has no districts to show yet."
+          title={t("districts.emptyTitle")}
+          hint={t("districts.emptyHint")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -222,33 +225,33 @@ export default function RegionalDistrictsPage() {
                   <p className="text-xs text-muted-foreground">{d.code}</p>
                 </div>
                 <Chip tone={d.isActive ? "success" : "danger"}>
-                  {d.isActive ? "Active" : "Inactive"}
+                  {d.isActive ? ts("active") : ts("inactive")}
                 </Chip>
               </div>
 
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Institutions</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("districts.statInstitutions")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{d.institutionCount ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Schools</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("districts.statSchools")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{d.schoolCount ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Teachers</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("districts.statTeachers")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{d.teacherCount ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Learners</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("districts.statLearners")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{d.learnerCount ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Attendance</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("districts.statAttendance")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold text-foreground"><Percent value={d.attendanceRate} /></dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Avg. performance</dt>
+                  <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("districts.statPerformance")}</dt>
                   <dd className="mt-0.5 text-sm font-semibold text-foreground"><Percent value={d.averagePerformance} /></dd>
                 </div>
               </dl>
@@ -258,7 +261,7 @@ export default function RegionalDistrictsPage() {
                   href={`/dashboard/regional-admin/districts/${d.id}`}
                   className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                 >
-                  Open →
+                  {t("shared.open")} →
                 </Link>
               </div>
             </div>

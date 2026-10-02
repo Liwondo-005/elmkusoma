@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { Building2, MapPinned } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { regionalAdminApi, type WardDetail } from "@/lib/regional-admin-api"
 import {
   Chip, EmptyState, ErrorState, LoadingState, PageHeader, StatCard,
 } from "@/components/dashboard/regional-admin/ui"
 
-function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : "Unable to load this ward."
+function errMsg(e: unknown, fallback: string): string {
+  return e instanceof Error ? e.message : fallback
 }
 
 function isAccessError(e: unknown): boolean {
@@ -18,6 +19,8 @@ function isAccessError(e: unknown): boolean {
 }
 
 export default function RegionalWardDetailPage() {
+  const t = useTranslations("regionalAdmin")
+  const ts = useTranslations("status")
   const params = useParams() as { id: string }
   const id = params?.id ?? ""
 
@@ -28,7 +31,7 @@ export default function RegionalWardDetailPage() {
   const load = useCallback(async () => {
     if (!id) {
       setWard(null)
-      setError("This ward could not be found.")
+      setError(t("wardDetail.notFoundError"))
       setLoading(false)
       return
     }
@@ -40,16 +43,14 @@ export default function RegionalWardDetailPage() {
     } catch (e) {
       setWard(null)
       if (isAccessError(e)) {
-        setError(
-          "This ward is outside your jurisdiction or does not exist. Contact your administrator if you believe this is a mistake.",
-        )
+        setError(t("wardDetail.accessError"))
       } else {
-        setError(errMsg(e))
+        setError(errMsg(e, t("wardDetail.loadError")))
       }
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, t])
 
   useEffect(() => {
     load()
@@ -58,8 +59,8 @@ export default function RegionalWardDetailPage() {
   if (loading) {
     return (
       <div className="space-y-6 pb-8">
-        <PageHeader title="Ward" description="Loading ward…" />
-        <LoadingState label="Loading ward…" />
+        <PageHeader title={t("wardDetail.loadingTitle")} description={t("wardDetail.loadingDescription")} />
+        <LoadingState label={t("wardDetail.loadingLabel")} />
       </div>
     )
   }
@@ -67,8 +68,8 @@ export default function RegionalWardDetailPage() {
   if (error || !ward) {
     return (
       <div className="space-y-6 pb-8">
-        <PageHeader title="Ward" description="Ward detail" />
-        <ErrorState message={error ?? errMsg(new Error("Ward not found"))} onRetry={load} />
+        <PageHeader title={t("wardDetail.errorTitle")} description={t("wardDetail.errorDescription")} />
+        <ErrorState message={error ?? errMsg(new Error("Ward not found"), t("wardDetail.loadError"))} onRetry={load} />
       </div>
     )
   }
@@ -77,36 +78,36 @@ export default function RegionalWardDetailPage() {
     <div className="space-y-6 pb-8" data-testid="ward-detail-page">
       <PageHeader
         title={ward.name}
-        description={`${ward.code} · ${ward.districtName} · ${ward.regionName ?? "No region"}`}
+        description={`${ward.code} · ${ward.districtName} · ${ward.regionName ?? t("wardDetail.noRegion")}`}
         actions={
           <div className="flex items-center gap-2">
             <Chip tone={ward.isActive ? "success" : "danger"}>
-              {ward.isActive ? "Active" : "Inactive"}
+              {ward.isActive ? ts("active") : ts("inactive")}
             </Chip>
             <Link
               href="/dashboard/regional-admin/wards"
               className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
             >
-              ← All wards
+              {t("wardDetail.backLink")}
             </Link>
           </div>
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Institutions" value={ward.institutionCount} hint={ward.districtName} />
-        <StatCard label="District" value={ward.districtName} hint={ward.districtCode} />
-        <StatCard label="Region" value={ward.regionName ?? "—"} hint={ward.regionCode ?? undefined} />
-        <StatCard label="Ward code" value={ward.code} />
+        <StatCard label={t("wardDetail.statInstitutions")} value={ward.institutionCount} hint={ward.districtName} />
+        <StatCard label={t("wardDetail.statDistrict")} value={ward.districtName} hint={ward.districtCode} />
+        <StatCard label={t("wardDetail.statRegion")} value={ward.regionName ?? "—"} hint={ward.regionCode ?? undefined} />
+        <StatCard label={t("wardDetail.statWardCode")} value={ward.code} />
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-foreground">Institutions in this ward</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">{t("wardDetail.institutionsHeading")}</h2>
         {ward.institutions.length === 0 ? (
           <EmptyState
             icon={<Building2 className="size-10" />}
-            title="No institutions linked to this ward yet"
-            hint="Institutions are linked to wards once ward-level addresses are collected. Until then they appear on the district page only."
+            title={t("wardDetail.emptyTitle")}
+            hint={t("wardDetail.emptyHint")}
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -121,7 +122,7 @@ export default function RegionalWardDetailPage() {
                     <p className="truncate text-xs text-muted-foreground">{inst.code}</p>
                   </div>
                   <Chip tone={inst.isActive ? "success" : "danger"}>
-                    {inst.isActive ? "Active" : "Inactive"}
+                    {inst.isActive ? ts("active") : ts("inactive")}
                   </Chip>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -130,7 +131,7 @@ export default function RegionalWardDetailPage() {
                     href={`/dashboard/regional-admin/institutions/${inst.id}`}
                     className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                   >
-                    Open →
+                    {t("shared.open")} →
                   </Link>
                 </div>
               </div>
@@ -141,8 +142,7 @@ export default function RegionalWardDetailPage() {
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <MapPinned className="size-4" />
-        Ward geography is scoped to your jurisdiction — institutions and counts shown here are
-        filtered server-side.
+        {t("wardDetail.scopeFootnote")}
       </div>
     </div>
   )

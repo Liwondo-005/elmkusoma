@@ -88,6 +88,7 @@ const NAV_SECTIONS: NavSection[] = [
 export function PlatformAdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const t = useTranslations("nav")
+  const tp = useTranslations("platformAdmin")
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(NAV_SECTIONS.map(s => s.title)))
   const [health, setHealth] = useState<PlatformHealth | null>(null)
 
@@ -102,8 +103,8 @@ export function PlatformAdminSidebar({ onNavigate }: { onNavigate?: () => void }
       <div className="flex h-16 items-center gap-2 border-b border-border px-4">
         <Logo />
         <div className="ml-1 min-w-0">
-          <p className="text-xs font-bold tracking-tight text-foreground truncate">PLATFORM ADMIN</p>
-          <p className="text-[10px] text-muted-foreground">Operations & Governance</p>
+          <p className="text-xs font-bold tracking-tight text-foreground truncate uppercase">{t("platformAdmin")}</p>
+          <p className="text-[10px] text-muted-foreground">{tp("dashboard.operationsGovernance")}</p>
         </div>
       </div>
 
@@ -138,8 +139,8 @@ export function PlatformAdminSidebar({ onNavigate }: { onNavigate?: () => void }
           <div className="flex items-center gap-2">
             <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10"><Zap className="size-3.5 text-primary" /></div>
             <div className="min-w-0">
-              <p className="text-xs font-medium text-foreground">Platform Status</p>
-              {health ? <p className={`text-[10px] font-medium ${health.databaseStatus === "Operational" ? "text-emerald-600" : "text-amber-600"}`}>DB: {health.databaseStatus} | API: {health.apiStatus}</p> : <p className="text-[10px] text-muted-foreground">Checking...</p>}
+              <p className="text-xs font-medium text-foreground">{tp("sidebar.statusTitle")}</p>
+              {health ? <p className={`text-[10px] font-medium ${health.databaseStatus === "Operational" ? "text-emerald-600" : "text-amber-600"}`}>{tp("sidebar.statusLine", { db: health.databaseStatus, api: health.apiStatus })}</p> : <p className="text-[10px] text-muted-foreground">{tp("sidebar.checking")}</p>}
             </div>
           </div>
         </div>

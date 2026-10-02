@@ -94,6 +94,7 @@ export function RegionalAdminSidebar({ onNavigate }: { onNavigate?: () => void }
   const pathname = usePathname()
   const t = useTranslations("nav")
   const tc = useTranslations("common")
+  const tr = useTranslations("roles")
   const palette = useCommandPalette()
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set(NAV_SECTIONS.map((s) => s.title)),
@@ -123,9 +124,9 @@ export function RegionalAdminSidebar({ onNavigate }: { onNavigate?: () => void }
       <div className="flex h-16 items-center gap-2 border-b border-border px-4">
         <Logo />
         <div className="ml-1 min-w-0">
-          <p className="truncate text-xs font-bold tracking-tight text-foreground">REGIONAL ADMIN</p>
+          <p className="truncate text-xs font-bold tracking-tight text-foreground uppercase">{tr("regionalAdmin")}</p>
           <p className="truncate text-[10px] text-muted-foreground">
-            {jurisdiction ? `${jurisdiction.name} · ${jurisdiction.code}` : "Education Governance"}
+            {jurisdiction ? `${jurisdiction.name} · ${jurisdiction.code}` : t("educationGovernance")}
           </p>
         </div>
       </div>
@@ -167,7 +168,7 @@ export function RegionalAdminSidebar({ onNavigate }: { onNavigate?: () => void }
                         key={item.href}
                         href={item.href}
                         onClick={onNavigate}
-                        title={item.label}
+                        title={item.labelKey ? t(item.labelKey) : item.label}
                         className={cn(
                           "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                           isActiveItem ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -234,7 +235,7 @@ export function RegionalAdminSidebar({ onNavigate }: { onNavigate?: () => void }
                 {jurisdiction ? jurisdiction.name : tc("loading")}
               </p>
               <p className="truncate text-[10px] text-muted-foreground">
-                {jurisdiction ? `${jurisdiction.type} jurisdiction` : "Resolving jurisdiction…"}
+                {jurisdiction ? t("jurisdictionType", { type: jurisdiction.type }) : t("resolvingJurisdiction")}
               </p>
             </div>
           </div>
