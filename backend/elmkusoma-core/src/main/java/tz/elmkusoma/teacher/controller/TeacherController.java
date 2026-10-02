@@ -187,6 +187,16 @@ public class TeacherController {
         return ResponseEntity.ok(ApiResponse.success("Assignment removed successfully", null));
     }
 
+    @PostMapping("/assignments/{assignmentId}/end")
+    @Operation(summary = "End a teacher assignment (reassignment keeps the history row)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    public ResponseEntity<ApiResponse<TeacherAssignmentResponse>> endAssignment(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID assignmentId) {
+        TeacherAssignmentResponse assignment = teacherService.endAssignment(institutionId, assignmentId);
+        return ResponseEntity.ok(ApiResponse.success("Assignment ended successfully", assignment));
+    }
+
     @PostMapping("/{id}/qualifications")
     @Operation(summary = "Add a qualification to a teacher")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN', 'INSTITUTION_ADMIN')")

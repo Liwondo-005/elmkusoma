@@ -45,6 +45,10 @@ public class Resource extends BaseEntity {
     @Column(name = "course_id")
     private UUID courseId;
 
+    /** Authoritative class target of a teacher-created CLASS_ONLY resource. */
+    @Column(name = "teacher_assignment_id")
+    private UUID teacherAssignmentId;
+
     @Column(name = "uploaded_by", nullable = false)
     private UUID uploadedBy;
 

@@ -22,7 +22,7 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function ResourceDetailPage() {
+export default function ResourceDetailPage({ basePath = "/dashboard/learner/resources" }: { basePath?: string }) {
   const { user, loading: authLoading } = useAuth()
   const t = useTranslations("learner")
   const tc = useTranslations("common")
@@ -184,7 +184,7 @@ export default function ResourceDetailPage() {
             {t("res.notFound")}
           </div>
         </div>
-        <Link href="/dashboard/learner/resources" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+        <Link href={basePath} className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
           <ArrowLeft className="size-4" /> {t("res.backLink")}
         </Link>
       </div>
@@ -193,7 +193,7 @@ export default function ResourceDetailPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <Link href="/dashboard/learner/resources" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+      <Link href={basePath} className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
         <ArrowLeft className="size-4" /> {t("res.backLink")}
       </Link>
 
@@ -437,7 +437,7 @@ export default function ResourceDetailPage() {
             {relatedResources.slice(0, 3).map((rr) => (
               <Link
                 key={rr.id}
-                href={`/dashboard/learner/resources/${rr.id}`}
+                href={`${basePath}/${rr.id}`}
                 className="rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
               >
                 <div className="flex items-start gap-3">

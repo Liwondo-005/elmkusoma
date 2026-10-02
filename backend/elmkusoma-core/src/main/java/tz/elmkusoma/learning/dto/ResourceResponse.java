@@ -21,6 +21,8 @@ public class ResourceResponse {
     private UUID lessonId;
     private UUID moduleId;
     private UUID courseId;
+    /** Authoritative teaching-assignment target of class-targeted resources. */
+    private UUID teacherAssignmentId;
     /** Backward-compatible derived context id (lesson → module → course). */
     private UUID subjectId;
     private UUID uploadedBy;

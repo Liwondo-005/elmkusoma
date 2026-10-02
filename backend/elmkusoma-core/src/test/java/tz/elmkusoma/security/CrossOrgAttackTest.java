@@ -6,6 +6,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.UUID;
 import tz.elmkusoma.testutil.TestDataSeeder;
 import tz.elmkusoma.testutil.TestTokens;
 
@@ -22,6 +24,15 @@ class CrossOrgAttackTest {
 
     @Autowired
     private tz.elmkusoma.certificate.repository.CertificateRepository certificateRepository;
+
+    @Autowired
+    private tz.elmkusoma.course.repository.CourseRepository courseRepository;
+
+    @Autowired
+    private tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Test
     void eventIdManipulation_CrossInstitution_Returns403() throws Exception {
@@ -114,5 +125,133 @@ class CrossOrgAttackTest {
                 .param("entityType", "users")
                 .header("X-Institution-Id", "22222222-2222-2222-2222-222222222222"))
             .andExpect(status().isForbidden());
+    }
+
+    // ── learner course scoping (cross-institution regression, Phase 9) ──
+    //
+    // Client-supplied course/live-class ids on /v1/learner/** must resolve
+    // inside the caller's institution or fail with 404 (no existence oracle).
+    // Own-institution controls prove the guard does not break valid access.
+
+    @Test
+    void learnerCourseDetailManipulation_CrossInstitution_Returns404() throws Exception {
+        String studentToken = TestTokens.studentToken();
+
+        tz.elmkusoma.course.domain.Course own = courseRepository.save(
+                tz.elmkusoma.course.domain.Course.builder()
+                        .institutionId(tz.elmkusoma.testutil.TestDataSeeder.INSTITUTION_ID)
+                        .title("XOrg own course")
+                        .level("SECONDARY")
+                        .isPublished(true)
+                        .isFeatured(false)
+                        .isDeleted(false)
+                        .build());
+        mockMvc.perform(get("/v1/learner/courses/" + own.getId())
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isOk());
+
+        tz.elmkusoma.course.domain.Course foreign = courseRepository.save(
+                tz.elmkusoma.course.domain.Course.builder()
+                        .institutionId(saveForeignInstitution())
+                        .title("XOrg foreign course")
+                        .level("SECONDARY")
+                        .isPublished(true)
+                        .isFeatured(false)
+                        .isDeleted(false)
+                        .build());
+        mockMvc.perform(get("/v1/learner/courses/" + foreign.getId())
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void learnerCourseSubResourcesManipulation_CrossInstitution_Returns404() throws Exception {
+        String studentToken = TestTokens.studentToken();
+        UUID foreignCourse = courseRepository.save(
+                tz.elmkusoma.course.domain.Course.builder()
+                        .institutionId(saveForeignInstitution())
+                        .title("XOrg foreign course subs")
+                        .level("SECONDARY")
+                        .isPublished(true)
+                        .isFeatured(false)
+                        .isDeleted(false)
+                        .build()).getId();
+
+        mockMvc.perform(get("/v1/learner/courses/" + foreignCourse + "/modules")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/v1/learner/courses/" + foreignCourse + "/lessons")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/v1/learner/courses/" + foreignCourse + "/related")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/v1/learner/me/progress/" + foreignCourse)
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void learnerEnrollmentManipulation_CrossInstitution_Returns404() throws Exception {
+        String studentToken = TestTokens.studentToken();
+        UUID foreignCourse = courseRepository.save(
+                tz.elmkusoma.course.domain.Course.builder()
+                        .institutionId(saveForeignInstitution())
+                        .title("XOrg foreign course enroll")
+                        .level("SECONDARY")
+                        .isPublished(true)
+                        .isFeatured(false)
+                        .isDeleted(false)
+                        .build()).getId();
+
+        mockMvc.perform(post("/v1/learner/me/enrollments")
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"courseId\":\"" + foreignCourse + "\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void learnerLiveClassManipulation_CrossInstitution_Returns404() throws Exception {
+        String studentToken = TestTokens.studentToken();
+        UUID foreignLiveClass = saveForeignLiveClass(saveForeignInstitution());
+
+        mockMvc.perform(get("/v1/learner/live-classes/" + foreignLiveClass + "/participants")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/v1/learner/live-classes/" + foreignLiveClass + "/related")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/v1/learner/live-classes/" + foreignLiveClass + "/join")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isNotFound());
+    }
+
+    private UUID saveForeignInstitution() {
+        tz.elmkusoma.shared.domain.Institution foreign =
+                institutionRepository.save(tz.elmkusoma.shared.domain.Institution.builder()
+                        .name("XOrg Attack Institution " + UUID.randomUUID().toString().substring(0, 8))
+                        .code("XORG-" + UUID.randomUUID().toString().substring(0, 8))
+                        .type(tz.elmkusoma.shared.domain.Institution.InstitutionType.SECONDARY)
+                        .country("Tanzania")
+                        .isActive(true)
+                        .isDeleted(false)
+                        .build());
+        return foreign.getId();
+    }
+
+    private UUID saveForeignLiveClass(UUID foreignInstitutionId) {
+        UUID liveClassId = UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO live_classes (id, institution_id, created_at, is_deleted, teacher_id, title, "
+                        + "description, scheduled_at, duration_minutes, status, max_participants, "
+                        + "recording_enabled, session_type, timezone, is_recurring, lobby_enabled) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                liveClassId, foreignInstitutionId, java.time.LocalDateTime.now(), false,
+                tz.elmkusoma.testutil.TestDataSeeder.TEACHER_USER_ID, "XOrg foreign live class",
+                "Cross-org isolation probe",
+                java.time.LocalDateTime.now().plusHours(1), 60, "SCHEDULED", 50,
+                false, "LECTURE", "Africa/Dar_es_Salaam", false, false);
+        return liveClassId;
     }
 }

@@ -251,6 +251,40 @@ class ResourceHttpSecurityMatrixTest {
                 .andExpect(jsonPath("$.data.title").value("Standalone matrix resource"));
     }
 
+    // ── instructor role admission (ResourceService treats INSTRUCTOR as a
+    //    teacher for visibility, so the HTTP layer must admit them for
+    //    authoring — while learner-facing APIs stay closed) ──
+
+    @Test
+    void instructor_createsAndReadsOwnResource_butLearnerApisStayClosed() throws Exception {
+        Institution testInstitution = institutionRepository
+                .findById(TestDataSeeder.INSTITUTION_ID).orElseThrow();
+        User instructor = saveUser(
+                "instructor-matrix-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com",
+                User.Role.INSTRUCTOR, null, null, testInstitution.getId());
+
+        var created = mockMvc.perform(post("/v1/resources")
+                        .header("Authorization", "Bearer " + TestTokens.userToken(instructor.getEmail()))
+                        .contentType("application/json")
+                        .content("{\"title\":\"Instructor matrix resource\",\"resourceType\":\"PDF\","
+                                + "\"storageUrl\":\"https://storage.test/instructor.pdf\","
+                                + "\"visibility\":\"INSTITUTION\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID instructorResource = UUID.fromString(com.jayway.jsonpath.JsonPath
+                .read(created.getResponse().getContentAsString(), "$.data.id"));
+
+        mockMvc.perform(get("/v1/resources/" + instructorResource)
+                        .header("Authorization", "Bearer " + TestTokens.userToken(instructor.getEmail())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("Instructor matrix resource"));
+
+        // narrow admission: instructor still rejected by learner-facing APIs
+        mockMvc.perform(get("/v1/learner/resources")
+                        .header("Authorization", "Bearer " + TestTokens.userToken(instructor.getEmail())))
+                .andExpect(status().isForbidden());
+    }
+
     // ── learner eligibility (course link → enrollment) ──
 
     @Test

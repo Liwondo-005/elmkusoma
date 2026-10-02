@@ -21,6 +21,9 @@ public class ResourceRequest {
     private UUID moduleId;
     private UUID courseId;
 
+    /** Authoritative teaching-assignment target for class-targeted resources (validated server-side). */
+    private UUID teacherAssignmentId;
+
     @NotBlank
     @Size(max = 300)
     private String title;

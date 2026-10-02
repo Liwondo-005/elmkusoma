@@ -3,6 +3,7 @@ package tz.elmkusoma.teacher.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -20,6 +21,7 @@ import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.domain.TeacherAssignment;
+import tz.elmkusoma.teacher.domain.TeacherAssignmentStatus;
 import tz.elmkusoma.teacher.domain.TeacherQualification;
 import tz.elmkusoma.teacher.domain.TeacherStatus;
 import tz.elmkusoma.teacher.dto.request.TeacherAssignmentRequest;
@@ -72,6 +74,8 @@ class TeacherServiceTest {
     private ClassGroupRepository classGroupRepository;
     @Mock
     private SubjectRepository subjectRepository;
+    @Mock
+    private tz.elmkusoma.academic.repository.GradeRepository gradeRepository;
 
     @InjectMocks
     private TeacherServiceImpl teacherService;
@@ -240,6 +244,17 @@ class TeacherServiceTest {
         UUID classGroupId = UUID.randomUUID();
         UUID subjectId = UUID.randomUUID();
 
+        // Validated ids: class and subject must exist inside the same institution.
+        tz.elmkusoma.academic.domain.ClassGroup classGroup = new tz.elmkusoma.academic.domain.ClassGroup();
+        classGroup.setInstitutionId(institutionId);
+        classGroup.setName("Form 1 A");
+        tz.elmkusoma.academic.domain.Subject subject = new tz.elmkusoma.academic.domain.Subject();
+        subject.setInstitutionId(institutionId);
+        subject.setName("Mathematics");
+        when(classGroupRepository.findById(classGroupId)).thenReturn(Optional.of(classGroup));
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(subject));
+        when(assignmentRepository.findAllByTeacherId(teacherId)).thenReturn(List.of());
+
         TeacherAssignment savedAssignment = TeacherAssignment.builder()
                 .teacherId(teacherId)
                 .classGroupId(classGroupId)
@@ -356,5 +371,329 @@ class TeacherServiceTest {
         assertNotNull(response);
         assertEquals("Physics", response.getSpecialization());
         verify(teacherRepository).save(any(Teacher.class));
+    }
+
+    // ── assignment lifecycle & id validation (spec §5, §10, §14) ──
+
+    private Teacher existingTeacher() {
+        Teacher teacher = Teacher.builder().userId(userId).build();
+        teacher.setId(teacherId);
+        teacher.setInstitutionId(institutionId);
+        return teacher;
+    }
+
+    private tz.elmkusoma.academic.domain.ClassGroup classGroup(UUID id, UUID gradeId) {
+        tz.elmkusoma.academic.domain.ClassGroup cg = new tz.elmkusoma.academic.domain.ClassGroup();
+        cg.setId(id);
+        cg.setInstitutionId(institutionId);
+        cg.setGradeId(gradeId);
+        cg.setName("Form 1 A");
+        return cg;
+    }
+
+    private tz.elmkusoma.academic.domain.Subject subject(
+            UUID id, tz.elmkusoma.academic.domain.EducationLevel level) {
+        tz.elmkusoma.academic.domain.Subject s = new tz.elmkusoma.academic.domain.Subject();
+        s.setId(id);
+        s.setInstitutionId(institutionId);
+        s.setEducationLevel(level);
+        s.setName("Mathematics");
+        return s;
+    }
+
+    private tz.elmkusoma.academic.domain.Grade grade(
+            UUID id, tz.elmkusoma.academic.domain.EducationLevel level) {
+        tz.elmkusoma.academic.domain.Grade g = new tz.elmkusoma.academic.domain.Grade();
+        g.setId(id);
+        g.setInstitutionId(institutionId);
+        g.setEducationLevel(level);
+        g.setName("Form 1");
+        return g;
+    }
+
+    private TeacherAssignmentRequest assignmentRequest(UUID classGroupId, UUID subjectId) {
+        TeacherAssignmentRequest request = new TeacherAssignmentRequest();
+        request.setClassGroupId(classGroupId.toString());
+        request.setSubjectId(subjectId.toString());
+        request.setAcademicYear("2025/2026");
+        return request;
+    }
+
+    /** Teacher + valid same-institution class/subject/grade wiring, no duplicates. */
+    private void stubValidAssignmentContext(UUID classGroupId, UUID subjectId, UUID gradeId,
+            tz.elmkusoma.academic.domain.EducationLevel level) {
+        when(teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
+                .thenReturn(Optional.of(existingTeacher()));
+        when(classGroupRepository.findById(classGroupId))
+                .thenReturn(Optional.of(classGroup(classGroupId, gradeId)));
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(subject(subjectId, level)));
+        if (gradeId != null) {
+            when(gradeRepository.findById(gradeId)).thenReturn(Optional.of(grade(gradeId, level)));
+        }
+        when(assignmentRepository.findAllByTeacherId(teacherId)).thenReturn(List.of());
+        when(assignmentRepository.save(any(TeacherAssignment.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    void addAssignment_setsActiveStatusAndStartDate() {
+        UUID classGroupId = UUID.randomUUID();
+        UUID subjectId = UUID.randomUUID();
+        UUID gradeId = UUID.randomUUID();
+        stubValidAssignmentContext(classGroupId, subjectId, gradeId,
+                tz.elmkusoma.academic.domain.EducationLevel.SECONDARY);
+
+        TeacherAssignmentResponse response = teacherService.addAssignment(
+                institutionId, teacherId, assignmentRequest(classGroupId, subjectId));
+
+        assertEquals("ACTIVE", response.getStatus());
+        assertNotNull(response.getStartDate());
+        assertEquals(null, response.getEndDate());
+
+        ArgumentCaptor<TeacherAssignment> captor = ArgumentCaptor.forClass(TeacherAssignment.class);
+        verify(assignmentRepository).save(captor.capture());
+        assertEquals(TeacherAssignmentStatus.ACTIVE, captor.getValue().getStatus());
+        assertNotNull(captor.getValue().getStartDate());
+        assertEquals(institutionId, captor.getValue().getInstitutionId());
+    }
+
+    @Test
+    void addAssignment_rejectsClassGroupOfAnotherInstitution() {
+        UUID classGroupId = UUID.randomUUID();
+        UUID subjectId = UUID.randomUUID();
+        when(teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
+                .thenReturn(Optional.of(existingTeacher()));
+        tz.elmkusoma.academic.domain.ClassGroup foreign = classGroup(classGroupId, null);
+        foreign.setInstitutionId(UUID.randomUUID());
+        when(classGroupRepository.findById(classGroupId)).thenReturn(Optional.of(foreign));
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                teacherService.addAssignment(institutionId, teacherId, assignmentRequest(classGroupId, subjectId)));
+        verify(assignmentRepository, never()).save(any(TeacherAssignment.class));
+    }
+
+    @Test
+    void addAssignment_rejectsSubjectOfAnotherInstitution() {
+        UUID classGroupId = UUID.randomUUID();
+        UUID subjectId = UUID.randomUUID();
+        when(teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
+                .thenReturn(Optional.of(existingTeacher()));
+        when(classGroupRepository.findById(classGroupId))
+                .thenReturn(Optional.of(classGroup(classGroupId, null)));
+        tz.elmkusoma.academic.domain.Subject foreign =
+                subject(subjectId, tz.elmkusoma.academic.domain.EducationLevel.SECONDARY);
+        foreign.setInstitutionId(UUID.randomUUID());
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(foreign));
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                teacherService.addAssignment(institutionId, teacherId, assignmentRequest(classGroupId, subjectId)));
+        verify(assignmentRepository, never()).save(any(TeacherAssignment.class));
+    }
+
+    @Test
+    void addAssignment_rejectsMalformedClassGroupId() {
+        when(teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
+                .thenReturn(Optional.of(existingTeacher()));
+        TeacherAssignmentRequest request = new TeacherAssignmentRequest();
+        request.setClassGroupId("not-a-uuid");
+        request.setSubjectId(UUID.randomUUID().toString());
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                teacherService.addAssignment(institutionId, teacherId, request));
+
+        assertTrue(ex.getMessage().contains("classGroupId must be a valid UUID"));
+        verify(assignmentRepository, never()).save(any(TeacherAssignment.class));
+    }
+
+    @Test
+    void addAssignment_rejectsEducationLevelMismatch() {
+        UUID classGroupId = UUID.randomUUID();
+        UUID subjectId = UUID.randomUUID();
+        UUID gradeId = UUID.randomUUID();
+        when(teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
+                .thenReturn(Optional.of(existingTeacher()));
+        when(classGroupRepository.findById(classGroupId))
+                .thenReturn(Optional.of(classGroup(classGroupId, gradeId)));
+        // class grade is PRIMARY, submitted subject is SECONDARY
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(
+                subject(subjectId, tz.elmkusoma.academic.domain.EducationLevel.SECONDARY)));
+        when(gradeRepository.findById(gradeId)).thenReturn(Optional.of(
+                grade(gradeId, tz.elmkusoma.academic.domain.EducationLevel.PRIMARY)));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                teacherService.addAssignment(institutionId, teacherId, assignmentRequest(classGroupId, subjectId)));
+
+        assertTrue(ex.getMessage().contains("does not match"));
+        verify(assignmentRepository, never()).save(any(TeacherAssignment.class));
+    }
+
+    @Test
+    void addAssignment_rejectsDuplicateComboWithClearError() {
+        UUID classGroupId = UUID.randomUUID();
+        UUID subjectId = UUID.randomUUID();
+        when(teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
+                .thenReturn(Optional.of(existingTeacher()));
+        when(classGroupRepository.findById(classGroupId))
+                .thenReturn(Optional.of(classGroup(classGroupId, null)));
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(
+                subject(subjectId, tz.elmkusoma.academic.domain.EducationLevel.SECONDARY)));
+
+        TeacherAssignment existing = TeacherAssignment.builder()
+                .teacherId(teacherId)
+                .classGroupId(classGroupId)
+                .subjectId(subjectId)
+                .academicYear("2025/2026")
+                .status(TeacherAssignmentStatus.ACTIVE)
+                .build();
+        when(assignmentRepository.findAllByTeacherId(teacherId)).thenReturn(List.of(existing));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                teacherService.addAssignment(institutionId, teacherId, assignmentRequest(classGroupId, subjectId)));
+
+        assertTrue(ex.getMessage().contains("already has an assignment"),
+                "duplicates must surface as a clear 400, not a database 500");
+        verify(assignmentRepository, never()).save(any(TeacherAssignment.class));
+    }
+
+    @Test
+    void endAssignment_marksEndedAndPreservesHistoryRow() {
+        UUID assignmentId = UUID.randomUUID();
+        TeacherAssignment active = TeacherAssignment.builder()
+                .teacherId(teacherId)
+                .classGroupId(UUID.randomUUID())
+                .subjectId(UUID.randomUUID())
+                .academicYear("2025/2026")
+                .status(TeacherAssignmentStatus.ACTIVE)
+                .build();
+        active.setId(assignmentId);
+        active.setInstitutionId(institutionId);
+        active.setIsDeleted(false);
+        when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(active));
+        when(assignmentRepository.save(any(TeacherAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TeacherAssignmentResponse response = teacherService.endAssignment(institutionId, assignmentId);
+
+        assertEquals("ENDED", response.getStatus());
+        assertNotNull(response.getEndDate());
+        assertFalse(active.getIsDeleted(), "ending must never delete the history row");
+        verify(assignmentRepository, never()).delete(any(TeacherAssignment.class));
+    }
+
+    @Test
+    void endAssignment_whenAlreadyEnded_throws() {
+        UUID assignmentId = UUID.randomUUID();
+        TeacherAssignment ended = TeacherAssignment.builder()
+                .teacherId(teacherId)
+                .classGroupId(UUID.randomUUID())
+                .subjectId(UUID.randomUUID())
+                .academicYear("2025/2026")
+                .status(TeacherAssignmentStatus.ENDED)
+                .build();
+        ended.setId(assignmentId);
+        ended.setInstitutionId(institutionId);
+        when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(ended));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                teacherService.endAssignment(institutionId, assignmentId));
+
+        assertTrue(ex.getMessage().contains("Only active assignments"));
+        verify(assignmentRepository, never()).save(any(TeacherAssignment.class));
+    }
+
+    @Test
+    void endAssignment_crossInstitution_isNotFound() {
+        UUID assignmentId = UUID.randomUUID();
+        TeacherAssignment foreign = TeacherAssignment.builder()
+                .teacherId(teacherId)
+                .classGroupId(UUID.randomUUID())
+                .subjectId(UUID.randomUUID())
+                .academicYear("2025/2026")
+                .status(TeacherAssignmentStatus.ACTIVE)
+                .build();
+        foreign.setId(assignmentId);
+        foreign.setInstitutionId(UUID.randomUUID());
+        when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(foreign));
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                teacherService.endAssignment(institutionId, assignmentId));
+        verify(assignmentRepository, never()).save(any(TeacherAssignment.class));
+    }
+
+    @Test
+    void reassignment_endsOld_createsNew_andKeepsBothRows() {
+        UUID oldAssignmentId = UUID.randomUUID();
+        TeacherAssignment old = TeacherAssignment.builder()
+                .teacherId(teacherId)
+                .classGroupId(UUID.randomUUID())
+                .subjectId(UUID.randomUUID())
+                .academicYear("2025/2026")
+                .status(TeacherAssignmentStatus.ACTIVE)
+                .build();
+        old.setId(oldAssignmentId);
+        old.setInstitutionId(institutionId);
+        old.setIsDeleted(false);
+        when(assignmentRepository.findById(oldAssignmentId)).thenReturn(Optional.of(old));
+        when(assignmentRepository.save(any(TeacherAssignment.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // 1. end the old assignment — row survives with ENDED
+        TeacherAssignmentResponse endedResponse = teacherService.endAssignment(institutionId, oldAssignmentId);
+        assertEquals("ENDED", endedResponse.getStatus());
+        assertFalse(old.getIsDeleted());
+
+        // 2. create the new assignment — different class, same teacher
+        UUID newClassGroupId = UUID.randomUUID();
+        UUID subjectId = UUID.randomUUID();
+        UUID gradeId = UUID.randomUUID();
+        when(teacherRepository.findByIdAndInstitutionId(teacherId, institutionId))
+                .thenReturn(Optional.of(existingTeacher()));
+        when(classGroupRepository.findById(newClassGroupId))
+                .thenReturn(Optional.of(classGroup(newClassGroupId, gradeId)));
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(
+                subject(subjectId, tz.elmkusoma.academic.domain.EducationLevel.SECONDARY)));
+        when(gradeRepository.findById(gradeId)).thenReturn(Optional.of(
+                grade(gradeId, tz.elmkusoma.academic.domain.EducationLevel.SECONDARY)));
+        when(assignmentRepository.findAllByTeacherId(teacherId)).thenReturn(List.of(old));
+
+        TeacherAssignmentResponse newResponse = teacherService.addAssignment(
+                institutionId, teacherId, assignmentRequest(newClassGroupId, subjectId));
+
+        // 3. history preserved: old row ENDED, new row ACTIVE, nothing deleted
+        assertEquals("ACTIVE", newResponse.getStatus());
+        assertEquals(TeacherAssignmentStatus.ENDED, old.getStatus());
+        assertNotNull(old.getEndDate());
+        verify(assignmentRepository, never()).delete(any(TeacherAssignment.class));
+
+        // 4. both rows remain visible to history queries
+        List<TeacherAssignment> history = List.of(old, TeacherAssignment.builder()
+                .teacherId(teacherId)
+                .classGroupId(newClassGroupId)
+                .subjectId(subjectId)
+                .academicYear("2025/2026")
+                .status(TeacherAssignmentStatus.ACTIVE)
+                .build());
+        assertEquals(2, history.size());
+        assertEquals(1, history.stream()
+                .filter(a -> a.getStatus() == TeacherAssignmentStatus.ACTIVE).count());
+    }
+
+    @Test
+    void multipleActiveAssignments_areAllowed() {
+        UUID classOne = UUID.randomUUID();
+        UUID classTwo = UUID.randomUUID();
+        UUID subjectId = UUID.randomUUID();
+        UUID gradeId = UUID.randomUUID();
+        stubValidAssignmentContext(classOne, subjectId, gradeId,
+                tz.elmkusoma.academic.domain.EducationLevel.SECONDARY);
+        when(classGroupRepository.findById(classTwo))
+                .thenReturn(Optional.of(classGroup(classTwo, gradeId)));
+
+        teacherService.addAssignment(institutionId, teacherId, assignmentRequest(classOne, subjectId));
+        teacherService.addAssignment(institutionId, teacherId, assignmentRequest(classTwo, subjectId));
+
+        ArgumentCaptor<TeacherAssignment> captor = ArgumentCaptor.forClass(TeacherAssignment.class);
+        verify(assignmentRepository, org.mockito.Mockito.times(2)).save(captor.capture());
+        assertEquals(2, captor.getAllValues().size());
+        captor.getAllValues().forEach(a ->
+                assertEquals(TeacherAssignmentStatus.ACTIVE, a.getStatus()));
     }
 }

@@ -39,7 +39,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { teacherFetch, teacherApi, saveResourceWithFile } from "@/lib/teacher-api"
+import { teacherFetch, teacherApi, saveResourceWithFile, type TeacherAssignment } from "@/lib/teacher-api"
 
 interface ResourceItem {
   id: string
@@ -52,6 +52,7 @@ interface ResourceItem {
   storageUrl?: string | null
   externalUrl?: string | null
   lessonId?: string | null
+  teacherAssignmentId?: string | null
   sortOrder?: number | null
   isDownloadable?: boolean | null
   isPreviewable?: boolean | null
@@ -76,6 +77,7 @@ const initialForm = {
   visibility: "DRAFT",
   externalUrl: "",
   lessonId: "",
+  teacherAssignmentId: "",
   isDownloadable: true,
   isPreviewable: false,
 }
@@ -176,11 +178,13 @@ interface SortableResourceRowProps {
   onShare: () => void
   copied: boolean
   deleting: boolean
+  /** Resolved teaching assignment this resource targets, if any (V117). */
+  assignmentTarget?: TeacherAssignment | null
   t: ReturnType<typeof useTranslations>
   tc: ReturnType<typeof useTranslations>
 }
 
-function SortableResourceRow({ resource, index, onEdit, onDelete, onShare, copied, deleting, t, tc }: SortableResourceRowProps) {
+function SortableResourceRow({ resource, index, onEdit, onDelete, onShare, copied, deleting, assignmentTarget, t, tc }: SortableResourceRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: resource.id })
 
   const style = {
@@ -243,6 +247,15 @@ function SortableResourceRow({ resource, index, onEdit, onDelete, onShare, copie
               <span>
                 {t("resources.colUpdated")}: {formatDate(resource.updatedAt || resource.createdAt)}
               </span>
+              {assignmentTarget && (
+                <span>
+                  {assignmentTarget.classGroupName || assignmentTarget.classGroupId} ·{" "}
+                  {assignmentTarget.subjectName || assignmentTarget.subjectId}
+                  {assignmentTarget.status === "ENDED"
+                    ? ` (${t("resources.assignmentEnded")})`
+                    : ""}
+                </span>
+              )}
               {resource.mimeType && <span>{resource.mimeType}</span>}
               {resource.pageCount != null && (
                 <span>
@@ -342,6 +355,7 @@ export default function TeacherResourcesPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [editingHasFile, setEditingHasFile] = useState(false)
+  const [assignments, setAssignments] = useState<TeacherAssignment[]>([])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -357,6 +371,27 @@ export default function TeacherResourcesPage() {
   useEffect(() => {
     if (!user) return
     loadResources(true)
+  }, [user])
+
+  // Teacher's teaching assignments — the authoritative targets for class-only
+  // resources. Resolved server-side via /me/profile → /{id}/assignments
+  // (self-ownership enforced by the backend).
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const profile = await teacherApi.getMeProfile()
+        if (cancelled) return
+        const list = await teacherApi.getAssignments(profile.id)
+        if (!cancelled) setAssignments(Array.isArray(list) ? list : [])
+      } catch {
+        if (!cancelled) setAssignments([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [user])
 
   async function loadResources(initial = false) {
@@ -400,6 +435,7 @@ export default function TeacherResourcesPage() {
       visibility: resource.visibility || "DRAFT",
       externalUrl: resource.externalUrl || "",
       lessonId: resource.lessonId || "",
+      teacherAssignmentId: resource.teacherAssignmentId || "",
       isDownloadable: resource.isDownloadable !== false,
       isPreviewable: resource.isPreviewable === true,
     })
@@ -448,6 +484,15 @@ export default function TeacherResourcesPage() {
     const linkType = isLinkType(form.resourceType)
     const externalUrl = form.externalUrl.trim()
 
+    // A new class-only resource needs an authoritative target: one of the
+    // teacher's ACTIVE assignments or a lesson link. (Edits are validated
+    // server-side, including legacy class-only rows without targets.)
+    const teacherAssignmentId = form.teacherAssignmentId.trim()
+    if (!editingId && form.visibility === "CLASS_ONLY" && !lessonId && !teacherAssignmentId) {
+      setError(t("resources.assignmentRequired"))
+      return
+    }
+
     if (linkType && !isValidHttpUrl(externalUrl)) {
       setError(t("resources.externalUrlInvalid"))
       return
@@ -467,6 +512,10 @@ export default function TeacherResourcesPage() {
         resourceType: form.resourceType,
         visibility: form.visibility,
         lessonId: lessonId || undefined,
+        // Only class-only resources carry a teaching-assignment target; the
+        // server re-validates ownership, institution and ACTIVE status.
+        teacherAssignmentId:
+          form.visibility === "CLASS_ONLY" && teacherAssignmentId ? teacherAssignmentId : undefined,
         externalUrl: linkType ? externalUrl : undefined,
         isDownloadable: form.isDownloadable,
         isPreviewable: form.isPreviewable,
@@ -690,6 +739,46 @@ export default function TeacherResourcesPage() {
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               </div>
             </div>
+            {form.visibility === "CLASS_ONLY" && (
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">
+                  {t("resources.assignmentLabel")}
+                  {!form.lessonId.trim() ? " *" : ""}
+                </label>
+                <div className="relative mt-1">
+                  <select
+                    value={form.teacherAssignmentId}
+                    onChange={(e) => setForm({ ...form, teacherAssignmentId: e.target.value })}
+                    className="w-full appearance-none rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground focus:border-primary focus:outline-none"
+                  >
+                    <option value="">{t("resources.assignmentPick")}</option>
+                    {assignments.map((assignment) => {
+                      const ended = assignment.status === "ENDED"
+                      const label = `${assignment.classGroupName || assignment.classGroupId} · ${
+                        assignment.subjectName || assignment.subjectId
+                      }${ended ? ` (${t("resources.assignmentEnded")})` : ""}`
+                      return (
+                        <option
+                          key={assignment.id}
+                          value={assignment.id}
+                          // Ended assignments are history: selectable only when
+                          // they are the resource's existing target (no-op edit).
+                          disabled={ended && assignment.id !== form.teacherAssignmentId}
+                        >
+                          {label}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {assignments.length === 0
+                    ? t("resources.assignmentEmpty")
+                    : t("resources.assignmentHint")}
+                </p>
+              </div>
+            )}
             {isLinkType(form.resourceType) ? (
               <div className="sm:col-span-2">
                 <label className="text-xs font-medium text-muted-foreground">
@@ -827,6 +916,11 @@ export default function TeacherResourcesPage() {
                   onShare={() => handleShare(resource)}
                   copied={copiedId === resource.id}
                   deleting={deleting === resource.id}
+                  assignmentTarget={
+                    resource.teacherAssignmentId
+                      ? (assignments.find((a) => a.id === resource.teacherAssignmentId) ?? null)
+                      : null
+                  }
                   t={t}
                   tc={tc}
                 />

@@ -31,7 +31,7 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/v1/resources")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
 @Tag(name = "Resource Management", description = "Unified resource management for learning content")
 public class ResourceController {
 
@@ -57,7 +57,7 @@ public class ResourceController {
 
     @PostMapping
     @Operation(summary = "Create a new resource")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<ResourceResponse>> createResource(
             @Valid @RequestBody ResourceRequest request,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -71,7 +71,7 @@ public class ResourceController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Create a resource by uploading its file (real metadata extraction)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<ResourceResponse>> createResourceWithFile(
             @RequestPart("request") @Valid ResourceRequest request,
             @RequestPart("file") MultipartFile file,
@@ -88,7 +88,7 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}")
     @Operation(summary = "Get a specific resource")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<ApiResponse<ResourceResponse>> getResource(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -100,7 +100,7 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}/content-url")
     @Operation(summary = "Authorized view URL for a resource's real content")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<ApiResponse<String>> getResourceContentUrl(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -113,7 +113,7 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}/download")
     @Operation(summary = "Authorized download of a resource's real content")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<byte[]> downloadResource(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -138,7 +138,7 @@ public class ResourceController {
 
     @GetMapping
     @Operation(summary = "List resources")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
     public ResponseEntity<ApiResponse<List<ResourceResponse>>> listResources(
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute("userId") UUID userId,
@@ -158,7 +158,7 @@ public class ResourceController {
 
     @PutMapping("/{resourceId}")
     @Operation(summary = "Update a resource")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<ResourceResponse>> updateResource(
             @PathVariable UUID resourceId,
             @Valid @RequestBody ResourceRequest request,
@@ -172,7 +172,7 @@ public class ResourceController {
 
     @PutMapping(value = "/{resourceId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Update a resource and replace its file (retry/reprocess)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<ResourceResponse>> updateResourceWithFile(
             @PathVariable UUID resourceId,
             @RequestPart("request") @Valid ResourceRequest request,
@@ -189,7 +189,7 @@ public class ResourceController {
 
     @DeleteMapping("/{resourceId}")
     @Operation(summary = "Delete a resource")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<Void>> deleteResource(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -202,7 +202,7 @@ public class ResourceController {
 
     @PostMapping("/{resourceId}/tags")
     @Operation(summary = "Add a tag to a resource")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<ResourceResponse>> addTag(
             @PathVariable UUID resourceId,
             @RequestParam String tagName,
@@ -216,7 +216,7 @@ public class ResourceController {
 
     @DeleteMapping("/{resourceId}/tags/{tagId}")
     @Operation(summary = "Remove a tag from a resource")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<Void>> removeTag(
             @PathVariable UUID resourceId,
             @PathVariable UUID tagId,
@@ -277,7 +277,7 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}/annotations")
     @Operation(summary = "List annotations for a resource")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<List<ResourceAnnotationResponse>>> listAnnotations(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -307,7 +307,7 @@ public class ResourceController {
 
     @DeleteMapping("/{resourceId}/annotations/{annotationId}")
     @Operation(summary = "Delete an annotation")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<Void>> deleteAnnotation(
             @PathVariable UUID resourceId,
             @PathVariable UUID annotationId,
@@ -330,7 +330,7 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}/analytics")
     @Operation(summary = "Get resource analytics summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<ResourceAnalyticsSummary>> getAnalyticsSummary(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -349,7 +349,7 @@ public class ResourceController {
 
     @GetMapping("/{resourceId}/analytics/daily")
     @Operation(summary = "Get daily resource analytics rows")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<List<ResourceAnalytics>>> getAnalyticsDaily(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -366,7 +366,7 @@ public class ResourceController {
 
     @PostMapping("/{resourceId}/analytics/view")
     @Operation(summary = "Record a resource view")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<Boolean>> recordView(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -382,7 +382,7 @@ public class ResourceController {
 
     @PostMapping("/{resourceId}/analytics/download")
     @Operation(summary = "Record a resource download")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<Boolean>> recordDownload(
             @PathVariable UUID resourceId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
@@ -396,7 +396,7 @@ public class ResourceController {
 
     @PutMapping("/reorder")
     @Operation(summary = "Reorder resources")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
     public ResponseEntity<ApiResponse<List<ResourceResponse>>> reorderResources(
             @Valid @RequestBody List<ReorderRequest> items,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,

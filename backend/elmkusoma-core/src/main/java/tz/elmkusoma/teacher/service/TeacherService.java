@@ -28,6 +28,9 @@ public interface TeacherService {
 
     void removeAssignment(UUID institutionId, UUID assignmentId);
 
+    /** Ends an assignment (ENDED + endDate) while preserving the row for history. */
+    TeacherAssignmentResponse endAssignment(UUID institutionId, UUID assignmentId);
+
     TeacherQualificationResponse addQualification(UUID institutionId, UUID teacherId, TeacherQualificationRequest request);
 
     List<TeacherQualificationResponse> getQualifications(UUID institutionId, UUID teacherId);

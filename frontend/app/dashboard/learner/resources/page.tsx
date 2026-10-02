@@ -8,7 +8,7 @@ import { EmptyState, LoadingState } from "@/components/learner/shared"
 import { FileText, Video, Music, Image, Download, ExternalLink, Search, Filter, AlertCircle, Bookmark, BookmarkCheck, ArrowRight, Loader2, Link2 } from "lucide-react"
 import Link from "next/link"
 
-export default function LearnerResourcesPage() {
+export default function LearnerResourcesPage({ basePath = "/dashboard/learner/resources" }: { basePath?: string }) {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
@@ -195,7 +195,7 @@ export default function LearnerResourcesPage() {
           {filteredResources.map((resource) => (
             <Link
               key={resource.id}
-              href={`/dashboard/learner/resources/${resource.id}`}
+              href={`${basePath}/${resource.id}`}
               aria-label={`${resource.title} - ${tc("viewDetails")}`}
               className="rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:shadow-md hover:border-primary/30 block"
             >
@@ -277,12 +277,14 @@ export default function LearnerResourcesPage() {
       )}
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">Can't find what you need?</p>
-        <Link href="/dashboard/learner/search" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          Try Search <ArrowRight className="size-3" />
-        </Link>
-      </div>
+      {basePath === "/dashboard/learner/resources" && (
+        <div className="rounded-xl border border-border bg-card p-6 text-center">
+          <p className="text-sm text-muted-foreground">Can't find what you need?</p>
+          <Link href="/dashboard/learner/search" className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+            Try Search <ArrowRight className="size-3" />
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

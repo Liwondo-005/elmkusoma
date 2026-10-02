@@ -44,6 +44,14 @@ export interface TeacherProfile {
   isActive: boolean
 }
 
+/** Shape of GET /v1/teachers/me/profile (TeacherResponse). */
+export interface MeTeacherProfile {
+  id: string
+  userId: string
+  fullName: string | null
+  email: string | null
+}
+
 export interface TeacherAssignment {
   id: string
   classGroupId: string
@@ -52,6 +60,11 @@ export interface TeacherAssignment {
   subjectName: string
   academicYearId: string | null
   academicYearName: string | null
+  /** Lifecycle (V116): ACTIVE assignments can host class-only resources; ENDED are history. */
+  status?: string
+  startDate?: string | null
+  endDate?: string | null
+  academicYear?: string | null
 }
 
 export interface TeacherQualification {
@@ -271,6 +284,8 @@ export interface ResourceItem {
   storageUrl?: string | null
   externalUrl?: string | null
   lessonId?: string | null
+  /** Teaching assignment this class-only resource targets (V117); null for legacy/public rows. */
+  teacherAssignmentId?: string | null
   sortOrder?: number | null
   isDownloadable?: boolean | null
   isPreviewable?: boolean | null
@@ -292,6 +307,8 @@ export interface ResourcePayload {
   lessonId?: string | null
   courseId?: string | null
   moduleId?: string | null
+  /** Class-only targets: validated server-side (ownership + institution + ACTIVE). */
+  teacherAssignmentId?: string | null
   externalUrl?: string | null
   storageUrl?: string | null
   isDownloadable?: boolean
@@ -431,11 +448,15 @@ export const teacherApi = {
   getClasses: () => teacherFetch<{ classGroupId: string; className: string; classSection: string; subjectId: string; subjectName: string; academicYear: string; enrolledStudents: number; totalAssignments: number; totalLessons: number }[]>("/v1/teachers/me/classes"),
   getStudents: () => teacherFetch<StudentInClass[]>("/v1/teachers/me/students"),
   getProfile: (id: string) => teacherFetch<TeacherProfile>(`/v1/teachers/${id}`),
+  /** Current teacher (TEACHER role) — used to resolve the id for /{id}/assignments. */
+  getMeProfile: () => teacherFetch<MeTeacherProfile>("/v1/teachers/me/profile"),
   listTeachers: (page = 0, size = 50) => teacherFetch<{ content: TeacherProfile[]; totalElements: number }>(`/v1/teachers?page=${page}&size=${size}`),
 
   getAssignments: (id: string) => teacherFetch<TeacherAssignment[]>(`/v1/teachers/${id}/assignments`),
-  addAssignment: (id: string, data: { classGroupId: string; subjectId: string; academicYearId?: string }) =>
+  addAssignment: (id: string, data: { classGroupId: string; subjectId: string; academicYear?: string }) =>
     teacherFetch<TeacherAssignment>(`/v1/teachers/${id}/assignments`, { method: "POST", body: JSON.stringify(data) }),
+  endAssignment: (assignmentId: string) =>
+    teacherFetch<void>(`/v1/teachers/assignments/${assignmentId}/end`, { method: "POST" }),
   removeAssignment: (assignmentId: string) =>
     teacherFetch<void>(`/v1/teachers/assignments/${assignmentId}`, { method: "DELETE" }),
 

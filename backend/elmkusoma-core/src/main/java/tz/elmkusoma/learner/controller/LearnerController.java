@@ -178,6 +178,14 @@ public class LearnerController {
 
     // ── Courses ──────────────────────────────────────────────────────────
 
+    /** Client-supplied course ids must always resolve inside the caller's institution. */
+    private boolean courseBelongsToInstitution(UUID courseId, UUID institutionId) {
+        return courseRepository.findById(courseId)
+                .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                .filter(c -> institutionId.equals(c.getInstitutionId()))
+                .isPresent();
+    }
+
     @GetMapping("/courses")
     @Operation(summary = "Browse published courses for institution")
     public ResponseEntity<ApiResponse<Page<CourseSummaryResponse>>> browseCourses(
@@ -191,9 +199,11 @@ public class LearnerController {
 
     @GetMapping("/courses/{id}")
     @Operation(summary = "Get course detail with modules")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getCourseDetail(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getCourseDetail(
+            @PathVariable UUID id, @RequestAttribute("institutionId") UUID institutionId) {
         Course course = courseRepository.findById(id)
                 .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                .filter(c -> institutionId.equals(c.getInstitutionId()))
                 .orElse(null);
         if (course == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Course not found"));
@@ -215,7 +225,11 @@ public class LearnerController {
 
     @GetMapping("/courses/{courseId}/modules")
     @Operation(summary = "Get course modules with lesson counts")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getCourseModules(@PathVariable UUID courseId) {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getCourseModules(
+            @PathVariable UUID courseId, @RequestAttribute("institutionId") UUID institutionId) {
+        if (!courseBelongsToInstitution(courseId, institutionId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Course not found"));
+        }
         List<CourseModule> modules = courseModuleRepository.findByCourseIdAndIsDeletedFalseOrderBySortOrder(courseId);
         List<Map<String, Object>> result = modules.stream().map(m -> {
             Map<String, Object> mod = new LinkedHashMap<>();
@@ -231,7 +245,14 @@ public class LearnerController {
 
     @GetMapping("/courses/modules/{moduleId}/lessons")
     @Operation(summary = "Get module lessons")
-    public ResponseEntity<ApiResponse<List<CourseLesson>>> getModuleLessons(@PathVariable UUID moduleId) {
+    public ResponseEntity<ApiResponse<List<CourseLesson>>> getModuleLessons(
+            @PathVariable UUID moduleId, @RequestAttribute("institutionId") UUID institutionId) {
+        CourseModule module = courseModuleRepository.findById(moduleId)
+                .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                .orElse(null);
+        if (module == null || !courseBelongsToInstitution(module.getCourseId(), institutionId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Module not found"));
+        }
         List<CourseLesson> lessons = courseLessonRepository.findByModuleIdAndIsDeletedFalseOrderBySortOrder(moduleId);
         return ResponseEntity.ok(ApiResponse.success(lessons));
     }
@@ -242,6 +263,7 @@ public class LearnerController {
     @Operation(summary = "Enroll in a course")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> enroll(
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestBody Map<String, UUID> body) {
         UUID courseId = body.get("courseId");
         if (courseId == null) {
@@ -249,6 +271,7 @@ public class LearnerController {
         }
         Course course = courseRepository.findById(courseId)
                 .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                .filter(c -> institutionId.equals(c.getInstitutionId()))
                 .orElse(null);
         if (course == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Course not found"));
@@ -310,7 +333,11 @@ public class LearnerController {
     @Operation(summary = "Get course progress")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCourseProgress(
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @PathVariable UUID courseId) {
+        if (!courseBelongsToInstitution(courseId, institutionId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Course not found"));
+        }
         enrollmentRepository.findByUserIdAndCourseIdAndIsDeletedFalse(userId, courseId).ifPresent(e -> {
             e.setLastAccessedAt(LocalDateTime.now());
             enrollmentRepository.save(e);
@@ -528,15 +555,17 @@ public class LearnerController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> joinLiveClass(
             @PathVariable UUID id,
             @RequestAttribute("userId") UUID userId) {
-        LiveClass liveClass = liveClassRepository.findById(id)
-                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
-                .orElse(null);
-        if (liveClass == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
-        }
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("User not found"));
+        }
+        LiveClass liveClass = liveClassRepository.findById(id)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .filter(lc -> user.getInstitutionId() != null
+                        && user.getInstitutionId().equals(lc.getInstitutionId()))
+                .orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
         }
         LiveClassParticipant existing = liveClassParticipantRepository
                 .findByLiveClassIdAndUserIdAndIsDeletedFalse(id, userId).orElse(null);
@@ -576,7 +605,17 @@ public class LearnerController {
 
     @GetMapping("/live-classes/{id}/participants")
     @Operation(summary = "Get participants for a live class")
-    public ResponseEntity<ApiResponse<List<LiveClassParticipant>>> getLiveClassParticipants(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<LiveClassParticipant>>> getLiveClassParticipants(
+            @PathVariable UUID id, @RequestAttribute("userId") UUID userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        boolean inInstitution = user != null && user.getInstitutionId() != null
+                && liveClassRepository.findById(id)
+                        .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                        .filter(lc -> user.getInstitutionId().equals(lc.getInstitutionId()))
+                        .isPresent();
+        if (!inInstitution) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
+        }
         List<LiveClassParticipant> participants = liveClassParticipantRepository.findByLiveClassIdAndIsDeletedFalse(id);
         return ResponseEntity.ok(ApiResponse.success(participants));
     }
@@ -787,7 +826,11 @@ public class LearnerController {
 
     @GetMapping("/courses/{courseId}/lessons")
     @Operation(summary = "Get all lessons for a course (flattened across modules)")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getCourseLessons(@PathVariable UUID courseId) {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getCourseLessons(
+            @PathVariable UUID courseId, @RequestAttribute("institutionId") UUID institutionId) {
+        if (!courseBelongsToInstitution(courseId, institutionId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Course not found"));
+        }
         List<CourseModule> modules = courseModuleRepository.findByCourseIdAndIsDeletedFalseOrderBySortOrder(courseId);
         List<Map<String, Object>> allLessons = new ArrayList<>();
         for (CourseModule module : modules) {
@@ -825,6 +868,7 @@ public class LearnerController {
             // to them so their materials stay reachable through the same endpoint.
             Lesson learningLesson = lessonRepository.findById(lessonId)
                     .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                    .filter(l -> institutionId.equals(l.getInstitutionId()))
                     .orElse(null);
             if (learningLesson == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Lesson not found"));
@@ -845,6 +889,10 @@ public class LearnerController {
             return ResponseEntity.ok(ApiResponse.success(fallback));
         }
         CourseModule module = courseModuleRepository.findById(lesson.getModuleId()).orElse(null);
+        if (module == null || module.getCourseId() == null
+                || !courseBelongsToInstitution(module.getCourseId(), institutionId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Lesson not found"));
+        }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", lesson.getId());
         result.put("moduleId", lesson.getModuleId());
@@ -1208,14 +1256,17 @@ public class LearnerController {
 
     @GetMapping("/courses/{id}/related")
     @Operation(summary = "Get related courses based on level and category")
-    public ResponseEntity<ApiResponse<List<CourseSummaryResponse>>> getRelatedCourses(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<CourseSummaryResponse>>> getRelatedCourses(
+            @PathVariable UUID id, @RequestAttribute("institutionId") UUID institutionId) {
         Course course = courseRepository.findById(id)
                 .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                .filter(c -> institutionId.equals(c.getInstitutionId()))
                 .orElse(null);
         if (course == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Course not found"));
         }
         List<Course> related = courseRepository.findRelatedPublishedCourses(
+                institutionId,
                 id,
                 course.getTitle() != null ? course.getTitle().substring(0, Math.min(3, course.getTitle().length())) : "",
                 course.getLevel(),
@@ -1256,9 +1307,11 @@ public class LearnerController {
 
     @GetMapping("/live-classes/{id}/related")
     @Operation(summary = "Get related live classes based on subject")
-    public ResponseEntity<ApiResponse<List<LiveClassSearchResult>>> getRelatedLiveClasses(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<LiveClassSearchResult>>> getRelatedLiveClasses(
+            @PathVariable UUID id, @RequestAttribute("institutionId") UUID institutionId) {
         LiveClass liveClass = liveClassRepository.findById(id)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .filter(lc -> institutionId.equals(lc.getInstitutionId()))
                 .orElse(null);
         if (liveClass == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
