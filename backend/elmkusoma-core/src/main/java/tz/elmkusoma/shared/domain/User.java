@@ -92,7 +92,8 @@ public class User extends BaseEntity {
         PRIMARY,
         SECONDARY,
         COLLEGE,
-        UNIVERSITY
+        UNIVERSITY,
+        VETA
     }
 
     public enum SecondaryStage {

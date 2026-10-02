@@ -124,6 +124,42 @@ class AuthServiceTest {
     }
 
     @Test
+    void register_withVetaLearningLevel_persistsVeta() {
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail("veta-student@example.com");
+        request.setPassword("password123");
+        request.setFirstName("Neema");
+        request.setLastName("Kileo");
+        request.setRole("STUDENT");
+        request.setLearningLevel("VETA");
+
+        when(userRepository.existsByEmailAndIsDeletedFalse("veta-student@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("password123")).thenReturn("encoded_password");
+
+        final User[] captured = new User[1];
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User user = inv.getArgument(0);
+            user.setId(UUID.randomUUID());
+            captured[0] = user;
+            return user;
+        });
+        when(jwtTokenProvider.generateAccessTokenWithClaims(
+                eq("veta-student@example.com"), any(UUID.class), eq("STUDENT"),
+                eq(UUID.fromString("a0000000-0000-0000-0000-000000000001"))))
+                .thenReturn("access_token_123");
+        when(jwtTokenProvider.generateRefreshToken("veta-student@example.com")).thenReturn("refresh_token_123");
+        when(studentRepository.findByUserIdAndIsDeletedFalse(any(UUID.class))).thenReturn(Optional.empty());
+
+        AuthResponse response = authService.register(request);
+
+        assertNotNull(response);
+        assertNotNull(captured[0]);
+        // VETA is part of the six-level model and must survive registration
+        // (previously ValueOf failed silently and the level was dropped).
+        assertEquals(User.LearningLevel.VETA, captured[0].getLearningLevel());
+    }
+
+    @Test
     void register_whenEmailExists_shouldThrow() {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("existing@example.com");

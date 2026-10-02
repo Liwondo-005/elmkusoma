@@ -114,8 +114,9 @@ public class AcademicController {
     @PostMapping("/subjects")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Subject>> createSubject(
-            @Valid @RequestBody SubjectRequest request) {
-        Subject subject = academicService.createSubject(request);
+            @Valid @RequestBody SubjectRequest request,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        Subject subject = academicService.createSubject(request, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Subject created", subject));
     }
@@ -133,8 +134,10 @@ public class AcademicController {
 
     @GetMapping("/subjects/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<Subject>> getSubject(@PathVariable UUID id) {
-        Subject subject = academicService.getSubject(id);
+    public ResponseEntity<ApiResponse<Subject>> getSubject(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        Subject subject = academicService.getSubject(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(subject));
     }
 

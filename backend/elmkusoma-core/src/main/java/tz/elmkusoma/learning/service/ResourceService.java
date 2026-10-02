@@ -37,6 +37,9 @@ import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.teacher.domain.Teacher;
+import tz.elmkusoma.teacher.domain.TeacherAssignment;
+import tz.elmkusoma.teacher.domain.TeacherAssignmentStatus;
 
 import java.io.IOException;
 import java.net.URI;
@@ -71,6 +74,10 @@ public class ResourceService {
     private final LearnerEnrollmentRepository learnerEnrollmentRepository;
     private final InstitutionRepository institutionRepository;
     private final NotificationService notificationService;
+    // The existing teacher-assignment model is reused as the authoritative class
+    // target of teacher-created resources — no parallel targeting system.
+    private final tz.elmkusoma.teacher.repository.TeacherAssignmentRepository teacherAssignmentRepository;
+    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
 
     private static final List<String> STUDENT_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION");
     private static final List<String> TEACHER_VISIBILITIES = List.of("PUBLIC", "COURSE_ONLY", "CLASS_ONLY", "SCHOOL", "INSTITUTION", "PRIVATE", "DRAFT");
@@ -89,7 +96,7 @@ public class ResourceService {
         log.info("Creating resource: {} for institution: {}", request.getTitle(), institutionId);
 
         Resource.ResourceType type = resolveType(request.getResourceType());
-        validateContext(request, institutionId);
+        validateContext(request, institutionId, userId, userRole);
 
         Resource resource = buildResource(request, institutionId, userId, type);
         applyRequestBodyTargets(resource, request);
@@ -132,7 +139,7 @@ public class ResourceService {
         if (type == Resource.ResourceType.EXTERNAL_LINK || type == Resource.ResourceType.LINK) {
             throw new IllegalArgumentException("Link resources are created from a URL, not a file");
         }
-        validateContext(request, institutionId);
+        validateContext(request, institutionId, userId, userRole);
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("A file is required for resource type " + type);
         }
@@ -226,6 +233,7 @@ public class ResourceService {
                 .lessonId(request.getLessonId())
                 .moduleId(request.getModuleId())
                 .courseId(request.getCourseId())
+                .teacherAssignmentId(request.getTeacherAssignmentId())
                 .uploadedBy(userId)
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -255,8 +263,14 @@ public class ResourceService {
         if (request.getHeight() != null) resource.setHeight(request.getHeight());
     }
 
-    /** Lesson/module/course links must exist inside the caller's institution. */
-    private void validateContext(ResourceRequest request, UUID institutionId) {
+    /**
+     * Lesson/module/course links must exist inside the caller's institution, and a
+     * teaching-assignment target must exist inside the caller's institution, belong
+     * to the caller's own teacher profile (when the caller is a teacher) and still
+     * be ACTIVE. Client-supplied ids are never trusted. CLASS_ONLY writes must
+     * carry an authoritative class target (assignment or lesson).
+     */
+    private void validateContext(ResourceRequest request, UUID institutionId, UUID userId, String userRole) {
         if (request.getLessonId() != null) {
             validateLessonAccess(request.getLessonId(), institutionId);
         }
@@ -271,6 +285,57 @@ public class ResourceService {
                     .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
                     .filter(m -> institutionId.equals(m.getInstitutionId()))
                     .orElseThrow(() -> new ResourceNotFoundException("Module", "id", request.getModuleId()));
+        }
+        validateAssignmentTarget(request.getTeacherAssignmentId(), institutionId, userId, userRole);
+        requireClassTarget(request.getVisibility(), request.getLessonId(), request.getTeacherAssignmentId());
+    }
+
+    /**
+     * Verifies the teaching-assignment target of a create/retarget request and
+     * returns its id (null when untargeted).
+     *
+     * <p>The assignment must exist (not soft-deleted) inside the caller's
+     * institution; a TEACHER may only target their own assignment; learners never
+     * may; and the assignment must be ACTIVE for any new or changed target —
+     * ended assignments cannot host new resources. Admins may target any
+     * assignment of their own institution (institution filter above already
+     * scoped the row). Out-of-institution ids surface as 404, never as a probe.
+     */
+    private UUID validateAssignmentTarget(UUID assignmentId, UUID institutionId, UUID userId, String userRole) {
+        if (assignmentId == null) {
+            return null;
+        }
+        TeacherAssignment assignment = teacherAssignmentRepository.findById(assignmentId)
+                .filter(a -> !Boolean.TRUE.equals(a.getIsDeleted()))
+                .filter(a -> institutionId != null && institutionId.equals(a.getInstitutionId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Teaching assignment", "id", assignmentId));
+        if (LEARNER_ROLES.contains(userRole)) {
+            throw new SecurityException("Learners cannot target teaching assignments");
+        }
+        if ("TEACHER".equals(userRole)) {
+            UUID teacherId = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId)
+                    .map(Teacher::getId)
+                    .orElse(null);
+            if (teacherId == null || !teacherId.equals(assignment.getTeacherId())) {
+                throw new SecurityException("You can only target your own teaching assignments");
+            }
+        }
+        if (assignment.getStatus() != null && assignment.getStatus() != TeacherAssignmentStatus.ACTIVE) {
+            throw new IllegalArgumentException(
+                    "The teaching assignment is " + assignment.getStatus()
+                            + " and cannot be used for new resources");
+        }
+        return assignmentId;
+    }
+
+    /** New/changed CLASS_ONLY writes must land on an authoritative class target. */
+    private void requireClassTarget(String visibility, UUID lessonId, UUID assignmentId) {
+        if (!"CLASS_ONLY".equals(visibility)) {
+            return;
+        }
+        if (lessonId == null && assignmentId == null) {
+            throw new IllegalArgumentException(
+                    "CLASS_ONLY resources must target a teaching assignment or a lesson");
         }
     }
 
@@ -470,6 +535,22 @@ public class ResourceService {
             resource.setStorageUrl(request.getStorageUrl());
         }
         applyRequestBodyTargets(resource, request);
+        // Retargeting is opt-in: an explicit, *changed* id is validated
+        // (ownership + institution + ACTIVE) and applied; re-sending the id the
+        // resource already carries is a no-op, so editing an older resource is
+        // never blocked by its assignment having ended since.
+        if (request.getTeacherAssignmentId() != null
+                && !request.getTeacherAssignmentId().equals(resource.getTeacherAssignmentId())) {
+            resource.setTeacherAssignmentId(
+                    validateAssignmentTarget(request.getTeacherAssignmentId(), institutionId, userId, userRole));
+        }
+        // A visibility change that lands on CLASS_ONLY must carry a real target.
+        // Echoing the current visibility is a no-op (the edit form always sends
+        // it), so legacy CLASS_ONLY rows without targets stay editable.
+        if (request.getVisibility() != null
+                && Resource.ResourceVisibility.valueOf(request.getVisibility()) != previousVisibility) {
+            requireClassTarget(request.getVisibility(), resource.getLessonId(), resource.getTeacherAssignmentId());
+        }
 
         if (request.getResourceType() != null) {
             Resource.ResourceType newType = resolveType(request.getResourceType());
@@ -559,6 +640,18 @@ public class ResourceService {
         if (request.getLessonId() != null) {
             validateLessonAccess(request.getLessonId(), institutionId);
             resource.setLessonId(request.getLessonId());
+        }
+        // Same targeting rules as the JSON update path: a *changed* target is
+        // validated (ownership + institution + ACTIVE); same-id is a no-op.
+        if (request.getTeacherAssignmentId() != null
+                && !request.getTeacherAssignmentId().equals(resource.getTeacherAssignmentId())) {
+            resource.setTeacherAssignmentId(
+                    validateAssignmentTarget(request.getTeacherAssignmentId(), institutionId, userId, userRole));
+        }
+        // Enforced only on an actual visibility change (see JSON path).
+        if (request.getVisibility() != null
+                && Resource.ResourceVisibility.valueOf(request.getVisibility()) != previousVisibility) {
+            requireClassTarget(request.getVisibility(), resource.getLessonId(), resource.getTeacherAssignmentId());
         }
         resource.setMediaId(null);
         resource.setMimeType(null);
@@ -831,6 +924,7 @@ public class ResourceService {
             throw new SecurityException("Access denied to resource");
         }
         assertEligible(resource, userId, userRole);
+        assertAssignmentAudience(resource, userId, userRole);
     }
 
     // ── Jurisdiction scope (reuses the OversightController region/district rule) ──
@@ -958,9 +1052,78 @@ public class ResourceService {
         }
     }
 
-    /** Single read predicate for callers outside this service: visibility + eligibility. */
+    /**
+     * Audience gate for assignment-targeted (class) resources.
+     *
+     * <p>Readable by: the learners of the target class (existing
+     * {@link ClassAccessGuard} membership model — student_class_assignments ∪
+     * ENROLLED enrollments, with proven membership: the shared guard's
+     * "no membership data → allow" fallback never opens a class-targeted
+     * resource), the uploading teacher, teachers holding an assignment for
+     * that class in that institution, and admins. Jurisdiction governance
+     * governance roles were already checked by {@code requireReadAccess} and
+     * bypass here. A query parameter such as {@code ?classGroupId=} never
+     * reaches this gate — the target comes from the stored row only. Legacy
+     * resources without a target are untouched.</p>
+     *
+     * <p>ENDED assignments still serve their class on reads (history preserved);
+     * only a genuinely missing row fails the read.</p>
+     */
+    public void assertAssignmentAudience(Resource resource, UUID userId, String userRole) {
+        if (resource == null || resource.getTeacherAssignmentId() == null) {
+            return;
+        }
+        if (userId == null || isJurisdictionRole(userRole)) {
+            return;
+        }
+        boolean learner = LEARNER_ROLES.contains(userRole);
+        boolean teacher = "TEACHER".equals(userRole);
+        if (!learner && !teacher) {
+            return; // admins keep their existing bypass
+        }
+        TeacherAssignment assignment = teacherAssignmentRepository
+                .findById(resource.getTeacherAssignmentId())
+                .orElseThrow(() -> new SecurityException(
+                        "The teaching assignment for this resource no longer exists"));
+        if (learner) {
+            // Strict membership: the shared guard's "no membership data →
+            // allow" fallback must not open assignment-targeted resources to
+            // learners who cannot prove they belong to the target class
+            // (e.g. OTHER_LEARNER profiles without any class rows).
+            String email = userRepository.findById(userId).map(User::getEmail).orElse(null);
+            if (!classAccessGuard.isLearnerInClass(email, assignment.getClassGroupId())) {
+                log.warn("Assignment audience denied: user {} is not a member of class {}",
+                        userId, assignment.getClassGroupId());
+                throw new SecurityException("You are not a member of this class");
+            }
+            return;
+        }
+        if (userId.equals(resource.getUploadedBy())) {
+            return; // the uploading teacher always keeps access to their resource
+        }
+        UUID teacherId = teacherRepository
+                .findByUserIdAndInstitutionId(userId, resource.getInstitutionId())
+                .map(Teacher::getId)
+                .orElse(null);
+        boolean authorized = teacherId != null
+                && teacherAssignmentRepository.existsByTeacherIdAndClassGroupIdAndIsDeletedFalse(
+                        teacherId, assignment.getClassGroupId());
+        if (!authorized) {
+            throw new SecurityException("Access denied to resource");
+        }
+    }
+
+    /** Single read predicate for callers outside this service: visibility + eligibility + audience. */
     public boolean canRead(Resource resource, UUID userId, String userRole) {
-        return canSeeResource(resource, userId, userRole) && isEligible(resource, userId, userRole);
+        if (!canSeeResource(resource, userId, userRole) || !isEligible(resource, userId, userRole)) {
+            return false;
+        }
+        try {
+            assertAssignmentAudience(resource, userId, userRole);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     /**
@@ -1242,6 +1405,7 @@ public class ResourceService {
                 .lessonId(resource.getLessonId())
                 .moduleId(resource.getModuleId())
                 .courseId(resource.getCourseId())
+                .teacherAssignmentId(resource.getTeacherAssignmentId())
                 .subjectId(resource.getSubjectId())
                 .uploadedBy(resource.getUploadedBy())
                 .uploadedByName(resource.getUploadedBy() != null ? 

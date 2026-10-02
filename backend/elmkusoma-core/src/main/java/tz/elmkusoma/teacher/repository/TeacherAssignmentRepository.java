@@ -26,4 +26,7 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
 
     @Query("SELECT ta.classGroupId FROM TeacherAssignment ta WHERE ta.teacherId = :teacherId AND ta.subjectId = :subjectId AND ta.isDeleted = false")
     List<UUID> findClassGroupIdsByTeacherIdAndSubjectId(@Param("teacherId") UUID teacherId, @Param("subjectId") UUID subjectId);
+
+    /** Read-side gate: does this teacher currently teach that class? */
+    boolean existsByTeacherIdAndClassGroupIdAndIsDeletedFalse(UUID teacherId, UUID classGroupId);
 }

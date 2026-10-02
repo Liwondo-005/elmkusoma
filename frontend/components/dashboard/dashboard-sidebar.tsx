@@ -109,6 +109,7 @@ const primaryNavSections: PrimaryNavSection[] = [
 const secondaryNav: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "My Academic World", labelKey: "myAcademicWorld", href: "/dashboard/secondary", icon: LayoutDashboard },
   { label: "Learn", labelKey: "learn", href: "/dashboard/secondary/learn", icon: BookOpen },
+  { label: "Resources", labelKey: "resources", href: "/dashboard/secondary/resources", icon: Library },
   { label: "Practice", labelKey: "practice", href: "/dashboard/secondary/practice", icon: PenTool },
   { label: "Assignments", labelKey: "assignments", href: "/dashboard/assignments", icon: ClipboardList },
   { label: "Assess", labelKey: "assess", href: "/dashboard/secondary/assess", icon: Award },

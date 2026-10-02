@@ -128,7 +128,7 @@ export function CommandPalette() {
           category: t("categories.navigation"),
           shortcut: "⌘3",
           icon: <BookOpen className="size-4" />,
-          action: () => router.push(isLearner ? "/dashboard/learner/resources" : isTeacher ? "/dashboard/teacher/resources" : "/dashboard/admin/resources"),
+          action: () => router.push(isLearner ? (user?.learningLevel === "SECONDARY" ? "/dashboard/secondary/resources" : "/dashboard/learner/resources") : isTeacher ? "/dashboard/teacher/resources" : "/dashboard/admin/resources"),
           keywords: ["resource", "material", "document"],
         },
         {
@@ -165,6 +165,7 @@ export function CommandPalette() {
     }
 
     items.push(
+
       {
         id: "nav-settings",
         title: tn("settings"),

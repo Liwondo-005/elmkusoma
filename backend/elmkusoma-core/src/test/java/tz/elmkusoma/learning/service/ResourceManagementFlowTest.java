@@ -61,6 +61,8 @@ class ResourceManagementFlowTest {
     @Mock private tz.elmkusoma.learner.repository.LearnerEnrollmentRepository learnerEnrollmentRepository;
     @Mock private tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
     @Mock private tz.elmkusoma.learner.service.NotificationService notificationService;
+    @Mock private tz.elmkusoma.teacher.repository.TeacherAssignmentRepository teacherAssignmentRepository;
+    @Mock private tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
 
     private ResourceService service;
     private ResourceAnnotationService annotationService;
@@ -71,7 +73,8 @@ class ResourceManagementFlowTest {
         service = new ResourceService(resourceRepository, lessonRepository, tagRepository, taggingRepository,
                 savedResourceRepository, userRepository, courseRepository, courseModuleRepository,
                 mediaProxyService, new ResourceMetadataExtractor(), auditService,
-                classAccessGuard, learnerEnrollmentRepository, institutionRepository, notificationService);
+                classAccessGuard, learnerEnrollmentRepository, institutionRepository, notificationService,
+                teacherAssignmentRepository, teacherRepository);
         annotationService = new ResourceAnnotationService(annotationRepository, resourceRepository, userRepository, service);
         lenient().when(resourceRepository.save(any(Resource.class))).thenAnswer(inv -> inv.getArgument(0));
     }

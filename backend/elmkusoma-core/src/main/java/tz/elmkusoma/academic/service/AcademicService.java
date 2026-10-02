@@ -112,9 +112,10 @@ public class AcademicService {
 
     // ── Subject ────────────────────────────────────────────────────
 
-    public Subject createSubject(SubjectRequest request) {
+    public Subject createSubject(SubjectRequest request, UUID institutionId) {
+        // The tenant is taken from the authenticated context — never from the client body.
         Subject subject = Subject.builder()
-                .institutionId(request.getInstitutionId())
+                .institutionId(institutionId)
                 .educationLevel(request.getEducationLevel())
                 .name(request.getName())
                 .code(request.getCode())
@@ -135,8 +136,11 @@ public class AcademicService {
     }
 
     @Transactional(readOnly = true)
-    public Subject getSubject(UUID id) {
+    public Subject getSubject(UUID id, UUID institutionId) {
+        // Institution-scoped read: a foreign subject UUID must behave exactly like a
+        // missing one (404, no existence oracle across tenants).
         return subjectRepository.findById(id)
+                .filter(s -> institutionId.equals(s.getInstitutionId()))
                 .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", id));
     }
 

@@ -2454,6 +2454,12 @@
       "recentActivity": "Recent Activity"
     },
     "resources": {
+      "assignmentEmpty": "No teaching assignments yet — ask your institution administrator.",
+      "assignmentEnded": "ended",
+      "assignmentHint": "Class-only resources are visible to the selected class.",
+      "assignmentLabel": "Teaching assignment",
+      "assignmentPick": "Select a teaching assignment…",
+      "assignmentRequired": "Select a teaching assignment for a class-only resource, or link a lesson.",
       "colUpdated": "Updated",
       "createTitle": "New Resource",
       "deleteConfirm": "Delete this resource?",
@@ -6698,6 +6704,28 @@
       "admin": "Admin",
       "sending": "Sending...",
       "sendInvitation": "Send Invitation"
+    },
+    "teachers": {
+      "assignments": "Assignments",
+      "assignmentsFor": "Teaching assignments for {name}",
+      "createTitle": "New assignment",
+      "selectClass": "Select class",
+      "selectSubject": "Select subject",
+      "selectYear": "Academic year",
+      "noClasses": "No classes found - create classes first",
+      "noSubjects": "No subjects found - create subjects first",
+      "noYears": "Enter the academic year label",
+      "noAssignments": "No assignments yet",
+      "create": "Create assignment",
+      "creating": "Saving...",
+      "created": "Assignment created",
+      "end": "End",
+      "confirmEnd": "Confirm end?",
+      "ending": "Ending...",
+      "endedSuccess": "Assignment ended - history preserved",
+      "ended": "Ended",
+      "profileNotFound": "No teacher profile found for this member",
+      "loadFailed": "Failed to load assignments"
     },
     "profile": {
       "ldquoRdquo": "&ldquo;{p0}&rdquo;",

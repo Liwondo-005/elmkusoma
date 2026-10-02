@@ -225,7 +225,8 @@ class AcademicServiceTest {
     @Test
     void createSubject_shouldSaveWithInstitutionScope() {
         SubjectRequest request = new SubjectRequest();
-        request.setInstitutionId(institutionId);
+        // A client-supplied tenant id must be ignored — the caller's context wins.
+        request.setInstitutionId(UUID.randomUUID());
         request.setEducationLevel(EducationLevel.PRIMARY);
         request.setName("Mathematics");
         request.setCode("MATH");
@@ -243,11 +244,50 @@ class AcademicServiceTest {
 
         when(subjectRepository.save(any(Subject.class))).thenReturn(savedSubject);
 
-        Subject result = academicService.createSubject(request);
+        Subject result = academicService.createSubject(request, institutionId);
 
         assertNotNull(result);
         assertEquals(institutionId, result.getInstitutionId());
         assertEquals("Mathematics", result.getName());
+        verify(subjectRepository).save(any(Subject.class));
+    }
+
+    @Test
+    void getSubject_withinOwnInstitution_isReturned() {
+        Subject own = Subject.builder()
+                .institutionId(institutionId)
+                .educationLevel(EducationLevel.SECONDARY)
+                .name("Mathematics")
+                .build();
+        own.setId(subjectId);
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(own));
+
+        Subject result = academicService.getSubject(subjectId, institutionId);
+
+        assertNotNull(result);
+        assertEquals(institutionId, result.getInstitutionId());
+    }
+
+    @Test
+    void getSubject_ofAnotherInstitution_throwsNotFound() {
+        Subject foreign = Subject.builder()
+                .institutionId(UUID.randomUUID())
+                .educationLevel(EducationLevel.SECONDARY)
+                .name("Foreign subject")
+                .build();
+        foreign.setId(subjectId);
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.of(foreign));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> academicService.getSubject(subjectId, institutionId));
+    }
+
+    @Test
+    void getSubject_unknownId_throwsNotFound() {
+        when(subjectRepository.findById(subjectId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> academicService.getSubject(subjectId, institutionId));
     }
 
     @Test

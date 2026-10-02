@@ -252,6 +252,8 @@ export interface Resource {
   isPreviewable?: boolean | null
   resourceType: string
   subjectId: string | null
+  /** Teaching assignment targeted by class-only rows (server-side audience filtered). */
+  teacherAssignmentId?: string | null
   institutionId: string
   createdAt: string
 }

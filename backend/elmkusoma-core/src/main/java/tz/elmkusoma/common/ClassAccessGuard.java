@@ -70,6 +70,28 @@ public class ClassAccessGuard {
     }
 
     /**
+     * Strict membership check for content that is explicitly scoped to one class
+     * (e.g. assignment-targeted resources).
+     *
+     * <p>Unlike {@link #assertLearnerCanAccessClass}, missing learner data is
+     * never treated as implicit allow: without a student profile, or without
+     * membership rows proving the learner belongs to this class, the answer is
+     * {@code false}. The membership union is the same existing model used
+     * everywhere else ({@code student_class_assignments} ∪ ENROLLED
+     * {@code enrollments}) — no parallel system.</p>
+     */
+    public boolean isLearnerInClass(String userEmail, UUID classGroupId) {
+        if (userEmail == null || classGroupId == null) {
+            return false;
+        }
+        Student student = findStudentByUserEmail(userEmail);
+        if (student == null) {
+            return false;
+        }
+        return memberClassGroupIds(student.getId()).contains(classGroupId);
+    }
+
+    /**
      * Normalizes a caller-supplied identifier to a {@code students.id}.
      * Accepts either a students.id (returned as-is) or a users.id (resolved through the
      * student profile). Returns null when no student profile exists for the id.

@@ -26,6 +26,7 @@ import tz.elmkusoma.student.domain.Student;
 import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.domain.TeacherAssignment;
+import tz.elmkusoma.teacher.domain.TeacherAssignmentStatus;
 import tz.elmkusoma.teacher.domain.TeacherQualification;
 import tz.elmkusoma.teacher.domain.TeacherStatus;
 import tz.elmkusoma.teacher.dto.request.TeacherAssignmentRequest;
@@ -59,6 +60,7 @@ public class TeacherServiceImpl implements TeacherService {
     private final AttendanceRecordRepository attendanceRepository;
     private final tz.elmkusoma.academic.repository.ClassGroupRepository classGroupRepository;
     private final tz.elmkusoma.academic.repository.SubjectRepository subjectRepository;
+    private final tz.elmkusoma.academic.repository.GradeRepository gradeRepository;
 
     @Override
     public TeacherResponse createTeacher(UUID institutionId, TeacherRequest request) {
@@ -158,16 +160,82 @@ public class TeacherServiceImpl implements TeacherService {
         Teacher teacher = teacherRepository.findByIdAndInstitutionId(teacherId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher", "id", teacherId));
 
+        // Never trust client ids: class and subject must exist inside the caller's
+        // institution, and the subject must match the class grade's education level.
+        UUID classGroupId = parseUuid(request.getClassGroupId(), "classGroupId");
+        UUID subjectId = parseUuid(request.getSubjectId(), "subjectId");
+        tz.elmkusoma.academic.domain.ClassGroup classGroup = classGroupRepository.findById(classGroupId)
+                .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                .filter(c -> institutionId.equals(c.getInstitutionId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Class group", "id", classGroupId));
+        tz.elmkusoma.academic.domain.Subject subject = subjectRepository.findById(subjectId)
+                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
+                .filter(s -> institutionId.equals(s.getInstitutionId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", subjectId));
+        if (classGroup.getGradeId() != null && subject.getEducationLevel() != null) {
+            gradeRepository.findById(classGroup.getGradeId())
+                    .filter(g -> !Boolean.TRUE.equals(g.getIsDeleted()))
+                    .ifPresent(grade -> {
+                        if (grade.getEducationLevel() != null
+                                && grade.getEducationLevel() != subject.getEducationLevel()) {
+                            throw new IllegalArgumentException(
+                                    "Subject education level " + subject.getEducationLevel()
+                                            + " does not match class grade level " + grade.getEducationLevel());
+                        }
+                    });
+        }
+
+        // The unique combo (teacher + class + subject + academic year) must not
+        // already exist — surface a clear 400 instead of a database 500.
+        String academicYear = request.getAcademicYear();
+        assignmentRepository.findAllByTeacherId(teacherId).stream()
+                .filter(a -> classGroupId.equals(a.getClassGroupId())
+                        && subjectId.equals(a.getSubjectId())
+                        && Objects.equals(a.getAcademicYear(), academicYear))
+                .findFirst()
+                .ifPresent(a -> {
+                    throw new IllegalArgumentException(
+                            "This teacher already has an assignment for this class, subject and academic year (status: "
+                                    + (a.getStatus() != null ? a.getStatus().name() : "ACTIVE") + ")");
+                });
+
         TeacherAssignment assignment = TeacherAssignment.builder()
                 .teacherId(teacherId)
-                .classGroupId(UUID.fromString(request.getClassGroupId()))
-                .subjectId(UUID.fromString(request.getSubjectId()))
-                .academicYear(request.getAcademicYear())
+                .classGroupId(classGroupId)
+                .subjectId(subjectId)
+                .academicYear(academicYear)
+                .status(TeacherAssignmentStatus.ACTIVE)
+                .startDate(LocalDate.now())
                 .build();
         assignment.setInstitutionId(institutionId);
 
         TeacherAssignment saved = assignmentRepository.save(assignment);
         return mapToAssignmentResponse(saved);
+    }
+
+    @Override
+    public TeacherAssignmentResponse endAssignment(UUID institutionId, UUID assignmentId) {
+        TeacherAssignment assignment = assignmentRepository.findById(assignmentId)
+                .filter(a -> institutionId.equals(a.getInstitutionId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment", "id", assignmentId));
+        if (assignment.getStatus() != null && assignment.getStatus() != TeacherAssignmentStatus.ACTIVE) {
+            throw new IllegalArgumentException(
+                    "Only active assignments can be ended (current status: " + assignment.getStatus() + ")");
+        }
+        // Reassignment: end the old row, never delete it — history (and the
+        // resources created against it) must survive.
+        assignment.setStatus(TeacherAssignmentStatus.ENDED);
+        assignment.setEndDate(LocalDate.now());
+        TeacherAssignment saved = assignmentRepository.save(assignment);
+        return mapToAssignmentResponse(saved);
+    }
+
+    private static UUID parseUuid(String raw, String field) {
+        try {
+            return UUID.fromString(raw);
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(field + " must be a valid UUID");
+        }
     }
 
     @Override
@@ -430,12 +498,27 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     private TeacherAssignmentResponse mapToAssignmentResponse(TeacherAssignment assignment) {
+        String className = assignment.getClassGroupId() != null
+                ? classGroupRepository.findById(assignment.getClassGroupId())
+                        .map(tz.elmkusoma.academic.domain.ClassGroup::getName).orElse(null)
+                : null;
+        String subjectName = assignment.getSubjectId() != null
+                ? subjectRepository.findById(assignment.getSubjectId())
+                        .map(tz.elmkusoma.academic.domain.Subject::getName).orElse(null)
+                : null;
         return TeacherAssignmentResponse.builder()
                 .id(assignment.getId())
                 .teacherId(assignment.getTeacherId())
                 .classGroupId(assignment.getClassGroupId())
                 .subjectId(assignment.getSubjectId())
                 .academicYear(assignment.getAcademicYear())
+                .status(assignment.getStatus() != null
+                        ? assignment.getStatus().name()
+                        : TeacherAssignmentStatus.ACTIVE.name())
+                .startDate(assignment.getStartDate())
+                .endDate(assignment.getEndDate())
+                .classGroupName(className)
+                .subjectName(subjectName)
                 .createdAt(assignment.getCreatedAt())
                 .build();
     }

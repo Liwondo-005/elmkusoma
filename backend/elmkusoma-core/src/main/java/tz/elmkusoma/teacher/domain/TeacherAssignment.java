@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import tz.elmkusoma.common.BaseEntity;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -26,6 +27,18 @@ public class TeacherAssignment extends BaseEntity {
 
     @Column(name = "academic_year")
     private String academicYear;
+
+    /** ACTIVE / ENDED / CANCELLED — ended rows stay for history. */
+    @Column(name = "status", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private TeacherAssignmentStatus status = TeacherAssignmentStatus.ACTIVE;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "teacher_id", insertable = false, updatable = false)
