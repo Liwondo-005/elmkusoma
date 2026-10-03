@@ -29,6 +29,7 @@ import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
 import tz.elmkusoma.identity.repository.RevokedTokenRepository;
 import tz.elmkusoma.identity.repository.VerificationCodeRepository;
 import tz.elmkusoma.identity.service.AuthService;
+import tz.elmkusoma.identity.service.MfaService;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
@@ -60,6 +61,7 @@ public class AuthServiceImpl implements AuthService {
     private final EventPublisherService eventPublisherService;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final MfaService mfaService;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl = "http://localhost:3000";
@@ -145,7 +147,8 @@ public class AuthServiceImpl implements AuthService {
                             RateLimitService rateLimitService,
                             EventPublisherService eventPublisherService,
                             NotificationService notificationService,
-                            AuditService auditService) {
+                            AuditService auditService,
+                            MfaService mfaService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -167,6 +170,7 @@ public class AuthServiceImpl implements AuthService {
         this.eventPublisherService = eventPublisherService;
         this.notificationService = notificationService;
         this.auditService = auditService;
+        this.mfaService = mfaService;
     }
 
     private void auditRecoveryEvent(User user, SecurityEvent.SecurityEventType type,
@@ -397,6 +401,20 @@ public class AuthServiceImpl implements AuthService {
             throw new ForbiddenException("Account is deactivated. Please contact support.");
         }
 
+        // Step-up: accounts with a verified authenticator never receive a full
+        // session from a password alone — only a 5-minute MFA challenge.
+        if (mfaService != null && mfaService.hasVerifiedFactor(user.getId())) {
+            String mfaToken = jwtTokenProvider.generateMfaToken(
+                    user.getEmail(), user.getSecurityVersion(), user.getId());
+            log.info("MFA challenge issued for user: {}", user.getEmail());
+            return AuthResponse.builder()
+                    .tokenType("Bearer")
+                    .expiresIn(300)
+                    .user(buildUserInfo(user))
+                    .mfaRequired(true)
+                    .mfaToken(mfaToken)
+                    .build();
+        }
         String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
                 user.getEmail(), user.getId(), user.getRole().name(), user.getInstitutionId(),
                 user.getSecurityVersion());
@@ -524,6 +542,29 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(resetToken.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", resetToken.getUserId()));
 
+        // Step-up for MFA-enrolled accounts: possession of the emailed token
+        // alone is not enough — require the authenticator or a recovery code.
+        if (mfaService != null && mfaService.hasVerifiedFactor(user.getId())) {
+            boolean steppedUp = false;
+            if (request.getTotpCode() != null && !request.getTotpCode().isBlank()) {
+                try {
+                    mfaService.verifyTotp(user.getId(), request.getTotpCode().trim());
+                    steppedUp = true;
+                } catch (ForbiddenException | RateLimitExceededException e) {
+                    throw new ForbiddenException("Step-up authentication failed");
+                }
+            } else if (request.getRecoveryCode() != null && !request.getRecoveryCode().isBlank()) {
+                steppedUp = mfaService.consumeRecoveryCode(user.getId(), request.getRecoveryCode());
+            }
+            if (!steppedUp) {
+                auditRecoveryEvent(user, SecurityEvent.SecurityEventType.PASSWORD_RESET,
+                        "Password reset blocked: MFA step-up required but not provided",
+                        SecurityEvent.Severity.WARNING);
+                throw new ForbiddenException(
+                        "This account requires authenticator or recovery-code verification");
+            }
+        }
+
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         // Invalidate every previously issued session/token for this account.
         bumpSecurityVersion(user);
@@ -584,6 +625,110 @@ public class AuthServiceImpl implements AuthService {
                 SecurityEvent.Severity.INFO);
         notifyRecovery(user, "Password changed",
                 "Your password was just changed. If this was not you, contact support immediately.");
+    }
+
+    @Override
+    public AuthResponse verifyMfa(MfaVerifyRequest request) {
+        if (!jwtTokenProvider.validateToken(request.getMfaToken())) {
+            throw new ForbiddenException("Invalid or expired MFA challenge");
+        }
+        if (!"mfa".equals(jwtTokenProvider.getPurposeFromToken(request.getMfaToken()))) {
+            throw new ForbiddenException("Invalid MFA challenge");
+        }
+        String email = jwtTokenProvider.getEmailFromToken(request.getMfaToken());
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        Long tokenVersion = jwtTokenProvider.getSecurityVersionFromToken(request.getMfaToken());
+        if (tokenVersion == null || !tokenVersion.equals(user.getSecurityVersion())) {
+            throw new ForbiddenException("MFA challenge is no longer valid");
+        }
+        mfaService.verifyTotp(user.getId(), request.getCode());
+        String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
+                user.getEmail(), user.getId(), user.getRole().name(), user.getInstitutionId(),
+                user.getSecurityVersion());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getSecurityVersion());
+        log.info("MFA verification succeeded for user: {}", user.getEmail());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.LOGIN_SUCCESS,
+                "User logged in with MFA step-up", SecurityEvent.Severity.INFO);
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(accessTokenExpirationMs / 1000)
+                .user(buildUserInfo(user))
+                .build();
+    }
+
+    @Override
+    public tz.elmkusoma.identity.dto.response.MfaEnrollmentResponse enrollMfa(String email) {
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        tz.elmkusoma.identity.service.MfaService.Enrollment enrollment =
+                mfaService.startEnrollment(user.getId(), user.getEmail());
+        java.util.List<String> codes = mfaService.generateRecoveryCodes(user.getId());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.MFA_ENROLLED,
+                "MFA enrollment started; recovery codes issued", SecurityEvent.Severity.INFO);
+        return tz.elmkusoma.identity.dto.response.MfaEnrollmentResponse.builder()
+                .factorId(enrollment.factorId())
+                .otpauthUri(enrollment.otpauthUri())
+                .base32Secret(enrollment.base32Secret())
+                .recoveryCodes(codes)
+                .remainingCodes(codes.size())
+                .build();
+    }
+
+    @Override
+    public void confirmMfa(String email, MfaConfirmRequest request) {
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        java.util.UUID factorId;
+        try {
+            factorId = java.util.UUID.fromString(request.getFactorId());
+        } catch (IllegalArgumentException e) {
+            throw new ResourceNotFoundException("MFA factor", "id", request.getFactorId());
+        }
+        mfaService.confirmEnrollment(user.getId(), factorId, request.getCode());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.MFA_ENROLLED,
+                "MFA factor verified and enabled", SecurityEvent.Severity.INFO);
+        notifyRecovery(user, "Authenticator enabled",
+                "Two-step verification is now active on your account.");
+    }
+
+    @Override
+    public tz.elmkusoma.identity.dto.response.MfaStatusResponse mfaStatus(String email) {
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        return tz.elmkusoma.identity.dto.response.MfaStatusResponse.builder()
+                .enrolled(mfaService.hasVerifiedFactor(user.getId()))
+                .remainingCodes(mfaService.remainingCodes(user.getId()))
+                .recoveryCodes(null)
+                .build();
+    }
+
+    @Override
+    public tz.elmkusoma.identity.dto.response.MfaStatusResponse regenerateRecoveryCodes(String email) {
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        java.util.List<String> codes = mfaService.generateRecoveryCodes(user.getId());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.RECOVERY_CODE_USED,
+                "Recovery codes regenerated (previous set burned)",
+                SecurityEvent.Severity.WARNING);
+        return tz.elmkusoma.identity.dto.response.MfaStatusResponse.builder()
+                .enrolled(mfaService.hasVerifiedFactor(user.getId()))
+                .remainingCodes(codes.size())
+                .recoveryCodes(codes)
+                .build();
+    }
+
+    @Override
+    public void revokeAllSessions(String email) {
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        bumpSecurityVersion(user);
+        userRepository.save(user);
+        log.info("All sessions revoked for user: {}", user.getEmail());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.SESSIONS_REVOKED,
+                "User revoked all sessions", SecurityEvent.Severity.WARNING);
     }
 
     @Override

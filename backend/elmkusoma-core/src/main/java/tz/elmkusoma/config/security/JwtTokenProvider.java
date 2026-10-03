@@ -79,6 +79,30 @@ public class JwtTokenProvider {
         return generateRefreshToken(email, null);
     }
 
+    /**
+     * Short-lived step-up token (5 minutes) authorizing exactly one MFA
+     * verification. Bound to the current security version like all tokens.
+     */
+    public String generateMfaToken(String email, Long securityVersion, UUID userId) {
+        Date now = new Date();
+        var builder = Jwts.builder()
+                .subject(email)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + 300_000L))
+                .claim("purpose", "mfa");
+        if (userId != null) {
+            builder.claim("userId", userId.toString());
+        }
+        if (securityVersion != null) {
+            builder.claim(CLAIM_SECURITY_VERSION, securityVersion);
+        }
+        return builder.signWith(getSigningKey()).compact();
+    }
+
+    public String getPurposeFromToken(String token) {
+        return getClaimsFromToken(token).get("purpose", String.class);
+    }
+
     public String generateRefreshToken(String email, Long securityVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + refreshTokenExpirationMs);

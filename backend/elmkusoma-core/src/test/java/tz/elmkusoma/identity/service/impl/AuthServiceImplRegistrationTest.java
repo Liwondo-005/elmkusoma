@@ -10,6 +10,7 @@ import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.config.security.JwtTokenProvider;
 import tz.elmkusoma.config.security.RateLimitService;
+import tz.elmkusoma.identity.service.MfaService;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.identity.dto.request.RegisterRequest;
 import tz.elmkusoma.shared.domain.User;
@@ -41,6 +42,7 @@ class AuthServiceImplRegistrationTest {
     @Mock private EventPublisherService eventPublisherService;
     @Mock private NotificationService notificationService;
     @Mock private AuditService auditService;
+    @Mock private MfaService mfaService;
 
     @InjectMocks
     private AuthServiceImpl authService;

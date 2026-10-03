@@ -13,6 +13,7 @@ import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.config.security.JwtTokenProvider;
 import tz.elmkusoma.config.security.RateLimitService;
+import tz.elmkusoma.identity.service.MfaService;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.enrollment.repository.EnrollmentRepository;
 import tz.elmkusoma.exception.ForbiddenException;
@@ -78,6 +79,7 @@ class AuthRecoverySecurityTest {
     @Mock private EventPublisherService eventPublisherService;
     @Mock private NotificationService notificationService;
     @Mock private AuditService auditService;
+    @Mock private MfaService mfaService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -101,6 +103,7 @@ class AuthRecoverySecurityTest {
                 .passwordHash("old_hash")
                 .role(User.Role.STUDENT)
                 .isActive(true)
+                .isEmailVerified(false)
                 .securityVersion(version)
                 .build();
     }
@@ -294,6 +297,86 @@ class AuthRecoverySecurityTest {
         verify(auditService).recordSecurityEvent(eq(user.getInstitutionId()), eq(user.getId()),
                 eq("victim@example.com"),
                 eq(tz.elmkusoma.audit.domain.SecurityEvent.SecurityEventType.PASSWORD_RESET),
+                anyString(), any(), isNull(), isNull());
+    }
+
+    @Test
+    void login_mfaEnrolled_returnsChallengeNotSession() {
+        User user = userAtVersion(1L);
+        tz.elmkusoma.identity.dto.request.LoginRequest request =
+                new tz.elmkusoma.identity.dto.request.LoginRequest();
+        request.setEmail("victim@example.com");
+        request.setPassword("RightPass123");
+
+        org.springframework.security.core.Authentication authentication =
+                mock(org.springframework.security.core.Authentication.class);
+        when(authenticationManager.authenticate(any())).thenReturn(authentication);
+        when(userRepository.findByEmailAndIsDeletedFalse("victim@example.com"))
+                .thenReturn(Optional.of(user));
+        when(mfaService.hasVerifiedFactor(user.getId())).thenReturn(true);
+        when(jwtTokenProvider.generateMfaToken(eq("victim@example.com"), eq(1L), eq(user.getId())))
+                .thenReturn("mfa_challenge");
+
+        tz.elmkusoma.identity.dto.response.AuthResponse response = authService.login(request);
+
+        assertTrue(response.isMfaRequired());
+        assertEquals("mfa_challenge", response.getMfaToken());
+        assertNull(response.getAccessToken());
+        assertNull(response.getRefreshToken());
+    }
+
+    @Test
+    void resetPassword_mfaEnrolledWithoutStepUp_blocked() {
+        User user = userAtVersion(1L);
+        PasswordResetToken token = liveToken(user.getId());
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("raw-token");
+        request.setNewPassword("BrandNew123");
+
+        when(passwordResetTokenRepository.findByTokenAndUsedFalse(anyString()))
+                .thenReturn(Optional.of(token));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(mfaService.hasVerifiedFactor(user.getId())).thenReturn(true);
+
+        assertThrows(ForbiddenException.class, () -> authService.resetPassword(request));
+        assertEquals(1L, user.getSecurityVersion());
+    }
+
+    @Test
+    void resetPassword_mfaEnrolledWithRecoveryCode_proceeds() {
+        User user = userAtVersion(1L);
+        PasswordResetToken token = liveToken(user.getId());
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("raw-token");
+        request.setNewPassword("BrandNew123");
+        request.setRecoveryCode("KQ7M-X2P9");
+
+        when(passwordResetTokenRepository.findByTokenAndUsedFalse(anyString()))
+                .thenReturn(Optional.of(token));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(mfaService.hasVerifiedFactor(user.getId())).thenReturn(true);
+        when(mfaService.consumeRecoveryCode(user.getId(), "KQ7M-X2P9")).thenReturn(true);
+        when(passwordEncoder.encode("BrandNew123")).thenReturn("new_hash");
+        when(passwordResetTokenRepository.findByUserIdOrderByCreatedAtDesc(user.getId()))
+                .thenReturn(List.of(token));
+
+        authService.resetPassword(request);
+
+        assertEquals(2L, user.getSecurityVersion());
+    }
+
+    @Test
+    void revokeAllSessions_bumpsVersion() {
+        User user = userAtVersion(1L);
+        when(userRepository.findByEmailAndIsDeletedFalse("victim@example.com"))
+                .thenReturn(Optional.of(user));
+
+        authService.revokeAllSessions("victim@example.com");
+
+        assertEquals(2L, user.getSecurityVersion());
+        verify(auditService).recordSecurityEvent(eq(user.getInstitutionId()), eq(user.getId()),
+                eq("victim@example.com"),
+                eq(tz.elmkusoma.audit.domain.SecurityEvent.SecurityEventType.SESSIONS_REVOKED),
                 anyString(), any(), isNull(), isNull());
     }
 

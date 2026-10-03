@@ -16,6 +16,13 @@ public class AuthResponse {
     private String tokenType;
     private long expiresIn;
     private UserInfo user;
+    /**
+     * Step-up challenge: true when the account holds a verified MFA factor and
+     * only a short-lived {@code mfaToken} is issued. The client must complete
+     * {@code POST /v1/auth/mfa/verify} to receive real tokens.
+     */
+    private boolean mfaRequired;
+    private String mfaToken;
 
     @Data
     @Builder

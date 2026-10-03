@@ -73,6 +73,61 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Password changed successfully", null));
     }
 
+    @PostMapping("/mfa/verify")
+    public ResponseEntity<ApiResponse<AuthResponse>> verifyMfa(@Valid @RequestBody MfaVerifyRequest request) {
+        AuthResponse response = authService.verifyMfa(request);
+        return ResponseEntity.ok(ApiResponse.success("MFA verification successful", response));
+    }
+
+    @PostMapping("/mfa/enroll")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.identity.dto.response.MfaEnrollmentResponse>> enrollMfa() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(ApiResponse.success(
+                authService.enrollMfa(authentication.getName())));
+    }
+
+    @PostMapping("/mfa/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmMfa(@Valid @RequestBody MfaConfirmRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        authService.confirmMfa(authentication.getName(), request);
+        return ResponseEntity.ok(ApiResponse.success("Authenticator enabled", null));
+    }
+
+    @GetMapping("/mfa/status")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.identity.dto.response.MfaStatusResponse>> mfaStatus() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(ApiResponse.success(authService.mfaStatus(authentication.getName())));
+    }
+
+    @PostMapping("/mfa/codes/regenerate")
+    public ResponseEntity<ApiResponse<tz.elmkusoma.identity.dto.response.MfaStatusResponse>> regenerateCodes() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(ApiResponse.success(
+                authService.regenerateRecoveryCodes(authentication.getName())));
+    }
+
+    @PostMapping("/sessions/revoke-all")
+    public ResponseEntity<ApiResponse<Void>> revokeAllSessions() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        authService.revokeAllSessions(authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success("All sessions revoked. Please sign in again.", null));
+    }
+
     @PostMapping("/verify-email")
     public ResponseEntity<ApiResponse<Void>> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
         authService.verifyEmail(request);
