@@ -42,7 +42,15 @@ public class JwtTokenProvider {
         return generateToken(email, accessTokenExpirationMs);
     }
 
+    /** Session-invalidation claim: must equal {@code User.securityVersion}. */
+    public static final String CLAIM_SECURITY_VERSION = "sv";
+
     public String generateAccessTokenWithClaims(String email, UUID userId, String role, UUID institutionId) {
+        return generateAccessTokenWithClaims(email, userId, role, institutionId, null);
+    }
+
+    public String generateAccessTokenWithClaims(String email, UUID userId, String role, UUID institutionId,
+            Long securityVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + accessTokenExpirationMs);
 
@@ -60,12 +68,29 @@ public class JwtTokenProvider {
         if (institutionId != null) {
             builder.claim("institutionId", institutionId.toString());
         }
+        if (securityVersion != null) {
+            builder.claim(CLAIM_SECURITY_VERSION, securityVersion);
+        }
 
         return builder.signWith(getSigningKey()).compact();
     }
 
     public String generateRefreshToken(String email) {
-        return generateToken(email, refreshTokenExpirationMs);
+        return generateRefreshToken(email, null);
+    }
+
+    public String generateRefreshToken(String email, Long securityVersion) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + refreshTokenExpirationMs);
+
+        var builder = Jwts.builder()
+                .subject(email)
+                .issuedAt(now)
+                .expiration(expiryDate);
+        if (securityVersion != null) {
+            builder.claim(CLAIM_SECURITY_VERSION, securityVersion);
+        }
+        return builder.signWith(getSigningKey()).compact();
     }
 
     public String generateToken(String email, long expirationMs) {
@@ -98,6 +123,16 @@ public class JwtTokenProvider {
     public String getInstitutionIdFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
         return claims.get("institutionId", String.class);
+    }
+
+    /**
+     * Returns the session-invalidation version embedded at issuance, or
+     * {@code null} for tokens minted before versioning existed (treated as
+     * stale by the authentication filters).
+     */
+    public Long getSecurityVersionFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get(CLAIM_SECURITY_VERSION, Long.class);
     }
 
     private Claims getClaimsFromToken(String token) {

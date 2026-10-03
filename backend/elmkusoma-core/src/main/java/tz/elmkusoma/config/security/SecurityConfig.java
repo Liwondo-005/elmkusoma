@@ -42,6 +42,7 @@ public class SecurityConfig {
     private final OrganizationContextHolder contextHolder;
     private final EntityManager entityManager;
     private final PermissionService permissionService;
+    private final RateLimitService rateLimitService;
 
     private static final String[] PUBLIC_URLS = {
             "/v1/auth/**",
@@ -64,7 +65,20 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService());
+        return new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService(), userRepository);
+    }
+
+    @Bean
+    public AuthRateLimitFilter authRateLimitFilter() {
+        return new AuthRateLimitFilter(rateLimitService);
+    }
+
+    @Bean
+    public FilterRegistrationBean<AuthRateLimitFilter> authRateLimitFilterRegistration(AuthRateLimitFilter filter) {
+        FilterRegistrationBean<AuthRateLimitFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
@@ -177,6 +191,7 @@ public class SecurityConfig {
                             .hasAnyRole("ADMIN", "INSTITUTION_ADMIN")
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(authRateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(organizationContextResolver(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtRequestAttributeFilter(), UsernamePasswordAuthenticationFilter.class);

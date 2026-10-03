@@ -24,39 +24,34 @@ public class AdminUserInitializer implements ApplicationRunner {
     private static final UUID ADMIN_ID = UUID.fromString("b0000000-0000-0000-0000-000000000099");
     private static final UUID HQ_INSTITUTION_ID = UUID.fromString("a0000000-0000-0000-0000-000000000001");
     private static final String ADMIN_EMAIL = "admin@elmkusoma.go.tz";
-    private static final String ADMIN_PASSWORD = "password";
+
+    @org.springframework.beans.factory.annotation.Value("${app.security.admin-bootstrap.enabled:false}")
+    private boolean bootstrapEnabled;
+
+    @org.springframework.beans.factory.annotation.Value("${ADMIN_BOOTSTRAP_PASSWORD:}")
+    private String bootstrapPassword;
 
     @Override
     public void run(ApplicationArguments args) {
+        // Security: bootstrap is opt-in and create-only. It NEVER resets the
+        // password, role, or status of an existing account, so a restart can
+        // no longer silently restore a default privileged credential.
+        if (!bootstrapEnabled) {
+            log.info("Admin bootstrap disabled; existing admin account left untouched");
+            return;
+        }
+        if (bootstrapPassword == null || bootstrapPassword.isBlank()) {
+            throw new IllegalStateException(
+                    "Admin bootstrap is enabled but ADMIN_BOOTSTRAP_PASSWORD is not set; refusing to start");
+        }
         try {
             var existing = userRepository.findByEmailAndIsDeletedFalse(ADMIN_EMAIL);
             if (existing.isPresent()) {
-                User user = existing.get();
-                boolean needsUpdate = false;
-                if (!passwordEncoder.matches(ADMIN_PASSWORD, user.getPasswordHash())) {
-                    user.setPasswordHash(passwordEncoder.encode(ADMIN_PASSWORD));
-                    needsUpdate = true;
-                }
-                if (user.getRole() != User.Role.ADMIN) {
-                    user.setRole(User.Role.ADMIN);
-                    needsUpdate = true;
-                }
-                if (!Boolean.TRUE.equals(user.getIsActive())) {
-                    user.setIsActive(true);
-                    needsUpdate = true;
-                }
-                if (!Boolean.TRUE.equals(user.getIsEmailVerified())) {
-                    user.setIsEmailVerified(true);
-                    needsUpdate = true;
-                }
-                if (needsUpdate) {
-                    userRepository.save(user);
-                    log.info("Admin user updated: {}", ADMIN_EMAIL);
-                }
+                log.info("Admin account already exists; bootstrap makes no credential changes: {}", ADMIN_EMAIL);
             } else {
                 User admin = User.builder()
                         .email(ADMIN_EMAIL)
-                        .passwordHash(passwordEncoder.encode(ADMIN_PASSWORD))
+                        .passwordHash(passwordEncoder.encode(bootstrapPassword))
                         .firstName("Platform")
                         .lastName("Admin")
                         .role(User.Role.ADMIN)

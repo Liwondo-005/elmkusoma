@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import tz.elmkusoma.identity.domain.PasswordResetToken;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,5 +13,5 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
 
     Optional<PasswordResetToken> findByTokenAndUsedFalse(String token);
 
-    Optional<PasswordResetToken> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    List<PasswordResetToken> findByUserIdOrderByCreatedAtDesc(UUID userId);
 }

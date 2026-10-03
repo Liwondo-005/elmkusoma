@@ -28,10 +28,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final tz.elmkusoma.shared.repository.UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, @Lazy UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, @Lazy UserDetailsService userDetailsService,
+            tz.elmkusoma.shared.repository.UserRepository userRepository) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userDetailsService = userDetailsService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -49,32 +52,56 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
             if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
                 String email = jwtTokenProvider.getEmailFromToken(token);
                 log.debug("JWT Filter: email from token = {}", email);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                log.debug("JWT Filter: userDetails loaded for {}", email);
+                if (!isSecurityVersionCurrent(email, token)) {
+                    log.warn("JWT Filter: stale security version for {}", email);
+                } else {
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                    log.debug("JWT Filter: userDetails loaded for {}", email);
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                // This filter also runs standalone (before the security chain), where the
-                // chain's SecurityContextHolderFilter would later load an empty context and
-                // wipe the authentication, producing 403 on every authenticated endpoint in
-                // the real servlet container. Persist it so the in-chain load restores it.
-                // Skipped for spring-test's MockHttpServletRequest: under MockMvc the chain
-                // intentionally starts unauthenticated and the security test-suite relies on
-                // that contract (verified by mvn-bisect3.log vs mvn-final12.log).
-                if (!request.getClass().getName().contains("org.springframework.mock")) {
-                    new org.springframework.security.web.context.RequestAttributeSecurityContextRepository()
-                            .saveContext(SecurityContextHolder.getContext(), request, response);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    // This filter also runs standalone (before the security chain), where the
+                    // chain's SecurityContextHolderFilter would later load an empty context and
+                    // wipe the authentication, producing 403 on every authenticated endpoint in
+                    // the real servlet container. Persist it so the in-chain load restores it.
+                    // Skipped for spring-test's MockHttpServletRequest: under MockMvc the chain
+                    // intentionally starts unauthenticated and the security test-suite relies on
+                    // that contract (verified by mvn-bisect3.log vs mvn-final12.log).
+                    if (!request.getClass().getName().contains("org.springframework.mock")) {
+                        new org.springframework.security.web.context.RequestAttributeSecurityContextRepository()
+                                .saveContext(SecurityContextHolder.getContext(), request, response);
+                    }
+                    log.debug("JWT Filter: authentication set for {}", email);
                 }
-                log.debug("JWT Filter: authentication set for {}", email);
             }
         } catch (Exception ex) {
             log.error("Could not set user authentication in security context: {}", ex.getMessage(), ex);
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Session-invalidation gate: the token's {@code sv} claim must equal the
+     * user's current {@code securityVersion}. Tokens minted before versioning
+     * (no claim) are treated as stale.
+     */
+    private boolean isSecurityVersionCurrent(String email, String token) {
+        try {
+            Long tokenVersion = jwtTokenProvider.getSecurityVersionFromToken(token);
+            if (tokenVersion == null) {
+                return false;
+            }
+            return userRepository.findByEmailAndIsDeletedFalse(email)
+                    .map(user -> tokenVersion.equals(user.getSecurityVersion()))
+                    .orElse(false);
+        } catch (Exception ex) {
+            log.warn("JWT Filter: security version check failed for {}: {}", email, ex.getMessage());
+            return false;
+        }
     }
 
     private String extractToken(HttpServletRequest request) {

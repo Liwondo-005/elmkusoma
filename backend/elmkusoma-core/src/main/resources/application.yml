@@ -109,6 +109,14 @@ livekit:
     region: ${LIVEKIT_EGRESS_S3_REGION:}
     endpoint: ${LIVEKIT_EGRESS_S3_ENDPOINT:}
 
+app:
+  security:
+    # First-boot Platform Admin provisioning. Disabled by default: an existing
+    # account is NEVER modified. When enabled, ADMIN_BOOTSTRAP_PASSWORD must be
+    # supplied via environment; the password is used once at creation only.
+    admin-bootstrap:
+      enabled: ${ELM_BOOTSTRAP_ADMIN:false}
+
 services:
   media:
     url: ${MEDIA_SERVICE_URL:http://localhost:8083}

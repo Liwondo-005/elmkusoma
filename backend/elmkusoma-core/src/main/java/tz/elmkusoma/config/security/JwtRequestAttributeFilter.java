@@ -60,6 +60,11 @@ public class JwtRequestAttributeFilter extends OncePerRequestFilter implements O
                     request.setAttribute("bearerToken", token);
 
                     User user = userRepository.findByEmailAndIsDeletedFalse(email).orElse(null);
+                    // Session-invalidation gate: stale security versions get no identity attributes.
+                    if (user != null && !isSecurityVersionCurrent(user, token)) {
+                        log.warn("Request attribute filter: stale security version for {}", email);
+                        user = null;
+                    }
                     if (user != null) {
                         request.setAttribute("userId", user.getId());
                         request.setAttribute("userEmail", user.getEmail());
@@ -78,6 +83,16 @@ public class JwtRequestAttributeFilter extends OncePerRequestFilter implements O
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isSecurityVersionCurrent(User user, String token) {
+        try {
+            Long tokenVersion = jwtTokenProvider.getSecurityVersionFromToken(token);
+            return tokenVersion != null && tokenVersion.equals(user.getSecurityVersion());
+        } catch (Exception ex) {
+            log.warn("Request attribute filter: security version check failed: {}", ex.getMessage());
+            return false;
+        }
     }
 
     private String extractToken(HttpServletRequest request) {

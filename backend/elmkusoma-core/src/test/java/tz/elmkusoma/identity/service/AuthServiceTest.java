@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import tz.elmkusoma.config.security.JwtTokenProvider;
+import tz.elmkusoma.config.security.RateLimitService;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.identity.domain.EmailVerificationToken;
@@ -38,6 +39,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -69,6 +72,8 @@ class AuthServiceTest {
     private InstitutionMembershipRepository membershipRepository;
     @Mock
     private InstitutionRepository institutionRepository;
+    @Mock
+    private RateLimitService rateLimitService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -79,6 +84,7 @@ class AuthServiceTest {
     void setUp() {
         userId = UUID.randomUUID();
         ReflectionTestUtils.setField(authService, "accessTokenExpirationMs", 3600000L);
+        lenient().when(rateLimitService.allow(anyString(), anyInt(), anyLong())).thenReturn(true);
     }
 
     @Test
@@ -106,9 +112,9 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(jwtTokenProvider.generateAccessTokenWithClaims(
                 eq("john@example.com"), eq(userId), eq("STUDENT"),
-                eq(UUID.fromString("a0000000-0000-0000-0000-000000000001"))))
+                eq(UUID.fromString("a0000000-0000-0000-0000-000000000001")), any()))
                 .thenReturn("access_token_123");
-        when(jwtTokenProvider.generateRefreshToken("john@example.com")).thenReturn("refresh_token_123");
+        when(jwtTokenProvider.generateRefreshToken(eq("john@example.com"), any())).thenReturn("refresh_token_123");
         when(studentRepository.findByUserIdAndIsDeletedFalse(userId)).thenReturn(Optional.empty());
 
         AuthResponse response = authService.register(request);
@@ -145,9 +151,9 @@ class AuthServiceTest {
         });
         when(jwtTokenProvider.generateAccessTokenWithClaims(
                 eq("veta-student@example.com"), any(UUID.class), eq("STUDENT"),
-                eq(UUID.fromString("a0000000-0000-0000-0000-000000000001"))))
+                eq(UUID.fromString("a0000000-0000-0000-0000-000000000001")), any()))
                 .thenReturn("access_token_123");
-        when(jwtTokenProvider.generateRefreshToken("veta-student@example.com")).thenReturn("refresh_token_123");
+        when(jwtTokenProvider.generateRefreshToken(eq("veta-student@example.com"), any())).thenReturn("refresh_token_123");
         when(studentRepository.findByUserIdAndIsDeletedFalse(any(UUID.class))).thenReturn(Optional.empty());
 
         AuthResponse response = authService.register(request);
@@ -213,9 +219,9 @@ class AuthServiceTest {
         when(userRepository.findByEmailAndIsDeletedFalse("john@example.com"))
                 .thenReturn(Optional.of(user));
         when(jwtTokenProvider.generateAccessTokenWithClaims(
-                eq("john@example.com"), eq(userId), eq("STUDENT"), isNull()))
+                eq("john@example.com"), eq(userId), eq("STUDENT"), isNull(), any()))
                 .thenReturn("access_token_123");
-        when(jwtTokenProvider.generateRefreshToken("john@example.com")).thenReturn("refresh_token_123");
+        when(jwtTokenProvider.generateRefreshToken(eq("john@example.com"), any())).thenReturn("refresh_token_123");
         when(studentRepository.findByUserIdAndIsDeletedFalse(userId)).thenReturn(Optional.empty());
 
         AuthResponse response = authService.login(request);
@@ -276,6 +282,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.validateToken("old_refresh_token")).thenReturn(true);
         when(revokedTokenRepository.existsByTokenHash(anyString())).thenReturn(false);
         when(jwtTokenProvider.getEmailFromToken("old_refresh_token")).thenReturn("john@example.com");
+        when(jwtTokenProvider.getSecurityVersionFromToken("old_refresh_token")).thenReturn(1L);
 
         User user = User.builder()
                 .id(userId)
@@ -290,9 +297,9 @@ class AuthServiceTest {
         when(userRepository.findByEmailAndIsDeletedFalse("john@example.com"))
                 .thenReturn(Optional.of(user));
         when(jwtTokenProvider.generateAccessTokenWithClaims(
-                eq("john@example.com"), eq(userId), eq("STUDENT"), isNull()))
+                eq("john@example.com"), eq(userId), eq("STUDENT"), isNull(), any()))
                 .thenReturn("new_access_token");
-        when(jwtTokenProvider.generateRefreshToken("john@example.com")).thenReturn("new_refresh_token");
+        when(jwtTokenProvider.generateRefreshToken(eq("john@example.com"), any())).thenReturn("new_refresh_token");
         when(studentRepository.findByUserIdAndIsDeletedFalse(userId)).thenReturn(Optional.empty());
 
         AuthResponse response = authService.refreshToken(request);
@@ -367,7 +374,7 @@ class AuthServiceTest {
                 .used(false)
                 .build();
 
-        when(passwordResetTokenRepository.findByTokenAndUsedFalse("reset_token_123"))
+        when(passwordResetTokenRepository.findByTokenAndUsedFalse(anyString()))
                 .thenReturn(Optional.of(resetToken));
         when(passwordEncoder.encode("newpassword123")).thenReturn("encoded_new_password");
 
@@ -395,7 +402,7 @@ class AuthServiceTest {
         request.setToken("invalid_token");
         request.setNewPassword("newpassword123");
 
-        when(passwordResetTokenRepository.findByTokenAndUsedFalse("invalid_token"))
+        when(passwordResetTokenRepository.findByTokenAndUsedFalse(anyString()))
                 .thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> authService.resetPassword(request));

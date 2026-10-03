@@ -388,10 +388,33 @@ public class PlatformAdminService {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        // Invalidate every previously issued session/token for this account.
+        long currentVersion = user.getSecurityVersion() != null ? user.getSecurityVersion() : 1L;
+        user.setSecurityVersion(currentVersion + 1);
         userRepository.save(user);
         writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
                 "USER", userId, user.getEmail(), "RESET_PASSWORD", Map.of(), Map.of());
         log.info("Password reset by platform admin for user: {}", user.getEmail());
+    }
+
+    /**
+     * SHA-256 hex of an opaque token. Reset tokens are stored hashed, exactly
+     * like refresh-token revocation hashes.
+     */
+    private static String hashToken(String token) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     @Transactional
@@ -399,7 +422,7 @@ public class PlatformAdminService {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         PasswordResetToken resetToken = PasswordResetToken.builder()
-                .token(UUID.randomUUID().toString())
+                .token(hashToken(UUID.randomUUID().toString() + UUID.randomUUID().toString()))
                 .userId(user.getId())
                 .expiresAt(LocalDateTime.now().plusHours(24))
                 .used(false)

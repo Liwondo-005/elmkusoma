@@ -46,6 +46,16 @@ public class User extends BaseEntity {
     @Column(name = "is_email_verified", nullable = false)
     private Boolean isEmailVerified = false;
 
+    /**
+     * Session invalidation counter. Embedded in every issued JWT as the
+     * {@code sv} claim and enforced by the authentication filters: any token
+     * whose claim differs from this value is rejected. Bumped on password
+     * reset/change so previously issued sessions die immediately.
+     */
+    @Column(name = "security_version", nullable = false)
+    @Builder.Default
+    private Long securityVersion = 1L;
+
     @Column(name = "profile_image_url")
     private String profileImageUrl;
 

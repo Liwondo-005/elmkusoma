@@ -22,6 +22,10 @@ public class PasswordResetToken {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
+    /**
+     * SHA-256 hex of the opaque raw token. The raw value is handed to the
+     * delivery layer only and is never persisted or logged.
+     */
     @Column(name = "token", unique = true, nullable = false)
     private String token;
 

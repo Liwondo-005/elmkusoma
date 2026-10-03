@@ -14,7 +14,13 @@ public interface AuthService {
 
     AuthResponse.UserInfo getCurrentUser(String email);
 
-    void forgotPassword(ForgotPasswordRequest request);
+    /**
+     * Starts a recovery. Returns the raw one-time token for the delivery
+     * layer (email/SMS); only its hash is persisted. Callers must never put
+     * the raw value in API responses or logs. Returns {@code null} when the
+     * account does not exist (response stays generic either way).
+     */
+    String forgotPassword(ForgotPasswordRequest request);
 
     void resetPassword(ResetPasswordRequest request);
 
