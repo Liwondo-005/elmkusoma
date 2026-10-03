@@ -41,7 +41,7 @@ export function AboutCta() {
                 src="/images/cta-learner.png"
                 alt="Students learning on ELMKUSOMA"
                 width={960}
-                height={1280}
+                height={801}
                 className="h-auto w-full"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
