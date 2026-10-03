@@ -128,6 +128,16 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("All sessions revoked. Please sign in again.", null));
     }
 
+    @PostMapping("/emergency-recover")
+    public ResponseEntity<ApiResponse<Void>> emergencyRecover(
+            @Valid @RequestBody EmergencyRecoverRequest request) {
+        authService.emergencyRecover(request);
+        return ResponseEntity.ok(ApiResponse.success(
+                "If the recovery details are valid, the account has been recovered. "
+                        + "Sign in with the new password and re-enable two-step verification.",
+                null));
+    }
+
     @PostMapping("/verify-email")
     public ResponseEntity<ApiResponse<Void>> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
         authService.verifyEmail(request);

@@ -79,6 +79,9 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (path.equals("/v1/auth/mfa/verify")) {
             return "mfa-verify";
         }
+        if (path.equals("/v1/auth/emergency-recover")) {
+            return "emergency";
+        }
         if (path.matches("/v1/platform-admin/users/[^/]+/reset-password")
                 || path.matches("/v1/platform-admin/users/[^/]+/send-reset-link")) {
             return "admin-recovery";
@@ -95,6 +98,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             case "send-code" -> new long[]{30, HOUR};
             case "verify-code" -> new long[]{60, HOUR};
             case "mfa-verify" -> new long[]{60, HOUR};
+            case "emergency" -> new long[]{10, HOUR};
             case "admin-recovery" -> new long[]{60, MINUTE};
             default -> new long[]{30, MINUTE};
         };

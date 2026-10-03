@@ -732,6 +732,37 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public void emergencyRecover(EmergencyRecoverRequest request) {
+        // Uniform failure everywhere: success and every failure mode look
+        // identical except for the 200 itself.
+        checkAccountBudget("emergency", request.getEmail(), 5, 3_600_000L);
+        User user = userRepository.findByEmailAndIsDeletedFalse(request.getEmail()).orElse(null);
+        boolean ok = false;
+        if (user != null) {
+            ok = mfaService != null && mfaService.consumeRecoveryCode(user.getId(), request.getRecoveryCode());
+        }
+        if (!ok) {
+            if (user != null) {
+                auditRecoveryEvent(user, SecurityEvent.SecurityEventType.EMERGENCY_RECOVERY,
+                        "Emergency recovery attempt failed", SecurityEvent.Severity.CRITICAL);
+            }
+            throw new ForbiddenException("Emergency recovery failed");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        bumpSecurityVersion(user);
+        userRepository.save(user);
+        mfaService.revokeFactors(user.getId());
+        log.info("Emergency recovery completed for user: {}", user.getEmail());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.EMERGENCY_RECOVERY,
+                "Emergency recovery completed with a pre-enrolled recovery code; "
+                        + "password replaced, sessions killed, MFA revoked for re-enrollment",
+                SecurityEvent.Severity.CRITICAL);
+        notifyRecovery(user, "Emergency account recovery",
+                "Your account was recovered with a recovery code. All sessions were signed out "
+                        + "and two-step verification was reset. If this was not you, contact support immediately.");
+    }
+
+    @Override
     public void verifyEmail(VerifyEmailRequest request) {
         EmailVerificationToken verificationToken = emailVerificationTokenRepository.findByTokenAndUsedFalse(hashToken(request.getToken()))
                 .orElseThrow(() -> new ResourceNotFoundException("Verification token"));

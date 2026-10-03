@@ -381,6 +381,67 @@ class AuthRecoverySecurityTest {
     }
 
     @Test
+    void emergencyRecover_validCode_resetsAndKillsEverything() {
+        User user = userAtVersion(1L);
+        tz.elmkusoma.identity.dto.request.EmergencyRecoverRequest request =
+                new tz.elmkusoma.identity.dto.request.EmergencyRecoverRequest();
+        request.setEmail("victim@example.com");
+        request.setRecoveryCode("KQ7M-X2P9");
+        request.setNewPassword("BrandNew123");
+
+        when(userRepository.findByEmailAndIsDeletedFalse("victim@example.com"))
+                .thenReturn(Optional.of(user));
+        when(mfaService.consumeRecoveryCode(user.getId(), "KQ7M-X2P9")).thenReturn(true);
+        when(passwordEncoder.encode("BrandNew123")).thenReturn("new_hash");
+
+        authService.emergencyRecover(request);
+
+        assertEquals("new_hash", user.getPasswordHash());
+        assertEquals(2L, user.getSecurityVersion());
+        verify(mfaService).consumeRecoveryCode(user.getId(), "KQ7M-X2P9");
+        verify(mfaService).revokeFactors(user.getId());
+        verify(auditService).recordSecurityEvent(eq(user.getInstitutionId()), eq(user.getId()),
+                eq("victim@example.com"),
+                eq(tz.elmkusoma.audit.domain.SecurityEvent.SecurityEventType.EMERGENCY_RECOVERY),
+                anyString(),
+                eq(tz.elmkusoma.audit.domain.SecurityEvent.Severity.CRITICAL),
+                isNull(), isNull());
+    }
+
+    @Test
+    void emergencyRecover_wrongCode_uniformFailureWithoutChange() {
+        User user = userAtVersion(1L);
+        tz.elmkusoma.identity.dto.request.EmergencyRecoverRequest request =
+                new tz.elmkusoma.identity.dto.request.EmergencyRecoverRequest();
+        request.setEmail("victim@example.com");
+        request.setRecoveryCode("NOPE-0000");
+        request.setNewPassword("BrandNew123");
+
+        when(userRepository.findByEmailAndIsDeletedFalse("victim@example.com"))
+                .thenReturn(Optional.of(user));
+        when(mfaService.consumeRecoveryCode(user.getId(), "NOPE-0000")).thenReturn(false);
+
+        assertThrows(ForbiddenException.class, () -> authService.emergencyRecover(request));
+        assertEquals(1L, user.getSecurityVersion());
+        assertEquals("old_hash", user.getPasswordHash());
+    }
+
+    @Test
+    void emergencyRecover_unknownEmail_uniformFailure() {
+        tz.elmkusoma.identity.dto.request.EmergencyRecoverRequest request =
+                new tz.elmkusoma.identity.dto.request.EmergencyRecoverRequest();
+        request.setEmail("ghost@example.com");
+        request.setRecoveryCode("KQ7M-X2P9");
+        request.setNewPassword("BrandNew123");
+
+        when(userRepository.findByEmailAndIsDeletedFalse("ghost@example.com"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ForbiddenException.class, () -> authService.emergencyRecover(request));
+        verify(mfaService, never()).consumeRecoveryCode(any(), anyString());
+    }
+
+    @Test
     void rateLimiter_tripsAfterBudget_andRecovers() {
         RateLimitService limiter = new RateLimitService();
         String key = "probe:" + UUID.randomUUID();

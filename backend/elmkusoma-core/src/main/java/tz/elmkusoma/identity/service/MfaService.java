@@ -177,4 +177,17 @@ public class MfaService {
     public long remainingCodes(UUID userId) {
         return recoveryCodeRepository.findByUserIdAndUsedFalse(userId).size();
     }
+
+    /**
+     * Burns every factor for the account (used by emergency recovery when the
+     * authenticator itself is lost), forcing clean re-enrollment afterwards.
+     */
+    @Transactional
+    public void revokeFactors(UUID userId) {
+        mfaFactorRepository.findByUserId(userId).forEach(factor -> {
+            factor.setVerified(false);
+            mfaFactorRepository.save(factor);
+        });
+        log.info("MFA factors revoked for user {}", userId);
+    }
 }

@@ -59,4 +59,12 @@ public interface AuthService {
      * client must sign in again afterwards).
      */
     void revokeAllSessions(String email);
+
+    /**
+     * Break-glass recovery for accounts that lost password AND authenticator.
+     * The trust anchor is a pre-enrolled unused recovery code. Uniform failure
+     * (no existence oracle); on success the password is replaced, every
+     * session dies, and all MFA factors are revoked to force re-enrollment.
+     */
+    void emergencyRecover(EmergencyRecoverRequest request);
 }
