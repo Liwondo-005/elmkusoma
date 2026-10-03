@@ -24,6 +24,12 @@ public interface AuthService {
 
     void resetPassword(ResetPasswordRequest request);
 
+    /**
+     * Authenticated password change. Never uses a reset token: the caller
+     * proves possession of the current password instead.
+     */
+    void changePassword(String email, ChangePasswordRequest request);
+
     void verifyEmail(VerifyEmailRequest request);
 
     void logout(String refreshToken);

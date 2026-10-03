@@ -69,7 +69,8 @@ public class EventPublisherService {
         event.put("subject", subject);
         event.put("templateName", templateName);
         event.put("templateVariables", templateVariables);
-        event.put("institutionId", institutionId.toString());
+        // Workers treat the tenant marker as opaque; null stays null.
+        event.put("institutionId", institutionId != null ? institutionId.toString() : null);
         event.put("timestamp", System.currentTimeMillis());
 
         publishSafely(EMAIL_ROUTING_KEY, event, "email event to " + toEmail);

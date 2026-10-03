@@ -10,6 +10,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.audit.domain.SecurityEvent;
+import tz.elmkusoma.audit.service.AuditService;
+import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.config.security.JwtTokenProvider;
 import tz.elmkusoma.config.security.RateLimitService;
 import tz.elmkusoma.exception.RateLimitExceededException;
@@ -26,6 +29,7 @@ import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
 import tz.elmkusoma.identity.repository.RevokedTokenRepository;
 import tz.elmkusoma.identity.repository.VerificationCodeRepository;
 import tz.elmkusoma.identity.service.AuthService;
+import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -53,6 +57,12 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RateLimitService rateLimitService;
+    private final EventPublisherService eventPublisherService;
+    private final NotificationService notificationService;
+    private final AuditService auditService;
+
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl = "http://localhost:3000";
 
     private static final long MINUTE_MILLIS = 60_000L;
     private static final long HOUR_MILLIS = 3_600_000L;
@@ -132,7 +142,10 @@ public class AuthServiceImpl implements AuthService {
                             tz.elmkusoma.academic.repository.ClassGroupRepository classGroupRepository,
                             tz.elmkusoma.academic.repository.AcademicYearRepository academicYearRepository,
                             tz.elmkusoma.enrollment.repository.EnrollmentRepository enrollmentRepository,
-                            RateLimitService rateLimitService) {
+                            RateLimitService rateLimitService,
+                            EventPublisherService eventPublisherService,
+                            NotificationService notificationService,
+                            AuditService auditService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -151,6 +164,30 @@ public class AuthServiceImpl implements AuthService {
         this.classGroupRepository = classGroupRepository;
         this.academicYearRepository = academicYearRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.eventPublisherService = eventPublisherService;
+        this.notificationService = notificationService;
+        this.auditService = auditService;
+    }
+
+    private void auditRecoveryEvent(User user, SecurityEvent.SecurityEventType type,
+            String description, SecurityEvent.Severity severity) {
+        try {
+            auditService.recordSecurityEvent(
+                    user.getInstitutionId(), user.getId(), user.getEmail(),
+                    type, description, severity, null, null);
+        } catch (Exception ex) {
+            // Audit must never break the recovery flow itself.
+            log.warn("Recovery audit event not recorded: {}", ex.getMessage());
+        }
+    }
+
+    private void notifyRecovery(User user, String title, String message) {
+        try {
+            notificationService.notifyUser(
+                    user.getId(), title, message, "SECURITY", "AUTH", null);
+        } catch (Exception ex) {
+            log.warn("Recovery notification not delivered: {}", ex.getMessage());
+        }
     }
 
     private static final java.util.Set<User.Role> PUBLIC_REGISTRATION_ROLES = java.util.Set.of(
@@ -366,6 +403,8 @@ public class AuthServiceImpl implements AuthService {
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail(), user.getSecurityVersion());
 
         log.info("User logged in: {}", user.getEmail());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.LOGIN_SUCCESS,
+                "User logged in", SecurityEvent.Severity.INFO);
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
@@ -449,6 +488,22 @@ public class AuthServiceImpl implements AuthService {
                             .build();
                     passwordResetTokenRepository.save(resetToken);
                     log.info("Password reset token created for user: {}", user.getEmail());
+                    String displayName = user.getFirstName() != null ? user.getFirstName() : user.getEmail();
+                    java.util.Map<String, Object> variables = new java.util.HashMap<>();
+                    variables.put("userName", displayName);
+                    variables.put("resetLink", frontendUrl + "/reset-password?token=" + rawToken);
+                    variables.put("expiryHours", 24);
+                    try {
+                        eventPublisherService.publishEmailEvent(
+                                user.getEmail(),
+                                "Reset your Elmkusoma password",
+                                "email/password-reset",
+                                variables,
+                                user.getInstitutionId());
+                    } catch (Exception ex) {
+                        // Delivery failures must not reveal account existence.
+                        log.warn("Password reset email not published for user: {}", user.getEmail());
+                    }
                     issued[0] = rawToken;
                 });
         return issued[0];
@@ -485,6 +540,50 @@ public class AuthServiceImpl implements AuthService {
                 });
 
         log.info("Password reset successfully for user: {}", user.getEmail());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.PASSWORD_RESET,
+                "Password reset completed via emailed recovery token",
+                SecurityEvent.Severity.WARNING);
+        notifyRecovery(user, "Password reset completed",
+                "Your password was just reset. If this was not you, contact support immediately.");
+        try {
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            variables.put("userName", user.getFirstName() != null ? user.getFirstName() : user.getEmail());
+            variables.put("resetLink", frontendUrl + "/login");
+            variables.put("expiryHours", 0);
+            eventPublisherService.publishEmailEvent(
+                    user.getEmail(),
+                    "Your Elmkusoma password was reset",
+                    "email/password-reset",
+                    variables,
+                    user.getInstitutionId());
+        } catch (Exception ex) {
+            log.warn("Password-reset confirmation email not published for user: {}", user.getEmail());
+        }
+    }
+
+    @Override
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            auditRecoveryEvent(user, SecurityEvent.SecurityEventType.PASSWORD_CHANGE,
+                    "Password change rejected: current password mismatch",
+                    SecurityEvent.Severity.WARNING);
+            throw new ForbiddenException("Current password is incorrect");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("New password must differ from the current password");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        // Invalidate every previously issued session/token for this account.
+        bumpSecurityVersion(user);
+        userRepository.save(user);
+        log.info("Password changed for user: {}", user.getEmail());
+        auditRecoveryEvent(user, SecurityEvent.SecurityEventType.PASSWORD_CHANGE,
+                "Password changed with current-password verification",
+                SecurityEvent.Severity.INFO);
+        notifyRecovery(user, "Password changed",
+                "Your password was just changed. If this was not you, contact support immediately.");
     }
 
     @Override

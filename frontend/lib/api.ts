@@ -187,6 +187,24 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
+  resetPassword: (data: { token: string; newPassword: string }) =>
+    request<void>("/v1/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    request<void>("/v1/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  serverLogout: (refreshToken: string) =>
+    request<void>("/v1/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken }),
+    }),
+
   refresh: (refreshToken: string) =>
     request<AuthResponse>("/v1/auth/refresh", {
       method: "POST",

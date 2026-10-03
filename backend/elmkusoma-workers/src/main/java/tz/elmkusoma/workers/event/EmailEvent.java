@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Data
@@ -20,6 +19,10 @@ public class EmailEvent implements Serializable {
     private String subject;
     private String templateName;
     private Map<String, Object> templateVariables;
-    private Long institutionId;
-    private LocalDateTime timestamp;
+    /**
+     * Opaque tenant marker (core uses UUID strings). Informational only: the
+     * email consumer never authorizes on it.
+     */
+    private String institutionId;
+    private long timestamp;
 }

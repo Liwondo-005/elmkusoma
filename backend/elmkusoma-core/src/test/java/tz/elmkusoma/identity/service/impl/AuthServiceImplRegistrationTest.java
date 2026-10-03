@@ -6,8 +6,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import tz.elmkusoma.audit.service.AuditService;
+import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.config.security.JwtTokenProvider;
 import tz.elmkusoma.config.security.RateLimitService;
+import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.identity.dto.request.RegisterRequest;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -35,6 +38,9 @@ class AuthServiceImplRegistrationTest {
     @Mock private PasswordResetTokenRepository passwordResetTokenRepository;
     @Mock private RevokedTokenRepository revokedTokenRepository;
     @Mock private RateLimitService rateLimitService;
+    @Mock private EventPublisherService eventPublisherService;
+    @Mock private NotificationService notificationService;
+    @Mock private AuditService auditService;
 
     @InjectMocks
     private AuthServiceImpl authService;

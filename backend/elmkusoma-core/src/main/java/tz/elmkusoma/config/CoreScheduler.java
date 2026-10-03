@@ -15,6 +15,7 @@ import tz.elmkusoma.event.domain.Event;
 import tz.elmkusoma.event.domain.EventRegistration;
 import tz.elmkusoma.event.repository.EventRegistrationRepository;
 import tz.elmkusoma.event.repository.EventRepository;
+import tz.elmkusoma.identity.repository.TokenCleanupRepository;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.learner.service.NotificationService;
 
@@ -47,6 +48,7 @@ public class CoreScheduler {
     private final EventRepository eventRepository;
     private final EventRegistrationRepository registrationRepository;
     private final LearnerNotificationRepository learnerNotificationRepository;
+    private final TokenCleanupRepository tokenCleanupRepository;
     private final NotificationService notificationService;
     private final tz.elmkusoma.oversight.service.OversightAnnouncementService oversightAnnouncementService;
 
@@ -64,8 +66,21 @@ public class CoreScheduler {
     }
 
     @Scheduled(fixedRate = 3600000)
+    @Transactional
     public void cleanupExpiredTokens() {
-        log.info("Token cleanup executed");
+        try {
+            // Retain recently consumed/expired rows briefly for forensics, then purge.
+            LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
+            LocalDateTime dayAgo = LocalDateTime.now().minusDays(1);
+            long purged = 0;
+            purged += tokenCleanupRepository.deleteUsedOrExpiredResetTokens(weekAgo);
+            purged += tokenCleanupRepository.deleteUsedOrExpiredEmailTokens(weekAgo);
+            purged += tokenCleanupRepository.deleteUsedOrExpiredCodes(dayAgo);
+            purged += tokenCleanupRepository.deleteExpiredRevocations(LocalDateTime.now());
+            log.info("Token cleanup executed, purged {} rows", purged);
+        } catch (Exception e) {
+            log.warn("Token cleanup failed: {}", e.getMessage());
+        }
     }
 
     @Scheduled(fixedRate = 300000)

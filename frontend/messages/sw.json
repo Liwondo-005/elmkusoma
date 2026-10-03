@@ -2815,7 +2815,16 @@
     "sending": "Inatuma...",
     "signingIn": "Inaingia...",
     "termsOfService": "Masharti ya Huduma",
-    "togglePasswordVisibility": "Onyesha/ficha nenosiri"
+    "togglePasswordVisibility": "Onyesha/ficha nenosiri",
+    "resetTitle": "Weka nenosiri jipya",
+    "resetSubtitle": "Chagua nenosiri thabiti ambalo hujawahi kutumia.",
+    "resetSuccessTitle": "Nenosiri limebadilishwa",
+    "resetSuccessMessage": "Nenosiri lako limebadilishwa. Sasa unaweza kuingia.",
+    "resetTokenInvalid": "Kiungo hiki cha kurejesha si sahihi au tayari kimetumika.",
+    "resetTokenExpired": "Kiungo hiki kimeisha muda wake. Omba kingine.",
+    "resetMissingToken": "Hakuna tokeni iliyotolewa. Tumia kiungo kutoka kwenye barua pepe yako.",
+    "requestNewLink": "Omba kiungo kipya",
+    "resetFailed": "Imeshindwa kubadilisha nenosiri. Tafadhali jaribu tena."
   },
   "language": {
     "switchToEnglish": "Badilisha hadi Kiingereza",

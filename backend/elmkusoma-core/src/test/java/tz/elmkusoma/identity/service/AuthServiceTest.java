@@ -11,8 +11,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+import tz.elmkusoma.audit.service.AuditService;
+import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.config.security.JwtTokenProvider;
 import tz.elmkusoma.config.security.RateLimitService;
+import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.identity.domain.EmailVerificationToken;
@@ -74,6 +77,12 @@ class AuthServiceTest {
     private InstitutionRepository institutionRepository;
     @Mock
     private RateLimitService rateLimitService;
+    @Mock
+    private EventPublisherService eventPublisherService;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private AuditService auditService;
 
     @InjectMocks
     private AuthServiceImpl authService;

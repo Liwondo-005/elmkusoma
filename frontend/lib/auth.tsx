@@ -283,6 +283,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    // Server-side revocation first (best-effort): local state is cleared
+    // regardless so a dead backend can never trap the user signed in.
+    try {
+      const refreshToken = getRefreshToken()
+      if (refreshToken) {
+        await authApi.serverLogout(refreshToken)
+      }
+    } catch {
+      // Local logout proceeds even when the server cannot be reached.
+    }
     clearTokens()
     setAuthCookie(null)
     localStorage.removeItem("elmkusoma_institution_id")

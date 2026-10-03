@@ -9,8 +9,11 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import tz.elmkusoma.academic.repository.AcademicYearRepository;
 import tz.elmkusoma.academic.repository.ClassGroupRepository;
+import tz.elmkusoma.audit.service.AuditService;
+import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.config.security.JwtTokenProvider;
 import tz.elmkusoma.config.security.RateLimitService;
+import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.enrollment.repository.EnrollmentRepository;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
@@ -42,6 +45,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 /**
@@ -69,6 +75,9 @@ class AuthRecoverySecurityTest {
     @Mock private EnrollmentRepository enrollmentRepository;
     // Real limiter: the security property under test lives here.
     private final RateLimitService rateLimitService = new RateLimitService();
+    @Mock private EventPublisherService eventPublisherService;
+    @Mock private NotificationService notificationService;
+    @Mock private AuditService auditService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -203,6 +212,89 @@ class AuthRecoverySecurityTest {
         assertNotNull(raw);
         assertNotEquals(raw, saved[0].getToken());
         assertEquals(sha256(raw), saved[0].getToken());
+    }
+
+    @Test
+    void changePassword_successBumpsVersion() {
+        User user = userAtVersion(1L);
+        tz.elmkusoma.identity.dto.request.ChangePasswordRequest request =
+                new tz.elmkusoma.identity.dto.request.ChangePasswordRequest();
+        request.setCurrentPassword("OldPass123");
+        request.setNewPassword("BrandNew123");
+
+        when(userRepository.findByEmailAndIsDeletedFalse("victim@example.com"))
+                .thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("OldPass123", "old_hash")).thenReturn(true);
+        when(passwordEncoder.matches("BrandNew123", "old_hash")).thenReturn(false);
+        when(passwordEncoder.encode("BrandNew123")).thenReturn("new_hash");
+
+        authService.changePassword("victim@example.com", request);
+
+        assertEquals("new_hash", user.getPasswordHash());
+        assertEquals(2L, user.getSecurityVersion());
+    }
+
+    @Test
+    void changePassword_wrongCurrent_rejectedWithoutChange() {
+        User user = userAtVersion(1L);
+        tz.elmkusoma.identity.dto.request.ChangePasswordRequest request =
+                new tz.elmkusoma.identity.dto.request.ChangePasswordRequest();
+        request.setCurrentPassword("Nope12345");
+        request.setNewPassword("BrandNew123");
+
+        when(userRepository.findByEmailAndIsDeletedFalse("victim@example.com"))
+                .thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("Nope12345", "old_hash")).thenReturn(false);
+
+        assertThrows(ForbiddenException.class,
+                () -> authService.changePassword("victim@example.com", request));
+        assertEquals(1L, user.getSecurityVersion());
+        assertEquals("old_hash", user.getPasswordHash());
+    }
+
+    @Test
+    void forgotPassword_publishesDeliveryEmail() {
+        User user = userAtVersion(1L);
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        request.setEmail("victim@example.com");
+
+        when(userRepository.findByEmailAndIsDeletedFalse("victim@example.com"))
+                .thenReturn(Optional.of(user));
+        when(passwordResetTokenRepository.findByUserIdOrderByCreatedAtDesc(user.getId()))
+                .thenReturn(List.of());
+
+        authService.forgotPassword(request);
+
+        verify(eventPublisherService).publishEmailEvent(
+                eq("victim@example.com"), anyString(), eq("email/password-reset"),
+                argThat(vars -> vars != null && String.valueOf(vars.get("resetLink"))
+                        .startsWith("http://localhost:3000/reset-password?token=")),
+                any());
+    }
+
+    @Test
+    void resetPassword_notifiesAndAudits() {
+        User user = userAtVersion(1L);
+        PasswordResetToken token = liveToken(user.getId());
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("raw-token");
+        request.setNewPassword("BrandNew123");
+
+        when(passwordResetTokenRepository.findByTokenAndUsedFalse(anyString()))
+                .thenReturn(Optional.of(token));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("BrandNew123")).thenReturn("new_hash");
+        when(passwordResetTokenRepository.findByUserIdOrderByCreatedAtDesc(user.getId()))
+                .thenReturn(List.of(token));
+
+        authService.resetPassword(request);
+
+        verify(notificationService).notifyUser(eq(user.getId()), anyString(), anyString(),
+                eq("SECURITY"), eq("AUTH"), isNull());
+        verify(auditService).recordSecurityEvent(eq(user.getInstitutionId()), eq(user.getId()),
+                eq("victim@example.com"),
+                eq(tz.elmkusoma.audit.domain.SecurityEvent.SecurityEventType.PASSWORD_RESET),
+                anyString(), any(), isNull(), isNull());
     }
 
     @Test

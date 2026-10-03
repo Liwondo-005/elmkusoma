@@ -96,7 +96,7 @@ export default function LearnerProfilePage() {
       setPasswordError(null)
       setPasswordSuccess(null)
       const token = typeof window !== "undefined" ? localStorage.getItem("elmkusoma_access_token") : null
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/v1/auth/reset-password`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/v1/auth/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
