@@ -42,11 +42,15 @@ public final class TestTokens {
                 .expiration(new Date(System.currentTimeMillis() + 3_600_000L));
 
         // Add institutionId claim for known test users
-        if (ADMIN_EMAIL.equals(email) || TEACHER_EMAIL.equals(email) 
+        if (ADMIN_EMAIL.equals(email) || TEACHER_EMAIL.equals(email)
                 || STUDENT_EMAIL.equals(email) || LEARNER_EMAIL.equals(email)
                 || OTHER_STUDENT_EMAIL.equals(email)) {
             builder.claim("institutionId", INSTITUTION_ID);
         }
+
+        // Session-invalidation claim: seeded test users carry security_version 1
+        // (DB default), so test tokens must too or the filters reject them.
+        builder.claim("sv", 1L);
 
         return builder.signWith(Keys.hmacShaKeyFor(keyBytes)).compact();
     }

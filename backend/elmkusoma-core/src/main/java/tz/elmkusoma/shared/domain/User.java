@@ -53,6 +53,7 @@ public class User extends BaseEntity {
      * reset/change so previously issued sessions die immediately.
      */
     @Column(name = "security_version", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("1")
     @Builder.Default
     private Long securityVersion = 1L;
 
