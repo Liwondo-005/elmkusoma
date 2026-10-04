@@ -10,8 +10,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.academic.domain.EducationLevel;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.highereducation.domain.ProgrammeType;
 import tz.elmkusoma.highereducation.dto.ProgrammeDTO;
+import tz.elmkusoma.highereducation.repository.ProgrammeRepository;
 import tz.elmkusoma.highereducation.service.ProgrammeService;
 
 import java.util.List;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class ProgrammeController {
 
     private final ProgrammeService programmeService;
+    private final ProgrammeRepository programmeRepository;
 
     @GetMapping
     @Operation(summary = "List all programmes in an institution")
@@ -39,7 +42,10 @@ public class ProgrammeController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<ProgrammeDTO>> getProgramme(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyProgrammeAccess(id, serverInstitutionId, userRole);
         ProgrammeDTO programme = programmeService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(programme));
     }
@@ -90,7 +96,10 @@ public class ProgrammeController {
     public ResponseEntity<ApiResponse<ProgrammeDTO>> updateProgramme(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
-            @Valid @RequestBody ProgrammeDTO request) {
+            @Valid @RequestBody ProgrammeDTO request,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyProgrammeAccess(id, serverInstitutionId, userRole);
         ProgrammeDTO programme = programmeService.update(id, request);
         return ResponseEntity.ok(ApiResponse.success("Programme updated successfully", programme));
     }
@@ -100,8 +109,24 @@ public class ProgrammeController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProgramme(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyProgrammeAccess(id, serverInstitutionId, userRole);
         programmeService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Programme deleted successfully", null));
+    }
+
+    private void verifyProgrammeAccess(UUID id, UUID serverInstitutionId, String userRole) {
+        if ("ADMIN".equals(userRole)) {
+            return;
+        }
+        programmeRepository.findById(id)
+                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
+                .ifPresent(p -> {
+                    if (p.getInstitutionId() == null || !p.getInstitutionId().equals(serverInstitutionId)) {
+                        throw new ForbiddenException("Programme", "access");
+                    }
+                });
     }
 }

@@ -29,7 +29,13 @@ public class TenantAwareRedisTemplate {
         redisTemplate.opsForValue().set(prefixKey(key), value, timeout, unit);
     }
 
-    public Object get(String key) {
+    public Boolean expire(String key, long timeout, java.util.concurrent.TimeUnit unit) {
+        return redisTemplate.expire(prefixKey(key), timeout, unit);
+    }
+
+    public Long getExpire(String key, java.util.concurrent.TimeUnit unit) {
+        return redisTemplate.getExpire(prefixKey(key), unit);
+    }    public Object get(String key) {
         return redisTemplate.opsForValue().get(prefixKey(key));
     }
 

@@ -20,14 +20,20 @@ public class HigherEducationDashboardController {
     private final StudentCourseEnrollmentService enrollmentService;
     private final AcademicRecordService academicRecordService;
     private final CareerProfileService careerProfileService;
+    private final tz.elmkusoma.student.repository.StudentRepository studentRepository;
+    private final tz.elmkusoma.parent.repository.ParentStudentLinkRepository parentStudentLinkRepository;
 
     @GetMapping("/dashboard/{studentId}")
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<HigherEducationDashboardDTO>> getDashboard(
             @PathVariable UUID studentId,
             @RequestHeader(value = "X-Institution-Id", defaultValue = "00000000-0000-0000-0000-000000000001") UUID institutionId,
-            @RequestParam(defaultValue = "COLLEGE") String learningLevel) {
-        HigherEducationDashboardDTO dashboard = dashboardService.getDashboard(studentId, institutionId, learningLevel);
+            @RequestParam(defaultValue = "COLLEGE") String learningLevel,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userId") UUID callerUserId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyDashboardAccess(studentId, serverInstitutionId, callerUserId, userRole);
+        HigherEducationDashboardDTO dashboard = dashboardService.getDashboard(studentId, serverInstitutionId, learningLevel);
         return ResponseEntity.ok(ApiResponse.success(dashboard));
     }
 
@@ -95,5 +101,35 @@ public class HigherEducationDashboardController {
             @RequestHeader(value = "X-Institution-Id", defaultValue = "00000000-0000-0000-0000-000000000001") UUID institutionId) {
         dto.setInstitutionId(institutionId);
         return ResponseEntity.ok(ApiResponse.success(careerProfileService.createOrUpdate(studentId, dto)));
+    }
+
+    private void verifyDashboardAccess(UUID studentId, UUID serverInstitutionId, UUID callerUserId, String userRole) {
+        if ("ADMIN".equals(userRole)) {
+            return;
+        }
+        if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
+            UUID ownStudentId = null;
+            if (callerUserId != null) {
+                ownStudentId = studentRepository.findByUserIdAndIsDeletedFalse(callerUserId)
+                        .map(s -> s.getId())
+                        .orElse(null);
+            }
+            if (ownStudentId == null || !ownStudentId.equals(studentId)) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
+            }
+        } else if ("PARENT".equals(userRole)) {
+            boolean isChild = callerUserId != null && parentStudentLinkRepository.findAllByParentId(callerUserId).stream()
+                    .anyMatch(link -> link.getStudentId().equals(studentId));
+            if (!isChild) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
+            }
+        }
+        studentRepository.findById(studentId)
+                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
+                .ifPresent(s -> {
+                    if (s.getInstitutionId() == null || !s.getInstitutionId().equals(serverInstitutionId)) {
+                        throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
+                    }
+                });
     }
 }

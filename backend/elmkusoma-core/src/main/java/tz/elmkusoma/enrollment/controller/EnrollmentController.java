@@ -83,9 +83,12 @@ public class EnrollmentController {
     public ResponseEntity<ApiResponse<TransferResponse>> transfer(
             @PathVariable UUID id,
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID performedBy,
             @Valid @RequestBody TransferRequest request) {
-        TransferResponse response = enrollmentService.transfer(id, institutionId, request, userId);
+        // legacyUserId is accepted-but-ignored for backward compatibility; audit
+        // attribution always uses the authenticated principal (performedBy).
+        TransferResponse response = enrollmentService.transfer(id, institutionId, request, performedBy);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Student transferred successfully", response));
     }

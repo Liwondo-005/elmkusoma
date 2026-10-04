@@ -35,7 +35,8 @@ public class NurseryController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<NurseryActivityResponse>> createActivity(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID conductedBy,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID conductedBy,
             @Valid @RequestBody CreateNurseryActivityRequest request) {
         NurseryActivityResponse response = nurseryActivityService.create(institutionId, conductedBy, request);
         return ResponseEntity.status(HttpStatus.CREATED)

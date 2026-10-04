@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,6 +16,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.core.Ordered;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tz.elmkusoma.config.TenantAwareRedisTemplate;
 
 import java.io.IOException;
 
@@ -28,6 +30,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+
+    // Optional: absent in unit tests / minimal wirings. Redis outage or absence
+    // fails OPEN (warn) so request authentication never hard-depends on Redis.
+    @Autowired(required = false)
+    private TenantAwareRedisTemplate tenantAwareRedisTemplate;
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, @Lazy UserDetailsService userDetailsService) {
         this.jwtTokenProvider = jwtTokenProvider;
@@ -46,7 +53,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
         try {
             String token = extractToken(request);
             log.debug("JWT Filter: token extracted = {}", token != null ? "yes (length=" + token.length() + ")" : "null");
-            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)
+                    && !isDeniedByLogout(token)) {
                 String email = jwtTokenProvider.getEmailFromToken(token);
                 log.debug("JWT Filter: email from token = {}", email);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
@@ -83,5 +91,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter implements Ord
             return bearerToken.substring(BEARER_PREFIX.length());
         }
         return null;
+    }
+
+    /**
+     * Logout jti denylist read. Only tokens carrying a jti (post-hardening
+     * issuance) are checked; pre-hardening tokens without jti are allowed until
+     * their natural (<=1h) expiry. Any Redis failure fails OPEN with a warning.
+     * Reads via the RAW template: this filter runs before the organization
+     * context is resolved, so tenant-prefixed keys would never match the keys
+     * written at logout time.
+     */
+    private boolean isDeniedByLogout(String token) {
+        String jti = jwtTokenProvider.getJtiFromToken(token);
+        if (!StringUtils.hasText(jti) || tenantAwareRedisTemplate == null) {
+            return false;
+        }
+        try {
+            Boolean denied = tenantAwareRedisTemplate.getRawTemplate()
+                    .hasKey(JwtTokenProvider.LOGOUT_JTI_DENYLIST_PREFIX + jti);
+            if (Boolean.TRUE.equals(denied)) {
+                log.debug("JWT Filter: access token jti is denylisted (logout); denying authentication");
+                return true;
+            }
+            return false;
+        } catch (Exception ex) {
+            log.warn("JWT Filter: logout denylist check failed (failing open): {}", ex.getMessage());
+            return false;
+        }
     }
 }

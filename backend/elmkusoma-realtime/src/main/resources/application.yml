@@ -15,7 +15,10 @@ spring:
     password: guest
 
 jwt:
-  secret: ${JWT_SECRET:defaultSecretKeyThatShouldBeOverriddenInProduction}
+  # Required, environment-authoritative: same contract as elmkusoma-core/media.
+  # No embedded default — a missing JWT_SECRET must fail startup loudly
+  # instead of silently signing with a weak placeholder.
+  secret: ${JWT_SECRET}
 
 management:
   endpoints:

@@ -7,10 +7,12 @@ import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.audit.domain.AuditLog;
 import tz.elmkusoma.audit.repository.AuditLogRepository;
 import tz.elmkusoma.parent.domain.Entitlement;
+import tz.elmkusoma.parent.domain.Parent;
 import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.dto.ParentPaymentResponse;
 import tz.elmkusoma.parent.dto.ParentPaymentResponse.PaymentItem;
 import tz.elmkusoma.parent.repository.EntitlementRepository;
+import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.repository.PaymentRepository;
 
 import java.math.BigDecimal;
@@ -26,8 +28,14 @@ import java.util.stream.Collectors;
 public class ParentPaymentService {
 
     private final PaymentRepository paymentRepository;
+    private final ParentRepository parentRepository;
     private final EntitlementRepository entitlementRepository;
     private final AuditLogRepository auditLogRepository;
+
+    /** Actor label stamped on audit rows created from the unauthenticated gateway webhook
+     * (which passes verifiedBy=null). Reuses the repo's string-actor convention for
+     * non-user system activity; stored in the existing nullable userEmail/userRole columns. */
+    public static final String WEBHOOK_SYSTEM_ACTOR = "payment-webhook";
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
@@ -86,7 +94,7 @@ public class ParentPaymentService {
     @Transactional
     public Payment verifyPayment(UUID paymentId, String providerReference, UUID verifiedBy) {
         Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("Payment not found"));
 
         String oldStatus = payment.getStatus();
 
@@ -95,6 +103,9 @@ public class ParentPaymentService {
             return payment;
         }
 
+        // NOTE: amount/currency are intentionally never modified here. The stored initiated
+        // record is authoritative; the webhook controller reconciles any gateway-sent
+        // amount/currency against it before calling verify.
         payment.setProviderReference(providerReference);
         payment.setProvider("manual");
         payment.setStatus("COMPLETED");
@@ -106,6 +117,10 @@ public class ParentPaymentService {
         AuditLog auditLog = new AuditLog();
         auditLog.setInstitutionId(payment.getInstitutionId());
         auditLog.setUserId(verifiedBy);
+        if (verifiedBy == null) {
+            auditLog.setUserEmail(WEBHOOK_SYSTEM_ACTOR);
+            auditLog.setUserRole("SYSTEM");
+        }
         auditLog.setEntityType("Payment");
         auditLog.setEntityId(paymentId);
         auditLog.setEntityName("Payment Verification");
@@ -114,7 +129,8 @@ public class ParentPaymentService {
         auditLog.setNewValues(Map.of("status", "COMPLETED", "paidAt", payment.getPaidAt().toString()));
         auditLogRepository.save(auditLog);
 
-        log.info("Payment verified and entitlement granted: {} by {}", paymentId, verifiedBy);
+        log.info("Payment verified and entitlement granted: {} by {}", paymentId,
+                verifiedBy != null ? verifiedBy : WEBHOOK_SYSTEM_ACTOR);
         return payment;
     }
 
@@ -154,7 +170,7 @@ public class ParentPaymentService {
     @Transactional
     public Payment cancelPayment(UUID paymentId, UUID userId) {
         Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("Payment not found"));
 
         if ("COMPLETED".equals(payment.getStatus())) {
             throw new IllegalStateException("Cannot cancel a completed payment");
@@ -162,8 +178,11 @@ public class ParentPaymentService {
         if (!"PENDING".equals(payment.getStatus())) {
             throw new IllegalStateException("Only pending payments can be cancelled");
         }
-        if (!payment.getParentId().equals(userId)) {
-            throw new RuntimeException("Not authorized to cancel this payment");
+        Parent callerParent = parentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (callerParent == null
+                || (!callerParent.getId().equals(payment.getParentId())
+                        && !userId.equals(payment.getParentId()))) {
+            throw new tz.elmkusoma.exception.ForbiddenException("Not authorized to cancel this payment");
         }
 
         payment.setStatus("CANCELLED");
@@ -187,7 +206,7 @@ public class ParentPaymentService {
     @Transactional
     public Payment refundPayment(UUID paymentId, UUID refundedBy, String reason) {
         Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+                .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("Payment not found"));
 
         if (!"COMPLETED".equals(payment.getStatus())) {
             throw new IllegalStateException("Only completed payments can be refunded");

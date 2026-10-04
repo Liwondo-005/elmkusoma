@@ -18,6 +18,8 @@ public interface AuthService {
 
     void resetPassword(ResetPasswordRequest request);
 
+    void changePassword(String email, ChangePasswordRequest request);
+
     void verifyEmail(VerifyEmailRequest request);
 
     void logout(String refreshToken);

@@ -20,6 +20,7 @@ import tz.elmkusoma.course.dto.LinkLessonRequest;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.course.service.LiveClassService;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.teacher.domain.Teacher;
@@ -278,8 +279,10 @@ public class TeacherLiveClassController {
     public ResponseEntity<ApiResponse<List<tz.elmkusoma.liveclass.dto.ParticipantInfo>>> getParticipants(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
             @PathVariable UUID id) {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
+        verifyLiveClassOwnership(id, teacher.getId(), serverInstitutionId);
         List<LiveClassParticipant> participants = participantRepository.findByLiveClassIdAndIsDeletedFalse(id);
 
         List<tz.elmkusoma.liveclass.dto.ParticipantInfo> info = participants.stream().map(p -> {
@@ -302,8 +305,10 @@ public class TeacherLiveClassController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getParticipantStats(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
             @PathVariable UUID id) {
         Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
+        verifyLiveClassOwnership(id, teacher.getId(), serverInstitutionId);
         long totalJoined = participantRepository.countByLiveClassIdAndIsDeletedFalse(id);
         long currentlyConnected = participantRepository.countByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(id);
         return ResponseEntity.ok(ApiResponse.success(Map.of(
@@ -325,6 +330,18 @@ public class TeacherLiveClassController {
                     entityType, entityId, entityName, action, oldValues, newValues);
         } catch (Exception ex) {
             log.warn("Audit write failed for {} {}: {}", entityType, entityId, ex.getMessage());
+        }
+    }
+
+    private void verifyLiveClassOwnership(UUID liveClassId, UUID teacherId, UUID serverInstitutionId) {
+        LiveClass liveClass = liveClassRepository.findById(liveClassId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        if (liveClass != null) {
+            if (liveClass.getInstitutionId() == null || !liveClass.getInstitutionId().equals(serverInstitutionId)
+                    || liveClass.getTeacherId() == null || !liveClass.getTeacherId().equals(teacherId)) {
+                throw new ForbiddenException("Live class", "access");
+            }
         }
     }
 }

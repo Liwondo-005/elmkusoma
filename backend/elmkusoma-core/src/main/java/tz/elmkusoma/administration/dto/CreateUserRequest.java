@@ -24,6 +24,7 @@ public class CreateUserRequest {
     @Email(message = "Invalid email format")
     private String email;
     
+    @Size(max = 255, message = "Phone must not exceed 255 characters")
     private String phone;
     
     @NotBlank(message = "Password is required")

@@ -22,6 +22,8 @@ import java.util.UUID;
 public class CompetencyController {
 
     private final CompetencyService competencyService;
+    private final tz.elmkusoma.highereducation.repository.CompetencyRepository competencyRepository;
+    private final tz.elmkusoma.student.repository.StudentRepository studentRepository;
 
     @GetMapping
     @Operation(summary = "List all competencies filtered by institution")
@@ -93,7 +95,10 @@ public class CompetencyController {
             @RequestParam String status,
             @RequestParam(required = false) String evidence,
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestAttribute(value = "userId", required = false) UUID assessedBy) {
+            @RequestAttribute(value = "userId", required = false) UUID assessedBy,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyCompetencyRecordAccess(studentId, competencyId, serverInstitutionId, userRole, assessedBy);
         CompetencyRecordDTO result = competencyService.updateCompetencyRecord(
                 studentId, competencyId, status, evidence, assessedBy);
         return ResponseEntity.ok(ApiResponse.success("Competency record updated", result));
@@ -129,5 +134,36 @@ public class CompetencyController {
             @PathVariable UUID subjectId) {
         List<CompetencyDTO> result = competencyService.getCompetenciesForSubject(subjectId);
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    private void verifyCompetencyRecordAccess(UUID studentId, UUID competencyId, UUID serverInstitutionId, String userRole, UUID callerUserId) {
+        if ("ADMIN".equals(userRole)) {
+            return;
+        }
+        competencyRepository.findById(competencyId)
+                .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                .ifPresent(c -> {
+                    if (c.getInstitutionId() == null || !c.getInstitutionId().equals(serverInstitutionId)) {
+                        throw new tz.elmkusoma.exception.ForbiddenException("Competency", "access");
+                    }
+                });
+        studentRepository.findById(studentId)
+                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
+                .ifPresent(s -> {
+                    if (s.getInstitutionId() == null || !s.getInstitutionId().equals(serverInstitutionId)) {
+                        throw new tz.elmkusoma.exception.ForbiddenException("Student", "access");
+                    }
+                });
+        if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
+            UUID ownStudentId = null;
+            if (callerUserId != null) {
+                ownStudentId = studentRepository.findByUserIdAndIsDeletedFalse(callerUserId)
+                        .map(s -> s.getId())
+                        .orElse(null);
+            }
+            if (ownStudentId == null || !ownStudentId.equals(studentId)) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Competency record", "access");
+            }
+        }
     }
 }

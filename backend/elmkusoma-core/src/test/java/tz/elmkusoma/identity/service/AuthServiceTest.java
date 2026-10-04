@@ -171,7 +171,7 @@ class AuthServiceTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> authService.register(request));
-        assertTrue(exception.getMessage().contains("already exists"));
+        assertTrue(exception.getMessage().contains("Unable to complete registration"));
     }
 
     @Test
@@ -273,9 +273,9 @@ class AuthServiceTest {
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken("old_refresh_token");
 
-        when(jwtTokenProvider.validateToken("old_refresh_token")).thenReturn(true);
+        when(jwtTokenProvider.validateRefreshToken("old_refresh_token")).thenReturn(true);
         when(revokedTokenRepository.existsByTokenHash(anyString())).thenReturn(false);
-        when(jwtTokenProvider.getEmailFromToken("old_refresh_token")).thenReturn("john@example.com");
+        when(jwtTokenProvider.getEmailFromRefreshToken("old_refresh_token")).thenReturn("john@example.com");
 
         User user = User.builder()
                 .id(userId)
@@ -307,7 +307,7 @@ class AuthServiceTest {
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken("invalid_token");
 
-        when(jwtTokenProvider.validateToken("invalid_token")).thenReturn(false);
+        when(jwtTokenProvider.validateRefreshToken("invalid_token")).thenReturn(false);
 
         assertThrows(ForbiddenException.class, () -> authService.refreshToken(request));
     }
@@ -317,7 +317,7 @@ class AuthServiceTest {
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken("revoked_token");
 
-        when(jwtTokenProvider.validateToken("revoked_token")).thenReturn(true);
+        when(jwtTokenProvider.validateRefreshToken("revoked_token")).thenReturn(true);
         when(revokedTokenRepository.existsByTokenHash(anyString())).thenReturn(true);
 
         assertThrows(ForbiddenException.class, () -> authService.refreshToken(request));
@@ -398,7 +398,11 @@ class AuthServiceTest {
         when(passwordResetTokenRepository.findByTokenAndUsedFalse("invalid_token"))
                 .thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> authService.resetPassword(request));
+        // Unknown, invalid and expired reset tokens unify to one 400 response
+        // (no 404/403 oracle distinguishing token validity).
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> authService.resetPassword(request));
+        assertTrue(exception.getMessage().contains("Reset token is invalid or has expired"));
     }
 
     @Test

@@ -30,7 +30,8 @@ public class SecondaryExtendedController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createConcept(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Concept created", service.createConcept(institutionId, userId, request)));
     }
@@ -69,7 +70,8 @@ public class SecondaryExtendedController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createProblem(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Problem created", service.createProblem(institutionId, userId, request)));
     }
@@ -108,7 +110,8 @@ public class SecondaryExtendedController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createError(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Error entry created", service.createError(institutionId, userId, request)));
     }
@@ -146,7 +149,8 @@ public class SecondaryExtendedController {
     @Operation(summary = "Create a study plan")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createStudyPlan(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Study plan created", service.createStudyPlan(institutionId, userId, request)));
     }

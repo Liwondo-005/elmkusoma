@@ -111,6 +111,6 @@ class AuthServiceImplRegistrationTest {
         req.setRole("STUDENT");
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> authService.register(req));
-        assertTrue(ex.getMessage().contains("already exists"));
+        assertTrue(ex.getMessage().contains("Unable to complete registration"));
     }
 }

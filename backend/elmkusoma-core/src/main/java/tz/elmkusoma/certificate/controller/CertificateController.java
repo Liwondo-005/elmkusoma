@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.certificate.dto.*;
 import tz.elmkusoma.certificate.service.CertificateService;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.parent.repository.ParentRepository;
+import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +28,9 @@ import java.util.UUID;
 public class CertificateController {
 
     private final CertificateService certificateService;
+    private final StudentRepository studentRepository;
+    private final ParentRepository parentRepository;
+    private final ParentStudentLinkRepository parentStudentLinkRepository;
 
     // ── Template Endpoints ──
 
@@ -185,7 +191,31 @@ public class CertificateController {
     @Operation(summary = "List transcripts by student")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<List<TranscriptResponse>>> getTranscripts(
-            @RequestParam UUID studentId) {
+            @RequestParam UUID studentId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("userRole") String userRole) {
+        if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
+            if (!studentId.equals(userId)) {
+                var student = studentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+                if (student == null || !student.getId().equals(studentId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(ApiResponse.error("Access denied: cannot view other students' transcripts"));
+                }
+            }
+        } else if ("PARENT".equals(userRole)) {
+            var parent = parentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+            if (parent == null || !parentStudentLinkRepository.existsByParentIdAndStudentIdAndIsDeletedFalse(parent.getId(), studentId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied: cannot view transcripts of students not linked to you"));
+            }
+        } else if ("TEACHER".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole)) {
+            var student = studentRepository.findById(studentId).orElse(null);
+            if (student != null && student.getInstitutionId() != null && !student.getInstitutionId().equals(institutionId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied: student belongs to another institution"));
+            }
+        }
         List<TranscriptResponse> response = certificateService.getTranscriptsByStudent(studentId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

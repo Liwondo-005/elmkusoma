@@ -35,6 +35,7 @@ import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -68,6 +69,17 @@ public class AuthServiceImpl implements AuthService {
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.identity.service.LoginAttemptService loginAttemptService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.audit.service.AuditService auditService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.config.TenantAwareRedisTemplate tenantAwareRedisTemplate;
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
@@ -137,7 +149,9 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("Platform policy forbids public registration");
         }
         if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
-            throw new IllegalArgumentException("An account with this email already exists");
+            // Neutral message: must not confirm whether the email is registered
+            // (account-enumeration defence). Still 400 via IllegalArgumentException.
+            throw new IllegalArgumentException("Unable to complete registration with the provided details");
         }
 
         User.Role role = resolveRegistrationRole(request.getRole());
@@ -299,9 +313,36 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        String clientIp = resolveLoginClientIp();
+        if (loginAttemptService != null) {
+            loginAttemptService.checkBlocked(request.getEmail(), clientIp);
+        }
+
+        final Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (org.springframework.security.authentication.BadCredentialsException ex) {
+            boolean newlyBlocked = false;
+            if (loginAttemptService != null) {
+                try {
+                    newlyBlocked = loginAttemptService.recordFailure(request.getEmail(), clientIp);
+                } catch (Exception redisEx) {
+                    log.warn("Login rate-limit record failed (failing open)", redisEx);
+                }
+            }
+            recordLoginFailureAudit(request.getEmail(), clientIp, newlyBlocked);
+            throw ex;
+        }
+
+        if (loginAttemptService != null) {
+            try {
+                loginAttemptService.recordSuccess(request.getEmail(), clientIp);
+            } catch (Exception redisEx) {
+                log.warn("Login rate-limit clear failed (failing open)", redisEx);
+            }
+        }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -338,21 +379,36 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse refreshToken(RefreshTokenRequest request) {
         String refreshToken = request.getRefreshToken();
 
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
+        // Lenient validation: pre-hardening 7d refresh tokens carry no iss and
+        // must keep working until natural expiry (alg is still pinned to HS256).
+        if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
             throw new ForbiddenException("Invalid or expired refresh token");
         }
 
-        if (revokedTokenRepository.existsByTokenHash(hashToken(refreshToken))) {
+        String presentedHash = hashToken(refreshToken);
+        if (revokedTokenRepository.existsByTokenHash(presentedHash)) {
             throw new ForbiddenException("Refresh token has been revoked");
         }
 
-        String email = jwtTokenProvider.getEmailFromToken(refreshToken);
+        String email = jwtTokenProvider.getEmailFromRefreshToken(refreshToken);
         User user = userRepository.findByEmailAndIsDeletedFalse(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
         String newAccessToken = jwtTokenProvider.generateAccessTokenWithClaims(
                 user.getEmail(), user.getId(), user.getRole().name(), user.getInstitutionId());
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
+
+        // Rotation: revoke the PRESENTED refresh token before returning its
+        // replacement, so a stolen token cannot be replayed after rotation.
+        // Immediate revoke races concurrent double-refresh (second tab sees
+        // "revoked" and must re-login) — accepted over silent replay windows.
+        if (!revokedTokenRepository.existsByTokenHash(presentedHash)) {
+            revokedTokenRepository.save(tz.elmkusoma.identity.domain.RevokedToken.builder()
+                    .tokenHash(presentedHash)
+                    .revokedAt(LocalDateTime.now())
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .build());
+        }
 
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
@@ -380,11 +436,13 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void resetPassword(ResetPasswordRequest request) {
+        // Single 400 for unknown/invalid/expired: distinct 404 vs 403 responses
+        // let attackers probe token validity (enumeration oracle).
         PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenAndUsedFalse(request.getToken())
-                .orElseThrow(() -> new ResourceNotFoundException("Reset token"));
+                .orElseThrow(() -> new IllegalArgumentException("Reset token is invalid or has expired"));
 
         if (!resetToken.isValid()) {
-            throw new ForbiddenException("Reset token is invalid or has expired");
+            throw new IllegalArgumentException("Reset token is invalid or has expired");
         }
 
         User user = userRepository.findById(resetToken.getUserId())
@@ -397,6 +455,32 @@ public class AuthServiceImpl implements AuthService {
         passwordResetTokenRepository.save(resetToken);
 
         log.info("Password reset successfully for user: {}", user.getEmail());
+    }
+
+    @Override
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        // Same failure signal as login: a wrong current password throws
+        // BadCredentialsException, which GlobalExceptionHandler maps to
+        // 401 {"success":false,"error":"Invalid credentials"} — identical to a
+        // failed login, so the response reveals nothing beyond "rejected".
+        // Neither password value is ever logged.
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid credentials");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        log.info("Password changed successfully for user: {}", user.getEmail());
+
+        // Token lifecycle note: pre-existing access tokens stay valid until
+        // their natural expiry (<=1h, jwt.access-token-expiration-ms=3600000)
+        // and refresh-token rotation continues unchanged. There is no
+        // per-device/session tracking in this codebase, so selective revocation
+        // of other sessions is not possible here — deliberately not built.
     }
 
     @Override
@@ -433,6 +517,62 @@ public class AuthServiceImpl implements AuthService {
             revokedTokenRepository.save(revokedToken);
         }
         log.info("Refresh token revoked successfully");
+
+        // Access-token revocation via jti denylist (Redis, no migration): the
+        // access token travels in the Authorization header of this same request,
+        // resolved here so the endpoint/service shape is unchanged.
+        denyCurrentAccessToken();
+    }
+
+    private void denyCurrentAccessToken() {
+        if (tenantAwareRedisTemplate == null) {
+            return;
+        }
+        String accessToken = resolveCurrentBearerToken();
+        if (accessToken == null) {
+            return;
+        }
+        String jti = jwtTokenProvider.getJtiFromToken(accessToken);
+        if (jti == null || jti.isBlank()) {
+            // Pre-hardening access token (no jti): expires naturally within 1h.
+            return;
+        }
+        java.util.Date exp = jwtTokenProvider.getExpirationFromToken(accessToken);
+        if (exp == null) {
+            return;
+        }
+        long ttlSeconds = (exp.getTime() - System.currentTimeMillis()) / 1000;
+        if (ttlSeconds <= 0) {
+            return; // Already expired — nothing to deny.
+        }
+        try {
+            // Global key via the RAW template: JwtAuthenticationFilter runs before
+            // the organization context is resolved, so a tenant-prefixed key
+            // written here would never match the filter's read. jti is globally
+            // unique, so no tenant scoping is needed.
+            tenantAwareRedisTemplate.getRawTemplate().opsForValue().set(
+                    tz.elmkusoma.config.security.JwtTokenProvider.LOGOUT_JTI_DENYLIST_PREFIX + jti,
+                    "1", ttlSeconds, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception ex) {
+            // Refresh-token revocation above already succeeded; a denylist write
+            // failure must not fail the request (fail open, like the filter).
+            log.warn("Logout access-token denylist write failed (failing open)", ex);
+        }
+    }
+
+    private String resolveCurrentBearerToken() {
+        try {
+            var attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra) {
+                String header = sra.getRequest().getHeader("Authorization");
+                if (header != null && header.startsWith("Bearer ")) {
+                    return header.substring("Bearer ".length());
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not resolve current access token for logout denylist", e);
+        }
+        return null;
     }
 
     @Override
@@ -448,7 +588,7 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        String code = String.format("%05d", new java.util.Random().nextInt(100000));
+        String code = String.format("%05d", SECURE_RANDOM.nextInt(100000));
 
         VerificationCode verificationCode = VerificationCode.builder()
                 .email(email)
@@ -459,7 +599,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         verificationCodeRepository.save(verificationCode);
 
-        log.info("Verification code for {}: {}", email, code);
+        log.info("Verification code sent to {}", email);
     }
 
     @Override
@@ -469,12 +609,12 @@ public class AuthServiceImpl implements AuthService {
 
         VerificationCode verificationCode = verificationCodeRepository
                 .findTopByEmailAndCodeAndUsedFalseOrderByCreatedAtDesc(email, code)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid verification code"));
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired verification code"));
 
         if (verificationCode.isExpired()) {
             verificationCode.setUsed(true);
             verificationCodeRepository.save(verificationCode);
-            throw new IllegalArgumentException("Verification code has expired. Please request a new one.");
+            throw new IllegalArgumentException("Invalid or expired verification code");
         }
 
         if (verificationCode.getAttempts() >= 5) {
@@ -486,6 +626,49 @@ public class AuthServiceImpl implements AuthService {
         verificationCode.setAttempts(verificationCode.getAttempts() + 1);
         verificationCode.setUsed(true);
         verificationCodeRepository.save(verificationCode);
+    }
+
+    private String resolveLoginClientIp() {
+        try {
+            var attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra) {
+                return tz.elmkusoma.identity.service.LoginAttemptService
+                        .resolveClientIp(sra.getRequest());
+            }
+        } catch (Exception e) {
+            log.debug("Could not resolve client IP for login rate-limit", e);
+        }
+        return "unknown";
+    }
+
+    private void recordLoginFailureAudit(String email, String clientIp, boolean newlyBlocked) {
+        if (auditService == null) {
+            return;
+        }
+        try {
+            String userAgent = null;
+            try {
+                var attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+                if (attrs instanceof org.springframework.web.context.request.ServletRequestAttributes sra) {
+                    userAgent = sra.getRequest().getHeader("User-Agent");
+                }
+            } catch (Exception ignored) {
+            }
+            auditService.recordSecurityEvent(null, null, email,
+                    tz.elmkusoma.audit.domain.SecurityEvent.SecurityEventType.LOGIN_FAILURE,
+                    "Failed login attempt",
+                    tz.elmkusoma.audit.domain.SecurityEvent.Severity.WARNING,
+                    clientIp, userAgent);
+            if (newlyBlocked) {
+                auditService.recordSecurityEvent(null, null, email,
+                        tz.elmkusoma.audit.domain.SecurityEvent.SecurityEventType.ACCOUNT_LOCKED,
+                        "Login temporarily blocked after repeated failures",
+                        tz.elmkusoma.audit.domain.SecurityEvent.Severity.ERROR,
+                        clientIp, userAgent);
+            }
+        } catch (Exception e) {
+            log.warn("Login failure audit failed (must not break login)", e);
+        }
     }
 
     private String hashToken(String token) {

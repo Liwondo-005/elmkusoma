@@ -12,6 +12,9 @@ import tz.elmkusoma.parent.domain.Payment;
 import tz.elmkusoma.parent.repository.PaymentRepository;
 import tz.elmkusoma.parent.service.ParentPaymentService;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +39,10 @@ public class PaymentWebhookController {
         public String providerReference;
         public String result; // SUCCESS | FAILED
         public String provider;
+        // Optional reconciliation fields. When the gateway sends them they MUST match the
+        // stored initiated record; when absent the stored record remains authoritative.
+        public BigDecimal amount;
+        public String currency;
     }
 
     @PostMapping
@@ -49,7 +56,7 @@ public class PaymentWebhookController {
             integrationService.recordWebhook("PAYMENT", "rejected", "FAILED", "FAILED", "Webhook secret not configured");
             return ResponseEntity.status(503).body(ApiResponse.error("Payment webhook is not configured"));
         }
-        if (secret == null || !webhookSecret.equals(secret)) {
+        if (!isEqualSecret(secret, webhookSecret)) {
             log.warn("Payment webhook rejected: invalid secret");
             integrationService.recordWebhook("PAYMENT", "rejected", "FAILED", "FAILED", "Invalid webhook secret");
             return ResponseEntity.status(401).body(ApiResponse.error("Invalid webhook secret"));
@@ -76,6 +83,26 @@ public class PaymentWebhookController {
                         "status", "COMPLETED",
                         "duplicate", true)));
             }
+            if (payload.amount != null
+                    && (payment.getAmount() == null || payload.amount.compareTo(payment.getAmount()) != 0)) {
+                log.warn("Payment webhook rejected: amount mismatch for {}", payload.paymentId);
+                integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "FAILED", "Amount mismatch vs initiated record");
+                return ResponseEntity.status(422).body(ApiResponse.error("Amount does not match the initiated payment"));
+            }
+            if (payload.currency != null && payment.getCurrency() != null
+                    && !payload.currency.equalsIgnoreCase(payment.getCurrency())) {
+                log.warn("Payment webhook rejected: currency mismatch for {}", payload.paymentId);
+                integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "FAILED", "Currency mismatch vs initiated record");
+                return ResponseEntity.status(422).body(ApiResponse.error("Currency does not match the initiated payment"));
+            }
+            if (payload.providerReference != null && !payload.providerReference.isBlank()
+                    && !"manual".equalsIgnoreCase(payload.providerReference.trim())
+                    && paymentRepository.existsByProviderReferenceAndIdNotAndIsDeletedFalse(
+                            payload.providerReference, payload.paymentId)) {
+                log.warn("Payment webhook rejected: providerReference already used by another payment {}", payload.paymentId);
+                integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "FAILED", "providerReference already used by another payment");
+                return ResponseEntity.status(409).body(ApiResponse.error("providerReference already used by another payment"));
+            }
             paymentService.verifyPayment(payload.paymentId,
                     payload.providerReference, null);
             log.info("Payment webhook: {} completed, entitlement granted", payload.paymentId);
@@ -98,5 +125,14 @@ public class PaymentWebhookController {
             integrationService.recordWebhook("PAYMENT", "payment_callback", "VERIFIED", "FAILED", "Invalid result value");
             return ResponseEntity.badRequest().body(ApiResponse.error("result must be SUCCESS or FAILED"));
         }
+    }
+
+    /** Constant-time comparison so the shared secret cannot be probed byte-by-byte via timing. */
+    private static boolean isEqualSecret(String provided, String expected) {
+        if (provided == null || expected == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(provided.getBytes(StandardCharsets.UTF_8),
+                expected.getBytes(StandardCharsets.UTF_8));
     }
 }

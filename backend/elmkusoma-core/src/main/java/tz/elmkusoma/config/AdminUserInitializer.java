@@ -2,6 +2,7 @@ package tz.elmkusoma.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +27,9 @@ public class AdminUserInitializer implements ApplicationRunner {
     private static final String ADMIN_EMAIL = "admin@elmkusoma.go.tz";
     private static final String ADMIN_PASSWORD = "password";
 
+    @Value("${ADMIN_BOOTSTRAP_PASSWORD:}")
+    private String bootstrapPassword;
+
     @Override
     public void run(ApplicationArguments args) {
         try {
@@ -33,8 +37,9 @@ public class AdminUserInitializer implements ApplicationRunner {
             if (existing.isPresent()) {
                 User user = existing.get();
                 boolean needsUpdate = false;
-                if (!passwordEncoder.matches(ADMIN_PASSWORD, user.getPasswordHash())) {
-                    user.setPasswordHash(passwordEncoder.encode(ADMIN_PASSWORD));
+                String bootstrap = bootstrapPassword == null ? "" : bootstrapPassword;
+                if (!bootstrap.isBlank() && !passwordEncoder.matches(bootstrap, user.getPasswordHash())) {
+                    user.setPasswordHash(passwordEncoder.encode(bootstrap));
                     needsUpdate = true;
                 }
                 if (user.getRole() != User.Role.ADMIN) {
@@ -54,9 +59,14 @@ public class AdminUserInitializer implements ApplicationRunner {
                     log.info("Admin user updated: {}", ADMIN_EMAIL);
                 }
             } else {
+                String initialPassword = (bootstrapPassword != null && !bootstrapPassword.isBlank())
+                        ? bootstrapPassword
+                        : ADMIN_PASSWORD;
+                boolean usingFallback = initialPassword.equals(ADMIN_PASSWORD)
+                        && (bootstrapPassword == null || bootstrapPassword.isBlank());
                 User admin = User.builder()
                         .email(ADMIN_EMAIL)
-                        .passwordHash(passwordEncoder.encode(ADMIN_PASSWORD))
+                        .passwordHash(passwordEncoder.encode(initialPassword))
                         .firstName("Platform")
                         .lastName("Admin")
                         .role(User.Role.ADMIN)
@@ -66,6 +76,9 @@ public class AdminUserInitializer implements ApplicationRunner {
                 admin.setInstitutionId(HQ_INSTITUTION_ID);
                 admin = userRepository.save(admin);
                 log.info("Admin user created: {} ({})", ADMIN_EMAIL, admin.getId());
+                if (usingFallback) {
+                    log.warn("Admin user created with default credential for {} - set ADMIN_BOOTSTRAP_PASSWORD in production", ADMIN_EMAIL);
+                }
             }
 
             User adminUser = userRepository.findByEmailAndIsDeletedFalse(ADMIN_EMAIL)

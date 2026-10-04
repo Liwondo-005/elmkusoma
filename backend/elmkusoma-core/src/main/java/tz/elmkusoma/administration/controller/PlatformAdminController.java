@@ -142,7 +142,14 @@ public class PlatformAdminController {
     @Operation(summary = "Reset user password (platform admin)")
     public ResponseEntity<ApiResponse<Void>> resetUserPassword(
             @PathVariable UUID userId,
-            @RequestParam String newPassword) {
+            @RequestBody Map<String, String> body) {
+        // newPassword travels in the JSON body, never in the URL: URLs are
+        // logged by servers/proxies and linger in browser history. Path + roles
+        // unchanged; the frontend caller already POSTs { newPassword } as JSON.
+        String newPassword = body != null ? body.get("newPassword") : null;
+        if (newPassword == null || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("newPassword is required"));
+        }
         platformAdminService.resetUserPassword(userId, newPassword);
         return ResponseEntity.ok(ApiResponse.success("Password reset successfully", null));
     }

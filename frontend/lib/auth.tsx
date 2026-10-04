@@ -74,7 +74,7 @@ function setCurrentUser(user: AuthUser | null) {
 
 function setAuthCookie(token: string | null) {
   if (token) {
-    document.cookie = `elmkusoma_access_token=${token}; path=/; max-age=86400; SameSite=Lax`
+    document.cookie = `elmkusoma_access_token=${token}; path=/; max-age=3600; SameSite=Lax`
   } else {
     document.cookie = "elmkusoma_access_token=; path=/; max-age=0"
   }
@@ -283,6 +283,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    const refreshToken = getRefreshToken()
+    if (refreshToken) {
+      try {
+        await authApi.logout(refreshToken)
+      } catch {
+        // Best-effort revocation: fall through and still clear local state
+        // so the user is never stranded logged in (offline/backend down).
+      }
+    }
     clearTokens()
     setAuthCookie(null)
     localStorage.removeItem("elmkusoma_institution_id")
