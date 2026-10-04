@@ -9,13 +9,15 @@ spring:
       host: localhost
       port: 6379
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 jwt:
-  secret: ${JWT_SECRET:defaultSecretKeyThatShouldBeOverriddenInProduction}
+  # No default: the service fails fast at startup without JWT_SECRET instead of
+  # signing tokens with a public value.
+  secret: ${JWT_SECRET}
 
 management:
   endpoints:

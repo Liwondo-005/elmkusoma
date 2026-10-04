@@ -103,13 +103,13 @@ class AuthServiceTest {
     void register_shouldCreateUserAndReturnTokens() {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("john@example.com");
-        request.setPassword("password123");
+        request.setPassword("Str0ng!Passw0rd");
         request.setFirstName("John");
         request.setLastName("Doe");
         request.setRole("STUDENT");
 
         when(userRepository.existsByEmailAndIsDeletedFalse("john@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("password123")).thenReturn("encoded_password");
+        when(passwordEncoder.encode("Str0ng!Passw0rd")).thenReturn("encoded_password");
 
         User savedUser = User.builder()
                 .id(userId)
@@ -145,14 +145,14 @@ class AuthServiceTest {
     void register_withVetaLearningLevel_persistsVeta() {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("veta-student@example.com");
-        request.setPassword("password123");
+        request.setPassword("Str0ng!Passw0rd");
         request.setFirstName("Neema");
         request.setLastName("Kileo");
         request.setRole("STUDENT");
         request.setLearningLevel("VETA");
 
         when(userRepository.existsByEmailAndIsDeletedFalse("veta-student@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("password123")).thenReturn("encoded_password");
+        when(passwordEncoder.encode("Str0ng!Passw0rd")).thenReturn("encoded_password");
 
         final User[] captured = new User[1];
         when(userRepository.save(any(User.class))).thenAnswer(inv -> {
@@ -181,22 +181,28 @@ class AuthServiceTest {
     void register_whenEmailExists_shouldThrow() {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("existing@example.com");
-        request.setPassword("password123");
+        request.setPassword("Str0ng!Passw0rd");
         request.setFirstName("John");
         request.setLastName("Doe");
 
         when(userRepository.existsByEmailAndIsDeletedFalse("existing@example.com")).thenReturn(true);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> authService.register(request));
-        assertTrue(exception.getMessage().contains("already exists"));
+        // Anti-enumeration: identical 201 shape, no tokens, owner notified.
+        AuthResponse response = authService.register(request);
+
+        assertNotNull(response);
+        assertNull(response.getAccessToken());
+        assertNull(response.getUser());
+        verify(eventPublisherService).publishEmailEvent(
+                eq("existing@example.com"), anyString(), eq("email/password-reset"),
+                any(), any());
     }
 
     @Test
     void register_withInvalidRole_shouldThrow() {
         RegisterRequest request = new RegisterRequest();
         request.setEmail("john@example.com");
-        request.setPassword("password123");
+        request.setPassword("Str0ng!Passw0rd");
         request.setFirstName("John");
         request.setLastName("Doe");
         request.setRole("ADMIN");

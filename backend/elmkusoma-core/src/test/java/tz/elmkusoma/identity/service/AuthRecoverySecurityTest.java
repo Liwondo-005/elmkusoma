@@ -442,6 +442,24 @@ class AuthRecoverySecurityTest {
     }
 
     @Test
+    void resetPassword_commonPassword_rejected() {
+        User user = userAtVersion(1L);
+        PasswordResetToken token = liveToken(user.getId());
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("raw-token");
+        request.setNewPassword("password123");
+
+        when(passwordResetTokenRepository.findByTokenAndUsedFalse(anyString()))
+                .thenReturn(Optional.of(token));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> authService.resetPassword(request));
+        assertTrue(ex.getMessage().contains("too common"));
+        assertEquals(1L, user.getSecurityVersion());
+    }
+
+    @Test
     void rateLimiter_tripsAfterBudget_andRecovers() {
         RateLimitService limiter = new RateLimitService();
         String key = "probe:" + UUID.randomUUID();

@@ -142,8 +142,19 @@ public class PlatformAdminController {
     @Operation(summary = "Reset user password (platform admin)")
     public ResponseEntity<ApiResponse<Void>> resetUserPassword(
             @PathVariable UUID userId,
-            @RequestParam String newPassword) {
-        platformAdminService.resetUserPassword(userId, newPassword);
+            @RequestParam(required = false) String newPassword,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        // Prefer the JSON body so the secret never appears in URLs/access
+        // logs; the query parameter remains accepted for older clients.
+        String password = body != null ? body.get("newPassword") : null;
+        if (password == null || password.isBlank()) {
+            password = newPassword;
+        }
+        if (password == null || password.isBlank() || password.length() < 8) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("A new password of at least 8 characters is required"));
+        }
+        platformAdminService.resetUserPassword(userId, password);
         return ResponseEntity.ok(ApiResponse.success("Password reset successfully", null));
     }
 

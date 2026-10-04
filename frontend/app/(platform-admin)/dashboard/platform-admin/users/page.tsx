@@ -28,6 +28,11 @@ export default function PlatformUsersPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<UserSummary | null>(null)
+  const [resetTarget, setResetTarget] = useState<UserSummary | null>(null)
+  const [resetPassword, setResetPassword] = useState("")
+  const [resetConfirm, setResetConfirm] = useState("")
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
 const editingForModal = editing ? { 
   ...editing, 
   phone: editing.phone ?? "", 
@@ -104,14 +109,33 @@ const editingForModal = editing ? {
     }
   }
 
-  const handleResetPassword = async (user: UserSummary) => {
-    const newPassword = window.prompt(`${t("users.enterNewPassword")} ${user.email}:`)
-    if (!newPassword) return
+  const openResetDialog = (user: UserSummary) => {
+    setResetTarget(user)
+    setResetPassword("")
+    setResetConfirm("")
+    setResetError(null)
+  }
+
+  const handleResetPassword = async () => {
+    if (!resetTarget) return
+    if (resetPassword.length < 8) {
+      setResetError(t("users.passwordMinLength"))
+      return
+    }
+    if (resetPassword !== resetConfirm) {
+      setResetError(t("users.passwordsNoMatch"))
+      return
+    }
+    setResetting(true)
+    setResetError(null)
     try {
-      await platformAdminApi.resetUserPassword(user.id, newPassword)
-      flash(`${t("users.passwordResetFor")} ${user.email}`)
+      await platformAdminApi.resetUserPassword(resetTarget.id, resetPassword)
+      flash(`${t("users.passwordResetFor")} ${resetTarget.email}`)
+      setResetTarget(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("users.failedToResetPassword"))
+      setResetError(err instanceof Error ? err.message : t("users.failedToResetPassword"))
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -228,7 +252,7 @@ const editingForModal = editing ? {
                           <Pencil className="size-3" /> Edit
                         </button>
                         <button
-                          onClick={() => handleResetPassword(user)}
+                          onClick={() => openResetDialog(user)}
                           className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
                           title={t("users.resetPassword")}
                         >
@@ -320,6 +344,65 @@ const editingForModal = editing ? {
         onClose={() => setModalOpen(false)}
         onSaved={handleSaved}
       />
+
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" role="dialog" aria-modal="true" aria-label={t("users.resetDialogTitle")}>
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-lg">
+            <h2 className="text-lg font-semibold text-foreground">{t("users.resetDialogTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("users.resetDialogFor", { email: resetTarget.email })}
+            </p>
+            <div className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="reset-new-password" className="block text-sm font-medium text-foreground">
+                  {t("users.newPasswordLabel")}
+                </label>
+                <input
+                  id="reset-new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none focus:border-ring focus:bg-background"
+                />
+              </div>
+              <div>
+                <label htmlFor="reset-confirm-password" className="block text-sm font-medium text-foreground">
+                  {t("users.confirmNewPasswordLabel")}
+                </label>
+                <input
+                  id="reset-confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={resetConfirm}
+                  onChange={(e) => setResetConfirm(e.target.value)}
+                  className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-sm text-foreground outline-none focus:border-ring focus:bg-background"
+                />
+              </div>
+              {resetError && (
+                <p className="text-sm text-destructive">{resetError}</p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setResetTarget(null)}
+                  className="rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted"
+                >
+                  {tc("cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  disabled={resetting}
+                  className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {resetting ? t("users.resetting") : t("users.confirmReset")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

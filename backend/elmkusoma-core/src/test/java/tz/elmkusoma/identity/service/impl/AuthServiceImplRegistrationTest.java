@@ -110,17 +110,21 @@ class AuthServiceImplRegistrationTest {
     }
 
     @Test
-    void registerDuplicateEmailThrows() {
+    void registerDuplicateEmailReturnsTokenlessSuccess() {
         when(userRepository.existsByEmailAndIsDeletedFalse("dup@test.com")).thenReturn(true);
 
         RegisterRequest req = new RegisterRequest();
         req.setFirstName("Test");
         req.setLastName("User");
         req.setEmail("dup@test.com");
-        req.setPassword("Password123");
+        req.setPassword("Str0ng!Passw0rd");
         req.setRole("STUDENT");
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> authService.register(req));
-        assertTrue(ex.getMessage().contains("already exists"));
+        // Anti-enumeration: no exception, no tokens — identical shape to a
+        // fresh registration from the caller's perspective.
+        tz.elmkusoma.identity.dto.response.AuthResponse response = authService.register(req);
+        assertNotNull(response);
+        assertNull(response.getAccessToken());
+        assertNull(response.getUser());
     }
 }

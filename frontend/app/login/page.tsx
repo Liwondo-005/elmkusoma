@@ -16,7 +16,10 @@ function LoginForm() {
   const t = useTranslations("auth")
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState("")
-  const { login } = useAuth()
+  const [mfaToken, setMfaToken] = useState<string | null>(null)
+  const [mfaCode, setMfaCode] = useState("")
+  const [mfaBusy, setMfaBusy] = useState(false)
+  const { login, completeMfaLogin } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") || "/dashboard"
@@ -39,6 +42,26 @@ function LoginForm() {
   async function onSubmit(values: LoginValues) {
     setServerError("")
     const result = await login(values.email, values.password)
+    if (result.error) {
+      setServerError(result.error)
+      return
+    }
+    if (result.mfaRequired) {
+      // Password accepted, but the account holds a verified authenticator:
+      // only a short-lived challenge was issued — complete step two below.
+      setMfaToken(result.mfaToken || "")
+      return
+    }
+    router.push(redirect)
+  }
+
+  async function onMfaSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!mfaToken) return
+    setMfaBusy(true)
+    setServerError("")
+    const result = await completeMfaLogin(mfaToken, mfaCode.trim())
+    setMfaBusy(false)
     if (result.error) {
       setServerError(result.error)
       return
@@ -77,6 +100,43 @@ function LoginForm() {
               </div>
             )}
 
+            {mfaToken ? (
+              <form className="mt-8 space-y-5" onSubmit={onMfaSubmit}>
+                <div>
+                  <label htmlFor="mfaCode" className="block text-sm font-medium text-foreground">
+                    {t("mfaCodeLabel")}
+                  </label>
+                  <input
+                    id="mfaCode"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="mt-1.5 h-11 w-full rounded-lg border border-border bg-muted/60 px-3.5 text-center text-lg tracking-[0.5em] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:bg-background"
+                  />
+                  <p className="mt-1.5 text-xs text-muted-foreground">{t("mfaCodeHint")}</p>
+                </div>
+
+                <Button type="submit" className="h-11 w-full text-sm" disabled={mfaBusy || mfaCode.length !== 6}>
+                  {mfaBusy ? t("verifying") : t("verifyAndSignIn")}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMfaToken(null)
+                    setMfaCode("")
+                    setServerError("")
+                  }}
+                  className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {t("backToLogin")}
+                </button>
+              </form>
+            ) : (
             <form className="mt-8 space-y-5" onSubmit={handleSubmit(onSubmit)}>
               <div className="space-y-4">
                 <div>
@@ -135,6 +195,7 @@ function LoginForm() {
                 {isSubmitting ? t("signingIn") : t("signIn")}
               </Button>
             </form>
+            )}
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               {t("dontHaveAccount")}{" "}

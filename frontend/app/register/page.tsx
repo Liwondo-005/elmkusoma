@@ -42,6 +42,7 @@ export default function RegisterPage() {
   const router = useRouter()
 
   const [captchaKey, setCaptchaKey] = useState(0)
+  const [pendingVerification, setPendingVerification] = useState(false)
   const [captchaCode, setCaptchaCode] = useState("")
   useEffect(() => {
     setCaptchaCode(generateCaptchaCode())
@@ -123,7 +124,48 @@ export default function RegisterPage() {
       setServerError(result.error)
       return
     }
+    if (result.pendingVerification) {
+      // Tokenless success: identical screen for new and already-registered
+      // addresses (no existence oracle); verification/notice travels by email.
+      setPendingVerification(true)
+      return
+    }
     setRegistered(true)
+  }
+
+  if (pendingVerification) {
+    return (
+      <div className="flex min-h-dvh flex-col">
+        <header className="relative z-10 border-b border-border bg-background/90 backdrop-blur">
+          <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
+            <Logo />
+          </div>
+        </header>
+        <main className="relative flex-1 flex items-center justify-center px-4 py-12">
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: "url('/images/register-bg.jpg')" }}
+          />
+          <div className="absolute inset-0 bg-foreground/60" />
+          <div className="relative z-10 w-full max-w-md">
+            <div className="rounded-2xl border border-border bg-card/95 backdrop-blur-sm p-8 shadow-lg text-center">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
+                <CheckCircle className="size-7 text-teal" />
+              </div>
+              <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+                {t("verifyEmailTitle")}
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {t("verifyEmailMessage")}
+              </p>
+              <Button onClick={() => router.push("/login")} className="mt-6 w-full">
+                {t("backToLogin")}
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   if (registered) {

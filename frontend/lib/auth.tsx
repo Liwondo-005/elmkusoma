@@ -24,7 +24,14 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
-  login: (email: string, password: string) => Promise<{ error?: string }>
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ error?: string; mfaRequired?: boolean; mfaToken?: string }>
+  completeMfaLogin: (
+    mfaToken: string,
+    code: string,
+  ) => Promise<{ error?: string }>
   register: (data: {
     firstName: string
     middleName?: string
@@ -36,7 +43,7 @@ interface AuthContextValue {
     learningLevel?: string
     secondaryStage?: string
     form?: string
-  }) => Promise<{ error?: string }>
+  }) => Promise<{ error?: string; pendingVerification?: boolean }>
   logout: () => Promise<void>
   token: string | null
   refreshToken: () => Promise<boolean>
@@ -189,9 +196,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!refreshToken) return false
     try {
       const response = await authApi.refresh(refreshToken)
+      if (!response.accessToken || !response.user) return false
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)
-      setTokens(response.accessToken, response.refreshToken)
+      setTokens(response.accessToken, response.refreshToken || "")
       setAuthCookie(response.accessToken)
       setCurrentUser(authUser)
       setUser(authUser)
@@ -230,15 +238,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     try {
       const response = await authApi.login({ email, password })
+      // Step-up challenge: no session yet — the caller must complete MFA.
+      if (response.mfaRequired) {
+        return { mfaRequired: true as const, mfaToken: response.mfaToken || "" }
+      }
+      if (!response.accessToken || !response.user) {
+        return { error: "Login failed" }
+      }
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)
-      setTokens(response.accessToken, response.refreshToken)
+      setTokens(response.accessToken, response.refreshToken || "")
       setAuthCookie(response.accessToken)
       setCurrentUser(authUser)
       setUser(authUser)
       return {}
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Login failed"
+      return { error: message }
+    }
+  }, [])
+
+  const completeMfaLogin = useCallback(async (mfaToken: string, code: string) => {
+    try {
+      const response = await authApi.mfaVerify({ mfaToken, code })
+      if (!response.accessToken || !response.user) {
+        return { error: "Verification failed" }
+      }
+      const authUser = mapUserInfo(response.user)
+      authUser.role = mapRoleToFrontend(response.user.role)
+      setTokens(response.accessToken, response.refreshToken || "")
+      setAuthCookie(response.accessToken)
+      setCurrentUser(authUser)
+      setUser(authUser)
+      return {}
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Verification failed"
       return { error: message }
     }
   }, [])
@@ -269,9 +303,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         secondaryStage: data.secondaryStage,
         form: data.form,
       })
+      // Tokenless success means "check your email" (new account pending
+      // verification, or an already-registered address — identical by design).
+      if (!response.accessToken || !response.user) {
+        return { pendingVerification: true as const }
+      }
       const authUser = mapUserInfo(response.user)
       authUser.role = mapRoleToFrontend(response.user.role)
-      setTokens(response.accessToken, response.refreshToken)
+      setTokens(response.accessToken, response.refreshToken || "")
       setAuthCookie(response.accessToken)
       setCurrentUser(authUser)
       setUser(authUser)
@@ -301,7 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, token: getStoredToken(), refreshToken: doRefreshToken }}>
+    <AuthContext.Provider value={{ user, loading, login, completeMfaLogin, register, logout, token: getStoredToken(), refreshToken: doRefreshToken }}>
       {children}
     </AuthContext.Provider>
   )

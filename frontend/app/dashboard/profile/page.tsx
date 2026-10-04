@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useAuth, translateRole } from "@/lib/auth"
 import { useTranslations } from "next-intl"
 import { learnerApi } from "@/lib/learner-api"
+import { MfaEnrollmentCard } from "@/components/auth/mfa-enrollment-card"
 import { Camera } from "lucide-react"
 
 export default function DashboardProfilePage() {
@@ -101,6 +102,8 @@ export default function DashboardProfilePage() {
           </div>
         </form>
       </div>
+
+      <MfaEnrollmentCard />
     </div>
   )
 }

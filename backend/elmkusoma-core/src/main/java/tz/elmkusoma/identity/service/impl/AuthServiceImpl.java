@@ -201,6 +201,34 @@ public class AuthServiceImpl implements AuthService {
             User.Role.OTHER_LEARNER
     );
 
+    private static final java.util.Set<String> COMMON_PASSWORDS = java.util.Set.of(
+            "password", "password1", "password12", "password123",
+            "12345678", "123456789", "qwerty", "qwerty123", "abc12345",
+            "letmein", "letmein123", "welcome", "welcome123", "admin123",
+            "user12345", "test12345", "changeme", "changeme123", "iloveyou123",
+            "football123", "monkey123", "dragon123", "elmkusoma", "elmkusoma123",
+            "tanzania", "tanzania123");
+
+    /**
+     * Minimal breached-obvious-password screen. Exact (case-insensitive)
+     * dictionary match plus the account's own email local-part.
+     */
+    private void rejectCommonPassword(String email, String password) {
+        if (password == null) {
+            return;
+        }
+        String lowered = password.toLowerCase();
+        if (COMMON_PASSWORDS.contains(lowered)) {
+            throw new IllegalArgumentException("Password is too common. Choose a less predictable password.");
+        }
+        if (email != null && email.contains("@")) {
+            String localPart = email.substring(0, email.indexOf('@')).toLowerCase();
+            if (!localPart.isBlank() && (lowered.equals(localPart) || lowered.contains(localPart))) {
+                throw new IllegalArgumentException("Password must not contain your email address.");
+            }
+        }
+    }
+
     private User.Role resolveRegistrationRole(String requestedRole) {
         if (requestedRole == null || requestedRole.isBlank()) {
             return User.Role.STUDENT;
@@ -223,8 +251,29 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("Platform policy forbids public registration");
         }
         if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
-            throw new IllegalArgumentException("An account with this email already exists");
+            // Anti-enumeration: same 201 shape as a fresh registration, no
+            // tokens, and the owner gets an "already registered" notice.
+            try {
+                java.util.Map<String, Object> variables = new java.util.HashMap<>();
+                variables.put("userName", request.getEmail());
+                variables.put("resetLink", frontendUrl + "/login");
+                variables.put("expiryHours", 0);
+                eventPublisherService.publishEmailEvent(
+                        request.getEmail(),
+                        "Someone tried to register with your Elmkusoma address",
+                        "email/password-reset",
+                        variables,
+                        HQ_INSTITUTION_ID);
+            } catch (Exception ex) {
+                log.warn("Duplicate-registration notice not published");
+            }
+            return AuthResponse.builder()
+                    .tokenType("Bearer")
+                    .expiresIn(0)
+                    .build();
         }
+
+        rejectCommonPassword(request.getEmail(), request.getPassword());
 
         User.Role role = resolveRegistrationRole(request.getRole());
 
@@ -282,6 +331,32 @@ public class AuthServiceImpl implements AuthService {
         }
 
         log.info("User registered successfully: {}", user.getEmail());
+
+        // Complete the verification producer: single-use hashed token + link email.
+        try {
+            String rawVerificationToken = UUID.randomUUID().toString() + UUID.randomUUID().toString();
+            tz.elmkusoma.identity.domain.EmailVerificationToken verificationToken =
+                    tz.elmkusoma.identity.domain.EmailVerificationToken.builder()
+                            .token(hashToken(rawVerificationToken))
+                            .userId(user.getId())
+                            .expiresAt(LocalDateTime.now().plusHours(48))
+                            .used(false)
+                            .build();
+            emailVerificationTokenRepository.save(verificationToken);
+            String displayName = user.getFirstName() != null ? user.getFirstName() : user.getEmail();
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            variables.put("userName", displayName);
+            variables.put("resetLink", frontendUrl + "/verify-email?token=" + rawVerificationToken);
+            variables.put("expiryHours", 48);
+            eventPublisherService.publishEmailEvent(
+                    user.getEmail(),
+                    "Verify your Elmkusoma email address",
+                    "email/password-reset",
+                    variables,
+                    instId);
+        } catch (Exception ex) {
+            log.warn("Verification email not published for user: {}", user.getEmail());
+        }
 
         String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
                 user.getEmail(), user.getId(), user.getRole().name(), instId, user.getSecurityVersion());
@@ -565,6 +640,7 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        rejectCommonPassword(user.getEmail(), request.getNewPassword());
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         // Invalidate every previously issued session/token for this account.
         bumpSecurityVersion(user);
@@ -615,6 +691,7 @@ public class AuthServiceImpl implements AuthService {
         if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("New password must differ from the current password");
         }
+        rejectCommonPassword(user.getEmail(), request.getNewPassword());
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         // Invalidate every previously issued session/token for this account.
         bumpSecurityVersion(user);
@@ -748,6 +825,7 @@ public class AuthServiceImpl implements AuthService {
             }
             throw new ForbiddenException("Emergency recovery failed");
         }
+        rejectCommonPassword(user.getEmail(), request.getNewPassword());
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         bumpSecurityVersion(user);
         userRepository.save(user);

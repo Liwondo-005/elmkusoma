@@ -141,11 +141,13 @@ export interface UserInfo {
 }
 
 export interface AuthResponse {
-  accessToken: string
-  refreshToken: string
+  accessToken: string | null
+  refreshToken: string | null
   tokenType: string
   expiresIn: number
-  user: UserInfo
+  user: UserInfo | null
+  mfaRequired?: boolean
+  mfaToken?: string | null
 }
 
 export interface RegisterPayload {
@@ -197,6 +199,50 @@ export const authApi = {
     request<void>("/v1/auth/change-password", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+
+  mfaVerify: (data: { mfaToken: string; code: string }) =>
+    request<AuthResponse>("/v1/auth/mfa/verify", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  mfaEnroll: () =>
+    request<{ factorId: string; otpauthUri: string; base32Secret: string; recoveryCodes: string[]; remainingCodes: number }>(
+      "/v1/auth/mfa/enroll",
+      { method: "POST" },
+    ),
+
+  mfaConfirm: (data: { factorId: string; code: string }) =>
+    request<void>("/v1/auth/mfa/confirm", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  mfaStatus: () =>
+    request<{ enrolled: boolean; remainingCodes: number; recoveryCodes: string[] | null }>(
+      "/v1/auth/mfa/status",
+    ),
+
+  regenerateRecoveryCodes: () =>
+    request<{ enrolled: boolean; remainingCodes: number; recoveryCodes: string[] | null }>(
+      "/v1/auth/mfa/codes/regenerate",
+      { method: "POST" },
+    ),
+
+  revokeAllSessions: () =>
+    request<void>("/v1/auth/sessions/revoke-all", { method: "POST" }),
+
+  emergencyRecover: (data: { email: string; recoveryCode: string; newPassword: string }) =>
+    request<void>("/v1/auth/emergency-recover", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  verifyEmail: (token: string) =>
+    request<void>("/v1/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
     }),
 
   serverLogout: (refreshToken: string) =>
