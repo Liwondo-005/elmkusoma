@@ -261,7 +261,7 @@ public class AuthServiceImpl implements AuthService {
                 eventPublisherService.publishEmailEvent(
                         request.getEmail(),
                         "Someone tried to register with your Elmkusoma address",
-                        "email/password-reset",
+                        "password-reset",
                         variables,
                         HQ_INSTITUTION_ID);
             } catch (Exception ex) {
@@ -351,7 +351,7 @@ public class AuthServiceImpl implements AuthService {
             eventPublisherService.publishEmailEvent(
                     user.getEmail(),
                     "Verify your Elmkusoma email address",
-                    "email/password-reset",
+                    "password-reset",
                     variables,
                     instId);
         } catch (Exception ex) {
@@ -590,7 +590,7 @@ public class AuthServiceImpl implements AuthService {
                         eventPublisherService.publishEmailEvent(
                                 user.getEmail(),
                                 "Reset your Elmkusoma password",
-                                "email/password-reset",
+                                "password-reset",
                                 variables,
                                 user.getInstitutionId());
                     } catch (Exception ex) {
@@ -670,7 +670,7 @@ public class AuthServiceImpl implements AuthService {
             eventPublisherService.publishEmailEvent(
                     user.getEmail(),
                     "Your Elmkusoma password was reset",
-                    "email/password-reset",
+                    "password-reset",
                     variables,
                     user.getInstitutionId());
         } catch (Exception ex) {
