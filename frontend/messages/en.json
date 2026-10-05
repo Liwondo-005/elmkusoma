@@ -2815,7 +2815,19 @@
     "sending": "Sending...",
     "signingIn": "Signing in...",
     "termsOfService": "Terms of Service",
-    "togglePasswordVisibility": "Toggle password visibility"
+    "togglePasswordVisibility": "Toggle password visibility",
+    "secureAccess": "Secure Access",
+    "secureTagline": "Secure learning access",
+    "stepCredentials": "Credentials",
+    "stepSecurityCheck": "Security Check",
+    "stepAuthentication": "Authentication",
+    "statusReady": "Ready to sign you in",
+    "statusVerifying": "Verifying your access...",
+    "statusSuccess": "Authentication successful",
+    "statusSuccessSub": "Welcome back to ELMKUSOMA",
+    "statusError": "We couldn't sign you in.",
+    "statusErrorSub": "Please check your details and try again.",
+    "authStatusRegion": "Authentication status"
   },
   "language": {
     "switchToEnglish": "Switch to English",
