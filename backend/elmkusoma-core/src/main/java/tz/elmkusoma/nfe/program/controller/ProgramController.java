@@ -27,7 +27,7 @@ public class ProgramController {
 
     @PostMapping
     @Operation(summary = "Create a new NFE program")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<ProgramResponse>> createProgram(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody ProgramRequest request) {
@@ -38,7 +38,7 @@ public class ProgramController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get an NFE program by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<ProgramResponse>> getProgram(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -48,7 +48,7 @@ public class ProgramController {
 
     @GetMapping
     @Operation(summary = "List all NFE programs in an institution")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<ProgramResponse>>> listPrograms(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
@@ -59,7 +59,7 @@ public class ProgramController {
 
     @GetMapping("/provider/{providerId}")
     @Operation(summary = "Get programs by provider")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<ProgramResponse>>> getProgramsByProvider(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId) {
@@ -69,7 +69,7 @@ public class ProgramController {
 
     @GetMapping("/published")
     @Operation(summary = "Get all published NFE programs")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<ProgramResponse>>> getPublishedPrograms(
             @RequestHeader("X-Institution-Id") UUID institutionId) {
         List<ProgramResponse> programs = programService.getPublishedPrograms(institutionId);
@@ -78,7 +78,7 @@ public class ProgramController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an NFE program")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<ProgramResponse>> updateProgram(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -89,7 +89,7 @@ public class ProgramController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete an NFE program")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProgram(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {

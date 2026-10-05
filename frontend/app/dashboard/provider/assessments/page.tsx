@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
+import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function AssessmentsPage() {
@@ -12,6 +13,7 @@ export default function AssessmentsPage() {
   const [assessments, setAssessments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     loadAssessments()
@@ -31,6 +33,21 @@ export default function AssessmentsPage() {
     (a.title || a.name || "").toLowerCase().includes(search.toLowerCase())
   )
 
+  const createFields: ProviderFormField[] = [
+    { name: "title", label: t("form.title"), type: "text", required: true },
+    {
+      name: "assessmentType",
+      label: t("form.type"),
+      type: "select",
+      required: true,
+      options: ["QUIZ", "EXAM", "SURVEY", "FEEDBACK"].map((v) => ({ value: v, label: t(`form.assessmentTypes.${v}`) })),
+    },
+    { name: "description", label: t("form.description"), type: "textarea" },
+    { name: "totalMarks", label: t("form.totalMarks"), type: "number" },
+    { name: "passMarks", label: t("form.passMarks"), type: "number" },
+    { name: "timeLimitMinutes", label: t("form.timeLimit"), type: "number" },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -38,7 +55,10 @@ export default function AssessmentsPage() {
           <h1 className="text-3xl font-bold tracking-tight">{ta("title")}</h1>
           <p className="text-muted-foreground">{t("assessments.subtitle")}</p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           <Plus className="size-4" /> {tt("assessments.createAssessment")}
         </button>
       </div>
@@ -74,6 +94,25 @@ export default function AssessmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ProviderCreateDialog
+        open={createOpen}
+        title={tt("assessments.createAssessment")}
+        fields={createFields}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={async (v) => {
+          await nfeApi.createAssessment({
+            title: v.title,
+            assessmentType: v.assessmentType,
+            description: v.description,
+            totalMarks: v.totalMarks,
+            passMarks: v.passMarks,
+            timeLimitMinutes: v.timeLimitMinutes,
+          })
+          setCreateOpen(false)
+          loadAssessments()
+        }}
+      />
     </div>
   )
 }

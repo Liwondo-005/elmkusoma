@@ -8,7 +8,12 @@ interface RequestOptions extends RequestInit {
 }
 
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
-  const url = new URL(`${API_BASE}${path}`)
+  const base =
+    API_BASE ||
+    (typeof window !== "undefined"
+      ? window.location.origin
+      : "http://localhost:3000")
+  const url = new URL(path, base)
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {

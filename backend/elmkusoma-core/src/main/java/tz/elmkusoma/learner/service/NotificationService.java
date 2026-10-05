@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.config.EventPublisherService;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.learner.domain.LearnerNotification;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.parent.domain.Parent;
@@ -139,8 +140,12 @@ public class NotificationService {
     }
 
     @Transactional
-    public void markAsRead(UUID notificationId) {
+    public void markAsRead(UUID notificationId, UUID userId) {
         notificationRepository.findById(notificationId).ifPresent(n -> {
+            // §41: ownership — a caller may only mutate their own inbox
+            if (userId == null || !userId.equals(n.getUserId())) {
+                throw new ForbiddenException("Access denied");
+            }
             n.setIsRead(true);
             notificationRepository.save(n);
         });

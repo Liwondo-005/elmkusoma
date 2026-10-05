@@ -189,7 +189,13 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
         filterChain.doFilter(request, response);
     }
 
-    private InstitutionMembership.Role mapUserRoleToMembershipRole(User.Role userRole) {
+    /**
+     * User.Role → organization membership role for synthesized contexts. PUBLIC so provisioning
+     * paths (PlatformAdminService.createUser) bind identical org roles. §12: PROVIDER_ADMIN
+     * operates their provider organization (ADMIN-equivalent inside it); PROVIDER_STAFF gets
+     * delivery capabilities without platform authority.
+     */
+    public static InstitutionMembership.Role mapUserRoleToMembershipRole(User.Role userRole) {
         return switch (userRole) {
             case TEACHER -> InstitutionMembership.Role.TEACHER;
             case PARENT -> InstitutionMembership.Role.PARENT;
@@ -197,6 +203,8 @@ public class OrganizationContextResolver extends OncePerRequestFilter implements
             case INSTITUTION_ADMIN, ADMIN -> InstitutionMembership.Role.ADMIN;
             case NATIONAL_ADMIN -> InstitutionMembership.Role.NATIONAL_ADMIN;
             case INSTRUCTOR -> InstitutionMembership.Role.INSTRUCTOR;
+            case PROVIDER_ADMIN -> InstitutionMembership.Role.ADMIN;
+            case PROVIDER_STAFF -> InstitutionMembership.Role.TEACHER;
             default -> InstitutionMembership.Role.STUDENT;
         };
     }

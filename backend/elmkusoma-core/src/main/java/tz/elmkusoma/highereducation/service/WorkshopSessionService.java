@@ -27,10 +27,10 @@ public class WorkshopSessionService {
                 .studentId(dto.getStudentId())
                 .title(dto.getTitle())
                 .description(dto.getDescription())
-                .workshopType(WorkshopType.valueOf(
-                        dto.getWorkshopType() != null ? dto.getWorkshopType() : "WORKSHOP"))
+                .workshopType(parseWorkshopType(dto.getWorkshopType()))
                 .courseId(dto.getCourseId())
                 .scheduledAt(dto.getScheduledAt())
+                .academicYear(dto.getAcademicYear())
                 .durationMinutes(dto.getDurationMinutes())
                 .location(dto.getLocation())
                 .status(WorkshopStatus.SCHEDULED)
@@ -65,6 +65,7 @@ public class WorkshopSessionService {
         if (dto.getDescription() != null) session.setDescription(dto.getDescription());
         if (dto.getStatus() != null) session.setStatus(WorkshopStatus.valueOf(dto.getStatus()));
         if (dto.getScheduledAt() != null) session.setScheduledAt(dto.getScheduledAt());
+        if (dto.getAcademicYear() != null) session.setAcademicYear(dto.getAcademicYear());
         if (dto.getLocation() != null) session.setLocation(dto.getLocation());
         if (dto.getCurrentParticipants() != null) session.setCurrentParticipants(dto.getCurrentParticipants());
         return toDTO(workshopSessionRepository.save(session));
@@ -76,12 +77,25 @@ public class WorkshopSessionService {
         workshopSessionRepository.deleteById(id);
     }
 
+    // The learner form submits display-case values ("Lab Session", "Hands-On");
+    // normalize before valueOf so lookups match WORKSHOP/LAB_SESSION/... enum names.
+    private static WorkshopType parseWorkshopType(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return WorkshopType.WORKSHOP;
+        }
+        String normalized = raw.trim().toUpperCase()
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
+        return WorkshopType.valueOf(normalized);
+    }
+
     private WorkshopSessionDTO toDTO(WorkshopSession s) {
         return WorkshopSessionDTO.builder()
                 .id(s.getId()).institutionId(s.getInstitutionId()).studentId(s.getStudentId())
                 .title(s.getTitle()).description(s.getDescription())
                 .workshopType(s.getWorkshopType().name()).courseId(s.getCourseId())
                 .scheduledAt(s.getScheduledAt()).durationMinutes(s.getDurationMinutes())
+                .academicYear(s.getAcademicYear())
                 .location(s.getLocation()).status(s.getStatus().name())
                 .maxParticipants(s.getMaxParticipants()).currentParticipants(s.getCurrentParticipants())
                 .materialsUrl(s.getMaterialsUrl()).instructorId(s.getInstructorId())

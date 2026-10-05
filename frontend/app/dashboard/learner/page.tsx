@@ -71,9 +71,26 @@ export default function LearnerDashboardPage() {
 
   if (authLoading || loading) return <LoadingState />
   if (!user) return <LoadingState />
-  if (isHE && !dashboard) return <LoadingState />
 
   const firstName = user.firstName || user.name?.split(" ")[0] || "Learner"
+
+  if (isHE && !dashboard) {
+    // Request finished without dashboard data (failure or empty payload):
+    // show the existing error UI + Retry instead of loading forever.
+    return (
+      <div className="mx-auto max-w-7xl space-y-6" role="main" aria-label={t("myLearningWorld")}>
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error || t("failedToLoadDashboard")}</span>
+          <button onClick={loadDashboard} className="ml-auto text-xs underline">{tc("retry")}</button>
+        </div>
+        <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
+          <LearnerHeader firstName={firstName} subtitle={t("myLearningWorld")} />
+        </div>
+      </div>
+    )
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const dash = dashboard!
 

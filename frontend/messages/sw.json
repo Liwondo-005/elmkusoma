@@ -439,6 +439,11 @@
     "programmes": "Programu",
     "projects": "Miradi",
     "providers": "Watoa Huduma",
+    "groupDelivery": "UTENDAJI",
+    "groupContent": "MAUDHUI",
+    "materials": "Vifaa",
+    "programs": "Programu",
+    "sessions": "Vipindi",
     "quests": "Changamoto",
     "read": "Soma",
     "replays": "Marudio",
@@ -4410,7 +4415,8 @@
       "noCourses": "Hakuna kozi zilizopatikana",
       "noCoursesAvailable": "Hakuna kozi bado.",
       "noCoursesSearch": "Hakuna kozi zinazolingana na utafutaji wako.",
-      "viewCourse": "Tazama Kozi"
+      "viewCourse": "Tazama Kozi",
+      "label": "Kozi"
     },
     "notifications": "Arifa",
     "profile": "Wasifu",
@@ -4546,6 +4552,10 @@
     "credit": "Mikopo",
     "semester": "Muhula",
     "academicYear": "Mwaka wa Masomo",
+    "scheduledAt": "Tarehe na Saa Zilizopangwa",
+    "title": "Kichwa",
+    "lessons": "Masomo",
+    "studyGroups": "Vikundi vya Kusoma",
     "department": "Idara",
     "programme": "Programu",
     "institution": "Taasisi",
@@ -8663,6 +8673,79 @@
     }
   },
   "provider": {
+    "form": {
+      "cancel": "Ghairi",
+      "creating": "Inahifadhi...",
+      "required": "Sehemu hii inahitajika",
+      "submitError": "Imeshindwa kuunda. Jaribu tena.",
+      "loadOptionsError": "Imeshindwa kupakia chaguo.",
+      "selectPlaceholder": "Chagua...",
+      "title": "Kichwa",
+      "description": "Maelezo",
+      "type": "Aina",
+      "startDate": "Tarehe ya kuanza",
+      "endDate": "Tarehe ya kumaliza",
+      "maxParticipants": "Washiriki wa upeo",
+      "scheduledAt": "Imepangwa (tarehe)",
+      "durationMinutes": "Muda (dakika)",
+      "meetingUrl": "Kiungo cha kikao",
+      "contentUrl": "Kiungo cha maudhui",
+      "access": "Upatikanaji",
+      "free": "Bila malipo",
+      "paid": "Kwa malipo",
+      "visibility": "Mwonekano",
+      "published": "Imechapishwa",
+      "draft": "Rasimu",
+      "totalMarks": "Jumla ya alama",
+      "passMarks": "Alama za kufaulu",
+      "timeLimit": "Kikomo cha muda (dakika)",
+      "certificateType": "Aina ya cheti",
+      "studentName": "Jina la mwanafunzi",
+      "serialNumber": "Namba ya mfululizo",
+      "session": "Kipindi",
+      "learner": "Mwanafunzi",
+      "status": "Hali",
+      "remarks": "Maoni",
+      "participantNumber": "Namba ya mshiriki",
+      "occupation": "Kazi",
+      "organization": "Shirika",
+      "programTypes": {
+        "PROGRAM": "Programu",
+        "COURSE": "Kozi",
+        "SEMINAR": "Semina",
+        "WORKSHOP": "Warsha"
+      },
+      "sessionTypes": {
+        "LIVE": "Moja kwa moja",
+        "SEMINAR": "Semina",
+        "WORKSHOP": "Warsha",
+        "WEBINAR": "Mtandaoni"
+      },
+      "materialTypes": {
+        "DOCUMENT": "Hati",
+        "VIDEO": "Video",
+        "AUDIO": "Sauti",
+        "LINK": "Kiungo",
+        "FILE": "Faili"
+      },
+      "assessmentTypes": {
+        "QUIZ": "Jaribio",
+        "EXAM": "Mtihani",
+        "SURVEY": "Uchunguzi",
+        "FEEDBACK": "Maoni"
+      },
+      "certificateTypes": {
+        "COMPLETION": "Kukamilika",
+        "PARTICIPATION": "Ushiriki",
+        "ACHIEVEMENT": "Mafanikio"
+      },
+      "attendanceStatus": {
+        "PRESENT": "Yupo",
+        "ABSENT": "Hayupo",
+        "LATE": "Amefika kuchelewa",
+        "EXCUSED": "Ameidhinishwa"
+      }
+    },
     "dashboard": {
       "title": "Dashibodi ya Mtoa Huduma",
       "subtitle": "Simamia programu zako za elimu isiyo rasmi",
@@ -8734,7 +8817,10 @@
       "contactPhoneLabel": "Simu ya Mawasiliano",
       "addressLabel": "Anwani",
       "addressPlaceholder": "Weka anwani",
-      "saveChanges": "Hifadhi Mabadiliko"
+      "saveChanges": "Hifadhi Mabadiliko",
+      "loadError": "Imeshindwa kupakia mipangilio.",
+      "saveSuccess": "Mipangilio imehifadhiwa kwa mafanikio.",
+      "saveError": "Imeshindwa kuhifadhi mipangilio."
     }
   },
   "subscription": {

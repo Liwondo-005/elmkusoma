@@ -181,6 +181,7 @@ public class InstitutionPeopleService {
                 .status(invitation.getStatus())
                 .expiresAt(invitation.getExpiresAt())
                 .createdAt(invitation.getCreatedAt())
+                .token(token)
                 .build();
     }
 
@@ -193,6 +194,7 @@ public class InstitutionPeopleService {
                         .status(inv.getStatus())
                         .expiresAt(inv.getExpiresAt())
                         .createdAt(inv.getCreatedAt())
+                        // §11: tokens are never re-listed — only the create response exposes them once
                         .build())
                 .toList();
     }
@@ -220,7 +222,19 @@ public class InstitutionPeopleService {
             throw new IllegalStateException("Invitation has expired");
         }
 
-        // Create or find user
+        // Create or find user. §11: a new account receives the invited organization role —
+        // existing accounts keep their global identity (multi-role via membership, §13).
+        InstitutionMembership.Role membershipRole = switch (invitation.getRole() != null ? invitation.getRole() : "") {
+            case "TEACHER" -> InstitutionMembership.Role.TEACHER;
+            case "ADMIN", "INSTITUTION_ADMIN" -> InstitutionMembership.Role.ADMIN;
+            case "PARENT" -> InstitutionMembership.Role.PARENT;
+            case "INSTRUCTOR" -> InstitutionMembership.Role.INSTRUCTOR;
+            case "OTHER_LEARNER" -> InstitutionMembership.Role.OTHER_LEARNER;
+            case "PROVIDER_ADMIN" -> InstitutionMembership.Role.ADMIN;
+            case "PROVIDER_STAFF" -> InstitutionMembership.Role.TEACHER;
+            default -> InstitutionMembership.Role.STUDENT;
+        };
+
         User user = userRepository.findByEmailAndIsDeletedFalse(invitation.getEmail())
                 .orElseGet(() -> {
                     User newUser = User.builder()
@@ -228,7 +242,7 @@ public class InstitutionPeopleService {
                             .passwordHash(passwordEncoder.encode(password))
                             .firstName("New")
                             .lastName("User")
-                            .role(User.Role.STUDENT)
+                            .role(mapMembershipToUserRole(membershipRole))
                             .isActive(true)
                             .isEmailVerified(true)
                             .build();
@@ -246,21 +260,17 @@ public class InstitutionPeopleService {
         user.setInstitutionId(invitation.getInstitutionId());
         userRepository.save(user);
 
-        // Create membership
-        InstitutionMembership.Role membershipRole = switch (invitation.getRole()) {
-            case "TEACHER" -> InstitutionMembership.Role.TEACHER;
-            case "ADMIN", "INSTITUTION_ADMIN" -> InstitutionMembership.Role.ADMIN;
-            case "PARENT" -> InstitutionMembership.Role.PARENT;
-            default -> InstitutionMembership.Role.STUDENT;
-        };
-
-        InstitutionMembership membership = InstitutionMembership.builder()
-                .userId(user.getId())
-                .institutionId(invitation.getInstitutionId())
-                .role(InstitutionMembership.Role.valueOf(invitation.getRole()))
-                .isActive(true)
-                .isDeleted(false)
-                .build();
+        // Create membership (or refresh the existing one — never duplicate rows per org)
+        InstitutionMembership membership = membershipRepository.findByUserIdAndIsActiveTrue(user.getId()).stream()
+                .filter(m -> m.getInstitutionId().equals(invitation.getInstitutionId()))
+                .findFirst()
+                .orElseGet(() -> InstitutionMembership.builder()
+                        .userId(user.getId())
+                        .institutionId(invitation.getInstitutionId())
+                        .isDeleted(false)
+                        .build());
+        membership.setRole(membershipRole); // §48: invited role wins over any client-supplied value
+        membership.setIsActive(true);
         membershipRepository.save(membership);
 
         // Update invitation

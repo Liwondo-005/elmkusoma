@@ -27,7 +27,7 @@ public class NfeLearnerController {
 
     @PostMapping
     @Operation(summary = "Create a new learner/participant")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<LearnerResponse>> createLearner(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody LearnerRequest request) {
@@ -38,7 +38,7 @@ public class NfeLearnerController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a learner by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<LearnerResponse>> getLearner(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -48,7 +48,7 @@ public class NfeLearnerController {
 
     @GetMapping
     @Operation(summary = "List all learners in an institution")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<LearnerResponse>>> listLearners(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
@@ -59,7 +59,7 @@ public class NfeLearnerController {
 
     @GetMapping("/provider/{providerId}")
     @Operation(summary = "Get learners by provider ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<LearnerResponse>>> getLearnersByProvider(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId) {
@@ -69,7 +69,7 @@ public class NfeLearnerController {
 
     @GetMapping("/user/{userId}")
     @Operation(summary = "Get learners by user ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<LearnerResponse>>> getLearnersByUser(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID userId) {
@@ -79,7 +79,7 @@ public class NfeLearnerController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a learner")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<LearnerResponse>> updateLearner(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -90,7 +90,7 @@ public class NfeLearnerController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete a learner")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteLearner(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {

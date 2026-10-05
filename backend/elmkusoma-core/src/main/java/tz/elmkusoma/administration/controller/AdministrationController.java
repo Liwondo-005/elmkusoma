@@ -19,13 +19,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/admin")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
 @Tag(name = "Administration", description = "System settings, roles, dashboard, and user management")
 public class AdministrationController {
 
     private final AdministrationService administrationService;
 
-    // ── Dashboard ──
+    // â”€â”€ Dashboard â”€â”€
 
     @GetMapping("/dashboard")
     @Operation(summary = "Get institution dashboard aggregations")
@@ -45,7 +45,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // ── Access & Permission Center ──
+    // â”€â”€ Access & Permission Center â”€â”€
 
     @GetMapping("/my-access")
     @Operation(summary = "Effective access of the calling administrator: role, organization, membership, scope, and permissions")
@@ -55,7 +55,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // ── Settings ──
+    // â”€â”€ Settings â”€â”€
 
     @GetMapping("/settings")
     @Operation(summary = "List all system settings for institution")
@@ -85,7 +85,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success("Setting updated successfully", response));
     }
 
-    // ── Role Management ──
+    // â”€â”€ Role Management â”€â”€
 
     @PostMapping("/roles")
     @Operation(summary = "Create a custom role")
@@ -127,7 +127,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success("Role deleted successfully", null));
     }
 
-    // ── User Import ──
+    // â”€â”€ User Import â”€â”€
 
     @PostMapping("/users/import")
     @Operation(summary = "Create a CSV import job for bulk user creation")

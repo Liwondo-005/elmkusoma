@@ -11,6 +11,7 @@ import {
   Plus,
   Calendar,
   Clock,
+  GraduationCap,
   MapPin,
   Users,
   CheckCircle,
@@ -27,6 +28,7 @@ type WorkshopSession = {
   workshopType: string
   courseId?: string
   scheduledAt?: string
+  academicYear?: string
   durationMinutes?: number
   location?: string
   status: string
@@ -78,6 +80,7 @@ const emptyForm = {
   workshopType: "Workshop",
   description: "",
   scheduledAt: "",
+  academicYear: "",
   durationMinutes: 60,
   location: "",
   materialsUrl: "",
@@ -130,6 +133,7 @@ export default function WorkshopsPage() {
         workshopType: form.workshopType,
         description: form.description.trim() || undefined,
         scheduledAt: form.scheduledAt || undefined,
+        academicYear: form.academicYear.trim() || undefined,
         durationMinutes: form.durationMinutes || undefined,
         location: form.location.trim() || undefined,
         materialsUrl: form.materialsUrl.trim() || undefined,
@@ -227,14 +231,14 @@ export default function WorkshopsPage() {
           <h3 className="font-semibold text-foreground">{t("workshop")}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">{t("courses")} *</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("title")} *</label>
               <input
                 type="text"
                 required
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="e.g. Chemistry Lab: Titration"
-                aria-label={t("courses")}
+                aria-label={t("title")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
@@ -254,10 +258,21 @@ export default function WorkshopsPage() {
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">{t("academicYear")}</label>
               <input
+                type="text"
+                value={form.academicYear}
+                onChange={(e) => setForm((f) => ({ ...f, academicYear: e.target.value }))}
+                placeholder="[for example 2025/2026 or 2026]"
+                aria-label={t("academicYear")}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">{t("scheduledAt")}</label>
+              <input
                 type="datetime-local"
                 value={form.scheduledAt}
                 onChange={(e) => setForm((f) => ({ ...f, scheduledAt: e.target.value }))}
-                aria-label={t("academicYear")}
+                aria-label={t("scheduledAt")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>
@@ -474,6 +489,12 @@ export default function WorkshopsPage() {
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                {session.academicYear && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <GraduationCap className="size-3.5" />
+                    {session.academicYear}
+                  </span>
+                )}
                 {session.scheduledAt && (
                   <span className="inline-flex items-center gap-1.5">
                     <Calendar className="size-3.5" />

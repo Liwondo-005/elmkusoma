@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.academic.domain.*;
 import tz.elmkusoma.academic.dto.*;
 import tz.elmkusoma.academic.repository.*;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 
 import java.util.List;
@@ -24,9 +25,9 @@ public class AcademicService {
 
     // ── Academic Year ──────────────────────────────────────────────
 
-    public AcademicYear createAcademicYear(AcademicYearRequest request) {
+    public AcademicYear createAcademicYear(AcademicYearRequest request, UUID institutionId) {
         AcademicYear year = AcademicYear.builder()
-                .institutionId(request.getInstitutionId())
+                .institutionId(institutionId) // §48: server-authoritative scope, never the client body
                 .educationLevel(request.getEducationLevel())
                 .yearLabel(request.getYearLabel())
                 .startDate(request.getStartDate())
@@ -55,10 +56,11 @@ public class AcademicService {
 
     // ── Term ───────────────────────────────────────────────────────
 
-    public Term createTerm(UUID academicYearId, TermRequest request) {
-        getAcademicYear(academicYearId); // validate exists
+    public Term createTerm(UUID academicYearId, TermRequest request, UUID institutionId) {
+        AcademicYear year = getAcademicYear(academicYearId); // validate exists
+        requireInstitutionScope(year.getInstitutionId(), institutionId); // §41: parent must be in scope
         Term term = Term.builder()
-                .institutionId(request.getInstitutionId())
+                .institutionId(institutionId) // §48: server-authoritative scope, never the client body
                 .academicYearId(academicYearId)
                 .name(request.getName())
                 .termNumber(request.getTermNumber())
@@ -82,9 +84,9 @@ public class AcademicService {
 
     // ── Grade ──────────────────────────────────────────────────────
 
-    public Grade createGrade(GradeRequest request) {
+    public Grade createGrade(GradeRequest request, UUID institutionId) {
         Grade grade = Grade.builder()
-                .institutionId(request.getInstitutionId())
+                .institutionId(institutionId) // §48: server-authoritative scope, never the client body
                 .educationLevel(request.getEducationLevel())
                 .name(request.getName())
                 .code(request.getCode())
@@ -146,13 +148,16 @@ public class AcademicService {
 
     // ── Class Group ────────────────────────────────────────────────
 
-    public ClassGroup createClassGroup(ClassGroupRequest request) {
-        getGrade(request.getGradeId());
-        getAcademicYear(request.getAcademicYearId());
-        getTerm(request.getTermId());
+    public ClassGroup createClassGroup(ClassGroupRequest request, UUID institutionId) {
+        Grade grade = getGrade(request.getGradeId());
+        AcademicYear year = getAcademicYear(request.getAcademicYearId());
+        Term term = getTerm(request.getTermId());
+        requireInstitutionScope(grade.getInstitutionId(), institutionId);   // §41: references must be in scope
+        requireInstitutionScope(year.getInstitutionId(), institutionId);
+        requireInstitutionScope(term.getInstitutionId(), institutionId);
 
         ClassGroup classGroup = ClassGroup.builder()
-                .institutionId(request.getInstitutionId())
+                .institutionId(institutionId) // §48: server-authoritative scope, never the client body
                 .gradeId(request.getGradeId())
                 .academicYearId(request.getAcademicYearId())
                 .termId(request.getTermId())
@@ -179,5 +184,12 @@ public class AcademicService {
     public ClassGroup getClassGroup(UUID id) {
         return classGroupRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ClassGroup", "id", id));
+    }
+
+    /** §41/§48: fail-closed scope assertion — a referenced entity must belong to the caller's institution. */
+    private void requireInstitutionScope(UUID resourceInstitutionId, UUID callerInstitutionId) {
+        if (callerInstitutionId == null || !callerInstitutionId.equals(resourceInstitutionId)) {
+            throw new ForbiddenException("Access denied");
+        }
     }
 }

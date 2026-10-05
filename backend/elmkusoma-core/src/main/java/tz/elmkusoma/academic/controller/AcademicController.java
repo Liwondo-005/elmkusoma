@@ -19,6 +19,8 @@ import tz.elmkusoma.academic.dto.SubjectRequest;
 import tz.elmkusoma.academic.dto.TermRequest;
 import tz.elmkusoma.academic.service.AcademicService;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.exception.ForbiddenException;
+import tz.elmkusoma.exception.ResourceNotFoundException;
 
 import java.util.List;
 import java.util.UUID;
@@ -36,8 +38,9 @@ public class AcademicController {
     @PostMapping("/years")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<AcademicYear>> createAcademicYear(
-            @Valid @RequestBody AcademicYearRequest request) {
-        AcademicYear year = academicService.createAcademicYear(request);
+            @Valid @RequestBody AcademicYearRequest request,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        AcademicYear year = academicService.createAcademicYear(request, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Academic year created", year));
     }
@@ -55,8 +58,14 @@ public class AcademicController {
 
     @GetMapping("/years/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<AcademicYear>> getAcademicYear(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<AcademicYear>> getAcademicYear(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId) {
         AcademicYear year = academicService.getAcademicYear(id);
+        if (!institutionId.equals(year.getInstitutionId())) {
+            // §41/§60: object-level denial across institutions — indistinguishable from not-found
+            throw new ResourceNotFoundException("AcademicYear", "id", id);
+        }
         return ResponseEntity.ok(ApiResponse.success(year));
     }
 
@@ -66,8 +75,9 @@ public class AcademicController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Term>> createTerm(
             @PathVariable UUID academicYearId,
-            @Valid @RequestBody TermRequest request) {
-        Term term = academicService.createTerm(academicYearId, request);
+            @Valid @RequestBody TermRequest request,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        Term term = academicService.createTerm(academicYearId, request, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Term created", term));
     }
@@ -75,7 +85,12 @@ public class AcademicController {
     @GetMapping("/years/{academicYearId}/terms")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<Term>>> getTerms(
-            @PathVariable UUID academicYearId) {
+            @PathVariable UUID academicYearId,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        // §41: the parent year must belong to the caller's institution
+        if (!institutionId.equals(academicService.getAcademicYear(academicYearId).getInstitutionId())) {
+            throw new ResourceNotFoundException("AcademicYear", "id", academicYearId);
+        }
         List<Term> terms = academicService.getTerms(academicYearId);
         return ResponseEntity.ok(ApiResponse.success(terms));
     }
@@ -85,8 +100,9 @@ public class AcademicController {
     @PostMapping("/grades")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Grade>> createGrade(
-            @Valid @RequestBody GradeRequest request) {
-        Grade grade = academicService.createGrade(request);
+            @Valid @RequestBody GradeRequest request,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        Grade grade = academicService.createGrade(request, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Grade created", grade));
     }
@@ -94,7 +110,7 @@ public class AcademicController {
     @GetMapping("/grades")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<Grade>>> getGrades(
-            @RequestParam UUID institutionId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) EducationLevel educationLevel) {
         List<Grade> grades = educationLevel != null
                 ? academicService.getGradesByLevel(institutionId, educationLevel)
@@ -104,8 +120,14 @@ public class AcademicController {
 
     @GetMapping("/grades/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<Grade>> getGrade(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Grade>> getGrade(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId) {
         Grade grade = academicService.getGrade(id);
+        if (!institutionId.equals(grade.getInstitutionId())) {
+            // §41/§60: object-level denial across institutions — indistinguishable from not-found
+            throw new ResourceNotFoundException("Grade", "id", id);
+        }
         return ResponseEntity.ok(ApiResponse.success(grade));
     }
 
@@ -146,8 +168,9 @@ public class AcademicController {
     @PostMapping("/classes")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<ClassGroup>> createClassGroup(
-            @Valid @RequestBody ClassGroupRequest request) {
-        ClassGroup classGroup = academicService.createClassGroup(request);
+            @Valid @RequestBody ClassGroupRequest request,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        ClassGroup classGroup = academicService.createClassGroup(request, institutionId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Class group created", classGroup));
     }
@@ -160,6 +183,11 @@ public class AcademicController {
             @RequestParam(required = false) UUID termId) {
         List<ClassGroup> classes;
         if (gradeId != null && termId != null) {
+            // §41: referenced grade/term must belong to the caller's institution
+            if (!institutionId.equals(academicService.getGrade(gradeId).getInstitutionId())
+                    || !institutionId.equals(academicService.getTerm(termId).getInstitutionId())) {
+                throw new ForbiddenException("Access denied");
+            }
             classes = academicService.getClassGroupsByGradeAndTerm(gradeId, termId);
         } else {
             classes = academicService.getClassGroups(institutionId);
@@ -169,8 +197,14 @@ public class AcademicController {
 
     @GetMapping("/classes/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<ClassGroup>> getClassGroup(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<ClassGroup>> getClassGroup(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId) {
         ClassGroup classGroup = academicService.getClassGroup(id);
+        if (!institutionId.equals(classGroup.getInstitutionId())) {
+            // §41/§60: object-level denial across institutions — indistinguishable from not-found
+            throw new ResourceNotFoundException("ClassGroup", "id", id);
+        }
         return ResponseEntity.ok(ApiResponse.success(classGroup));
     }
 }

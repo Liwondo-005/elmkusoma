@@ -165,12 +165,12 @@ export default function AcademicProgressPage() {
 
       {enrollments.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h3 className="text-sm font-semibold text-foreground mb-3">{t("courses")}</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">{t("courses.label")}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border">
                 <tr>
-                  <th className="pb-2 font-medium text-muted-foreground">{t("courses")}</th>
+                  <th className="pb-2 font-medium text-muted-foreground">{t("courses.label")}</th>
                   <th className="pb-2 font-medium text-muted-foreground">{t("semester")}</th>
                   <th className="pb-2 font-medium text-muted-foreground">{t("status")}</th>
                   <th className="pb-2 font-medium text-muted-foreground">{t("grade")}</th>

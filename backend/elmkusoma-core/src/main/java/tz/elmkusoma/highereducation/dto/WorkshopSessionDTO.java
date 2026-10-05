@@ -16,6 +16,7 @@ public class WorkshopSessionDTO {
     private UUID courseId;
     private LocalDateTime scheduledAt;
     private Integer durationMinutes;
+    private String academicYear;
     private String location;
     private String status;
     private Integer maxParticipants;

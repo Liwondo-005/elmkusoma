@@ -18,8 +18,10 @@ import java.util.UUID;
 @RequestMapping({"/api/v1/notifications", "/v1/notifications"})
 @RequiredArgsConstructor
 // §Nationaladmin.md — oversight roles share the same inbox (unread-count bell is
-// polled by DashboardTopbar for every authenticated user).
-@PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'TEACHER', 'ADMIN', 'INSTITUTION_ADMIN', 'PARENT', 'NATIONAL_ADMIN', 'REGIONAL_ADMIN', 'DISTRICT_ADMIN')")
+// polled by DashboardTopbar for every authenticated user). Every endpoint is strictly
+// identity-scoped (userId comes from the authenticated context), so any authenticated
+// role — including INSTRUCTOR and PROVIDER_* — may read its own inbox.
+@PreAuthorize("isAuthenticated()")
 public class NotificationController {
 
     private final NotificationService notificationService;
@@ -38,8 +40,10 @@ public class NotificationController {
     }
 
     @PutMapping("/{notificationId}/read")
-    public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable UUID notificationId) {
-        notificationService.markAsRead(notificationId);
+    public ResponseEntity<ApiResponse<Void>> markAsRead(
+            @PathVariable UUID notificationId,
+            @RequestAttribute("userId") UUID userId) {
+        notificationService.markAsRead(notificationId, userId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

@@ -27,7 +27,7 @@ public class NfeAttendanceController {
 
     @PostMapping("/providers/{providerId}")
     @Operation(summary = "Record attendance for a session")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<AttendanceResponse>> recordAttendance(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId,
@@ -39,7 +39,7 @@ public class NfeAttendanceController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get an attendance record by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<AttendanceResponse>> getAttendance(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -49,7 +49,7 @@ public class NfeAttendanceController {
 
     @GetMapping("/sessions/{sessionId}")
     @Operation(summary = "List attendance records for a session")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<AttendanceResponse>>> listAttendanceBySession(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID sessionId,
@@ -61,7 +61,7 @@ public class NfeAttendanceController {
 
     @GetMapping("/learners/{learnerId}")
     @Operation(summary = "Get attendance records for a learner")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceByLearner(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID learnerId) {
@@ -71,7 +71,7 @@ public class NfeAttendanceController {
 
     @GetMapping("/providers/{providerId}")
     @Operation(summary = "Get attendance records for a provider")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceByProvider(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId) {
@@ -81,7 +81,7 @@ public class NfeAttendanceController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an attendance record")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<AttendanceResponse>> updateAttendance(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -92,7 +92,7 @@ public class NfeAttendanceController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete an attendance record")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAttendance(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {

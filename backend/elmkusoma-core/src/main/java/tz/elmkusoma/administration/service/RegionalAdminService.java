@@ -1143,7 +1143,7 @@ public class RegionalAdminService {
         if (!userId.equals(notification.getUserId())) {
             throw new ForbiddenException("notification", "read");
         }
-        notificationService.markAsRead(notificationId);
+        notificationService.markAsRead(notificationId, userId);
     }
 
     // ────────────────────────────────────────────────────────────────────────

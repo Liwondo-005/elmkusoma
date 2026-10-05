@@ -27,7 +27,7 @@ public class NfeCertificateController {
 
     @PostMapping("/providers/{providerId}")
     @Operation(summary = "Create a new certificate for a provider")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<NfeCertificateResponse>> createCertificate(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId,
@@ -39,7 +39,7 @@ public class NfeCertificateController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a certificate by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<NfeCertificateResponse>> getCertificate(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -49,7 +49,7 @@ public class NfeCertificateController {
 
     @GetMapping("/providers/{providerId}")
     @Operation(summary = "List all certificates for a provider")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<NfeCertificateResponse>>> listCertificates(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId,
@@ -61,7 +61,7 @@ public class NfeCertificateController {
 
     @GetMapping("/learners/{learnerId}")
     @Operation(summary = "Get certificates for a learner")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<NfeCertificateResponse>>> getCertificatesByLearner(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID learnerId) {
@@ -71,7 +71,7 @@ public class NfeCertificateController {
 
     @GetMapping("/verify/{verificationCode}")
     @Operation(summary = "Verify a certificate by verification code")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<NfeCertificateResponse>> verifyCertificate(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable String verificationCode) {
@@ -81,7 +81,7 @@ public class NfeCertificateController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a certificate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<NfeCertificateResponse>> updateCertificate(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -92,7 +92,7 @@ public class NfeCertificateController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete a certificate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCertificate(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {

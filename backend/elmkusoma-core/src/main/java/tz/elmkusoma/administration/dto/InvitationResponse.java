@@ -19,4 +19,7 @@ public class InvitationResponse {
     private String status;
     private LocalDateTime expiresAt;
     private LocalDateTime createdAt;
+    /** §11: single-use, expiring token handed back to the authorized inviter for out-of-band
+     *  delivery (no mailer is configured). Never returned to any other principal. */
+    private String token;
 }

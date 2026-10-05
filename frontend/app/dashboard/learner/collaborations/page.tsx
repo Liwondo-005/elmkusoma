@@ -228,7 +228,7 @@ export default function CollaborationsPage() {
                     {studyGroups}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {t("courses")}
+                    {t("studyGroups")}
                   </p>
                 </div>
               </div>
@@ -261,7 +261,7 @@ export default function CollaborationsPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">
-                    {t("courses")}
+                    {t("title")}
                   </label>
                   <input
                     type="text"
@@ -269,7 +269,7 @@ export default function CollaborationsPage() {
                     onChange={(e) => setFormTitle(e.target.value)}
                     required
                     placeholder="e.g. Biology Study Group"
-                    aria-label={t("courses")}
+                    aria-label={t("title")}
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>

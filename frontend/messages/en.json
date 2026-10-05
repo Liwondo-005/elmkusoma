@@ -439,6 +439,11 @@
     "programmes": "Programmes",
     "projects": "Projects",
     "providers": "Providers",
+    "groupDelivery": "DELIVERY",
+    "groupContent": "CONTENT",
+    "materials": "Materials",
+    "programs": "Programs",
+    "sessions": "Sessions",
     "quests": "Quests",
     "read": "Read",
     "replays": "Replays",
@@ -4810,7 +4815,8 @@
       "noCourses": "No courses found",
       "noCoursesAvailable": "No courses are available yet.",
       "noCoursesSearch": "No courses match your search.",
-      "viewCourse": "View Course"
+      "viewCourse": "View Course",
+      "label": "Courses"
     },
     "notifications": "Notifications",
     "profile": "Profile",
@@ -4946,6 +4952,10 @@
     "credit": "Credit",
     "semester": "Semester",
     "academicYear": "Academic Year",
+    "scheduledAt": "Scheduled date & time",
+    "title": "Title",
+    "lessons": "Lessons",
+    "studyGroups": "Study Groups",
     "department": "Department",
     "programme": "Programme",
     "institution": "Institution",
@@ -8658,6 +8668,79 @@
     }
   },
   "provider": {
+    "form": {
+      "cancel": "Cancel",
+      "creating": "Saving...",
+      "required": "This field is required",
+      "submitError": "Failed to create. Please try again.",
+      "loadOptionsError": "Failed to load selections.",
+      "selectPlaceholder": "Select...",
+      "title": "Title",
+      "description": "Description",
+      "type": "Type",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "maxParticipants": "Max participants",
+      "scheduledAt": "Scheduled at",
+      "durationMinutes": "Duration (minutes)",
+      "meetingUrl": "Meeting URL",
+      "contentUrl": "Content URL",
+      "access": "Access",
+      "free": "Free",
+      "paid": "Paid",
+      "visibility": "Visibility",
+      "published": "Published",
+      "draft": "Draft",
+      "totalMarks": "Total marks",
+      "passMarks": "Pass marks",
+      "timeLimit": "Time limit (minutes)",
+      "certificateType": "Certificate type",
+      "studentName": "Student name",
+      "serialNumber": "Serial number",
+      "session": "Session",
+      "learner": "Learner",
+      "status": "Status",
+      "remarks": "Remarks",
+      "participantNumber": "Participant number",
+      "occupation": "Occupation",
+      "organization": "Organization",
+      "programTypes": {
+        "PROGRAM": "Program",
+        "COURSE": "Course",
+        "SEMINAR": "Seminar",
+        "WORKSHOP": "Workshop"
+      },
+      "sessionTypes": {
+        "LIVE": "Live",
+        "SEMINAR": "Seminar",
+        "WORKSHOP": "Workshop",
+        "WEBINAR": "Webinar"
+      },
+      "materialTypes": {
+        "DOCUMENT": "Document",
+        "VIDEO": "Video",
+        "AUDIO": "Audio",
+        "LINK": "Link",
+        "FILE": "File"
+      },
+      "assessmentTypes": {
+        "QUIZ": "Quiz",
+        "EXAM": "Exam",
+        "SURVEY": "Survey",
+        "FEEDBACK": "Feedback"
+      },
+      "certificateTypes": {
+        "COMPLETION": "Completion",
+        "PARTICIPATION": "Participation",
+        "ACHIEVEMENT": "Achievement"
+      },
+      "attendanceStatus": {
+        "PRESENT": "Present",
+        "ABSENT": "Absent",
+        "LATE": "Late",
+        "EXCUSED": "Excused"
+      }
+    },
     "dashboard": {
       "title": "Provider Dashboard",
       "subtitle": "Manage your non-formal education programs",
@@ -8729,7 +8812,10 @@
       "contactPhoneLabel": "Contact Phone",
       "addressLabel": "Address",
       "addressPlaceholder": "Enter address",
-      "saveChanges": "Save Changes"
+      "saveChanges": "Save Changes",
+      "loadError": "Failed to load settings.",
+      "saveSuccess": "Settings saved successfully.",
+      "saveError": "Failed to save settings."
     }
   },
   "subscription": {

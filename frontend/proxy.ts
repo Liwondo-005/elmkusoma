@@ -11,6 +11,9 @@ const nationalRoutes = ["/dashboard/national"]
 const regionalRoutes = ["/dashboard/regional"]
 const regionalAdminRoutes = ["/dashboard/regional-admin"]
 const districtRoutes = ["/dashboard/district"]
+// Provider workspace — routing hint only; every API re-checks ROLE + scope.
+const providerRoutes = ["/dashboard/provider"]
+const providerRoles = ["Provider Admin", "PROVIDER_ADMIN", "Provider Staff", "PROVIDER_STAFF", "Admin", "Institution Admin"]
 // Nationaladmin.md §7/§39 — the authority command center is only for the
 // education-authority roles (plus platform Admin, matching the backend's
 // OversightScopeResolver). The APIs re-check every request; this gate keeps
@@ -76,6 +79,11 @@ export function proxy(request: NextRequest) {
         )
         const isRegionalAdminRoute = regionalAdminRoutes.some((r) => pathname.startsWith(r))
         const isDistrictRoute = districtRoutes.some((r) => pathname.startsWith(r))
+        const isProviderRoute = providerRoutes.some((r) => pathname.startsWith(r))
+
+        if (isProviderRoute && !providerRoles.includes(role)) {
+          return NextResponse.redirect(new URL("/dashboard", request.url))
+        }
 
         if (isTeacherRoute && role !== "Teacher" && role !== "Instructor") {
           return NextResponse.redirect(new URL("/dashboard", request.url))

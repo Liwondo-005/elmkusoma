@@ -27,7 +27,7 @@ public class NfeAssessmentController {
 
     @PostMapping("/providers/{providerId}")
     @Operation(summary = "Create a new assessment for a provider")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<AssessmentResponse>> createAssessment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId,
@@ -39,7 +39,7 @@ public class NfeAssessmentController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get an assessment by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<AssessmentResponse>> getAssessment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -49,7 +49,7 @@ public class NfeAssessmentController {
 
     @GetMapping("/providers/{providerId}")
     @Operation(summary = "List all assessments for a provider")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<AssessmentResponse>>> listAssessments(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId,
@@ -61,7 +61,7 @@ public class NfeAssessmentController {
 
     @GetMapping("/providers/{providerId}/published")
     @Operation(summary = "Get all published assessments for a provider")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<AssessmentResponse>>> getPublishedAssessments(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId) {
@@ -71,7 +71,7 @@ public class NfeAssessmentController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update an assessment")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<AssessmentResponse>> updateAssessment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -82,7 +82,7 @@ public class NfeAssessmentController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete an assessment")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAssessment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {

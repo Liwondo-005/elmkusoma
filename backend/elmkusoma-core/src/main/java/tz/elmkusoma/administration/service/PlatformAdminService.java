@@ -24,6 +24,7 @@ import tz.elmkusoma.event.dto.EventRequest;
 import tz.elmkusoma.event.dto.EventResponse;
 import tz.elmkusoma.event.service.EventService;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.config.security.OrganizationContextResolver;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
@@ -322,10 +323,24 @@ public class PlatformAdminService {
                 .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
+                // §11: provisioning binds the account to its organization scope — without this
+                // the user resolves no institution and every scope check fails open or denies.
+                .institutionId(request.getInstitutionId())
                 .isActive(true)
                 .isEmailVerified(false)
                 .build();
         user = userRepository.save(user);
+        // §11: an active membership makes the account visible to the people directory,
+        // scope services and permission computation for the provisioned organization.
+        if (request.getInstitutionId() != null) {
+            membershipRepository.save(InstitutionMembership.builder()
+                    .userId(user.getId())
+                    .institutionId(request.getInstitutionId())
+                    .role(OrganizationContextResolver.mapUserRoleToMembershipRole(request.getRole()))
+                    .isActive(true)
+                    .isDeleted(false)
+                    .build());
+        }
         writeAudit(PLATFORM_INSTITUTION_ID, "USER", user.getId(), user.getEmail(), "CREATE",
                 Map.of(), Map.of("email", user.getEmail(), "role", user.getRole().name()));
         log.info("User created by platform admin: {}", user.getEmail());

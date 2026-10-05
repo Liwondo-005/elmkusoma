@@ -935,6 +935,14 @@ public class EventServiceImpl implements EventService {
         materialRepository.save(material);
     }
 
+    @Override
+    public UUID getEventIdForMaterial(UUID materialId) {
+        EventMaterial material = materialRepository.findById(materialId)
+                .filter(m -> !Boolean.TRUE.equals(m.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Material", "id", materialId));
+        return material.getEventId();
+    }
+
     // ==================== Registered event lists ====================
 
     @Override
