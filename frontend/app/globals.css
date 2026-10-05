@@ -247,6 +247,51 @@
   animation: nursery-pulse 1.5s ease-in-out infinite;
 }
 
+/* Upload success checkmark — draws in after the backend confirms */
+.upload-check-circle {
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: upload-check-circle 0.5s ease-out forwards;
+}
+
+.upload-check-mark {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: upload-check-mark 0.35s 0.3s ease-out forwards;
+}
+
+@keyframes upload-check-circle {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes upload-check-mark {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Indeterminate upload bar — shown only while real progress is unavailable */
+.upload-indeterminate {
+  animation: upload-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes upload-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-check-circle,
+  .upload-check-mark {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .upload-indeterminate {
+    animation: none;
+    transform: none;
+    width: 100%;
+    opacity: 0.6;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

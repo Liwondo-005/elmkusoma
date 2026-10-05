@@ -2820,7 +2820,19 @@
     "sending": "Inatuma...",
     "signingIn": "Inaingia...",
     "termsOfService": "Masharti ya Huduma",
-    "togglePasswordVisibility": "Onyesha/ficha nenosiri"
+    "togglePasswordVisibility": "Onyesha/ficha nenosiri",
+    "secureAccess": "Ufikiaji Salama",
+    "secureTagline": "Ufikiaji salama wa kujifunza",
+    "stepCredentials": "Utambulisho",
+    "stepSecurityCheck": "Ukaguzi wa Usalama",
+    "stepAuthentication": "Uthibitisho",
+    "statusReady": "Tayari kuingia",
+    "statusVerifying": "Tunaathibitisha ufikiaji wako...",
+    "statusSuccess": "Uthibitisho umefanikiwa",
+    "statusSuccessSub": "Karibu tena ELMKUSOMA",
+    "statusError": "Imeshindwa kuingia.",
+    "statusErrorSub": "Tafadhali angalia taarifa zako na ujaribu tena.",
+    "authStatusRegion": "Hali ya uthibitisho"
   },
   "language": {
     "switchToEnglish": "Badilisha hadi Kiingereza",
@@ -7549,7 +7561,16 @@
     "mediaUpload": {
       "dropHint": "PDF, Picha, Video, Nyaraka",
       "dropTitle": "Bofya au buruta kupakia",
-      "uploadFailed": "Upakiaji umeshindwa"
+      "uploadFailed": "Upakiaji umeshindwa",
+      "button": "Pakia Faili",
+      "uploading": "Inapakia...",
+      "uploaded": "Imepakuliwa",
+      "retry": "Jaribu tena",
+      "cancel": "Ghairi",
+      "remove": "Ondoa faili",
+      "fileTooLarge": "Faili inazidi kikomo cha {max} MB",
+      "invalidType": "Aina hii ya faili haihusikiwi",
+      "progressLabel": "Maendeleo ya upakiaji"
     },
     "permissionDenied": {
       "backToDashboard": "Rudi kwenye Dashibodi",

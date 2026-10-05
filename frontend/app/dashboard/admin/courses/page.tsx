@@ -3,8 +3,9 @@
 import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react"
-import { BookOpen, Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2, X, Check, Search, Filter, Image as ImageIcon, Upload } from "lucide-react"
+import { BookOpen, Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2, X, Check, Search, Filter, Image as ImageIcon } from "lucide-react"
 import { courseApi, getInstitutionId, type Course, type CourseStats } from "@/lib/api"
+import { FileUpload } from "@/components/upload/file-upload"
 
 const LEVELS = ["ALL_LEVELS", "NURSERY", "PRIMARY", "SECONDARY", "COLLEGE", "VETA", "UNIVERSITY"]
 const CATEGORIES = ["Mathematics", "Science", "English", "History", "Geography", "Arts", "Physical Education", "Computer Science", "Languages", "Other"]
@@ -20,7 +21,6 @@ export default function CoursesPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterLevel, setFilterLevel] = useState("")
-  const [uploadingImage, setUploadingImage] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
 
   const [form, setForm] = useState({
@@ -70,24 +70,7 @@ export default function CoursesPage() {
     }
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (!file) return
-    try {
-      setUploadingImage(true)
-      setImageError(null)
-      const { url } = await courseApi.uploadThumbnail(file)
-      setForm((prev) => ({ ...prev, thumbnailUrl: url }))
-    } catch (err) {
-      setImageError(err instanceof Error ? err.message : t("courses.imageUploadFailed"))
-    } finally {
-      setUploadingImage(false)
-    }
-  }
-
-  const handleDelete = async (courseId: string) => {
-    if (!confirm(t("courses.areYouSureYou"))) return
+  const handleDelete = async (courseId: string) => {    if (!confirm(t("courses.areYouSureYou"))) return
     try {
       await courseApi.deleteCourse(courseId)
       loadData()
@@ -312,12 +295,23 @@ export default function CoursesPage() {
                       <ImageIcon className="size-5" />
                     </div>
                   )}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted">
-                      {uploadingImage ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-                      {uploadingImage ? t("courses.uploading") : t("courses.chooseImage")}
-                      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
-                    </label>
+                  <div className="flex w-48 flex-col gap-1.5">
+                    <FileUpload
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      maxSizeMB={5}
+                      label={t("courses.chooseImage")}
+                      resetSuccessMs={2500}
+                      upload={(file, options) => courseApi.uploadThumbnail(file, options)}
+                      onUploaded={(result) => {
+                        const r = result as { url?: string; data?: { url?: string } }
+                        const url = r?.url || r?.data?.url
+                        if (url) setForm((prev) => ({ ...prev, thumbnailUrl: url }))
+                      }}
+                      onError={(message) => setImageError(message)}
+                      onStatusChange={(s) => {
+                        if (s === "uploading") setImageError(null)
+                      }}
+                    />
                     {form.thumbnailUrl && (
                       <button
                         type="button"

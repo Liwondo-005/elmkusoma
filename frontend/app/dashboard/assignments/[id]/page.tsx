@@ -1,14 +1,15 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
 import { useTranslations } from "next-intl"
-import { learningApi, type Assignment, type AssignmentSubmission } from "@/lib/api"
+import { learningApi, mediaApi, type Assignment, type AssignmentSubmission } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Clock, CheckCircle, Send, BookOpen, FileText, Upload, Star, AlertTriangle } from "lucide-react"
+import { FileUpload, type FileUploadStatus } from "@/components/upload/file-upload"
+import { ArrowLeft, Clock, CheckCircle, Send, BookOpen, FileText, Star, AlertTriangle } from "lucide-react"
 
 export default function AssignmentDetailPage() {
   const params = useParams()
@@ -24,10 +25,9 @@ export default function AssignmentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [content, setContent] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null)
+  const [uploadStatus, setUploadStatus] = useState<FileUploadStatus>("idle")
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user || !params.id) return
@@ -60,34 +60,26 @@ export default function AssignmentDetailPage() {
     }
   }
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setSelectedFile(file)
-    const reader = new FileReader()
-    reader.onload = () => setFilePreview(reader.result as string)
-    reader.readAsDataURL(file)
+  const handleUploadResult = useCallback((result: unknown) => {
+    const res = result as { data?: { url?: string }; url?: string }
+    const url = res?.data?.url || res?.url || ""
+    setUploadedUrl(url || null)
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    const file = e.dataTransfer.files?.[0]
-    if (!file) return
-    setSelectedFile(file)
-    const reader = new FileReader()
-    reader.onload = () => setFilePreview(reader.result as string)
-    reader.readAsDataURL(file)
+  const handleUploadStatus = useCallback((s: FileUploadStatus) => {
+    setUploadStatus(s)
+    if (s !== "success") setUploadedUrl(null)
   }, [])
 
   const handleSubmit = useCallback(async () => {
     if (!assignment || !user) return
-    if (!content.trim() && !selectedFile) return
+    if (!content.trim() && !uploadedUrl) return
     setSubmitting(true)
     setSubmitError(null)
     try {
       const payload: { content?: string; fileUrl?: string; draft?: boolean } = {}
       if (content.trim()) payload.content = content.trim()
-      if (selectedFile) payload.fileUrl = selectedFile.name
+      if (uploadedUrl) payload.fileUrl = uploadedUrl
       const saved = await learningApi.submitAssignment(assignment.id, payload)
       setSubmission(saved)
     } catch (err: unknown) {
@@ -96,7 +88,7 @@ export default function AssignmentDetailPage() {
     } finally {
       setSubmitting(false)
     }
-  }, [assignment, user, content, selectedFile])
+  }, [assignment, user, content, uploadedUrl])
 
   function isOverdue(dueDate?: string) {
     if (!dueDate) return false
@@ -256,41 +248,14 @@ export default function AssignmentDetailPage() {
               <label className="block text-base font-medium text-foreground mb-2">
                 {t("assignmentDetail.uploadLabel")}
               </label>
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border bg-muted/30 px-6 py-10 text-center transition-colors hover:border-primary/40 hover:bg-primary/5"
-              >
-                {filePreview ? (
-                  <div className="space-y-3">
-                    {selectedFile?.type.startsWith("image/") ? (
-                      <img src={filePreview} alt={t("assignmentDetail.previewAlt")} className="mx-auto max-h-40 rounded-xl object-contain" />
-                    ) : (
-                      <FileText className="mx-auto size-10 text-primary" />
-                    )}
-                    <p className="text-sm font-medium text-foreground">{selectedFile?.name}</p>
-                    <p className="text-xs text-muted-foreground">{t("assignmentDetail.changeFile")}</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10">
-                      <Upload className="size-7 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-base font-medium text-foreground">{t("assignmentDetail.tapUpload")}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{t("assignmentDetail.uploadHint")}</p>
-                    </div>
-                  </>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-              </div>
+              <FileUpload
+                variant="dropzone"
+                accept="image/*,.pdf"
+                hint={t("assignmentDetail.tapUpload")}
+                upload={(file, options) => mediaApi.upload(file, options)}
+                onUploaded={handleUploadResult}
+                onStatusChange={handleUploadStatus}
+              />
             </div>
 
             {submitError && (
@@ -301,7 +266,7 @@ export default function AssignmentDetailPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || (!content.trim() && !selectedFile)}
+              disabled={submitting || uploadStatus === "uploading" || (!content.trim() && !uploadedUrl)}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-base font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
@@ -424,36 +389,15 @@ export default function AssignmentDetailPage() {
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">{t("assignmentDetail.uploadOptional")}</label>
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/30 px-4 py-8 text-center transition-colors hover:border-primary/40 hover:bg-primary/5"
-            >
-              {filePreview ? (
-                <div className="space-y-2">
-                  {selectedFile?.type.startsWith("image/") ? (
-                    <img src={filePreview} alt={t("assignmentDetail.previewAlt")} className="mx-auto max-h-32 rounded-lg object-contain" />
-                  ) : (
-                    <FileText className="mx-auto size-8 text-primary" />
-                  )}
-                  <p className="text-xs font-medium text-foreground">{selectedFile?.name}</p>
-                </div>
-              ) : (
-                <>
-                  <Upload className="size-8 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">{t("assignmentDetail.dragDrop")}</p>
-                </>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
+              <FileUpload
+                variant="dropzone"
                 accept="image/*,.pdf"
-                onChange={handleFileSelect}
-                className="hidden"
+                hint={t("assignmentDetail.uploadLabel")}
+                upload={(file, options) => mediaApi.upload(file, options)}
+                onUploaded={handleUploadResult}
+                onStatusChange={handleUploadStatus}
               />
             </div>
-          </div>
 
           {submitError && (
             <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">{submitError}</div>
@@ -461,7 +405,7 @@ export default function AssignmentDetailPage() {
 
           <Button
             onClick={handleSubmit}
-            disabled={submitting || (!content.trim() && !selectedFile)}
+            disabled={submitting || uploadStatus === "uploading" || (!content.trim() && !uploadedUrl)}
             className="w-full gap-2"
           >
             {submitting ? (
