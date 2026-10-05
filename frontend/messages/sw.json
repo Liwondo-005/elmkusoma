@@ -7551,7 +7551,16 @@
     "mediaUpload": {
       "dropHint": "PDF, Picha, Video, Nyaraka",
       "dropTitle": "Bofya au buruta kupakia",
-      "uploadFailed": "Upakiaji umeshindwa"
+      "uploadFailed": "Upakiaji umeshindwa",
+      "button": "Pakia Faili",
+      "uploading": "Inapakia...",
+      "uploaded": "Imepakuliwa",
+      "retry": "Jaribu tena",
+      "cancel": "Ghairi",
+      "remove": "Ondoa faili",
+      "fileTooLarge": "Faili inazidi kikomo cha {max} MB",
+      "invalidType": "Aina hii ya faili haihusikiwi",
+      "progressLabel": "Maendeleo ya upakiaji"
     },
     "permissionDenied": {
       "backToDashboard": "Rudi kwenye Dashibodi",

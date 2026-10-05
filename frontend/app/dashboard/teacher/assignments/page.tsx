@@ -16,7 +16,6 @@ import {
   ChevronDown,
   Calendar,
   Users,
-  Paperclip,
   Pencil,
   Trash2,
   Award,
@@ -25,6 +24,7 @@ import {
 
 import { appFetch } from "@/lib/fetch"
 import { mediaApi } from "@/lib/api"
+import { FileUpload } from "@/components/upload/file-upload"
 
 interface Assignment {
   id: string
@@ -105,7 +105,6 @@ export default function TeacherAssignmentsPage() {
   const [gradeValue, setGradeValue] = useState<string>("")
   const [gradeFeedback, setGradeFeedback] = useState("")
   const [gradingLoading, setGradingLoading] = useState(false)
-  const [uploadingAttachment, setUploadingAttachment] = useState(false)
 
   const assignmentTypes = [
     { value: "ESSAY", label: t("assignments.typeEssay") },
@@ -168,24 +167,7 @@ export default function TeacherAssignmentsPage() {
     }))
   }
 
-  /** B14: the paperclip now really uploads — the URL lands in `attachments`. */
-  async function handleAttachmentFileSelected(file: File) {
-    setUploadingAttachment(true)
-    setError(null)
-    try {
-      const res = (await mediaApi.upload(file)) as { data?: { url?: string }; url?: string }
-      const url = res?.data?.url || res?.url || ""
-      if (!url) {
-        setError(t("assignments.uploadFailed"))
-        return
-      }
-      setForm((f) => ({ ...f, attachments: f.attachments ? `${f.attachments}, ${url}` : url }))
-    } catch {
-      setError(t("assignments.uploadFailed"))
-    } finally {
-      setUploadingAttachment(false)
-    }
-  }
+  /** B14: attachments receive real uploaded URLs via the shared FileUpload component. */
 
   function resetForm() {
     setForm(initialForm)
@@ -500,31 +482,22 @@ export default function TeacherAssignmentsPage() {
                   placeholder="e.g. assignment-file.pdf"
                   className="h-10 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
                 />
-                <label
-                  className={`inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm transition-colors hover:bg-muted ${
-                    uploadingAttachment ? "pointer-events-none opacity-60" : ""
-                  }`}
-                  title={t("assignments.attachFile")}
-                >
-                  {uploadingAttachment ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Paperclip className="size-4" />
-                  )}
-                  <span className="text-xs">
-                    {uploadingAttachment ? t("assignments.uploadingFile") : t("assignments.attachFile")}
-                  </span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    disabled={uploadingAttachment}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) void handleAttachmentFileSelected(f)
-                      e.target.value = ""
-                    }}
-                  />
-                </label>
+                <FileUpload
+                  className="w-60 shrink-0"
+                  accept="image/*,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.ppt,.pptx,.xls,.xlsx,.csv,.txt,.zip"
+                  label={t("assignments.attachFile")}
+                  upload={(file, options) => mediaApi.upload(file, options)}
+                  onUploaded={(result) => {
+                    const res = result as { data?: { url?: string }; url?: string }
+                    const url = res?.data?.url || res?.url || ""
+                    if (url) {
+                      setForm((f) => ({ ...f, attachments: f.attachments ? `${f.attachments}, ${url}` : url }))
+                    } else {
+                      setError(t("assignments.uploadFailed"))
+                    }
+                  }}
+                  onError={(message) => setError(message)}
+                />
               </div>
             </div>
           </div>

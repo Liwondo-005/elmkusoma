@@ -7551,7 +7551,16 @@
     "mediaUpload": {
       "dropHint": "PDF, Images, Videos, Documents",
       "dropTitle": "Click or drag to upload",
-      "uploadFailed": "Upload failed"
+      "uploadFailed": "Upload failed",
+      "button": "Upload File",
+      "uploading": "Uploading...",
+      "uploaded": "Uploaded",
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "remove": "Remove file",
+      "fileTooLarge": "File exceeds the {max} MB limit",
+      "invalidType": "This file type is not supported",
+      "progressLabel": "Upload progress"
     },
     "permissionDenied": {
       "backToDashboard": "Back to Dashboard",
