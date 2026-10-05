@@ -194,3 +194,16 @@ Recipient `teacherb@test.com`: `GET /v1/notifications/unread-count` → **`{"cou
 ## 9. Verdict
 
 **PASS — 100% of the documented requirement set implemented.** All gates green (622 unit tests, tsc, production build, 9/9 E2E), the full runtime matrix (§3 A–G) meets or exceeds expectation, and every denial path (403/400) was exercised against live traffic. The two previously documented gaps — **Ward dimension (§23)** and **scheduled reports (§45)** — are now implemented with jurisdiction/ownership enforcement, real geography and real snapshots; row 25 (a fake compliance engine) remains intentionally *not* implemented because compliance is derived from real facts. Ten defects found during verification — four pre-existing, six from this work stream (including three schema fixes in `V117`–`V119`) — were repaired and re-verified.
+
+## 10. Post-merge re-verification (2026-10-05, after upstream merge `2d8c90c`)
+
+Upstream landed 36 commits on top of this work stream (security hardening suite R0–R8, system-wide i18n EN/SW conversion, national oversight command center, assignment lifecycle V120–V125). Everything below was re-run against the **merged** tree:
+
+- **Schema:** Flyway history confirmed at **V125**, all entries `success=t` (V116–V119 from this work stream intact, no version collisions).
+- **Backend gates:** `mvn test` → **932 tests, 0 failures, 0 errors** (upstream added tests; our 622-era suites still green inside them).
+- **Frontend gates:** `tsc --noEmit` → 0 errors; `next build` → exit 0.
+- **Runtime matrix (live API):** dashboard `200` scoped (`jurisdictionSummary = region/Dar es Salaam/DAR`, 3 districts, dq=3) · wards `200` DAR **6** / ARU **3**, cross-region ward detail `403`, unauthenticated `403` · scheduled reports create `201` → list `200` → run-now `200 SUCCESS` → runs `200` → delete `200`; cross-owner PUT/run/runs/DELETE **all `403`**; validation `400` × 3 (bad type, missing title, bad frequency) · data-quality `200` (3 issues) · 18-endpoint §3 spot-check all `200`.
+- **E2E:** `regional-admin.spec.ts` → **10/10 passed** (`PLAYWRIGHT_BASE_URL=http://localhost:3000`, workers=1). The 10th test — *“proxy bounces non-regional roles”* — was added by upstream commit `8b0f460` and initially failed because its fixture user `student1@darms.edu.tz` was not seeded in this environment (fixture gap, not a product defect); seeded via `POST /v1/auth/register` (201), then green.
+- **Incident notes (FIXED):** a stale GitHub Desktop stash (`stash@{0}`, 2026-09-28) was auto-popped twice, re-introducing 18 conflict markers (including `messages/en.json`, which broke dev-server JSON module compilation). Every hunk was reviewed; upstream HEAD was the evolved superset in all of them (lesson-status already shipped as `V107`, attach-recording already shipped, `ClassAccessGuard` supersedes the inline audience helper). The stash was exported to `~/.git-stash-backups/stash0-github-desktop-20260928.patch` (55 files, 8604 lines) and dropped so it cannot recur.
+
+**Post-merge verdict: PASS — still 100% of the documented requirement set, re-verified on merged code.** No regional-admin gap below 98% remains; the only intentional non-implementation is row 25 (fake compliance engine) per §9.
