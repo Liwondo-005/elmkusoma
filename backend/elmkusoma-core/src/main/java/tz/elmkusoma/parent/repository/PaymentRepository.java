@@ -20,4 +20,5 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     long countByIsDeletedFalse();
     Page<Payment> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
     Page<Payment> findAllByIsDeletedFalse(Pageable pageable);
+    boolean existsByProviderReferenceAndIdNotAndIsDeletedFalse(String providerReference, UUID id);
 }

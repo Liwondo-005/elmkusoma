@@ -76,10 +76,6 @@ spring:
       max-request-size: 10MB
 
 app:
-  jwt:
-    secret: your-256-bit-secret-key-here-change-in-production-please
-    expiration: 86400000
-
   workers:
     certificate:
       storage-path: ./certificates

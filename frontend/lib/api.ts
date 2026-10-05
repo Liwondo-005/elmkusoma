@@ -257,6 +257,12 @@ export const authApi = {
       body: JSON.stringify({ refreshToken }),
     }),
 
+  logout: (refreshToken: string) =>
+    request<void>("/v1/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({ refreshToken }),
+    }),
+
   sendVerificationCode: (data: { email: string }) =>
     request<void>("/v1/auth/send-code", {
       method: "POST",
@@ -265,6 +271,12 @@ export const authApi = {
 
   verifyCode: (data: { email: string; code: string }) =>
     request<void>("/v1/auth/verify-code", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    request<void>("/v1/auth/change-password", {
       method: "POST",
       body: JSON.stringify(data),
     }),

@@ -9,6 +9,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.parent.repository.ParentRepository;
+import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
 import tz.elmkusoma.student.domain.StudentClassAssignment;
 import tz.elmkusoma.student.dto.AssignClassRequest;
 import tz.elmkusoma.student.dto.StudentRequest;
@@ -24,7 +26,9 @@ import java.util.UUID;
 @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
 public class StudentController {
 
-    private final StudentService studentService;
+private final StudentService studentService;
+private final ParentRepository parentRepository;
+private final ParentStudentLinkRepository parentStudentLinkRepository;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
@@ -51,27 +55,36 @@ public class StudentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
     public ResponseEntity<ApiResponse<StudentResponse>> getStudent(
             @PathVariable UUID id, HttpServletRequest request) {
         String role = (String) request.getAttribute("userRole");
+        UUID userId = (UUID) request.getAttribute("userId");
+        UUID institutionId = (UUID) request.getAttribute("institutionId");
+        StudentResponse student = studentService.getStudent(id, institutionId, role);
         if ("STUDENT".equals(role)) {
-            UUID userId = (UUID) request.getAttribute("userId");
-            StudentResponse student = studentService.getStudent(id);
             if (!id.equals(studentService.getStudentIdByUserId(userId))) {
                 throw new AccessDeniedException("You can only view your own profile");
             }
-            return ResponseEntity.ok(ApiResponse.success(student));
+        } else if ("PARENT".equals(role)) {
+            boolean isChild = parentRepository.findByUserIdAndIsDeletedFalse(userId)
+                    .map(parent -> parentStudentLinkRepository
+                            .existsByParentIdAndStudentIdAndIsDeletedFalse(parent.getId(), id))
+                    .orElse(false);
+            if (!isChild) {
+                throw new AccessDeniedException("You can only view your child's profile");
+            }
         }
-        StudentResponse student = studentService.getStudent(id);
         return ResponseEntity.ok(ApiResponse.success(student));
     }
 
     @GetMapping("/admission/{admissionNumber}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<StudentResponse>> getStudentByAdmission(
-            @PathVariable String admissionNumber) {
-        StudentResponse student = studentService.getStudentByAdmissionNumber(admissionNumber);
+            @PathVariable String admissionNumber,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userRole") String role) {
+        StudentResponse student = studentService.getStudentByAdmissionNumber(admissionNumber, institutionId, role);
         return ResponseEntity.ok(ApiResponse.success(student));
     }
 
@@ -79,8 +92,11 @@ public class StudentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudentResponse>> updateStudent(
             @PathVariable UUID id,
-            @Valid @RequestBody StudentRequest request) {
-        StudentResponse student = studentService.updateStudent(id, request);
+            @Valid @RequestBody StudentRequest request,
+            HttpServletRequest httpRequest) {
+        String role = (String) httpRequest.getAttribute("userRole");
+        UUID institutionId = (UUID) httpRequest.getAttribute("institutionId");
+        StudentResponse student = studentService.updateStudent(id, request, institutionId, role);
         return ResponseEntity.ok(ApiResponse.success("Student updated", student));
     }
 
@@ -88,8 +104,11 @@ public class StudentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudentClassAssignment>> assignToClass(
             @PathVariable UUID id,
-            @Valid @RequestBody AssignClassRequest request) {
-        StudentClassAssignment assignment = studentService.assignToClass(id, request);
+            @Valid @RequestBody AssignClassRequest request,
+            HttpServletRequest httpRequest) {
+        String role = (String) httpRequest.getAttribute("userRole");
+        UUID institutionId = (UUID) httpRequest.getAttribute("institutionId");
+        StudentClassAssignment assignment = studentService.assignToClass(id, request, institutionId, role);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Student assigned to class", assignment));
     }

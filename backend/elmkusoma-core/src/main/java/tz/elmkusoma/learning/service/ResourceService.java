@@ -1398,7 +1398,11 @@ public class ResourceService {
     }
 
     private ResourceResponse mapToResponse(Resource resource) {
-        User uploader = userRepository.findById(resource.getUploadedBy()).orElse(null);
+        // R8: legacy/system resources may carry uploaded_by = null; findById(null)
+        // throws and 500s the whole listing, so guard before resolving the uploader.
+        User uploader = resource.getUploadedBy() != null
+                ? userRepository.findById(resource.getUploadedBy()).orElse(null)
+                : null;
         return ResourceResponse.builder()
                 .id(resource.getId())
                 .institutionId(resource.getInstitutionId())

@@ -155,7 +155,7 @@ class AuthRecoverySecurityTest {
                 .thenReturn(List.of(token));
 
         authService.resetPassword(request);
-        assertThrows(ResourceNotFoundException.class, () -> authService.resetPassword(request));
+        assertThrows(IllegalArgumentException.class, () -> authService.resetPassword(request));
     }
 
     @Test
@@ -174,7 +174,7 @@ class AuthRecoverySecurityTest {
         when(passwordResetTokenRepository.findByTokenAndUsedFalse(anyString()))
                 .thenReturn(Optional.of(token));
 
-        assertThrows(ForbiddenException.class, () -> authService.resetPassword(request));
+        assertThrows(IllegalArgumentException.class, () -> authService.resetPassword(request));
     }
 
     @Test
@@ -184,8 +184,8 @@ class AuthRecoverySecurityTest {
 
         // Token minted at version 1, but the account has since been reset to 2.
         User user = userAtVersion(2L);
-        when(jwtTokenProvider.validateToken("stale_refresh")).thenReturn(true);
-        when(jwtTokenProvider.getEmailFromToken("stale_refresh")).thenReturn("victim@example.com");
+        when(jwtTokenProvider.validateRefreshToken("stale_refresh")).thenReturn(true);
+        when(jwtTokenProvider.getEmailFromRefreshToken("stale_refresh")).thenReturn("victim@example.com");
         when(userRepository.findByEmailAndIsDeletedFalse("victim@example.com"))
                 .thenReturn(Optional.of(user));
         when(jwtTokenProvider.getSecurityVersionFromToken("stale_refresh")).thenReturn(1L);
@@ -249,7 +249,7 @@ class AuthRecoverySecurityTest {
                 .thenReturn(Optional.of(user));
         when(passwordEncoder.matches("Nope12345", "old_hash")).thenReturn(false);
 
-        assertThrows(ForbiddenException.class,
+        assertThrows(org.springframework.security.authentication.BadCredentialsException.class,
                 () -> authService.changePassword("victim@example.com", request));
         assertEquals(1L, user.getSecurityVersion());
         assertEquals("old_hash", user.getPasswordHash());
@@ -269,7 +269,7 @@ class AuthRecoverySecurityTest {
         authService.forgotPassword(request);
 
         verify(eventPublisherService).publishEmailEvent(
-                eq("victim@example.com"), anyString(), eq("email/password-reset"),
+                eq("victim@example.com"), anyString(), eq("password-reset"),
                 argThat(vars -> vars != null && String.valueOf(vars.get("resetLink"))
                         .startsWith("http://localhost:3000/reset-password?token=")),
                 any());

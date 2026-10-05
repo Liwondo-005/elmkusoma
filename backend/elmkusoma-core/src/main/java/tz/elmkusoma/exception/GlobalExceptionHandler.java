@@ -33,6 +33,19 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    /**
+     * Legacy variant in {@code tz.elmkusoma.common.exception} carries its own
+     * {@code @ResponseStatus(NOT_FOUND)}, but explicit handlers take precedence
+     * over the annotation — without this mapping it surfaced as a 500.
+     */
+    @ExceptionHandler(tz.elmkusoma.common.exception.ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCommonResourceNotFound(
+            tz.elmkusoma.common.exception.ResourceNotFoundException ex) {
+        log.warn("Resource not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ApiResponse<Void>> handleForbidden(ForbiddenException ex) {
         log.warn("Forbidden: {}", ex.getMessage());

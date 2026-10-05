@@ -115,8 +115,9 @@ public class CourseController {
     @Operation(summary = "List modules for a course")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<CourseModuleResponse>>> getModules(
-            @PathVariable UUID courseId) {
-        List<CourseModuleResponse> response = courseService.getModules(courseId);
+            @PathVariable UUID courseId,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        List<CourseModuleResponse> response = courseService.getModules(courseId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -148,8 +149,9 @@ public class CourseController {
     @Operation(summary = "List lessons for a module")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<ApiResponse<List<CourseLessonResponse>>> getLessons(
-            @PathVariable UUID moduleId) {
-        List<CourseLessonResponse> response = courseService.getLessons(moduleId);
+            @PathVariable UUID moduleId,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        List<CourseLessonResponse> response = courseService.getLessons(moduleId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

@@ -30,7 +30,8 @@ public class NurseryExtendedController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createStory(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Story created", service.createStory(institutionId, userId, request)));
     }
@@ -69,7 +70,8 @@ public class NurseryExtendedController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createDailyQuest(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Daily quest created", service.createDailyQuest(institutionId, userId, request)));
     }
@@ -113,7 +115,8 @@ public class NurseryExtendedController {
     @Operation(summary = "Create a feelings check-in")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createFeelingsCheckin(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Feelings check-in recorded", service.createFeelingsCheckin(institutionId, userId, request)));
     }
@@ -139,7 +142,8 @@ public class NurseryExtendedController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createMission(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Mission created", service.createMission(institutionId, userId, request)));
     }
@@ -177,7 +181,8 @@ public class NurseryExtendedController {
     @PreAuthorize("hasAnyRole('ADMIN','INSTITUTION_ADMIN','TEACHER')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createTanzania(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Tanzania topic created", service.createTanzaniaTopic(institutionId, userId, request)));
     }
@@ -208,7 +213,8 @@ public class NurseryExtendedController {
     @Operation(summary = "Create parent learning activity")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createParentLearning(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader(value = "X-User-Id", required = false) UUID legacyUserId,
+            @RequestAttribute("userId") UUID userId,
             @RequestBody Map<String, Object> request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Parent learning created", service.createParentLearning(institutionId, userId, request)));
     }

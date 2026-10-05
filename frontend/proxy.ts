@@ -32,6 +32,10 @@ export function proxy(request: NextRequest) {
     if (currentUser) {
       try {
         const user = JSON.parse(decodeURIComponent(currentUser.value))
+        // Routing hint only (backend re-checks) — fail closed on unexpected shape.
+        if (!user || typeof user !== "object" || Array.isArray(user) || typeof user.role !== "string") {
+          throw new Error("Invalid user cookie shape")
+        }
         if (!oversightRoles.includes(user.role)) {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
@@ -54,6 +58,10 @@ export function proxy(request: NextRequest) {
     if (currentUser) {
       try {
         const user = JSON.parse(decodeURIComponent(currentUser.value))
+        // Routing hint only (backend re-checks) — fail closed on unexpected shape.
+        if (!user || typeof user !== "object" || Array.isArray(user) || typeof user.role !== "string") {
+          throw new Error("Invalid user cookie shape")
+        }
         const role = user.role
 
         const isTeacherRoute = teacherRoutes.some((r) => pathname.startsWith(r))
@@ -103,7 +111,10 @@ export function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
       } catch {
-        // Invalid cookie, treat as unauthenticated
+        // Invalid cookie: fail closed to /login (was: fall through authenticated).
+        const loginUrl = new URL("/login", request.url)
+        loginUrl.searchParams.set("redirect", pathname)
+        return NextResponse.redirect(loginUrl)
       }
     }
   }

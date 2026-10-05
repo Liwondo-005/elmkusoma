@@ -204,6 +204,16 @@ public class ParentController {
             @RequestBody Map<String, String> body,
             jakarta.servlet.http.HttpServletRequest httpRequest) {
         UUID refundedBy = (UUID) httpRequest.getAttribute("userId");
+
+        if (httpRequest.isUserInRole("INSTITUTION_ADMIN")) {
+            UUID adminInstitutionId = (UUID) httpRequest.getAttribute("institutionId");
+            tz.elmkusoma.parent.domain.Payment paymentForCheck = paymentRepository.findById(paymentId)
+                    .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("Payment", "id", paymentId));
+            if (adminInstitutionId == null || !adminInstitutionId.equals(paymentForCheck.getInstitutionId())) {
+                throw new tz.elmkusoma.exception.ForbiddenException("refund", "payment from another institution");
+            }
+        }
+
         String reason = body.getOrDefault("reason", "Refunded by admin");
         var payment = paymentService.refundPayment(paymentId, refundedBy, reason);
         return ResponseEntity.ok(ApiResponse.success(Map.of(

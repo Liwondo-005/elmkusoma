@@ -1,6 +1,7 @@
 package tz.elmkusoma.student.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.exception.ResourceNotFoundException;
@@ -73,9 +74,24 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
+    public StudentResponse getStudent(UUID id, UUID institutionId, String role) {
+        Student student = findStudentOrThrow(id);
+        requireSameInstitution(student, institutionId, role);
+        return toResponse(student);
+    }
+
+    @Transactional(readOnly = true)
     public StudentResponse getStudentByAdmissionNumber(String admissionNumber) {
         Student student = studentRepository.findByAdmissionNumberAndIsDeletedFalse(admissionNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "admissionNumber", admissionNumber));
+        return toResponse(student);
+    }
+
+    @Transactional(readOnly = true)
+    public StudentResponse getStudentByAdmissionNumber(String admissionNumber, UUID institutionId, String role) {
+        Student student = studentRepository.findByAdmissionNumberAndIsDeletedFalse(admissionNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "admissionNumber", admissionNumber));
+        requireSameInstitution(student, institutionId, role);
         return toResponse(student);
     }
 
@@ -137,6 +153,11 @@ public class StudentService {
         return toResponse(student);
     }
 
+    public StudentResponse updateStudent(UUID id, StudentRequest request, UUID institutionId, String role) {
+        requireSameInstitution(findStudentOrThrow(id), institutionId, role);
+        return updateStudent(id, request);
+    }
+
     public StudentClassAssignment assignToClass(UUID studentId, AssignClassRequest request) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
@@ -160,6 +181,11 @@ public class StudentService {
         return assignmentRepository.save(assignment);
     }
 
+    public StudentClassAssignment assignToClass(UUID studentId, AssignClassRequest request, UUID institutionId, String role) {
+        requireSameInstitution(findStudentOrThrow(studentId), institutionId, role);
+        return assignToClass(studentId, request);
+    }
+
     @Transactional(readOnly = true)
     public long countStudents(UUID institutionId) {
         return studentRepository.countByInstitutionId(institutionId);
@@ -178,6 +204,23 @@ public class StudentService {
     }
 
     // ── Helpers ────────────────────────────────────────────────────
+
+    private Student findStudentOrThrow(UUID id) {
+        return studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
+    }
+
+    private void requireSameInstitution(Student student, UUID institutionId, String role) {
+        if ("ADMIN".equals(role)) {
+            return;
+        }
+        if ("STUDENT".equals(role) || "PARENT".equals(role)) {
+            return; // self-check / child-link check is enforced by the caller
+        }
+        if (institutionId == null || !institutionId.equals(student.getInstitutionId())) {
+            throw new AccessDeniedException("Access denied: student belongs to a different institution");
+        }
+    }
 
     private String generateAdmissionNumber(String institutionCode, UUID institutionId) {
         long count = studentRepository.countByInstitutionId(institutionId) + 1;

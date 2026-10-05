@@ -165,6 +165,12 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Self-service password change resolves the caller from the
+                        // authenticated principal, so it must never be reachable
+                        // anonymously. Declared before the /v1/auth/** permitAll
+                        // below (first match wins); every other /v1/auth route
+                        // stays public exactly as before.
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/v1/auth/change-password").authenticated()
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .requestMatchers(ADMIN_ONLY_URLS).hasRole("ADMIN")
                         // Namespace fences mirroring the class-level @PreAuthorize of the

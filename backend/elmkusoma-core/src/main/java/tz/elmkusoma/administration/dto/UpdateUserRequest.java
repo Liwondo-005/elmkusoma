@@ -12,6 +12,7 @@ public class UpdateUserRequest {
     @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastName;
     
+    @Size(max = 255, message = "Phone must not exceed 255 characters")
     private String phone;
     
     private tz.elmkusoma.shared.domain.User.Role role;

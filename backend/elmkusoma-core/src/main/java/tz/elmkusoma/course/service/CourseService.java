@@ -202,7 +202,11 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public List<CourseModuleResponse> getModules(UUID courseId) {
+    public List<CourseModuleResponse> getModules(UUID courseId, UUID institutionId) {
+        Course course = courseRepository.findById(courseId).orElse(null);
+        if (course == null || !course.getInstitutionId().equals(institutionId)) {
+            throw new ForbiddenException("course", "access");
+        }
         List<CourseModule> modules = moduleRepository.findByCourseIdAndIsDeletedFalseOrderBySortOrder(courseId);
         return modules.stream()
                 .map(m -> {
@@ -216,6 +220,11 @@ public class CourseService {
         CourseModule module = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new ResourceNotFoundException("CourseModule", "id", moduleId));
 
+        Course course = courseRepository.findById(module.getCourseId()).orElse(null);
+        if (course == null || !course.getInstitutionId().equals(institutionId)) {
+            throw new ForbiddenException("course module", "delete");
+        }
+
         module.setIsDeleted(true);
         moduleRepository.save(module);
         log.info("Deleted module: {} from institution: {}", moduleId, institutionId);
@@ -224,6 +233,14 @@ public class CourseService {
     // ── Lesson CRUD ──
 
     public CourseLessonResponse createLesson(CourseLessonRequest request, UUID moduleId, UUID institutionId) {
+        CourseModule module = moduleRepository.findById(moduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("CourseModule", "id", moduleId));
+
+        Course course = courseRepository.findById(module.getCourseId()).orElse(null);
+        if (course == null || !course.getInstitutionId().equals(institutionId)) {
+            throw new ForbiddenException("course", "add lesson to");
+        }
+
         CourseLesson lesson = CourseLesson.builder()
                 .moduleId(moduleId)
                 .title(request.getTitle())
@@ -240,7 +257,15 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public List<CourseLessonResponse> getLessons(UUID moduleId) {
+    public List<CourseLessonResponse> getLessons(UUID moduleId, UUID institutionId) {
+        CourseModule module = moduleRepository.findById(moduleId).orElse(null);
+        if (module == null) {
+            throw new ForbiddenException("course", "access");
+        }
+        Course course = courseRepository.findById(module.getCourseId()).orElse(null);
+        if (course == null || !course.getInstitutionId().equals(institutionId)) {
+            throw new ForbiddenException("course", "access");
+        }
         List<CourseLesson> lessons = lessonRepository.findByModuleIdAndIsDeletedFalseOrderBySortOrder(moduleId);
         return lessons.stream()
                 .map(courseMapper::toLessonResponse)
@@ -250,6 +275,12 @@ public class CourseService {
     public void deleteLesson(UUID lessonId, UUID institutionId) {
         CourseLesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new ResourceNotFoundException("CourseLesson", "id", lessonId));
+
+        CourseModule module = moduleRepository.findById(lesson.getModuleId()).orElse(null);
+        Course course = module != null ? courseRepository.findById(module.getCourseId()).orElse(null) : null;
+        if (course == null || !course.getInstitutionId().equals(institutionId)) {
+            throw new ForbiddenException("course lesson", "delete");
+        }
 
         lesson.setIsDeleted(true);
         lessonRepository.save(lesson);

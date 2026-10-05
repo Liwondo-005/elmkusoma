@@ -13,6 +13,7 @@ public class RegisterRequest {
     @Size(min = 2, max = 100, message = "First name must be 2-100 characters")
     private String firstName;
 
+    @Size(max = 255, message = "Middle name must not exceed 255 characters")
     private String middleName;
 
     @NotBlank(message = "Last name is required")
@@ -27,6 +28,7 @@ public class RegisterRequest {
     @Size(min = 8, max = 128, message = "Password must be 8-128 characters")
     private String password;
 
+    @Size(max = 255, message = "Phone must not exceed 255 characters")
     private String phone;
 
     @Pattern(regexp = "STUDENT|TEACHER|PARENT|OTHER_LEARNER|LEARNER|PROVIDER_ADMIN|PROVIDER_STAFF",

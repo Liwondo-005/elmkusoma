@@ -21,7 +21,10 @@ public class VerificationCode {
     @Column(name = "email", nullable = false)
     private String email;
 
-    @Column(name = "code", nullable = false, length = 5)
+    /**
+     * SHA-256 hex of the 5-digit code. The raw value is never persisted.
+     */
+    @Column(name = "code", nullable = false, length = 64)
     private String code;
 
     @Column(name = "expires_at", nullable = false)

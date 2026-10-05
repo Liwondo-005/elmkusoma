@@ -21,6 +21,7 @@ import java.util.UUID;
 public class PortfolioController {
 
     private final PortfolioService portfolioService;
+    private final tz.elmkusoma.highereducation.repository.PortfolioRepository portfolioRepository;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
@@ -85,7 +86,10 @@ public class PortfolioController {
     public ResponseEntity<ApiResponse<PortfolioItemDTO>> addItem(
             @PathVariable UUID id,
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @Valid @RequestBody PortfolioItemDTO dto) {
+            @Valid @RequestBody PortfolioItemDTO dto,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyPortfolioAccess(id, serverInstitutionId, userRole);
         dto.setPortfolioId(id);
         dto.setInstitutionId(institutionId);
         PortfolioItemDTO created = portfolioService.addItem(id, dto);
@@ -118,5 +122,18 @@ public class PortfolioController {
     public ResponseEntity<ApiResponse<Void>> deleteItem(@PathVariable UUID itemId) {
         portfolioService.deleteItem(itemId);
         return ResponseEntity.ok(ApiResponse.success("Portfolio item deleted", null));
+    }
+
+    private void verifyPortfolioAccess(UUID id, UUID serverInstitutionId, String userRole) {
+        if ("ADMIN".equals(userRole)) {
+            return;
+        }
+        portfolioRepository.findById(id)
+                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
+                .ifPresent(p -> {
+                    if (p.getInstitutionId() == null || !p.getInstitutionId().equals(serverInstitutionId)) {
+                        throw new tz.elmkusoma.exception.ForbiddenException("Portfolio", "access");
+                    }
+                });
     }
 }

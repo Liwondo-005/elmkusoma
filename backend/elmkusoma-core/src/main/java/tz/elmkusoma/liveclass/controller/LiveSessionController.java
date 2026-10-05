@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.common.ClassAccessGuard;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
@@ -46,6 +47,7 @@ public class LiveSessionController {
     private final TeacherRepository teacherRepository;
     private final TeacherService teacherService;
     private final InstitutionMembershipRepository membershipRepository;
+    private final ClassAccessGuard classAccessGuard;
 
     @PostMapping("/join/{classId}")
     @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
@@ -82,6 +84,15 @@ public class LiveSessionController {
         }
 
         boolean isTeacher = teacherRepository.findByUserIdAndInstitutionId(userId, institutionId).isPresent();
+
+        // Class-scoped session (classGroupId set): learners must prove membership of
+        // the target class via the existing union model (student_class_assignments ∪
+        // ENROLLED enrollments). Sessions without a classGroupId stay open to any
+        // institution member. Teachers bypass.
+        if (!isTeacher && liveClass.getClassGroupId() != null
+                && !classAccessGuard.isLearnerInClass(user.getEmail(), liveClass.getClassGroupId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("You are not a member of this class"));
+        }
 
         if (!isTeacher) {
             if (liveClass.getMaxParticipants() != null) {
@@ -286,6 +297,14 @@ public class LiveSessionController {
             return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
         }
 
+        // Institution check: only active members of the class's institution may
+        // file issues (blocks cross-institution issue spam; header alone is never
+        // trusted — membership is verified server-side).
+        if (liveClass.getInstitutionId() == null
+                || !membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, liveClass.getInstitutionId())) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+
         LiveClassIssue issue = LiveClassIssue.builder()
                 .liveClassId(classId)
                 .userId(userId)
@@ -431,6 +450,12 @@ public class LiveSessionController {
         } else {
             // learner: must be an active member of the class's institution
             allowed = membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, callerInstitutionId);
+            if (allowed && liveClass.getClassGroupId() != null) {
+                // class-scoped session: prove membership of the target class
+                // (student_class_assignments ∪ ENROLLED enrollments, strict)
+                String email = userRepository.findById(userId).map(User::getEmail).orElse(null);
+                allowed = classAccessGuard.isLearnerInClass(email, liveClass.getClassGroupId());
+            }
         }
         if (!allowed) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
@@ -612,12 +637,22 @@ public class LiveSessionController {
     @GetMapping("/calendar/{classId}/export")
     @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
     @Operation(summary = "Export live class as .ics calendar event")
-    public ResponseEntity<String> exportCalendarEvent(@PathVariable UUID classId) {
+    public ResponseEntity<String> exportCalendarEvent(
+            @PathVariable UUID classId,
+            @RequestAttribute("userId") UUID userId) {
         LiveClass liveClass = liveClassRepository.findById(classId)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
                 .orElse(null);
         if (liveClass == null) {
             return ResponseEntity.status(404).build();
+        }
+
+        // Institution check: only active members of the class's institution may
+        // export (blocks cross-institution title/schedule disclosure). Membership
+        // is verified server-side; deny without leaking (403, empty body).
+        if (liveClass.getInstitutionId() == null
+                || !membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, liveClass.getInstitutionId())) {
+            return ResponseEntity.status(403).build();
         }
 
         String tz = liveClass.getTimezone() != null ? liveClass.getTimezone() : "Africa/Dar_es_Salaam";

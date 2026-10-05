@@ -6,7 +6,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 import tz.elmkusoma.common.PageResponse;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.enrollment.domain.Enrollment;
 import tz.elmkusoma.enrollment.domain.TransferRecord;
@@ -17,6 +20,11 @@ import tz.elmkusoma.enrollment.dto.response.TransferResponse;
 import tz.elmkusoma.enrollment.repository.EnrollmentRepository;
 import tz.elmkusoma.enrollment.repository.TransferRecordRepository;
 import tz.elmkusoma.enrollment.service.EnrollmentService;
+import tz.elmkusoma.parent.domain.Parent;
+import tz.elmkusoma.parent.repository.ParentRepository;
+import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +37,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
     private final TransferRecordRepository transferRecordRepository;
+    private final StudentRepository studentRepository;
+    private final ParentRepository parentRepository;
+    private final ParentStudentLinkRepository parentStudentLinkRepository;
 
     @Override
     public EnrollmentResponse enroll(UUID institutionId, EnrollmentRequest request) {
@@ -77,7 +88,17 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public List<EnrollmentResponse> getEnrollmentsByStudent(UUID studentId) {
-        return enrollmentRepository.findByStudentIdAndIsDeletedFalse(studentId).stream()
+        requireStudentAccess(studentId);
+        List<Enrollment> enrollments = enrollmentRepository.findByStudentIdAndIsDeletedFalse(studentId);
+        String role = callerRole();
+        if (role == null || "ADMIN".equals(role) || "STUDENT".equals(role) || "PARENT".equals(role)) {
+            return enrollments.stream()
+                    .map(this::toResponse)
+                    .toList();
+        }
+        UUID callerInstitutionId = callerInstitutionId();
+        return enrollments.stream()
+                .filter(e -> callerInstitutionId != null && callerInstitutionId.equals(e.getInstitutionId()))
                 .map(this::toResponse)
                 .toList();
     }
@@ -85,7 +106,16 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public List<EnrollmentResponse> getEnrollmentsByClass(UUID classGroupId) {
-        return enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId).stream()
+        List<Enrollment> enrollments = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
+        String role = callerRole();
+        if (role == null || "ADMIN".equals(role)) {
+            return enrollments.stream()
+                    .map(this::toResponse)
+                    .toList();
+        }
+        UUID callerInstitutionId = callerInstitutionId();
+        return enrollments.stream()
+                .filter(e -> callerInstitutionId != null && callerInstitutionId.equals(e.getInstitutionId()))
                 .map(this::toResponse)
                 .toList();
     }
@@ -95,6 +125,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .filter(e -> !e.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
+
+        requireEnrollmentAccess(enrollment);
 
         enrollment.setStatus(status);
 
@@ -112,6 +144,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
                 .filter(e -> !e.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
+
+        if (!institutionId.equals(enrollment.getInstitutionId())) {
+            throw new ForbiddenException("enrollment", "transfer");
+        }
+        requireEnrollmentAccess(enrollment);
 
         TransferRecord transfer = TransferRecord.builder()
                 .institutionId(institutionId)
@@ -132,9 +169,102 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public List<TransferResponse> getTransferHistory(UUID enrollmentId) {
+        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+                .filter(e -> !e.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with id: " + enrollmentId));
+
+        requireEnrollmentAccess(enrollment);
+
         return transferRecordRepository.findByEnrollmentIdAndIsDeletedFalse(enrollmentId).stream()
                 .map(this::toTransferResponse)
                 .toList();
+    }
+
+    private String callerRole() {
+        RequestAttributes attrs = RequestContextHolder.getRequestAttributes();
+        if (attrs == null) {
+            return null;
+        }
+        Object role = attrs.getAttribute("userRole", RequestAttributes.SCOPE_REQUEST);
+        return role instanceof String s ? s : null;
+    }
+
+    private UUID callerUserId() {
+        RequestAttributes attrs = RequestContextHolder.getRequestAttributes();
+        if (attrs == null) {
+            return null;
+        }
+        Object id = attrs.getAttribute("userId", RequestAttributes.SCOPE_REQUEST);
+        return id instanceof UUID uuid ? uuid : null;
+    }
+
+    private UUID callerInstitutionId() {
+        RequestAttributes attrs = RequestContextHolder.getRequestAttributes();
+        if (attrs == null) {
+            return null;
+        }
+        Object id = attrs.getAttribute("institutionId", RequestAttributes.SCOPE_REQUEST);
+        return id instanceof UUID uuid ? uuid : null;
+    }
+
+    private UUID ownStudentId(UUID callerUserId) {
+        if (callerUserId == null) {
+            return null;
+        }
+        return studentRepository.findByUserIdAndIsDeletedFalse(callerUserId)
+                .map(Student::getId)
+                .orElse(null);
+    }
+
+    private boolean isLinkedChild(UUID callerUserId, UUID studentId) {
+        if (callerUserId == null || studentId == null) {
+            return false;
+        }
+        return parentRepository.findAllByUserId(callerUserId).stream()
+                .map(Parent::getId)
+                .anyMatch(parentId -> parentStudentLinkRepository
+                        .existsByParentIdAndStudentIdAndIsDeletedFalse(parentId, studentId));
+    }
+
+    private void requireStudentAccess(UUID studentId) {
+        String role = callerRole();
+        if (role == null || "ADMIN".equals(role)) {
+            return;
+        }
+        if ("STUDENT".equals(role)) {
+            if (!studentId.equals(ownStudentId(callerUserId()))) {
+                throw new ForbiddenException("enrollment", "access");
+            }
+            return;
+        }
+        if ("PARENT".equals(role)) {
+            if (!isLinkedChild(callerUserId(), studentId)) {
+                throw new ForbiddenException("enrollment", "access");
+            }
+        }
+    }
+
+    private void requireEnrollmentAccess(Enrollment enrollment) {
+        String role = callerRole();
+        if (role == null || "ADMIN".equals(role)) {
+            return;
+        }
+        if ("STUDENT".equals(role)) {
+            if (!enrollment.getStudentId().equals(ownStudentId(callerUserId()))) {
+                throw new ForbiddenException("enrollment", "access");
+            }
+            return;
+        }
+        if ("PARENT".equals(role)) {
+            if (!isLinkedChild(callerUserId(), enrollment.getStudentId())) {
+                throw new ForbiddenException("enrollment", "access");
+            }
+            return;
+        }
+        UUID callerInstitutionId = callerInstitutionId();
+        if (callerInstitutionId == null || !callerInstitutionId.equals(enrollment.getInstitutionId())) {
+            throw new ForbiddenException("enrollment", "access");
+        }
     }
 
     private EnrollmentResponse toResponse(Enrollment e) {

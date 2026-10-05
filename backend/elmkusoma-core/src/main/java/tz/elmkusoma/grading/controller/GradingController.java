@@ -24,6 +24,9 @@ import tz.elmkusoma.grading.service.GradebookService;
 import tz.elmkusoma.grading.service.GradingScaleService;
 import tz.elmkusoma.grading.service.ReportCardService;
 import tz.elmkusoma.grading.service.RubricService;
+import tz.elmkusoma.academic.repository.AcademicYearRepository;
+import tz.elmkusoma.academic.repository.TermRepository;
+import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +43,9 @@ public class GradingController {
     private final ReportCardService reportCardService;
     private final GradebookService gradebookService;
     private final RubricService rubricService;
+    private final StudentRepository studentRepository;
+    private final TermRepository termRepository;
+    private final AcademicYearRepository academicYearRepository;
 
     @PostMapping("/scales")
     @Operation(summary = "Create a grading scale")
@@ -146,15 +152,35 @@ public class GradingController {
     @GetMapping("/report-cards/{id}")
     @Operation(summary = "Get report card by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<ReportCardResponse>> getReportCard(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<ReportCardResponse>> getReportCard(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
         ReportCardResponse response = reportCardService.getById(id);
+        if (!"ADMIN".equals(userRole)) {
+            var student = studentRepository.findById(response.getStudentId()).orElse(null);
+            if (student != null && student.getInstitutionId() != null && !student.getInstitutionId().equals(institutionId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied: report card belongs to another institution"));
+            }
+        }
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/report-cards/student/{studentId}")
     @Operation(summary = "Get report cards by student")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<List<ReportCardResponse>>> getReportCardsByStudent(@PathVariable UUID studentId) {
+    public ResponseEntity<ApiResponse<List<ReportCardResponse>>> getReportCardsByStudent(
+            @PathVariable UUID studentId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
+        if (!"ADMIN".equals(userRole)) {
+            var student = studentRepository.findById(studentId).orElse(null);
+            if (student != null && student.getInstitutionId() != null && !student.getInstitutionId().equals(institutionId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied: student belongs to another institution"));
+            }
+        }
         List<ReportCardResponse> response = reportCardService.getByStudentId(studentId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -162,7 +188,22 @@ public class GradingController {
     @GetMapping("/report-cards/term/{termId}")
     @Operation(summary = "Get report cards by term")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<List<ReportCardResponse>>> getReportCardsByTerm(@PathVariable UUID termId) {
+    public ResponseEntity<ApiResponse<List<ReportCardResponse>>> getReportCardsByTerm(
+            @PathVariable UUID termId,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
+        if (!"ADMIN".equals(userRole)) {
+            var term = termRepository.findById(termId).orElse(null);
+            UUID termInstitutionId = null;
+            if (term != null && term.getAcademicYearId() != null) {
+                termInstitutionId = academicYearRepository.findById(term.getAcademicYearId())
+                        .map(year -> year.getInstitutionId()).orElse(null);
+            }
+            if (termInstitutionId != null && !termInstitutionId.equals(institutionId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied: term belongs to another institution"));
+            }
+        }
         List<ReportCardResponse> response = reportCardService.getByTermId(termId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -183,7 +224,17 @@ public class GradingController {
     @Operation(summary = "Batch: every report card of the given students (one request)")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<ReportCardResponse>>> getReportCardsForStudents(
-            @RequestParam("ids") List<UUID> studentIds) {
+            @RequestParam("ids") List<UUID> studentIds,
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userRole") String userRole) {
+        if (!"ADMIN".equals(userRole) && studentIds != null && !studentIds.isEmpty()) {
+            for (var student : studentRepository.findAllById(studentIds)) {
+                if (student != null && student.getInstitutionId() != null && !student.getInstitutionId().equals(institutionId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(ApiResponse.error("Access denied: one or more students belong to another institution"));
+                }
+            }
+        }
         List<ReportCardResponse> response = reportCardService.getByStudentIds(studentIds);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

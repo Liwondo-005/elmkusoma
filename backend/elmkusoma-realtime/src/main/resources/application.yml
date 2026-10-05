@@ -9,14 +9,15 @@ spring:
       host: localhost
       port: 6379
   rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
 
 jwt:
-  # No default: the service fails fast at startup without JWT_SECRET instead of
-  # signing tokens with a public value.
+  # Required, environment-authoritative: same contract as elmkusoma-core/media.
+  # No embedded default — a missing JWT_SECRET must fail startup loudly
+  # instead of silently signing with a weak placeholder.
   secret: ${JWT_SECRET}
 
 management:

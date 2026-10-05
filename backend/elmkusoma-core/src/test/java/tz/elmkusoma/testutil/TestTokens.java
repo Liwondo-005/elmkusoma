@@ -38,6 +38,11 @@ public final class TestTokens {
         byte[] keyBytes = Decoders.BASE64.decode(JWT_SECRET_B64);
         var builder = Jwts.builder()
                 .subject(email)
+                // Mirror JwtTokenProvider issuance: the strict access-token
+                // validation requires iss (and pins alg HS256, inferred here
+                // from the 32-byte key). jti included like production tokens.
+                .issuer("elmkusoma")
+                .id(java.util.UUID.randomUUID().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 3_600_000L));
 

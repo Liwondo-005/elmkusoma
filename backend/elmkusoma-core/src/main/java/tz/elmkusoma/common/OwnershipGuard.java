@@ -12,8 +12,8 @@ public class OwnershipGuard {
 
     public void verifyInstitution(UUID resourceInstitutionId, UUID requestInstitutionId) {
         if (resourceInstitutionId == null || requestInstitutionId == null) {
-            log.warn("Ownership check skipped: null institution ID");
-            return;
+            log.warn("Ownership check denied: null institution ID");
+            throw new ForbiddenException("You do not have access to this resource");
         }
         if (!resourceInstitutionId.equals(requestInstitutionId)) {
             log.warn("Ownership violation: resource institution {} != request institution {}",
@@ -24,8 +24,8 @@ public class OwnershipGuard {
 
     public void verifyUser(UUID resourceUserId, UUID requestUserId) {
         if (resourceUserId == null || requestUserId == null) {
-            log.warn("Ownership check skipped: null user ID");
-            return;
+            log.warn("Ownership check denied: null user ID");
+            throw new ForbiddenException("You do not have access to this resource");
         }
         if (!resourceUserId.equals(requestUserId)) {
             log.warn("Ownership violation: resource user {} != request user {}",
@@ -36,8 +36,8 @@ public class OwnershipGuard {
 
     public void verifyProvider(UUID resourceProviderId, UUID requestProviderId) {
         if (resourceProviderId == null || requestProviderId == null) {
-            log.warn("Ownership check skipped: null provider ID");
-            return;
+            log.warn("Ownership check denied: null provider ID");
+            throw new ForbiddenException("You do not have access to this provider resource");
         }
         if (!resourceProviderId.equals(requestProviderId)) {
             log.warn("Ownership violation: resource provider {} != request provider {}",

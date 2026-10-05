@@ -25,6 +25,7 @@ import java.util.UUID;
 public class TeacherController {
 
     private final tz.elmkusoma.teacher.service.TeacherService teacherService;
+    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
 
     @GetMapping("/me/profile")
     @Operation(summary = "Get current teacher's profile")
@@ -205,7 +206,10 @@ public class TeacherController {
             @PathVariable UUID id,
             @Valid @RequestBody TeacherQualificationRequest request,
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole,
             @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        verifyTeacherAccess(id, serverInstitutionId, userRole);
         if (userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"))) {
             TeacherResponse me = teacherService.getTeacherByUserId(userId, institutionId);
             if (!me.getId().equals(id)) {
@@ -224,7 +228,10 @@ public class TeacherController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
             @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole,
             @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        verifyTeacherAccess(id, serverInstitutionId, userRole);
         if (userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"))) {
             TeacherResponse me = teacherService.getTeacherByUserId(userId, institutionId);
             if (!me.getId().equals(id)) {
@@ -243,5 +250,18 @@ public class TeacherController {
             @PathVariable UUID qualificationId) {
         teacherService.removeQualification(institutionId, qualificationId);
         return ResponseEntity.ok(ApiResponse.success("Qualification removed successfully", null));
+    }
+
+    private void verifyTeacherAccess(UUID id, UUID serverInstitutionId, String userRole) {
+        if ("ADMIN".equals(userRole)) {
+            return;
+        }
+        teacherRepository.findById(id)
+                .filter(t -> !Boolean.TRUE.equals(t.getIsDeleted()))
+                .ifPresent(t -> {
+                    if (t.getInstitutionId() == null || !t.getInstitutionId().equals(serverInstitutionId)) {
+                        throw new tz.elmkusoma.exception.ForbiddenException("Teacher", "access");
+                    }
+                });
     }
 }

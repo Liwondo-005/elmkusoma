@@ -81,7 +81,7 @@ function setCurrentUser(user: AuthUser | null) {
 
 function setAuthCookie(token: string | null) {
   if (token) {
-    document.cookie = `elmkusoma_access_token=${token}; path=/; max-age=86400; SameSite=Lax`
+    document.cookie = `elmkusoma_access_token=${token}; path=/; max-age=3600; SameSite=Lax`
   } else {
     document.cookie = "elmkusoma_access_token=; path=/; max-age=0"
   }

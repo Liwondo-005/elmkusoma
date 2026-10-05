@@ -9,7 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.highereducation.dto.DepartmentDTO;
+import tz.elmkusoma.highereducation.repository.DepartmentRepository;
 import tz.elmkusoma.highereducation.service.DepartmentService;
 
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class DepartmentController {
 
     private final DepartmentService departmentService;
+    private final DepartmentRepository departmentRepository;
 
     @GetMapping
     @Operation(summary = "List all departments in an institution")
@@ -37,7 +40,10 @@ public class DepartmentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<DepartmentDTO>> getDepartment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyDepartmentAccess(id, serverInstitutionId, userRole);
         DepartmentDTO department = departmentService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(department));
     }
@@ -68,7 +74,10 @@ public class DepartmentController {
     public ResponseEntity<ApiResponse<DepartmentDTO>> updateDepartment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
-            @Valid @RequestBody DepartmentDTO request) {
+            @Valid @RequestBody DepartmentDTO request,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyDepartmentAccess(id, serverInstitutionId, userRole);
         DepartmentDTO department = departmentService.update(id, request);
         return ResponseEntity.ok(ApiResponse.success("Department updated successfully", department));
     }
@@ -78,8 +87,24 @@ public class DepartmentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteDepartment(
             @RequestHeader("X-Institution-Id") UUID institutionId,
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userRole") String userRole) {
+        verifyDepartmentAccess(id, serverInstitutionId, userRole);
         departmentService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Department deleted successfully", null));
+    }
+
+    private void verifyDepartmentAccess(UUID id, UUID serverInstitutionId, String userRole) {
+        if ("ADMIN".equals(userRole)) {
+            return;
+        }
+        departmentRepository.findById(id)
+                .filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
+                .ifPresent(d -> {
+                    if (d.getInstitutionId() == null || !d.getInstitutionId().equals(serverInstitutionId)) {
+                        throw new ForbiddenException("Department", "access");
+                    }
+                });
     }
 }

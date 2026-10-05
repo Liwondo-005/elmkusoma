@@ -194,7 +194,7 @@ class AuthServiceTest {
         assertNull(response.getAccessToken());
         assertNull(response.getUser());
         verify(eventPublisherService).publishEmailEvent(
-                eq("existing@example.com"), anyString(), eq("email/password-reset"),
+                eq("existing@example.com"), anyString(), eq("password-reset"),
                 any(), any());
     }
 
@@ -297,9 +297,9 @@ class AuthServiceTest {
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken("old_refresh_token");
 
-        when(jwtTokenProvider.validateToken("old_refresh_token")).thenReturn(true);
+        when(jwtTokenProvider.validateRefreshToken("old_refresh_token")).thenReturn(true);
         when(revokedTokenRepository.existsByTokenHash(anyString())).thenReturn(false);
-        when(jwtTokenProvider.getEmailFromToken("old_refresh_token")).thenReturn("john@example.com");
+        when(jwtTokenProvider.getEmailFromRefreshToken("old_refresh_token")).thenReturn("john@example.com");
         when(jwtTokenProvider.getSecurityVersionFromToken("old_refresh_token")).thenReturn(1L);
 
         User user = User.builder()
@@ -332,7 +332,7 @@ class AuthServiceTest {
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken("invalid_token");
 
-        when(jwtTokenProvider.validateToken("invalid_token")).thenReturn(false);
+        when(jwtTokenProvider.validateRefreshToken("invalid_token")).thenReturn(false);
 
         assertThrows(ForbiddenException.class, () -> authService.refreshToken(request));
     }
@@ -342,7 +342,7 @@ class AuthServiceTest {
         RefreshTokenRequest request = new RefreshTokenRequest();
         request.setRefreshToken("revoked_token");
 
-        when(jwtTokenProvider.validateToken("revoked_token")).thenReturn(true);
+        when(jwtTokenProvider.validateRefreshToken("revoked_token")).thenReturn(true);
         when(revokedTokenRepository.existsByTokenHash(anyString())).thenReturn(true);
 
         assertThrows(ForbiddenException.class, () -> authService.refreshToken(request));
@@ -423,7 +423,8 @@ class AuthServiceTest {
         when(passwordResetTokenRepository.findByTokenAndUsedFalse(anyString()))
                 .thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> authService.resetPassword(request));
+        // Unified single-400: unknown tokens are indistinguishable from expired ones.
+        assertThrows(IllegalArgumentException.class, () -> authService.resetPassword(request));
     }
 
     @Test
