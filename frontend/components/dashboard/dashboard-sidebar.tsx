@@ -87,6 +87,7 @@ const primaryNavSections: PrimaryNavSection[] = [
     items: [
       { label: "Live Learning", labelKey: "liveLearning", href: "/dashboard/live-classes", icon: Video, dotColor: "bg-red-500" },
       { label: "Progress", labelKey: "progress", href: "/dashboard/progress", icon: BarChart3, dotColor: "bg-cyan-500" },
+      { label: "Grades", labelKey: "grades", href: "/dashboard/results", icon: Award, dotColor: "bg-purple-500" },
       { label: "Evidence", labelKey: "evidence", href: "/dashboard/evidence", icon: Award, dotColor: "bg-green-500" },
       { label: "Passport", labelKey: "passport", href: "/dashboard/passport", icon: Map, dotColor: "bg-amber-500" },
       { label: "Attendance", labelKey: "attendance", href: "/dashboard/attendance", icon: ClipboardCheck, dotColor: "bg-emerald-600" },
@@ -265,6 +266,7 @@ const universityNavSections: NavSection[] = [
     children: [
       { label: "Academic Progress", labelKey: "academicProgress", href: "/dashboard/learner/academic-progress", icon: BarChart3 },
       { label: "Academic Record", labelKey: "academicRecord", href: "/dashboard/learner/academic-record", icon: FileBarChart },
+      { label: "Grades", labelKey: "grades", href: "/dashboard/results", icon: Award },
       { label: "Study Planner", labelKey: "studyPlanner", href: "/dashboard/learner/study-planner", icon: Clock },
       { label: "Calendar", labelKey: "calendar", href: "/dashboard/learner/calendar", icon: CalendarDays },
       { label: "Competencies", labelKey: "competencies", href: "/dashboard/learner/competencies", icon: Target },

@@ -7201,7 +7201,8 @@
       "downloading": "Generating…",
       "empty": "No reports available.",
       "exportFailed": "Export failed. Please try again.",
-      "loadFailed": "Could not load reports."
+      "loadFailed": "Could not load reports.",
+      "offline": "Could not reach the reports service — showing the built-in catalogue."
     },
     "schools": {
       "institutionsInYourJurisdiction": "Institutions in Your Jurisdiction ({p0})",

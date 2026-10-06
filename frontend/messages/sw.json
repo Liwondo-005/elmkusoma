@@ -7201,7 +7201,8 @@
       "downloading": "Inatengeneza…",
       "empty": "Hakuna ripoti zinazopatikana.",
       "exportFailed": "Uhamishaji umeshindwa. Jaribu tena.",
-      "loadFailed": "Imeshindwa kupakua ripoti."
+      "loadFailed": "Imeshindwa kupakua ripoti.",
+      "offline": "Imeshindwa kufikia huduma ya ripoti — inaonyesha katalogi iliyojengwa ndani."
     },
     "schools": {
       "institutionsInYourJurisdiction": "Taasisi in Your Jurisdiction ({p0})",
