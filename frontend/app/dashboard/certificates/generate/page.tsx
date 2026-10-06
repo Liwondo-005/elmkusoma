@@ -63,7 +63,10 @@ function GenerateForm({ institutionId }: { institutionId: string }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    certificateApi.listTemplates().then(setTemplates).catch(() => {})
+    certificateApi
+      .listTemplates()
+      .then((data) => setTemplates(Array.isArray(data) ? data : []))
+      .catch(() => {})
   }, [])
 
   async function handleGenerate() {
@@ -146,7 +149,9 @@ function ManageCertificates({ institutionId }: { institutionId: string }) {
   useEffect(() => {
     certificateApi
       .list()
-      .then(setCerts)
+      // Defence in depth: never let an unexpected payload shape reach .map(),
+      // which would crash the tab instead of showing the empty state.
+      .then((data) => setCerts(Array.isArray(data) ? data : []))
       .catch((err) => setError(err instanceof Error ? err.message : t("certificatesPage.loadFailed")))
       .finally(() => setLoading(false))
   }, [institutionId])

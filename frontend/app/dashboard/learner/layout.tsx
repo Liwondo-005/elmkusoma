@@ -28,11 +28,6 @@ export default function LearnerLayout({ children }: { children: React.ReactNode 
   }, [])
 
   useEffect(() => {
-    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return
-    navigator.serviceWorker.register("/sw.js").catch(() => {})
-  }, [])
-
-  useEffect(() => {
     function handleAnnounce(event: Event) {
       const detail = (event as CustomEvent<unknown>).detail
       if (typeof detail === "string" && detail) announce(detail)

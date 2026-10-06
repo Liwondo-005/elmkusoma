@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,6 +44,9 @@ class FlywayMigrationValidationTest {
 
     private static Path migrationDir;
     private static List<Path> migrationFiles;
+
+    /** Migration file:line of the last declaration per "table.column" (shared helper output). */
+    private Map<String, String> declaredIn;
 
     @BeforeAll
     static void locateMigrations() throws Exception {
@@ -174,17 +178,76 @@ class FlywayMigrationValidationTest {
      */
     @Test
     void auditedActorColumns_AreCharacterTypesInMigrations() throws IOException {
-        Pattern createTable = Pattern.compile("CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_\\\".]+)\\s*\\(",
+        Map<String, String> effectiveType = effectiveColumnTypes(Set.of("created_by", "updated_by"));
+
+        List<String> offenders = new ArrayList<>();
+        for (Map.Entry<String, String> entry : effectiveType.entrySet()) {
+            String type = entry.getValue();
+            boolean character = type.startsWith("character") || type.startsWith("varchar")
+                    || type.startsWith("text") || type.startsWith("citext");
+            if (!character) {
+                offenders.add(entry.getKey() + " = " + type
+                        + " (last declared at " + declaredIn.get(entry.getKey()) + ")");
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "audited actor columns (BaseEntity.createdBy/updatedBy are Strings filled with "
+                        + "authentication.getName()) must resolve to a character type after all migrations run, "
+                        + "otherwise every audited insert fails with a bare HTTP 500. Offenders: " + offenders);
+    }
+
+    /**
+     * Event.rescheduledFrom / organizerId / institutionId are java.util.UUID. The
+     * same mechanism (typed parameters, bare HTTP 500 on write) applies when the
+     * migration leaves such a column as a timestamp: V71 declared
+     * events.rescheduled_from UUID and V75 re-declared it TIMESTAMP, so every
+     * POST /v1/events failed with
+     * "column rescheduled_from is of type timestamp without time zone but
+     * expression is of type uuid" until V129 corrected it. The failure fires even
+     * when the field is left empty, because the typed NULL parameter is still sent.
+     */
+    @Test
+    void uuidReferenceColumns_ResolveToUuidInMigrations() throws IOException {
+        Set<String> watched = Set.of("rescheduled_from", "organizer_id", "institution_id");
+        Map<String, String> effectiveType = effectiveColumnTypes(watched);
+
+        List<String> offenders = new ArrayList<>();
+        for (Map.Entry<String, String> entry : effectiveType.entrySet()) {
+            // Only the events.* references are UUID-typed on the entity side.
+            if (!entry.getKey().startsWith("events.")) {
+                continue;
+            }
+            if (!watched.contains(entry.getKey().substring("events.".length()))) {
+                continue;
+            }
+            if (!entry.getValue().startsWith("uuid")) {
+                offenders.add(entry.getKey() + " = " + entry.getValue()
+                        + " (last declared at " + declaredIn.get(entry.getKey())
+                        + ") but the entity maps it as java.util.UUID");
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "events columns mapped as java.util.UUID on the entity must resolve to uuid after all "
+                        + "migrations run, otherwise every insert into events fails with a bare HTTP 500. "
+                        + "Offenders: " + offenders);
+    }
+
+    /** Effective (post-all-migrations) type per "table.column", last declaration winning. */
+    private Map<String, String> effectiveColumnTypes(Set<String> watchedColumns) throws IOException {
+        Pattern createTable = Pattern.compile(
+                "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_\\\".]+)\\s*\\(",
                 Pattern.CASE_INSENSITIVE);
-        Pattern columnLine = Pattern.compile("^(created_by|updated_by)\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+        Pattern columnLine = Pattern.compile(
+                "^(" + String.join("|", watchedColumns.stream().sorted().toList()) + ")\\s+([A-Za-z][A-Za-z0-9_ ]*)",
                 Pattern.CASE_INSENSITIVE);
         Pattern alterColumn = Pattern.compile(
-                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ALTER\\s+COLUMN\\s+(created_by|updated_by)\\s+TYPE\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ALTER\\s+COLUMN\\s+("
+                        + String.join("|", watchedColumns.stream().sorted().toList())
+                        + ")\\s+TYPE\\s+([A-Za-z][A-Za-z0-9_ ]*)",
                 Pattern.CASE_INSENSITIVE);
 
-        // table.column (lowercased) -> effective type, last declaration wins.
         Map<String, String> effectiveType = new LinkedHashMap<>();
-        Map<String, String> declaredIn = new LinkedHashMap<>();
+        declaredIn = new LinkedHashMap<>();
 
         List<Path> ordered = migrationFiles.stream()
                 .sorted(Comparator.comparingInt(FlywayMigrationValidationTest::versionOf))
@@ -208,12 +271,12 @@ class FlywayMigrationValidationTest {
                     currentTable = unquote(created.group(1));
                     continue;
                 }
-                if (currentTable != null && upper.startsWith(")") ) {
+                if (currentTable != null && upper.startsWith(")")) {
                     currentTable = null;
                 }
                 Matcher altered = alterColumn.matcher(line);
                 if (altered.find()) {
-                    String key = unquote(altered.group(1)) + "." + altered.group(2).toLowerCase();
+                    String key = unquote(altered.group(1)).toLowerCase() + "." + altered.group(2).toLowerCase();
                     effectiveType.put(key, altered.group(3).trim().toLowerCase());
                     declaredIn.put(key, file.getFileName() + ":" + (i + 1));
                     continue;
@@ -228,21 +291,7 @@ class FlywayMigrationValidationTest {
                 }
             }
         }
-
-        List<String> offenders = new ArrayList<>();
-        for (Map.Entry<String, String> entry : effectiveType.entrySet()) {
-            String type = entry.getValue();
-            boolean character = type.startsWith("character") || type.startsWith("varchar")
-                    || type.startsWith("text") || type.startsWith("citext");
-            if (!character) {
-                offenders.add(entry.getKey() + " = " + type
-                        + " (last declared at " + declaredIn.get(entry.getKey()) + ")");
-            }
-        }
-        assertTrue(offenders.isEmpty(),
-                "audited actor columns (BaseEntity.createdBy/updatedBy are Strings filled with "
-                        + "authentication.getName()) must resolve to a character type after all migrations run, "
-                        + "otherwise every audited insert fails with a bare HTTP 500. Offenders: " + offenders);
+        return effectiveType;
     }
 
     private static String unquote(String identifier) {

@@ -899,9 +899,16 @@ export const certificateApi = {
   get: (certificateId: string) =>
     request<CertificateResponse>(`/v1/certificates/${certificateId}`),
 
-  list: (studentId?: string) => {
+  list: async (studentId?: string): Promise<CertificateResponse[]> => {
     const params = studentId ? `?studentId=${studentId}` : ""
-    return request<CertificateResponse[]>(`/v1/certificates${params}`)
+    const payload = await request<CertificateResponse[] | PageResponse<CertificateResponse>>(
+      `/v1/certificates${params}`,
+    )
+    // GET /v1/certificates answers with a Spring Page envelope
+    // ({ content, totalElements, ... }); callers expect a plain array, so unwrap
+    // here instead of guarding at every call site.
+    if (Array.isArray(payload)) return payload
+    return Array.isArray(payload?.content) ? payload.content : []
   },
 
   generateTranscript: (data: GenerateTranscriptRequest) =>

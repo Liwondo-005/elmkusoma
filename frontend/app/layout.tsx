@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Providers } from './providers'
+import { ServiceWorkerRegistrar } from '@/components/service-worker-registrar'
 
 // NOTE: Google Fonts (next/font/google) removed — the build/dev environment has
 // no reliable access to fonts.googleapis.com, which made Turbopack emit CSS
@@ -72,6 +73,7 @@ export default function RootLayout({
     <html lang="en" className="light bg-background">
       <body className="antialiased font-sans">
         <Providers>{children}</Providers>
+        <ServiceWorkerRegistrar />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
