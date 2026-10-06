@@ -64,6 +64,12 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (path.equals("/v1/auth/login")) {
             return "login";
         }
+        if (path.equals("/v1/auth/register")) {
+            return "register";
+        }
+        if (path.equals("/v1/auth/refresh")) {
+            return "refresh";
+        }
         if (path.equals("/v1/auth/forgot-password")) {
             return "forgot";
         }
@@ -76,8 +82,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (path.equals("/v1/auth/verify-code")) {
             return "verify-code";
         }
-        if (path.equals("/v1/auth/mfa/verify")) {
-            return "mfa-verify";
+        // Covers mfa/verify plus the authenticated setup routes (enroll,
+        // confirm, codes/regenerate) so none of them is a free work oracle.
+        if (path.startsWith("/v1/auth/mfa/")) {
+            return "mfa";
         }
         if (path.equals("/v1/auth/emergency-recover")) {
             return "emergency";
@@ -93,11 +101,13 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private long[] budgetFor(String bucket) {
         return switch (bucket) {
             case "login" -> new long[]{30, MINUTE};
+            case "register" -> new long[]{30, HOUR};
+            case "refresh" -> new long[]{120, MINUTE};
             case "forgot" -> new long[]{30, HOUR};
             case "reset" -> new long[]{30, MINUTE};
             case "send-code" -> new long[]{30, HOUR};
             case "verify-code" -> new long[]{60, HOUR};
-            case "mfa-verify" -> new long[]{60, HOUR};
+            case "mfa" -> new long[]{60, HOUR};
             case "emergency" -> new long[]{10, HOUR};
             case "admin-recovery" -> new long[]{60, MINUTE};
             default -> new long[]{30, MINUTE};
