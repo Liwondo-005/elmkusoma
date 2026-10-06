@@ -22,6 +22,37 @@
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
+-- 0) Accounts the tracked specs log into with 'password' must EXIST and carry
+--    that hash. The steps below only ever UPDATEs them, so a deleted or
+--    drifted account silently broke login-secure-access.spec.ts,
+--    learning-content.spec.ts and all of regional-admin.spec.ts (401, not a UI
+--    defect). Create-on-missing + hash realignment, both idempotent.
+--    audit-test@test.com / john@student.test come from the earlier partial
+--    attempt; the jurisdiction accounts come from seed_oversight.sql.
+-- ---------------------------------------------------------------------------
+INSERT INTO users (email, password_hash, first_name, middle_name, last_name, phone,
+                   role, institution_id, learning_level, is_active,
+                   is_email_verified, created_at, updated_at, is_deleted)
+VALUES
+  ('audit-test@test.com', '$2a$10$2xvXqwp2cvM36F9V5ZYW.uFijWhdJRrYrQfKMA19S78lawlUt4Nj2',
+   'Audit', NULL, 'Test', '+255700000009', 'STUDENT',
+   'a0000000-0000-0000-0000-000000000002', 'COLLEGE', true, true, NOW(), NOW(), false),
+  ('john@student.test', '$2a$10$2xvXqwp2cvM36F9V5ZYW.uFijWhdJRrYrQfKMA19S78lawlUt4Nj2',
+   'John', NULL, 'Student', '+255700000010', 'STUDENT',
+   'a0000000-0000-0000-0000-000000000002', 'COLLEGE', true, true, NOW(), NOW(), false)
+ON CONFLICT DO NOTHING;
+
+-- Realign every seed-convention account to BCrypt('password') without touching
+-- any that already match, and re-activate seed accounts that were deactivated.
+UPDATE users
+SET password_hash = '$2a$10$2xvXqwp2cvM36F9V5ZYW.uFijWhdJRrYrQfKMA19S78lawlUt4Nj2',
+    updated_at    = NOW()
+WHERE email IN ('audit-test@test.com', 'john@student.test',
+                'national@test.com', 'regional.dar@test.com', 'regional.aru@test.com',
+                'district.ila@test.com', 'district.arc@test.com')
+  AND password_hash <> '$2a$10$2xvXqwp2cvM36F9V5ZYW.uFijWhdJRrYrQfKMA19S78lawlUt4Nj2';
+
+-- ---------------------------------------------------------------------------
 -- 1) teacher1@darms.edu.tz currently carries a manual 'Test123!' hash; the
 --    tracked E2E specs (live-player.spec.ts, offerings-smoke.spec.ts) log in
 --    with the seed convention password. Align the credential only.
