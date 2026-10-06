@@ -35,7 +35,7 @@ export default function LessonDetailPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const allLessons = await learningApi.getLessonsByClass(user!.classGroupId || "")
+      const allLessons = user!.classGroupId ? await learningApi.getLessonsByClass(user!.classGroupId) : []
       const found = allLessons.find((l) => l.id === params.id)
       if (found) {
         setLesson(found)

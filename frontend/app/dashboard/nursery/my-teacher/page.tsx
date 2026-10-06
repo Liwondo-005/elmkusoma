@@ -58,7 +58,7 @@ export default function MyTeacherPage() {
           <h2 className="mt-4 text-lg font-bold text-gray-800">
             {primaryTeacher.firstName} {primaryTeacher.lastName}
           </h2>
-          <p className="mt-1 text-sm text-indigo-600 font-medium">{primaryTeacher.subject || primaryTeacher.className}</p>
+          <p className="mt-1 text-sm text-indigo-600 font-medium">{primaryTeacher.subjectName}</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-green-50 p-3">
               <p className="text-lg font-bold text-green-600">{t("classes")}</p>
@@ -93,7 +93,7 @@ export default function MyTeacherPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900">{teacher.firstName} {teacher.lastName}</p>
-                  <p className="text-xs text-gray-500">{teacher.subject || teacher.className}</p>
+                  <p className="text-xs text-gray-500">{teacher.subjectName}</p>
                 </div>
                 <Star className="size-4 text-amber-400" />
               </div>

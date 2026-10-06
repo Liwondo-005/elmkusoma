@@ -28,7 +28,7 @@ export default function JourneyPage() {
     try {
       setLoading(true)
       const [lessonsData, progressData, passportData] = await Promise.all([
-        learningApi.getLessonsByClass(user!.classGroupId || ""),
+        user!.classGroupId ? learningApi.getLessonsByClass(user!.classGroupId).catch(() => []) : Promise.resolve([]),
         learningApi.getStudentProgress(user!.id).catch(() => []),
         primaryApi.getLearningPassport().catch(() => null),
       ])
