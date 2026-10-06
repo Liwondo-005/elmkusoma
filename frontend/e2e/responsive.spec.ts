@@ -4,8 +4,13 @@ test.describe("Responsive Design", () => {
   test("mobile viewport hides sidebar", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto("/login")
-    const sidebar = page.locator("aside")
-    await expect(sidebar).toBeHidden()
+    // The redesigned login page intentionally keeps its secure-access panel in
+    // an <aside> on phones (it stacks below the form, see
+    // login-secure-access.spec.ts). What must never reach a phone viewport is
+    // the authenticated app sidebar / workspace navigation.
+    await expect(page.locator("aside a[href^='/dashboard']")).toHaveCount(0)
+    await expect(page.locator("aside nav")).toHaveCount(0)
+    await expect(page.getByRole("heading", { name: "Welcome Back" })).toBeVisible()
   })
 
   test("desktop viewport shows sidebar on dashboard", async ({ page }) => {
