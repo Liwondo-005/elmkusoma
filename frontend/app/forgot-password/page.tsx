@@ -13,7 +13,9 @@ import { useTranslations } from "next-intl"
 
 export default function ForgotPasswordPage() {
   const t = useTranslations("auth")
+  const tOtp = useTranslations("otp")
   const [sent, setSent] = useState(false)
+  const [sentEmail, setSentEmail] = useState("")
 
   const forgotSchema = z.object({
     email: z.string().min(1, t("emailRequired")).email(t("invalidEmail")),
@@ -36,6 +38,7 @@ export default function ForgotPasswordPage() {
     } catch {
       // Always show success to prevent email enumeration
     }
+    setSentEmail(values.email)
     setSent(true)
   }
 
@@ -71,6 +74,14 @@ export default function ForgotPasswordPage() {
               >
                 {t("backToLogin")}
               </Link>
+              <p className="mt-4 text-sm text-muted-foreground">
+                <Link
+                  href={`/verify-otp?email=${encodeURIComponent(sentEmail)}&context=recovery`}
+                  className="font-medium text-teal hover:underline"
+                >
+                  {tOtp("switchToCode")}
+                </Link>
+              </p>
             </div>
           </div>
         </main>

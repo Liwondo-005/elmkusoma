@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -73,6 +74,9 @@ class AuthSecurityRegressionTest {
 
     @Autowired
     private VerificationCodeRepository verificationCodeRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private static String freshEmail(String prefix) {
         return (prefix + "-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com").toLowerCase();
@@ -245,6 +249,65 @@ class AuthSecurityRegressionTest {
         assertEquals(5, storedCode.length());
         assertFalse(result.getResponse().getContentAsString().contains(storedCode),
                 "send-code response must never echo the issued verification code");
+    }
+
+    @Test
+    void verifyCode_wrongGuesses_countAttempts_thenSixthAttemptLocks() throws Exception {
+        String email = freshEmail("otp-attempts");
+        verificationCodeRepository.save(VerificationCode.builder()
+                .email(email)
+                .code("54321")
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .used(false)
+                .attempts(0)
+                .build());
+
+        for (int i = 1; i <= 5; i++) {
+            MvcResult wrong = postJson("/v1/auth/verify-code",
+                    "{\"email\":\"" + email + "\",\"code\":\"0000" + i + "\"}", null);
+            assertEquals(400, wrong.getResponse().getStatus());
+            assertEquals("Invalid or expired verification code",
+                    errorOf(wrong.getResponse().getContentAsString()));
+        }
+
+        VerificationCode row = verificationCodeRepository
+                .findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email).orElseThrow();
+        assertEquals(5, row.getAttempts(),
+                "wrong guesses must increment the attempt counter so the cap binds");
+
+        MvcResult sixth = postJson("/v1/auth/verify-code",
+                "{\"email\":\"" + email + "\",\"code\":\"54321\"}", null);
+        assertEquals(400, sixth.getResponse().getStatus());
+        assertEquals("Too many failed attempts. Please request a new code.",
+                errorOf(sixth.getResponse().getContentAsString()));
+    }
+
+    @Test
+    void sendCode_resendSupersedesOlderUnusedCode() throws Exception {
+        String email = freshEmail("otp-supersede");
+        VerificationCode old = verificationCodeRepository.save(VerificationCode.builder()
+                .email(email)
+                .code("11111")
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .used(false)
+                .attempts(0)
+                .build());
+        // createdAt is immutable through JPA; age the row directly so the 60s
+        // cooldown passes and the resend path executes.
+        jdbcTemplate.update("UPDATE verification_codes SET created_at = ? WHERE id = ?",
+                LocalDateTime.now().minusSeconds(120), old.getId());
+
+        MvcResult send = postJson("/v1/auth/send-code", "{\"email\":\"" + email + "\"}", null);
+        assertEquals(200, send.getResponse().getStatus());
+
+        VerificationCode superseded = verificationCodeRepository.findById(old.getId()).orElseThrow();
+        assertTrue(superseded.getUsed(), "a resend must supersede the older unused code");
+
+        MvcResult stale = postJson("/v1/auth/verify-code",
+                "{\"email\":\"" + email + "\",\"code\":\"11111\"}", null);
+        assertEquals(400, stale.getResponse().getStatus());
+        assertEquals("Invalid or expired verification code",
+                errorOf(stale.getResponse().getContentAsString()));
     }
 
     // ── change-password ──
