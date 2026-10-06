@@ -197,10 +197,11 @@ public class AssessmentController {
     public ResponseEntity<ApiResponse<AssessmentResultResponse>> getResult(
             @PathVariable UUID id,
             @PathVariable UUID studentId,
+            @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID callerUserId,
             @RequestAttribute("userRole") String userRole) {
         AssessmentResultResponse response =
-                assessmentService.getResult(id, studentId, callerUserId, userRole);
+                assessmentService.getResult(id, studentId, callerUserId, userRole, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

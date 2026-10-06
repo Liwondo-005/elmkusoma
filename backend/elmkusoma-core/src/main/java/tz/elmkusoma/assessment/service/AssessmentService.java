@@ -59,8 +59,12 @@ public interface AssessmentService {
 
     List<AssessmentResultResponse> getResults(UUID assessmentId, UUID institutionId);
 
-    /** Result read; learners may only read their own result. */
-    AssessmentResultResponse getResult(UUID assessmentId, UUID studentId, UUID callerUserId, String userRole);
+    /**
+     * Result read; learners (STUDENT / OTHER_LEARNER / PARENT) may only read their
+     * own result, everyone else reads within the caller's institution scope.
+     */
+    AssessmentResultResponse getResult(UUID assessmentId, UUID studentId, UUID callerUserId,
+                                       String userRole, UUID institutionId);
 
     AnswerResponse gradeEssay(UUID answerId, int marksObtained, String feedback, UUID gradedBy, UUID institutionId);
 

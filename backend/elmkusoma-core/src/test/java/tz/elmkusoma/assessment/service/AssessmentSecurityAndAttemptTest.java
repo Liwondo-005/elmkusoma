@@ -10,7 +10,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import tz.elmkusoma.assessment.domain.*;
 import tz.elmkusoma.assessment.dto.request.SaveAnswerRequest;
 import tz.elmkusoma.assessment.dto.request.SubmitAssessmentRequest;
+import tz.elmkusoma.assessment.dto.response.AnswerResponse;
 import tz.elmkusoma.assessment.dto.response.AssessmentResponse;
+import tz.elmkusoma.assessment.dto.response.AssessmentResultResponse;
 import tz.elmkusoma.assessment.dto.response.AttemptResponse;
 import tz.elmkusoma.assessment.dto.response.QuestionResponse;
 import tz.elmkusoma.assessment.repository.*;
@@ -40,6 +42,9 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 class AssessmentSecurityAndAttemptTest {
+
+    /** The single generic availability message used by every start-attempt rejection. */
+    private static final String UNAVAILABLE = "This assessment is not available";
 
     @Mock private AssessmentRepository assessmentRepository;
     @Mock private QuestionRepository questionRepository;
@@ -175,7 +180,8 @@ class AssessmentSecurityAndAttemptTest {
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.startAttempt(assessmentId, callerUserId, institutionId));
-        assertTrue(ex.getMessage().toLowerCase().contains("not opened"));
+        assertEquals(UNAVAILABLE, ex.getMessage());
+        verify(attemptRepository, never()).save(any());
     }
 
     @Test
@@ -186,7 +192,30 @@ class AssessmentSecurityAndAttemptTest {
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.startAttempt(assessmentId, callerUserId, institutionId));
-        assertTrue(ex.getMessage().toLowerCase().contains("closed"));
+        assertEquals(UNAVAILABLE, ex.getMessage());
+        verify(attemptRepository, never()).save(any());
+    }
+
+    @Test
+    void startAttempt_missingAssessmentIsIndistinguishableFromClosedWindow() {
+        when(assessmentRepository.findById(assessmentId)).thenReturn(Optional.empty());
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.startAttempt(assessmentId, callerUserId, institutionId));
+        assertEquals(UNAVAILABLE, ex.getMessage());
+        verify(attemptRepository, never()).save(any());
+    }
+
+    @Test
+    void startAttempt_crossInstitutionAssessmentIsIndistinguishableFromClosedWindow() {
+        Assessment foreign = assessment(true, null, null);
+        foreign.setInstitutionId(UUID.randomUUID());
+        when(assessmentRepository.findById(assessmentId)).thenReturn(Optional.of(foreign));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.startAttempt(assessmentId, callerUserId, institutionId));
+        assertEquals(UNAVAILABLE, ex.getMessage());
+        verify(attemptRepository, never()).save(any());
     }
 
     @Test
@@ -467,6 +496,100 @@ class AssessmentSecurityAndAttemptTest {
         assertFalse(resultCaptor.getValue().getIsPassed());
     }
 
+    // ── Essay grading ownership ──────────────────────────────────────────────
+
+    private Answer essayAnswer(UUID questionId) {
+        return Answer.builder()
+                .id(UUID.randomUUID()).attemptId(attemptId).questionId(questionId)
+                .institutionId(institutionId).isDeleted(false).build();
+    }
+
+    private Question essayQuestion(UUID questionId) {
+        return Question.builder()
+                .id(questionId).assessmentId(assessmentId)
+                .questionType(QuestionType.ESSAY).questionText("Explain photosynthesis")
+                .marks(10).sortOrder(0).isDeleted(false).build();
+    }
+
+    private Attempt completedAttempt() {
+        return Attempt.builder()
+                .id(attemptId).assessmentId(assessmentId).studentId(studentId)
+                .institutionId(institutionId).isCompleted(true)
+                .startedAt(LocalDateTime.now().minusHours(2)).isDeleted(false).build();
+    }
+
+    @Test
+    void gradeEssay_rejectsAnswerFromAnotherInstitution() {
+        UUID questionId = UUID.randomUUID();
+        Answer answer = essayAnswer(questionId);
+        Assessment foreign = assessment(true, null, null);
+        foreign.setInstitutionId(UUID.randomUUID());
+
+        when(answerRepository.findById(answer.getId())).thenReturn(Optional.of(answer));
+        when(questionRepository.findById(questionId)).thenReturn(Optional.of(essayQuestion(questionId)));
+        when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(completedAttempt()));
+        when(assessmentRepository.findById(assessmentId)).thenReturn(Optional.of(foreign));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.gradeEssay(answer.getId(), 5, "good effort", callerUserId, institutionId));
+        verify(answerRepository, never()).save(any());
+    }
+
+    @Test
+    void gradeEssay_requiresInstitutionContext() {
+        UUID questionId = UUID.randomUUID();
+        Answer answer = essayAnswer(questionId);
+
+        when(answerRepository.findById(answer.getId())).thenReturn(Optional.of(answer));
+        when(questionRepository.findById(questionId)).thenReturn(Optional.of(essayQuestion(questionId)));
+        when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(completedAttempt()));
+        when(assessmentRepository.findById(assessmentId))
+                .thenReturn(Optional.of(assessment(true, null, null)));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.gradeEssay(answer.getId(), 5, "good effort", callerUserId, null));
+        verify(answerRepository, never()).save(any());
+    }
+
+    @Test
+    void gradeEssay_gradesOwnInstitutionAnswerAndRecalculates() {
+        UUID questionId = UUID.randomUUID();
+        Answer answer = essayAnswer(questionId);
+        AssessmentResult existingResult = AssessmentResult.builder()
+                .id(UUID.randomUUID())
+                .institutionId(institutionId)
+                .assessmentId(assessmentId)
+                .studentId(studentId)
+                .attemptId(attemptId)
+                .totalScore(0)
+                .isPassed(false)
+                .isDeleted(false)
+                .build();
+
+        when(answerRepository.findById(answer.getId())).thenReturn(Optional.of(answer));
+        when(questionRepository.findById(questionId)).thenReturn(Optional.of(essayQuestion(questionId)));
+        when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(completedAttempt()));
+        when(assessmentRepository.findById(assessmentId))
+                .thenReturn(Optional.of(assessment(true, null, null)));
+        when(answerRepository.save(any(Answer.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(answerRepository.findByAttemptIdAndIsDeletedFalse(attemptId)).thenReturn(List.of(answer));
+        when(resultRepository.findByAssessmentIdAndStudentIdAndIsDeletedFalse(assessmentId, studentId))
+                .thenReturn(Optional.of(existingResult));
+        when(resultRepository.save(any(AssessmentResult.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(studentRepository.findById(studentId)).thenReturn(Optional.of(student()));
+
+        AnswerResponse graded =
+                service.gradeEssay(answer.getId(), 7, "solid work", callerUserId, institutionId);
+
+        assertEquals(7, graded.getMarksObtained());
+        assertEquals(callerUserId, graded.getGradedBy());
+        assertNotNull(graded.getGradedAt());
+        assertEquals(7, existingResult.getTotalScore(),
+                "manual grade must be rolled into the attempt's result");
+        verify(auditService, atLeastOnce()).recordAuditLog(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
     // ── Result read + class scoping ───────────────────────────────────────────
 
     @Test
@@ -475,7 +598,52 @@ class AssessmentSecurityAndAttemptTest {
         when(classAccessGuard.findStudentByUserId(callerUserId)).thenReturn(student());
 
         assertThrows(SecurityException.class,
-                () -> service.getResult(assessmentId, otherStudentId, callerUserId, "STUDENT"));
+                () -> service.getResult(assessmentId, otherStudentId, callerUserId, "STUDENT", institutionId));
+        verify(resultRepository, never()).findByAssessmentIdAndStudentIdAndIsDeletedFalse(any(), any());
+    }
+
+    @Test
+    void getResult_parentCannotReadAnotherStudentsResult() {
+        when(classAccessGuard.findStudentByUserId(callerUserId)).thenReturn(null);
+
+        assertThrows(SecurityException.class,
+                () -> service.getResult(assessmentId, studentId, callerUserId, "PARENT", institutionId));
+        verify(resultRepository, never()).findByAssessmentIdAndStudentIdAndIsDeletedFalse(any(), any());
+    }
+
+    @Test
+    void getResult_learnerReadsOwnResultWithinInstitution() {
+        when(classAccessGuard.findStudentByUserId(callerUserId)).thenReturn(student());
+        when(assessmentRepository.findById(assessmentId))
+                .thenReturn(Optional.of(assessment(true, null, null)));
+        when(resultRepository.findByAssessmentIdAndStudentIdAndIsDeletedFalse(assessmentId, studentId))
+                .thenReturn(Optional.of(AssessmentResult.builder()
+                        .id(UUID.randomUUID())
+                        .institutionId(institutionId)
+                        .assessmentId(assessmentId)
+                        .studentId(studentId)
+                        .attemptId(attemptId)
+                        .totalScore(40)
+                        .isPassed(true)
+                        .isDeleted(false)
+                        .build()));
+
+        AssessmentResultResponse result =
+                service.getResult(assessmentId, studentId, callerUserId, "STUDENT", institutionId);
+
+        assertEquals(40, result.getTotalScore());
+        assertEquals(studentId, result.getStudentId());
+    }
+
+    @Test
+    void getResult_teacherCannotReadAnotherInstitutionsResult() {
+        Assessment foreign = assessment(true, null, null);
+        foreign.setInstitutionId(UUID.randomUUID());
+        when(assessmentRepository.findById(assessmentId)).thenReturn(Optional.of(foreign));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.getResult(assessmentId, studentId, callerUserId, "TEACHER", institutionId));
+        verify(resultRepository, never()).findByAssessmentIdAndStudentIdAndIsDeletedFalse(any(), any());
     }
 
     @Test

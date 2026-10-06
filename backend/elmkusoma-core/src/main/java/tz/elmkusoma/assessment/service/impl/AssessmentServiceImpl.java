@@ -268,7 +268,14 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     @Override
     public AttemptResponse startAttempt(UUID assessmentId, UUID callerUserId, UUID institutionId) {
-        Assessment assessment = loadScoped(assessmentId, institutionId);
+        Assessment assessment;
+        try {
+            assessment = loadScoped(assessmentId, institutionId);
+        } catch (ResourceNotFoundException ex) {
+            // A missing or cross-institution id must be indistinguishable from a
+            // closed window so learners cannot probe for an assessment's existence.
+            throw new IllegalArgumentException("This assessment is not available");
+        }
 
         Student student = classAccessGuard.findStudentByUserId(callerUserId);
         if (student == null) {
@@ -288,7 +295,7 @@ public class AssessmentServiceImpl implements AssessmentService {
             throw new IllegalArgumentException("Student already has an incomplete attempt for this assessment");
         }
 
-        if (assessment.getMaxAttempts() != null) {
+        if (assessment.getMaxAttempts() != null && assessment.getMaxAttempts() > 0) {
             long completed = attemptRepository.countByAssessmentIdAndStudentIdAndIsCompletedTrueAndIsDeletedFalse(
                     assessmentId, student.getId());
             if (completed >= assessment.getMaxAttempts()) {
@@ -497,13 +504,15 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public AssessmentResultResponse getResult(UUID assessmentId, UUID studentId, UUID callerUserId, String userRole) {
+    public AssessmentResultResponse getResult(UUID assessmentId, UUID studentId, UUID callerUserId,
+                                              String userRole, UUID institutionId) {
         if (isLearnerRole(userRole)) {
             Student caller = classAccessGuard.findStudentByUserId(callerUserId);
             if (caller == null || !caller.getId().equals(studentId)) {
                 throw new SecurityException("You can only view your own result");
             }
         }
+        loadScoped(assessmentId, institutionId);
         AssessmentResult result = resultRepository
                 .findByAssessmentIdAndStudentIdAndIsDeletedFalse(assessmentId, studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Result not found"));
@@ -520,6 +529,18 @@ public class AssessmentServiceImpl implements AssessmentService {
         Question question = questionRepository.findById(answer.getQuestionId())
                 .orElseThrow(() -> new ResourceNotFoundException("Question not found"));
 
+        // Institution enforcement: answer -> attempt -> assessment. Ownership is
+        // resolved before any grading detail is validated or disclosed, and a
+        // missing institution context is never an implicit grant.
+        Attempt attempt = attemptRepository.findById(answer.getAttemptId())
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt not found"));
+        Assessment assessment = assessmentRepository.findById(attempt.getAssessmentId())
+                .filter(a -> !a.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Assessment not found"));
+        if (institutionId == null || !institutionId.equals(assessment.getInstitutionId())) {
+            throw new ResourceNotFoundException("Answer not found with id: " + answerId);
+        }
+
         if (question.getQuestionType() != QuestionType.SHORT_ANSWER &&
             question.getQuestionType() != QuestionType.ESSAY) {
             throw new IllegalArgumentException("Only SHORT_ANSWER and ESSAY questions can be manually graded");
@@ -528,16 +549,6 @@ public class AssessmentServiceImpl implements AssessmentService {
         if (marksObtained < 0 || marksObtained > question.getMarks()) {
             throw new IllegalArgumentException(
                     "Marks obtained must be between 0 and " + question.getMarks());
-        }
-
-        // Institution enforcement: answer -> attempt -> assessment.
-        Attempt attempt = attemptRepository.findById(answer.getAttemptId())
-                .orElseThrow(() -> new ResourceNotFoundException("Attempt not found"));
-        Assessment assessment = assessmentRepository.findById(attempt.getAssessmentId())
-                .filter(a -> !a.getIsDeleted())
-                .orElseThrow(() -> new ResourceNotFoundException("Assessment not found"));
-        if (institutionId != null && !institutionId.equals(assessment.getInstitutionId())) {
-            throw new ResourceNotFoundException("Answer not found with id: " + answerId);
         }
 
         Integer oldMarks = answer.getMarksObtained();
@@ -625,13 +636,12 @@ public class AssessmentServiceImpl implements AssessmentService {
         return attempt;
     }
 
-    /** Strict start-window enforcement (no grace). */
+    /** Strict start-window enforcement (no grace); both bounds share one generic message. */
     private void validateAvailability(Assessment assessment, LocalDateTime now) {
-        if (assessment.getStartsAt() != null && now.isBefore(assessment.getStartsAt())) {
-            throw new IllegalArgumentException("This assessment has not opened yet");
-        }
-        if (assessment.getEndsAt() != null && now.isAfter(assessment.getEndsAt())) {
-            throw new IllegalArgumentException("The window for this assessment has closed");
+        boolean notOpenYet = assessment.getStartsAt() != null && now.isBefore(assessment.getStartsAt());
+        boolean closed = assessment.getEndsAt() != null && now.isAfter(assessment.getEndsAt());
+        if (notOpenYet || closed) {
+            throw new IllegalArgumentException("This assessment is not available");
         }
     }
 
@@ -688,7 +698,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     private static boolean isLearnerRole(String role) {
-        return "STUDENT".equals(role) || "OTHER_LEARNER".equals(role);
+        return "STUDENT".equals(role) || "OTHER_LEARNER".equals(role) || "PARENT".equals(role);
     }
 
     /** Notifies the class learners when an assessment becomes published. */
