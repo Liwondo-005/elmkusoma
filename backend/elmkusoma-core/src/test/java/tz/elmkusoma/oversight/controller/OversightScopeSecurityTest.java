@@ -8,6 +8,7 @@ import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.GlobalExceptionHandler;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.oversight.domain.District;
+import tz.elmkusoma.oversight.dto.DistrictResponse;
 import tz.elmkusoma.oversight.dto.OversightDashboardResponse;
 import tz.elmkusoma.oversight.dto.RegionResponse;
 import tz.elmkusoma.oversight.repository.DistrictRepository;
@@ -447,6 +448,61 @@ class OversightScopeSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "text/csv"))
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString(".csv")));
+    }
+
+    // ── HTTP: path-variable jurisdiction IDOR ──
+
+    @Test
+    void regionalDistrictsPath_otherRegionForbidden() throws Exception {
+        mockMvc.perform(get("/v1/oversight/regions/{regionId}/districts", R2)
+                        .requestAttr("userId", REGIONAL_ID))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(oversightService);
+    }
+
+    @Test
+    void regionalInstitutionsPath_otherRegionForbidden() throws Exception {
+        mockMvc.perform(get("/v1/oversight/regions/{regionId}/institutions", R2)
+                        .requestAttr("userId", REGIONAL_ID))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(oversightService);
+    }
+
+    @Test
+    void districtInstitutionsPath_otherDistrictForbidden() throws Exception {
+        mockMvc.perform(get("/v1/oversight/districts/{districtId}/institutions", D2)
+                        .requestAttr("userId", DISTRICT_ID))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(oversightService);
+    }
+
+    @Test
+    void regionalDistrictsPath_ownRegionAllowed() throws Exception {
+        when(oversightService.getDistrictsByRegion(R1)).thenReturn(List.of());
+
+        mockMvc.perform(get("/v1/oversight/regions/{regionId}/districts", R1)
+                        .requestAttr("userId", REGIONAL_ID))
+                .andExpect(status().isOk());
+
+        verify(oversightService).getDistrictsByRegion(R1);
+    }
+
+    @Test
+    void districtDistrictsPath_limitedToOwnDistrict() throws Exception {
+        when(oversightService.getDistrictsByRegion(R1)).thenReturn(List.of(
+                DistrictResponse.builder().id(D1).build(),
+                DistrictResponse.builder().id(D2).build()));
+
+        mockMvc.perform(get("/v1/oversight/regions/{regionId}/districts", R1)
+                        .requestAttr("userId", DISTRICT_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(D1.toString()));
+
+        verify(oversightService).getDistrictsByRegion(R1);
     }
 
     // ── resolver: every endpoint shares one authority ──

@@ -19,6 +19,8 @@ public interface SecurityEventRepository extends JpaRepository<SecurityEvent, UU
     @Query("SELECT s FROM SecurityEvent s WHERE s.institutionId = :institutionId ORDER BY s.createdAt DESC")
     Page<SecurityEvent> findByInstitutionId(@Param("institutionId") UUID institutionId, Pageable pageable);
 
+    Page<SecurityEvent> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
     @Query("SELECT s FROM SecurityEvent s WHERE s.institutionId = :institutionId AND s.resolved = false ORDER BY s.createdAt DESC")
     List<SecurityEvent> findUnresolvedByInstitutionId(@Param("institutionId") UUID institutionId);
 
@@ -44,6 +46,16 @@ public interface SecurityEventRepository extends JpaRepository<SecurityEvent, UU
     long countByResolvedFalse();
 
     List<SecurityEvent> findByResolvedFalse();
+
+    long countBySeverity(SecurityEvent.Severity severity);
+
+    long countByEventType(SecurityEvent.SecurityEventType eventType);
+
+    @Query("SELECT s.eventType, COUNT(s) FROM SecurityEvent s GROUP BY s.eventType ORDER BY COUNT(s) DESC")
+    List<Object[]> countByEventTypeForAll();
+
+    @Query("SELECT s.severity, COUNT(s) FROM SecurityEvent s GROUP BY s.severity ORDER BY COUNT(s) DESC")
+    List<Object[]> countBySeverityForAll();
 
     @Query("SELECT COUNT(s) FROM SecurityEvent s WHERE s.institutionId IN :institutionIds AND s.resolved = false AND s.isDeleted = false")
     long countUnresolvedByInstitutionIds(@Param("institutionIds") java.util.List<UUID> institutionIds);

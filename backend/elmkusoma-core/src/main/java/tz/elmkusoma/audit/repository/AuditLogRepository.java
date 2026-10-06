@@ -19,6 +19,12 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     @Query("SELECT a FROM AuditLog a WHERE a.institutionId = :institutionId ORDER BY a.createdAt DESC")
     Page<AuditLog> findByInstitutionId(@Param("institutionId") UUID institutionId, Pageable pageable);
 
+    Page<AuditLog> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    List<AuditLog> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime from, LocalDateTime to);
+
+    List<AuditLog> findByEntityTypeAndEntityId(String entityType, UUID entityId);
+
     @Query("SELECT a FROM AuditLog a WHERE a.institutionId = :institutionId AND a.createdAt BETWEEN :from AND :to ORDER BY a.createdAt DESC")
     List<AuditLog> findByInstitutionIdAndDateRange(@Param("institutionId") UUID institutionId,
                                                     @Param("from") LocalDateTime from,

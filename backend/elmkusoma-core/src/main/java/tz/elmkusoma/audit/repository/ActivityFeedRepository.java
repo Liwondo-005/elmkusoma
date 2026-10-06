@@ -18,6 +18,8 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeed, UUID
     @Query("SELECT a FROM ActivityFeed a WHERE a.institutionId = :institutionId ORDER BY a.createdAt DESC")
     Page<ActivityFeed> findByInstitutionId(@Param("institutionId") UUID institutionId, Pageable pageable);
 
+    Page<ActivityFeed> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
     @Query("SELECT a FROM ActivityFeed a WHERE a.userId = :userId ORDER BY a.createdAt DESC")
     Page<ActivityFeed> findByUserId(@Param("userId") UUID userId, Pageable pageable);
 

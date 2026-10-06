@@ -61,13 +61,18 @@ public class AuditService {
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<AuditLogResponse> getAuditLogs(UUID institutionId, int page, int size) {
         org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
-        return auditLogRepository.findByInstitutionId(institutionId, org.springframework.data.domain.PageRequest.of(page, size))
-                .map(auditMapper::toAuditLogResponse);
+        Page<AuditLog> logs = institutionId == null
+                ? auditLogRepository.findAllByOrderByCreatedAtDesc(pageable)
+                : auditLogRepository.findByInstitutionId(institutionId, pageable);
+        return logs.map(auditMapper::toAuditLogResponse);
     }
 
     @Transactional(readOnly = true)
     public List<AuditLogResponse> getAuditLogsByDateRange(UUID institutionId, LocalDateTime from, LocalDateTime to) {
-        return auditLogRepository.findByInstitutionIdAndDateRange(institutionId, from, to).stream()
+        List<AuditLog> logs = institutionId == null
+                ? auditLogRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to)
+                : auditLogRepository.findByInstitutionIdAndDateRange(institutionId, from, to);
+        return logs.stream()
                 .map(auditMapper::toAuditLogResponse)
                 .toList();
     }
@@ -75,13 +80,18 @@ public class AuditService {
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<AuditLogResponse> getAuditLogsByUser(UUID institutionId, UUID userId, int page, int size) {
         org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
-        return auditLogRepository.findByInstitutionIdAndUserId(institutionId, userId, pageable)
-                .map(auditMapper::toAuditLogResponse);
+        Page<AuditLog> logs = institutionId == null
+                ? auditLogRepository.findByUserId(userId, pageable)
+                : auditLogRepository.findByInstitutionIdAndUserId(institutionId, userId, pageable);
+        return logs.map(auditMapper::toAuditLogResponse);
     }
 
     @Transactional(readOnly = true)
     public List<AuditLogResponse> getAuditLogsByEntity(UUID institutionId, String entityType, UUID entityId) {
-        return auditLogRepository.findByEntityTypeAndEntityId(institutionId, entityType, entityId).stream()
+        List<AuditLog> logs = institutionId == null
+                ? auditLogRepository.findByEntityTypeAndEntityId(entityType, entityId)
+                : auditLogRepository.findByEntityTypeAndEntityId(institutionId, entityType, entityId);
+        return logs.stream()
                 .map(auditMapper::toAuditLogResponse)
                 .toList();
     }
@@ -109,15 +119,19 @@ public class AuditService {
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<ActivityFeedResponse> getActivityFeed(UUID institutionId, int page, int size) {
         org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
-        return activityFeedRepository.findByInstitutionId(institutionId, pageable)
-                .map(auditMapper::toActivityFeedResponse);
+        Page<ActivityFeed> feeds = institutionId == null
+                ? activityFeedRepository.findAllByOrderByCreatedAtDesc(pageable)
+                : activityFeedRepository.findByInstitutionId(institutionId, pageable);
+        return feeds.map(auditMapper::toActivityFeedResponse);
     }
 
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<ActivityFeedResponse> getActivityFeedByUser(UUID institutionId, UUID userId, int page, int size) {
         org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
-        return activityFeedRepository.findByInstitutionIdAndUserId(institutionId, userId, pageable)
-                .map(auditMapper::toActivityFeedResponse);
+        Page<ActivityFeed> feeds = institutionId == null
+                ? activityFeedRepository.findByUserId(userId, pageable)
+                : activityFeedRepository.findByInstitutionIdAndUserId(institutionId, userId, pageable);
+        return feeds.map(auditMapper::toActivityFeedResponse);
     }
 
     @Transactional(readOnly = true)
@@ -166,13 +180,18 @@ public class AuditService {
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<SecurityEventResponse> getSecurityEvents(UUID institutionId, int page, int size) {
         org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
-        return securityEventRepository.findByInstitutionId(institutionId, pageable)
-                .map(auditMapper::toSecurityEventResponse);
+        Page<SecurityEvent> events = institutionId == null
+                ? securityEventRepository.findAllByOrderByCreatedAtDesc(pageable)
+                : securityEventRepository.findByInstitutionId(institutionId, pageable);
+        return events.map(auditMapper::toSecurityEventResponse);
     }
 
     @Transactional(readOnly = true)
     public List<SecurityEventResponse> getUnresolvedSecurityEvents(UUID institutionId) {
-        return securityEventRepository.findUnresolvedByInstitutionId(institutionId).stream()
+        List<SecurityEvent> events = institutionId == null
+                ? securityEventRepository.findByResolvedFalse()
+                : securityEventRepository.findUnresolvedByInstitutionId(institutionId);
+        return events.stream()
                 .map(auditMapper::toSecurityEventResponse)
                 .toList();
     }
@@ -181,15 +200,35 @@ public class AuditService {
 
     @Transactional(readOnly = true)
     public ComplianceReportResponse getComplianceReport(UUID institutionId) {
-        long totalAuditLogs = auditLogRepository.countByInstitutionId(institutionId);
-        long totalSecurityEvents = securityEventRepository.countUnresolvedByInstitutionId(institutionId)
-                + securityEventRepository.findByInstitutionId(institutionId, PageRequest.of(0, 1)).getTotalElements();
-        long unresolvedSecurityEvents = securityEventRepository.countUnresolvedByInstitutionId(institutionId);
-        long criticalEvents = securityEventRepository.countCriticalByInstitutionId(institutionId);
-        long failedLoginAttempts = securityEventRepository.countFailedLoginsByInstitutionId(institutionId);
+        long totalAuditLogs;
+        long totalSecurityEvents;
+        long unresolvedSecurityEvents;
+        long criticalEvents;
+        long failedLoginAttempts;
+        List<Object[]> eventTypeCounts;
+        List<Object[]> severityCounts;
+
+        if (institutionId == null) {
+            // Platform-wide scope (NATIONAL_ADMIN oversight).
+            totalAuditLogs = auditLogRepository.count();
+            unresolvedSecurityEvents = securityEventRepository.countByResolvedFalse();
+            totalSecurityEvents = securityEventRepository.count();
+            criticalEvents = securityEventRepository.countBySeverity(SecurityEvent.Severity.CRITICAL);
+            failedLoginAttempts = securityEventRepository.countByEventType(SecurityEvent.SecurityEventType.LOGIN_FAILURE);
+            eventTypeCounts = securityEventRepository.countByEventTypeForAll();
+            severityCounts = securityEventRepository.countBySeverityForAll();
+        } else {
+            totalAuditLogs = auditLogRepository.countByInstitutionId(institutionId);
+            totalSecurityEvents = securityEventRepository.countUnresolvedByInstitutionId(institutionId)
+                    + securityEventRepository.findByInstitutionId(institutionId, PageRequest.of(0, 1)).getTotalElements();
+            unresolvedSecurityEvents = securityEventRepository.countUnresolvedByInstitutionId(institutionId);
+            criticalEvents = securityEventRepository.countCriticalByInstitutionId(institutionId);
+            failedLoginAttempts = securityEventRepository.countFailedLoginsByInstitutionId(institutionId);
+            eventTypeCounts = securityEventRepository.countByEventTypeForInstitution(institutionId);
+            severityCounts = securityEventRepository.countBySeverityForInstitution(institutionId);
+        }
 
         // Top event types
-        List<Object[]> eventTypeCounts = securityEventRepository.countByEventTypeForInstitution(institutionId);
         List<ComplianceReportResponse.EventTypeCount> topEventTypes = eventTypeCounts.stream()
                 .map(row -> ComplianceReportResponse.EventTypeCount.of(
                         ((Enum<?>) row[0]).name(),
@@ -197,7 +236,6 @@ public class AuditService {
                 .collect(Collectors.toList());
 
         // Severity breakdown
-        List<Object[]> severityCounts = securityEventRepository.countBySeverityForInstitution(institutionId);
         List<ComplianceReportResponse.SeverityCount> severityBreakdown = severityCounts.stream()
                 .map(row -> ComplianceReportResponse.SeverityCount.of(
                         ((Enum<?>) row[0]).name(),

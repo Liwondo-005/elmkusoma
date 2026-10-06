@@ -58,7 +58,13 @@ public class OversightController {
             @RequestAttribute("userId") UUID userId,
             @PathVariable UUID regionId) {
         Scope scope = scopeResolver.resolve(userId, regionId, null);
-        return ResponseEntity.ok(oversightService.getDistrictsByRegion(scope.regionId()));
+        List<DistrictResponse> districts = oversightService.getDistrictsByRegion(scope.regionId());
+        if (scope.districtId() != null) {
+            // District admins only ever see their own district, never siblings.
+            UUID ownDistrictId = scope.districtId();
+            districts = districts.stream().filter(d -> ownDistrictId.equals(d.getId())).toList();
+        }
+        return ResponseEntity.ok(districts);
     }
 
     @GetMapping("/regions/{regionId}/institutions")
