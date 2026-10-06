@@ -13,7 +13,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -151,6 +153,106 @@ class FlywayMigrationValidationTest {
                             || upper.startsWith("DELETE "),
                     "V77 must not mutate schema/data (comment-only no-op): " + trimmed);
         }
+    }
+
+    /**
+     * BaseEntity.createdBy / updatedBy are Strings that AuditListener fills with
+     * authentication.getName(), and the rest of the codebase reads them as such
+     * (userRepository.findByEmailAndIsDeletedFalse). If a table's audited actor
+     * columns end up as a non-character type, every insert against that table
+     * aborts with "column ... is of type <t> but expression is of type character
+     * varying" and the user only sees a bare HTTP 500 - which is exactly what
+     * saving a course from /dashboard/admin/courses produced until V128.
+     *
+     * The check is timeline-aware: migrations are replayed in version order and
+     * only the *effective* type counts, because this drift has been introduced
+     * and then corrected repeatedly (V81, V91, V118, V127, V128).
+     *
+     * It cannot be caught by a persistence test because the test profile runs
+     * with spring.flyway.enabled=false and ddl-auto=create-drop, so Hibernate
+     * builds the schema from the entity and never sees the migration's type.
+     */
+    @Test
+    void auditedActorColumns_AreCharacterTypesInMigrations() throws IOException {
+        Pattern createTable = Pattern.compile("CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_\\\".]+)\\s*\\(",
+                Pattern.CASE_INSENSITIVE);
+        Pattern columnLine = Pattern.compile("^(created_by|updated_by)\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+        Pattern alterColumn = Pattern.compile(
+                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ALTER\\s+COLUMN\\s+(created_by|updated_by)\\s+TYPE\\s+([A-Za-z][A-Za-z0-9_ ]*)",
+                Pattern.CASE_INSENSITIVE);
+
+        // table.column (lowercased) -> effective type, last declaration wins.
+        Map<String, String> effectiveType = new LinkedHashMap<>();
+        Map<String, String> declaredIn = new LinkedHashMap<>();
+
+        List<Path> ordered = migrationFiles.stream()
+                .sorted(Comparator.comparingInt(FlywayMigrationValidationTest::versionOf))
+                .toList();
+
+        for (Path file : ordered) {
+            String currentTable = null;
+            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i).trim();
+                if (line.isEmpty() || line.startsWith("--")) {
+                    continue;
+                }
+                String upper = line.toUpperCase();
+                // Constraint declarations reference a column without typing it.
+                if (upper.contains("FOREIGN KEY") || upper.contains("REFERENCES")) {
+                    continue;
+                }
+                Matcher created = createTable.matcher(line);
+                if (created.find()) {
+                    currentTable = unquote(created.group(1));
+                    continue;
+                }
+                if (currentTable != null && upper.startsWith(")") ) {
+                    currentTable = null;
+                }
+                Matcher altered = alterColumn.matcher(line);
+                if (altered.find()) {
+                    String key = unquote(altered.group(1)) + "." + altered.group(2).toLowerCase();
+                    effectiveType.put(key, altered.group(3).trim().toLowerCase());
+                    declaredIn.put(key, file.getFileName() + ":" + (i + 1));
+                    continue;
+                }
+                if (currentTable != null) {
+                    Matcher column = columnLine.matcher(line);
+                    if (column.find()) {
+                        String key = currentTable.toLowerCase() + "." + column.group(1).toLowerCase();
+                        effectiveType.put(key, column.group(2).trim().toLowerCase());
+                        declaredIn.put(key, file.getFileName() + ":" + (i + 1));
+                    }
+                }
+            }
+        }
+
+        List<String> offenders = new ArrayList<>();
+        for (Map.Entry<String, String> entry : effectiveType.entrySet()) {
+            String type = entry.getValue();
+            boolean character = type.startsWith("character") || type.startsWith("varchar")
+                    || type.startsWith("text") || type.startsWith("citext");
+            if (!character) {
+                offenders.add(entry.getKey() + " = " + type
+                        + " (last declared at " + declaredIn.get(entry.getKey()) + ")");
+            }
+        }
+        assertTrue(offenders.isEmpty(),
+                "audited actor columns (BaseEntity.createdBy/updatedBy are Strings filled with "
+                        + "authentication.getName()) must resolve to a character type after all migrations run, "
+                        + "otherwise every audited insert fails with a bare HTTP 500. Offenders: " + offenders);
+    }
+
+    private static String unquote(String identifier) {
+        String cleaned = identifier.trim().replace("\"", "");
+        return cleaned;
+    }
+
+    private static int versionOf(Path path) {
+        Matcher matcher = MIGRATION_NAME.matcher(path.getFileName().toString());
+        return matcher.matches() ? Integer.parseInt(matcher.group(1)) : Integer.MAX_VALUE;
     }
 
     @Test
