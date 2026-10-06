@@ -282,12 +282,12 @@ Service ports (verified): core `8080`, realtime `8081`, workers `8082`, media `8
 
 - **Location:** `backend/elmkusoma-core/src/main/resources/db/migration/`
 - **Naming:** `V<version>__<snake_case_description>.sql` (V01–V09 zero-padded; V10+ unpadded).
-- **Range/count:** V01–V69, 69 files, contiguous — **no gaps, no duplicate versions** (verified by enumeration).
+- **Range/count:** V01–V132, 132 files, contiguous — **no gaps, no duplicate versions** (verified by enumeration this session).
 - **V60 question (resolved):** The repository contains exactly ONE V60 file: `V60__institution_admin_ecosystem.sql` (extends `institutions`, adds `institution_audit_log`). There is NO `V60__add_secondary_stage_and_form_to_users.sql` — that description lives at `V65__add_secondary_stage_and_form_to_users.sql` (`secondary_stage`, `form` on `users`). No action required; do not edit either file.
-- **Latest migrations:** `V68__institution_lifecycle_status.sql`, `V69__content_reports_and_data_retention.sql`.
+- **Latest migrations:** `V131__assessment_max_attempts_and_status.sql`, `V132__assignment_submission_text_status.sql` (before them: `V129__workshop_sessions_academic_year.sql`, `V130__workshop_sessions_status_enum_strings.sql` — the former V126/V127 workshop files were renumbered after a version collision).
 - **Runtime config:** default profile — `ddl-auto: none`, `flyway.enabled: true`, `out-of-order: true`, `baseline-on-migrate: true`. Production — `ddl-auto: validate`, `flyway.enabled: true`, `validate-on-migrate: true`, `baseline-version: 6`.
-- **Current migration status:** NOT VERIFIED IN REPOSITORY (requires a live database's `flyway_schema_history`; if the repo's V01–V64 range is referenced against a database whose history differs, compare `flyway_schema_history` versions to the V01–V69 file list exactly).
-- **Seeds (not migrations):** `backend/setup-db.sql` (create DB), `seed_security*.sql`, `seed_audit*.sql`, `seed_oversight.sql` (test accounts), curriculum/reading/lab seeds under `db/seed/`, consolidated `db/init.sql` (V1–V40, initial setup only).
+- **Current migration status:** VERIFIED this session — live `flyway_schema_history` matches the file list through V130 (`success=t` for V126–V130); V131/V132 apply on next boot.
+- **Seeds (not migrations):** `backend/setup-db.sql` (create DB), `seed_security*.sql`, `seed_audit*.sql`, `seed_oversight.sql` (test accounts), curriculum/reading/lab seeds under `db/seed/`. `db/init.sql` is a **full-schema snapshot** of the migrated dev database (211 tables, no data, no `flyway_schema_history`), regenerated this session via `pg_dump --schema-only`; Flyway remains authoritative — regenerate it the same way after large schema changes.
 
 ---
 
@@ -444,13 +444,13 @@ Courses (with `isPublished`/`isFeatured` flags) → modules (ordered) → lesson
 - Authentication: JWT access (1h) + refresh (7d) with hash-revocation list; password-reset and email-verification token tables; 5-digit code flow with throttling.
 - Authorization: method security with role expressions; request-attribute identity (`userId/userEmail/userRole/institutionId`).
 - Token security: Base64 HMAC secret (required env), 2h LiveKit tokens with least-privilege grants, webhook secret-header auth.
-- CORS: explicit origin allowlist in core (localhost dev ports + production domains); open patterns only in auxiliary modules' dev-facing configs.
+- CORS: explicit origin allowlist in core — exact localhost/127.0.0.1 dev ports 3000–3005 (+5173) and the production domains; no wildcard origin patterns remain anywhere in the repo (verified by enumeration this session). WebSocket origins are equally explicit (`localhost:3000`/`5173`).
 - Validation: Bean Validation on DTOs + global 400 mapping; FK/unique violations mapped to 409 with sanitized messages.
 - Institution isolation: `institutionId` scoping on queries; membership-derived identity. Known variance: some controllers accept institution from the `X-Institution-Id` header while others use the JWT-derived attribute (see §28).
 - Audit: auth-relevant events (login success/failure, password changes, certificate issue/revoke, exports) recorded as security events/audit logs.
 - Secrets: all secrets via environment; no real secret values in code (dev placeholders only — see §21/§28).
 - Upload security: media via presigned flows and type-tracked assets; object-level auth rules per endpoint (verify per endpoint).
-- Rate limiting: in-memory 10/min guard on public certificate verification (single-instance semantics — NOT VERIFIED under multi-instance deployment).
+- Rate limiting: in-memory IP throttle on auth endpoints (`AuthRateLimitFilter` — login/register 30/min/h per IP respectively, refresh 120/min, forgot/reset 30/h/min, send-code 30/h, verify-code 60/h, `/v1/auth/mfa/*` 60/h, emergency-recover 10/h, admin recovery 60/min) plus per-account buckets in the services and an in-memory 10/min guard on public certificate verification (single-instance semantics — NOT VERIFIED under multi-instance deployment).
 
 ---
 
@@ -465,7 +465,8 @@ Courses (with `isPublished`/`isFeatured` flags) → modules (ordered) → lesson
 | `JWT_SECRET` | JWT HMAC Base64 key | Yes (no default in core) | YES |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | Redis | No (localhost:6379) | Password YES |
 | `RABBITMQ_HOST` / `RABBITMQ_PORT` / `RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD` | RabbitMQ | No (guest/guest) | Password YES |
-| `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | LiveKit server | For live features | Key/secret YES |
+| `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | LiveKit server | For live features; **prod: `LIVEKIT_API_SECRET` required — boot fails fast without it** (dev keeps a local-only fallback) | Key/secret YES |
+| `SPRING_MAIL_HOST` / `SPRING_MAIL_PORT` / `SPRING_MAIL_USERNAME` / `SPRING_MAIL_PASSWORD` | OTP/verification email delivery (`OtpMailService`) | No (dev default `localhost:1025` MailHog/Mailpit sink). Best-effort: with no reachable sink `send-code` still returns 200 but the code (SHA-256-hashed in `verification_codes`) never reaches a mailbox | Password YES |
 | `LIVEKIT_INGRESS_ENABLED` / `LIVEKIT_WHIP_ENDPOINT` / `LIVEKIT_RTMP_ENDPOINT` / `LIVEKIT_SRT_ENDPOINT` | Ingress | No (disabled) | No |
 | `LIVEKIT_EGRESS_ENABLED` / `LIVEKIT_EGRESS_BUCKET` / `LIVEKIT_EGRESS_PATH` | Recording egress | No (disabled) | No |
 | `MEDIA_SERVICE_URL` / `REALTIME_SERVICE_URL` / `WORKERS_SERVICE_URL` | Inter-service URLs | No (localhost defaults) | No |
@@ -532,7 +533,7 @@ Frontend: Playwright e2e only (`test:e2e` script; 7 spec files: navigation, auth
 
 Only repository-verified items. Causes are not guessed.
 
-1. **V60 migration naming question — RESOLVED, no action.** Only one V60 file exists (`V60__institution_admin_ecosystem.sql`). The secondary-stage/form migration is `V65__add_secondary_stage_and_form_to_users.sql`. Migration range V01–V69 is contiguous with no duplicates and no gaps. Do not edit either file.
+1. **V60 migration naming question — RESOLVED, no action.** Only one V60 file exists (`V60__institution_admin_ecosystem.sql`). The secondary-stage/form migration is `V65__add_secondary_stage_and_form_to_users.sql`. Migration range V01–V132 is contiguous with no duplicates and no gaps (re-verified this session). Do not edit either file.
 2. **No database-level referential integrity.** The dominant pattern is raw UUID columns (~769 FK-style fields vs 6 read-only JPA joins). Orphaned rows are possible if application logic misses a case; there is no FK-constraint safety net.
 3. **Inconsistent institution-source pattern.** Some controllers resolve the institution from the `X-Institution-Id` request header while others use the JWT-derived `institutionId` request attribute. Header-derived scoping is spoofable by any authenticated caller and must be audited endpoint-by-endpoint before production exposure.
 4. **Certificate verify authorization layering.** `GET /verify/{code}` carries `@PreAuthorize("permitAll")` under a class-level teacher/admin rule and is also listed in `PUBLIC_URLS`. Public reachability is intended, but the effective behavior depends on filter-chain/method-security precedence — verify with a live 401/anonymous probe before relying on it.
@@ -542,6 +543,9 @@ Only repository-verified items. Causes are not guessed.
 8. **Dev-default secrets in auxiliary modules.** Workers/media/realtime configs contain hardcoded placeholder secrets and guest credentials. They must be overridden via environment in any non-local deployment.
 9. **No CI pipeline.** Test execution is manual (`mvn test`, `playwright test`); regressions are not gated automatically.
 10. **LiveKit not in the main compose file.** Live features require the separate `docker-compose.livekit.yml` stack; a default `docker compose up` does not provide a LiveKit server.
+11. **OTP email delivery has no provisioned SMTP.** `OtpMailService` is best-effort against `spring.mail.host` (dev default `localhost:1025`). No sink runs on this box and no `SPRING_MAIL_*` creds are provisioned, so `/v1/auth/send-code` succeeds but the code — stored SHA-256-hashed, never logged in plaintext — never reaches a mailbox. Provision SMTP creds or run a MailHog/Mailpit sink to make email verification usable end-to-end.
+12. **LiveKit API secret: prod fail-fast added this session.** `application-prod.yml` now resolves `livekit.server.api-secret` from `LIVEKIT_API_SECRET` with no fallback, so a production boot without the env var fails closed instead of silently using the well-known dev default. Local/dev/test keep the fallback (`start.ps1` exports `LIVEKIT_API_SECRET` from `backend/.env`).
+13. **Repository remote carries no embedded credentials.** The expired PAT previously embedded in the `origin` URL was removed (`origin` is now `https://github.com/Liwondo-005/elmkusoma.git`); pushes require interactive authentication (Git Credential Manager or a fresh token). Offline work accumulates locally until credentials are provided.
 
 ---
 
@@ -569,8 +573,8 @@ Only repository-verified items. Causes are not guessed.
 | Institution Admin | IMPLEMENTED | Dashboard, settings, roles, people, org profile |
 | Oversight | IMPLEMENTED | Read-oriented controller + region/district model |
 | Database | IMPLEMENTED | ~170 entities, BaseEntity, raw-UUID pattern documented |
-| Flyway | IMPLEMENTED | V01–V69 contiguous; live-history comparison NOT VERIFIED |
-| Security | PARTIAL | Mechanisms verified; uniform coverage not claimed |
+| Flyway | IMPLEMENTED | V01–V132 contiguous; live `flyway_schema_history` matched through V130 this session |
+| Security | PARTIAL | Mechanisms verified; auth IP throttling extended (register/refresh/mfa), CORS wildcard removed, object-level ownership checks added for assessments/assignments/results this session; uniform coverage still not claimed |
 | Testing | PARTIAL | 18 backend tests + e2e; no CI; frontend unit runner absent |
 
 ---
