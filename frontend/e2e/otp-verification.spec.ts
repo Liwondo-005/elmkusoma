@@ -193,3 +193,35 @@ test("the issued code is actually delivered over SMTP", async ({ page }) => {
     sink.kill()
   }
 })
+
+// §33 narrow mobile: fit the viewport, no horizontal scroll, tiles touch-sized.
+test("fits a narrow mobile viewport without horizontal scrolling", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 320, height: 640 },
+    isMobile: true,
+    hasTouch: true,
+  })
+  const page = await context.newPage()
+  try {
+    const email = freshEmail("otp-e2e-mobile")
+    await page.goto(`/verify-otp?email=${encodeURIComponent(email)}`)
+    await waitForCodeSent(page)
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    )
+    expect(overflow, "page must not scroll horizontally at 320px").toBeLessThanOrEqual(0)
+
+    const tiles = otpTiles(page)
+    await expect(tiles).toHaveCount(CODE_LENGTH)
+    for (let i = 0; i < CODE_LENGTH; i += 1) {
+      const box = await tiles.nth(i).boundingBox()
+      expect(box, "tile must be rendered").toBeTruthy()
+      expect(box!.width, "touch-friendly tile width").toBeGreaterThanOrEqual(40)
+      expect(box!.x + box!.width, "tile must stay inside the viewport").toBeLessThanOrEqual(320)
+    }
+    await expect(page.getByRole("button", { name: "Verify Code" })).toBeVisible()
+  } finally {
+    await context.close()
+  }
+})
