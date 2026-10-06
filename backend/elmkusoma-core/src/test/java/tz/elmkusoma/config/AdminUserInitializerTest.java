@@ -19,6 +19,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * Pins the P1 bootstrap contract: opt-in, create-only. Bootstrap must never
+ * reset credentials of an existing privileged account (restart must not
+ * silently restore a default password).
+ */
 @ExtendWith(MockitoExtension.class)
 class AdminUserInitializerTest {
 
@@ -32,10 +37,15 @@ class AdminUserInitializerTest {
 
     private static final String ADMIN_EMAIL = "admin@elmkusoma.go.tz";
 
-    private static void setBootstrap(AdminUserInitializer target, String value) throws Exception {
-        var field = AdminUserInitializer.class.getDeclaredField("bootstrapPassword");
+    private static void setField(AdminUserInitializer target, String name, Object value) throws Exception {
+        var field = AdminUserInitializer.class.getDeclaredField(name);
         field.setAccessible(true);
         field.set(target, value);
+    }
+
+    private static void configure(AdminUserInitializer target, boolean enabled, String password) throws Exception {
+        setField(target, "bootstrapEnabled", enabled);
+        setField(target, "bootstrapPassword", password);
     }
 
     private static User healthyAdmin(String hash) {
@@ -52,8 +62,25 @@ class AdminUserInitializerTest {
     }
 
     @Test
-    void existingAdmin_noEnv_passwordUntouched() throws Exception {
-        setBootstrap(initializer, "");
+    void bootstrapDisabled_run_isCompleteNoOp() throws Exception {
+        configure(initializer, false, "any-secret");
+
+        initializer.run(args);
+
+        verifyNoInteractions(userRepository, membershipRepository, passwordEncoder);
+    }
+
+    @Test
+    void enabledButPasswordMissing_failsFast() throws Exception {
+        configure(initializer, true, "");
+
+        assertThrows(IllegalStateException.class, () -> initializer.run(args));
+        verifyNoInteractions(userRepository, passwordEncoder);
+    }
+
+    @Test
+    void existingAdmin_envSet_passwordUntouched_neverRotated() throws Exception {
+        configure(initializer, true, "rotated-secret");
         User admin = healthyAdmin("existing-hash");
         when(userRepository.findByEmailAndIsDeletedFalse(ADMIN_EMAIL))
                 .thenReturn(Optional.of(admin));
@@ -63,33 +90,13 @@ class AdminUserInitializerTest {
         initializer.run(args);
 
         assertEquals("existing-hash", admin.getPasswordHash());
-        verify(userRepository, never()).save(any());
-        verify(passwordEncoder, never()).matches(any(), any());
         verify(passwordEncoder, never()).encode(any());
-    }
-
-    @Test
-    void existingAdmin_envSetMismatch_hashRotatedToEnvValue() throws Exception {
-        setBootstrap(initializer, "rotated-secret");
-        User admin = healthyAdmin("old-hash");
-        when(userRepository.findByEmailAndIsDeletedFalse(ADMIN_EMAIL))
-                .thenReturn(Optional.of(admin));
-        when(passwordEncoder.matches("rotated-secret", "old-hash")).thenReturn(false);
-        when(passwordEncoder.encode("rotated-secret")).thenReturn("new-hash");
-        when(membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(any(), any()))
-                .thenReturn(true);
-
-        initializer.run(args);
-
-        assertEquals("new-hash", admin.getPasswordHash());
-        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(captor.capture());
-        assertEquals("new-hash", captor.getValue().getPasswordHash());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
     void missingAdmin_envSet_createdWithEnvValue() throws Exception {
-        setBootstrap(initializer, "env-secret");
+        configure(initializer, true, "env-secret");
         UUID adminId = UUID.randomUUID();
         User persisted = healthyAdmin("env-hash");
         persisted.setId(adminId);
