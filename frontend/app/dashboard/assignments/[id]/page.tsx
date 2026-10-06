@@ -77,8 +77,8 @@ export default function AssignmentDetailPage() {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      const payload: { content?: string; fileUrl?: string; draft?: boolean } = {}
-      if (content.trim()) payload.content = content.trim()
+      const payload: { submissionText?: string; fileUrl?: string; draft?: boolean } = {}
+      if (content.trim()) payload.submissionText = content.trim()
       if (uploadedUrl) payload.fileUrl = uploadedUrl
       const saved = await learningApi.submitAssignment(assignment.id, payload)
       setSubmission(saved)

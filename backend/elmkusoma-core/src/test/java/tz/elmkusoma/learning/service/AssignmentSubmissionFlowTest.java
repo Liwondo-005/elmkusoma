@@ -147,6 +147,29 @@ class AssignmentSubmissionFlowTest {
     }
 
     @Test
+    void submitAssignment_persistsSubmissionTextAndFileUrlFromRequestPayload() {
+        Assignment assignment = assignment(null, null, null, false);
+        assignment.setCreatedBy("teacher@test.com");
+        when(assignmentRepository.findById(assignmentId)).thenReturn(Optional.of(assignment));
+        when(classAccessGuard.findStudentByUserId(callerUserId)).thenReturn(student());
+        when(submissionRepository.findByAssignmentIdAndStudentIdAndIsDeletedFalse(assignmentId, studentId))
+                .thenReturn(Optional.empty());
+        when(submissionRepository.save(any(AssignmentSubmission.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        SubmissionRequest request = new SubmissionRequest();
+        request.setSubmissionText("Typed answer");
+        request.setFileUrl("https://cdn.example.com/work.pdf");
+
+        SubmissionResponse response = service.submitAssignment(assignmentId, callerUserId, institutionId, request);
+
+        assertEquals("Typed answer", response.getSubmissionText());
+        assertEquals("https://cdn.example.com/work.pdf", response.getFileUrl());
+        assertEquals("SUBMITTED", response.getStatus());
+        assertEquals(Boolean.FALSE, response.getIsDraft());
+    }
+
+    @Test
     void submitAssignment_crossInstitutionAssignmentLooksMissing() {
         when(assignmentRepository.findById(assignmentId))
                 .thenReturn(Optional.of(assignment(null, null, null, false)));

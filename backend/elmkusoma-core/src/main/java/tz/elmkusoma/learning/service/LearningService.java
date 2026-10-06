@@ -49,9 +49,11 @@ public interface LearningService {
 
     /**
      * Batch list across several classes in one query (teacher/admin workspace —
-     * replaces per-class loops). Institution-scoped.
+     * replaces per-class loops). Institution-scoped; teachers only receive the
+     * assignments they created.
      */
-    List<AssignmentResponse> getAssignmentsByClasses(List<UUID> classGroupIds, UUID institutionId);
+    List<AssignmentResponse> getAssignmentsByClasses(List<UUID> classGroupIds, UUID institutionId,
+                                                     String userEmail, String userRole);
 
     /**
      * Submit (or resubmit while ungraded) an assignment. Persists the learner's typed
@@ -65,10 +67,11 @@ public interface LearningService {
     /** The caller's own submission for an assignment (null when not submitted yet). */
     SubmissionResponse getMySubmission(UUID assignmentId, UUID callerUserId);
 
-    /** Submissions for an assignment; institution-scoped to the assignment. */
-    List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId, UUID institutionId);
+    /** Submissions for an assignment; institution + ownership scoped (creator or admin only). */
+    List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId, UUID institutionId,
+                                                        String userEmail, String userRole);
 
-    /** Grade a submission with institution enforcement + grade-change audit trail. */
+    /** Grade a submission with institution + ownership enforcement (creator or admin only) and a grade-change audit trail. */
     SubmissionResponse gradeSubmission(UUID submissionId, Integer grade, String feedback, UUID gradedBy,
                                        UUID institutionId, String userEmail, String userRole);
 }

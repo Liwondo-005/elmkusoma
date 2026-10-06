@@ -383,7 +383,10 @@ export const learningApi = {
     request<Assignment[]>(`/v1/learning/assignments/classes?ids=${classGroupIds.join(",")}`),
   createAssignment: (data: Partial<Assignment>) =>
     request<Assignment>("/v1/learning/assignments", { method: "POST", body: JSON.stringify(data) }),
-  submitAssignment: (assignmentId: string, data?: { content?: string; fileUrl?: string; draft?: boolean }) =>
+  submitAssignment: (
+    assignmentId: string,
+    data?: { submissionText?: string; content?: string; fileUrl?: string; draft?: boolean }
+  ) =>
     request<AssignmentSubmission>(`/v1/learning/assignments/${assignmentId}/submit`, {
       method: "POST",
       body: JSON.stringify(data ?? {}),

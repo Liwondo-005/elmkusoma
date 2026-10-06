@@ -259,8 +259,10 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<AssignmentResponse>>> getAssignmentsByClasses(
             @RequestParam("ids") List<UUID> ids,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        List<AssignmentResponse> response = learningService.getAssignmentsByClasses(ids, institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        List<AssignmentResponse> response = learningService.getAssignmentsByClasses(ids, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -292,8 +294,10 @@ public class LearningController {
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
     public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(
             @PathVariable UUID id,
-            @RequestAttribute("institutionId") UUID institutionId) {
-        List<SubmissionResponse> response = learningService.getSubmissionsByAssignment(id, institutionId);
+            @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        List<SubmissionResponse> response = learningService.getSubmissionsByAssignment(id, institutionId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

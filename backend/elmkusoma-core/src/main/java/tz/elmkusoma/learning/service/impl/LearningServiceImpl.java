@@ -407,22 +407,27 @@ public class LearningServiceImpl implements LearningService {
         if (isLearner) {
             classAccessGuard.assertLearnerCanAccessClass(userEmail, classGroupId);
         }
+        boolean teacherScope = "TEACHER".equals(userRole);
         return assignmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId)
                 .stream()
                 .filter(a -> institutionId == null || institutionId.equals(a.getInstitutionId()))
                 .filter(a -> !isLearner || !"DRAFT".equalsIgnoreCase(a.getStatus()))
+                .filter(a -> !teacherScope || ownsAssignment(a, userEmail))
                 .map(this::toAssignmentResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssignmentResponse> getAssignmentsByClasses(List<UUID> classGroupIds, UUID institutionId) {
+    public List<AssignmentResponse> getAssignmentsByClasses(List<UUID> classGroupIds, UUID institutionId,
+                                                            String userEmail, String userRole) {
         if (classGroupIds == null || classGroupIds.isEmpty()) {
             return List.of();
         }
+        boolean teacherScope = "TEACHER".equals(userRole);
         return assignmentRepository.findByClassGroupIdInAndIsDeletedFalse(classGroupIds)
                 .stream()
                 .filter(a -> institutionId == null || institutionId.equals(a.getInstitutionId()))
+                .filter(a -> !teacherScope || ownsAssignment(a, userEmail))
                 .map(this::toAssignmentResponse)
                 .toList();
     }
@@ -456,7 +461,7 @@ public class LearningServiceImpl implements LearningService {
         }
 
         boolean late = assignment.getDueDate() != null && now.isAfter(assignment.getDueDate());
-        String content = request == null ? null : request.getContent();
+        String content = resolveSubmissionText(request);
         String fileUrl = request == null ? null : request.getFileUrl();
 
         if (submission == null) {
@@ -509,6 +514,17 @@ public class LearningServiceImpl implements LearningService {
         }
     }
 
+    /** Prefers the canonical {@code submissionText} field, falling back to legacy {@code content}. */
+    private static String resolveSubmissionText(SubmissionRequest request) {
+        if (request == null) {
+            return null;
+        }
+        if (request.getSubmissionText() != null && !request.getSubmissionText().isBlank()) {
+            return request.getSubmissionText();
+        }
+        return request.getContent();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public SubmissionResponse getMySubmission(UUID assignmentId, UUID callerUserId) {
@@ -523,13 +539,12 @@ public class LearningServiceImpl implements LearningService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId, UUID institutionId) {
+    public List<SubmissionResponse> getSubmissionsByAssignment(UUID assignmentId, UUID institutionId,
+                                                               String userEmail, String userRole) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .filter(a -> !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Assignment", "id", assignmentId));
-        if (institutionId != null && !institutionId.equals(assignment.getInstitutionId())) {
-            throw new ResourceNotFoundException("Assignment", "id", assignmentId);
-        }
+        assertCanManageAssignment(assignment, institutionId, userEmail, userRole);
         return submissionRepository.findByAssignmentIdAndIsDeletedFalse(assignmentId)
                 .stream().map(this::toSubmissionResponse).toList();
     }
@@ -544,9 +559,7 @@ public class LearningServiceImpl implements LearningService {
         Assignment assignment = assignmentRepository.findById(submission.getAssignmentId())
                 .filter(a -> !a.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Assignment", "id", submission.getAssignmentId()));
-        if (institutionId != null && !institutionId.equals(assignment.getInstitutionId())) {
-            throw new ResourceNotFoundException("Submission not found with id: " + submissionId);
-        }
+        assertCanManageAssignment(assignment, institutionId, userEmail, userRole);
 
         Integer oldGrade = submission.getGrade();
         submission.setGrade(grade);
@@ -580,10 +593,18 @@ public class LearningServiceImpl implements LearningService {
         if (isAdminRole(userRole)) {
             return;
         }
-        String owner = assignment.getCreatedBy();
-        if (owner == null || "system".equals(owner) || userEmail == null || !owner.equalsIgnoreCase(userEmail)) {
+        if (!ownsAssignment(assignment, userEmail)) {
             throw new SecurityException("You do not own this assignment");
         }
+    }
+
+    /** True when the caller is the assignment's creator (owner emails are matched case-insensitively). */
+    private static boolean ownsAssignment(Assignment assignment, String userEmail) {
+        String owner = assignment.getCreatedBy();
+        if (owner == null || "system".equals(owner) || userEmail == null) {
+            return false;
+        }
+        return owner.equalsIgnoreCase(userEmail);
     }
 
     private static boolean isAdminRole(String role) {
