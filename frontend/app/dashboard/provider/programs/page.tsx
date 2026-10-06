@@ -4,15 +4,19 @@ import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
 import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
+import { useToast } from "@/components/toast"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function ProgramsPage() {
   const t = useTranslations("provider")
   const ts = useTranslations("status")
+  const { toast } = useToast()
   const [programs, setPrograms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+  const [editRow, setEditRow] = useState<any | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadPrograms()
@@ -25,6 +29,18 @@ export default function ProgramsPage() {
       setPrograms(data)
     } catch { /* empty */ } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(row: any) {
+    setConfirmDeleteId(null)
+    try {
+      await nfeApi.deleteProgram(row.id)
+      toast(t("form.deleteSuccess"), "success")
+      if (editRow?.id === row.id) setEditRow(null)
+      loadPrograms()
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : t("form.submitError"), "error")
     }
   }
 
@@ -96,7 +112,23 @@ export default function ProgramsPage() {
                     <p className="text-sm font-medium text-foreground">{program.name || program.title}</p>
                     <p className="text-xs text-muted-foreground">{program.description || t("programs.noDescriptionFallback")}</p>
                   </div>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{program.status || ts("active")}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{program.status || ts("active")}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setConfirmDeleteId(null); setEditRow(program) }}
+                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        {t("form.edit")}
+                      </button>
+                      <button
+                        onClick={() => { if (confirmDeleteId === program.id) handleDelete(program); else setConfirmDeleteId(program.id) }}
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${confirmDeleteId === program.id ? "bg-red-600 text-white hover:bg-red-700" : "text-red-600 hover:bg-red-50"}`}
+                      >
+                        {confirmDeleteId === program.id ? t("form.confirmDelete") : t("form.delete")}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -105,21 +137,30 @@ export default function ProgramsPage() {
       </Card>
 
       <ProviderCreateDialog
-        open={createOpen}
-        title={t("programs.createProgram")}
+        open={createOpen || editRow !== null}
+        title={editRow ? t("form.editTitle", { name: editRow.title || "" }) : t("programs.createProgram")}
+        submitLabel={editRow ? t("form.save") : undefined}
         fields={createFields}
-        onClose={() => setCreateOpen(false)}
+        initialValues={editRow || undefined}
+        onClose={() => { setCreateOpen(false); setEditRow(null) }}
         onSubmit={async (v) => {
-          await nfeApi.createProgram({
-            title: v.title,
-            programType: v.programType,
-            description: v.description,
-            startDate: v.startDate,
-            endDate: v.endDate,
-            maxParticipants: v.maxParticipants,
-            isPublished: v.isPublished === undefined ? undefined : v.isPublished === "true",
-          })
-          setCreateOpen(false)
+          if (editRow) {
+            await nfeApi.updateProgram(editRow.id, { ...v, providerId: editRow.providerId })
+            toast(t("form.updateSuccess"), "success")
+            setEditRow(null)
+          } else {
+            await nfeApi.createProgram({
+              title: v.title,
+              programType: v.programType,
+              description: v.description,
+              startDate: v.startDate,
+              endDate: v.endDate,
+              maxParticipants: v.maxParticipants,
+              isPublished: v.isPublished === undefined ? undefined : v.isPublished === "true",
+            })
+            toast(t("form.createSuccess"), "success")
+            setCreateOpen(false)
+          }
           loadPrograms()
         }}
       />

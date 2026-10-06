@@ -4,16 +4,20 @@ import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
 import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
+import { useToast } from "@/components/toast"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function AttendancePage() {
   const t = useTranslations("provider")
   const ta = useTranslations("attendance")
   const tt = useTranslations("teacher")
+  const { toast } = useToast()
   const [records, setRecords] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+  const [editRow, setEditRow] = useState<any | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<any[]>([])
   const [learners, setLearners] = useState<any[]>([])
   const [optionsLoaded, setOptionsLoaded] = useState(false)
@@ -46,15 +50,36 @@ export default function AttendancePage() {
     }
   }
 
-  async function openCreate() {
+  async function loadOptions() {
+    if (optionsLoaded) return
+    setOptionsLoaded(true)
+    try {
+      const [s, l] = await Promise.all([nfeApi.listSessions(), nfeApi.listLearners()])
+      setSessions(s || [])
+      setLearners(l || [])
+    } catch { /* dialog selects stay empty */ }
+  }
+
+  function openCreate() {
     setCreateOpen(true)
-    if (!optionsLoaded) {
-      setOptionsLoaded(true)
-      try {
-        const [s, l] = await Promise.all([nfeApi.listSessions(), nfeApi.listLearners()])
-        setSessions(s || [])
-        setLearners(l || [])
-      } catch { /* dialog selects stay empty */ }
+    loadOptions()
+  }
+
+  function openEdit(row: any) {
+    setConfirmDeleteId(null)
+    setEditRow(row)
+    loadOptions()
+  }
+
+  async function handleDelete(row: any) {
+    setConfirmDeleteId(null)
+    try {
+      await nfeApi.deleteAttendance(row.id)
+      toast(t("form.deleteSuccess"), "success")
+      if (editRow?.id === row.id) setEditRow(null)
+      loadAttendance()
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : t("form.submitError"), "error")
     }
   }
 
@@ -132,9 +157,25 @@ export default function AttendancePage() {
                     <p className="text-sm font-medium text-foreground">{record.learnerName || record.studentName || learnerLabels[record.learnerId] || String(record.learnerId || "").slice(0, 8)}</p>
                     <p className="text-xs text-muted-foreground">{record.date || record.attendanceDate || String(record.createdAt || "").slice(0, 10)}</p>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${record.status === "PRESENT" ? "bg-green-100 text-green-700" : record.status === "ABSENT" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
-                    {record.status || t("attendance.unknownFallback")}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${record.status === "PRESENT" ? "bg-green-100 text-green-700" : record.status === "ABSENT" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
+                      {record.status || t("attendance.unknownFallback")}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEdit(record)}
+                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        {t("form.edit")}
+                      </button>
+                      <button
+                        onClick={() => { if (confirmDeleteId === record.id) handleDelete(record); else setConfirmDeleteId(record.id) }}
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${confirmDeleteId === record.id ? "bg-red-600 text-white hover:bg-red-700" : "text-red-600 hover:bg-red-50"}`}
+                      >
+                        {confirmDeleteId === record.id ? t("form.confirmDelete") : t("form.delete")}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -143,18 +184,27 @@ export default function AttendancePage() {
       </Card>
 
       <ProviderCreateDialog
-        open={createOpen}
-        title={tt("attendance.markTab")}
+        open={createOpen || editRow !== null}
+        title={editRow ? t("form.editTitle", { name: learnerLabels[editRow.learnerId] || editRow.status || "" }) : tt("attendance.markTab")}
+        submitLabel={editRow ? t("form.save") : undefined}
         fields={createFields}
-        onClose={() => setCreateOpen(false)}
+        initialValues={editRow || undefined}
+        onClose={() => { setCreateOpen(false); setEditRow(null) }}
         onSubmit={async (v) => {
-          await nfeApi.markAttendance({
-            sessionId: v.sessionId,
-            learnerId: v.learnerId,
-            status: v.status,
-            remarks: v.remarks,
-          })
-          setCreateOpen(false)
+          if (editRow) {
+            await nfeApi.updateAttendance(editRow.id, v)
+            toast(t("form.updateSuccess"), "success")
+            setEditRow(null)
+          } else {
+            await nfeApi.markAttendance({
+              sessionId: v.sessionId,
+              learnerId: v.learnerId,
+              status: v.status,
+              remarks: v.remarks,
+            })
+            toast(t("form.createSuccess"), "success")
+            setCreateOpen(false)
+          }
           loadAttendance()
         }}
       />

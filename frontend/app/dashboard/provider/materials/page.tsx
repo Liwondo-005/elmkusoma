@@ -4,14 +4,18 @@ import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
 import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
+import { useToast } from "@/components/toast"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function MaterialsPage() {
   const t = useTranslations("provider")
+  const { toast } = useToast()
   const [materials, setMaterials] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+  const [editRow, setEditRow] = useState<any | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadMaterials()
@@ -24,6 +28,18 @@ export default function MaterialsPage() {
       setMaterials(data)
     } catch { /* empty */ } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(row: any) {
+    setConfirmDeleteId(null)
+    try {
+      await nfeApi.deleteMaterial(row.id)
+      toast(t("form.deleteSuccess"), "success")
+      if (editRow?.id === row.id) setEditRow(null)
+      loadMaterials()
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : t("form.submitError"), "error")
     }
   }
 
@@ -92,7 +108,23 @@ export default function MaterialsPage() {
                     <p className="text-sm font-medium text-foreground">{material.title || material.name}</p>
                     <p className="text-xs text-muted-foreground">{material.type || material.fileType || t("materials.fileFallback")}</p>
                   </div>
-                  <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">{material.status || t("materials.availableFallback")}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">{material.status || t("materials.availableFallback")}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setConfirmDeleteId(null); setEditRow(material) }}
+                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        {t("form.edit")}
+                      </button>
+                      <button
+                        onClick={() => { if (confirmDeleteId === material.id) handleDelete(material); else setConfirmDeleteId(material.id) }}
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${confirmDeleteId === material.id ? "bg-red-600 text-white hover:bg-red-700" : "text-red-600 hover:bg-red-50"}`}
+                      >
+                        {confirmDeleteId === material.id ? t("form.confirmDelete") : t("form.delete")}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -101,19 +133,28 @@ export default function MaterialsPage() {
       </Card>
 
       <ProviderCreateDialog
-        open={createOpen}
-        title={t("materials.addMaterial")}
+        open={createOpen || editRow !== null}
+        title={editRow ? t("form.editTitle", { name: editRow.title || "" }) : t("materials.addMaterial")}
+        submitLabel={editRow ? t("form.save") : undefined}
         fields={createFields}
-        onClose={() => setCreateOpen(false)}
+        initialValues={editRow || undefined}
+        onClose={() => { setCreateOpen(false); setEditRow(null) }}
         onSubmit={async (v) => {
-          await nfeApi.createMaterial({
-            title: v.title,
-            materialType: v.materialType,
-            description: v.description,
-            contentUrl: v.contentUrl,
-            isFree: v.isFree === undefined ? undefined : v.isFree === "true",
-          })
-          setCreateOpen(false)
+          if (editRow) {
+            await nfeApi.updateMaterial(editRow.id, { ...v, providerId: editRow.providerId })
+            toast(t("form.updateSuccess"), "success")
+            setEditRow(null)
+          } else {
+            await nfeApi.createMaterial({
+              title: v.title,
+              materialType: v.materialType,
+              description: v.description,
+              contentUrl: v.contentUrl,
+              isFree: v.isFree === undefined ? undefined : v.isFree === "true",
+            })
+            toast(t("form.createSuccess"), "success")
+            setCreateOpen(false)
+          }
           loadMaterials()
         }}
       />

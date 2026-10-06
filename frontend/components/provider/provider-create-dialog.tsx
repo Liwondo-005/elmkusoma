@@ -21,13 +21,42 @@ interface ProviderCreateDialogProps {
   onClose: () => void
   /** Receives coerced values (numbers as numbers); throws to surface an error. */
   onSubmit: (values: ProviderFormValues) => Promise<void>
+  /** Prefill values for edit mode (numbers/booleans are stringified). */
+  initialValues?: Record<string, string | number | boolean | null | undefined>
+  /** Submit button label; defaults to `title`. */
+  submitLabel?: string
+}
+
+function seedValues(
+  fields: ProviderFormField[],
+  initial?: Record<string, string | number | boolean | null | undefined>
+): Record<string, string> {
+  if (!initial) return {}
+  const seeded: Record<string, string> = {}
+  for (const f of fields) {
+    const raw = initial[f.name]
+    if (raw === undefined || raw === null) continue
+    let v = String(raw)
+    // datetime-local accepts "YYYY-MM-DDTHH:mm" only — trim backend ISO seconds.
+    if (f.type === "datetime-local" && v.length > 16) v = v.slice(0, 16)
+    seeded[f.name] = v
+  }
+  return seeded
 }
 
 /**
  * Shared create dialog for the provider workspace. Real POSTs through nfeApi
  * (server resolves institution scope + providerId — never trusted from here).
  */
-export function ProviderCreateDialog({ open, title, fields, onClose, onSubmit }: ProviderCreateDialogProps) {
+export function ProviderCreateDialog({
+  open,
+  title,
+  fields,
+  onClose,
+  onSubmit,
+  initialValues,
+  submitLabel,
+}: ProviderCreateDialogProps) {
   const t = useTranslations("provider")
   const [values, setValues] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -35,10 +64,11 @@ export function ProviderCreateDialog({ open, title, fields, onClose, onSubmit }:
 
   useEffect(() => {
     if (open) {
-      setValues({})
+      setValues(seedValues(fields, initialValues))
       setError(null)
       setSubmitting(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   if (!open) return null
@@ -159,7 +189,7 @@ export function ProviderCreateDialog({ open, title, fields, onClose, onSubmit }:
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
           >
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            {submitting ? t("form.creating") : title}
+            {submitting ? t("form.creating") : submitLabel || title}
           </button>
         </div>
       </div>
