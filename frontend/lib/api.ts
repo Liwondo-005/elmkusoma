@@ -274,12 +274,6 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-
-  changePassword: (data: { currentPassword: string; newPassword: string }) =>
-    request<void>("/v1/auth/change-password", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
 }
 
 // Enrollment API
