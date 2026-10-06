@@ -56,12 +56,13 @@ class NotificationControllerTest {
     @Test
     void markAsRead_callsService() {
         UUID notificationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
 
         ResponseEntity<ApiResponse<Void>> result =
-                notificationController.markAsRead(notificationId);
+                notificationController.markAsRead(notificationId, userId);
 
         assertEquals(200, result.getStatusCode().value());
-        verify(notificationService).markAsRead(notificationId);
+        verify(notificationService).markAsRead(notificationId, userId);
     }
 
     @Test

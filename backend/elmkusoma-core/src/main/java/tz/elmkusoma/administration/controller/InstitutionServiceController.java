@@ -19,7 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/admin/services")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
 @Tag(name = "Institution Service Management", description = "Enable/disable platform services per institution")
 public class InstitutionServiceController {
 

@@ -40,6 +40,12 @@ public class EventController {
             @RequestParam(required = false) Integer size) {
         UUID institutionId = getInstitutionId(request);
         String effectiveProviderId = scopedProviderId(providerId, request);
+        String role = getRequestRole(request);
+        if (institutionId == null && !isPlatformRole(role) && effectiveProviderId == null) {
+            // §48: findFiltered treats a null institution as "all tenants" — an unscoped
+            // non-platform caller must never receive an unfiltered list.
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
 
         // §81/§82: optional Pageable pagination; absent page/size keeps legacy full-list behavior
         if (page != null || size != null) {
@@ -56,9 +62,8 @@ public class EventController {
     public ResponseEntity<?> getEvent(
             @PathVariable UUID id,
             HttpServletRequest request) {
-        UUID institutionId = getInstitutionId(request);
         EventResponse event = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(event.getInstitutionId())) {
+        if (!canAccessEvent(event, request)) {
             // §41/§60/§98: object-level (ID-manipulation) denial across institutions
             return ResponseEntity.status(404).body(ApiResponse.error("Event not found"));
         }
@@ -116,9 +121,8 @@ public class EventController {
             @PathVariable UUID eventId,
             HttpServletRequest request) {
         UUID userId = getUserId(request);
-        UUID institutionId = getInstitutionId(request);
         EventResponse existing = eventService.getEventByIdForAdmin(eventId);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, request)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         List<EventRegistrationResponse> registrations = eventService.getEventRegistrations(eventId, userId);
@@ -131,6 +135,8 @@ public class EventController {
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
         UUID userId = getUserId(httpRequest);
+        // §48: provider_id is server-authoritative on create — never trusted from the client
+        request.setProviderId(resolveCreatedProviderId(request.getProviderId(), httpRequest));
         EventResponse event = eventService.createEvent(institutionId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Event created", event));
@@ -141,9 +147,8 @@ public class EventController {
             @PathVariable UUID id,
             @Valid @RequestBody EventRequest request,
             HttpServletRequest httpRequest) {
-        UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
@@ -156,9 +161,8 @@ public class EventController {
             @PathVariable UUID id,
             @RequestParam(defaultValue = "false") boolean force,
             HttpServletRequest httpRequest) {
-        UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
@@ -171,9 +175,8 @@ public class EventController {
             @PathVariable UUID id,
             HttpServletRequest httpRequest) {
         UUID userId = getUserId(httpRequest);
-        UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         List<EventRegistrationResponse> registrations = eventService.getEventRegistrations(id, userId);
@@ -184,9 +187,8 @@ public class EventController {
     public ResponseEntity<ApiResponse<List<EventMaterialResponse>>> getEventMaterials(
             @PathVariable UUID id,
             HttpServletRequest httpRequest) {
-        UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         List<EventMaterialResponse> materials = eventService.getEventMaterials(id);
@@ -199,9 +201,8 @@ public class EventController {
             @Valid @RequestBody EventMaterialRequest request,
             HttpServletRequest httpRequest) {
         UUID userId = getUserId(httpRequest);
-        UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         request.setEventId(id);
@@ -214,6 +215,12 @@ public class EventController {
     public ResponseEntity<ApiResponse<Void>> deleteEventMaterial(
             @PathVariable UUID materialId,
             HttpServletRequest httpRequest) {
+        // §41/§98: material deletion is object-level authorization — resolve the owning event first
+        UUID eventId = eventService.getEventIdForMaterial(materialId);
+        EventResponse existing = eventService.getEventByIdForAdmin(eventId);
+        if (!canAccessEvent(existing, httpRequest)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
         eventService.deleteEventMaterial(materialId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
@@ -224,7 +231,7 @@ public class EventController {
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
@@ -239,7 +246,7 @@ public class EventController {
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
@@ -254,7 +261,7 @@ public class EventController {
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
@@ -268,7 +275,7 @@ public class EventController {
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
         EventResponse existing = eventService.getEventByIdForAdmin(id);
-        if (institutionId != null && !institutionId.equals(existing.getInstitutionId())) {
+        if (!canAccessEvent(existing, httpRequest)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
         assertProviderCanManage(existing, httpRequest);
@@ -281,6 +288,10 @@ public class EventController {
             @PathVariable UUID id,
             HttpServletRequest httpRequest) {
         UUID institutionId = getInstitutionId(httpRequest);
+        EventResponse existing = eventService.getEventByIdForAdmin(id);
+        if (!canAccessEvent(existing, httpRequest)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
         Map<String, Object> summary = eventService.getEventSummary(id, institutionId);
         return ResponseEntity.ok(ApiResponse.success(summary));
     }
@@ -302,21 +313,62 @@ public class EventController {
     /** §97: provider-role callers are always scoped to their own events. */
     private String scopedProviderId(String providerId, HttpServletRequest request) {
         String role = getRequestRole(request);
-        if ("PROVIDER_ADMIN".equals(role) || "PROVIDER_STAFF".equals(role)) {
+        if (isProviderRole(role)) {
             UUID userId = getUserId(request);
-            return userId != null ? userId.toString() : providerId;
+            if (userId == null) {
+                // §48: never fall back to a client-supplied provider filter — fail closed
+                throw new ForbiddenException("Access denied");
+            }
+            return userId.toString();
         }
         return providerId;
     }
 
     /**
+     * §48: provider_id is server-authoritative on create. Provider-role callers are pinned to
+     * their own identity, admin governance (platform or institution-scoped) may label explicitly
+     * — every other client-supplied value is dropped because ownership cannot be verified.
+     */
+    private String resolveCreatedProviderId(String clientProviderId, HttpServletRequest request) {
+        String role = getRequestRole(request);
+        if (isProviderRole(role)) {
+            UUID userId = getUserId(request);
+            if (userId == null) {
+                throw new ForbiddenException("Access denied");
+            }
+            return userId.toString();
+        }
+        if (isAdminRole(role)) {
+            return clientProviderId;
+        }
+        return null;
+    }
+
+    /**
+     * §41/§60/§97/§98: fail-closed object-level (ID-manipulation) access check for one event.
+     * Access requires either institution scope (the caller's resolved institution owns the event)
+     * or provider ownership (§97: provider_id equals the caller's identity). An unscoped platform
+     * authority keeps its legacy platform-wide access; every other unscoped caller is denied.
+     */
+    private boolean canAccessEvent(EventResponse event, HttpServletRequest request) {
+        UUID callerInstitutionId = getInstitutionId(request);
+        if (callerInstitutionId != null && callerInstitutionId.equals(event.getInstitutionId())) {
+            return true;
+        }
+        String role = getRequestRole(request);
+        if (callerInstitutionId == null && isPlatformRole(role)) {
+            return true;
+        }
+        UUID callerUserId = getUserId(request);
+        return callerUserId != null && callerUserId.toString().equals(event.getProviderId());
+    }
+
+    /**
      * §97: when an event carries provider_id, only the owning provider (or organizer/admin)
-     * may mutate it.
+     * may mutate it. Provider-role callers always require ownership, so a null provider_id can
+     * never be used to reach institution events they do not own.
      */
     private void assertProviderCanManage(EventResponse existing, HttpServletRequest request) {
-        if (existing.getProviderId() == null || existing.getProviderId().isBlank()) {
-            return;
-        }
         String role = getRequestRole(request);
         if (isAdminRole(role) || isPlatformRole(role)) {
             return;
@@ -327,6 +379,12 @@ public class EventController {
         }
         if (userId != null && userId.equals(existing.getOrganizerId())) {
             return;
+        }
+        if (isProviderRole(role)) {
+            throw new ForbiddenException("Only the owning provider can manage this event");
+        }
+        if (existing.getProviderId() == null || existing.getProviderId().isBlank()) {
+            return; // institution event without provider ownership — institution scope already verified
         }
         throw new ForbiddenException("Only the owning provider can manage this event");
     }
@@ -350,6 +408,10 @@ public class EventController {
 
     private boolean isPlatformRole(String role) {
         return "ADMIN".equals(role) || "NATIONAL_ADMIN".equals(role);
+    }
+
+    private boolean isProviderRole(String role) {
+        return "PROVIDER_ADMIN".equals(role) || "PROVIDER_STAFF".equals(role);
     }
 
     private boolean isAdminRole(String role) {

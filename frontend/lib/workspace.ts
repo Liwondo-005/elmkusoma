@@ -29,6 +29,11 @@ export function resolveWorkspace(
       return "/oversight"
     case "District Admin":
       return "/oversight"
+    case "Provider Admin":
+    case "Provider Staff":
+      // Provider workspace (spec §10) — the provider's own NFE operations
+      // console; institution data access stays server-scoped to its org.
+      return "/dashboard/provider"
     case "Student": {
       const level = (user.learningLevel || "").toUpperCase()
       if (level === "NURSERY") return "/dashboard/nursery"

@@ -27,7 +27,7 @@ public class SessionController {
 
     @PostMapping
     @Operation(summary = "Create a new session")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<SessionResponse>> createSession(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody SessionRequest request) {
@@ -38,7 +38,7 @@ public class SessionController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a session by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<SessionResponse>> getSession(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -48,7 +48,7 @@ public class SessionController {
 
     @GetMapping
     @Operation(summary = "List all sessions in an institution")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<SessionResponse>>> listSessions(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
@@ -59,7 +59,7 @@ public class SessionController {
 
     @GetMapping("/provider/{providerId}")
     @Operation(summary = "Get sessions by provider ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessionsByProvider(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId) {
@@ -69,7 +69,7 @@ public class SessionController {
 
     @GetMapping("/program/{programId}")
     @Operation(summary = "Get sessions by program ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessionsByProgram(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID programId) {
@@ -79,7 +79,7 @@ public class SessionController {
 
     @GetMapping("/status/{status}")
     @Operation(summary = "Get sessions by status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessionsByStatus(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable String status) {
@@ -89,7 +89,7 @@ public class SessionController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a session")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<SessionResponse>> updateSession(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -100,7 +100,7 @@ public class SessionController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete a session")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteSession(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {

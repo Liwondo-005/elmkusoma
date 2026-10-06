@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
+import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function SessionsPage() {
@@ -11,6 +12,7 @@ export default function SessionsPage() {
   const [sessions, setSessions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     loadSessions()
@@ -30,6 +32,21 @@ export default function SessionsPage() {
     (s.title || s.name || "").toLowerCase().includes(search.toLowerCase())
   )
 
+  const createFields: ProviderFormField[] = [
+    { name: "title", label: t("form.title"), type: "text", required: true },
+    {
+      name: "sessionType",
+      label: t("form.type"),
+      type: "select",
+      required: true,
+      options: ["LIVE", "SEMINAR", "WORKSHOP", "WEBINAR"].map((v) => ({ value: v, label: t(`form.sessionTypes.${v}`) })),
+    },
+    { name: "scheduledAt", label: t("form.scheduledAt"), type: "datetime-local", required: true },
+    { name: "durationMinutes", label: t("form.durationMinutes"), type: "number" },
+    { name: "meetingUrl", label: t("form.meetingUrl"), type: "text" },
+    { name: "description", label: t("form.description"), type: "textarea" },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -37,7 +54,10 @@ export default function SessionsPage() {
           <h1 className="text-3xl font-bold tracking-tight">{t("sessions.title")}</h1>
           <p className="text-muted-foreground">{t("sessions.subtitle")}</p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           <Plus className="size-4" /> {t("sessions.createSession")}
         </button>
       </div>
@@ -73,6 +93,25 @@ export default function SessionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ProviderCreateDialog
+        open={createOpen}
+        title={t("sessions.createSession")}
+        fields={createFields}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={async (v) => {
+          await nfeApi.createSession({
+            title: v.title,
+            sessionType: v.sessionType,
+            scheduledAt: v.scheduledAt,
+            durationMinutes: v.durationMinutes,
+            meetingUrl: v.meetingUrl,
+            description: v.description,
+          })
+          setCreateOpen(false)
+          loadSessions()
+        }}
+      />
     </div>
   )
 }

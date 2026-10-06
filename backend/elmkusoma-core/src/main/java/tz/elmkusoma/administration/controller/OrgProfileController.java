@@ -20,7 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/admin/org")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
 @Tag(name = "Organization Profile & Audit", description = "Organization profile management and audit logs")
 public class OrgProfileController {
 

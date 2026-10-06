@@ -439,6 +439,11 @@
     "programmes": "Programmes",
     "projects": "Projects",
     "providers": "Providers",
+    "groupDelivery": "DELIVERY",
+    "groupContent": "CONTENT",
+    "materials": "Materials",
+    "programs": "Programs",
+    "sessions": "Sessions",
     "quests": "Quests",
     "read": "Read",
     "replays": "Replays",
@@ -2868,7 +2873,50 @@
     "mfaConfirmError": "Code not accepted. Check the app and try again.",
     "mfaCodesError": "Could not generate codes.",
     "mfaEnabledNotice": "Two-step verification is on. Save fresh recovery codes below if you have not already.",
-    "mfaCodesRegenerated": "Fresh codes generated. Old unused codes no longer work."
+    "mfaCodesRegenerated": "Fresh codes generated. Old unused codes no longer work.",
+    "secureAccess": "Secure Access",
+    "secureTagline": "Secure learning access",
+    "stepCredentials": "Credentials",
+    "stepSecurityCheck": "Security Check",
+    "stepAuthentication": "Authentication",
+    "statusReady": "Ready to sign you in",
+    "statusVerifying": "Verifying your access...",
+    "statusSuccess": "Authentication successful",
+    "statusSuccessSub": "Welcome back to ELMKUSOMA",
+    "statusError": "We couldn't sign you in.",
+    "statusErrorSub": "Please check your details and try again.",
+    "authStatusRegion": "Authentication status"
+  },
+  "otp": {
+    "title": "Verify",
+    "titleAccent": "OTP",
+    "subtitle": "Enter the security code sent to your email to continue.",
+    "subtitleRecovery": "Enter the code we sent to your email to continue recovering your account.",
+    "emailSubtitle": "We'll send a 5-digit security code to your email.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Send Code",
+    "sendingCode": "Sending...",
+    "sendingTo": "Sending code to {email}...",
+    "sentTo": "Code sent to {email}",
+    "codeSentSuccess": "Code sent successfully.",
+    "recentlySent": "A code was sent recently. Please wait before requesting another.",
+    "didntReceive": "Didn't receive the code?",
+    "resendIn": "Resend in {time}",
+    "resendOtp": "Resend OTP",
+    "verifyCode": "Verify Code",
+    "verifying": "Verifying Code...",
+    "verified": "OTP Verified",
+    "invalidCode": "Invalid verification code. Please check the code and try again, or request a new one.",
+    "tooManyAttempts": "Too many failed attempts. Please request a new code.",
+    "networkError": "We couldn't verify the code. Please check your connection and try again.",
+    "sendFailed": "We couldn't send the code. Please try again.",
+    "invalidEmail": "Please enter a valid email address.",
+    "groupLabel": "Verification code, 5 digits",
+    "digitLabel": "Digit {n} of 5",
+    "changeEmail": "Use a different email",
+    "switchToCode": "Didn't get the link? Verify with a code instead",
+    "rateLimited": "Too many verification requests. Please try again later."
   },
   "language": {
     "switchToEnglish": "Switch to English",
@@ -4863,7 +4911,8 @@
       "noCourses": "No courses found",
       "noCoursesAvailable": "No courses are available yet.",
       "noCoursesSearch": "No courses match your search.",
-      "viewCourse": "View Course"
+      "viewCourse": "View Course",
+      "label": "Courses"
     },
     "notifications": "Notifications",
     "profile": "Profile",
@@ -4999,6 +5048,10 @@
     "credit": "Credit",
     "semester": "Semester",
     "academicYear": "Academic Year",
+    "scheduledAt": "Scheduled date & time",
+    "title": "Title",
+    "lessons": "Lessons",
+    "studyGroups": "Study Groups",
     "department": "Department",
     "programme": "Programme",
     "institution": "Institution",
@@ -7600,7 +7653,16 @@
     "mediaUpload": {
       "dropHint": "PDF, Images, Videos, Documents",
       "dropTitle": "Click or drag to upload",
-      "uploadFailed": "Upload failed"
+      "uploadFailed": "Upload failed",
+      "button": "Upload File",
+      "uploading": "Uploading...",
+      "uploaded": "Uploaded",
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "remove": "Remove file",
+      "fileTooLarge": "File exceeds the {max} MB limit",
+      "invalidType": "This file type is not supported",
+      "progressLabel": "Upload progress"
     },
     "permissionDenied": {
       "backToDashboard": "Back to Dashboard",
@@ -8719,6 +8781,79 @@
     }
   },
   "provider": {
+    "form": {
+      "cancel": "Cancel",
+      "creating": "Saving...",
+      "required": "This field is required",
+      "submitError": "Failed to create. Please try again.",
+      "loadOptionsError": "Failed to load selections.",
+      "selectPlaceholder": "Select...",
+      "title": "Title",
+      "description": "Description",
+      "type": "Type",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "maxParticipants": "Max participants",
+      "scheduledAt": "Scheduled at",
+      "durationMinutes": "Duration (minutes)",
+      "meetingUrl": "Meeting URL",
+      "contentUrl": "Content URL",
+      "access": "Access",
+      "free": "Free",
+      "paid": "Paid",
+      "visibility": "Visibility",
+      "published": "Published",
+      "draft": "Draft",
+      "totalMarks": "Total marks",
+      "passMarks": "Pass marks",
+      "timeLimit": "Time limit (minutes)",
+      "certificateType": "Certificate type",
+      "studentName": "Student name",
+      "serialNumber": "Serial number",
+      "session": "Session",
+      "learner": "Learner",
+      "status": "Status",
+      "remarks": "Remarks",
+      "participantNumber": "Participant number",
+      "occupation": "Occupation",
+      "organization": "Organization",
+      "programTypes": {
+        "PROGRAM": "Program",
+        "COURSE": "Course",
+        "SEMINAR": "Seminar",
+        "WORKSHOP": "Workshop"
+      },
+      "sessionTypes": {
+        "LIVE": "Live",
+        "SEMINAR": "Seminar",
+        "WORKSHOP": "Workshop",
+        "WEBINAR": "Webinar"
+      },
+      "materialTypes": {
+        "DOCUMENT": "Document",
+        "VIDEO": "Video",
+        "AUDIO": "Audio",
+        "LINK": "Link",
+        "FILE": "File"
+      },
+      "assessmentTypes": {
+        "QUIZ": "Quiz",
+        "EXAM": "Exam",
+        "SURVEY": "Survey",
+        "FEEDBACK": "Feedback"
+      },
+      "certificateTypes": {
+        "COMPLETION": "Completion",
+        "PARTICIPATION": "Participation",
+        "ACHIEVEMENT": "Achievement"
+      },
+      "attendanceStatus": {
+        "PRESENT": "Present",
+        "ABSENT": "Absent",
+        "LATE": "Late",
+        "EXCUSED": "Excused"
+      }
+    },
     "dashboard": {
       "title": "Provider Dashboard",
       "subtitle": "Manage your non-formal education programs",
@@ -8790,7 +8925,10 @@
       "contactPhoneLabel": "Contact Phone",
       "addressLabel": "Address",
       "addressPlaceholder": "Enter address",
-      "saveChanges": "Save Changes"
+      "saveChanges": "Save Changes",
+      "loadError": "Failed to load settings.",
+      "saveSuccess": "Settings saved successfully.",
+      "saveError": "Failed to save settings."
     }
   },
   "subscription": {

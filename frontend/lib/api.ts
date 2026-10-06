@@ -1,3 +1,5 @@
+import { uploadFile, UploadError, type UploadOptions } from "./upload"
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
 
 export interface ApiError {
@@ -1626,29 +1628,26 @@ export const courseApi = {
       method: "DELETE",
     }),
 
-  uploadThumbnail: async (file: File): Promise<{ url: string }> => {
-    const formData = new FormData()
-    formData.append("file", file)
+  uploadThumbnail: async (file: File, options?: UploadOptions): Promise<{ url: string }> => {
     const headers: Record<string, string> = {}
     const token = getToken()
     const institutionId = getInstitutionId()
     if (token) headers["Authorization"] = `Bearer ${token}`
     if (institutionId) headers["X-Institution-Id"] = institutionId
-    const res = await fetch(`${API_BASE_URL}/v1/courses/thumbnail`, {
-      method: "POST",
-      headers,
-      body: formData,
-    })
-    let body: Record<string, unknown>
     try {
-      body = await res.json()
-    } catch {
-      throw new ApiRequestError(`Server returned non-JSON response (${res.status})`, res.status, null)
+      const body = (await uploadFile({
+        url: `${API_BASE_URL}/v1/courses/thumbnail`,
+        file,
+        headers,
+        ...options,
+      })) as { data?: { url: string } }
+      return body.data as { url: string }
+    } catch (err) {
+      if (err instanceof UploadError) {
+        throw new ApiRequestError(err.message, err.status, (err.body as Record<string, unknown>) ?? null)
+      }
+      throw err
     }
-    if (!res.ok || body.success === false) {
-      throw new ApiRequestError(String(body.error || body.message || `Upload failed (${res.status})`), res.status, body)
-    }
-    return body.data as { url: string }
   },
 
   togglePublish: (courseId: string) =>
@@ -2128,18 +2127,15 @@ export const gradingApi = {
 // ---------------------------------------------------------------------------
 
 export const mediaApi = {
-  upload: async (file: File) => {
+  upload: async (file: File, options?: UploadOptions) => {
     const token = localStorage.getItem("elmkusoma_access_token")
     const instId = localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
-    const formData = new FormData()
-    formData.append("file", file)
-    const res = await fetch("/api/v1/media/upload", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}`, "X-Institution-Id": instId },
-      body: formData,
+    return uploadFile({
+      url: "/api/v1/media/upload",
+      file,
+      headers: { Authorization: `Bearer ${token}`, "X-Institution-Id": instId },
+      ...options,
     })
-    if (!res.ok) throw new Error("Upload failed")
-    return res.json()
   },
   list: (institutionId?: string) => {
     const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"

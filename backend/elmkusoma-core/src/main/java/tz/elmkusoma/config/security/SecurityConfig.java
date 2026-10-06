@@ -177,7 +177,11 @@ public class SecurityConfig {
                         // /v1/admin and /v1/platform-admin controllers, enforced at the URL
                         // level so role denials return 403 before body validation (400) or
                         // unmapped-route handling (404) can mask them.
-                        .requestMatchers("/v1/admin", "/v1/admin/**").hasAnyRole("ADMIN", "INSTITUTION_ADMIN")
+                        // §9/§10: /v1/admin is the organization-scoped stack — Institution Admin
+                        // AND Provider Admin operate their own organization through it; platform
+                        // governance stays behind /v1/platform-admin (ADMIN only).
+                        .requestMatchers("/v1/admin", "/v1/admin/**")
+                                .hasAnyRole("ADMIN", "INSTITUTION_ADMIN", "PROVIDER_ADMIN")
                         .requestMatchers("/v1/platform-admin", "/v1/platform-admin/**").hasRole("ADMIN")
                         // The payment detail API is not exposed; deny explicitly so
                         // cross-institution probing gets 403 instead of a 404 oracle.

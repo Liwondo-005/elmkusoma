@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import tz.elmkusoma.academic.domain.*;
 import tz.elmkusoma.academic.dto.*;
 import tz.elmkusoma.academic.repository.*;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 
 import java.time.LocalDate;
@@ -77,7 +78,7 @@ class AcademicServiceTest {
 
         when(academicYearRepository.save(any(AcademicYear.class))).thenReturn(saved);
 
-        AcademicYear result = academicService.createAcademicYear(request);
+        AcademicYear result = academicService.createAcademicYear(request, institutionId);
 
         assertNotNull(result);
         assertEquals(institutionId, result.getInstitutionId());
@@ -152,7 +153,7 @@ class AcademicServiceTest {
 
         when(termRepository.save(any(Term.class))).thenReturn(savedTerm);
 
-        Term result = academicService.createTerm(yearId, request);
+        Term result = academicService.createTerm(yearId, request, institutionId);
 
         assertNotNull(result);
         assertEquals(yearId, result.getAcademicYearId());
@@ -173,7 +174,7 @@ class AcademicServiceTest {
         request.setEndDate(LocalDate.of(2025, 4, 30));
 
         assertThrows(ResourceNotFoundException.class,
-                () -> academicService.createTerm(nonExistentYearId, request));
+                () -> academicService.createTerm(nonExistentYearId, request, institutionId));
     }
 
     @Test
@@ -197,7 +198,7 @@ class AcademicServiceTest {
 
         when(gradeRepository.save(any(Grade.class))).thenReturn(savedGrade);
 
-        Grade result = academicService.createGrade(request);
+        Grade result = academicService.createGrade(request, institutionId);
 
         assertNotNull(result);
         assertEquals(institutionId, result.getInstitutionId());
@@ -326,7 +327,7 @@ class AcademicServiceTest {
 
         when(classGroupRepository.save(any(ClassGroup.class))).thenReturn(savedGroup);
 
-        ClassGroup result = academicService.createClassGroup(request);
+        ClassGroup result = academicService.createClassGroup(request, institutionId);
 
         assertNotNull(result);
         assertEquals(institutionId, result.getInstitutionId());
@@ -341,5 +342,67 @@ class AcademicServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> academicService.getClassGroup(nonExistentId));
+    }
+
+    // ── Cross-tenant (IDOR) regression coverage ────────────────────
+
+    @Test
+    void createGrade_shouldIgnoreClientSuppliedInstitutionId() {
+        GradeRequest request = new GradeRequest();
+        // A client-supplied tenant id must be ignored — the caller's context wins.
+        request.setInstitutionId(UUID.randomUUID());
+        request.setEducationLevel(EducationLevel.PRIMARY);
+        request.setName("Grade 1");
+        request.setCode("G1");
+        request.setSortOrder(1);
+
+        when(gradeRepository.save(any(Grade.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Grade result = academicService.createGrade(request, institutionId);
+
+        assertEquals(institutionId, result.getInstitutionId());
+    }
+
+    @Test
+    void createTerm_whenYearBelongsToAnotherInstitution_shouldThrowForbidden() {
+        UUID foreignInstitutionId = UUID.randomUUID();
+        AcademicYear foreignYear = AcademicYear.builder()
+                .institutionId(foreignInstitutionId)
+                .yearLabel("2025/2026")
+                .build();
+        foreignYear.setId(yearId);
+        when(academicYearRepository.findById(yearId)).thenReturn(Optional.of(foreignYear));
+
+        TermRequest request = new TermRequest();
+        request.setName("Term 1");
+        request.setTermNumber(1);
+
+        assertThrows(ForbiddenException.class,
+                () -> academicService.createTerm(yearId, request, institutionId));
+        verify(termRepository, never()).save(any(Term.class));
+    }
+
+    @Test
+    void createClassGroup_whenGradeBelongsToAnotherInstitution_shouldThrowForbidden() {
+        Grade foreignGrade = Grade.builder().institutionId(UUID.randomUUID()).build();
+        foreignGrade.setId(gradeId);
+        AcademicYear year = AcademicYear.builder().institutionId(institutionId).build();
+        year.setId(yearId);
+        Term term = Term.builder().institutionId(institutionId).build();
+        term.setId(termId);
+
+        when(gradeRepository.findById(gradeId)).thenReturn(Optional.of(foreignGrade));
+        when(academicYearRepository.findById(yearId)).thenReturn(Optional.of(year));
+        when(termRepository.findById(termId)).thenReturn(Optional.of(term));
+
+        ClassGroupRequest request = new ClassGroupRequest();
+        request.setGradeId(gradeId);
+        request.setAcademicYearId(yearId);
+        request.setTermId(termId);
+        request.setName("Class 1A");
+
+        assertThrows(ForbiddenException.class,
+                () -> academicService.createClassGroup(request, institutionId));
+        verify(classGroupRepository, never()).save(any(ClassGroup.class));
     }
 }

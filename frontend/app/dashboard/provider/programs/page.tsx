@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
+import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function ProgramsPage() {
@@ -11,6 +12,7 @@ export default function ProgramsPage() {
   const [programs, setPrograms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     loadPrograms()
@@ -31,6 +33,30 @@ export default function ProgramsPage() {
     p.title?.toLowerCase().includes(search.toLowerCase())
   )
 
+  const createFields: ProviderFormField[] = [
+    { name: "title", label: t("form.title"), type: "text", required: true },
+    {
+      name: "programType",
+      label: t("form.type"),
+      type: "select",
+      required: true,
+      options: ["PROGRAM", "COURSE", "SEMINAR", "WORKSHOP"].map((v) => ({ value: v, label: t(`form.programTypes.${v}`) })),
+    },
+    { name: "description", label: t("form.description"), type: "textarea" },
+    { name: "startDate", label: t("form.startDate"), type: "datetime-local" },
+    { name: "endDate", label: t("form.endDate"), type: "datetime-local" },
+    { name: "maxParticipants", label: t("form.maxParticipants"), type: "number" },
+    {
+      name: "isPublished",
+      label: t("form.visibility"),
+      type: "select",
+      options: [
+        { value: "false", label: t("form.draft") },
+        { value: "true", label: t("form.published") },
+      ],
+    },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -38,7 +64,10 @@ export default function ProgramsPage() {
           <h1 className="text-3xl font-bold tracking-tight">{t("programs.title")}</h1>
           <p className="text-muted-foreground">{t("programs.subtitle")}</p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           <Plus className="size-4" /> {t("programs.createProgram")}
         </button>
       </div>
@@ -74,6 +103,26 @@ export default function ProgramsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ProviderCreateDialog
+        open={createOpen}
+        title={t("programs.createProgram")}
+        fields={createFields}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={async (v) => {
+          await nfeApi.createProgram({
+            title: v.title,
+            programType: v.programType,
+            description: v.description,
+            startDate: v.startDate,
+            endDate: v.endDate,
+            maxParticipants: v.maxParticipants,
+            isPublished: v.isPublished === undefined ? undefined : v.isPublished === "true",
+          })
+          setCreateOpen(false)
+          loadPrograms()
+        }}
+      />
     </div>
   )
 }

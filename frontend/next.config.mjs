@@ -21,6 +21,14 @@ const nextConfig = {
         destination: `${mediaUrl}/api/v1/media/:path*`,
       },
       {
+        // The higher-education controllers are mapped at /api/v1/education/** on
+        // the backend, but the generic /api/v1 rule below strips the /api prefix.
+        // Keep this specific rule ahead of it so collegeApi requests (dashboard,
+        // enrollments, study tasks, ...) reach the existing Spring Boot paths.
+        source: "/api/v1/education/:path*",
+        destination: `${apiUrl}/api/v1/education/:path*`,
+      },
+      {
         source: "/v1/:path*",
         destination: `${apiUrl}/v1/:path*`,
       },

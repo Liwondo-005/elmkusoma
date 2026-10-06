@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { authApi, setTokens, clearTokens, getRefreshToken, type UserInfo } from "@/lib/api"
+import { authApi, setTokens, clearTokens, getRefreshToken, setInstitutionId, type UserInfo } from "@/lib/api"
 
 export interface AuthUser {
   id: string
@@ -79,6 +79,13 @@ function setCurrentUser(user: AuthUser | null) {
   }
 }
 
+function syncInstitutionId(user: { institutionId?: string } | null | undefined) {
+  // Persist the caller's organization scope on auth so scoped API modules
+  // (nfe-api, provider pages, ...) can send X-Institution-Id after a fresh
+  // login — logout/clearTokens removes it again.
+  if (user?.institutionId) setInstitutionId(user.institutionId)
+}
+
 function setAuthCookie(token: string | null) {
   if (token) {
     document.cookie = `elmkusoma_access_token=${token}; path=/; max-age=3600; SameSite=Lax`
@@ -135,6 +142,8 @@ function mapRoleToFrontend(backendRole: string): string {
     NATIONAL_ADMIN: "National Admin",
     REGIONAL_ADMIN: "Regional Admin",
     DISTRICT_ADMIN: "District Admin",
+    PROVIDER_ADMIN: "Provider Admin",
+    PROVIDER_STAFF: "Provider Staff",
   }
   return roleMap[backendRole] || backendRole
 }
@@ -202,6 +211,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTokens(response.accessToken, response.refreshToken || "")
       setAuthCookie(response.accessToken)
       setCurrentUser(authUser)
+      // Preserve an explicit organization context (admin context switcher);
+      // only seed the scope key when it is missing.
+      if (!localStorage.getItem("elmkusoma_institution_id")) syncInstitutionId(authUser)
       setUser(authUser)
       return true
     } catch {
@@ -218,6 +230,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = getStoredUser()
     if (token && stored) {
       setUser(stored)
+      // Repair sessions that predate login-time seeding, but never clobber an
+      // explicit organization switch made via the admin context header.
+      if (!localStorage.getItem("elmkusoma_institution_id")) syncInstitutionId(stored)
       if (isTokenExpiringSoon(token)) {
         doRefreshToken()
       }
@@ -250,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTokens(response.accessToken, response.refreshToken || "")
       setAuthCookie(response.accessToken)
       setCurrentUser(authUser)
+      syncInstitutionId(authUser)
       setUser(authUser)
       return {}
     } catch (err: unknown) {
@@ -313,6 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTokens(response.accessToken, response.refreshToken || "")
       setAuthCookie(response.accessToken)
       setCurrentUser(authUser)
+      syncInstitutionId(authUser)
       setUser(authUser)
       return {}
     } catch (err: unknown) {

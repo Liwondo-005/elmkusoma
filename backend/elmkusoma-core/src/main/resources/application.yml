@@ -59,6 +59,24 @@ spring:
     username: guest
     password: guest
 
+  # SMTP delivery for OTP verification codes (OtpMailService). The dev default
+  # targets a local MailHog/Mailpit-style sink on 1025; production overrides
+  # with SPRING_MAIL_* (host/username/password) — delivery is best-effort and
+  # an unreachable host never fails /v1/auth/send-code.
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: ${SPRING_MAIL_CONN_TIMEOUT:3000}
+          timeout: ${SPRING_MAIL_TIMEOUT:3000}
+          writetimeout: ${SPRING_MAIL_WRITE_TIMEOUT:3000}
+          starttls.enable: ${SPRING_MAIL_STARTTLS:false}
+
   jackson:
     default-property-inclusion: non_null
     serialization:

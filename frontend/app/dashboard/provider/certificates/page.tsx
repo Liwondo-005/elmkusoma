@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
+import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function CertificatesPage() {
@@ -13,6 +14,7 @@ export default function CertificatesPage() {
   const [certificates, setCertificates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     loadCertificates()
@@ -33,6 +35,19 @@ export default function CertificatesPage() {
     (c.serialNumber || "").toLowerCase().includes(search.toLowerCase())
   )
 
+  const createFields: ProviderFormField[] = [
+    {
+      name: "certificateType",
+      label: t("form.certificateType"),
+      type: "select",
+      required: true,
+      options: ["COMPLETION", "PARTICIPATION", "ACHIEVEMENT"].map((v) => ({ value: v, label: t(`form.certificateTypes.${v}`) })),
+    },
+    { name: "title", label: t("form.title"), type: "text", required: true },
+    { name: "studentName", label: t("form.studentName"), type: "text", required: true },
+    { name: "serialNumber", label: t("form.serialNumber"), type: "text" },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -40,7 +55,10 @@ export default function CertificatesPage() {
           <h1 className="text-3xl font-bold tracking-tight">{tn("certificates")}</h1>
           <p className="text-muted-foreground">{t("certificates.subtitle")}</p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           <Plus className="size-4" /> {tl("certGenerate.generateButton")}
         </button>
       </div>
@@ -78,6 +96,23 @@ export default function CertificatesPage() {
           )}
         </CardContent>
       </Card>
+
+      <ProviderCreateDialog
+        open={createOpen}
+        title={tl("certGenerate.generateButton")}
+        fields={createFields}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={async (v) => {
+          await nfeApi.generateCertificate({
+            certificateType: v.certificateType,
+            title: v.title,
+            studentName: v.studentName,
+            serialNumber: v.serialNumber,
+          })
+          setCreateOpen(false)
+          loadCertificates()
+        }}
+      />
     </div>
   )
 }

@@ -439,6 +439,11 @@
     "programmes": "Programu",
     "projects": "Miradi",
     "providers": "Watoa Huduma",
+    "groupDelivery": "UTENDAJI",
+    "groupContent": "MAUDHUI",
+    "materials": "Vifaa",
+    "programs": "Programu",
+    "sessions": "Vipindi",
     "quests": "Changamoto",
     "read": "Soma",
     "replays": "Marudio",
@@ -2868,7 +2873,50 @@
     "mfaConfirmError": "Nambari haikukubaliwa. Angalia programu na ujaribu tena.",
     "mfaCodesError": "Imeshindwa kutengeneza nambari.",
     "mfaEnabledNotice": "Uthibitishaji wa hatua mbili umewashwa. Hifadhi nambari mpya za urejeshaji hapa chini kama bado hujafanya.",
-    "mfaCodesRegenerated": "Nambari mpya zimetengenezwa. Nambari za zamani hazifanyi kazi tena."
+    "mfaCodesRegenerated": "Nambari mpya zimetengenezwa. Nambari za zamani hazifanyi kazi tena.",
+    "secureAccess": "Ufikiaji Salama",
+    "secureTagline": "Ufikiaji salama wa kujifunza",
+    "stepCredentials": "Utambulisho",
+    "stepSecurityCheck": "Ukaguzi wa Usalama",
+    "stepAuthentication": "Uthibitisho",
+    "statusReady": "Tayari kuingia",
+    "statusVerifying": "Tunaathibitisha ufikiaji wako...",
+    "statusSuccess": "Uthibitisho umefanikiwa",
+    "statusSuccessSub": "Karibu tena ELMKUSOMA",
+    "statusError": "Imeshindwa kuingia.",
+    "statusErrorSub": "Tafadhali angalia taarifa zako na ujaribu tena.",
+    "authStatusRegion": "Hali ya uthibitisho"
+  },
+  "otp": {
+    "title": "Thibitisha",
+    "titleAccent": "OTP",
+    "subtitle": "Weka msimbo wa usalama uliotumwa kwa barua pepe yako ili uendelee.",
+    "subtitleRecovery": "Weka msimbo uliotumwa kwa barua pepe yako ili uendelee kurejesha akaunti yako.",
+    "emailSubtitle": "Tutakutumia msimbo wa usalama wa tarakimu 5 kwa barua pepe yako.",
+    "emailLabel": "Anwani ya barua pepe",
+    "emailPlaceholder": "wewe@mfano.com",
+    "sendCode": "Tuma Msimbo",
+    "sendingCode": "Inatuma...",
+    "sendingTo": "Inatuma msimbo kwa {email}...",
+    "sentTo": "Msimbo umetumwa kwa {email}",
+    "codeSentSuccess": "Msimbo umetumwa kwa mafanikio.",
+    "recentlySent": "Msimbo umetumwa hivi karibuni. Tafadhali subiri kabla ya kuomba mwingine.",
+    "didntReceive": "Hujapata msimbo?",
+    "resendIn": "Tuma tena baada ya {time}",
+    "resendOtp": "Tuma Msimbo Tena",
+    "verifyCode": "Thibitisha Msimbo",
+    "verifying": "Inathibitisha Msimbo...",
+    "verified": "Msimbo umethibitishwa",
+    "invalidCode": "Msimbo si sahihi. Tafadhali angalia msimbo na ujaribu tena, au omba msimbo mpya.",
+    "tooManyAttempts": "Majaribio mengi yameshindikana. Tafadhali omba msimbo mpya.",
+    "networkError": "Imeshindwa kuthibitisha msimbo. Tafadhali angalia muunganisho wako na ujaribu tena.",
+    "sendFailed": "Imeshindwa kutuma msimbo. Tafadhali jaribu tena.",
+    "invalidEmail": "Tafadhali weka anwani sahihi ya barua pepe.",
+    "groupLabel": "Msimbo wa uthibitisho, tarakimu 5",
+    "digitLabel": "Tarakimu {n} kati ya 5",
+    "changeEmail": "Tumia barua pepe tofauti",
+    "switchToCode": "Hujapata kiungo? Thibitisha kwa msimbo badala yake",
+    "rateLimited": "Maombi mengi ya uthibitisho. Tafadhali jaribu tena baada ya muda."
   },
   "language": {
     "switchToEnglish": "Badilisha hadi Kiingereza",
@@ -4463,7 +4511,8 @@
       "noCourses": "Hakuna kozi zilizopatikana",
       "noCoursesAvailable": "Hakuna kozi bado.",
       "noCoursesSearch": "Hakuna kozi zinazolingana na utafutaji wako.",
-      "viewCourse": "Tazama Kozi"
+      "viewCourse": "Tazama Kozi",
+      "label": "Kozi"
     },
     "notifications": "Arifa",
     "profile": "Wasifu",
@@ -4599,6 +4648,10 @@
     "credit": "Mikopo",
     "semester": "Muhula",
     "academicYear": "Mwaka wa Masomo",
+    "scheduledAt": "Tarehe na Saa Zilizopangwa",
+    "title": "Kichwa",
+    "lessons": "Masomo",
+    "studyGroups": "Vikundi vya Kusoma",
     "department": "Idara",
     "programme": "Programu",
     "institution": "Taasisi",
@@ -7600,7 +7653,16 @@
     "mediaUpload": {
       "dropHint": "PDF, Picha, Video, Nyaraka",
       "dropTitle": "Bofya au buruta kupakia",
-      "uploadFailed": "Upakiaji umeshindwa"
+      "uploadFailed": "Upakiaji umeshindwa",
+      "button": "Pakia Faili",
+      "uploading": "Inapakia...",
+      "uploaded": "Imepakuliwa",
+      "retry": "Jaribu tena",
+      "cancel": "Ghairi",
+      "remove": "Ondoa faili",
+      "fileTooLarge": "Faili inazidi kikomo cha {max} MB",
+      "invalidType": "Aina hii ya faili haihusikiwi",
+      "progressLabel": "Maendeleo ya upakiaji"
     },
     "permissionDenied": {
       "backToDashboard": "Rudi kwenye Dashibodi",
@@ -8724,6 +8786,79 @@
     }
   },
   "provider": {
+    "form": {
+      "cancel": "Ghairi",
+      "creating": "Inahifadhi...",
+      "required": "Sehemu hii inahitajika",
+      "submitError": "Imeshindwa kuunda. Jaribu tena.",
+      "loadOptionsError": "Imeshindwa kupakia chaguo.",
+      "selectPlaceholder": "Chagua...",
+      "title": "Kichwa",
+      "description": "Maelezo",
+      "type": "Aina",
+      "startDate": "Tarehe ya kuanza",
+      "endDate": "Tarehe ya kumaliza",
+      "maxParticipants": "Washiriki wa upeo",
+      "scheduledAt": "Imepangwa (tarehe)",
+      "durationMinutes": "Muda (dakika)",
+      "meetingUrl": "Kiungo cha kikao",
+      "contentUrl": "Kiungo cha maudhui",
+      "access": "Upatikanaji",
+      "free": "Bila malipo",
+      "paid": "Kwa malipo",
+      "visibility": "Mwonekano",
+      "published": "Imechapishwa",
+      "draft": "Rasimu",
+      "totalMarks": "Jumla ya alama",
+      "passMarks": "Alama za kufaulu",
+      "timeLimit": "Kikomo cha muda (dakika)",
+      "certificateType": "Aina ya cheti",
+      "studentName": "Jina la mwanafunzi",
+      "serialNumber": "Namba ya mfululizo",
+      "session": "Kipindi",
+      "learner": "Mwanafunzi",
+      "status": "Hali",
+      "remarks": "Maoni",
+      "participantNumber": "Namba ya mshiriki",
+      "occupation": "Kazi",
+      "organization": "Shirika",
+      "programTypes": {
+        "PROGRAM": "Programu",
+        "COURSE": "Kozi",
+        "SEMINAR": "Semina",
+        "WORKSHOP": "Warsha"
+      },
+      "sessionTypes": {
+        "LIVE": "Moja kwa moja",
+        "SEMINAR": "Semina",
+        "WORKSHOP": "Warsha",
+        "WEBINAR": "Mtandaoni"
+      },
+      "materialTypes": {
+        "DOCUMENT": "Hati",
+        "VIDEO": "Video",
+        "AUDIO": "Sauti",
+        "LINK": "Kiungo",
+        "FILE": "Faili"
+      },
+      "assessmentTypes": {
+        "QUIZ": "Jaribio",
+        "EXAM": "Mtihani",
+        "SURVEY": "Uchunguzi",
+        "FEEDBACK": "Maoni"
+      },
+      "certificateTypes": {
+        "COMPLETION": "Kukamilika",
+        "PARTICIPATION": "Ushiriki",
+        "ACHIEVEMENT": "Mafanikio"
+      },
+      "attendanceStatus": {
+        "PRESENT": "Yupo",
+        "ABSENT": "Hayupo",
+        "LATE": "Amefika kuchelewa",
+        "EXCUSED": "Ameidhinishwa"
+      }
+    },
     "dashboard": {
       "title": "Dashibodi ya Mtoa Huduma",
       "subtitle": "Simamia programu zako za elimu isiyo rasmi",
@@ -8795,7 +8930,10 @@
       "contactPhoneLabel": "Simu ya Mawasiliano",
       "addressLabel": "Anwani",
       "addressPlaceholder": "Weka anwani",
-      "saveChanges": "Hifadhi Mabadiliko"
+      "saveChanges": "Hifadhi Mabadiliko",
+      "loadError": "Imeshindwa kupakia mipangilio.",
+      "saveSuccess": "Mipangilio imehifadhiwa kwa mafanikio.",
+      "saveError": "Imeshindwa kuhifadhi mipangilio."
     }
   },
   "subscription": {

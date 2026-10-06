@@ -426,6 +426,39 @@ const teacherNavSections: TeacherNavSection[] = [
   },
 ]
 
+type ProviderNavSection = {
+  group: string; groupKey?: string;
+  items: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard; badge?: number }>
+}
+
+const providerNavSections: ProviderNavSection[] = [
+  {
+    group: "OVERVIEW", groupKey: "groupOverview",
+    items: [{ label: "Dashboard", labelKey: "dashboard", href: "/dashboard/provider", icon: LayoutDashboard }],
+  },
+  {
+    group: "DELIVERY", groupKey: "groupDelivery",
+    items: [
+      { label: "Programs", labelKey: "programs", href: "/dashboard/provider/programs", icon: GraduationCap },
+      { label: "Sessions", labelKey: "sessions", href: "/dashboard/provider/sessions", icon: CalendarDays },
+      { label: "Learners", labelKey: "learners", href: "/dashboard/provider/learners", icon: Users },
+    ],
+  },
+  {
+    group: "CONTENT", groupKey: "groupContent",
+    items: [
+      { label: "Materials", labelKey: "materials", href: "/dashboard/provider/materials", icon: Library },
+      { label: "Assessments", labelKey: "assessments", href: "/dashboard/provider/assessments", icon: ClipboardCheck },
+      { label: "Attendance", labelKey: "attendance", href: "/dashboard/provider/attendance", icon: ClipboardList },
+      { label: "Certificates", labelKey: "certificates", href: "/dashboard/provider/certificates", icon: Award },
+    ],
+  },
+  {
+    group: "ACCOUNT", groupKey: "groupAccount",
+    items: [{ label: "Settings", labelKey: "settings", href: "/dashboard/provider/settings", icon: Settings }],
+  },
+]
+
 const parentNav: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard; badge?: number }> = [
   { label: "Dashboard", labelKey: "dashboard", href: "/dashboard/parent", icon: LayoutDashboard },
   { label: "Learning", labelKey: "learning", href: "/dashboard/parent/learning", icon: BookOpen },
@@ -560,6 +593,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const isTeacher = user?.role === "Teacher" || user?.role === "Instructor"
   const isAdmin = user?.role === "Admin" || user?.role === "Institution Admin"
+  const isProvider = user?.role === "Provider Admin" || user?.role === "Provider Staff"
   const isParent = user?.role === "Parent"
   const isLearner = user?.role === "Other Learner"
   const isPrimary = (user?.learningLevel || "").toUpperCase() === "PRIMARY"
@@ -572,7 +606,14 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const fetchBadges = useCallback(async () => {
     // Admin workspaces render no badged learner items — skip student-only
     // badge polling (previously fired student endpoints with an admin token).
-    if (!user?.id || user.role === "Admin" || user.role === "Institution Admin") return
+    // Provider workspaces likewise render no learner badges.
+    if (
+      !user?.id ||
+      user.role === "Admin" ||
+      user.role === "Institution Admin" ||
+      user.role === "Provider Admin" ||
+      user.role === "Provider Staff"
+    ) return
     const newBadges: Record<string, number> = {}
     try {
       const token = localStorage.getItem("elmkusoma_access_token") || ""
@@ -818,6 +859,18 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           ))
         ) : isLearner ? (
           learnerNavSections.map((section, si) => (
+            <div key={section.group}>
+              {si > 0 && <div className="my-2 border-t border-border" />}
+              <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.groupKey ? t(section.groupKey) : section.group}
+              </p>
+              {renderNavItems(section.items)}
+            </div>
+          ))
+        ) : isProvider ? (
+          // Provider workspace nav — provider roles never render learner or
+          // institution-admin items (spec §10 workspace model).
+          providerNavSections.map((section, si) => (
             <div key={section.group}>
               {si > 0 && <div className="my-2 border-t border-border" />}
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

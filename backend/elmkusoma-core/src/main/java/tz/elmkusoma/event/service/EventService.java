@@ -68,6 +68,9 @@ public interface EventService {
 
     void deleteEventMaterial(UUID materialId);
 
+    /** §41/§98: resolves the owning event of a material so callers can authorize deletion. */
+    UUID getEventIdForMaterial(UUID materialId);
+
     List<EventResponse> getRegisteredEvents(UUID userId, UUID institutionId);
 
     List<EventResponse> getRegisteredPastEvents(UUID userId, UUID institutionId);

@@ -102,7 +102,7 @@ export default function AcademicRecordPage() {
                   <Calendar className="size-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground">{t("courses")}</p>
+                  <p className="text-xs font-medium text-muted-foreground">{t("courses.label")}</p>
                   <p className="text-2xl font-extrabold text-foreground">{record.completedCourses ?? 0} / {record.totalCourses ?? 0}</p>
                 </div>
               </div>

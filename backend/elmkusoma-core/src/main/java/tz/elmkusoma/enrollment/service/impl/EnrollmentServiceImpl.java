@@ -91,7 +91,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         requireStudentAccess(studentId);
         List<Enrollment> enrollments = enrollmentRepository.findByStudentIdAndIsDeletedFalse(studentId);
         String role = callerRole();
-        if (role == null || "ADMIN".equals(role) || "STUDENT".equals(role) || "PARENT".equals(role)) {
+        if (role == null || "ADMIN".equals(role) || "STUDENT".equals(role)
+                || "OTHER_LEARNER".equals(role) || "PARENT".equals(role)) {
             return enrollments.stream()
                     .map(this::toResponse)
                     .toList();
@@ -108,6 +109,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     public List<EnrollmentResponse> getEnrollmentsByClass(UUID classGroupId) {
         List<Enrollment> enrollments = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
         String role = callerRole();
+        if (role == null && RequestContextHolder.getRequestAttributes() != null) {
+            // §48: an HTTP request without a resolved role must fail closed
+            throw new ForbiddenException("enrollment", "access");
+        }
         if (role == null || "ADMIN".equals(role)) {
             return enrollments.stream()
                     .map(this::toResponse)
@@ -228,10 +233,17 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private void requireStudentAccess(UUID studentId) {
         String role = callerRole();
-        if (role == null || "ADMIN".equals(role)) {
+        if (role == null) {
+            if (RequestContextHolder.getRequestAttributes() != null) {
+                // §48: an HTTP request without a resolved role must fail closed
+                throw new ForbiddenException("enrollment", "access");
+            }
+            return; // no request context — internal programmatic access
+        }
+        if ("ADMIN".equals(role)) {
             return;
         }
-        if ("STUDENT".equals(role)) {
+        if ("STUDENT".equals(role) || "OTHER_LEARNER".equals(role)) {
             if (!studentId.equals(ownStudentId(callerUserId()))) {
                 throw new ForbiddenException("enrollment", "access");
             }
@@ -246,7 +258,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private void requireEnrollmentAccess(Enrollment enrollment) {
         String role = callerRole();
-        if (role == null || "ADMIN".equals(role)) {
+        if (role == null) {
+            if (RequestContextHolder.getRequestAttributes() != null) {
+                // §48: an HTTP request without a resolved role must fail closed
+                throw new ForbiddenException("enrollment", "access");
+            }
+            return; // no request context — internal programmatic access
+        }
+        if ("ADMIN".equals(role)) {
             return;
         }
         if ("STUDENT".equals(role)) {

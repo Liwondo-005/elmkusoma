@@ -20,7 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/admin/people")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
 @Tag(name = "Institution People Management", description = "Manage users within an institution")
 public class InstitutionPeopleController {
 

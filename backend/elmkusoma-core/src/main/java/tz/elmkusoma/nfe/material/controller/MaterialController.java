@@ -27,7 +27,7 @@ public class MaterialController {
 
     @PostMapping
     @Operation(summary = "Create a new learning material")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<MaterialResponse>> createMaterial(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @Valid @RequestBody MaterialRequest request) {
@@ -38,7 +38,7 @@ public class MaterialController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a material by ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<MaterialResponse>> getMaterial(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {
@@ -48,7 +48,7 @@ public class MaterialController {
 
     @GetMapping
     @Operation(summary = "List all materials in an institution")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<MaterialResponse>>> listMaterials(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
@@ -59,7 +59,7 @@ public class MaterialController {
 
     @GetMapping("/provider/{providerId}")
     @Operation(summary = "Get materials by provider ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<MaterialResponse>>> getMaterialsByProvider(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID providerId) {
@@ -69,7 +69,7 @@ public class MaterialController {
 
     @GetMapping("/program/{programId}")
     @Operation(summary = "Get materials by program ID")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<MaterialResponse>>> getMaterialsByProgram(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID programId) {
@@ -79,7 +79,7 @@ public class MaterialController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a material")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<MaterialResponse>> updateMaterial(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id,
@@ -90,7 +90,7 @@ public class MaterialController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft-delete a material")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteMaterial(
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @PathVariable UUID id) {

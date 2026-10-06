@@ -136,7 +136,7 @@ export default function ModuleWorkspacePage() {
                 {selectedModule?.id === m.id && (
                   <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
                     <div className="rounded-lg bg-muted/50 p-3">
-                      <p className="text-muted-foreground">{t("courses")}</p>
+                      <p className="text-muted-foreground">{t("lessons")}</p>
                       <p className="font-medium">{m.completedLessons}/{m.totalLessons}</p>
                     </div>
                     <div className="rounded-lg bg-muted/50 p-3">

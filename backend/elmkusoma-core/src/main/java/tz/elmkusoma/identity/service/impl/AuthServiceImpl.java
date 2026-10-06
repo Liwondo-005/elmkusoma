@@ -129,6 +129,9 @@ public class AuthServiceImpl implements AuthService {
     private tz.elmkusoma.identity.service.LoginAttemptService loginAttemptService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.identity.service.OtpMailService otpMailService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.config.TenantAwareRedisTemplate tenantAwareRedisTemplate;
 
     @Value("${jwt.access-token-expiration-ms}")
@@ -996,6 +999,13 @@ public class AuthServiceImpl implements AuthService {
         // value is never logged (it must travel only through the delivery channel).
         String code = String.format("%05d", SECURE_RANDOM.nextInt(100000));
 
+        // A resend supersedes every older still-unused code, so only the latest
+        // code can ever verify — a stale code must not stay live after a resend.
+        for (VerificationCode stale : verificationCodeRepository.findAllByEmailAndUsedFalseOrderByCreatedAtDesc(email)) {
+            stale.setUsed(true);
+            verificationCodeRepository.save(stale);
+        }
+
         VerificationCode verificationCode = VerificationCode.builder()
                 .email(email)
                 .code(hashToken(code))
@@ -1005,10 +1015,22 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         verificationCodeRepository.save(verificationCode);
 
-        log.info("Verification code issued for user: {}", email);
+        log.info("Verification code sent to {}", email);
+
+        // Real delivery: best-effort SMTP hand-off (never fails the request —
+        // the code is already persisted above and can be resent after cooldown).
+        if (otpMailService != null) {
+            otpMailService.sendVerificationCode(email, code);
+        }
     }
 
     @Override
+    // Failed verification is a *recorded outcome*, not an aborted mutation: the
+    // attempt increment and the used-flag writes that precede each throw must
+    // survive. Class-level @Transactional would otherwise roll them back with
+    // the IllegalArgumentException (pre-existing: expired/lockout used-flags
+    // silently never persisted either).
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyCode(VerifyCodeRequest request) {
         String email = request.getEmail().toLowerCase().trim();
         String code = request.getCode().trim();
@@ -1018,7 +1040,7 @@ public class AuthServiceImpl implements AuthService {
         // value is hash-compared below (a raw-code lookup could never match).
         VerificationCode verificationCode = verificationCodeRepository
                 .findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid verification code"));
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired verification code"));
 
         // Single message for wrong/expired/consumed: distinct texts would let
         // attackers probe code validity (enumeration oracle).
@@ -1039,7 +1061,7 @@ public class AuthServiceImpl implements AuthService {
         if (!hashToken(code).equals(verificationCode.getCode())) {
             verificationCode.setAttempts(verificationCode.getAttempts() + 1);
             verificationCodeRepository.save(verificationCode);
-            throw new IllegalArgumentException("Invalid verification code");
+            throw new IllegalArgumentException("Invalid or expired verification code");
         }
 
         verificationCode.setAttempts(verificationCode.getAttempts() + 1);

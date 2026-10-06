@@ -42,6 +42,9 @@ public class WorkshopSession extends BaseEntity {
     @Column(name = "duration_minutes")
     private Integer durationMinutes;
 
+    @Column(name = "academic_year", length = 32)
+    private String academicYear;
+
     @Column(name = "location", length = 200)
     private String location;
 
