@@ -133,16 +133,20 @@ export const collegeApi = {
   upsertCareerProfile: (studentId: string, data: Partial<CareerProfile>) => api.post<CareerProfile>(`/api/v1/education/higher-education/career-profile/${studentId}`, data),
 
   // Professional Development
-  getLearnerProfessionalDev: (studentId: string) => api.get<any[]>(`/api/v1/education/professional-dev/student/${studentId}`),
-  createProfessionalDev: (data: any) => api.post<any>("/api/v1/education/professional-dev", data),
-  updateProfessionalDev: (id: string, data: any) => api.put<any>(`/api/v1/education/professional-dev/${id}`, data),
-  deleteProfessionalDev: (id: string) => api.delete<void>(`/api/v1/education/professional-dev/${id}`),
+  // Served by ProfessionalDevelopmentController at /v1/college/learner/professional-dev —
+  // there is no /api/v1/education/professional-dev mapping, so the /api/v1 rewrite below
+  // strips the prefix and lands on the college controller.
+  getLearnerProfessionalDev: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/professional-dev/student/${studentId}`),
+  createProfessionalDev: (data: any) => api.post<any>("/api/v1/college/learner/professional-dev", data),
+  updateProfessionalDev: (id: string, data: any) => api.put<any>(`/api/v1/college/learner/professional-dev/${id}`, data),
+  deleteProfessionalDev: (id: string) => api.delete<void>(`/api/v1/college/learner/professional-dev/${id}`),
 
   // Deep Learning Content
-  getLearnerDeepContent: (studentId: string) => api.get<DeepContent[]>(`/api/v1/education/deep-learning/student/${studentId}`),
-  createDeepContent: (data: DeepContentDto) => api.post<DeepContent>("/api/v1/education/deep-learning", data),
-  updateDeepContent: (id: string, data: Partial<DeepContentDto>) => api.put<DeepContent>(`/api/v1/education/deep-learning/${id}`, data),
-  deleteDeepContent: (id: string) => api.delete<void>(`/api/v1/education/deep-learning/${id}`),
+  // Served by DeepLearningContentController at /v1/college/learner/deep-learning.
+  getLearnerDeepContent: (studentId: string) => api.get<DeepContent[]>(`/api/v1/college/learner/deep-learning/student/${studentId}`),
+  createDeepContent: (data: DeepContentDto) => api.post<DeepContent>("/api/v1/college/learner/deep-learning", data),
+  updateDeepContent: (id: string, data: Partial<DeepContentDto>) => api.put<DeepContent>(`/api/v1/college/learner/deep-learning/${id}`, data),
+  deleteDeepContent: (id: string) => api.delete<void>(`/api/v1/college/learner/deep-learning/${id}`),
 
   // Learning Modules
   getLearnerModules: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/modules/student/${studentId}`),

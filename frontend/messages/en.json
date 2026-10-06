@@ -5205,7 +5205,7 @@
     "deleteNotification": "Delete notification",
     "showing": "Showing {count} notification{s}",
     "showingOne": "Showing 1 notification",
-    "inCategory": "in <span class=\"font-medium text-foreground\">{category}</span>",
+    "inCategory": "in {category}",
     "justNow": "Just now",
     "minutesAgo": "{count} minute{s} ago",
     "hoursAgo": "{count} hour{s} ago",
@@ -6881,7 +6881,7 @@
       "newSetting": "New Setting",
       "settingKeyEG": "Setting key (e.g. school_name)",
       "descriptionOptional": "Description (optional)",
-      "valueJsonOrPlain": "Value (JSON or plain text, e.g. {\"key\": \"value\"} or \"My School\")",
+      "valueJsonOrPlain": "Value (JSON or plain text, e.g. '{\"key\": \"value\"}' or \"My School\")",
       "noSettingsConfigured": "No settings configured",
       "addSettingsToCustomize": "Add settings to customize your institution.",
       "public": "Public"

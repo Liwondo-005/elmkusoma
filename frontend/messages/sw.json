@@ -5205,7 +5205,7 @@
     "deleteNotification": "Futa arifa",
     "showing": "Inaonyesha arifa {count}{s}",
     "showingOne": "Inaonyesha arifa 1",
-    "inCategory": "kwenye <span class=\"font-medium text-foreground\">{category}</span>",
+    "inCategory": "kwenye {category}",
     "justNow": "Sasa hivi",
     "minutesAgo": "dakika {count} zilizopita{s}",
     "hoursAgo": "saa {count} zilizopita{s}",
@@ -6881,7 +6881,7 @@
       "newSetting": "New Setting",
       "settingKeyEG": "Setting key (e.g. school_name)",
       "descriptionOptional": "Description (optional)",
-      "valueJsonOrPlain": "Value (JSON or plain text, e.g. {\"key\": \"value\"} or \"My Shule\")",
+      "valueJsonOrPlain": "Value (JSON or plain text, e.g. '{\"key\": \"value\"}' or \"My Shule\")",
       "noSettingsConfigured": "Hakuna mipangilio configured",
       "addSettingsToCustomize": "Add mipangilio to customize your taasisi.",
       "public": "Public"
