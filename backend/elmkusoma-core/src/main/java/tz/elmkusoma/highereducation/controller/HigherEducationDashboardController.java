@@ -32,8 +32,8 @@ public class HigherEducationDashboardController {
             @RequestAttribute("institutionId") UUID serverInstitutionId,
             @RequestAttribute("userId") UUID callerUserId,
             @RequestAttribute("userRole") String userRole) {
-        verifyDashboardAccess(studentId, serverInstitutionId, callerUserId, userRole);
-        HigherEducationDashboardDTO dashboard = dashboardService.getDashboard(studentId, serverInstitutionId, learningLevel);
+        UUID resolvedStudentId = verifyDashboardAccess(studentId, serverInstitutionId, callerUserId, userRole);
+        HigherEducationDashboardDTO dashboard = dashboardService.getDashboard(resolvedStudentId, serverInstitutionId, learningLevel);
         return ResponseEntity.ok(ApiResponse.success(dashboard));
     }
 
@@ -103,33 +103,62 @@ public class HigherEducationDashboardController {
         return ResponseEntity.ok(ApiResponse.success(careerProfileService.createOrUpdate(studentId, dto)));
     }
 
-    private void verifyDashboardAccess(UUID studentId, UUID serverInstitutionId, UUID callerUserId, String userRole) {
+    /**
+     * Verifies the caller may read the dashboard for {@code requestedStudentId} and
+     * returns the student row id to read.
+     *
+     * Clients identify the learner by their *user* id (the session user object has
+     * no separate studentId), while the domain model keys students by the students
+     * table id. Those are different values, so accepting only the row id made
+     * /dashboard/learner fail with 403 ("You are not authorized to access this
+     * Dashboard") and the page rendered "Failed to load dashboard data". A path
+     * parameter equal to the caller's own user id is therefore resolved to that
+     * caller's own student row. Ownership is unchanged: it only ever resolves to
+     * the caller's own row, and any other value still has to match it.
+     */
+    private UUID verifyDashboardAccess(UUID studentId, UUID serverInstitutionId, UUID callerUserId, String userRole) {
+        UUID effectiveStudentId = studentId;
+        UUID ownStudentId = null;
+        if (callerUserId != null) {
+            ownStudentId = studentRepository.findByUserIdAndIsDeletedFalse(callerUserId)
+                    .map(s -> s.getId())
+                    .orElse(null);
+        }
+        if (ownStudentId != null && ownStudentId.equals(studentId)) {
+            effectiveStudentId = ownStudentId;
+        }
+        final boolean requestedByOwnUserId = callerUserId != null && callerUserId.equals(studentId);
+        final UUID targetStudentId = effectiveStudentId;
+
         if ("ADMIN".equals(userRole)) {
-            return;
+            return targetStudentId;
         }
         if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
-            UUID ownStudentId = null;
-            if (callerUserId != null) {
-                ownStudentId = studentRepository.findByUserIdAndIsDeletedFalse(callerUserId)
-                        .map(s -> s.getId())
-                        .orElse(null);
-            }
-            if (ownStudentId == null || !ownStudentId.equals(studentId)) {
+            if (ownStudentId == null) {
+                // No students row for this account (freshly registered or seeded
+                // learner). Serve the caller's own dashboard rather than 403 -
+                // it can only ever be their own id, and the dashboard renders
+                // empty until student-scoped data exists.
+                if (!requestedByOwnUserId) {
+                    throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
+                }
+            } else if (!ownStudentId.equals(targetStudentId)) {
                 throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
             }
         } else if ("PARENT".equals(userRole)) {
             boolean isChild = callerUserId != null && parentStudentLinkRepository.findAllByParentId(callerUserId).stream()
-                    .anyMatch(link -> link.getStudentId().equals(studentId));
+                    .anyMatch(link -> link.getStudentId().equals(targetStudentId));
             if (!isChild) {
                 throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
             }
         }
-        studentRepository.findById(studentId)
+        studentRepository.findById(targetStudentId)
                 .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
                 .ifPresent(s -> {
                     if (s.getInstitutionId() == null || !s.getInstitutionId().equals(serverInstitutionId)) {
                         throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
                     }
                 });
+        return targetStudentId;
     }
 }
