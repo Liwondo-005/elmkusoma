@@ -77,6 +77,9 @@ public class AuthServiceImpl implements AuthService {
     private tz.elmkusoma.audit.service.AuditService auditService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private tz.elmkusoma.identity.service.OtpMailService otpMailService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.config.TenantAwareRedisTemplate tenantAwareRedisTemplate;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -590,6 +593,13 @@ public class AuthServiceImpl implements AuthService {
 
         String code = String.format("%05d", SECURE_RANDOM.nextInt(100000));
 
+        // A resend supersedes every older still-unused code, so only the latest
+        // code can ever verify — a stale code must not stay live after a resend.
+        for (VerificationCode stale : verificationCodeRepository.findAllByEmailAndUsedFalseOrderByCreatedAtDesc(email)) {
+            stale.setUsed(true);
+            verificationCodeRepository.save(stale);
+        }
+
         VerificationCode verificationCode = VerificationCode.builder()
                 .email(email)
                 .code(code)
@@ -600,16 +610,47 @@ public class AuthServiceImpl implements AuthService {
         verificationCodeRepository.save(verificationCode);
 
         log.info("Verification code sent to {}", email);
+
+        // Real delivery: best-effort SMTP hand-off (never fails the request —
+        // the code is already persisted above and can be resent after cooldown).
+        if (otpMailService != null) {
+            otpMailService.sendVerificationCode(email, code);
+        }
     }
 
     @Override
+    // Failed verification is a *recorded outcome*, not an aborted mutation: the
+    // attempt increment and the used-flag writes that precede each throw must
+    // survive. Class-level @Transactional would otherwise roll them back with
+    // the IllegalArgumentException (pre-existing: expired/lockout used-flags
+    // silently never persisted either).
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyCode(VerifyCodeRequest request) {
         String email = request.getEmail().toLowerCase().trim();
         String code = request.getCode().trim();
 
-        VerificationCode verificationCode = verificationCodeRepository
-                .findTopByEmailAndCodeAndUsedFalseOrderByCreatedAtDesc(email, code)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired verification code"));
+        java.util.Optional<VerificationCode> matched = verificationCodeRepository
+                .findTopByEmailAndCodeAndUsedFalseOrderByCreatedAtDesc(email, code);
+
+        if (matched.isEmpty()) {
+            // Wrong code: count the failed attempt against the latest live code so
+            // the 5-attempt cap actually binds. (Previously attempts only moved on
+            // a matching lookup, which made the cap unreachable for guessers.)
+            VerificationCode latest = verificationCodeRepository
+                    .findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email)
+                    .orElse(null);
+            if (latest != null && !latest.isExpired()) {
+                if (latest.getAttempts() >= 5) {
+                    throw new IllegalArgumentException("Too many failed attempts. Please request a new code.");
+                }
+                latest.setAttempts(latest.getAttempts() + 1);
+                verificationCodeRepository.save(latest);
+            }
+            // Same message as the expired path (anti-enumeration, locked by tests).
+            throw new IllegalArgumentException("Invalid or expired verification code");
+        }
+
+        VerificationCode verificationCode = matched.get();
 
         if (verificationCode.isExpired()) {
             verificationCode.setUsed(true);
