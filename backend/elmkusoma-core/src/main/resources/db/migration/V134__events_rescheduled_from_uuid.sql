@@ -1,4 +1,4 @@
--- V129: events.rescheduled_from must be uuid, not timestamp.
+-- V134: events.rescheduled_from must be uuid, not timestamp.
 --
 -- Event.rescheduledFrom is a java.util.UUID (the id of the event this one was
 -- rescheduled from), mapped to this column. V71 declared it UUID, but V75 then

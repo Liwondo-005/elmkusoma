@@ -1,4 +1,4 @@
--- V128: Align courses.created_by with the JPA mapping (uuid -> varchar).
+-- V133: Align courses.created_by with the JPA mapping (uuid -> varchar).
 --
 -- BaseEntity.createdBy is a String and AuditListener @PrePersist fills it with
 -- authentication.getName() (an email/username), exactly like updated_by. Every
