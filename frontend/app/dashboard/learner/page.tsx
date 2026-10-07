@@ -26,7 +26,7 @@ import type { LearnerNotification } from "@/lib/learner-api"
 
 export default function LearnerDashboardPage() {
   const { user, loading: authLoading } = useAuth()
-  const isHE = user?.learningLevel === "UNIVERSITY" || user?.learningLevel === "COLLEGE"
+  const isHE = user?.learningLevel === "UNIVERSITY" || user?.learningLevel === "COLLEGE" || user?.learningLevel === "VETA"
   const [dashboard, setDashboard] = useState<HigherEducationDashboard | null>(null)
   const [generalCourses, setGeneralCourses] = useState<LearnerCourseSummary[]>([])
   const [bookmarks, setBookmarks] = useState<BookmarkType[]>([])
@@ -48,8 +48,13 @@ export default function LearnerDashboardPage() {
       setLoading(true)
       setError(null)
       if (isHE) {
-        const res = await collegeApi.getHEDashboard(user.id, user.learningLevel || "UNIVERSITY")
-        setDashboard(res.data ?? null)
+        const [res, notifRes] = await Promise.allSettled([
+          collegeApi.getHEDashboard(user.id, user.learningLevel || "COLLEGE"),
+          learnerApi.getNotifications(),
+        ])
+        if (res.status === "fulfilled") setDashboard(res.value.data ?? null)
+        else throw res.reason
+        if (notifRes.status === "fulfilled") setFeedNotifications(notifRes.value.slice(0, 5))
       } else {
         const [coursesRes, bookmarkRes, notifRes] = await Promise.allSettled([
           learnerApi.getCourses(),

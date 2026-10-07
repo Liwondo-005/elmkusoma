@@ -34,7 +34,11 @@ export const collegeApi = {
   deleteCompetency: (id: string) => api.delete<void>(`/api/v1/education/competencies/${id}`),
   getStudentCompetencies: (studentId: string) => api.get<CompetencyRecord[]>(`/api/v1/education/competencies/student/${studentId}`),
   updateStudentCompetency: (studentId: string, competencyId: string, data: { status: string; evidence?: string }) =>
-    api.put<CompetencyRecord>(`/api/v1/education/competencies/student/${studentId}/competency/${competencyId}`, data),
+    api.put<CompetencyRecord>(
+      `/api/v1/education/competencies/student/${studentId}/competency/${competencyId}` +
+        `?status=${encodeURIComponent(data.status)}` +
+        (data.evidence ? `&evidence=${encodeURIComponent(data.evidence)}` : ""),
+    ),
   getCompetencySummary: (studentId: string) => api.get<CompetencySummary>(`/api/v1/education/competencies/student/${studentId}/summary`),
   linkAssessment: (competencyId: string, data: { assessmentId: string; weight?: number }) =>
     api.post<void>(`/api/v1/education/competencies/${competencyId}/assessments`, data),
@@ -133,16 +137,16 @@ export const collegeApi = {
   upsertCareerProfile: (studentId: string, data: Partial<CareerProfile>) => api.post<CareerProfile>(`/api/v1/education/higher-education/career-profile/${studentId}`, data),
 
   // Professional Development
-  getLearnerProfessionalDev: (studentId: string) => api.get<any[]>(`/api/v1/education/professional-dev/student/${studentId}`),
-  createProfessionalDev: (data: any) => api.post<any>("/api/v1/education/professional-dev", data),
-  updateProfessionalDev: (id: string, data: any) => api.put<any>(`/api/v1/education/professional-dev/${id}`, data),
-  deleteProfessionalDev: (id: string) => api.delete<void>(`/api/v1/education/professional-dev/${id}`),
+  getLearnerProfessionalDev: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/professional-dev/student/${studentId}`),
+  createProfessionalDev: (data: any) => api.post<any>("/api/v1/college/learner/professional-dev", data),
+  updateProfessionalDev: (id: string, data: any) => api.put<any>(`/api/v1/college/learner/professional-dev/${id}`, data),
+  deleteProfessionalDev: (id: string) => api.delete<void>(`/api/v1/college/learner/professional-dev/${id}`),
 
   // Deep Learning Content
-  getLearnerDeepContent: (studentId: string) => api.get<DeepContent[]>(`/api/v1/education/deep-learning/student/${studentId}`),
-  createDeepContent: (data: DeepContentDto) => api.post<DeepContent>("/api/v1/education/deep-learning", data),
-  updateDeepContent: (id: string, data: Partial<DeepContentDto>) => api.put<DeepContent>(`/api/v1/education/deep-learning/${id}`, data),
-  deleteDeepContent: (id: string) => api.delete<void>(`/api/v1/education/deep-learning/${id}`),
+  getLearnerDeepContent: (studentId: string) => api.get<DeepContent[]>(`/api/v1/college/learner/deep-learning/student/${studentId}`),
+  createDeepContent: (data: DeepContentDto) => api.post<DeepContent>("/api/v1/college/learner/deep-learning", data),
+  updateDeepContent: (id: string, data: Partial<DeepContentDto>) => api.put<DeepContent>(`/api/v1/college/learner/deep-learning/${id}`, data),
+  deleteDeepContent: (id: string) => api.delete<void>(`/api/v1/college/learner/deep-learning/${id}`),
 
   // Learning Modules
   getLearnerModules: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/modules/student/${studentId}`),
