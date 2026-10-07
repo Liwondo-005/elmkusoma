@@ -17,6 +17,12 @@ public class CourseModuleRequest {
     @NotBlank(message = "Module title is required")
     private String title;
 
+    /**
+     * Module code for programme-style modules. Optional, and deliberately not required, so
+     * standalone provider courses are never forced into university-style codes.
+     */
+    private String moduleCode;
+
     private String description;
 
     private Integer sortOrder;

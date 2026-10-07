@@ -112,6 +112,7 @@ export interface LearningOffering {
 export interface CourseModuleSummary {
   id: string
   title: string
+  moduleCode?: string | null
   description: string | null
   sortOrder: number
   lessonCount: number

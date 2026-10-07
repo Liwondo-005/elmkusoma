@@ -192,6 +192,7 @@ public class CourseService {
         CourseModule module = CourseModule.builder()
                 .courseId(courseId)
                 .title(request.getTitle())
+                .moduleCode(normalizeModuleCode(request.getModuleCode()))
                 .description(request.getDescription())
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
                 .build();
@@ -199,6 +200,17 @@ public class CourseService {
 
         moduleRepository.save(module);
         return courseMapper.toModuleResponse(module, 0L);
+    }
+
+    /**
+     * Module codes are trimmed and blank input is stored as null, so standalone provider
+     * courses end up with no code instead of an empty string.
+     */
+    static String normalizeModuleCode(String moduleCode) {
+        if (moduleCode == null || moduleCode.isBlank()) {
+            return null;
+        }
+        return moduleCode.trim();
     }
 
     @Transactional(readOnly = true)

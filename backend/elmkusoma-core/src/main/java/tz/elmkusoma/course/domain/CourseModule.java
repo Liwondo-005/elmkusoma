@@ -22,6 +22,13 @@ public class CourseModule extends BaseEntity {
     @Column(name = "title", nullable = false, length = 300)
     private String title;
 
+    /**
+     * Module code (e.g. "CS 201"). Nullable on purpose: university-style codes apply to
+     * programme modules, while standalone provider courses must not be forced into them.
+     */
+    @Column(name = "module_code", length = 50)
+    private String moduleCode;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 

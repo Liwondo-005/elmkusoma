@@ -6,6 +6,8 @@ import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.academic.domain.EducationLevel;
 import tz.elmkusoma.common.BaseEntity;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "programmes")
 @Getter
@@ -35,8 +37,13 @@ public class Programme extends BaseEntity {
     @Column(name = "duration_months")
     private Integer durationMonths;
 
-    @Column(name = "credit_hours")
-    private Integer creditHours;
+    /**
+     * Owning department. This is the real Department -> Programme relationship; the legacy
+     * departments.programme_ids jsonb array is not the source of truth. Nullable so existing
+     * programmes and institutions that do not model departments keep working.
+     */
+    @Column(name = "department_id")
+    private UUID departmentId;
 
     @Builder.Default
     @Column(name = "is_active", nullable = false)

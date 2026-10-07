@@ -17,6 +17,7 @@ public class CourseModuleResponse {
     private UUID id;
     private UUID courseId;
     private String title;
+    private String moduleCode;
     private String description;
     private Integer sortOrder;
     private Long lessonCount;

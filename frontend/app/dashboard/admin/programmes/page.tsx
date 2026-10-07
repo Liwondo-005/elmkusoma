@@ -18,7 +18,7 @@ type FormData = {
   programmeType: ProgrammeType
   educationLevel: EducationLevelType
   durationMonths: string
-  creditHours: string
+  departmentId: string
   isActive: boolean
 }
 
@@ -29,8 +29,24 @@ const defaultForm: FormData = {
   programmeType: "DIPLOMA",
   educationLevel: "COLLEGE",
   durationMonths: "",
-  creditHours: "",
+  departmentId: "",
   isActive: true,
+}
+
+/**
+ * Durations are entered in months but read in years, matching how the academic model presents
+ * them (12 -> "1 year", 18 -> "1.5 years", 24 -> "2 years", 36 -> "3 years"). Anything under a
+ * year stays in months rather than becoming a fraction of a year.
+ */
+export function formatDurationMonths(months: number | null | undefined): string {
+  if (months === null || months === undefined || months <= 0) return "-"
+  if (months < 12) return months === 1 ? "1 month" : `${months} months`
+  if (months % 12 === 0) {
+    const years = months / 12
+    return years === 1 ? "1 year" : `${years} years`
+  }
+  const years = Math.round((months / 12) * 10) / 10
+  return `${years} years`
 }
 
 export default function ProgrammesPage() {
@@ -38,6 +54,7 @@ export default function ProgrammesPage() {
   const tc = useTranslations("common");
   const ts = useTranslations("status");
   const [programmes, setProgrammes] = useState<Programme[]>([])
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -52,6 +69,14 @@ export default function ProgrammesPage() {
       setLoading(true)
       const res = await collegeApi.listProgrammes()
       setProgrammes((res.data as Programme[] | undefined) || [])
+      // The department selector is a convenience list: a failure here must not hide the
+      // programmes themselves, so it degrades to "no departments" instead of erroring.
+      try {
+        const depts = await collegeApi.listDepartments()
+        setDepartments((depts.data as { id: string; name: string }[] | undefined) || [])
+      } catch {
+        setDepartments([])
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("programmes.failedToLoadProgrammes"))
     } finally {
@@ -76,7 +101,7 @@ export default function ProgrammesPage() {
       const payload = {
         ...form,
         durationMonths: form.durationMonths ? Number(form.durationMonths) : undefined,
-        creditHours: form.creditHours ? Number(form.creditHours) : undefined,
+        departmentId: form.departmentId || undefined,
       }
       if (editing) {
         await collegeApi.updateProgramme(editing.id, payload)
@@ -101,7 +126,7 @@ export default function ProgrammesPage() {
       programmeType: prog.programmeType,
       educationLevel: prog.educationLevel,
       durationMonths: prog.durationMonths?.toString() || "",
-      creditHours: prog.creditHours?.toString() || "",
+      departmentId: prog.departmentId || "",
       isActive: prog.isActive,
     })
     setEditing(prog)
@@ -197,7 +222,7 @@ export default function ProgrammesPage() {
                       <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{prog.code}</span>
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{prog.programmeType}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground">{prog.durationMonths ? `${prog.durationMonths} months` : "-"}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground">{formatDurationMonths(prog.durationMonths)}</td>
                     <td className="px-5 py-3.5 text-muted-foreground">{prog.educationLevel}</td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -319,17 +344,28 @@ export default function ProgrammesPage() {
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                     placeholder={t("programmes.eG")}
                   />
+                  {/* Durations are entered in months but read in years. */}
+                  {form.durationMonths !== "" && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDurationMonths(Number(form.durationMonths))}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">{t("programmes.creditHours")}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.creditHours}
-                    onChange={(e) => setForm({ ...form, creditHours: e.target.value })}
+                  {/* Department -> Programme: the owning department, scoped to this institution. */}
+                  <label className="mb-1 block text-sm font-medium">{t("programmes.department")}</label>
+                  <select
+                    value={form.departmentId}
+                    onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    placeholder={t("programmes.eG2")}
-                  />
+                  >
+                    <option value="">{tc("none")}</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="flex items-center gap-3">
