@@ -90,6 +90,14 @@ export default function WorkshopsPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
+  // Workshop sessions are created by teaching staff: the backend authorises
+  // ADMIN / INSTITUTION_ADMIN / TEACHER / INSTRUCTOR on POST and rejects anyone
+  // else with 403. Offering the form to a learner produced a dead end ("Something
+  // went wrong" on save), so it is shown only where the API actually accepts it.
+  // The server stays the authority - this only avoids a guaranteed failure.
+  const canCreateWorkshop = ["Teacher", "Instructor", "Institution Admin", "Admin"].includes(
+    user?.role ?? "",
+  )
   const [sessions, setSessions] = useState<WorkshopSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -433,14 +441,16 @@ export default function WorkshopsPage() {
           title={t("empty.noModules")}
           description={t("empty.noModules")}
           action={
-            <button
-              onClick={() => setShowForm(true)}
-              aria-label={t("workshop")}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="size-4" />
-              {t("workshop")}
-            </button>
+            canCreateWorkshop ? (
+              <button
+                onClick={() => setShowForm(true)}
+                aria-label={t("workshop")}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="size-4" />
+                {t("workshop")}
+              </button>
+            ) : undefined
           }
         />
       ) : filtered.length === 0 ? (
