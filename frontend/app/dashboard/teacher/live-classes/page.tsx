@@ -70,6 +70,9 @@ export default function TeacherLiveClassesPage() {
   const ts = useTranslations("status")
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [classes, setClasses] = useState<ClassOption[]>([])
+
+  /** Grace window for "now" scheduling; mirrors the backend's 1-minute allowance. */
+  const SCHEDULE_PAST_GRACE_MS = 60_000
   const [subjects, setSubjects] = useState<SubjectOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -144,7 +147,17 @@ export default function TeacherLiveClassesPage() {
         setError(t("liveClasses.loadError"))
       }
       if (classesData.status === "fulfilled") {
-        setClasses(classesData.value)
+        // /v1/teachers/me/classes can return the same class group more than once
+        // (one row per taught subject). The selector keys options by classGroupId,
+        // so duplicates produced "Encountered two children with the same key" and
+        // could mis-render the option. Keep the first row per class group.
+        const uniqueClasses = new Map<string, ClassOption>()
+        for (const c of classesData.value) {
+          if (c.classGroupId && !uniqueClasses.has(c.classGroupId)) {
+            uniqueClasses.set(c.classGroupId, c)
+          }
+        }
+        setClasses([...uniqueClasses.values()])
         const uniqueSubjects = new Map<string, SubjectOption>()
         classesData.value.forEach((c) => {
           if (c.subjectId && c.subjectName) {
@@ -202,7 +215,10 @@ export default function TeacherLiveClassesPage() {
       return
     }
     const scheduledDate = new Date(form.scheduledAt)
-    if (scheduledDate < new Date()) {
+    // Matches the backend grace window: browser and server clocks differ by a few
+    // seconds, so a class picked for "now" is already a second or two in the past
+    // by the time the request is sent. One minute is allowed (SCHEDULE_PAST_GRACE_MINUTES).
+    if (scheduledDate.getTime() < Date.now() - SCHEDULE_PAST_GRACE_MS) {
       setError(t("liveClasses.futureError"))
       return
     }

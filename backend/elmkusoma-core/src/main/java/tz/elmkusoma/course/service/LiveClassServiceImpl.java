@@ -55,6 +55,16 @@ import java.util.UUID;
 @Slf4j
 public class LiveClassServiceImpl implements LiveClassService {
 
+    /**
+     * Grace window for scheduling a class that is (very slightly) in the past.
+     * Browser and server clocks disagree by seconds, and a teacher picking
+     * "now" on a datetime-local input crosses the second boundary before the
+     * request lands - which failed with "Scheduled time must be in the future"
+     * even though the intent was to start immediately. One minute is enough to
+     * absorb that skew without allowing genuinely stale scheduling.
+     */
+    private static final long SCHEDULE_PAST_GRACE_MINUTES = 1;
+
     private final LiveClassRepository liveClassRepository;
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
@@ -114,7 +124,7 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (scheduledAt == null) {
             throw new IllegalArgumentException("Scheduled time is required");
         }
-        if (scheduledAt.isBefore(LocalDateTime.now())) {
+        if (scheduledAt.isBefore(LocalDateTime.now().minusMinutes(SCHEDULE_PAST_GRACE_MINUTES))) {
             throw new IllegalArgumentException("Scheduled time must be in the future");
         }
 
@@ -184,7 +194,7 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (request.getDescription() != null) liveClass.setDescription(request.getDescription());
         if (request.getScheduledAt() != null) {
             LocalDateTime newScheduledAt = parseDateTime(request.getScheduledAt());
-            if (newScheduledAt != null && newScheduledAt.isBefore(LocalDateTime.now())) {
+            if (newScheduledAt != null && newScheduledAt.isBefore(LocalDateTime.now().minusMinutes(SCHEDULE_PAST_GRACE_MINUTES))) {
                 throw new IllegalArgumentException("Scheduled time must be in the future");
             }
             liveClass.setScheduledAt(newScheduledAt);
