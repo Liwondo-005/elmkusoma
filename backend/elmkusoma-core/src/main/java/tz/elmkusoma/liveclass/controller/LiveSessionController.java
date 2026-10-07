@@ -411,7 +411,7 @@ public class LiveSessionController {
     }
 
     @GetMapping("/classes/{classId}/recording/download")
-    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER','INSTITUTION_ADMIN','ADMIN')")
     @Operation(summary = "Get recording download URL")
     public ResponseEntity<ApiResponse<Map<String, String>>> getRecordingDownload(
             @RequestAttribute(value = "userId", required = false) UUID userId,
@@ -636,7 +636,7 @@ public class LiveSessionController {
     }
 
     @GetMapping("/calendar/{classId}/export")
-    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER','INSTITUTION_ADMIN','ADMIN')")
     @Operation(summary = "Export live class as .ics calendar event")
     public ResponseEntity<String> exportCalendarEvent(
             @PathVariable UUID classId,

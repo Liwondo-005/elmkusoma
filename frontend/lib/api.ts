@@ -1387,6 +1387,19 @@ export interface LiveSessionHealth {
   message: string
 }
 
+export interface LiveSessionIssue {
+  id: string
+  liveClassId: string
+  classTitle: string | null
+  issueType: string
+  description: string | null
+  severity: string
+  status: string
+  userId: string
+  reportedBy: string
+  createdAt: string | null
+}
+
 export const adminApi = {
   getDashboard: (institutionId: string) =>
     request<DashboardResponse>(`/v1/admin/dashboard?institutionId=${institutionId}`),
@@ -1551,6 +1564,14 @@ export const adminApi = {
 
   getSessionParticipants: (classId: string) =>
     request<SessionParticipant[]>(`/v1/admin/live-sessions/participants/${classId}`),
+
+  forceEndLiveSession: (classId: string) =>
+    request<ActiveLiveSession>(`/v1/admin/live-sessions/${classId}/force-end`, {
+      method: "POST",
+    }),
+
+  getLiveSessionIssues: () =>
+    request<LiveSessionIssue[]>(`/v1/admin/live-sessions/issues`),
 
   getLiveSessionHealth: () =>
     request<LiveSessionHealth>(`/v1/live-session/health`),
@@ -2144,7 +2165,7 @@ export const mediaApi = {
     const instId = institutionId || localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
     return request<any[]>(`/api/v1/media?institutionId=${instId}`)
   },
-  getDownloadUrl: (mediaId: string) => request<any>(`/api/v1/media/${mediaId}/download-url`),
+  getDownloadUrl: (mediaId: string) => request<any>(`/v1/media/${mediaId}/download-url`),
   delete: (mediaId: string) => request<void>(`/api/v1/media/${mediaId}`, { method: "DELETE" }),
 }
 
@@ -2600,13 +2621,10 @@ export const primaryApi = {
     return fetchJSON<RealWorldMission[]>("/v1/primary/me/missions")
   },
   async completeMission(missionId: string, evidence: string): Promise<RealWorldMission> {
-    return fetchJSON<RealWorldMission>(`/v1/primary/me/missions/${missionId}/complete`, { method: "POST", body: JSON.stringify({ evidence }) })
-  },
-  async askAI(question: string): Promise<{ answer: string }> {
-    return fetchJSON<{ answer: string }>(`/v1/primary/me/ai-guide/ask`, { method: "POST", body: JSON.stringify({ question }) })
+    return fetchJSON<RealWorldMission>(`/v1/primary/me/missions/${missionId}/complete`, { 
+method: "POST", body: JSON.stringify({ evidence }) })
   },
 }
-
 // ── Oversight / National Command Center (docs/Nationaladmin.md) ────────────────
 // Every endpoint below is jurisdiction-scoped server-side from the JWT; the
 // optional scope only narrows within the caller's own authority.

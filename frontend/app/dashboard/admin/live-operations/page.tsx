@@ -13,6 +13,7 @@ import {
   type LiveSessionStats,
   type LiveSessionHealth,
   type SessionParticipant,
+  type LiveSessionIssue,
   type ActivityFeedResponse,
 } from "@/lib/api"
 import {
@@ -40,10 +41,19 @@ function timeAgo(timestamp: string): string {
   return `${Math.floor(hours / 24)}d ago`
 }
 
+function severityClassName(severity: string): string {
+  if (severity === "CRITICAL" || severity === "HIGH")
+    return "rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600"
+  if (severity === "MEDIUM")
+    return "rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600"
+  return "rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground"
+}
+
 export default function AdminLiveOperationsPage() {
   const { user } = useAuth()
   const router = useRouter()
   const tc = useTranslations("common")
+  const tl = useTranslations("liveOps")
 
   const [sessions, setSessions] = useState<ActiveLiveSession[]>([])
   const [teacherNames, setTeacherNames] = useState<Record<string, string>>({})
@@ -51,6 +61,13 @@ export default function AdminLiveOperationsPage() {
   const [health, setHealth] = useState<LiveSessionHealth | null>(null)
   const [activity, setActivity] = useState<ActivityFeedResponse[]>([])
   const [activityError, setActivityError] = useState<string | null>(null)
+
+  const [issues, setIssues] = useState<LiveSessionIssue[]>([])
+  const [issuesUnavailable, setIssuesUnavailable] = useState(false)
+  const [issuesFilter, setIssuesFilter] = useState<string | null>(null)
+  const [confirmEnd, setConfirmEnd] = useState<ActiveLiveSession | null>(null)
+  const [ending, setEnding] = useState(false)
+  const [endError, setEndError] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -75,12 +92,13 @@ export default function AdminLiveOperationsPage() {
     // All four calls are real backend endpoints; Promise.allSettled keeps the
     // page usable when one source fails (e.g. audit activity for an account
     // without an institution membership).
-    const [activeRes, statsRes, healthRes, activityRes, peopleRes] = await Promise.allSettled([
+    const [activeRes, statsRes, healthRes, activityRes, peopleRes, issuesRes] = await Promise.allSettled([
       adminApi.getActiveLiveSessions(),
       adminApi.getLiveSessionStats(),
       adminApi.getLiveSessionHealth(),
       auditApi.listActivity(institutionId, 0, 10),
       adminApi.listPeople(institutionId, 0, 200),
+      adminApi.getLiveSessionIssues(),
     ])
 
     if (activeRes.status === "fulfilled") {
@@ -109,6 +127,14 @@ export default function AdminLiveOperationsPage() {
         if (p.userId) names[p.userId] = p.fullName || `${p.firstName} ${p.lastName}`.trim()
       }
       setTeacherNames(names)
+    }
+
+    if (issuesRes.status === "fulfilled") {
+      setIssues(issuesRes.value)
+      setIssuesUnavailable(false)
+    } else {
+      setIssues([])
+      setIssuesUnavailable(true)
     }
 
     setLastRefresh(new Date().toISOString())
@@ -150,12 +176,36 @@ export default function AdminLiveOperationsPage() {
     }
   }
 
+  const openIssues = (session: ActiveLiveSession) => {
+    setIssuesFilter(session.id)
+    document.getElementById("live-issues")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  const confirmForceEnd = async () => {
+    if (!confirmEnd) return
+    setEnding(true)
+    setEndError(null)
+    try {
+      await adminApi.forceEndLiveSession(confirmEnd.id)
+      setConfirmEnd(null)
+      fetchData()
+    } catch (e) {
+      setEndError(e instanceof Error && e.message ? e.message : tl("forceEndFailed"))
+    } finally {
+      setEnding(false)
+    }
+  }
+
   const filteredSessions = sessions.filter((session) => {
     const q = searchQuery.toLowerCase()
     if (!q) return true
     const lecturer = teacherNames[session.teacherId ?? ""] || ""
     return session.title.toLowerCase().includes(q) || lecturer.toLowerCase().includes(q)
   })
+
+  const visibleIssues = issuesFilter
+    ? issues.filter((issue) => issue.liveClassId === issuesFilter)
+    : issues
 
   const participantsOnline = sessions.reduce((sum, s) => sum + (s.currentParticipants || 0), 0)
   const completionRate =
@@ -375,18 +425,94 @@ export default function AdminLiveOperationsPage() {
                       {session.durationMinutes ? `${session.durationMinutes} min` : "—"}
                     </td>
                     <td className="py-3">
-                      <button
-                        onClick={() => openParticipants(session)}
-                        className="flex size-6 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted"
-                        title="View participants"
-                      >
-                        <Users className="size-3" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => openParticipants(session)}
+                          className="flex size-6 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted"
+                          title="View participants"
+                        >
+                          <Users className="size-3" />
+                        </button>
+                        <button
+                          onClick={() => openIssues(session)}
+                          className="flex size-6 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted"
+                          title={tl("viewIssues")}
+                        >
+                          <AlertTriangle className="size-3" />
+                        </button>
+                        {session.status === "IN_PROGRESS" && (
+                          <button
+                            onClick={() => {
+                              setConfirmEnd(session)
+                              setEndError(null)
+                            }}
+                            className="flex size-6 items-center justify-center rounded border border-destructive/40 text-destructive hover:bg-destructive/10"
+                            title={tl("forceEnd")}
+                          >
+                            <XCircle className="size-3" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      <section id="live-issues" className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <AlertTriangle className="size-4 text-amber-500" />
+          <h2 className="text-sm font-semibold text-foreground">{tl("issues")}</h2>
+          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600">
+            {visibleIssues.length}
+          </span>
+          {issuesFilter && (
+            <button
+              onClick={() => setIssuesFilter(null)}
+              className="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+            >
+              {tl("showAllIssues")} <XCircle className="size-3" />
+            </button>
+          )}
+        </div>
+        {issuesUnavailable ? (
+          <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+            {tl("issuesError")}
+          </p>
+        ) : visibleIssues.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+            {issuesFilter ? tl("issuesFilteredEmpty") : tl("issuesEmpty")}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {visibleIssues.map((issue) => (
+              <div key={issue.id} className="rounded-xl border border-border bg-background p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">
+                    {issue.classTitle ?? `${issue.liveClassId.slice(0, 8)}…`}
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
+                    {issue.issueType}
+                  </span>
+                  <span className={severityClassName(issue.severity)}>{issue.severity}</span>
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                    {issue.status}
+                  </span>
+                  <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+                    {issue.createdAt ? timeAgo(issue.createdAt) : "—"}
+                  </span>
+                </div>
+                {issue.description && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">{issue.description}</p>
+                )}
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {tl("reportedBy")}: {issue.reportedBy}
+                </p>
+              </div>
+            ))}
           </div>
         )}
       </section>
@@ -537,6 +663,34 @@ export default function AdminLiveOperationsPage() {
             </div>
           )}
         </section>
+      )}
+
+      {confirmEnd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <h3 className="text-sm font-semibold text-foreground">{tl("forceEndTitle")}</h3>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {tl("forceEndBody", { title: confirmEnd.title })}
+            </p>
+            {endError && <p className="mt-2 text-xs font-medium text-destructive">{endError}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmEnd(null)}
+                disabled={ending}
+                className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-sm text-foreground hover:bg-muted disabled:opacity-50"
+              >
+                {tl("forceEndCancel")}
+              </button>
+              <button
+                onClick={confirmForceEnd}
+                disabled={ending}
+                className="inline-flex h-9 items-center rounded-lg bg-destructive px-4 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {ending ? "…" : tl("forceEndConfirm")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Footer Info — real service status, not a hardcoded claim */}

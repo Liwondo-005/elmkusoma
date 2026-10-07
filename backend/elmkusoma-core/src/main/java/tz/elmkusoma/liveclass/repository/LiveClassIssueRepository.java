@@ -12,5 +12,8 @@ public interface LiveClassIssueRepository extends JpaRepository<LiveClassIssue, 
 
     List<LiveClassIssue> findByLiveClassIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID liveClassId);
 
+    List<LiveClassIssue> findByLiveClassIdInAndIsDeletedFalseOrderByCreatedAtDesc(
+            java.util.Collection<UUID> liveClassIds);
+
     long countByStatusAndIsDeletedFalse(String status);
 }

@@ -145,4 +145,43 @@ class LiveSessionSecurityRegressionTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value("Access denied"));
     }
+
+    @Test
+    void forceEnd_ownInstitutionClass_is200AndCompletes() throws Exception {
+        LiveClass ownClass = liveClassRepository.save(LiveClass.builder()
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .teacherId(UUID.randomUUID())
+                .title("Force end target " + UUID.randomUUID().toString().substring(0, 8))
+                .scheduledAt(LocalDateTime.now().minusMinutes(30))
+                .durationMinutes(60)
+                .status("IN_PROGRESS")
+                .isDeleted(false)
+                .build());
+
+        mockMvc.perform(post("/v1/admin/live-sessions/" + ownClass.getId() + "/force-end")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", "Bearer " + TestTokens.adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+    }
+
+    @Test
+    void forceEnd_foreignInstitutionClass_is403() throws Exception {
+        mockMvc.perform(post("/v1/admin/live-sessions/" + classInB.getId() + "/force-end")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", "Bearer " + TestTokens.adminToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error").value("Access denied"));
+    }
+
+    @Test
+    void forceEnd_missingClass_is404() throws Exception {
+        mockMvc.perform(post("/v1/admin/live-sessions/" + UUID.randomUUID() + "/force-end")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", "Bearer " + TestTokens.adminToken()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false));
+    }
 }
