@@ -430,7 +430,7 @@ Courses (with `isPublished`/`isFeatured` flags) → modules (ordered) → lesson
 - `learner_notifications`: user-targeted rows (type/target linkage, read flags), JWT-scoped list/unread-count/read APIs.
 - `NotificationService`: direct notify, institution-student broadcast (STUDENT only), read-state management, and parent preference gating (attendance/grade/fee/announcement categories).
 - Preferences: per-parent channel toggles (SMS/email/push); platform-level notification records for admin broadcast.
-- Realtime: STOMP broadcaster in realtime module + event-publisher bridge from core.
+- Realtime: single RabbitMQ->realtime->STOMP pipeline. Core publishes notifications on `elmkusoma.notification` and presence on `elmkusoma.presence.realtime` (topic exchange `elmkusoma.exchange`); realtime service binds both queues and broadcasts `{type:NOTIFICATION|PRESENCE_UPDATE,...}` envelopes to `/queue/notifications/{userId}` and `/topic/institution/{id}/{notifications,presence}`. STOMP CONNECT carries a `token` header validated by `StompAuthChannelInterceptor` (per-destination authorization: own queue only, own institution topics only); the browser client (`frontend/lib/use-realtime.ts`, dependency-free STOMP) is mounted once in the dashboard layout with the existing 30s polling kept as fallback.
 - Email: workers module (Thymeleaf templates, Gmail SMTP defaults). SMS/push senders: NOT VERIFIED (preference flags only).
 - Communication: parent↔school messages, support ticket threads, announcements, platform notifications.
 
@@ -483,7 +483,7 @@ Hardcoded non-secret behavior (verified): token lifetimes (1h/7d), LiveKit room 
 
 **Status: PARTIAL (backend unit/integration present; no CI; frontend unit runner absent).**
 
-Backend (`backend/elmkusoma-core/src/test`, 18 files + test properties):
+Backend (`backend/elmkusoma-core/src/test`, 83 Java files / 81 `*Test` classes + test properties). Last full run: **1044 tests, 0 failures, 0 errors, 4 skipped** (`mvn test`, ~8 min). Key classes:
 
 | Test | Type | Covers |
 |---|---|---|
@@ -503,6 +503,9 @@ Backend (`backend/elmkusoma-core/src/test`, 18 files + test properties):
 | `ParentAuthorizationServiceTest` | Unit | Parent-child authorization |
 | `ParentPaymentServiceTest` | Unit | Payment/entitlement logic |
 | `EventSecurityTest` | Security (MockMvc) | 401/403 on event + webhook paths |
+| `ProviderIsolationSecurityTest` | Security (MockMvc) | Cross-tenant/student isolation incl. module progress + workshop ownership |
+| `LiveSessionSecurityRegressionTest` | Security (MockMvc) | Live session guards incl. admin force-end tenant checks |
+| `AiControllerTest` | Controller | `/v1/ai` health + ask 503 boundary |
 | `StudentServiceTest` | Unit | Student service |
 | `TeacherServiceTest` | Unit | Teacher service |
 
@@ -545,7 +548,9 @@ Only repository-verified items. Causes are not guessed.
 10. **LiveKit not in the main compose file.** Live features require the separate `docker-compose.livekit.yml` stack; a default `docker compose up` does not provide a LiveKit server.
 11. **OTP email delivery has no provisioned SMTP.** `OtpMailService` is best-effort against `spring.mail.host` (dev default `localhost:1025`). No sink runs on this box and no `SPRING_MAIL_*` creds are provisioned, so `/v1/auth/send-code` succeeds but the code — stored SHA-256-hashed, never logged in plaintext — never reaches a mailbox. Provision SMTP creds or run a MailHog/Mailpit sink to make email verification usable end-to-end.
 12. **LiveKit API secret: prod fail-fast added this session.** `application-prod.yml` now resolves `livekit.server.api-secret` from `LIVEKIT_API_SECRET` with no fallback, so a production boot without the env var fails closed instead of silently using the well-known dev default. Local/dev/test keep the fallback (`start.ps1` exports `LIVEKIT_API_SECRET` from `backend/.env`).
-13. **Repository remote carries no embedded credentials.** The expired PAT previously embedded in the `origin` URL was removed (`origin` is now `https://github.com/Liwondo-005/elmkusoma.git`); pushes require interactive authentication (Git Credential Manager or a fresh token). Offline work accumulates locally until credentials are provided.
+13. **AI provider boundary is honest but unimplemented.** `/v1/ai/assistant/ask` always returns 503 `AI_NOT_CONFIGURED`/`AI_PROVIDER_NOT_IMPLEMENTED` (no provider SDK, no keys); `/v1/ai/health` reports `configured:false`. Frontend AI pages render an unavailable banner instead of fabricated answers. Implement a provider service behind `AiService` when keys exist.
+14. **Realtime delivery needs live RabbitMQ.** Binding keys/payloads are aligned and the STOMP client is wired, but end-to-end push was not smoke-verified on this box (no broker running locally); polling fallbacks remain active. A long-lived broker may retain the obsolete `elmkusoma.realtime.notification.queue <- elmkusoma.notification.realtime` binding (harmless, no longer published).
+15. **Repository remote carries no embedded credentials.** The expired PAT previously embedded in the `origin` URL was removed (`origin` is now `https://github.com/Liwondo-005/elmkusoma.git`); pushes require interactive authentication (Git Credential Manager or a fresh token). Offline work accumulates locally until credentials are provided.
 
 ---
 
@@ -568,14 +573,14 @@ Only repository-verified items. Causes are not guessed.
 | Media | IMPLEMENTED | Media service + MinIO + presigned flows |
 | Certificates | IMPLEMENTED | Lifecycle + public verification + revocation |
 | Payments | IMPLEMENTED (agnostic) | Payment entity, webhook, entitlements; no gateway SDK |
-| Notifications | IMPLEMENTED | Service, preferences, realtime bridge; SMS/push senders NOT VERIFIED |
+| Notifications | IMPLEMENTED | Service, preferences; RabbitMQ->STOMP binding aligned + STOMP auth + browser client this session (push path needs live broker); SMS/push senders NOT VERIFIED |
 | Platform Admin | IMPLEMENTED | ~49-endpoint controller + commerce/moderation |
 | Institution Admin | IMPLEMENTED | Dashboard, settings, roles, people, org profile |
 | Oversight | IMPLEMENTED | Read-oriented controller + region/district model |
 | Database | IMPLEMENTED | ~170 entities, BaseEntity, raw-UUID pattern documented |
 | Flyway | IMPLEMENTED | V01–V132 contiguous; live `flyway_schema_history` matched through V130 this session |
 | Security | PARTIAL | Mechanisms verified; auth IP throttling extended (register/refresh/mfa), CORS wildcard removed, object-level ownership checks added for assessments/assignments/results this session; uniform coverage still not claimed |
-| Testing | PARTIAL | 18 backend tests + e2e; no CI; frontend unit runner absent |
+| Testing | PARTIAL | 1044 backend tests green (4 skipped) + e2e; no CI; frontend unit runner absent |
 
 ---
 
