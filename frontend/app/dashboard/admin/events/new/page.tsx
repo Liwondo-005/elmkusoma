@@ -1,12 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, Calendar } from "lucide-react"
 import Link from "next/link"
-import { adminApi } from "@/lib/api"
+import { adminApi, courseApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
+
+interface CourseOption {
+  id: string
+  title: string
+  description?: string | null
+}
+
+interface ModuleOption {
+  id: string
+  title: string
+  description?: string | null
+}
+
+interface LessonOption {
+  id: string
+  title: string
+  description?: string | null
+}
 
 const EVENT_TYPES = [
   "LECTURE", "SEMINAR", "WEBINAR", "WORKSHOP", "TUTORIAL",
@@ -96,6 +114,53 @@ export default function NewEventPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Related entity selectors: real persisted courses/modules/lessons, filtered by
+  // what the user types. Options are loaded from the existing course APIs and
+  // cascade course -> module -> lesson.
+  const [courseQuery, setCourseQuery] = useState("")
+  const [moduleQuery, setModuleQuery] = useState("")
+  const [lessonQuery, setLessonQuery] = useState("")
+  const [courses, setCourses] = useState<CourseOption[]>([])
+  const [modules, setModules] = useState<ModuleOption[]>([])
+  const [lessons, setLessons] = useState<LessonOption[]>([])
+
+  useEffect(() => {
+    courseApi
+      .listCourses("")
+      .then((list) => setCourses(Array.isArray(list) ? list : []))
+      .catch(() => setCourses([]))
+  }, [])
+
+  useEffect(() => {
+    if (!form.relatedCourseId) {
+      setModules([])
+      return
+    }
+    courseApi
+      .listModules(form.relatedCourseId)
+      .then((list) => setModules(Array.isArray(list) ? list : []))
+      .catch(() => setModules([]))
+  }, [form.relatedCourseId])
+
+  useEffect(() => {
+    if (!form.relatedModuleId) {
+      setLessons([])
+      return
+    }
+    courseApi
+      .listLessons(form.relatedModuleId)
+      .then((list) => setLessons(Array.isArray(list) ? list : []))
+      .catch(() => setLessons([]))
+  }, [form.relatedModuleId])
+
+  const matches = (query: string, ...values: (string | undefined | null)[]) =>
+    query.trim() === "" ||
+    values.some((v) => (v || "").toLowerCase().includes(query.trim().toLowerCase()))
+
+  const courseOptions = courses.filter((c) => matches(courseQuery, c.title, c.description))
+  const moduleOptions = modules.filter((m) => matches(moduleQuery, m.title, m.description))
+  const lessonOptions = lessons.filter((l) => matches(lessonQuery, l.title, l.description))
 
   function updateField<K extends keyof EventFormData>(key: K, value: EventFormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -319,40 +384,91 @@ export default function NewEventPage() {
           </div>
         </div>
 
-        {/* Related Course/Module/Lesson */}
+        {/* Related Course/Module/Lesson - real entity selectors.
+            EventRequest types these as UUIDs, so free text could only ever produce a
+            400. Options come from the institution's persisted courses/modules/lessons;
+            modules follow the chosen course and lessons the chosen module. */}
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.courseLabel")}</label>
             <input
               type="text"
-              value={form.relatedCourseId}
-              onChange={(e) => updateField("relatedCourseId", e.target.value)}
+              value={courseQuery}
+              onChange={(e) => setCourseQuery(e.target.value)}
               placeholder={t("admin.form.coursePlaceholder")}
               className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               aria-label={t("admin.form.courseLabel")}
             />
+            <select
+              value={form.relatedCourseId}
+              onChange={(e) => {
+                updateField("relatedCourseId", e.target.value)
+                // A different course invalidates its modules/lessons.
+                updateField("relatedModuleId", "")
+                updateField("relatedLessonId", "")
+                setModuleQuery("")
+                setLessonQuery("")
+              }}
+              className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              aria-label={t("admin.form.courseSelect")}
+            >
+              <option value="">{t("admin.form.noCourse")}</option>
+              {courseOptions.map((c) => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.moduleLabel")}</label>
             <input
               type="text"
-              value={form.relatedModuleId}
-              onChange={(e) => updateField("relatedModuleId", e.target.value)}
-              placeholder={t("admin.form.modulePlaceholder")}
-              className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              value={moduleQuery}
+              onChange={(e) => setModuleQuery(e.target.value)}
+              disabled={!form.relatedCourseId}
+              placeholder={form.relatedCourseId ? t("admin.form.modulePlaceholder") : t("admin.form.pickCourseFirst")}
+              className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
               aria-label={t("admin.form.moduleLabel")}
             />
+            <select
+              value={form.relatedModuleId}
+              onChange={(e) => {
+                updateField("relatedModuleId", e.target.value)
+                updateField("relatedLessonId", "")
+                setLessonQuery("")
+              }}
+              disabled={!form.relatedCourseId}
+              className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+              aria-label={t("admin.form.moduleSelect")}
+            >
+              <option value="">{t("admin.form.noModule")}</option>
+              {moduleOptions.map((m) => (
+                <option key={m.id} value={m.id}>{m.title}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">{t("admin.form.lessonLabel")}</label>
             <input
               type="text"
-              value={form.relatedLessonId}
-              onChange={(e) => updateField("relatedLessonId", e.target.value)}
-              placeholder={t("admin.form.lessonPlaceholder")}
-              className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              value={lessonQuery}
+              onChange={(e) => setLessonQuery(e.target.value)}
+              disabled={!form.relatedModuleId}
+              placeholder={form.relatedModuleId ? t("admin.form.lessonPlaceholder") : t("admin.form.pickModuleFirst")}
+              className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
               aria-label={t("admin.form.lessonLabel")}
             />
+            <select
+              value={form.relatedLessonId}
+              onChange={(e) => updateField("relatedLessonId", e.target.value)}
+              disabled={!form.relatedModuleId}
+              className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60"
+              aria-label={t("admin.form.lessonSelect")}
+            >
+              <option value="">{t("admin.form.noLesson")}</option>
+              {lessonOptions.map((l) => (
+                <option key={l.id} value={l.id}>{l.title}</option>
+              ))}
+            </select>
           </div>
         </div>
 

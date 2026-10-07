@@ -3,10 +3,22 @@
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth"
+import { resolveWorkspace } from "@/lib/workspace"
 
+/**
+ * The ELMKUSOMA mark is the "where do I belong" control:
+ * guest → public homepage, every authenticated role → its own workspace.
+ * It only navigates - it never touches the session, so it can not log anyone out
+ * and can not bounce an authenticated user to the public site. Leaving for the
+ * public homepage is an explicit logout (see the sidebar Logout button).
+ *
+ * `href` may still be passed to pin a specific destination (e.g. a marketing
+ * header that must always point at "/").
+ */
 export function Logo({
   className,
-  href = "/",
+  href,
   showText = true,
 }: {
   className?: string
@@ -14,8 +26,24 @@ export function Logo({
   showText?: boolean
 }) {
   const t = useTranslations("ui")
+  const { user, loading: authLoading } = useAuth()
+
+  let destination = href
+  if (!destination) {
+    if (authLoading) {
+      // Session still resolving: keep the neutral target so the click is harmless.
+      destination = "/"
+    } else if (!user) {
+      destination = "/"
+    } else {
+      // resolveWorkspace returns null for roles whose home is their own
+      // /dashboard (e.g. primary students), so fall back to it.
+      destination = resolveWorkspace(user) ?? "/dashboard"
+    }
+  }
+
   return (
-    <Link href={href} className={cn("flex items-center gap-2", className)} aria-label={t("logo.home")}>
+    <Link href={destination} className={cn("flex items-center gap-2", className)} aria-label={t("logo.home")}>
       <span className="relative inline-flex h-9 w-9 items-center justify-center" aria-hidden="true">
         <svg viewBox="0 0 40 40" className="h-9 w-9" fill="none" xmlns="http://www.w3.org/2000/svg">
           {/* sprout leaves */}

@@ -20,6 +20,14 @@ public interface LiveClassService {
 
     LiveClassResponse endSession(UUID teacherId, UUID liveClassId, UUID markedBy);
 
+    /**
+     * Authoritative expiry sweep: ends every started class whose scheduled start plus
+     * configured duration has already elapsed, finalising attendance, certificates and
+     * the recording/replay chain exactly like a manual end (no client, teacher or
+     * refresh involved). Returns the number of sessions ended.
+     */
+    int endExpiredSessions();
+
     LiveClassResponse getLiveClassById(UUID liveClassId);
 
     /**
