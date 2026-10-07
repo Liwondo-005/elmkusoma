@@ -70,6 +70,91 @@ class LiveClassServiceTest {
         liveClassId = UUID.randomUUID();
     }
 
+    /**
+     * Authoritative expiry: a started class past scheduledAt + duration must end
+     * server-side, so a 60-minute class starting at 10:00 ends at 11:00 regardless of
+     * refresh, reconnect or client state.
+     */
+    @Test
+    void endExpiredSessions_shouldEndLiveClassPastItsDuration() {
+        LiveClass live = buildLiveClass();
+        live.setStatus(LiveClassStatus.IN_PROGRESS.name());
+        live.setScheduledAt(LocalDateTime.now().minusMinutes(61));
+        live.setDurationMinutes(60);
+
+        when(liveClassRepository.findByStatusInAndIsDeletedFalse(any()))
+                .thenReturn(List.of(live));
+        when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        int ended = liveClassService.endExpiredSessions();
+
+        assertEquals(1, ended);
+        assertEquals(LiveClassStatus.ENDED.name(), live.getStatus());
+        verify(liveClassRepository).save(live);
+    }
+
+    @Test
+    void endExpiredSessions_shouldNotEndClassStillWithinItsDuration() {
+        LiveClass live = buildLiveClass();
+        live.setStatus(LiveClassStatus.IN_PROGRESS.name());
+        live.setScheduledAt(LocalDateTime.now().minusMinutes(10));
+        live.setDurationMinutes(60);
+
+        when(liveClassRepository.findByStatusInAndIsDeletedFalse(any()))
+                .thenReturn(List.of(live));
+
+        assertEquals(0, liveClassService.endExpiredSessions());
+        assertEquals(LiveClassStatus.IN_PROGRESS.name(), live.getStatus());
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    /** A class that never started is not a running session: no fabricated attendance. */
+    @Test
+    void endExpiredSessions_shouldIgnoreClassesThatNeverStarted() {
+        LiveClass scheduled = buildLiveClass();
+        scheduled.setStatus(LiveClassStatus.SCHEDULED.name());
+        scheduled.setScheduledAt(LocalDateTime.now().minusHours(3));
+
+        when(liveClassRepository.findByStatusInAndIsDeletedFalse(any()))
+                .thenReturn(Collections.emptyList());
+
+        assertEquals(0, liveClassService.endExpiredSessions());
+        assertEquals(LiveClassStatus.SCHEDULED.name(), scheduled.getStatus());
+        verify(liveClassRepository, never()).save(any(LiveClass.class));
+    }
+
+    /** One failing session must not abort the sweep for the rest. */
+    @Test
+    void endExpiredSessions_shouldContinueAfterOneClassFails() {
+        LiveClass broken = buildLiveClass();
+        broken.setId(UUID.randomUUID());
+        broken.setStatus(LiveClassStatus.LIVE.name());
+        broken.setScheduledAt(LocalDateTime.now().minusHours(2));
+        broken.setDurationMinutes(60);
+
+        LiveClass healthy = buildLiveClass();
+        healthy.setId(UUID.randomUUID());
+        healthy.setStatus(LiveClassStatus.LIVE.name());
+        healthy.setScheduledAt(LocalDateTime.now().minusHours(2));
+        healthy.setDurationMinutes(60);
+
+        when(liveClassRepository.findByStatusInAndIsDeletedFalse(any()))
+                .thenReturn(List.of(broken, healthy));
+        when(liveClassRepository.save(any(LiveClass.class)))
+                .thenAnswer(inv -> {
+                    LiveClass c = inv.getArgument(0);
+                    if (broken.getId().equals(c.getId())) {
+                        throw new IllegalStateException("boom");
+                    }
+                    return c;
+                });
+
+        int ended = liveClassService.endExpiredSessions();
+
+        assertEquals(1, ended);
+        assertEquals(LiveClassStatus.ENDED.name(), healthy.getStatus());
+    }
+
     @Test
     void getTeacherLiveClasses_shouldReturnList() {
         LiveClass lc = buildLiveClass();

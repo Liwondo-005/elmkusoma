@@ -90,6 +90,13 @@ export default function WorkshopsPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
+  // Workshop sessions are created by teaching staff: the backend authorises
+  // WorkshopSessionController authorises POST /v1/college/learner/workshops for
+  // STUDENT / OTHER_LEARNER as well as staff, and forces the caller's own student
+  // id and institution server-side (resolveStudentId + assertStudentInInstitution),
+  // so a learner creating their own record is accepted and a spoofed studentId is
+  // overwritten. The server stays the authority.
+  const canCreateWorkshop = true
   const [sessions, setSessions] = useState<WorkshopSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -433,14 +440,16 @@ export default function WorkshopsPage() {
           title={t("empty.noModules")}
           description={t("empty.noWorkshopsDesc")}
           action={
-            <button
-              onClick={() => setShowForm(true)}
-              aria-label={t("workshop")}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="size-4" />
-              {t("workshop")}
-            </button>
+            canCreateWorkshop ? (
+              <button
+                onClick={() => setShowForm(true)}
+                aria-label={t("workshop")}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="size-4" />
+                {t("workshop")}
+              </button>
+            ) : undefined
           }
         />
       ) : filtered.length === 0 ? (

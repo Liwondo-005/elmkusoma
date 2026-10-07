@@ -4,19 +4,19 @@ import { useEffect, useState } from "react"
 import { ArrowLeft, Users, BookOpen, HandHelping, User } from "lucide-react"
 import Link from "next/link"
 import { useRequireAuth } from "@/lib/auth"
-import { teacherApi, type StudentInClass } from "@/lib/teacher-api"
+import { nurseryApi, type NurseryClassmate } from "@/lib/nursery-api"
 import { LoadingState } from "@/components/learner/shared"
 import { useTranslations } from "next-intl"
 
 export default function LearnTogetherPage() {
   const t = useTranslations("nursery")
   const { user } = useRequireAuth()
-  const [classmates, setClassmates] = useState<StudentInClass[]>([])
+  const [classmates, setClassmates] = useState<NurseryClassmate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    teacherApi.getStudents()
+    nurseryApi.getMyClassmates()
       .then(students => setClassmates((students || []).slice(0, 8)))
       .catch(() => setError("Failed to load classmates"))
       .finally(() => setLoading(false))

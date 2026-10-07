@@ -18,4 +18,11 @@ public interface PrimaryPortalRepository extends JpaRepository<TeacherAssignment
            "WHERE sca.studentId = :studentId AND sca.isDeleted = false)")
     List<TeacherAssignment> findTeacherAssignmentsForStudent(
             @Param("studentId") UUID studentId, @Param("institutionId") UUID institutionId);
+
+    @Query("SELECT DISTINCT sca2.studentId FROM tz.elmkusoma.student.domain.StudentClassAssignment sca2 " +
+           "WHERE sca2.isDeleted = false AND sca2.isActive = true " +
+           "AND sca2.studentId <> :studentId " +
+           "AND sca2.classGroupId IN (SELECT sca.classGroupId FROM tz.elmkusoma.student.domain.StudentClassAssignment sca " +
+           "WHERE sca.studentId = :studentId AND sca.isDeleted = false)")
+    List<UUID> findClassmateStudentIds(@Param("studentId") UUID studentId);
 }

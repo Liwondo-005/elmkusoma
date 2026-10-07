@@ -12,13 +12,18 @@ import tz.elmkusoma.primary.dto.*;
 import tz.elmkusoma.primary.repository.*;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.domain.TeacherAssignment;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,6 +52,7 @@ public class PrimaryPortalService {
     private final ELmkusomaLabRepository elmkusomaLabRepository;
     private final SpeakingActivityRepository speakingActivityRepository;
     private final RealWorldMissionRepository realWorldMissionRepository;
+    private final StudentRepository studentRepository;
 
     public PrimaryPortalService(PrimaryPortalRepository primaryPortalRepository,
                                  PortfolioItemRepository portfolioItemRepository,
@@ -69,7 +75,8 @@ public class PrimaryPortalService {
                                  MistakeLabEntryRepository mistakeLabEntryRepository,
                                  ELmkusomaLabRepository elmkusomaLabRepository,
                                  SpeakingActivityRepository speakingActivityRepository,
-                                 RealWorldMissionRepository realWorldMissionRepository) {
+                                 RealWorldMissionRepository realWorldMissionRepository,
+                                 StudentRepository studentRepository) {
         this.primaryPortalRepository = primaryPortalRepository;
         this.portfolioItemRepository = portfolioItemRepository;
         this.studentBadgeRepository = studentBadgeRepository;
@@ -92,10 +99,17 @@ public class PrimaryPortalService {
         this.elmkusomaLabRepository = elmkusomaLabRepository;
         this.speakingActivityRepository = speakingActivityRepository;
         this.realWorldMissionRepository = realWorldMissionRepository;
+        this.studentRepository = studentRepository;
     }
 
-    public List<TeacherInfoResponse> getStudentTeachers(UUID studentId, UUID institutionId) {
-        List<TeacherAssignment> assignments = primaryPortalRepository.findTeacherAssignmentsForStudent(studentId, institutionId);
+    public List<TeacherInfoResponse> getStudentTeachers(UUID userId, UUID institutionId) {
+        UUID studentPk = studentRepository.findByUserIdAndIsDeletedFalse(userId)
+                .map(Student::getId)
+                .orElse(null);
+        if (studentPk == null) {
+            return List.of();
+        }
+        List<TeacherAssignment> assignments = primaryPortalRepository.findTeacherAssignmentsForStudent(studentPk, institutionId);
 
         return assignments.stream()
                 .map(ta -> {
@@ -119,6 +133,43 @@ public class PrimaryPortalService {
                 .filter(r -> r != null)
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    public List<ClassmateResponse> getStudentClassmates(UUID userId) {
+        Student me = studentRepository.findByUserIdAndIsDeletedFalse(userId).orElse(null);
+        if (me == null || me.getId() == null) {
+            return List.of();
+        }
+        List<UUID> peerStudentIds = primaryPortalRepository.findClassmateStudentIds(me.getId());
+        if (peerStudentIds.isEmpty()) {
+            return List.of();
+        }
+        List<Student> peers = studentRepository.findAllById(peerStudentIds).stream()
+                .filter(s -> !s.getId().equals(me.getId()))
+                .toList();
+        List<UUID> peerUserIds = peers.stream()
+                .map(Student::getUserId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (peerUserIds.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, User> usersById = userRepository.findAllById(peerUserIds).stream()
+                .filter(User::getIsActive)
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+        return peers.stream()
+                .filter(s -> s.getUserId() != null && usersById.containsKey(s.getUserId()))
+                .limit(50)
+                .map(s -> {
+                    User u = usersById.get(s.getUserId());
+                    ClassmateResponse r = new ClassmateResponse();
+                    r.setId(s.getId());
+                    r.setFirstName(u.getFirstName());
+                    r.setLastName(u.getLastName());
+                    r.setAdmissionNumber(s.getAdmissionNumber());
+                    return r;
+                })
+                .toList();
     }
 
     public List<PortfolioItemResponse> getStudentPortfolio(UUID studentId, UUID institutionId) {

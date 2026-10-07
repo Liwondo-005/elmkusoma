@@ -13,6 +13,7 @@ import tz.elmkusoma.oversight.dto.OversightDashboardResponse;
 import tz.elmkusoma.oversight.dto.RegionResponse;
 import tz.elmkusoma.oversight.repository.DistrictRepository;
 import tz.elmkusoma.oversight.repository.RegionRepository;
+import tz.elmkusoma.oversight.service.OversightAnnouncementService;
 import tz.elmkusoma.oversight.service.OversightGovernanceService;
 import tz.elmkusoma.oversight.service.OversightScopeResolver;
 import tz.elmkusoma.oversight.service.OversightService;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,6 +59,7 @@ class OversightScopeSecurityTest {
 
     private OversightService oversightService;
     private OversightGovernanceService governanceService;
+    private OversightAnnouncementService announcementService;
     private InstitutionRepository institutionRepository;
     private UserRepository userRepository;
     private RegionRepository regionRepository;
@@ -68,6 +71,7 @@ class OversightScopeSecurityTest {
     void setUp() {
         oversightService = mock(OversightService.class);
         governanceService = mock(OversightGovernanceService.class);
+        announcementService = mock(OversightAnnouncementService.class);
         institutionRepository = mock(InstitutionRepository.class);
         userRepository = mock(UserRepository.class);
         regionRepository = mock(RegionRepository.class);
@@ -76,7 +80,9 @@ class OversightScopeSecurityTest {
 
         OversightController controller = new OversightController(
                 oversightService, governanceService, scopeResolver, institutionRepository);
-        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+        OversightAnnouncementController announcementController = new OversightAnnouncementController(
+                announcementService, scopeResolver);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller, announcementController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
@@ -530,5 +536,99 @@ class OversightScopeSecurityTest {
                     .andExpect(status().isForbidden());
         }
         verifyNoInteractions(oversightService, governanceService);
+    }
+
+    // ── HTTP: announcement create scope (regional publish without national bleed) ──
+
+    private String announcementJson(String audienceType, String regionId, String districtId) {
+        StringBuilder json = new StringBuilder("{\"title\":\"T\",\"content\":\"C\",")
+                .append("\"audienceType\":\"").append(audienceType).append("\"");
+        if (regionId != null) json.append(",\"audienceRegionId\":\"").append(regionId).append("\"");
+        if (districtId != null) json.append(",\"audienceDistrictId\":\"").append(districtId).append("\"");
+        return json.append("}").toString();
+    }
+
+    @Test
+    void regionalCreate_ownRegionAudience_pinnedToOwnRegion() throws Exception {
+        mockMvc.perform(post("/v1/oversight/announcements")
+                        .requestAttr("userId", REGIONAL_ID)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(announcementJson("REGION", null, null)))
+                .andExpect(status().isOk());
+
+        verify(announcementService).create(any(), eq(REGIONAL_ID),
+                argThat(s -> R1.equals(s.regionId()) && s.districtId() == null));
+    }
+
+    @Test
+    void regionalCreate_foreignRegionForbidden_beforeService() throws Exception {
+        mockMvc.perform(post("/v1/oversight/announcements")
+                        .requestAttr("userId", REGIONAL_ID)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(announcementJson("REGION", R2.toString(), null)))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(announcementService);
+    }
+
+    @Test
+    void regionalCreate_nationwideBleedForbidden_beforeService() throws Exception {
+        mockMvc.perform(post("/v1/oversight/announcements")
+                        .requestAttr("userId", REGIONAL_ID)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(announcementJson("NATIONWIDE", null, null)))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(announcementService);
+    }
+
+    @Test
+    void regionalCreate_foreignDistrictForbidden_beforeService() throws Exception {
+        seedDistrict(D2, R2);
+        mockMvc.perform(post("/v1/oversight/announcements")
+                        .requestAttr("userId", REGIONAL_ID)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(announcementJson("DISTRICT", null, D2.toString())))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(announcementService);
+    }
+
+    @Test
+    void nationalCreate_nationwideAllowed_countryWideScope() throws Exception {
+        mockMvc.perform(post("/v1/oversight/announcements")
+                        .requestAttr("userId", NATIONAL_ID)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(announcementJson("NATIONWIDE", null, null)))
+                .andExpect(status().isOk());
+
+        verify(announcementService).create(any(), eq(NATIONAL_ID),
+                argThat(s -> s.regionId() == null && s.districtId() == null));
+    }
+
+    @Test
+    void nationalCreate_regionDrillDownAllowed() throws Exception {
+        mockMvc.perform(post("/v1/oversight/announcements")
+                        .requestAttr("userId", NATIONAL_ID)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(announcementJson("REGION", R2.toString(), null)))
+                .andExpect(status().isOk());
+
+        verify(announcementService).create(any(), eq(NATIONAL_ID),
+                argThat(s -> R2.equals(s.regionId()) && s.districtId() == null));
+    }
+
+    @Test
+    void nationalCreate_unknownRegion404_beforeService() throws Exception {
+        UUID missing = UUID.fromString("00000000-0000-0000-0000-000000000197");
+        when(regionRepository.existsById(missing)).thenReturn(false);
+
+        mockMvc.perform(post("/v1/oversight/announcements")
+                        .requestAttr("userId", NATIONAL_ID)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(announcementJson("REGION", missing.toString(), null)))
+                .andExpect(status().isNotFound());
+
+        verifyNoInteractions(announcementService);
     }
 }

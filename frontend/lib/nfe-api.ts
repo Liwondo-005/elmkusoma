@@ -75,7 +75,10 @@ export const nfeApi = {
     const providerId = await requireProviderId()
     return nfeRequest<any>("/v1/nfe/programs", { method: "POST", body: JSON.stringify({ ...data, providerId }) })
   },
-  updateProgram: (id: string, data: any) => nfeRequest<any>(`/v1/nfe/programs/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  updateProgram: async (id: string, data: any) => {
+    const payload = data?.providerId ? data : { ...data, providerId: await requireProviderId() }
+    return nfeRequest<any>(`/v1/nfe/programs/${id}`, { method: "PUT", body: JSON.stringify(payload) })
+  },
   deleteProgram: (id: string) => nfeRequest<void>(`/v1/nfe/programs/${id}`, { method: "DELETE" }),
 
   listLearners: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/learners${providerId ? `?providerId=${providerId}` : ""}`),
@@ -84,18 +87,33 @@ export const nfeApi = {
     const providerId = await requireProviderId()
     return nfeRequest<any>("/v1/nfe/learners", { method: "POST", body: JSON.stringify({ ...data, providerId }) })
   },
+  updateLearner: async (id: string, data: any) => {
+    const payload = data?.providerId ? data : { ...data, providerId: await requireProviderId() }
+    return nfeRequest<any>(`/v1/nfe/learners/${id}`, { method: "PUT", body: JSON.stringify(payload) })
+  },
+  deleteLearner: (id: string) => nfeRequest<void>(`/v1/nfe/learners/${id}`, { method: "DELETE" }),
 
   listSessions: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/sessions${providerId ? `?providerId=${providerId}` : ""}`),
   createSession: async (data: any) => {
     const providerId = await requireProviderId()
     return nfeRequest<any>("/v1/nfe/sessions", { method: "POST", body: JSON.stringify({ ...data, providerId }) })
   },
+  updateSession: async (id: string, data: any) => {
+    const payload = data?.providerId ? data : { ...data, providerId: await requireProviderId() }
+    return nfeRequest<any>(`/v1/nfe/sessions/${id}`, { method: "PUT", body: JSON.stringify(payload) })
+  },
+  deleteSession: (id: string) => nfeRequest<void>(`/v1/nfe/sessions/${id}`, { method: "DELETE" }),
 
   listMaterials: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/materials${providerId ? `?providerId=${providerId}` : ""}`),
   createMaterial: async (data: any) => {
     const providerId = await requireProviderId()
     return nfeRequest<any>("/v1/nfe/materials", { method: "POST", body: JSON.stringify({ ...data, providerId }) })
   },
+  updateMaterial: async (id: string, data: any) => {
+    const payload = data?.providerId ? data : { ...data, providerId: await requireProviderId() }
+    return nfeRequest<any>(`/v1/nfe/materials/${id}`, { method: "PUT", body: JSON.stringify(payload) })
+  },
+  deleteMaterial: (id: string) => nfeRequest<void>(`/v1/nfe/materials/${id}`, { method: "DELETE" }),
 
   listAssessments: async () => {
     const providerId = await resolveProviderId()
@@ -106,6 +124,9 @@ export const nfeApi = {
     const providerId = await requireProviderId()
     return nfeRequest<any>(`/v1/nfe/assessments/providers/${providerId}`, { method: "POST", body: JSON.stringify(data) })
   },
+  updateAssessment: (id: string, data: any) =>
+    nfeRequest<any>(`/v1/nfe/assessments/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAssessment: (id: string) => nfeRequest<void>(`/v1/nfe/assessments/${id}`, { method: "DELETE" }),
 
   listAttendance: async (sessionId?: string) => {
     if (sessionId) return nfeRequest<any[]>(`/v1/nfe/attendance/sessions/${sessionId}`)
@@ -117,6 +138,9 @@ export const nfeApi = {
     const providerId = await requireProviderId()
     return nfeRequest<any>(`/v1/nfe/attendance/providers/${providerId}`, { method: "POST", body: JSON.stringify(data) })
   },
+  updateAttendance: (id: string, data: any) =>
+    nfeRequest<any>(`/v1/nfe/attendance/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteAttendance: (id: string) => nfeRequest<void>(`/v1/nfe/attendance/${id}`, { method: "DELETE" }),
 
   listCertificates: async () => {
     const providerId = await resolveProviderId()
@@ -127,5 +151,8 @@ export const nfeApi = {
     const providerId = await requireProviderId()
     return nfeRequest<any>(`/v1/nfe/certificates/providers/${providerId}`, { method: "POST", body: JSON.stringify(data) })
   },
+  updateCertificate: (id: string, data: any) =>
+    nfeRequest<any>(`/v1/nfe/certificates/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteCertificate: (id: string) => nfeRequest<void>(`/v1/nfe/certificates/${id}`, { method: "DELETE" }),
   verifyCertificate: (code: string) => nfeRequest<any>(`/v1/nfe/certificates/verify/${code}`),
 }

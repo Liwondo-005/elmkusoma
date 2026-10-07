@@ -28,6 +28,10 @@ export default function OversightAnnouncementsPage() {
   const { user, loading: authLoading } = useRequireAuth()
   const router = useRouter()
   const isNational = user?.role === "National Admin"
+  // Regional Admins publish here too — always scoped to their own region
+  // (the backend resolves/pins the scope; NATIONWIDE stays national-only).
+  const isRegional = user?.role === "Regional Admin"
+  const canCompose = isNational || isRegional
 
   const [items, setItems] = useState<OversightAnnouncement[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,13 +66,15 @@ export default function OversightAnnouncementsPage() {
     load()
     if (isNational) {
       oversightApi.regions().then(setRegions).catch(() => setRegions([]))
+    }
+    if (canCompose) {
       try {
         if (new URLSearchParams(window.location.search).get("action") === "create") {
           setShowForm(true)
         }
       } catch {}
     }
-  }, [authLoading, user, isNational, load])
+  }, [authLoading, user, isNational, canCompose, load])
 
   useEffect(() => {
     if (!regionId) {
@@ -99,9 +105,9 @@ export default function OversightAnnouncementsPage() {
         title,
         content,
         priority,
-        audienceType,
-        audienceRegionId: audienceType === "REGION" ? regionId : null,
-        audienceDistrictId: audienceType === "DISTRICT" ? districtId : null,
+        audienceType: isRegional ? "REGION" : audienceType,
+        audienceRegionId: isRegional ? null : audienceType === "REGION" ? regionId : null,
+        audienceDistrictId: isRegional ? null : audienceType === "DISTRICT" ? districtId : null,
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
       })
       setItems((prev) => [created, ...prev])
@@ -143,7 +149,7 @@ export default function OversightAnnouncementsPage() {
               <p className="text-sm text-muted-foreground">{t("announcements.subtitle")}</p>
             </div>
           </div>
-          {isNational && (
+          {canCompose && (
             <button
               type="button"
               onClick={() => setShowForm((v) => !v)}
@@ -168,7 +174,7 @@ export default function OversightAnnouncementsPage() {
         </div>
       )}
 
-      {showForm && isNational && (
+      {showForm && canCompose && (
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground">{t("announcements.createTitle")}</h2>
 
@@ -224,16 +230,24 @@ export default function OversightAnnouncementsPage() {
               </label>
               <select
                 id="ann-audience"
-                value={audienceType}
+                value={isRegional ? "REGION" : audienceType}
                 onChange={(e) => {
                   setAudienceType(e.target.value)
                   setDistrictId("")
                 }}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
-                <option value="NATIONWIDE">{t("announcements.audienceNationwide")}</option>
-                <option value="REGION">{t("announcements.audienceRegion")}</option>
-                <option value="DISTRICT">{t("announcements.audienceDistrict")}</option>
+                {isRegional ? (
+                  // A Regional Admin's audience is always their own region —
+                  // the server pins the scope regardless of what is sent.
+                  <option value="REGION">{t("announcements.audienceRegion")}</option>
+                ) : (
+                  <>
+                    <option value="NATIONWIDE">{t("announcements.audienceNationwide")}</option>
+                    <option value="REGION">{t("announcements.audienceRegion")}</option>
+                    <option value="DISTRICT">{t("announcements.audienceDistrict")}</option>
+                  </>
+                )}
               </select>
             </div>
 
@@ -251,7 +265,7 @@ export default function OversightAnnouncementsPage() {
             </div>
           </div>
 
-          {(audienceType === "REGION" || audienceType === "DISTRICT") && (
+          {isNational && (audienceType === "REGION" || audienceType === "DISTRICT") && (
             <div>
               <label htmlFor="ann-region" className="mb-1 block text-sm font-medium text-foreground">
                 {t("announcements.regionLabel")}
@@ -276,7 +290,7 @@ export default function OversightAnnouncementsPage() {
             </div>
           )}
 
-          {audienceType === "DISTRICT" && (
+          {isNational && audienceType === "DISTRICT" && (
             <div>
               <label htmlFor="ann-district" className="mb-1 block text-sm font-medium text-foreground">
                 {t("announcements.districtLabel")}

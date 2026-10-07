@@ -137,12 +137,16 @@ export const collegeApi = {
   upsertCareerProfile: (studentId: string, data: Partial<CareerProfile>) => api.post<CareerProfile>(`/api/v1/education/higher-education/career-profile/${studentId}`, data),
 
   // Professional Development
+// Served by ProfessionalDevelopmentController at /v1/college/learner/professional-dev —
+  // there is no /api/v1/education/professional-dev mapping, so the /api/v1 rewrite below
+  // strips the prefix and lands on the college controller.
   getLearnerProfessionalDev: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/professional-dev/student/${studentId}`),
   createProfessionalDev: (data: any) => api.post<any>("/api/v1/college/learner/professional-dev", data),
   updateProfessionalDev: (id: string, data: any) => api.put<any>(`/api/v1/college/learner/professional-dev/${id}`, data),
   deleteProfessionalDev: (id: string) => api.delete<void>(`/api/v1/college/learner/professional-dev/${id}`),
 
   // Deep Learning Content
+// Served by DeepLearningContentController at /v1/college/learner/deep-learning.
   getLearnerDeepContent: (studentId: string) => api.get<DeepContent[]>(`/api/v1/college/learner/deep-learning/student/${studentId}`),
   createDeepContent: (data: DeepContentDto) => api.post<DeepContent>("/api/v1/college/learner/deep-learning", data),
   updateDeepContent: (id: string, data: Partial<DeepContentDto>) => api.put<DeepContent>(`/api/v1/college/learner/deep-learning/${id}`, data),

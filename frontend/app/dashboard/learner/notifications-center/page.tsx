@@ -409,7 +409,7 @@ export default function NotificationsCenterPage() {
             ? t("showingOne")
             : t("showing", { count: filtered.length, s: filtered.length !== 1 ? "s" : "" })}
           {activeFilter !== "ALL" && (
-            <span> {t("inCategory", { category: categoryLabel(activeFilter) }).replace(/<[^>]+>/g, "")}</span>
+            <span> {t("inCategory", { category: categoryLabel(activeFilter) })}</span>
           )}
         </div>
       )}

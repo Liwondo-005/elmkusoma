@@ -47,7 +47,10 @@ interface NavGroup {
 // Nationaladmin.md §7 — grouped command-centre navigation. Every href maps to
 // a real route (dead links are a spec violation), and the scope indicator plus
 // badges are fed by real endpoints.
-const navGroups: NavGroup[] = [
+// Exported for the generic /dashboard shell (DashboardSidebar): authority
+// roles that open Profile/Settings get these same oversight links instead of
+// the student fall-through nav.
+export const navGroups: NavGroup[] = [
   {
     id: "overview",
     labelKey: "groupOverview",
@@ -117,6 +120,8 @@ export function AuthoritySidebar({ onNavigate }: { onNavigate?: () => void }) {
     user?.role === "Regional Admin" ||
     user?.role === "District Admin"
   const isNational = user?.role === "National Admin"
+  // Regional Admins can compose as well — always region-scoped server-side.
+  const canSendAnnouncement = isNational || user?.role === "Regional Admin"
 
   useEffect(() => {
     setCollapsedGroups(readCollapsed())
@@ -265,7 +270,7 @@ export function AuthoritySidebar({ onNavigate }: { onNavigate?: () => void }) {
             {t("quickActions")}
           </p>
           <div className="space-y-1">
-            {isNational && (
+            {canSendAnnouncement && (
               <Link
                 href="/oversight/announcements?action=create"
                 onClick={onNavigate}

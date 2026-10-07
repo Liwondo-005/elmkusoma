@@ -51,6 +51,26 @@ public class CoreScheduler {
     private final TokenCleanupRepository tokenCleanupRepository;
     private final NotificationService notificationService;
     private final tz.elmkusoma.oversight.service.OversightAnnouncementService oversightAnnouncementService;
+    private final tz.elmkusoma.course.service.LiveClassService liveClassService;
+
+    /**
+     * Authoritative live-class expiry. A started session ends when its scheduled start
+     * plus configured duration has elapsed, so a class can never stay LIVE forever
+     * because a teacher closed the tab or a client never sent the end call. The sweep
+     * runs the same completion path as a manual end: attendance finalised,
+     * certificates issued, LiveKit egress stopped and the replay created.
+     */
+    @Scheduled(fixedRate = 60000, initialDelay = 30000)
+    public void endExpiredLiveClasses() {
+        try {
+            int ended = liveClassService.endExpiredSessions();
+            if (ended > 0) {
+                log.info("Auto-ended {} expired live class session(s)", ended);
+            }
+        } catch (Exception e) {
+            log.warn("Live class expiry sweep failed: {}", e.getMessage());
+        }
+    }
 
     /** Nationaladmin.md §23 — publish scheduled jurisdictional announcements. */
     @Scheduled(fixedRate = 60000)

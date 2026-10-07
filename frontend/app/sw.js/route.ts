@@ -128,11 +128,58 @@ self.addEventListener("fetch", (event) => {
 `
 }
 
+/**
+ * Development kill-switch.
+ *
+ * A worker that caches dev bundles is untrustworthy: Turbopack rewrites chunk
+ * hashes on every edit, so an installed worker keeps answering with the previous
+ * `_next/static` copy and the browser runs code that no longer exists on disk.
+ * That produced "fixed code, unchanged symptom" several times in this project
+ * (stale chunk crashes, an already-fixed dashboard error).
+ *
+ * The client-side registrar cannot fix it on its own: it lives in the bundle the
+ * stale worker prevents from loading. This handler closes that loop, because the
+ * browser re-fetches /sw.js for an existing registration: in development the
+ * served worker unregisters itself and drops the app caches, so the next load is
+ * served by the dev server. Production keeps the real caching worker.
+ */
+function devUnregisterSource(): string {
+  return `/* elmkusoma service worker (development) — self-destruct: no caching in dev */
+self.addEventListener("install", (event) => {
+  self.skipWaiting()
+})
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        const keys = await caches.keys()
+        await Promise.all(
+          keys.filter((key) => key.startsWith("elmkusoma-")).map((key) => caches.delete(key))
+        )
+      } catch {}
+      try {
+        await self.registration.unregister()
+      } catch {}
+      const clients = await self.clients.matchAll({ type: "window" })
+      for (const client of clients) {
+        try { client.postMessage({ type: "ELMKUSOMA_SW_DISABLED" }) } catch {}
+      }
+    })()
+  )
+})
+`
+}
+
 export function GET(): Response {
-  return new Response(serviceWorkerSource(resolveCacheName()), {
-    headers: {
-      "Content-Type": "text/javascript; charset=utf-8",
-      "Cache-Control": "no-cache, must-revalidate, max-age=0",
+  const isProduction = process.env.NODE_ENV === "production"
+  return new Response(
+    isProduction ? serviceWorkerSource(resolveCacheName()) : devUnregisterSource(),
+    {
+      headers: {
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Cache-Control": "no-cache, must-revalidate, max-age=0",
+      },
     },
-  })
+  )
 }

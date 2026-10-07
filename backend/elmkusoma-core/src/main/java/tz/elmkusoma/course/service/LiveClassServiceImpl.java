@@ -311,7 +311,16 @@ public class LiveClassServiceImpl implements LiveClassService {
             throw new IllegalArgumentException("Only IN_PROGRESS classes can be ended. Current status: " + liveClass.getStatus());
         }
 
-        liveClass.setStatus(LiveClassStatus.COMPLETED.name());
+        return completeSession(liveClass, markedBy, LiveClassStatus.COMPLETED);
+    }
+
+    /**
+     * Shared terminal path for both a teacher-initiated end and the authoritative
+     * expiry sweep, so attendance, certificates and the recording/replay chain can
+     * never diverge between the two.
+     */
+    private LiveClassResponse completeSession(LiveClass liveClass, UUID markedBy, LiveClassStatus terminalStatus) {
+        liveClass.setStatus(terminalStatus.name());
         LiveClass saved = liveClassRepository.save(liveClass);
 
         createAttendanceFromParticipants(saved, markedBy);
@@ -319,6 +328,57 @@ public class LiveClassServiceImpl implements LiveClassService {
         finalizeRecordingAndCreateReplay(saved);
 
         return mapToResponse(saved);
+    }
+
+    /**
+     * Authoritative expiry. A started session must end when its configured duration
+     * has elapsed - a teacher setting 60 minutes for a 10:00 class means it ends at
+     * 11:00 regardless of refreshes, reconnects or client state. Baseline is the
+     * scheduled start, so a late join does not extend the session.
+     *
+     * SCHEDULED classes are deliberately untouched: a class that was never started is
+     * not a running session, and auto-ending it would fabricate attendance and a
+     * replay for a class nobody taught.
+     */
+    @Override
+    public int endExpiredSessions() {
+        List<String> activeStatuses = List.of(
+                LiveClassStatus.STARTING.name(),
+                LiveClassStatus.LIVE.name(),
+                LiveClassStatus.IN_PROGRESS.name(),
+                LiveClassStatus.ENDING.name());
+
+        List<LiveClass> candidates = liveClassRepository.findByStatusInAndIsDeletedFalse(activeStatuses);
+        if (candidates == null || candidates.isEmpty()) {
+            return 0;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        int ended = 0;
+        for (LiveClass liveClass : candidates) {
+            if (liveClass.getScheduledAt() == null) {
+                continue;
+            }
+            int durationMinutes = liveClass.getDurationMinutes() != null && liveClass.getDurationMinutes() > 0
+                    ? liveClass.getDurationMinutes()
+                    : 60;
+            LocalDateTime endsAt = liveClass.getScheduledAt().plusMinutes(durationMinutes);
+            if (now.isBefore(endsAt)) {
+                continue;
+            }
+            try {
+                // markedBy = null: nobody pressed "end", so attendance rows stay
+                // system-attributed rather than being forged against the teacher.
+                completeSession(liveClass, null, LiveClassStatus.ENDED);
+                ended++;
+                log.info("Auto-ended expired live class {} (scheduled {}, duration {}m, endedAt {})",
+                        liveClass.getId(), liveClass.getScheduledAt(), durationMinutes, endsAt);
+            } catch (Exception e) {
+                // One bad session must never stop the sweep for the others.
+                log.warn("Auto-end failed for live class {}: {}", liveClass.getId(), e.getMessage());
+            }
+        }
+        return ended;
     }
 
     /**

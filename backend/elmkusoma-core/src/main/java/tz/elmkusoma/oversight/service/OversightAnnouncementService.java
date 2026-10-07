@@ -49,7 +49,8 @@ public class OversightAnnouncementService {
     private final OversightService oversightService;
 
     @Transactional
-    public AnnouncementResponse create(AnnouncementRequest request, UUID actorUserId) {
+    public AnnouncementResponse create(AnnouncementRequest request, UUID actorUserId,
+            OversightScopeResolver.Scope scope) {
         String audience = request.getAudienceType() == null
                 ? null : request.getAudienceType().trim().toUpperCase();
         if (!AUDIENCE_NATIONWIDE.equals(audience)
@@ -58,21 +59,27 @@ public class OversightAnnouncementService {
             throw new ForbiddenException("audience type", "create");
         }
 
+        // Scope is resolved server-side by the controller (OversightScopeResolver):
+        // regional/district authors can only narrow into their own jurisdiction —
+        // never widen — and a nationwide audience requires a country-wide scope.
+        if (AUDIENCE_NATIONWIDE.equals(audience)
+                && (scope.regionId() != null || scope.districtId() != null)) {
+            throw new ForbiddenException("nationwide broadcast", "create");
+        }
+
         UUID regionId = null;
         UUID districtId = null;
         if (AUDIENCE_REGION.equals(audience)) {
-            regionId = Optional.ofNullable(request.getAudienceRegionId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Region", "id", "required"));
-            if (!regionRepository.existsById(regionId)) {
-                throw new ResourceNotFoundException("Region", "id", regionId);
+            regionId = scope.regionId();
+            if (regionId == null) {
+                throw new ResourceNotFoundException("Region", "id", "required");
             }
         } else if (AUDIENCE_DISTRICT.equals(audience)) {
-            UUID requestedDistrictId = Optional.ofNullable(request.getAudienceDistrictId())
-                    .orElseThrow(() -> new ResourceNotFoundException("District", "id", "required"));
-            District district = districtRepository.findById(requestedDistrictId)
-                    .orElseThrow(() -> new ResourceNotFoundException("District", "id", requestedDistrictId));
-            districtId = district.getId();
-            regionId = district.getRegionId();
+            districtId = scope.districtId();
+            if (districtId == null) {
+                throw new ResourceNotFoundException("District", "id", "required");
+            }
+            regionId = scope.regionId();
         }
 
         LocalDateTime now = LocalDateTime.now();

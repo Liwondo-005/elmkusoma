@@ -4,16 +4,20 @@ import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
 import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
+import { useToast } from "@/components/toast"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function AssessmentsPage() {
   const t = useTranslations("provider")
   const ta = useTranslations("assessments")
   const tt = useTranslations("teacher")
+  const { toast } = useToast()
   const [assessments, setAssessments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+  const [editRow, setEditRow] = useState<any | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadAssessments()
@@ -26,6 +30,18 @@ export default function AssessmentsPage() {
       setAssessments(data)
     } catch { /* empty */ } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(row: any) {
+    setConfirmDeleteId(null)
+    try {
+      await nfeApi.deleteAssessment(row.id)
+      toast(t("form.deleteSuccess"), "success")
+      if (editRow?.id === row.id) setEditRow(null)
+      loadAssessments()
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : t("form.submitError"), "error")
     }
   }
 
@@ -87,7 +103,23 @@ export default function AssessmentsPage() {
                     <p className="text-sm font-medium text-foreground">{assessment.title || assessment.name}</p>
                     <p className="text-xs text-muted-foreground">{assessment.totalMarks || 0} {t("assessments.marksSuffix")}</p>
                   </div>
-                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">{assessment.status || t("assessments.draftFallback")}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">{assessment.status || t("assessments.draftFallback")}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setConfirmDeleteId(null); setEditRow(assessment) }}
+                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        {t("form.edit")}
+                      </button>
+                      <button
+                        onClick={() => { if (confirmDeleteId === assessment.id) handleDelete(assessment); else setConfirmDeleteId(assessment.id) }}
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${confirmDeleteId === assessment.id ? "bg-red-600 text-white hover:bg-red-700" : "text-red-600 hover:bg-red-50"}`}
+                      >
+                        {confirmDeleteId === assessment.id ? t("form.confirmDelete") : t("form.delete")}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -96,20 +128,29 @@ export default function AssessmentsPage() {
       </Card>
 
       <ProviderCreateDialog
-        open={createOpen}
-        title={tt("assessments.createAssessment")}
+        open={createOpen || editRow !== null}
+        title={editRow ? t("form.editTitle", { name: editRow.title || "" }) : tt("assessments.createAssessment")}
+        submitLabel={editRow ? t("form.save") : undefined}
         fields={createFields}
-        onClose={() => setCreateOpen(false)}
+        initialValues={editRow || undefined}
+        onClose={() => { setCreateOpen(false); setEditRow(null) }}
         onSubmit={async (v) => {
-          await nfeApi.createAssessment({
-            title: v.title,
-            assessmentType: v.assessmentType,
-            description: v.description,
-            totalMarks: v.totalMarks,
-            passMarks: v.passMarks,
-            timeLimitMinutes: v.timeLimitMinutes,
-          })
-          setCreateOpen(false)
+          if (editRow) {
+            await nfeApi.updateAssessment(editRow.id, v)
+            toast(t("form.updateSuccess"), "success")
+            setEditRow(null)
+          } else {
+            await nfeApi.createAssessment({
+              title: v.title,
+              assessmentType: v.assessmentType,
+              description: v.description,
+              totalMarks: v.totalMarks,
+              passMarks: v.passMarks,
+              timeLimitMinutes: v.timeLimitMinutes,
+            })
+            toast(t("form.createSuccess"), "success")
+            setCreateOpen(false)
+          }
           loadAssessments()
         }}
       />

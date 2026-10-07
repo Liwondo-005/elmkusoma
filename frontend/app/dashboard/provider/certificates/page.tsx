@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
 import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
+import { useToast } from "@/components/toast"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function CertificatesPage() {
@@ -11,10 +12,13 @@ export default function CertificatesPage() {
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
   const tl = useTranslations("learner")
+  const { toast } = useToast()
   const [certificates, setCertificates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+  const [editRow, setEditRow] = useState<any | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadCertificates()
@@ -27,6 +31,18 @@ export default function CertificatesPage() {
       setCertificates(data)
     } catch { /* empty */ } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(row: any) {
+    setConfirmDeleteId(null)
+    try {
+      await nfeApi.deleteCertificate(row.id)
+      toast(t("form.deleteSuccess"), "success")
+      if (editRow?.id === row.id) setEditRow(null)
+      loadCertificates()
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : t("form.submitError"), "error")
     }
   }
 
@@ -87,9 +103,25 @@ export default function CertificatesPage() {
                     <p className="text-sm font-medium text-foreground">{cert.studentName || cert.learnerName}</p>
                     <p className="text-xs text-muted-foreground">{cert.title || cert.serialNumber || t("certificates.titleFallback")}</p>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cert.status === "ISSUED" ? "bg-green-100 text-green-700" : cert.status === "REVOKED" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
-                    {cert.status || ts("pending")}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cert.status === "ISSUED" ? "bg-green-100 text-green-700" : cert.status === "REVOKED" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
+                      {cert.status || ts("pending")}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setConfirmDeleteId(null); setEditRow(cert) }}
+                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        {t("form.edit")}
+                      </button>
+                      <button
+                        onClick={() => { if (confirmDeleteId === cert.id) handleDelete(cert); else setConfirmDeleteId(cert.id) }}
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${confirmDeleteId === cert.id ? "bg-red-600 text-white hover:bg-red-700" : "text-red-600 hover:bg-red-50"}`}
+                      >
+                        {confirmDeleteId === cert.id ? t("form.confirmDelete") : t("form.delete")}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -98,18 +130,27 @@ export default function CertificatesPage() {
       </Card>
 
       <ProviderCreateDialog
-        open={createOpen}
-        title={tl("certGenerate.generateButton")}
+        open={createOpen || editRow !== null}
+        title={editRow ? t("form.editTitle", { name: editRow.title || editRow.studentName || "" }) : tl("certGenerate.generateButton")}
+        submitLabel={editRow ? t("form.save") : undefined}
         fields={createFields}
-        onClose={() => setCreateOpen(false)}
+        initialValues={editRow || undefined}
+        onClose={() => { setCreateOpen(false); setEditRow(null) }}
         onSubmit={async (v) => {
-          await nfeApi.generateCertificate({
-            certificateType: v.certificateType,
-            title: v.title,
-            studentName: v.studentName,
-            serialNumber: v.serialNumber,
-          })
-          setCreateOpen(false)
+          if (editRow) {
+            await nfeApi.updateCertificate(editRow.id, v)
+            toast(t("form.updateSuccess"), "success")
+            setEditRow(null)
+          } else {
+            await nfeApi.generateCertificate({
+              certificateType: v.certificateType,
+              title: v.title,
+              studentName: v.studentName,
+              serialNumber: v.serialNumber,
+            })
+            toast(t("form.createSuccess"), "success")
+            setCreateOpen(false)
+          }
           loadCertificates()
         }}
       />

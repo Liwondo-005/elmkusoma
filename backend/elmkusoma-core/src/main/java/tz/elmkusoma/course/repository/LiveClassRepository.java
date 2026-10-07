@@ -20,6 +20,15 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
 
     List<LiveClass> findByInstitutionIdAndStatusAndIsDeletedFalse(UUID institutionId, String status);
 
+    /**
+     * Live classes currently in an active (started, not finished) state. Used by the
+     * authoritative expiry sweep, which ends a session once its configured duration
+     * has elapsed so a session can never stay LIVE indefinitely when the teacher
+     * forgets to end it (or the client never sends the end call).
+     */
+    @Query("SELECT lc FROM LiveClass lc WHERE lc.status IN :statuses AND lc.isDeleted = false")
+    List<LiveClass> findByStatusInAndIsDeletedFalse(@Param("statuses") List<String> statuses);
+
     long countByInstitutionIdAndIsDeletedFalse(UUID institutionId);
 
     long countByInstitutionIdAndStatusAndIsDeletedFalse(UUID institutionId, String status);

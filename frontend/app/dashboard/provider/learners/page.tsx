@@ -5,16 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { nfeApi } from "@/lib/nfe-api"
 import { adminApi, getInstitutionId } from "@/lib/api"
 import { ProviderCreateDialog, type ProviderFormField } from "@/components/provider/provider-create-dialog"
+import { useToast } from "@/components/toast"
 import { Loader2, Plus, Search } from "lucide-react"
 
 export default function LearnersPage() {
   const t = useTranslations("provider")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
+  const { toast } = useToast()
   const [learners, setLearners] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+  const [editRow, setEditRow] = useState<any | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [people, setPeople] = useState<Array<{ userId: string; fullName: string; email: string }>>([])
   const [peopleLoaded, setPeopleLoaded] = useState(false)
 
@@ -32,14 +36,35 @@ export default function LearnersPage() {
     }
   }
 
-  async function openCreate() {
+  async function loadPeople() {
+    if (peopleLoaded) return
+    setPeopleLoaded(true)
+    try {
+      const data = await adminApi.listPeople(getInstitutionId() || "", 0, 100)
+      setPeople(data || [])
+    } catch { /* dialog select stays empty */ }
+  }
+
+  function openCreate() {
     setCreateOpen(true)
-    if (!peopleLoaded) {
-      setPeopleLoaded(true)
-      try {
-        const data = await adminApi.listPeople(getInstitutionId() || "", 0, 100)
-        setPeople(data || [])
-      } catch { /* dialog select stays empty */ }
+    loadPeople()
+  }
+
+  function openEdit(row: any) {
+    setConfirmDeleteId(null)
+    setEditRow(row)
+    loadPeople()
+  }
+
+  async function handleDelete(row: any) {
+    setConfirmDeleteId(null)
+    try {
+      await nfeApi.deleteLearner(row.id)
+      toast(t("form.deleteSuccess"), "success")
+      if (editRow?.id === row.id) setEditRow(null)
+      loadLearners()
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : t("form.submitError"), "error")
     }
   }
 
@@ -100,7 +125,23 @@ export default function LearnersPage() {
                     <p className="text-sm font-medium text-foreground">{learner.name || learner.fullName || learner.participantNumber || learner.occupation || String(learner.userId || "").slice(0, 8)}</p>
                     <p className="text-xs text-muted-foreground">{learner.email || learner.phone || learner.organization || t("learners.noContactFallback")}</p>
                   </div>
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">{learner.status || ts("active")}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">{learner.status || ts("active")}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEdit(learner)}
+                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                      >
+                        {t("form.edit")}
+                      </button>
+                      <button
+                        onClick={() => { if (confirmDeleteId === learner.id) handleDelete(learner); else setConfirmDeleteId(learner.id) }}
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${confirmDeleteId === learner.id ? "bg-red-600 text-white hover:bg-red-700" : "text-red-600 hover:bg-red-50"}`}
+                      >
+                        {confirmDeleteId === learner.id ? t("form.confirmDelete") : t("form.delete")}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -109,18 +150,27 @@ export default function LearnersPage() {
       </Card>
 
       <ProviderCreateDialog
-        open={createOpen}
-        title={t("learners.addLearner")}
+        open={createOpen || editRow !== null}
+        title={editRow ? t("form.editTitle", { name: editRow.participantNumber || editRow.occupation || "" }) : t("learners.addLearner")}
+        submitLabel={editRow ? t("form.save") : undefined}
         fields={createFields}
-        onClose={() => setCreateOpen(false)}
+        initialValues={editRow || undefined}
+        onClose={() => { setCreateOpen(false); setEditRow(null) }}
         onSubmit={async (v) => {
-          await nfeApi.createLearner({
-            userId: v.userId,
-            participantNumber: v.participantNumber,
-            occupation: v.occupation,
-            organization: v.organization,
-          })
-          setCreateOpen(false)
+          if (editRow) {
+            await nfeApi.updateLearner(editRow.id, { ...v, providerId: editRow.providerId })
+            toast(t("form.updateSuccess"), "success")
+            setEditRow(null)
+          } else {
+            await nfeApi.createLearner({
+              userId: v.userId,
+              participantNumber: v.participantNumber,
+              occupation: v.occupation,
+              organization: v.organization,
+            })
+            toast(t("form.createSuccess"), "success")
+            setCreateOpen(false)
+          }
           loadLearners()
         }}
       />
