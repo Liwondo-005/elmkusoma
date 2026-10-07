@@ -152,6 +152,8 @@ export const collegeApi = {
   getLearnerModules: (studentId: string) => api.get<any[]>(`/api/v1/college/learner/modules/student/${studentId}`),
   createModule: (data: any) => api.post<any>("/api/v1/college/learner/modules", data),
   updateModule: (id: string, data: any) => api.put<any>(`/api/v1/college/learner/modules/${id}`, data),
+  updateModuleProgress: (id: string, data: { progressPercent: number; status?: string }) =>
+    api.put<any>(`/api/v1/college/learner/modules/${id}/progress`, data),
   deleteModule: (id: string) => api.delete<void>(`/api/v1/college/learner/modules/${id}`),
 
   // Collaborations

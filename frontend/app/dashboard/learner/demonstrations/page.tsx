@@ -31,6 +31,7 @@ export default function DemonstrationsPage() {
   const [demos, setDemos] = useState<PracticalDemonstration[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [submittingId, setSubmittingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -44,6 +45,20 @@ export default function DemonstrationsPage() {
       const res = await collegeApi.getStudentDemonstrations(studentId)
       setDemos((res.data as PracticalDemonstration[] | undefined) || [])
     } catch { setError(tc("error.load")) } finally { setLoading(false) }
+  }
+
+  async function handleSubmit(id: string) {
+    try {
+      setSubmittingId(id)
+      setError(null)
+      const res = await collegeApi.submitDemonstration(id)
+      const updated = res.data as PracticalDemonstration | undefined
+      setDemos((prev) => prev.map((d) => (d.id === id && updated ? { ...d, ...updated } : d)))
+    } catch {
+      setError(tc("error.create"))
+    } finally {
+      setSubmittingId(null)
+    }
   }
 
   if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
@@ -68,6 +83,13 @@ export default function DemonstrationsPage() {
 
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
+        </div>
+      )}
       <LearnerHeader firstName={firstName} subtitle={t("demonstrations.subtitle")} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -112,6 +134,17 @@ export default function DemonstrationsPage() {
                   {d.description && <p className="line-clamp-2 text-sm text-muted-foreground">{d.description}</p>}
                 </div>
                 <div className="flex items-center gap-4 text-right">
+                  {d.status === "DRAFT" && (
+                    <button
+                      onClick={() => handleSubmit(d.id)}
+                      disabled={submittingId === d.id}
+                      aria-label={t("learnerActions.submitForReview")}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/10 disabled:opacity-50"
+                    >
+                      <Send className="size-3" />
+                      {submittingId === d.id ? tc("loading") : t("learnerActions.submitForReview")}
+                    </button>
+                  )}
                   {d.score != null && (
                     <div className="flex items-center gap-1 text-amber-600">
                       <Star className="size-4" />

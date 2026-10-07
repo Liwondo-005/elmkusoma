@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
 import type { FieldworkPlacement } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { Briefcase, CheckCircle2, Clock, MapPin, Hourglass, AlertCircle } from "lucide-react"
+import { Briefcase, CheckCircle2, Clock, MapPin, Hourglass, AlertCircle, Plus } from "lucide-react"
 
 function PlacementStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -22,6 +22,12 @@ function PlacementStatusBadge({ status }: { status: string }) {
   )
 }
 
+function today(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+const emptyEntry = { entryDate: today(), activities: "", hoursWorked: "" }
+
 export default function FieldworkPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
@@ -29,22 +35,47 @@ export default function FieldworkPage() {
   const [placements, setPlacements] = useState<FieldworkPlacement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [openPlacementId, setOpenPlacementId] = useState<string | null>(null)
+  const [entry, setEntry] = useState(emptyEntry)
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
     loadFieldwork()
   }, [user])
 
-  async function loadFieldwork() {
+  async function loadFieldwork(silent = false) {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
+      setError(null)
       const studentId = user?.id || ""
       const res = await collegeApi.getStudentFieldwork(studentId)
       setPlacements(res.data || [])
     } catch {
       setError(tc("error.generic"))
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
+    }
+  }
+
+  async function handleAddLogbook(placementId: string) {
+    if (!entry.entryDate || !entry.activities.trim()) return
+    try {
+      setSavingId(placementId)
+      setError(null)
+      await collegeApi.addLogbookEntry(placementId, {
+        placementId,
+        entryDate: entry.entryDate,
+        activities: entry.activities.trim(),
+        hoursWorked: entry.hoursWorked ? Number(entry.hoursWorked) : undefined,
+      })
+      setEntry({ ...emptyEntry, entryDate: today() })
+      setOpenPlacementId(null)
+      await loadFieldwork(true)
+    } catch {
+      setError(tc("error.create"))
+    } finally {
+      setSavingId(null)
     }
   }
 
@@ -70,6 +101,13 @@ export default function FieldworkPage() {
 
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
+        </div>
+      )}
       <LearnerHeader firstName={firstName} subtitle={t("subtitle.fieldwork")} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -123,7 +161,7 @@ export default function FieldworkPage() {
         <EmptyState
           icon={<Briefcase className="size-8" />}
           title={t("empty.noFieldwork")}
-          description={t("empty.noFieldwork")}
+          description={t("empty.noFieldworkDesc")}
         />
       ) : (
         <div className="space-y-4">
@@ -168,6 +206,82 @@ export default function FieldworkPage() {
                     </div>
                   </div>
                 ) : null}
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEntry({ ...emptyEntry, entryDate: today() })
+                      setOpenPlacementId(openPlacementId === p.id ? null : p.id)
+                    }}
+                    aria-expanded={openPlacementId === p.id}
+                    aria-label={t("learnerActions.addLogbook")}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/10"
+                  >
+                    <Plus className="size-3" />
+                    {t("learnerActions.addLogbook")}
+                  </button>
+                </div>
+                {openPlacementId === p.id && (
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); handleAddLogbook(p.id) }}
+                    className="mt-3 space-y-3 rounded-xl border border-border bg-muted/30 p-4"
+                  >
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">{t("learnerActions.entryDate")} *</label>
+                        <input
+                          type="date"
+                          required
+                          value={entry.entryDate}
+                          onChange={(e) => setEntry((s) => ({ ...s, entryDate: e.target.value }))}
+                          aria-label={t("learnerActions.entryDate")}
+                          className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">{t("learnerActions.hours")}</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          value={entry.hoursWorked}
+                          onChange={(e) => setEntry((s) => ({ ...s, hoursWorked: e.target.value }))}
+                          aria-label={t("learnerActions.hours")}
+                          className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">{t("learnerActions.activities")} *</label>
+                      <textarea
+                        rows={2}
+                        required
+                        value={entry.activities}
+                        onChange={(e) => setEntry((s) => ({ ...s, activities: e.target.value }))}
+                        aria-label={t("learnerActions.activities")}
+                        className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="submit"
+                        disabled={savingId === p.id || !entry.activities.trim()}
+                        aria-label={tc("submit")}
+                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {savingId === p.id ? tc("loading") : tc("submit")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOpenPlacementId(null)}
+                        aria-label={tc("cancel")}
+                        className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                      >
+                        {tc("cancel")}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             )
           })}

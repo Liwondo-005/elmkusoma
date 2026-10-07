@@ -28,6 +28,7 @@ export default function PracticalLabPage() {
   const [tasks, setTasks] = useState<StudyTask[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [completingId, setCompletingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -37,6 +38,7 @@ export default function PracticalLabPage() {
   async function loadTasks() {
     try {
       setLoading(true)
+      setError(null)
       const studentId = user?.id || ""
       const res = await collegeApi.getStudentTasks(studentId)
       const allTasks = (res.data as StudyTask[] | undefined) || []
@@ -48,6 +50,20 @@ export default function PracticalLabPage() {
       setError(tc("error.generic"))
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleComplete(id: string) {
+    try {
+      setCompletingId(id)
+      setError(null)
+      const res = await collegeApi.completeStudyTask(id)
+      const updated = res.data as StudyTask | undefined
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...(updated || { isCompleted: true }) } : t)))
+    } catch {
+      setError(tc("error.update"))
+    } finally {
+      setCompletingId(null)
     }
   }
 
@@ -72,6 +88,13 @@ export default function PracticalLabPage() {
 
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
+        </div>
+      )}
       <LearnerHeader firstName={firstName} subtitle={t("subtitle.practicalLab")} />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -114,7 +137,7 @@ export default function PracticalLabPage() {
         <EmptyState
           icon={<FlaskConical className="size-8" />}
           title={t("empty.noModules")}
-          description={t("empty.noModules")}
+          description={t("empty.noPracticalLabDesc")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -132,6 +155,20 @@ export default function PracticalLabPage() {
                   <span className="ml-auto">{new Date(task.scheduledDate).toLocaleDateString()}</span>
                 )}
               </div>
+              {!task.isCompleted && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => handleComplete(task.id)}
+                    disabled={completingId === task.id}
+                    aria-label={t("learnerActions.markComplete")}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-600/20 bg-emerald-500/5 px-3 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-500/10 disabled:opacity-50 dark:text-emerald-400"
+                  >
+                    <CheckCircle2 className="size-3" />
+                    {completingId === task.id ? tc("loading") : t("learnerActions.markComplete")}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

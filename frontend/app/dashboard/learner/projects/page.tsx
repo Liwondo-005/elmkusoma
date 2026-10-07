@@ -4,9 +4,13 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
-import type { Project } from "@/lib/types/college"
+import type { Project, SubmissionType } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
-import { FolderKanban, CheckCircle2, Clock, Calendar, AlertCircle } from "lucide-react"
+import { FolderKanban, CheckCircle2, Clock, Calendar, AlertCircle, Plus } from "lucide-react"
+
+const SUBMISSION_TYPES: SubmissionType[] = ["DOCUMENT", "IMAGE", "VIDEO", "CODE", "PRESENTATION", "OTHER"]
+
+const emptySubmission = { title: "", description: "", fileUrl: "", submissionType: "DOCUMENT" as SubmissionType }
 
 function ProjectStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -31,22 +35,48 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null)
+  const [submission, setSubmission] = useState(emptySubmission)
+  const [submittingId, setSubmittingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
     loadProjects()
   }, [user])
 
-  async function loadProjects() {
+  async function loadProjects(silent = false) {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
+      setError(null)
       const studentId = user?.id || ""
       const res = await collegeApi.getStudentProjects(studentId)
       setProjects(res.data || [])
     } catch {
       setError(tc("error.generic"))
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
+    }
+  }
+
+  async function handleAddSubmission(projectId: string) {
+    if (!submission.title.trim()) return
+    try {
+      setSubmittingId(projectId)
+      setError(null)
+      await collegeApi.addSubmission(projectId, {
+        projectId,
+        submissionType: submission.submissionType,
+        title: submission.title.trim(),
+        description: submission.description.trim() || undefined,
+        fileUrl: submission.fileUrl.trim() || undefined,
+      })
+      setSubmission(emptySubmission)
+      setOpenProjectId(null)
+      await loadProjects(true)
+    } catch {
+      setError(tc("error.create"))
+    } finally {
+      setSubmittingId(null)
     }
   }
 
@@ -71,6 +101,13 @@ export default function ProjectsPage() {
 
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
+        </div>
+      )}
       <LearnerHeader firstName={firstName} subtitle={t("subtitle.projects")} />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -113,7 +150,7 @@ export default function ProjectsPage() {
         <EmptyState
           icon={<FolderKanban className="size-8" />}
           title={t("empty.noProjects")}
-          description={t("empty.noProjects")}
+          description={t("empty.noProjectsDesc")}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -133,6 +170,93 @@ export default function ProjectsPage() {
                 )}
                 {p.dueDate && <span>{t("deadline")} {new Date(p.dueDate).toLocaleDateString()}</span>}
               </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmission(emptySubmission)
+                    setOpenProjectId(openProjectId === p.id ? null : p.id)
+                  }}
+                  aria-expanded={openProjectId === p.id}
+                  aria-label={t("learnerActions.addSubmission")}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/10"
+                >
+                  <Plus className="size-3" />
+                  {t("learnerActions.addSubmission")}
+                </button>
+              </div>
+              {openProjectId === p.id && (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); handleAddSubmission(p.id) }}
+                  className="mt-3 space-y-3 rounded-xl border border-border bg-muted/30 p-4"
+                >
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">{t("title")} *</label>
+                      <input
+                        type="text"
+                        required
+                        value={submission.title}
+                        onChange={(e) => setSubmission((s) => ({ ...s, title: e.target.value }))}
+                        aria-label={t("title")}
+                        className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">{t("learnerActions.submissionType")}</label>
+                      <select
+                        value={submission.submissionType}
+                        onChange={(e) => setSubmission((s) => ({ ...s, submissionType: e.target.value as SubmissionType }))}
+                        aria-label={t("learnerActions.submissionType")}
+                        className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                      >
+                        {SUBMISSION_TYPES.map((st) => (
+                          <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">{t("learnerActions.fileUrl")}</label>
+                    <input
+                      type="url"
+                      value={submission.fileUrl}
+                      onChange={(e) => setSubmission((s) => ({ ...s, fileUrl: e.target.value }))}
+                      placeholder="https://..."
+                      aria-label={t("learnerActions.fileUrl")}
+                      className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">{t("description")}</label>
+                    <textarea
+                      rows={2}
+                      value={submission.description}
+                      onChange={(e) => setSubmission((s) => ({ ...s, description: e.target.value }))}
+                      aria-label={t("description")}
+                      className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="submit"
+                      disabled={submittingId === p.id || !submission.title.trim()}
+                      aria-label={tc("submit")}
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {submittingId === p.id ? tc("loading") : tc("submit")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setOpenProjectId(null); setSubmission(emptySubmission) }}
+                      aria-label={tc("cancel")}
+                      className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                    >
+                      {tc("cancel")}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           ))}
         </div>

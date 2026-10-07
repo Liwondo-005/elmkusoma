@@ -9,6 +9,16 @@ import type { Portfolio, PracticalDemonstration, Project, FieldworkPlacement, Co
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import { Award, FolderOpen, Target, BookOpen, Bookmark, ChevronRight, AlertCircle } from "lucide-react"
 
+function toList<T>(data: unknown): T[] {
+  return Array.isArray(data) ? (data as T[]) : []
+}
+
+function toPortfolioList(data: unknown): Portfolio[] {
+  if (Array.isArray(data)) return data as Portfolio[]
+  if (data && typeof data === "object") return [data as Portfolio]
+  return []
+}
+
 export default function MyEvidencePage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
@@ -37,11 +47,11 @@ export default function MyEvidencePage() {
         collegeApi.getStudentFieldwork(studentId),
         collegeApi.getStudentCompetencies(studentId),
       ])
-      if (portRes.status === "fulfilled") setPortfolios(Array.isArray(portRes.value) ? portRes.value as Portfolio[] : [])
-      if (demoRes.status === "fulfilled") setDemonstrations(Array.isArray(demoRes.value) ? demoRes.value as PracticalDemonstration[] : [])
-      if (projRes.status === "fulfilled") setProjects(Array.isArray(projRes.value) ? projRes.value as Project[] : [])
-      if (fwRes.status === "fulfilled") setFieldwork(Array.isArray(fwRes.value) ? fwRes.value as FieldworkPlacement[] : [])
-      if (compRes.status === "fulfilled") setCompetencies(Array.isArray(compRes.value) ? compRes.value as CompetencyRecord[] : [])
+      if (portRes.status === "fulfilled") setPortfolios(toPortfolioList(portRes.value?.data))
+      if (demoRes.status === "fulfilled") setDemonstrations(toList<PracticalDemonstration>(demoRes.value?.data))
+      if (projRes.status === "fulfilled") setProjects(toList<Project>(projRes.value?.data))
+      if (fwRes.status === "fulfilled") setFieldwork(toList<FieldworkPlacement>(fwRes.value?.data))
+      if (compRes.status === "fulfilled") setCompetencies(toList<CompetencyRecord>(compRes.value?.data))
     } catch {
       setError(tc("error.load"))
     } finally {

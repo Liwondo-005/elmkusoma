@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
@@ -36,6 +36,12 @@ export default function CompetenciesPage() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [form, setForm] = useState<{ status: "LEARNING" | "PRACTICING"; evidence: string }>({
+    status: "LEARNING",
+    evidence: "",
+  })
 
   useEffect(() => {
     if (!user) return
@@ -62,6 +68,30 @@ export default function CompetenciesPage() {
   }
 
   const recordMap = new Map(records.map(r => [r.competencyId, r]))
+
+  async function handleUpdateRecord(competencyId: string) {
+    if (!user) return
+    try {
+      setSavingId(competencyId)
+      setError(null)
+      const res = await collegeApi.updateStudentCompetency(user.id || "", competencyId, {
+        status: form.status,
+        evidence: form.evidence.trim() || undefined,
+      })
+      const updated = res.data as CompetencyRecord | undefined
+      setRecords((prev) => {
+        const existing = prev.find((r) => r.competencyId === competencyId)
+        const merged = updated || (existing ? { ...existing, status: form.status, evidence: form.evidence.trim() } : undefined)
+        if (!merged) return prev
+        return [...prev.filter((r) => r.competencyId !== competencyId), merged]
+      })
+      setUpdatingId(null)
+    } catch {
+      setError(tc("error.update"))
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   const filtered = competencies.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.code?.toLowerCase().includes(search.toLowerCase())
@@ -90,6 +120,13 @@ export default function CompetenciesPage() {
 
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
+        </div>
+      )}
       <LearnerHeader firstName={firstName} subtitle={t("subtitle.competencies")} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -174,7 +211,7 @@ export default function CompetenciesPage() {
         <EmptyState
           icon={<Target className="size-8" />}
           title={t("empty.noCompetencies")}
-          description={t("empty.noCompetencies")}
+          description={t("empty.noCompetenciesDesc")}
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
@@ -186,21 +223,97 @@ export default function CompetenciesPage() {
                   <th className="px-4 py-3 font-medium text-muted-foreground">{t("department")}</th>
                   <th className="px-4 py-3 font-medium text-muted-foreground">{t("status")}</th>
                   <th className="px-4 py-3 font-medium text-muted-foreground">{t("academicYear")}</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">{tc("edit")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((c) => {
                   const record = recordMap.get(c.id)
+                  const editable = !record || record.status === "NOT_STARTED" || record.status === "LEARNING" || record.status === "PRACTICING"
                   return (
-                    <tr key={c.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-foreground">{c.name}</p>
-                        {c.code && <p className="text-xs text-muted-foreground">{c.code}</p>}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{c.competencyType}</td>
-                      <td className="px-4 py-3"><StatusBadge status={record?.status || "NOT_STARTED"} /></td>
-                      <td className="px-4 py-3 text-muted-foreground">{record?.updatedAt ? new Date(record.updatedAt).toLocaleDateString() : "—"}</td>
-                    </tr>
+                    <Fragment key={c.id}>
+                      <tr className="hover:bg-muted/30">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-foreground">{c.name}</p>
+                          {c.code && <p className="text-xs text-muted-foreground">{c.code}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{c.competencyType}</td>
+                        <td className="px-4 py-3"><StatusBadge status={record?.status || "NOT_STARTED"} /></td>
+                        <td className="px-4 py-3 text-muted-foreground">{record?.updatedAt ? new Date(record.updatedAt).toLocaleDateString() : "—"}</td>
+                        <td className="px-4 py-3 text-right">
+                          {editable ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm({
+                                  status: record?.status === "PRACTICING" ? "PRACTICING" : "LEARNING",
+                                  evidence: record?.evidence || "",
+                                })
+                                setUpdatingId(updatingId === c.id ? null : c.id)
+                              }}
+                              aria-expanded={updatingId === c.id}
+                              aria-label={t("learnerActions.updateStatus")}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/10"
+                            >
+                              {updatingId === c.id ? tc("cancel") : t("learnerActions.updateStatus")}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                      {updatingId === c.id && (
+                        <tr>
+                          <td colSpan={5} className="bg-muted/30 px-4 py-3">
+                            <form
+                              onSubmit={(e) => { e.preventDefault(); handleUpdateRecord(c.id) }}
+                              className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                            >
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-muted-foreground">{t("status")}</label>
+                                <select
+                                  value={form.status}
+                                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as "LEARNING" | "PRACTICING" }))}
+                                  aria-label={t("status")}
+                                  className="h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                                >
+                                  <option value="LEARNING">{t("learnerActions.statusLearning")}</option>
+                                  <option value="PRACTICING">{t("learnerActions.statusPracticing")}</option>
+                                </select>
+                              </div>
+                              <div className="flex-1 space-y-1.5">
+                                <label className="text-xs font-medium text-muted-foreground">{t("learnerActions.evidenceOptional")}</label>
+                                <input
+                                  type="text"
+                                  value={form.evidence}
+                                  onChange={(e) => setForm((f) => ({ ...f, evidence: e.target.value }))}
+                                  aria-label={t("learnerActions.evidenceOptional")}
+                                  className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="submit"
+                                  disabled={savingId === c.id}
+                                  aria-label={tc("save")}
+                                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-50"
+                                >
+                                  {savingId === c.id ? tc("loading") : tc("save")}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setUpdatingId(null)}
+                                  aria-label={tc("cancel")}
+                                  className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                                >
+                                  {tc("cancel")}
+                                </button>
+                              </div>
+                            </form>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   )
                 })}
               </tbody>

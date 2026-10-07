@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
+import { ApiError } from "@/lib/api-client"
 import type { Portfolio, PortfolioItem } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import { Briefcase, Award, FileText, Image, Star, Eye, EyeOff, AlertCircle } from "lucide-react"
@@ -43,14 +44,25 @@ export default function PortfolioPage() {
   async function loadPortfolio() {
     try {
       setLoading(true)
+      setError(null)
       const studentId = user?.id || ""
       const res = await collegeApi.getStudentPortfolio(studentId)
       const data = res.data as Portfolio | undefined
       if (data) {
         setPortfolio(data)
         setItems(data.items || [])
+      } else {
+        setPortfolio(null)
+        setItems([])
       }
-    } catch { setError(tc("error.generic")) } finally { setLoading(false) }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setPortfolio(null)
+        setItems([])
+      } else {
+        setError(tc("error.generic"))
+      }
+    } finally { setLoading(false) }
   }
 
   if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
@@ -104,10 +116,12 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {!portfolio ? (
-        <EmptyState title={t("empty.noPortfolio")} description={t("empty.noPortfolio")} />
-      ) : items.length === 0 ? (
-        <EmptyState title={t("empty.noPortfolio")} description={t("empty.noPortfolio")} />
+      {!portfolio || items.length === 0 ? (
+        <EmptyState
+          icon={<Briefcase className="size-8" />}
+          title={t("empty.noPortfolio")}
+          description={t("empty.noPortfolioDesc")}
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (

@@ -138,7 +138,7 @@ export default function WorkshopsPage() {
         location: form.location.trim() || undefined,
         materialsUrl: form.materialsUrl.trim() || undefined,
         studentId: user.id,
-        institutionId: user.institutionId || "",
+        institutionId: user.institutionId || undefined,
         status: "SCHEDULED",
       }
       await collegeApi.createWorkshop(dto)
@@ -431,7 +431,7 @@ export default function WorkshopsPage() {
         <EmptyState
           icon={<FlaskConical className="size-8" />}
           title={t("empty.noModules")}
-          description={t("empty.noModules")}
+          description={t("empty.noWorkshopsDesc")}
           action={
             <button
               onClick={() => setShowForm(true)}

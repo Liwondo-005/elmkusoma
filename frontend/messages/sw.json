@@ -1,4 +1,8 @@
 {
+  "ai": {
+    "notConfigured": "AI haijaanzishwa katika envieri hii",
+    "notConfiguredTitle": "AI haipatikani"
+  },
   "common": {
     "submit": "Wasilisha",
     "save": "Hifadhi",
@@ -4572,7 +4576,28 @@
       "noResources": "Hakuna rasilimali bado.",
       "noAssessments": "Hakuna mitihani bado.",
       "noThesis": "Hakuna mada za thesis bado.",
-      "noPortfolio": "Faili ni tupu. Anza kuongeza kazi yako!"
+      "noPortfolio": "Faili ni tupu. Anza kuongeza kazi yako!",
+      "noPortfolioDesc": "Ongeza miradi na sampuli za kazi kujenga faili lako.",
+      "noProjectsDesc": "Tengeneza mradi kisha ongeza wasilisho kuonyesha kazi yako.",
+      "noFieldworkDesc": "Rekodi saa na shughuli zako kwenye daftari la kazi.",
+      "noPracticalLabDesc": "Kamilisha kazi za vitendo na maabara kufuatilia maendeleo yako.",
+      "noCompetenciesDesc": "Ujuzi na stadi za programu yako wataonekana hapa.",
+      "noWorkshopsDesc": "Tengeneza warsha au kipindi cha maabara kuanza."
+    },
+    "learnerActions": {
+      "submitForReview": "Wasilisha kwa ukaguzi",
+      "addSubmission": "Ongeza wasilisho",
+      "submissionType": "Aina ya wasilisho",
+      "fileUrl": "Kiungo cha faili",
+      "addLogbook": "Ongeza kipengele cha daftari",
+      "entryDate": "Tarehe ya kipengele",
+      "hours": "Saa",
+      "activities": "Shughuli",
+      "markComplete": "Weka umekamilika",
+      "updateStatus": "Sasisha hali",
+      "evidenceOptional": "Ushahidi (hiari)",
+      "statusLearning": "Kujifunza",
+      "statusPracticing": "Kufanya mazoezi"
     },
     "stats": {
       "coursesEnrolled": "Kozi Zilizosajiliwa",
@@ -8937,6 +8962,13 @@
       "saveError": "Imeshindwa kuhifadhi mipangilio."
     }
   },
+  "moduleWorkspace": {
+    "progressLabel": "Maendeleo",
+    "saveProgress": "Hifadhi maendeleo",
+    "markComplete": "Weka kamilisha",
+    "saved": "Maendeleo yamehifadhiwa",
+    "invalidPercent": "Weka thamani kati ya 0 na 100"
+  },
   "subscription": {
     "title": "Usajili",
     "subtitle": "Chagua mpango unaokufaa kujifunza.",
@@ -8973,5 +9005,20 @@
         "f6": "Upatikanaji wa API"
       }
     }
+  },
+  "liveOps": {
+    "forceEnd": "Maliza kwa nguvu",
+    "forceEndTitle": "Maliza kikao hiki?",
+    "forceEndBody": "\"{title}\" itamalizwa kwa wote. Hauwezi kutenduliwa.",
+    "forceEndConfirm": "Maliza kikao",
+    "forceEndCancel": "Ghairi",
+    "forceEndFailed": "Imeshindwa kumaliza kikao.",
+    "issues": "Ripoti za Matatizo",
+    "viewIssues": "Ona matatizo",
+    "showAllIssues": "Ona matatizo yote",
+    "issuesEmpty": "Hakuna matatizo yaliyoripotiwa katika taasisi hii.",
+    "issuesFilteredEmpty": "Hakuna matatizo yaliyoripotiwa kwa kikao hiki.",
+    "issuesError": "Imeshindwa kupata matatizo.",
+    "reportedBy": "Imeripotiwa na"
   }
 }

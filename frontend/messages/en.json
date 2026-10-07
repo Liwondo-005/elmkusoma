@@ -1,4 +1,8 @@
 {
+  "ai": {
+    "notConfigured": "AI is not configured in this deployment",
+    "notConfiguredTitle": "AI unavailable"
+  },
   "common": {
     "submit": "Submit",
     "save": "Save",
@@ -4972,7 +4976,28 @@
       "noResources": "No resources available yet.",
       "noAssessments": "No assessments available yet.",
       "noThesis": "No thesis topics yet.",
-      "noPortfolio": "Portfolio is empty. Start adding your work!"
+      "noPortfolio": "Portfolio is empty. Start adding your work!",
+      "noPortfolioDesc": "Add projects, certificates and work samples to build your portfolio.",
+      "noProjectsDesc": "Create a project, then add submissions to show your work.",
+      "noFieldworkDesc": "Log your placement hours and activities in the logbook.",
+      "noPracticalLabDesc": "Complete practical tasks and labs to track your progress.",
+      "noCompetenciesDesc": "Skills and competencies for your programme will appear here.",
+      "noWorkshopsDesc": "Create a workshop or lab session to get started."
+    },
+    "learnerActions": {
+      "submitForReview": "Submit for review",
+      "addSubmission": "Add submission",
+      "submissionType": "Submission type",
+      "fileUrl": "File link",
+      "addLogbook": "Add logbook entry",
+      "entryDate": "Entry date",
+      "hours": "Hours",
+      "activities": "Activities",
+      "markComplete": "Mark complete",
+      "updateStatus": "Update status",
+      "evidenceOptional": "Evidence (optional)",
+      "statusLearning": "Learning",
+      "statusPracticing": "Practicing"
     },
     "stats": {
       "coursesEnrolled": "Courses Enrolled",
@@ -8932,6 +8957,13 @@
       "saveError": "Failed to save settings."
     }
   },
+  "moduleWorkspace": {
+    "progressLabel": "Progress",
+    "saveProgress": "Save progress",
+    "markComplete": "Mark complete",
+    "saved": "Progress saved",
+    "invalidPercent": "Enter a value between 0 and 100"
+  },
   "subscription": {
     "title": "Subscription",
     "subtitle": "Choose the plan that fits your learning needs.",
@@ -8968,5 +9000,20 @@
         "f6": "API access"
       }
     }
+  },
+  "liveOps": {
+    "forceEnd": "Force end",
+    "forceEndTitle": "Force end this session?",
+    "forceEndBody": "\"{title}\" will be ended for everyone. This cannot be undone.",
+    "forceEndConfirm": "End session",
+    "forceEndCancel": "Cancel",
+    "forceEndFailed": "Could not end the session.",
+    "issues": "Reported Issues",
+    "viewIssues": "View issues",
+    "showAllIssues": "Show all issues",
+    "issuesEmpty": "No issues reported for this institution.",
+    "issuesFilteredEmpty": "No issues reported for this session.",
+    "issuesError": "Could not load issues.",
+    "reportedBy": "Reported by"
   }
 }
