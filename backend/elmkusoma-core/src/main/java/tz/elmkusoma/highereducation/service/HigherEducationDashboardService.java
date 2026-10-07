@@ -2,7 +2,9 @@ package tz.elmkusoma.highereducation.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tz.elmkusoma.course.domain.Course;
 import tz.elmkusoma.course.domain.LiveClass;
+import tz.elmkusoma.course.repository.CourseRepository;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.highereducation.domain.*;
 import tz.elmkusoma.highereducation.dto.*;
@@ -33,6 +35,10 @@ public class HigherEducationDashboardService {
     private final CareerProfileRepository careerProfileRepository;
     private final LiveClassRepository liveClassRepository;
     private final GpaCalculationService gpaCalculationService;
+    private final CourseRepository courseRepository;
+    private final LearningModuleRepository learningModuleRepository;
+    private final ProgrammeRepository programmeRepository;
+    private final DepartmentRepository departmentRepository;
 
     public HigherEducationDashboardDTO getDashboard(UUID studentId, UUID institutionId, String learningLevel) {
         HigherEducationDashboardDTO dashboard = new HigherEducationDashboardDTO();
@@ -40,22 +46,48 @@ public class HigherEducationDashboardService {
 
         LocalDate today = LocalDate.now();
 
+        AcademicRecord latestRecord = academicRecordRepository
+                .findTopByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId).orElse(null);
+        populateAcademicContext(dashboard, studentId, institutionId, latestRecord);
+
         dashboard.setWhatsNext(computeWhatsNext(studentId));
         dashboard.setToday(computeToday(studentId, today));
         dashboard.setContinueLearning(computeContinueLearning(studentId));
         dashboard.setLiveCampus(computeLiveCampus(institutionId, today));
 
+        Map<UUID, List<LearningModule>> modulesByCourse = learningModuleRepository
+                .findByStudentIdOrderByCreatedAtDesc(studentId).stream()
+                .filter(m -> m.getCourseId() != null)
+                .collect(Collectors.groupingBy(LearningModule::getCourseId));
+
         List<StudentCourseEnrollment> activeEnrollments = enrollmentRepository
-                .findByStudentIdAndStatusAndIsDeletedFalse(studentId, EnrollmentStatus.ENROLLED);
+                .findByStudentIdAndIsDeletedFalse(studentId).stream()
+                .filter(e -> e.getStatus() == EnrollmentStatus.ENROLLED
+                        || e.getStatus() == EnrollmentStatus.IN_PROGRESS)
+                .collect(Collectors.toList());
+
         dashboard.setMyCourses(activeEnrollments.stream().map(e -> {
-            int progress = computeEnrollmentProgressPercent(e);
+            List<LearningModule> courseModules = e.getCourseId() != null
+                    ? modulesByCourse.getOrDefault(e.getCourseId(), Collections.emptyList())
+                    : Collections.emptyList();
+            int totalModules = courseModules.size();
+            int completedModules = (int) courseModules.stream()
+                    .filter(m -> m.getStatus() == ModuleStatus.COMPLETED).count();
+            int progress;
+            if (!courseModules.isEmpty()) {
+                progress = (int) Math.round(courseModules.stream()
+                        .mapToInt(m -> m.getProgressPercent() != null ? m.getProgressPercent() : 0)
+                        .average().orElse(0));
+            } else {
+                progress = e.getStatus() == EnrollmentStatus.COMPLETED ? 100 : 0;
+            }
             return HigherEducationDashboardDTO.CourseSummaryDTO.builder()
                     .id(e.getId().toString())
-                    .title("Course " + e.getCourseId().toString().substring(0, Math.min(8, e.getCourseId().toString().length())))
-                    .progressPercent(progress).totalModules(0).completedModules(0).build();
+                    .title(resolveCourseTitle(e.getCourseId(), courseModules))
+                    .progressPercent(progress).totalModules(totalModules).completedModules(completedModules).build();
         }).collect(Collectors.toList()));
 
-        dashboard.setAcademicLoad(computeAcademicLoad(studentId));
+        dashboard.setAcademicLoad(computeAcademicLoad(studentId, latestRecord));
         dashboard.setProjects(computeProjects(studentId));
         dashboard.setResearch(computeResearch(studentId));
         dashboard.setMyProgress(computeMyProgress(studentId));
@@ -66,12 +98,57 @@ public class HigherEducationDashboardService {
         List<StudyTask> allTasks = studyTaskRepository.findByStudentIdAndIsDeletedFalse(studentId);
         dashboard.setStudyPlannerTasks(allTasks.stream().limit(10).map(this::toStudyTaskDTO).collect(Collectors.toList()));
 
-        Double computedSemesterGpa = gpaCalculationService.computeSemesterGpa(studentId, dashboard.getAcademicLoad().getCurrentSemesterCourses() > 0 ? "CURRENT" : null, null);
+        if (latestRecord != null && latestRecord.getSemester() != null) {
+            Double computedSemesterGpa = gpaCalculationService.computeSemesterGpa(
+                    studentId, latestRecord.getSemester(), latestRecord.getAcademicYear());
+            if (computedSemesterGpa != null) dashboard.getAcademicLoad().setCurrentSemesterGpa(computedSemesterGpa);
+        }
         Double computedCumulativeGpa = gpaCalculationService.computeCumulativeGpa(studentId);
-        if (computedSemesterGpa != null) dashboard.getAcademicLoad().setCurrentSemesterGpa(computedSemesterGpa);
         if (computedCumulativeGpa != null) dashboard.getAcademicLoad().setCumulativeGpa(computedCumulativeGpa);
 
         return dashboard;
+    }
+
+    private void populateAcademicContext(HigherEducationDashboardDTO dashboard, UUID studentId,
+                                         UUID institutionId, AcademicRecord latestRecord) {
+        UUID programmeId = latestRecord != null ? latestRecord.getProgrammeId() : null;
+        String academicYear = latestRecord != null ? latestRecord.getAcademicYear() : null;
+        String semester = latestRecord != null ? latestRecord.getSemester() : null;
+
+        if (programmeId == null || academicYear == null || semester == null) {
+            for (StudentCourseEnrollment e : enrollmentRepository.findByStudentIdAndIsDeletedFalse(studentId)) {
+                if (programmeId == null && e.getProgrammeId() != null) programmeId = e.getProgrammeId();
+                if (academicYear == null && e.getAcademicYear() != null) academicYear = e.getAcademicYear();
+                if (semester == null && e.getSemester() != null) semester = e.getSemester();
+                if (programmeId != null && academicYear != null && semester != null) break;
+            }
+        }
+
+        if (programmeId != null) {
+            UUID contextProgrammeId = programmeId;
+            Programme programme = programmeRepository.findById(contextProgrammeId).orElse(null);
+            if (programme != null) {
+                dashboard.setProgrammeName(programme.getName());
+            }
+            if (institutionId != null) {
+                departmentRepository.findByInstitutionIdAndIsDeletedFalse(institutionId).stream()
+                        .filter(d -> d.getProgrammeIds() != null && d.getProgrammeIds().contains(contextProgrammeId))
+                        .findFirst()
+                        .ifPresent(d -> dashboard.setDepartmentName(d.getName()));
+            }
+        }
+        dashboard.setAcademicYear(academicYear);
+        dashboard.setSemester(semester);
+    }
+
+    private String resolveCourseTitle(UUID courseId, List<LearningModule> courseModules) {
+        if (courseId != null) {
+            Course course = courseRepository.findById(courseId).orElse(null);
+            if (course != null && course.getTitle() != null && !course.getTitle().isBlank()) {
+                return course.getTitle();
+            }
+        }
+        return courseModules.isEmpty() ? "Course" : courseModules.get(0).getModuleTitle();
     }
 
     private HigherEducationDashboardDTO.WhatsNextDTO computeWhatsNext(UUID studentId) {
@@ -179,15 +256,13 @@ public class HigherEducationDashboardService {
                 .build();
     }
 
-    private HigherEducationDashboardDTO.AcademicLoadDTO computeAcademicLoad(UUID studentId) {
+    private HigherEducationDashboardDTO.AcademicLoadDTO computeAcademicLoad(UUID studentId, AcademicRecord latestRecord) {
         List<StudentCourseEnrollment> allEnrollments = enrollmentRepository.findByStudentIdAndIsDeletedFalse(studentId);
         long activeCount = allEnrollments.stream()
                 .filter(e -> e.getStatus() == EnrollmentStatus.ENROLLED || e.getStatus() == EnrollmentStatus.IN_PROGRESS).count();
         int totalCredits = allEnrollments.stream().filter(e -> e.getCreditHours() != null).mapToInt(StudentCourseEnrollment::getCreditHours).sum();
         int completedCredits = allEnrollments.stream().filter(e -> e.getStatus() == EnrollmentStatus.COMPLETED && e.getCreditHours() != null).mapToInt(StudentCourseEnrollment::getCreditHours).sum();
         OptionalDouble avgGpa = allEnrollments.stream().filter(e -> e.getGradePoints() != null).mapToDouble(StudentCourseEnrollment::getGradePoints).average();
-
-        AcademicRecord latestRecord = academicRecordRepository.findTopByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(studentId).orElse(null);
 
         return HigherEducationDashboardDTO.AcademicLoadDTO.builder()
                 .totalCreditHours(totalCredits).enrolledCourses((int) activeCount)
@@ -310,16 +385,6 @@ public class HigherEducationDashboardService {
         if (tasks.isEmpty()) return 0;
         long completed = tasks.stream().filter(t -> Boolean.TRUE.equals(t.getIsCompleted())).count();
         return (int) Math.round((completed * 100.0) / tasks.size());
-    }
-
-    private int computeEnrollmentProgressPercent(StudentCourseEnrollment enrollment) {
-        if (enrollment.getStatus() == EnrollmentStatus.COMPLETED) return 100;
-        if (enrollment.getStatus() == EnrollmentStatus.ENROLLED) {
-            if (enrollment.getGradePoints() != null && enrollment.getGradePoints() > 0) return 75;
-            return 10;
-        }
-        if (enrollment.getGrade() != null && !enrollment.getGrade().isEmpty()) return 80;
-        return 0;
     }
 
     private StudyTaskDTO toStudyTaskDTO(StudyTask t) {

@@ -21,7 +21,7 @@ public interface CompetencyService {
 
     List<StudentCompetencyDTO> getStudentCompetencies(UUID studentId, UUID institutionId);
 
-    CompetencyRecordDTO updateCompetencyRecord(UUID studentId, UUID competencyId, String status, String evidence, UUID assessedBy);
+    CompetencyRecordDTO updateCompetencyRecord(UUID studentId, UUID competencyId, String status, String evidence, UUID assessedBy, String userRole);
 
     CompetencySummaryDTO getCompetencySummary(UUID studentId, UUID institutionId);
 

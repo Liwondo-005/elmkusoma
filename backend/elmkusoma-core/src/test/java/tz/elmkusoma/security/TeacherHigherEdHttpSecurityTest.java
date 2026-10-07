@@ -650,10 +650,12 @@ class TeacherHigherEdHttpSecurityTest {
     }
 
     @Test
-    void competencyRecord_put_ownerStudent_200() throws Exception {
+    void competencyRecord_put_ownerStudent_practicing_200() throws Exception {
+        clearCompetencyRecord();
+
         mockMvc.perform(put("/api/v1/education/competencies/student/" + studentA.getId()
                                 + "/competency/" + competencyA.getId())
-                        .param("status", "COMPETENT")
+                        .param("status", "PRACTICING")
                         .param("evidence", "sec-owner-evidence")
                         .header("Authorization", "Bearer " + token(studentUserA))
                         .header("X-Institution-Id", header(instA)))
@@ -663,7 +665,31 @@ class TeacherHigherEdHttpSecurityTest {
         CompetencyRecord record = competencyRecordRepository
                 .findByStudentIdAndCompetencyIdAndIsDeletedFalse(studentA.getId(), competencyA.getId())
                 .orElseThrow();
-        assertEquals(CompetencyStatus.COMPETENT, record.getStatus());
+        assertEquals(CompetencyStatus.PRACTICING, record.getStatus());
+        assertEquals("sec-owner-evidence", record.getEvidence());
+    }
+
+    @Test
+    void competencyRecord_put_ownerStudent_competent_403_noWrite() throws Exception {
+        clearCompetencyRecord();
+
+        mockMvc.perform(put("/api/v1/education/competencies/student/" + studentA.getId()
+                                + "/competency/" + competencyA.getId())
+                        .param("status", "COMPETENT")
+                        .param("evidence", "sec-self-awarded")
+                        .header("Authorization", "Bearer " + token(studentUserA))
+                        .header("X-Institution-Id", header(instA)))
+                .andExpect(status().isForbidden());
+
+        assertTrue(competencyRecordRepository
+                .findByStudentIdAndCompetencyIdAndIsDeletedFalse(studentA.getId(), competencyA.getId())
+                .isEmpty());
+    }
+
+    private void clearCompetencyRecord() {
+        competencyRecordRepository
+                .findByStudentIdAndCompetencyIdAndIsDeletedFalse(studentA.getId(), competencyA.getId())
+                .ifPresent(competencyRecordRepository::delete);
     }
 
     @Test

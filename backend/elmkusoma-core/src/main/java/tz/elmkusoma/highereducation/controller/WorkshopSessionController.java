@@ -8,6 +8,7 @@ import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.highereducation.dto.WorkshopSessionDTO;
+import tz.elmkusoma.highereducation.service.HighEdIdentity;
 import tz.elmkusoma.highereducation.service.WorkshopSessionService;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class WorkshopSessionController {
 
     private final WorkshopSessionService workshopSessionService;
+    private final HighEdIdentity highEdIdentity;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
@@ -55,9 +57,10 @@ public class WorkshopSessionController {
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String role) {
-        assertStudentListAccess(studentId, userId, role);
+        UUID learnerId = highEdIdentity.resolveStudentId(userId, role, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(
-                scopedToInstitution(workshopSessionService.getStudentSessions(studentId), institutionId, role)));
+                scopedToInstitution(workshopSessionService.getStudentSessions(learnerId), institutionId, role)));
     }
 
     @GetMapping("/institution/{institutionId}")
@@ -122,13 +125,6 @@ public class WorkshopSessionController {
             return;
         }
         throw new ForbiddenException("Access denied");
-    }
-
-    /** §41: a learner may only list their own records. */
-    private void assertStudentListAccess(UUID studentId, UUID userId, String role) {
-        if (isLearnerRole(role) && (userId == null || !userId.equals(studentId))) {
-            throw new ForbiddenException("You can only view your own workshops");
-        }
     }
 
     /** §35/§36: results always leave the server scoped — lists never cross tenant boundaries. */

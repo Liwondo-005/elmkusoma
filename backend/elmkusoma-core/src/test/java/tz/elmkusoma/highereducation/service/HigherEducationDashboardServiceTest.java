@@ -7,6 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tz.elmkusoma.course.domain.LiveClass;
+import tz.elmkusoma.course.repository.CourseRepository;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.highereducation.domain.*;
 import tz.elmkusoma.highereducation.dto.*;
@@ -38,6 +39,10 @@ class HigherEducationDashboardServiceTest {
     @Mock private CareerProfileRepository careerProfileRepository;
     @Mock private LiveClassRepository liveClassRepository;
     @Mock private GpaCalculationService gpaCalculationService;
+    @Mock private CourseRepository courseRepository;
+    @Mock private LearningModuleRepository learningModuleRepository;
+    @Mock private ProgrammeRepository programmeRepository;
+    @Mock private DepartmentRepository departmentRepository;
 
     @InjectMocks
     private HigherEducationDashboardService dashboardService;
@@ -62,11 +67,9 @@ class HigherEducationDashboardServiceTest {
         when(demonstrationRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
         when(fieldworkPlacementRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
         when(enrollmentRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
-        when(enrollmentRepository.findByStudentIdAndStatusAndIsDeletedFalse(any(), any())).thenReturn(Collections.emptyList());
         when(academicRecordRepository.findTopByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(any())).thenReturn(Optional.empty());
         when(careerProfileRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Optional.empty());
         when(liveClassRepository.findByInstitutionIdAndScheduledAtBetween(any(), any(), any())).thenReturn(Collections.emptyList());
-        when(gpaCalculationService.computeSemesterGpa(any(), any(), any())).thenReturn(null);
         when(gpaCalculationService.computeCumulativeGpa(any())).thenReturn(null);
 
         HigherEducationDashboardDTO result = dashboardService.getDashboard(studentId, institutionId, "UNIVERSITY");
@@ -103,10 +106,8 @@ class HigherEducationDashboardServiceTest {
         when(demonstrationRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
         when(fieldworkPlacementRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
         when(enrollmentRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
-        when(enrollmentRepository.findByStudentIdAndStatusAndIsDeletedFalse(any(), any())).thenReturn(Collections.emptyList());
         when(academicRecordRepository.findTopByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(any())).thenReturn(Optional.empty());
         when(careerProfileRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Optional.empty());
-        when(gpaCalculationService.computeSemesterGpa(any(), any(), any())).thenReturn(null);
         when(gpaCalculationService.computeCumulativeGpa(any())).thenReturn(null);
 
         HigherEducationDashboardDTO result = dashboardService.getDashboard(studentId, institutionId, "COLLEGE");
@@ -134,11 +135,9 @@ class HigherEducationDashboardServiceTest {
         when(demonstrationRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
         when(fieldworkPlacementRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
         when(enrollmentRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Collections.emptyList());
-        when(enrollmentRepository.findByStudentIdAndStatusAndIsDeletedFalse(any(), any())).thenReturn(Collections.emptyList());
         when(academicRecordRepository.findTopByStudentIdAndIsDeletedFalseOrderByCreatedAtDesc(any())).thenReturn(Optional.empty());
         when(careerProfileRepository.findByStudentIdAndIsDeletedFalse(any())).thenReturn(Optional.empty());
         when(liveClassRepository.findByInstitutionIdAndScheduledAtBetween(any(), any(), any())).thenReturn(Collections.emptyList());
-        when(gpaCalculationService.computeSemesterGpa(any(), any(), any())).thenReturn(null);
         when(gpaCalculationService.computeCumulativeGpa(any())).thenReturn(null);
 
         HigherEducationDashboardDTO result = dashboardService.getDashboard(studentId, institutionId, "UNIVERSITY");

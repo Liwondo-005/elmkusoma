@@ -20,6 +20,9 @@ public class LearningModuleService {
     private final LearningModuleRepository learningModuleRepository;
 
     public LearningModuleDTO createModule(LearningModuleDTO dto) {
+        if (dto.getInstitutionId() == null) {
+            throw new tz.elmkusoma.exception.ForbiddenException("Access denied");
+        }
         LearningModule module = LearningModule.builder()
                 .studentId(dto.getStudentId())
                 .courseId(dto.getCourseId())
@@ -40,7 +43,7 @@ public class LearningModuleService {
                 .completedAssignments(dto.getCompletedAssignments() != null ? dto.getCompletedAssignments() : 0)
                 .totalAssessments(dto.getTotalAssessments())
                 .completedAssessments(dto.getCompletedAssessments() != null ? dto.getCompletedAssessments() : 0)
-                .institutionId(dto.getInstitutionId() != null ? dto.getInstitutionId() : UUID.randomUUID())
+                .institutionId(dto.getInstitutionId())
                 .build();
         return toDTO(learningModuleRepository.save(module));
     }
@@ -98,6 +101,7 @@ public class LearningModuleService {
                 .totalLessons(m.getTotalLessons()).completedLessons(m.getCompletedLessons())
                 .totalAssignments(m.getTotalAssignments()).completedAssignments(m.getCompletedAssignments())
                 .totalAssessments(m.getTotalAssessments()).completedAssessments(m.getCompletedAssessments())
+                .institutionId(m.getInstitutionId())
                 .createdAt(m.getCreatedAt()).updatedAt(m.getUpdatedAt())
                 .build();
     }

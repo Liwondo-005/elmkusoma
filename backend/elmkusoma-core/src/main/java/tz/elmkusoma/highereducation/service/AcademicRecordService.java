@@ -58,9 +58,13 @@ public class AcademicRecordService {
         return toDTO(repository.save(entity));
     }
 
-    public AcademicRecordDTO update(UUID id, AcademicRecordDTO dto) {
+    public AcademicRecordDTO update(UUID id, AcademicRecordDTO dto, UUID institutionId) {
         AcademicRecord entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("AcademicRecord", "id", id));
+        if (institutionId != null && (entity.getInstitutionId() == null
+                || !institutionId.equals(entity.getInstitutionId()))) {
+            throw new tz.elmkusoma.exception.ForbiddenException("Academic record", "access");
+        }
         entity.setSemesterGpa(dto.getSemesterGpa());
         entity.setCumulativeGpa(dto.getCumulativeGpa());
         entity.setTotalCreditHours(dto.getTotalCreditHours());

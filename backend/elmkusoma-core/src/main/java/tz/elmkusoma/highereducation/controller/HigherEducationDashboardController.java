@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.highereducation.dto.*;
 import tz.elmkusoma.highereducation.service.*;
 
@@ -20,34 +21,46 @@ public class HigherEducationDashboardController {
     private final StudentCourseEnrollmentService enrollmentService;
     private final AcademicRecordService academicRecordService;
     private final CareerProfileService careerProfileService;
-    private final tz.elmkusoma.student.repository.StudentRepository studentRepository;
-    private final tz.elmkusoma.parent.repository.ParentStudentLinkRepository parentStudentLinkRepository;
+    private final HighEdIdentity highEdIdentity;
 
     @GetMapping("/dashboard/{studentId}")
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<HigherEducationDashboardDTO>> getDashboard(
             @PathVariable UUID studentId,
-            @RequestHeader(value = "X-Institution-Id", defaultValue = "00000000-0000-0000-0000-000000000001") UUID institutionId,
-            @RequestParam(defaultValue = "COLLEGE") String learningLevel,
+            @RequestParam(required = false) String learningLevel,
             @RequestAttribute("institutionId") UUID serverInstitutionId,
             @RequestAttribute("userId") UUID callerUserId,
             @RequestAttribute("userRole") String userRole) {
-        verifyDashboardAccess(studentId, serverInstitutionId, callerUserId, userRole);
-        HigherEducationDashboardDTO dashboard = dashboardService.getDashboard(studentId, serverInstitutionId, learningLevel);
+        UUID learnerId = highEdIdentity.resolveStudentId(callerUserId, userRole, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, serverInstitutionId);
+        String contextLevel = highEdIdentity.resolveLearningLevel(callerUserId, learnerId, learningLevel);
+        HigherEducationDashboardDTO dashboard =
+                dashboardService.getDashboard(learnerId, serverInstitutionId, contextLevel);
         return ResponseEntity.ok(ApiResponse.success(dashboard));
     }
 
     @GetMapping("/enrollments/{studentId}")
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
-    public ResponseEntity<ApiResponse<List<StudentCourseEnrollmentDTO>>> getEnrollments(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(ApiResponse.success(enrollmentService.getStudentEnrollments(studentId)));
+    public ResponseEntity<ApiResponse<List<StudentCourseEnrollmentDTO>>> getEnrollments(
+            @PathVariable UUID studentId,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userId") UUID callerUserId,
+            @RequestAttribute("userRole") String userRole) {
+        UUID learnerId = highEdIdentity.resolveStudentId(callerUserId, userRole, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, serverInstitutionId);
+        return ResponseEntity.ok(ApiResponse.success(enrollmentService.getStudentEnrollments(learnerId)));
     }
 
     @PostMapping("/enrollments")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudentCourseEnrollmentDTO>> createEnrollment(
             @RequestBody StudentCourseEnrollmentDTO dto,
-            @RequestHeader(value = "X-Institution-Id", defaultValue = "00000000-0000-0000-0000-000000000001") UUID institutionId) {
+            @RequestAttribute(value = "institutionId", required = false) UUID serverInstitutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId) {
+        UUID institutionId = effectiveInstitution(serverInstitutionId, headerInstitutionId);
+        if (dto.getStudentId() != null) {
+            highEdIdentity.assertStudentInInstitution(dto.getStudentId(), institutionId);
+        }
         dto.setInstitutionId(institutionId);
         return ResponseEntity.ok(ApiResponse.success(enrollmentService.create(dto)));
     }
@@ -55,27 +68,48 @@ public class HigherEducationDashboardController {
     @PutMapping("/enrollments/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<StudentCourseEnrollmentDTO>> updateEnrollment(
-            @PathVariable UUID id, @RequestBody StudentCourseEnrollmentDTO dto) {
-        return ResponseEntity.ok(ApiResponse.success(enrollmentService.update(id, dto)));
+            @PathVariable UUID id,
+            @RequestBody StudentCourseEnrollmentDTO dto,
+            @RequestAttribute(value = "institutionId", required = false) UUID serverInstitutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId) {
+        UUID institutionId = effectiveInstitution(serverInstitutionId, headerInstitutionId);
+        return ResponseEntity.ok(ApiResponse.success(enrollmentService.update(id, dto, institutionId)));
     }
 
     @GetMapping("/academic-record/{studentId}")
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
-    public ResponseEntity<ApiResponse<AcademicRecordDTO>> getAcademicRecord(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(ApiResponse.success(academicRecordService.getLatestRecord(studentId)));
+    public ResponseEntity<ApiResponse<AcademicRecordDTO>> getAcademicRecord(
+            @PathVariable UUID studentId,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userId") UUID callerUserId,
+            @RequestAttribute("userRole") String userRole) {
+        UUID learnerId = highEdIdentity.resolveStudentId(callerUserId, userRole, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, serverInstitutionId);
+        return ResponseEntity.ok(ApiResponse.success(academicRecordService.getLatestRecord(learnerId)));
     }
 
     @GetMapping("/academic-record/{studentId}/history")
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
-    public ResponseEntity<ApiResponse<List<AcademicRecordDTO>>> getAcademicRecordHistory(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(ApiResponse.success(academicRecordService.getStudentRecords(studentId)));
+    public ResponseEntity<ApiResponse<List<AcademicRecordDTO>>> getAcademicRecordHistory(
+            @PathVariable UUID studentId,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userId") UUID callerUserId,
+            @RequestAttribute("userRole") String userRole) {
+        UUID learnerId = highEdIdentity.resolveStudentId(callerUserId, userRole, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, serverInstitutionId);
+        return ResponseEntity.ok(ApiResponse.success(academicRecordService.getStudentRecords(learnerId)));
     }
 
     @PostMapping("/academic-record")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<AcademicRecordDTO>> createAcademicRecord(
             @RequestBody AcademicRecordDTO dto,
-            @RequestHeader(value = "X-Institution-Id", defaultValue = "00000000-0000-0000-0000-000000000001") UUID institutionId) {
+            @RequestAttribute(value = "institutionId", required = false) UUID serverInstitutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId) {
+        UUID institutionId = effectiveInstitution(serverInstitutionId, headerInstitutionId);
+        if (dto.getStudentId() != null) {
+            highEdIdentity.assertStudentInInstitution(dto.getStudentId(), institutionId);
+        }
         dto.setInstitutionId(institutionId);
         return ResponseEntity.ok(ApiResponse.success(academicRecordService.create(dto)));
     }
@@ -83,53 +117,48 @@ public class HigherEducationDashboardController {
     @PutMapping("/academic-record/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<AcademicRecordDTO>> updateAcademicRecord(
-            @PathVariable UUID id, @RequestBody AcademicRecordDTO dto) {
-        return ResponseEntity.ok(ApiResponse.success(academicRecordService.update(id, dto)));
+            @PathVariable UUID id,
+            @RequestBody AcademicRecordDTO dto,
+            @RequestAttribute(value = "institutionId", required = false) UUID serverInstitutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId) {
+        UUID institutionId = effectiveInstitution(serverInstitutionId, headerInstitutionId);
+        return ResponseEntity.ok(ApiResponse.success(academicRecordService.update(id, dto, institutionId)));
     }
 
     @GetMapping("/career-profile/{studentId}")
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
-    public ResponseEntity<ApiResponse<CareerProfileDTO>> getCareerProfile(@PathVariable UUID studentId) {
-        return ResponseEntity.ok(ApiResponse.success(careerProfileService.getStudentProfile(studentId)));
+    public ResponseEntity<ApiResponse<CareerProfileDTO>> getCareerProfile(
+            @PathVariable UUID studentId,
+            @RequestAttribute("institutionId") UUID serverInstitutionId,
+            @RequestAttribute("userId") UUID callerUserId,
+            @RequestAttribute("userRole") String userRole) {
+        UUID learnerId = highEdIdentity.resolveStudentId(callerUserId, userRole, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, serverInstitutionId);
+        return ResponseEntity.ok(ApiResponse.success(careerProfileService.getStudentProfile(learnerId)));
     }
 
     @PostMapping("/career-profile/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<CareerProfileDTO>> upsertCareerProfile(
             @PathVariable UUID studentId,
             @RequestBody CareerProfileDTO dto,
-            @RequestHeader(value = "X-Institution-Id", defaultValue = "00000000-0000-0000-0000-000000000001") UUID institutionId) {
-        dto.setInstitutionId(institutionId);
-        return ResponseEntity.ok(ApiResponse.success(careerProfileService.createOrUpdate(studentId, dto)));
+            @RequestAttribute(value = "institutionId", required = false) UUID serverInstitutionId,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId,
+            @RequestAttribute("userId") UUID callerUserId,
+            @RequestAttribute("userRole") String userRole) {
+        UUID learnerId = highEdIdentity.resolveStudentId(callerUserId, userRole, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, serverInstitutionId);
+        dto.setInstitutionId(effectiveInstitution(serverInstitutionId, headerInstitutionId));
+        return ResponseEntity.ok(ApiResponse.success(careerProfileService.createOrUpdate(learnerId, dto)));
     }
 
-    private void verifyDashboardAccess(UUID studentId, UUID serverInstitutionId, UUID callerUserId, String userRole) {
-        if ("ADMIN".equals(userRole)) {
-            return;
+    private UUID effectiveInstitution(UUID serverInstitutionId, UUID headerInstitutionId) {
+        if (serverInstitutionId != null) {
+            return serverInstitutionId;
         }
-        if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
-            UUID ownStudentId = null;
-            if (callerUserId != null) {
-                ownStudentId = studentRepository.findByUserIdAndIsDeletedFalse(callerUserId)
-                        .map(s -> s.getId())
-                        .orElse(null);
-            }
-            if (ownStudentId == null || !ownStudentId.equals(studentId)) {
-                throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
-            }
-        } else if ("PARENT".equals(userRole)) {
-            boolean isChild = callerUserId != null && parentStudentLinkRepository.findAllByParentId(callerUserId).stream()
-                    .anyMatch(link -> link.getStudentId().equals(studentId));
-            if (!isChild) {
-                throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
-            }
+        if (headerInstitutionId != null) {
+            return headerInstitutionId;
         }
-        studentRepository.findById(studentId)
-                .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted()))
-                .ifPresent(s -> {
-                    if (s.getInstitutionId() == null || !s.getInstitutionId().equals(serverInstitutionId)) {
-                        throw new tz.elmkusoma.exception.ForbiddenException("Dashboard", "access");
-                    }
-                });
+        throw new ForbiddenException("Access denied");
     }
 }

@@ -129,7 +129,7 @@ public class CompetencyServiceImpl implements CompetencyService {
     }
 
     @Override
-    public CompetencyRecordDTO updateCompetencyRecord(UUID studentId, UUID competencyId, String status, String evidence, UUID assessedBy) {
+    public CompetencyRecordDTO updateCompetencyRecord(UUID studentId, UUID competencyId, String status, String evidence, UUID assessedBy, String userRole) {
         Competency competency = competencyRepository.findById(competencyId)
                 .filter(c -> !c.getIsDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Competency", "id", competencyId));
@@ -140,6 +140,19 @@ public class CompetencyServiceImpl implements CompetencyService {
 
         CompetencyStatus newStatus = CompetencyStatus.valueOf(status);
 
+        // No competence without authoritative assessment: learners may only log
+        // their own practice states (LEARNING/PRACTICING) and may never rewrite
+        // an assessed outcome — those transitions belong to staff/instructors.
+        boolean learner = "STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole);
+        if (learner) {
+            if (newStatus != CompetencyStatus.LEARNING && newStatus != CompetencyStatus.PRACTICING) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Competency", "access");
+            }
+            if (record != null && isAssessedOutcome(record.getStatus())) {
+                throw new tz.elmkusoma.exception.ForbiddenException("Competency", "access");
+            }
+        }
+
         if (record == null) {
             record = CompetencyRecord.builder()
                     .institutionId(competency.getInstitutionId())
@@ -147,13 +160,13 @@ public class CompetencyServiceImpl implements CompetencyService {
                     .competencyId(competencyId)
                     .status(newStatus)
                     .evidence(evidence)
-                    .assessedBy(assessedBy)
+                    .assessedBy(learner ? null : assessedBy)
                     .assessmentDate(newStatus == CompetencyStatus.ASSESSED || newStatus == CompetencyStatus.COMPETENT ? LocalDate.now() : null)
                     .build();
         } else {
             record.setStatus(newStatus);
             record.setEvidence(evidence);
-            if (assessedBy != null) {
+            if (assessedBy != null && !learner) {
                 record.setAssessedBy(assessedBy);
             }
             if (newStatus == CompetencyStatus.ASSESSED || newStatus == CompetencyStatus.COMPETENT) {
@@ -165,6 +178,13 @@ public class CompetencyServiceImpl implements CompetencyService {
         }
 
         return toCompetencyRecordDTO(competencyRecordRepository.save(record), competency);
+    }
+
+    private boolean isAssessedOutcome(CompetencyStatus status) {
+        return status == CompetencyStatus.ASSESSED
+                || status == CompetencyStatus.COMPETENT
+                || status == CompetencyStatus.COMPLETED
+                || status == CompetencyStatus.NEEDS_PRACTICE;
     }
 
     @Override

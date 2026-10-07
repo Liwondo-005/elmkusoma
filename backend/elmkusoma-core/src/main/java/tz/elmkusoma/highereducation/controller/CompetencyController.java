@@ -24,6 +24,7 @@ public class CompetencyController {
     private final CompetencyService competencyService;
     private final tz.elmkusoma.highereducation.repository.CompetencyRepository competencyRepository;
     private final tz.elmkusoma.student.repository.StudentRepository studentRepository;
+    private final tz.elmkusoma.highereducation.service.HighEdIdentity highEdIdentity;
 
     @GetMapping
     @Operation(summary = "List all competencies filtered by institution")
@@ -81,8 +82,11 @@ public class CompetencyController {
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<StudentCompetencyDTO>>> getStudentCompetencies(
             @PathVariable UUID studentId,
-            @RequestHeader("X-Institution-Id") UUID institutionId) {
-        List<StudentCompetencyDTO> result = competencyService.getStudentCompetencies(studentId, institutionId);
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute(value = "userId", required = false) UUID callerUserId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
+        UUID learnerId = highEdIdentity.resolveStudentId(callerUserId, userRole, studentId);
+        List<StudentCompetencyDTO> result = competencyService.getStudentCompetencies(learnerId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -98,9 +102,10 @@ public class CompetencyController {
             @RequestAttribute(value = "userId", required = false) UUID assessedBy,
             @RequestAttribute("institutionId") UUID serverInstitutionId,
             @RequestAttribute("userRole") String userRole) {
-        verifyCompetencyRecordAccess(studentId, competencyId, serverInstitutionId, userRole, assessedBy);
+        UUID learnerId = highEdIdentity.resolveStudentId(assessedBy, userRole, studentId);
+        verifyCompetencyRecordAccess(learnerId, competencyId, serverInstitutionId, userRole);
         CompetencyRecordDTO result = competencyService.updateCompetencyRecord(
-                studentId, competencyId, status, evidence, assessedBy);
+                learnerId, competencyId, status, evidence, assessedBy, userRole);
         return ResponseEntity.ok(ApiResponse.success("Competency record updated", result));
     }
 
@@ -109,8 +114,11 @@ public class CompetencyController {
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<CompetencySummaryDTO>> getSummary(
             @PathVariable UUID studentId,
-            @RequestHeader("X-Institution-Id") UUID institutionId) {
-        CompetencySummaryDTO result = competencyService.getCompetencySummary(studentId, institutionId);
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute(value = "userId", required = false) UUID callerUserId,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
+        UUID learnerId = highEdIdentity.resolveStudentId(callerUserId, userRole, studentId);
+        CompetencySummaryDTO result = competencyService.getCompetencySummary(learnerId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -136,7 +144,7 @@ public class CompetencyController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    private void verifyCompetencyRecordAccess(UUID studentId, UUID competencyId, UUID serverInstitutionId, String userRole, UUID callerUserId) {
+    private void verifyCompetencyRecordAccess(UUID studentId, UUID competencyId, UUID serverInstitutionId, String userRole) {
         if ("ADMIN".equals(userRole)) {
             return;
         }
@@ -154,16 +162,5 @@ public class CompetencyController {
                         throw new tz.elmkusoma.exception.ForbiddenException("Student", "access");
                     }
                 });
-        if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
-            UUID ownStudentId = null;
-            if (callerUserId != null) {
-                ownStudentId = studentRepository.findByUserIdAndIsDeletedFalse(callerUserId)
-                        .map(s -> s.getId())
-                        .orElse(null);
-            }
-            if (ownStudentId == null || !ownStudentId.equals(studentId)) {
-                throw new tz.elmkusoma.exception.ForbiddenException("Competency record", "access");
-            }
-        }
     }
 }

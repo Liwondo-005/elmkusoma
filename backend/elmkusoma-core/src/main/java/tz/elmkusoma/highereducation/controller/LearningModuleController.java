@@ -8,6 +8,7 @@ import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.highereducation.dto.LearningModuleDTO;
+import tz.elmkusoma.highereducation.service.HighEdIdentity;
 import tz.elmkusoma.highereducation.service.LearningModuleService;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class LearningModuleController {
 
     private final LearningModuleService learningModuleService;
+    private final HighEdIdentity highEdIdentity;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
@@ -55,9 +57,10 @@ public class LearningModuleController {
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String role) {
-        assertStudentListAccess(studentId, userId, role);
+        UUID learnerId = highEdIdentity.resolveStudentId(userId, role, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(
-                scopedToInstitution(learningModuleService.getStudentModules(studentId), institutionId, role)));
+                scopedToInstitution(learningModuleService.getStudentModules(learnerId), institutionId, role)));
     }
 
     @GetMapping("/student/{studentId}/course/{courseId}")
@@ -68,9 +71,10 @@ public class LearningModuleController {
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String role) {
-        assertStudentListAccess(studentId, userId, role);
+        UUID learnerId = highEdIdentity.resolveStudentId(userId, role, studentId);
+        highEdIdentity.assertStudentInInstitution(learnerId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(scopedToInstitution(
-                learningModuleService.getStudentCourseModules(studentId, courseId), institutionId, role)));
+                learningModuleService.getStudentCourseModules(learnerId, courseId), institutionId, role)));
     }
 
     @GetMapping("/institution/{institutionId}")
@@ -118,7 +122,15 @@ public class LearningModuleController {
      */
     private boolean canAccessModule(LearningModuleDTO dto, UUID userId, UUID institutionId, String role) {
         if (isLearnerRole(role)) {
-            return userId != null && userId.equals(dto.getStudentId());
+            if (dto.getStudentId() == null) {
+                return false;
+            }
+            try {
+                highEdIdentity.resolveStudentId(userId, role, dto.getStudentId());
+                return true;
+            } catch (ForbiddenException e) {
+                return false;
+            }
         }
         if (institutionId != null && institutionId.equals(dto.getInstitutionId())) {
             return true;
@@ -135,13 +147,6 @@ public class LearningModuleController {
             return;
         }
         throw new ForbiddenException("Access denied");
-    }
-
-    /** §41: a learner may only list their own records. */
-    private void assertStudentListAccess(UUID studentId, UUID userId, String role) {
-        if (isLearnerRole(role) && (userId == null || !userId.equals(studentId))) {
-            throw new ForbiddenException("You can only view your own modules");
-        }
     }
 
     /** §35/§36: results always leave the server scoped — lists never cross tenant boundaries. */

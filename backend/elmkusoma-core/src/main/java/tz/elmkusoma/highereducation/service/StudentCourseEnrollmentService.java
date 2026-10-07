@@ -54,9 +54,13 @@ public class StudentCourseEnrollmentService {
         return toDTO(repository.save(entity));
     }
 
-    public StudentCourseEnrollmentDTO update(UUID id, StudentCourseEnrollmentDTO dto) {
+    public StudentCourseEnrollmentDTO update(UUID id, StudentCourseEnrollmentDTO dto, UUID institutionId) {
         StudentCourseEnrollment entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("StudentCourseEnrollment", "id", id));
+        if (institutionId != null && (entity.getInstitutionId() == null
+                || !institutionId.equals(entity.getInstitutionId()))) {
+            throw new tz.elmkusoma.exception.ForbiddenException("Enrollment", "access");
+        }
         entity.setGrade(dto.getGrade());
         entity.setGradePoints(dto.getGradePoints());
         entity.setStatus(dto.getStatus());
