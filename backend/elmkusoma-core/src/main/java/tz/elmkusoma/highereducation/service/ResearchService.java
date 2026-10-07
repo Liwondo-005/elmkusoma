@@ -123,9 +123,10 @@ public class ResearchService {
     // ── Milestones ───────────────────────────────────────────────
 
     public ResearchMilestoneDTO addMilestone(UUID researchProjectId, ResearchMilestoneDTO dto) {
-        researchProjectRepository.findById(researchProjectId)
+        ResearchProject project = researchProjectRepository.findById(researchProjectId)
                 .orElseThrow(() -> new ResourceNotFoundException("ResearchProject", "id", researchProjectId));
         ResearchMilestone milestone = ResearchMilestone.builder()
+                .institutionId(project.getInstitutionId())
                 .researchProjectId(researchProjectId)
                 .title(dto.getTitle())
                 .description(dto.getDescription())
@@ -171,9 +172,10 @@ public class ResearchService {
     // ── Resources ────────────────────────────────────────────────
 
     public ResearchResourceDTO addResource(UUID researchProjectId, ResearchResourceDTO dto) {
-        researchProjectRepository.findById(researchProjectId)
+        ResearchProject project = researchProjectRepository.findById(researchProjectId)
                 .orElseThrow(() -> new ResourceNotFoundException("ResearchProject", "id", researchProjectId));
         ResearchResource resource = ResearchResource.builder()
+                .institutionId(project.getInstitutionId())
                 .researchProjectId(researchProjectId)
                 .title(dto.getTitle())
                 .description(dto.getDescription())

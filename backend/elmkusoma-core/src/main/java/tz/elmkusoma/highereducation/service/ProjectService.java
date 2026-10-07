@@ -111,9 +111,10 @@ public class ProjectService {
     // ── Milestones ───────────────────────────────────────────────
 
     public ProjectMilestoneDTO addMilestone(UUID projectId, ProjectMilestoneDTO dto) {
-        projectRepository.findById(projectId)
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", projectId));
         ProjectMilestone milestone = ProjectMilestone.builder()
+                .institutionId(project.getInstitutionId())
                 .projectId(projectId)
                 .title(dto.getTitle())
                 .description(dto.getDescription())
@@ -159,13 +160,14 @@ public class ProjectService {
     // ── Submissions ──────────────────────────────────────────────
 
     public ProjectSubmissionDTO addSubmission(UUID projectId, ProjectSubmissionDTO dto) {
-        projectRepository.findById(projectId)
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", projectId));
         if (dto.getMilestoneId() != null) {
             projectMilestoneRepository.findById(dto.getMilestoneId())
                     .orElseThrow(() -> new ResourceNotFoundException("ProjectMilestone", "id", dto.getMilestoneId()));
         }
         ProjectSubmission submission = ProjectSubmission.builder()
+                .institutionId(project.getInstitutionId())
                 .projectId(projectId)
                 .milestoneId(dto.getMilestoneId())
                 .submissionType(dto.getSubmissionType())

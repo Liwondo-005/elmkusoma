@@ -23,15 +23,23 @@ public class WorkshopSessionController {
     private final HighEdIdentity highEdIdentity;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<WorkshopSessionDTO>> createSession(
             @RequestBody WorkshopSessionDTO dto,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "userRole", required = false) String role,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
         // §48: server-authoritative scope — the client body never decides the tenant
         if (institutionId == null) {
             throw new ForbiddenException("Access denied");
         }
         dto.setInstitutionId(institutionId);
+        if (isLearnerRole(role)) {
+            UUID learnerId = highEdIdentity.resolveStudentId(userId, role,
+                    dto.getStudentId() != null ? dto.getStudentId() : userId);
+            highEdIdentity.assertStudentInInstitution(learnerId, institutionId);
+            dto.setStudentId(learnerId);
+        }
         return ResponseEntity.ok(ApiResponse.success("Workshop created", workshopSessionService.createSession(dto)));
     }
 
@@ -89,13 +97,18 @@ public class WorkshopSessionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'STUDENT', 'OTHER_LEARNER')")
     public ResponseEntity<ApiResponse<Void>> deleteSession(
             @PathVariable UUID id,
+            @RequestAttribute("userId") UUID userId,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userRole", required = false) String role) {
         WorkshopSessionDTO existing = workshopSessionService.getSession(id);
-        assertCanManageSession(existing, institutionId, role);
+        if (isLearnerRole(role)) {
+            assertLearnerOwnsSession(existing, userId, institutionId, role);
+        } else {
+            assertCanManageSession(existing, institutionId, role);
+        }
         workshopSessionService.deleteSession(id);
         return ResponseEntity.ok(ApiResponse.success("Workshop deleted", null));
     }
@@ -116,7 +129,7 @@ public class WorkshopSessionController {
         return institutionId == null && "ADMIN".equals(role);
     }
 
-    /** Mutations are staff-only by @PreAuthorize and additionally require institution scope. */
+    /** Mutations reach here only through @PreAuthorize; staff additionally need institution scope. */
     private void assertCanManageSession(WorkshopSessionDTO dto, UUID institutionId, String role) {
         if (institutionId != null && institutionId.equals(dto.getInstitutionId())) {
             return;
@@ -125,6 +138,21 @@ public class WorkshopSessionController {
             return;
         }
         throw new ForbiddenException("Access denied");
+    }
+
+    /**
+     * Learner deletion is ownership-gated: resolveStudentId refuses any session that
+     * belongs to another learner (403), and the tenant is re-asserted afterwards.
+     */
+    private void assertLearnerOwnsSession(WorkshopSessionDTO dto, UUID userId, UUID institutionId, String role) {
+        if (userId == null || dto.getStudentId() == null) {
+            throw new ForbiddenException("Access denied");
+        }
+        UUID learnerId = highEdIdentity.resolveStudentId(userId, role, dto.getStudentId());
+        highEdIdentity.assertStudentInInstitution(learnerId, institutionId);
+        if (!dto.getStudentId().equals(userId) && !dto.getStudentId().equals(learnerId)) {
+            throw new ForbiddenException("Access denied");
+        }
     }
 
     /** §35/§36: results always leave the server scoped — lists never cross tenant boundaries. */

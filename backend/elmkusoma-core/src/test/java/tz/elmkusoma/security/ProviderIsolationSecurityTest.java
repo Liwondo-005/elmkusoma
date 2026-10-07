@@ -21,6 +21,7 @@ import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.highereducation.domain.LearningModule;
 import tz.elmkusoma.highereducation.domain.ModuleStatus;
 import tz.elmkusoma.highereducation.repository.LearningModuleRepository;
+import tz.elmkusoma.highereducation.repository.WorkshopSessionRepository;
 import tz.elmkusoma.learner.domain.LearnerNotification;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
 import tz.elmkusoma.shared.domain.Institution;
@@ -92,6 +93,9 @@ class ProviderIsolationSecurityTest {
     private LearningModuleRepository learningModuleRepository;
 
     @Autowired
+    private WorkshopSessionRepository workshopSessionRepository;
+
+    @Autowired
     private LearnerNotificationRepository notificationRepository;
 
     private UUID tenantA;
@@ -108,6 +112,7 @@ class ProviderIsolationSecurityTest {
     private Grade ownGrade;
     private Grade foreignGrade;
 
+    private LearningModule ownModule;
     private LearningModule foreignModule;
 
     private LearnerNotification notifA;
@@ -115,6 +120,7 @@ class ProviderIsolationSecurityTest {
 
     private String providerAToken;
     private String studentAToken;
+    private String studentBToken;
 
     @BeforeAll
     void createFixtures() {
@@ -128,6 +134,7 @@ class ProviderIsolationSecurityTest {
 
         providerAToken = TestTokens.userToken(providerA.getEmail());
         studentAToken = TestTokens.userToken(studentA.getEmail());
+        studentBToken = TestTokens.userToken(studentB.getEmail());
 
         ownEvent = saveEvent("Provider iso own event", tenantA, providerA.getId(),
                 providerA.getId().toString());
@@ -145,6 +152,16 @@ class ProviderIsolationSecurityTest {
         ownGrade = saveGrade("Provider iso grade A", "PIA-" + run, tenantA);
         foreignGrade = saveGrade("Provider iso grade B", "PIB-" + run, instB.getId());
 
+        ownModule = learningModuleRepository.save(LearningModule.builder()
+                .institutionId(tenantA)
+                .studentId(studentA.getId())
+                .courseId(UUID.randomUUID())
+                .moduleTitle("Provider iso own module")
+                .moduleCode("PIOM-" + run)
+                .status(ModuleStatus.NOT_STARTED)
+                .progressPercent(0)
+                .build());
+
         foreignModule = learningModuleRepository.save(LearningModule.builder()
                 .institutionId(instB.getId())
                 .studentId(studentB.getId())
@@ -152,6 +169,7 @@ class ProviderIsolationSecurityTest {
                 .moduleTitle("Provider iso foreign module")
                 .moduleCode("PIFM-" + run)
                 .status(ModuleStatus.NOT_STARTED)
+                .progressPercent(0)
                 .build());
 
         notifA = notificationRepository.save(LearnerNotification.builder()
@@ -337,6 +355,67 @@ class ProviderIsolationSecurityTest {
     }
 
     @Test
+    void student_updatesOwnModuleProgress_200() throws Exception {
+        mockMvc.perform(put("/v1/college/learner/modules/" + ownModule.getId() + "/progress")
+                        .header("Authorization", "Bearer " + studentAToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"progressPercent\":55,\"status\":\"IN_PROGRESS\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.progressPercent").value(55))
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+
+        LearningModule reloaded = learningModuleRepository.findById(ownModule.getId()).orElseThrow();
+        assertEquals(55, reloaded.getProgressPercent().intValue());
+        assertEquals(ModuleStatus.IN_PROGRESS, reloaded.getStatus());
+    }
+
+    @Test
+    void student_updatesForeignModuleProgress_404_andRowUnchanged() throws Exception {
+        int before = learningModuleRepository.findById(foreignModule.getId())
+                .orElseThrow().getProgressPercent();
+
+        mockMvc.perform(put("/v1/college/learner/modules/" + foreignModule.getId() + "/progress")
+                        .header("Authorization", "Bearer " + studentAToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"progressPercent\":99}"))
+                .andExpect(status().isNotFound());
+
+        assertEquals(before, learningModuleRepository.findById(foreignModule.getId())
+                .orElseThrow().getProgressPercent().intValue());
+    }
+
+    @Test
+    void student_updatesOwnModuleProgress_invalidPercent_400() throws Exception {
+        int before = learningModuleRepository.findById(ownModule.getId())
+                .orElseThrow().getProgressPercent();
+
+        mockMvc.perform(put("/v1/college/learner/modules/" + ownModule.getId() + "/progress")
+                        .header("Authorization", "Bearer " + studentAToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"progressPercent\":150}"))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(before, learningModuleRepository.findById(ownModule.getId())
+                .orElseThrow().getProgressPercent().intValue());
+    }
+
+    @Test
+    void student_updatesOwnModuleProgress_dropped_400_andRowUnchanged() throws Exception {
+        int before = learningModuleRepository.findById(ownModule.getId())
+                .orElseThrow().getProgressPercent();
+
+        mockMvc.perform(put("/v1/college/learner/modules/" + ownModule.getId() + "/progress")
+                        .header("Authorization", "Bearer " + studentAToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"progressPercent\":100,\"status\":\"DROPPED\"}"))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(before, learningModuleRepository.findById(ownModule.getId())
+                .orElseThrow().getProgressPercent().intValue());
+    }
+
+    @Test
     void student_listsForeignStudentsWorkshops_403() throws Exception {
         mockMvc.perform(get("/v1/college/learner/workshops/student/" + studentB.getId())
                         .header("Authorization", "Bearer " + studentAToken))
@@ -357,6 +436,114 @@ class ProviderIsolationSecurityTest {
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.institutionId").value(tenantA.toString()));
+    }
+
+    // ── learner workshop create/delete ownership ──
+
+    @Test
+    void student_createOwnWorkshop_forcedStudentIdAndInstitution_200() throws Exception {
+        String body = "{\"institutionId\":\"" + instB.getId() + "\","
+                + "\"studentId\":\"" + studentA.getId() + "\","
+                + "\"title\":\"Provider iso learner workshop\","
+                + "\"workshopType\":\"Workshop\","
+                + "\"scheduledAt\":\"2027-02-11T09:00:00\"}";
+
+        mockMvc.perform(post("/v1/college/learner/workshops")
+                        .header("Authorization", "Bearer " + studentAToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.studentId").value(studentA.getId().toString()))
+                .andExpect(jsonPath("$.data.institutionId").value(tenantA.toString()));
+    }
+
+    @Test
+    void student_createWorkshop_forForeignStudent_403() throws Exception {
+        String body = "{\"studentId\":\"" + studentB.getId() + "\","
+                + "\"title\":\"Provider iso spoofed learner workshop\","
+                + "\"workshopType\":\"Workshop\"}";
+
+        mockMvc.perform(post("/v1/college/learner/workshops")
+                        .header("Authorization", "Bearer " + studentAToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void student_deletesOwnWorkshop_200() throws Exception {
+        UUID workshopId = createWorkshopFor(studentA.getId());
+
+        mockMvc.perform(delete("/v1/college/learner/workshops/" + workshopId)
+                        .header("Authorization", "Bearer " + studentAToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        assertFalse(workshopSessionRepository.existsById(workshopId));
+    }
+
+    @Test
+    void student_deletesForeignLearnersWorkshop_403_andRowUnchanged() throws Exception {
+        UUID workshopId = createWorkshopFor(studentA.getId());
+
+        mockMvc.perform(delete("/v1/college/learner/workshops/" + workshopId)
+                        .header("Authorization", "Bearer " + TestTokens.otherStudentToken()))
+                .andExpect(status().isForbidden());
+
+        assertTrue(workshopSessionRepository.existsById(workshopId));
+    }
+
+    @Test
+    void foreignInstitutionStudent_deletesWorkshop_403_andRowUnchanged() throws Exception {
+        UUID workshopId = createWorkshopFor(studentA.getId());
+
+        mockMvc.perform(delete("/v1/college/learner/workshops/" + workshopId)
+                        .header("Authorization", "Bearer " + studentBToken))
+                .andExpect(status().isForbidden());
+
+        assertTrue(workshopSessionRepository.existsById(workshopId));
+    }
+
+    @Test
+    void teacher_deleteWorkshop_403_roleGateUnchanged() throws Exception {
+        UUID workshopId = createWorkshopFor(studentA.getId());
+
+        mockMvc.perform(delete("/v1/college/learner/workshops/" + workshopId)
+                        .header("Authorization", "Bearer " + TestTokens.teacherToken()))
+                .andExpect(status().isForbidden());
+
+        assertTrue(workshopSessionRepository.existsById(workshopId));
+    }
+
+    @Test
+    void institutionAdmin_deletesLearnersWorkshop_200() throws Exception {
+        UUID workshopId = createWorkshopFor(studentA.getId());
+
+        mockMvc.perform(delete("/v1/college/learner/workshops/" + workshopId)
+                        .header("Authorization", "Bearer " + TestTokens.adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        assertFalse(workshopSessionRepository.existsById(workshopId));
+    }
+
+    private UUID createWorkshopFor(UUID studentId) throws Exception {
+        String body = "{\"institutionId\":\"" + instB.getId() + "\","
+                + "\"studentId\":\"" + studentId + "\","
+                + "\"title\":\"Provider iso delete target\","
+                + "\"workshopType\":\"WORKSHOP\","
+                + "\"scheduledAt\":\"2027-03-11T09:00:00\"}";
+
+        MvcResult result = mockMvc.perform(post("/v1/college/learner/workshops")
+                        .header("Authorization", "Bearer " + TestTokens.teacherToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String createdId = JsonPath.read(result.getResponse().getContentAsString(), "$.data.id");
+        return UUID.fromString(createdId);
     }
 
     // ── notification inbox ownership ──

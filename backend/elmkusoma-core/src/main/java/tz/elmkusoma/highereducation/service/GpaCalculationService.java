@@ -70,6 +70,13 @@ public class GpaCalculationService {
                         .semester(semester)
                         .academicYear(academicYear)
                         .build());
+        if (record.getInstitutionId() == null) {
+            record.setInstitutionId(allCompleted.stream()
+                    .map(StudentCourseEnrollment::getInstitutionId)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(null));
+        }
 
         record.setSemesterGpa(semesterGpa);
         record.setCumulativeGpa(cumulativeGpa);

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.highereducation.domain.LearningModule;
+import tz.elmkusoma.highereducation.domain.ModuleStatus;
 import tz.elmkusoma.highereducation.dto.LearningModuleDTO;
 import tz.elmkusoma.highereducation.repository.LearningModuleRepository;
 
@@ -81,6 +82,16 @@ public class LearningModuleService {
         if (dto.getCompletedLessons() != null) module.setCompletedLessons(dto.getCompletedLessons());
         if (dto.getCompletedAssignments() != null) module.setCompletedAssignments(dto.getCompletedAssignments());
         if (dto.getCompletedAssessments() != null) module.setCompletedAssessments(dto.getCompletedAssessments());
+        return toDTO(learningModuleRepository.save(module));
+    }
+
+    public LearningModuleDTO updateProgress(UUID id, Integer progressPercent, ModuleStatus status) {
+        LearningModule module = learningModuleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Module not found"));
+        module.setProgressPercent(progressPercent);
+        if (status != null) {
+            module.setStatus(status);
+        }
         return toDTO(learningModuleRepository.save(module));
     }
 

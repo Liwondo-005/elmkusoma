@@ -1,5 +1,6 @@
 package tz.elmkusoma.highereducation.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -7,7 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.highereducation.domain.ModuleStatus;
 import tz.elmkusoma.highereducation.dto.LearningModuleDTO;
+import tz.elmkusoma.highereducation.dto.ModuleProgressRequest;
 import tz.elmkusoma.highereducation.service.HighEdIdentity;
 import tz.elmkusoma.highereducation.service.LearningModuleService;
 
@@ -102,6 +105,34 @@ public class LearningModuleController {
         return ResponseEntity.ok(ApiResponse.success("Module updated", learningModuleService.updateModule(id, dto)));
     }
 
+    @PutMapping("/{id}/progress")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'INSTRUCTOR')")
+    public ResponseEntity<ApiResponse<LearningModuleDTO>> updateModuleProgress(
+            @PathVariable UUID id,
+            @Valid @RequestBody ModuleProgressRequest request,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String role) {
+        LearningModuleDTO existing = learningModuleService.getModule(id);
+        ModuleStatus status;
+        if (isLearnerRole(role)) {
+            if (!canAccessModule(existing, userId, institutionId, role)) {
+                throw new ResourceNotFoundException("Module not found");
+            }
+            UUID learnerId = highEdIdentity.resolveStudentId(userId, role, existing.getStudentId());
+            highEdIdentity.assertStudentInInstitution(learnerId, institutionId);
+            status = parseModuleStatus(request.getStatus());
+            if (status == ModuleStatus.DROPPED || status == ModuleStatus.WITHDRAWN) {
+                throw new IllegalArgumentException("Status not allowed for learners");
+            }
+        } else {
+            assertCanManageModule(existing, institutionId, role);
+            status = parseModuleStatus(request.getStatus());
+        }
+        return ResponseEntity.ok(ApiResponse.success("Progress updated",
+                learningModuleService.updateProgress(id, request.getProgressPercent(), status)));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteModule(
@@ -168,5 +199,12 @@ public class LearningModuleController {
 
     private boolean isLearnerRole(String role) {
         return "STUDENT".equals(role) || "OTHER_LEARNER".equals(role);
+    }
+
+    private ModuleStatus parseModuleStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        return ModuleStatus.valueOf(status.trim());
     }
 }

@@ -130,9 +130,10 @@ public class FieldworkService {
     // ── Logbook Entries ─────────────────────────────────────────
 
     public LogbookEntryDTO addLogbookEntry(UUID placementId, LogbookEntryDTO dto) {
-        fieldworkPlacementRepository.findById(placementId)
+        FieldworkPlacement placement = fieldworkPlacementRepository.findById(placementId)
                 .orElseThrow(() -> new ResourceNotFoundException("FieldworkPlacement", "id", placementId));
         LogbookEntry entry = LogbookEntry.builder()
+                .institutionId(placement.getInstitutionId())
                 .placementId(placementId)
                 .entryDate(dto.getEntryDate())
                 .activities(dto.getActivities())

@@ -104,11 +104,11 @@ public class PortfolioService {
     // ── Portfolio Item CRUD ──────────────────────────────────────
 
     public PortfolioItemDTO addItem(UUID portfolioId, PortfolioItemDTO dto) {
-        portfolioRepository.findById(portfolioId)
+        Portfolio portfolio = portfolioRepository.findById(portfolioId)
                 .orElseThrow(() -> new ResourceNotFoundException("Portfolio", "id", portfolioId));
         PortfolioItem item = PortfolioItem.builder()
                 .portfolioId(portfolioId)
-                .institutionId(dto.getInstitutionId())
+                .institutionId(portfolio.getInstitutionId())
                 .title(dto.getTitle())
                 .description(dto.getDescription())
                 .itemType(dto.getItemType())
