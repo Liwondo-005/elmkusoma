@@ -54,11 +54,12 @@ public class CoreScheduler {
     private final tz.elmkusoma.course.service.LiveClassService liveClassService;
 
     /**
-     * Authoritative live-class expiry. A started session ends when its scheduled start
-     * plus configured duration has elapsed, so a class can never stay LIVE forever
-     * because a teacher closed the tab or a client never sent the end call. The sweep
-     * runs the same completion path as a manual end: attendance finalised,
-     * certificates issued, LiveKit egress stopped and the replay created.
+     * Authoritative live-class expiry. A started session ends when its ACTUAL start
+     * (startedAt) plus configured duration has elapsed, so a class can never stay LIVE forever
+     * because a teacher closed the tab or a client never sent the end call - and a late start
+     * still gets the full duration it was configured for. The sweep runs the same completion
+     * path as a manual end: attendance finalised, certificates issued, LiveKit egress stopped
+     * and the replay created.
      */
     @Scheduled(fixedRate = 60000, initialDelay = 30000)
     public void endExpiredLiveClasses() {

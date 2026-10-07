@@ -17,6 +17,8 @@ public class LiveClassResponse {
     private String description;
     private String scheduledAt;
     private Integer durationMinutes;
+    /** Actual start (server clock), null until the teacher starts the session. */
+    private String startedAt;
     private String status;
     private Integer maxParticipants;
     private String subjectName;

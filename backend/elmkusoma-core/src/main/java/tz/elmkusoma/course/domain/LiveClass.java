@@ -32,6 +32,16 @@ public class LiveClass extends BaseEntity {
     @Column(name = "scheduled_at", nullable = false)
     private LocalDateTime scheduledAt;
 
+    /**
+     * When the teacher actually started the session (server clock). This - not
+     * scheduledAt - is the baseline for automatic expiry, so a late start still
+     * gets the full configured duration. Null until the first successful start;
+     * sessions that were already active before this column existed also stay
+     * null and fall back to scheduledAt.
+     */
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+
     @Column(name = "duration_minutes", nullable = false)
     private Integer durationMinutes = 60;
 

@@ -80,6 +80,22 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    private final org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    /**
+     * Runs each expiry in its own transaction so one failing session cannot abort the rest of
+     * the sweep. The class-level @Transactional means a failure would otherwise mark the single
+     * shared transaction rollback-only: every later session then failed with "current
+     * transaction is aborted" and the whole sweep rolled back, leaving expired sessions stuck
+     * in IN_PROGRESS forever.
+     */
+    private org.springframework.transaction.support.TransactionTemplate newTransaction() {
+        org.springframework.transaction.support.TransactionTemplate template =
+                new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        template.setPropagationBehavior(
+                org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return template;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
@@ -289,6 +305,14 @@ public class LiveClassServiceImpl implements LiveClassService {
             throw new IllegalArgumentException("Only SCHEDULED classes can be started. Current status: " + liveClass.getStatus());
         }
 
+        // Authoritative actual start (server clock, never client supplied) and the
+        // baseline for auto-expiry: a teacher starting late keeps the full
+        // configured duration. Only the first successful start sets it, so a
+        // re-entry can never extend the session.
+        if (liveClass.getStartedAt() == null) {
+            liveClass.setStartedAt(LocalDateTime.now());
+        }
+
         liveClass.setStatus(LiveClassStatus.IN_PROGRESS.name());
         LiveClass saved = liveClassRepository.save(liveClass);
 
@@ -341,14 +365,15 @@ public class LiveClassServiceImpl implements LiveClassService {
     }
 
     /**
-     * Authoritative expiry. A started session must end when its configured duration
-     * has elapsed - a teacher setting 60 minutes for a 10:00 class means it ends at
-     * 11:00 regardless of refreshes, reconnects or client state. Baseline is the
-     * scheduled start, so a late join does not extend the session.
+     * Authoritative expiry. A session ends when its configured duration has elapsed
+     * measured from the ACTUAL start (startedAt), not the planned start: a class
+     * scheduled for 10:00 with a 5-minute duration that the teacher actually starts
+     * at 10:02 runs until 10:07.
      *
-     * SCHEDULED classes are deliberately untouched: a class that was never started is
-     * not a running session, and auto-ending it would fabricate attendance and a
-     * replay for a class nobody taught.
+     * Legacy sessions (started before V135 added started_at) have startedAt == null
+     * while being genuinely active, so they keep the previous scheduledAt baseline
+     * rather than being stranded as never-ending. SCHEDULED classes are never
+     * touched - a class nobody started must not get fabricated attendance/replay.
      */
     @Override
     public int endExpiredSessions() {
@@ -366,23 +391,29 @@ public class LiveClassServiceImpl implements LiveClassService {
         LocalDateTime now = LocalDateTime.now();
         int ended = 0;
         for (LiveClass liveClass : candidates) {
-            if (liveClass.getScheduledAt() == null) {
+            LocalDateTime baseline = liveClass.getStartedAt() != null
+                    ? liveClass.getStartedAt()
+                    : liveClass.getScheduledAt();
+            if (baseline == null) {
                 continue;
             }
             int durationMinutes = liveClass.getDurationMinutes() != null && liveClass.getDurationMinutes() > 0
                     ? liveClass.getDurationMinutes()
                     : 60;
-            LocalDateTime endsAt = liveClass.getScheduledAt().plusMinutes(durationMinutes);
+            LocalDateTime endsAt = baseline.plusMinutes(durationMinutes);
             if (now.isBefore(endsAt)) {
                 continue;
             }
             try {
                 // markedBy = null: nobody pressed "end", so attendance rows stay
                 // system-attributed rather than being forged against the teacher.
-                completeSession(liveClass, null, LiveClassStatus.ENDED);
+                // Isolated transaction: a failure here rolls back only this session.
+                newTransaction().executeWithoutResult(
+                        status -> completeSession(liveClass, null, LiveClassStatus.ENDED));
                 ended++;
-                log.info("Auto-ended expired live class {} (scheduled {}, duration {}m, endedAt {})",
-                        liveClass.getId(), liveClass.getScheduledAt(), durationMinutes, endsAt);
+                log.info("Auto-ended expired live class {} (started {} [legacy baseline {}], duration {}m, endedAt {})",
+                        liveClass.getId(), liveClass.getStartedAt(), liveClass.getScheduledAt(),
+                        durationMinutes, endsAt);
             } catch (Exception e) {
                 // One bad session must never stop the sweep for the others.
                 log.warn("Auto-end failed for live class {}: {}", liveClass.getId(), e.getMessage());
@@ -637,12 +668,20 @@ public class LiveClassServiceImpl implements LiveClassService {
 
             String serial = "LIVE-" + System.currentTimeMillis() + "-" + participant.getUserId().toString().substring(0, 8);
 
+            // certificates.issued_by is NOT NULL. An automatic expiry has no pressing
+            // teacher (markedBy == null, because attendance must stay system-attributed), so
+            // the session's own teacher is the truthful issuer: they ran the class, and
+            // instructorName below already names them. Passing null here violated the
+            // constraint, which rolled back the whole expiry sweep - so no session was
+            // ever auto-completed.
+            UUID issuer = markedBy != null ? markedBy : liveClass.getTeacherId();
+
             Certificate cert = Certificate.builder()
                     // template_id has an FK to certificate_templates(id) which is empty;
                     // the column is nullable, so leave it unset instead of a random UUID.
                     .templateId(null)
                     .studentId(studentId)
-                    .issuedBy(markedBy)
+                    .issuedBy(issuer)
                     .serialNumber(serial)
                     .certificateType(Certificate.CertificateType.PARTICIPATION)
                     .title(title)
@@ -791,6 +830,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .title(liveClass.getTitle())
                 .description(liveClass.getDescription())
                 .scheduledAt(liveClass.getScheduledAt() != null ? liveClass.getScheduledAt().toString() : null)
+                .startedAt(liveClass.getStartedAt() != null ? liveClass.getStartedAt().toString() : null)
                 .durationMinutes(liveClass.getDurationMinutes())
                 .status(liveClass.getStatus())
                 .maxParticipants(liveClass.getMaxParticipants())
