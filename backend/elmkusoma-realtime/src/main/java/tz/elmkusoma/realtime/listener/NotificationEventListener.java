@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import tz.elmkusoma.realtime.config.RabbitMQConfig;
 import tz.elmkusoma.realtime.handler.NotificationBroadcaster;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -20,23 +21,26 @@ public class NotificationEventListener {
     public void handleNotificationEvent(Map<String, Object> event) {
         log.info("Received notification event: {}", event);
 
-        String userId = (String) event.get("userId");
-        String institutionId = (String) event.get("institutionId");
-        String type = (String) event.getOrDefault("type", "general");
-        String message = (String) event.getOrDefault("message", "");
+        Object userId = event.get("userId");
+        Object institutionId = event.get("institutionId");
 
-        Map<String, Object> notification = Map.of(
-                "type", type,
-                "message", message,
-                "data", event.getOrDefault("data", Map.of())
-        );
+        Map<String, Object> notification = new HashMap<>();
+        notification.put("type", "NOTIFICATION");
+        notification.put("userId", userId);
+        notification.put("institutionId", institutionId);
+        notification.put("title", event.get("title"));
+        notification.put("message", event.get("message"));
+        notification.put("notificationType", event.get("notificationType"));
+        notification.put("targetType", event.get("targetType"));
+        notification.put("targetId", event.get("targetId"));
+        notification.put("timestamp", event.get("timestamp"));
 
         if (userId != null) {
-            notificationBroadcaster.sendNotificationToUser(userId, notification);
+            notificationBroadcaster.sendNotificationToUser(String.valueOf(userId), notification);
         }
 
         if (institutionId != null) {
-            notificationBroadcaster.sendNotificationToInstitution(institutionId, notification);
+            notificationBroadcaster.sendNotificationToInstitution(String.valueOf(institutionId), notification);
         }
     }
 }

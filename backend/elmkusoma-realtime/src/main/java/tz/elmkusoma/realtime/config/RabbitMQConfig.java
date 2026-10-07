@@ -17,7 +17,7 @@ public class RabbitMQConfig {
     public static final String EXCHANGE_NAME = "elmkusoma.exchange";
     public static final String NOTIFICATION_QUEUE = "elmkusoma.realtime.notification.queue";
     public static final String PRESENCE_QUEUE = "elmkusoma.realtime.presence.queue";
-    public static final String NOTIFICATION_ROUTING_KEY = "elmkusoma.notification.realtime";
+    public static final String NOTIFICATION_ROUTING_KEY = "elmkusoma.notification";
     public static final String PRESENCE_ROUTING_KEY = "elmkusoma.presence.realtime";
 
     @Bean

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -28,11 +29,12 @@ public class NotificationBroadcaster {
 
     public void broadcastPresenceUpdate(String institutionId, String userId, String status) {
         String destination = "/topic/institution/" + institutionId + "/presence";
-        Map<String, Object> presenceUpdate = Map.of(
-                "userId", userId,
-                "status", status,
-                "institutionId", institutionId
-        );
+        Map<String, Object> presenceUpdate = new HashMap<>();
+        presenceUpdate.put("type", "PRESENCE_UPDATE");
+        presenceUpdate.put("userId", userId);
+        presenceUpdate.put("status", status);
+        presenceUpdate.put("institutionId", institutionId);
+        presenceUpdate.put("timestamp", System.currentTimeMillis());
         messagingTemplate.convertAndSend(destination, presenceUpdate);
         log.info("Broadcast presence update for user {} with status {} to institution {}", userId, status, institutionId);
     }

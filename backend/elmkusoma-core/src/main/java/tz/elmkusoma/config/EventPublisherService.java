@@ -20,7 +20,7 @@ public class EventPublisherService {
     private static final String NOTIFICATION_ROUTING_KEY = "elmkusoma.notification";
     private static final String CERTIFICATE_ROUTING_KEY = "elmkusoma.certificate";
     private static final String EMAIL_ROUTING_KEY = "elmkusoma.email";
-    private static final String PRESENCE_ROUTING_KEY = "elmkusoma.notification.realtime";
+    private static final String PRESENCE_ROUTING_KEY = "elmkusoma.presence.realtime";
 
     // RabbitMQ is optional (documented in .env): publishing must never break the caller
     private void publishSafely(String routingKey, Map<String, Object> event, String description) {

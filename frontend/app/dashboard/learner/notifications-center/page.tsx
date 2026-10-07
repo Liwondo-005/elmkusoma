@@ -124,16 +124,27 @@ export default function NotificationsCenterPage() {
     loadData()
   }, [user])
 
-  async function loadData() {
+  useEffect(() => {
+    const onRealtime = (event: Event) => {
+      const detail = (event as CustomEvent<{ type?: string }>).detail
+      if (detail?.type === "NOTIFICATION") loadData(true)
+    }
+    window.addEventListener("elmkusoma:realtime", onRealtime)
+    return () => window.removeEventListener("elmkusoma:realtime", onRealtime)
+  }, [])
+
+  async function loadData(silent = false) {
     try {
-      setLoading(true)
-      setError(null)
+      if (!silent) {
+        setLoading(true)
+        setError(null)
+      }
       const data = await learnerApi.getNotifications()
       setNotifications(data.map(mapNotification))
     } catch {
-      setError(tc("error.load"))
+      if (!silent) setError(tc("error.load"))
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -215,7 +226,7 @@ export default function NotificationsCenterPage() {
         />
         <div className="flex justify-center">
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             {tc("retry")}

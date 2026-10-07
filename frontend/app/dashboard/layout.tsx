@@ -8,6 +8,7 @@ import { DashboardTopbar } from "@/components/dashboard/dashboard-topbar"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { LowBandwidthProvider } from "@/components/primary/low-bandwidth-provider"
 import { CommandPalette } from "@/components/ui/command-palette"
+import { RealtimeConnection } from "@/components/realtime/realtime-connection"
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { locale } = useLocaleContext()
@@ -15,6 +16,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <NextIntlClientProvider locale={locale} messages={messagesForLocale(locale)}>
       <AuthGuard>
         <LowBandwidthProvider>
+          <RealtimeConnection />
           <div className="flex min-h-dvh bg-muted/40">
             <aside className="fixed inset-y-0 left-0 hidden z-40 w-64 border-r border-border bg-card lg:block">
               <DashboardSidebar />

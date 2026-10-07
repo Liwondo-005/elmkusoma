@@ -216,7 +216,15 @@ export function DashboardTopbar({ renderSidebar }: { renderSidebar?: (onNavigate
     load()
     // Poll every 30 seconds
     const interval = setInterval(load, 30000)
-    return () => clearInterval(interval)
+    const onRealtime = (event: Event) => {
+      const detail = (event as CustomEvent<{ type?: string }>).detail
+      if (detail?.type === "NOTIFICATION") load()
+    }
+    window.addEventListener("elmkusoma:realtime", onRealtime)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("elmkusoma:realtime", onRealtime)
+    }
   }, [user])
 
   /** Role → that role's notifications page (mirrors the sidebar entries). */
