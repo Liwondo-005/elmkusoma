@@ -95,7 +95,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     body = await res.json()
   } catch {
     throw new ApiRequestError(
-      `Server returned non-JSON response (${res.status})`,
+      `Server returned a non-JSON response (HTTP ${res.status}). The service that handles this request ` +
+        `may be unavailable - check that it is running, then retry.`,
       res.status,
       null,
     )
