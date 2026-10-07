@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -230,6 +231,70 @@ class FlywayMigrationValidationTest {
                 "events columns mapped as java.util.UUID on the entity must resolve to uuid after all "
                         + "migrations run, otherwise every insert into events fails with a bare HTTP 500. "
                         + "Offenders: " + offenders);
+    }
+
+    /**
+     * live_classes.started_at is the authoritative expiry baseline (V135). The unit tests run
+     * with spring.flyway.enabled=false and ddl-auto=create-drop, so Hibernate builds the schema
+     * from the entity and the migration can silently go missing while every test still passes -
+     * the exact failure mode that produced bare HTTP 500s on courses.created_by and
+     * events.rescheduled_from. If the migration is dropped or mistyped, every startSession and
+     * expiry sweep fails at runtime against a real database. This replays the migrations to
+     * prove the column exists, is a timestamp, and stays nullable (SCHEDULED and legacy active
+     * rows have no actual start).
+     */
+    @Test
+    void liveClassesStartedAt_IsDeclaredAsNullableTimestampInMigrations() throws IOException {
+        Pattern addColumn = Pattern.compile(
+                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ADD\\s+COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_]+)\\s+([A-Za-z][A-Za-z0-9_ ]*?)(\\s+NOT\\s+NULL|\\s*;|\\s+DEFAULT|\\s+REFERENCES|\\s+PRIMARY|\\s+UNIQUE|$)",
+                Pattern.CASE_INSENSITIVE);
+
+        String declaredType = null;
+        String declaredIn = null;
+        boolean seenNotNull = false;
+
+        List<Path> ordered = migrationFiles.stream()
+                .sorted(Comparator.comparingInt(FlywayMigrationValidationTest::versionOf))
+                .toList();
+
+        for (Path file : ordered) {
+            // Collapse each file into whitespace-normalised statements: an
+            // "ALTER TABLE live_classes" header and its "ADD COLUMN ..." body are
+            // conventionally written on separate lines, which a line-by-line scan misses.
+            StringBuilder normalized = new StringBuilder();
+            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("--")) {
+                    continue;
+                }
+                normalized.append(trimmed).append(' ');
+            }
+            String body = normalized.toString();
+
+            Matcher added = addColumn.matcher(body);
+            if (added.find()
+                    && unquote(added.group(1)).equalsIgnoreCase("live_classes")
+                    && added.group(2).equalsIgnoreCase("started_at")) {
+                declaredType = added.group(3).trim().toLowerCase();
+                declaredIn = file.getFileName().toString();
+                // Scope NOT NULL detection to this statement, not the whole file.
+                int stmtEnd = body.indexOf(';', added.start());
+                String statement = stmtEnd < 0 ? body.substring(added.start())
+                        : body.substring(added.start(), stmtEnd);
+                seenNotNull = statement.toUpperCase().contains("NOT NULL");
+            }
+        }
+
+        assertNotNull(declaredType,
+                "live_classes.started_at must be added by a Flyway migration. LiveClass maps "
+                        + "@Column(name = \"started_at\"), so without the column every startSession "
+                        + "and every expiry sweep fails against a real database.");
+        assertTrue(declaredType.startsWith("timestamp"),
+                "live_classes.started_at must be a timestamp to match LocalDateTime, but is \""
+                        + declaredType + "\" (declared in " + declaredIn + ")");
+        assertFalse(seenNotNull,
+                "live_classes.started_at must stay nullable: SCHEDULED classes have not started and "
+                        + "active rows created before V135 have no actual start (" + declaredIn + ")");
     }
 
     /** Effective (post-all-migrations) type per "table.column", last declaration winning. */

@@ -86,13 +86,38 @@ class JwtSecurityRegressionTest {
         assertDenied(getWithToken(expired), "expired token");
     }
 
+    /**
+     * A forged token must be rejected. The previous version flipped only the final character of
+     * the signature, which is unsound: an HS256 signature is 32 bytes, base64url-encoded to 43
+     * characters, so the last character carries just 4 significant bits (2 trailing bits are
+     * ignored). Flipping 'a' to 'b' produced a byte-identical signature, so the "tampered" token
+     * was still valid and the assertion failed roughly 1 run in 64 - a latent flake, not a
+     * security defect. Both forms below genuinely alter the verified material.
+     */
     @Test
     void tamperedSignature_isDenied() throws Exception {
         String valid = TestTokens.studentToken();
-        char last = valid.charAt(valid.length() - 1);
-        char replacement = last == 'a' ? 'b' : 'a';
-        String tampered = valid.substring(0, valid.length() - 1) + replacement;
-        assertDenied(getWithToken(tampered), "tampered token");
+        int dot = valid.lastIndexOf('.');
+        String header = valid.substring(0, valid.indexOf('.'));
+        String payload = valid.substring(valid.indexOf('.') + 1, dot);
+        String signature = valid.substring(dot + 1);
+
+        // 1) Flip a character in the middle of the signature, where every bit is significant.
+        int mid = signature.length() / 2;
+        char original = signature.charAt(mid);
+        char replacement = original == 'a' ? 'b' : 'a';
+        String flippedSignature = signature.substring(0, mid) + replacement + signature.substring(mid + 1);
+        assertNotEquals(signature, flippedSignature, "signature mutation must actually change the token");
+        assertDenied(getWithToken(header + "." + payload + "." + flippedSignature),
+                "token with a mutated signature");
+
+        // 2) Keep the genuine signature but rewrite the claims: the classic forgery attempt.
+        String forgedPayload = new String(Decoders.BASE64URL.decode(payload), StandardCharsets.UTF_8)
+                .replace("\"sub\":\"student@elmkusoma.tz\"", "\"sub\":\"admin@elmkusoma.tz\"");
+        assertDenied(getWithToken(header + "."
+                        + base64Url(forgedPayload.getBytes(StandardCharsets.UTF_8))
+                        + "." + signature),
+                "token with a rewritten subject");
     }
 
     @Test

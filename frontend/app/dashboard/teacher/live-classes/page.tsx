@@ -13,6 +13,8 @@ interface LiveClass {
   title: string
   description: string
   scheduledAt: string
+  /** Actual start (server clock); null until the teacher starts. Not client-settable. */
+  startedAt?: string | null
   durationMinutes: number
   maxParticipants: number
   status: string

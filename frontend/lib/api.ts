@@ -1960,6 +1960,13 @@ export interface LiveClass {
   title: string
   description: string
   scheduledAt: string
+  /**
+   * Actual start time (server clock). Null until the teacher starts the session.
+   * This - not scheduledAt - is the baseline for automatic expiry, so a late
+   * start still gets the full configured duration. Read-only; the backend never
+   * accepts a client-supplied startedAt.
+   */
+  startedAt?: string | null
   durationMinutes: number
   status: string
   maxParticipants: number
