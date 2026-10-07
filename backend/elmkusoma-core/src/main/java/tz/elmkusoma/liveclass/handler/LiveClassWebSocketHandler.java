@@ -164,7 +164,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if (!"IN_PROGRESS".equals(liveClass.getStatus()) && !"LIVE".equals(liveClass.getStatus())) {
+        if (!"IN_PROGRESS".equals(liveClass.getStatus()) && !"LIVE".equals(liveClass.getStatus())
+                && !"STARTING".equals(liveClass.getStatus())) {
             sendError(session, "This live class is not currently in session");
             return;
         }

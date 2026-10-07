@@ -25,7 +25,9 @@ import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.repository.LessonRepository;
+import tz.elmkusoma.liveclass.domain.LiveClassAttendanceDetail;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
+import tz.elmkusoma.liveclass.repository.LiveClassAttendanceDetailRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.service.LiveKitService;
 import tz.elmkusoma.shared.domain.User;
@@ -36,10 +38,12 @@ import tz.elmkusoma.teacher.domain.Teacher;
 import tz.elmkusoma.teacher.repository.TeacherAssignmentRepository;
 import tz.elmkusoma.teacher.repository.TeacherRepository;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,6 +60,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final UserRepository userRepository;
     private final SubjectRepository subjectRepository;
     private final LiveClassParticipantRepository participantRepository;
+    private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final CertificateRepository certificateRepository;
     private final StudentRepository studentRepository;
@@ -426,8 +431,16 @@ public class LiveClassServiceImpl implements LiveClassService {
         List<LiveClassParticipant> participants = participantRepository
                 .findByLiveClassIdAndIsDeletedFalse(liveClass.getId());
 
+        List<LiveClassAttendanceDetail> details = attendanceDetailRepository
+                .findByLiveClassIdAndIsDeletedFalse(liveClass.getId());
+        Map<UUID, LiveClassAttendanceDetail> detailByUser = new HashMap<>();
+        for (LiveClassAttendanceDetail detail : details) {
+            detailByUser.putIfAbsent(detail.getUserId(), detail);
+        }
+
         LocalDate today = LocalDate.now();
         UUID classGroupId = liveClass.getClassGroupId();
+        Map<AttendanceRecord.AttendanceStatus, Integer> counts = new HashMap<>();
 
         for (LiveClassParticipant participant : participants) {
             // participant.userId references users(id); attendance_records.student_id
@@ -438,6 +451,27 @@ public class LiveClassServiceImpl implements LiveClassService {
                 continue; // teacher/host participants have no student row
             }
             UUID studentId = student.getId();
+
+            // §attendance: status is derived from real joined/left evidence in the
+            // session detail rows. The participant row itself is only the join
+            // registration, so it counts as evidence when no detail row was recorded
+            // for the class at all.
+            LiveClassAttendanceDetail detail = detailByUser.get(participant.getUserId());
+            LocalDateTime joinedAt;
+            LocalDateTime leftAt;
+            if (detail != null) {
+                joinedAt = detail.getJoinedAt();
+                leftAt = detail.getLeftAt();
+            } else if (detailByUser.isEmpty()) {
+                joinedAt = participant.getJoinedAt();
+                leftAt = participant.getLeftAt();
+            } else {
+                joinedAt = null;
+                leftAt = null;
+            }
+            AttendanceRecord.AttendanceStatus status = deriveAttendanceStatus(
+                    joinedAt, leftAt, liveClass.getScheduledAt(), liveClass.getDurationMinutes());
+            counts.merge(status, 1, Integer::sum);
 
             boolean alreadyExists = attendanceRecordRepository
                     .findByClassGroupIdAndAttendanceDateAndIsDeletedFalse(classGroupId, today)
@@ -450,7 +484,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                         .studentId(studentId)
                         .classGroupId(classGroupId)
                         .attendanceDate(today)
-                        .status(AttendanceRecord.AttendanceStatus.PRESENT)
+                        .status(status)
                         .markedBy(markedBy)
                         .remarks("Auto-recorded from live class participation")
                         .build();
@@ -458,8 +492,39 @@ public class LiveClassServiceImpl implements LiveClassService {
             }
         }
 
-        log.info("Created attendance records for {} participants in live class {}",
-                participants.size(), liveClass.getId());
+        log.info("Created attendance records for {} participants in live class {}: present={}, late={}, absent={}",
+                participants.size(), liveClass.getId(),
+                counts.getOrDefault(AttendanceRecord.AttendanceStatus.PRESENT, 0),
+                counts.getOrDefault(AttendanceRecord.AttendanceStatus.LATE, 0),
+                counts.getOrDefault(AttendanceRecord.AttendanceStatus.ABSENT, 0));
+    }
+
+    /**
+     * §attendance: PRESENT when the joined window covers at least half of the
+     * scheduled duration, LATE when the participant joined but covered less,
+     * ABSENT when there is no join evidence at all. Without a usable scheduled
+     * window the only defensible answer is PRESENT for joined / ABSENT otherwise.
+     */
+    private AttendanceRecord.AttendanceStatus deriveAttendanceStatus(LocalDateTime joinedAt, LocalDateTime leftAt,
+                                                                    LocalDateTime scheduledAt, Integer durationMinutes) {
+        if (joinedAt == null) {
+            return AttendanceRecord.AttendanceStatus.ABSENT;
+        }
+        if (scheduledAt == null || durationMinutes == null || durationMinutes <= 0) {
+            return AttendanceRecord.AttendanceStatus.PRESENT;
+        }
+
+        long windowSeconds = durationMinutes * 60L;
+        LocalDateTime windowEnd = scheduledAt.plusMinutes(durationMinutes);
+        LocalDateTime start = joinedAt.isBefore(scheduledAt) ? scheduledAt : joinedAt;
+        LocalDateTime end = leftAt != null ? leftAt : LocalDateTime.now();
+        if (end.isAfter(windowEnd)) {
+            end = windowEnd;
+        }
+        long joinedSeconds = Math.max(0, Duration.between(start, end).getSeconds());
+        return joinedSeconds * 2 >= windowSeconds
+                ? AttendanceRecord.AttendanceStatus.PRESENT
+                : AttendanceRecord.AttendanceStatus.LATE;
     }
 
     private void createLiveClassCertificates(LiveClass liveClass, UUID markedBy) {
@@ -678,7 +743,8 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .recurrenceEndDate(liveClass.getRecurrenceEndDate() != null ? liveClass.getRecurrenceEndDate().toString() : null)
                 .lobbyEnabled(Boolean.TRUE.equals(liveClass.getLobbyEnabled()))
                 .currentParticipants((int) currentParticipants)
-                .canJoin("IN_PROGRESS".equals(liveClass.getStatus()) || "LIVE".equals(liveClass.getStatus()))
+                .canJoin("IN_PROGRESS".equals(liveClass.getStatus()) || "LIVE".equals(liveClass.getStatus())
+                        || "STARTING".equals(liveClass.getStatus()))
                 .createdAt(liveClass.getCreatedAt() != null ? liveClass.getCreatedAt().toString() : null)
                 .build();
     }

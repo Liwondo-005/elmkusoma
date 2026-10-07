@@ -854,9 +854,9 @@ public class OversightService {
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
                 .orElseThrow(() -> new tz.elmkusoma.exception.ResourceNotFoundException("LiveClass", "id", liveClassId));
 
-        // Verify live class is active (LIVE or IN_PROGRESS both accepted)
+        // Verify live class is active (IN_PROGRESS plus legacy LIVE/STARTING accepted)
         String lcStatus = liveClass.getStatus();
-        if (!"IN_PROGRESS".equals(lcStatus) && !"LIVE".equals(lcStatus)) {
+        if (!"IN_PROGRESS".equals(lcStatus) && !"LIVE".equals(lcStatus) && !"STARTING".equals(lcStatus)) {
             throw new IllegalStateException("Live class is not currently in session");
         }
 

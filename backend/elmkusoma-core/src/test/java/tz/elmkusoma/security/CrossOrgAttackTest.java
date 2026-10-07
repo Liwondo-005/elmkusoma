@@ -224,7 +224,7 @@ class CrossOrgAttackTest {
                 .andExpect(status().isNotFound());
         mockMvc.perform(post("/v1/learner/live-classes/" + foreignLiveClass + "/join")
                         .header("Authorization", "Bearer " + studentToken))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     private UUID saveForeignInstitution() {

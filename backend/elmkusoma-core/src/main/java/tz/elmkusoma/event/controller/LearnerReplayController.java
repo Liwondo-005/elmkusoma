@@ -32,6 +32,7 @@ public class LearnerReplayController {
     private final EventRepository eventRepository;
     private final tz.elmkusoma.event.repository.EventMaterialRepository materialRepository;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
+    private final tz.elmkusoma.learning.repository.LessonRepository lessonRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Replay>>> getReplays(
@@ -83,6 +84,7 @@ public class LearnerReplayController {
                         liveClassRepository.findById(r.getLiveSessionId())
                                 .ifPresent(lc -> r.setRelatedLessonId(lc.getLessonId()));
                     }
+                    populateRelatedLessonTitle(r);
                     Map<String, Object> detail = new HashMap<>();
                     detail.put("replay", r);
                     // §46/§51/§52: related data derived from the linked Event, not hardcoded empties
@@ -214,14 +216,27 @@ public class LearnerReplayController {
         Map<UUID, UUID> lessonBySession = new HashMap<>();
         liveClassRepository.findAllById(sessionIds)
                 .forEach(lc -> lessonBySession.put(lc.getId(), lc.getLessonId()));
+        Map<UUID, String> lessonTitles = new HashMap<>();
         replays.forEach(r -> {
             if (r.getRelatedLessonId() == null && r.getLiveSessionId() != null) {
                 UUID lessonId = lessonBySession.get(r.getLiveSessionId());
                 if (lessonId != null) {
                     r.setRelatedLessonId(lessonId);
+                    if (r.getRelatedLessonTitle() == null) {
+                        r.setRelatedLessonTitle(lessonTitles.computeIfAbsent(lessonId,
+                                id -> lessonRepository.findById(id).map(l -> l.getTitle()).orElse(null)));
+                    }
                 }
             }
         });
+    }
+
+    private void populateRelatedLessonTitle(Replay r) {
+        if (r.getRelatedLessonId() == null || r.getRelatedLessonTitle() != null) {
+            return;
+        }
+        r.setRelatedLessonTitle(lessonRepository.findById(r.getRelatedLessonId())
+                .map(l -> l.getTitle()).orElse(null));
     }
 
     private void enrich(Replay r, UUID userId, Map<UUID, ReplayProgress> progressMap) {

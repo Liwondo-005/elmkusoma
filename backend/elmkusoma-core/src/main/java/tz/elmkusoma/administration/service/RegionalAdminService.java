@@ -576,7 +576,11 @@ public class RegionalAdminService {
         List<LiveClass> all = liveClassRepository.findByInstitutionIdsAndIsDeletedFalseOrderByScheduledAt(ids);
         if (status != null && !status.isBlank()) {
             String wanted = status.trim().toUpperCase(Locale.ROOT);
-            all = all.stream().filter(lc -> wanted.equals(lc.getStatus())).toList();
+            boolean legacyLive = "LIVE".equals(wanted) || "STARTING".equals(wanted);
+            all = all.stream()
+                    .filter(lc -> wanted.equals(lc.getStatus())
+                            || (legacyLive && "IN_PROGRESS".equals(lc.getStatus())))
+                    .toList();
         }
         int safeSize = clampSize(size);
         int pageIdx = clampPage(page, all.size(), safeSize);

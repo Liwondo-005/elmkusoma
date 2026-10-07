@@ -79,7 +79,7 @@ class PlatformAdminServiceTest {
         when(userRepository.countByRoleAndIsDeletedFalse(User.Role.PARENT)).thenReturn(15L);
         when(institutionRepository.countByIsDeletedFalse()).thenReturn(5L);
         when(liveClassRepository.countByIsDeletedFalse()).thenReturn(10L);
-        when(liveClassRepository.countByStatusAndIsDeletedFalse("LIVE")).thenReturn(3L);
+        when(liveClassRepository.countByStatusInAndIsDeletedFalse(any())).thenReturn(3L);
         when(certificateRepository.countByIsDeletedFalse()).thenReturn(200L);
         when(securityEventRepository.countByResolvedFalse()).thenReturn(2L);
 
@@ -250,7 +250,7 @@ class PlatformAdminServiceTest {
         when(incidentRepository.countByStatusAndIsDeletedFalse("DETECTED")).thenReturn(0L);
         when(incidentRepository.countByStatusAndIsDeletedFalse("INVESTIGATING")).thenReturn(0L);
         when(verificationRepository.countByStatusAndIsDeletedFalse("PENDING")).thenReturn(0L);
-        when(liveClassRepository.countByStatusAndIsDeletedFalse("LIVE")).thenReturn(0L);
+        when(liveClassRepository.countByStatusInAndIsDeletedFalse(any())).thenReturn(0L);
 
         var result = service.getAttentionItems();
 

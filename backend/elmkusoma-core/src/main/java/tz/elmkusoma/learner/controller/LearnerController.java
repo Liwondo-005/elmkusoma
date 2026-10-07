@@ -17,6 +17,7 @@ import tz.elmkusoma.course.repository.*;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.course.dto.LiveClassResponse;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateType;
@@ -554,18 +555,25 @@ public class LearnerController {
     @Operation(summary = "Record joining a live class")
     public ResponseEntity<ApiResponse<Map<String, Object>>> joinLiveClass(
             @PathVariable UUID id,
-            @RequestAttribute("userId") UUID userId) {
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("User not found"));
         }
         LiveClass liveClass = liveClassRepository.findById(id)
                 .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
-                .filter(lc -> user.getInstitutionId() != null
-                        && user.getInstitutionId().equals(lc.getInstitutionId()))
                 .orElse(null);
         if (liveClass == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Live class not found"));
+        }
+        UUID callerInstitutionId = institutionId != null ? institutionId : user.getInstitutionId();
+        if (callerInstitutionId == null || !callerInstitutionId.equals(liveClass.getInstitutionId())) {
+            throw new ForbiddenException("Live class", "access");
+        }
+        String joinStatus = liveClass.getStatus();
+        if (!"SCHEDULED".equals(joinStatus) && !"IN_PROGRESS".equals(joinStatus)) {
+            throw new ForbiddenException("Live class", "access");
         }
         LiveClassParticipant existing = liveClassParticipantRepository
                 .findByLiveClassIdAndUserIdAndIsDeletedFalse(id, userId).orElse(null);
@@ -1013,8 +1021,9 @@ public class LearnerController {
         summary.put("classGroupId", best.getClassGroupId());
         summary.put("sessionType", best.getSessionType() != null ? best.getSessionType().name() : "LECTURE");
         summary.put("recordingEnabled", Boolean.TRUE.equals(best.getRecordingEnabled()));
-        summary.put("recordingUrl", best.getRecordingUrl());
-        summary.put("canJoin", "IN_PROGRESS".equals(best.getStatus()) || "LIVE".equals(best.getStatus()));
+        summary.put("recordingUrl", "CANCELLED".equals(best.getStatus()) ? null : best.getRecordingUrl());
+        summary.put("canJoin", "IN_PROGRESS".equals(best.getStatus()) || "LIVE".equals(best.getStatus())
+                || "STARTING".equals(best.getStatus()));
         summary.put("inPast", best.getScheduledAt() != null
                 && best.getScheduledAt().plusMinutes(best.getDurationMinutes() != null ? best.getDurationMinutes() : 60)
                         .isBefore(java.time.LocalDateTime.now()));
@@ -1319,6 +1328,9 @@ public class LearnerController {
         String query = liveClass.getTitle() != null ? liveClass.getTitle().substring(0, Math.min(3, liveClass.getTitle().length())) : "";
         List<LiveClass> related = liveClassRepository.findRelatedLiveClasses(id, liveClass.getSubjectId(), query);
         List<LiveClassSearchResult> response = related.stream()
+                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                .filter(r -> institutionId.equals(r.getInstitutionId()))
+                .filter(r -> !"CANCELLED".equals(r.getStatus()))
                 .limit(6)
                 .map(this::toLiveClassSearchResult)
                 .collect(Collectors.toList());
@@ -1557,13 +1569,14 @@ public class LearnerController {
                 .subjectId(lc.getSubjectId())
                 .teacherName(teacherName)
                 .subjectName(subjectName)
-                .recordingUrl(lc.getRecordingUrl())
+                .recordingUrl("CANCELLED".equals(lc.getStatus()) ? null : lc.getRecordingUrl())
                 .recordingEnabled(Boolean.TRUE.equals(lc.getRecordingEnabled()))
                 .sessionType(lc.getSessionType() != null ? lc.getSessionType().name() : "LECTURE")
                 .broadcastSource(lc.getBroadcastSource() != null
                         ? lc.getBroadcastSource().name()
                         : LiveBroadcastSource.BROWSER.name())
-                .canJoin("IN_PROGRESS".equals(lc.getStatus()) || "LIVE".equals(lc.getStatus()))
+                .canJoin("IN_PROGRESS".equals(lc.getStatus()) || "LIVE".equals(lc.getStatus())
+                        || "STARTING".equals(lc.getStatus()))
                 .createdAt(lc.getCreatedAt() != null ? lc.getCreatedAt().toString() : null)
                 .build();
     }

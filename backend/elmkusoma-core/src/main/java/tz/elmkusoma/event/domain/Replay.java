@@ -77,4 +77,8 @@ public class Replay extends BaseEntity {
     /** Lesson ↔ Live Class: derived from live_classes.lesson_id for live-session replays. */
     @Transient
     private UUID relatedLessonId;
+
+    /** Lesson ↔ Live Class: title of the derived related lesson, resolved on read. */
+    @Transient
+    private String relatedLessonTitle;
 }

@@ -64,7 +64,11 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
 
     long countByStatusAndIsDeletedFalse(String status);
 
+    long countByStatusInAndIsDeletedFalse(java.util.Collection<String> statuses);
+
     Page<LiveClass> findByStatusAndIsDeletedFalse(String status, Pageable pageable);
+
+    Page<LiveClass> findByStatusInAndIsDeletedFalse(java.util.Collection<String> statuses, Pageable pageable);
 
     Page<LiveClass> findAllByIsDeletedFalse(Pageable pageable);
 

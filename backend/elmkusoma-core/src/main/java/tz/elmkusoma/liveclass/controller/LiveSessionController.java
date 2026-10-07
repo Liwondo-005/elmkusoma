@@ -69,7 +69,8 @@ public class LiveSessionController {
         }
 
         String classStatus = liveClass.getStatus();
-        if (!"IN_PROGRESS".equals(classStatus) && !"LIVE".equals(classStatus)) {
+        if (!"IN_PROGRESS".equals(classStatus) && !"LIVE".equals(classStatus)
+                && !"STARTING".equals(classStatus)) {
             return ResponseEntity.status(400).body(ApiResponse.error("Live class is not currently in session"));
         }
 

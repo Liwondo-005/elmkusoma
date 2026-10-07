@@ -127,7 +127,7 @@ public class PlatformAdminService {
         long totalParents = userRepository.countByRoleAndIsDeletedFalse(User.Role.PARENT);
         long totalInstitutions = institutionRepository.countByIsDeletedFalse();
         long totalLiveClasses = liveClassRepository.countByIsDeletedFalse();
-        long activeLiveClasses = liveClassRepository.countByStatusAndIsDeletedFalse("LIVE");
+        long activeLiveClasses = liveClassRepository.countByStatusInAndIsDeletedFalse(List.of("IN_PROGRESS", "LIVE", "STARTING"));
         long totalCertificates = certificateRepository.countByIsDeletedFalse();
         long unresolvedSecurityEvents = securityEventRepository.countByResolvedFalse();
 
@@ -182,7 +182,7 @@ public class PlatformAdminService {
                     .build());
         }
 
-        long activeLiveClasses = liveClassRepository.countByStatusAndIsDeletedFalse("LIVE");
+        long activeLiveClasses = liveClassRepository.countByStatusInAndIsDeletedFalse(List.of("IN_PROGRESS", "LIVE", "STARTING"));
         if (activeLiveClasses > 0) {
             items.add(AttentionItemResponse.builder()
                     .severity("INFO")
@@ -664,7 +664,11 @@ public class PlatformAdminService {
     public PageResponse<LiveClassSummaryResponse> listLiveClasses(int page, int size, String status) {
         Page<LiveClass> classes;
         if (status != null && !status.isBlank()) {
-            classes = liveClassRepository.findByStatusAndIsDeletedFalse(status.toUpperCase(), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "scheduledAt")));
+            String wanted = status.trim().toUpperCase();
+            List<String> statuses = "LIVE".equals(wanted) || "STARTING".equals(wanted)
+                    ? List.of(wanted, "IN_PROGRESS")
+                    : List.of(wanted);
+            classes = liveClassRepository.findByStatusInAndIsDeletedFalse(statuses, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "scheduledAt")));
         } else {
             classes = liveClassRepository.findAllByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "scheduledAt")));
         }
@@ -2617,7 +2621,7 @@ public class PlatformAdminService {
         data.put("totalCourses", courseRepository.countByIsDeletedFalse());
         data.put("totalPayments", paymentRepository.countByIsDeletedFalse());
         data.put("totalCertificates", certificateRepository.countByIsDeletedFalse());
-        data.put("activeLiveClasses", liveClassRepository.countByStatusAndIsDeletedFalse("LIVE"));
+        data.put("activeLiveClasses", liveClassRepository.countByStatusInAndIsDeletedFalse(List.of("IN_PROGRESS", "LIVE", "STARTING")));
         DashboardSnapshot s = DashboardSnapshot.of(PLATFORM_INSTITUTION_ID, "PLATFORM_ANALYTICS",
                 data, LocalDateTime.now().plusDays(90));
         s.setGeneratedAt(LocalDateTime.now());

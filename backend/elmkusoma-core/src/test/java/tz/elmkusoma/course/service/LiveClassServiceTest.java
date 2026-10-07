@@ -22,6 +22,7 @@ import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
+import tz.elmkusoma.liveclass.repository.LiveClassAttendanceDetailRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -47,6 +48,7 @@ class LiveClassServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private SubjectRepository subjectRepository;
     @Mock private LiveClassParticipantRepository participantRepository;
+    @Mock private LiveClassAttendanceDetailRepository attendanceDetailRepository;
     @Mock private AttendanceRecordRepository attendanceRecordRepository;
     @Mock private CertificateRepository certificateRepository;
     @Mock private LessonRepository lessonRepository;
