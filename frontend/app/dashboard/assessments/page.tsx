@@ -165,7 +165,7 @@ export default function AssessmentsPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const data = await assessmentApi.getByClass(user!.classGroupId || "")
+      const data = user!.classGroupId ? await assessmentApi.getByClass(user!.classGroupId) : []
       setAssessments(data)
     } catch {
       setAssessments([])

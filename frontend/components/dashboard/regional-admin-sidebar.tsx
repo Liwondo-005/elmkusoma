@@ -25,7 +25,10 @@ interface NavSection { title: string; titleKey?: string; items: NavItem[] }
 // new duplicate list pages; Live Learning and the PERFORMANCE group reuse the existing
 // jurisdiction-aware /oversight analytics (prompt: "If equivalent navigation already
 // exists: extend/reuse it. Do not create duplicate navigation infrastructure.").
-const NAV_SECTIONS: NavSection[] = [
+// Exported for the generic /dashboard shell (DashboardSidebar): a Regional
+// Admin opening Profile/Settings gets these same workspace links instead of
+// the student fall-through nav.
+export const NAV_SECTIONS: NavSection[] = [
   {
     title: "COMMAND CENTER", titleKey: "groupCommandCenter", items: [
       { label: "Overview", labelKey: "overview", href: "/dashboard/regional-admin", icon: LayoutDashboard },

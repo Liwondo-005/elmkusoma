@@ -39,6 +39,14 @@ public class PrimaryPortalController {
         return ResponseEntity.ok(ApiResponse.success(teachers));
     }
 
+    @GetMapping("/me/classmates")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "Get peers sharing a class with the student")
+    public ResponseEntity<ApiResponse<List<ClassmateResponse>>> getStudentClassmates(
+            @RequestAttribute("userId") UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(primaryPortalService.getStudentClassmates(userId)));
+    }
+
     @GetMapping("/me/portfolio")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get student portfolio items")

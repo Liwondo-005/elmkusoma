@@ -8,6 +8,8 @@ import { useTranslations } from "next-intl"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
+import { navGroups as authorityNavGroups } from "@/components/dashboard/authority-sidebar"
+import { NAV_SECTIONS as regionalNavSections } from "@/components/dashboard/regional-admin-sidebar"
 
 const nurseryNav: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard }> = [
   { label: "My World", labelKey: "myWorld", href: "/dashboard/nursery", icon: Home },
@@ -579,6 +581,14 @@ function getStudentNavFlat(user: { learningLevel?: string | null } | null) {
   return []
 }
 
+// Account links shown to authority roles on the shared /dashboard pages —
+// mirrors the account group already present in AuthoritySidebar and
+// RegionalAdminSidebar (Profile/Settings stay reachable from their shells).
+const authorityAccountNav: Array<{ label: string; labelKey?: string; href: string; icon: typeof LayoutDashboard }> = [
+  { label: "Profile", labelKey: "profile", href: "/dashboard/profile", icon: User },
+  { label: "Settings", labelKey: "settings", href: "/dashboard/settings", icon: Settings },
+]
+
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
@@ -596,6 +606,12 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const isProvider = user?.role === "Provider Admin" || user?.role === "Provider Staff"
   const isParent = user?.role === "Parent"
   const isLearner = user?.role === "Other Learner"
+  // Education-authority roles must never fall through to the student nav on
+  // the shared /dashboard pages (Profile/Settings/Notifications) — they get
+  // their own workspace links below.
+  const isAuthority =
+    user?.role === "National Admin" || user?.role === "Regional Admin" || user?.role === "District Admin"
+  const isRegionalAuthority = user?.role === "Regional Admin"
   const isPrimary = (user?.learningLevel || "").toUpperCase() === "PRIMARY"
 
   const [collapsed, setCollapsed] = useState(false)
@@ -606,13 +622,18 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const fetchBadges = useCallback(async () => {
     // Admin workspaces render no badged learner items — skip student-only
     // badge polling (previously fired student endpoints with an admin token).
-    // Provider workspaces likewise render no learner badges.
+    // Provider workspaces likewise render no learner badges, and authority
+    // workspaces render no learner items either (their 403s were polluting
+    // the console on Profile/Settings).
     if (
       !user?.id ||
       user.role === "Admin" ||
       user.role === "Institution Admin" ||
       user.role === "Provider Admin" ||
-      user.role === "Provider Staff"
+      user.role === "Provider Staff" ||
+      user.role === "National Admin" ||
+      user.role === "Regional Admin" ||
+      user.role === "District Admin"
     ) return
     const newBadges: Record<string, number> = {}
     try {
@@ -886,6 +907,51 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             {renderAdminGroups(
               user?.role === "Admin" ? [platformNavGroup, ...adminNavGroups] : adminNavGroups,
             )}
+          </div>
+        ) : isAuthority ? (
+          // Education-authority roles on shared /dashboard pages (Profile,
+          // Settings, Notifications) get their own workspace nav — reusing
+          // the exact section data of their shell — never the student
+          // fall-through (role-specific navigation, spec §10 workspace model).
+          <div>
+            {isRegionalAuthority
+              ? regionalNavSections.map((section, si) => (
+                  <div key={section.title}>
+                    {si > 0 && <div className="my-2 border-t border-border" />}
+                    <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {section.titleKey ? t(section.titleKey) : section.title}
+                    </p>
+                    {renderNavItems(
+                      section.items.map((item) => ({
+                        label: item.label,
+                        labelKey: item.labelKey,
+                        href: item.href,
+                        icon: item.icon,
+                      })),
+                    )}
+                  </div>
+                ))
+              : authorityNavGroups.map((group, gi) => (
+                  <div key={group.id}>
+                    {gi > 0 && <div className="my-2 border-t border-border" />}
+                    <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {t(group.labelKey)}
+                    </p>
+                    {renderNavItems(
+                      group.items.map((item) => ({
+                        label: item.label,
+                        labelKey: item.labelKey,
+                        href: item.href,
+                        icon: item.icon,
+                      })),
+                    )}
+                  </div>
+                ))}
+            <div className="my-2 border-t border-border" />
+            <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("account")}
+            </p>
+            {renderNavItems(authorityAccountNav)}
           </div>
         ) : isParent ? (
           // Parent workspace nav (parentNav was previously defined but never

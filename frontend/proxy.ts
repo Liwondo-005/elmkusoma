@@ -6,6 +6,20 @@ const adminRoutes = ["/dashboard/admin", "/dashboard/audit"]
 const platformAdminRoutes = ["/dashboard/platform-admin"]
 const learnerRoutes = ["/dashboard/learner"]
 const studentRoutes = ["/dashboard/courses", "/dashboard/lessons", "/dashboard/assignments", "/dashboard/assessments", "/dashboard/results", "/dashboard/attendance", "/dashboard/progress", "/dashboard/messages", "/dashboard/profile", "/dashboard/settings", "/dashboard/bookmarks"]
+// Student-workspace pages that no other role may open by direct URL.
+// /dashboard/profile and /dashboard/settings are intentionally excluded —
+// they are shared (authority + regional-admin sidebars link to them).
+const studentOnlyRoutes = [
+  "/dashboard/nursery", "/dashboard/secondary", "/dashboard/journey", "/dashboard/reading",
+  "/dashboard/create", "/dashboard/discovery", "/dashboard/labs", "/dashboard/quests",
+  "/dashboard/challenge-zone", "/dashboard/mistake-lab", "/dashboard/ai-guide",
+  "/dashboard/learn-together", "/dashboard/family", "/dashboard/live-classes",
+  "/dashboard/evidence", "/dashboard/passport", "/dashboard/my-teachers",
+  "/dashboard/portfolio", "/dashboard/learning-profile", "/dashboard/courses",
+  "/dashboard/lessons", "/dashboard/assignments", "/dashboard/assessments",
+  "/dashboard/results", "/dashboard/attendance", "/dashboard/progress",
+  "/dashboard/messages", "/dashboard/notifications", "/dashboard/bookmarks",
+]
 const parentRoutes = ["/dashboard/parent"]
 const nationalRoutes = ["/dashboard/national"]
 const regionalRoutes = ["/dashboard/regional"]
@@ -116,6 +130,14 @@ export function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
         if (isDistrictRoute && role !== "District Admin") {
+          return NextResponse.redirect(new URL("/dashboard", request.url))
+        }
+
+        const isStudentOnlyRoute = studentOnlyRoutes.some((r) => pathname.startsWith(r))
+        if (isStudentOnlyRoute && role !== "Student") {
+          if (role === "Other Learner") {
+            return NextResponse.redirect(new URL("/dashboard/learner", request.url))
+          }
           return NextResponse.redirect(new URL("/dashboard", request.url))
         }
       } catch {

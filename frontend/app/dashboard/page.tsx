@@ -72,17 +72,14 @@ export default function DashboardPage() {
       setActivities(activityData)
 
       try {
-        const { studentApi, learningApi, assessmentApi, certificateApi, academicApi, getInstitutionId } =
+        const { learningApi, assessmentApi, certificateApi, academicApi } =
           await import("@/lib/api")
-        // Real stored institution id only — never a fabricated fallback UUID.
-        const institutionId = getInstitutionId()
 
-        const students = institutionId ? await studentApi.getStudents(institutionId).catch(() => []) : []
-        const student = students.find((s: any) => s.userId === user?.id || s.email === user?.email)
+        const classId = user?.classGroupId || ""
 
-        if ((student as any)?.classGroupId) {
+        if (classId) {
           try {
-            const classGroup = await academicApi.getClassGroup((student as any).classGroupId)
+            const classGroup = await academicApi.getClassGroup(classId)
             if (classGroup?.gradeId) {
               const grade = await academicApi.getGrade(classGroup.gradeId)
               if (grade?.educationLevel) {
@@ -91,8 +88,6 @@ export default function DashboardPage() {
             }
           } catch { /* education level stays default */ }
         }
-
-        const classId = user?.classGroupId || (student as any)?.classGroupId || ""
 
         const [assignments, assessments, certificates, lessons, liveClasses] = await Promise.all([
           classId ? learningApi.getAssignments(classId).catch(() => []) : Promise.resolve([]),

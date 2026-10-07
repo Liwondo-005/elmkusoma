@@ -184,3 +184,64 @@ test("proxy bounces non-regional roles away from the regional workspace", async 
   expect([301, 302, 303, 307, 308]).toContain(resp.status())
   expect(resp.headers()["location"] || "").toContain("/dashboard")
 })
+
+test("shared dashboard pages show the regional workspace sidebar, never student links", async ({ page }) => {
+  // BUG 1 regression: Profile/Settings/Notifications are shared /dashboard pages;
+  // a Regional Admin must get their own workspace nav instead of the student
+  // fall-through secondary nav.
+  await login(page, REGIONAL.email, REGIONAL.password)
+  await page.waitForURL("**/oversight", { timeout: 25000 })
+
+  await page.goto("/dashboard/profile")
+  await page.waitForURL("**/dashboard/profile", { timeout: 20000 })
+  await expect(page.locator("aside.fixed a[href]").first()).toBeVisible({ timeout: 15000 })
+
+  // No student links leak into the sidebar.
+  await expect(page.locator('aside.fixed a[href^="/dashboard/secondary"]')).toHaveCount(0)
+  await expect(page.locator('aside.fixed a[href^="/dashboard/learner"]')).toHaveCount(0)
+  await expect(page.locator('aside.fixed a[href^="/dashboard/assignments"]')).toHaveCount(0)
+
+  // The regional workspace nav and the account links are present.
+  await expect(page.locator('aside.fixed a[href="/dashboard/regional-admin"]').first()).toBeVisible()
+  await expect(page.locator('aside.fixed a[href="/dashboard/regional-admin/pulse"]').first()).toBeVisible()
+  await expect(page.locator('aside.fixed a[href="/dashboard/profile"]').first()).toBeVisible()
+  await expect(page.locator('aside.fixed a[href="/dashboard/settings"]').first()).toBeVisible()
+
+  // Settings behaves identically.
+  await page.goto("/dashboard/settings")
+  await page.waitForURL("**/dashboard/settings", { timeout: 20000 })
+  await expect(page.locator('aside.fixed a[href^="/dashboard/secondary"]')).toHaveCount(0)
+  await expect(page.locator('aside.fixed a[href="/dashboard/regional-admin"]').first()).toBeVisible()
+})
+
+test("regional admin publishes a region-scoped announcement from the oversight surface", async ({ page }) => {
+  // BUG 2 regression: the oversight Announcements surface ("Broadcast updates
+  // to institutions in your jurisdiction") must let a Regional Admin compose
+  // and publish — always scoped to their own region, never nationwide.
+  await login(page, REGIONAL.email, REGIONAL.password)
+  await page.waitForURL("**/oversight", { timeout: 25000 })
+
+  await page.goto("/oversight/announcements")
+  await expect(page.getByRole("heading", { name: "Announcements" })).toBeVisible({ timeout: 15000 })
+
+  await page.getByRole("button", { name: "New announcement" }).click()
+  await expect(page.getByRole("heading", { name: "Compose announcement" })).toBeVisible()
+
+  // Audience is locked to the author's own region — no nationwide option,
+  // no region/district pickers.
+  const options = await page.locator("#ann-audience option").evaluateAll((els) => els.map((e) => e.value))
+  expect(options).toEqual(["REGION"])
+  await expect(page.locator("#ann-region")).toHaveCount(0)
+  await expect(page.locator("#ann-district")).toHaveCount(0)
+
+  const title = `E2E regional announcement ${Date.now()}`
+  await page.locator("#ann-title").fill(title)
+  await page.locator("#ann-content").fill("Region-scoped announcement published by the Regional Admin E2E.")
+  await page.getByRole("button", { name: "Publish" }).click()
+
+  await expect(page.getByText("Announcement published.")).toBeVisible({ timeout: 15000 })
+  const card = page.locator("div.rounded-2xl.border.border-border.bg-card", { hasText: title }).first()
+  await expect(card).toBeVisible({ timeout: 15000 })
+  await expect(card.getByText("Dar es Salaam")).toBeVisible()
+  await expect(card.getByText("Nationwide")).toHaveCount(0)
+})

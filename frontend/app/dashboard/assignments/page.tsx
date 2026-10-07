@@ -25,7 +25,7 @@ export default function AssignmentsPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const data = await learningApi.getAssignments(user!.classGroupId || "")
+      const data = user!.classGroupId ? await learningApi.getAssignments(user!.classGroupId) : []
       setAssignments(data)
     } catch {
       setAssignments([])
