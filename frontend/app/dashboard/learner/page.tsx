@@ -34,8 +34,9 @@ export default function LearnerDashboardPage() {
   const [feedNotifications, setFeedNotifications] = useState<LearnerNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const t = useTranslations("dashboard")
-  const tc = useTranslations("common")
+const t = useTranslations("dashboard")
+const tc = useTranslations("common")
+const th = useTranslations("highered")
 
   useEffect(() => {
     if (!user) return
@@ -98,6 +99,14 @@ export default function LearnerDashboardPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const dash = dashboard!
+
+  const learningContextLabel = (() => {
+    const context = (dash.academicContext || "").toUpperCase()
+    if (context === "VETA") return th("tvet")
+    if (context === "COLLEGE") return th("college")
+    if (context === "UNIVERSITY") return th("university")
+    return dash.academicContext || ""
+  })()
 
   if (!isHE) {
     return (
@@ -207,7 +216,7 @@ export default function LearnerDashboardPage() {
       <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-primary/10 p-6 shadow-xs" role="region" aria-label={t("myLearningWorld")}>
         <LearnerHeader
           firstName={firstName}
-          subtitle={dash.academicContext || t("myLearningWorld")}
+          subtitle={learningContextLabel || t("myLearningWorld")}
         />
         <div className="mt-3 flex flex-wrap gap-2">
           {dash.programmeName && (

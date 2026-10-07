@@ -30,7 +30,7 @@ public class MediaLibraryController {
     private final MediaProxyService mediaProxyService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('TEACHER','OTHER_LEARNER','INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','OTHER_LEARNER','INSTITUTION_ADMIN')")
     @Operation(summary = "List media assets for institution")
     public ResponseEntity<ApiResponse<List<MediaAssetResponse>>> listMedia(
             @RequestHeader("X-Institution-Id") UUID institutionId,

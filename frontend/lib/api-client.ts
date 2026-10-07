@@ -7,13 +7,24 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>
 }
 
-function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
-  const base =
-    API_BASE ||
-    (typeof window !== "undefined"
+function resolveBaseUrl(): string {
+  if (/^https?:\/\//i.test(API_BASE)) {
+    return API_BASE
+  }
+  const origin =
+    typeof window !== "undefined"
       ? window.location.origin
-      : "http://localhost:3000")
-  const url = new URL(path, base)
+      : "http://localhost:3000"
+  const prefix = API_BASE
+    ? API_BASE.startsWith("/")
+      ? API_BASE
+      : `/${API_BASE}`
+    : ""
+  return `${origin}${prefix}`
+}
+
+function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
+  const url = new URL(path, resolveBaseUrl())
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
