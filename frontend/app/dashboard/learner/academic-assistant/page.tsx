@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { collegeApi } from "@/lib/college-api"
+import { aiApi, isAiUnavailable } from "@/lib/ai-api"
 import type { StudentCourseEnrollment } from "@/lib/types/college"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import { Bot, Send, BookOpen, HelpCircle, Lightbulb, AlertCircle } from "lucide-react"
@@ -17,17 +18,34 @@ interface ChatMessage {
 export default function AcademicAssistantPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
+  const ta = useTranslations("ai")
   const { user, loading: authLoading } = useAuth()
   const [enrollments, setEnrollments] = useState<StudentCourseEnrollment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
+  const [sending, setSending] = useState(false)
+  const [aiUnavailable, setAiUnavailable] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
     loadData()
   }, [user])
+
+  useEffect(() => {
+    let active = true
+    aiApi
+      .getAiHealth()
+      .then((health) => {
+        if (active && !health.configured) setAiUnavailable(true)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function loadData() {
     try {
@@ -42,22 +60,33 @@ export default function AcademicAssistantPage() {
     }
   }
 
-  function sendMessage(text?: string) {
+  async function sendMessage(text?: string) {
     const content = text || input.trim()
-    if (!content) return
+    if (!content || sending || aiUnavailable) return
 
     const userMsg: ChatMessage = { id: Date.now().toString(), role: "user", content }
     setMessages((prev) => [...prev, userMsg])
     setInput("")
+    setSending(true)
+    setAiError(null)
 
-    setTimeout(() => {
+    try {
+      const response = await aiApi.askAi(content)
       const assistantMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: `${Date.now()}-assistant`,
         role: "assistant",
-        content: `Thank you for your question about "${content.slice(0, 50)}...". The Academic Assistant is designed to help with concept explanations, practice questions, and study guidance. In a full implementation, this would connect to an AI service for detailed responses. Your enrolled courses cover ${enrollments.length} subject area${enrollments.length !== 1 ? "s" : ""} — feel free to ask about any topic from your coursework.`,
+        content: response.answer,
       }
       setMessages((prev) => [...prev, assistantMsg])
-    }, 800)
+    } catch (err) {
+      if (isAiUnavailable(err)) {
+        setAiUnavailable(true)
+      } else {
+        setAiError(tc("error.generic"))
+      }
+    } finally {
+      setSending(false)
+    }
   }
 
   if (authLoading || loading) return <div role="main"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
@@ -80,6 +109,19 @@ export default function AcademicAssistantPage() {
           <AlertCircle className="size-4 shrink-0" />
           <span>{error}</span>
           <button onClick={() => { setError(null); loadData() }} aria-label={tc("retry")} className="ml-auto text-xs underline">{tc("retry")}</button>
+        </div>
+      )}
+
+      {aiUnavailable && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">{ta("notConfiguredTitle")}</p>
+            <p className="text-xs">{ta("notConfigured")}</p>
+          </div>
         </div>
       )}
 
@@ -120,7 +162,8 @@ export default function AcademicAssistantPage() {
                     key={p}
                     onClick={() => sendMessage(p)}
                     aria-label={p}
-                    className="rounded-xl border border-border bg-card px-4 py-2 text-xs text-muted-foreground hover:bg-muted transition"
+                    disabled={aiUnavailable}
+                    className="rounded-xl border border-border bg-card px-4 py-2 text-xs text-muted-foreground hover:bg-muted transition disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {p.length > 40 ? p.slice(0, 40) + "..." : p}
                   </button>
@@ -147,19 +190,30 @@ export default function AcademicAssistantPage() {
         </div>
       )}
 
+      {aiError && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300"
+        >
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{aiError}</span>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-xs">
         <input
           type="text"
-          placeholder={t("academicAssistant.inputPlaceholder")}
+          placeholder={aiUnavailable ? ta("notConfiguredTitle") : t("academicAssistant.inputPlaceholder")}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           aria-label={t("academicAssistant.inputPlaceholder")}
-          className="flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
+          disabled={sending || aiUnavailable}
+          className="flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
         />
         <button
           onClick={() => sendMessage()}
-          disabled={!input.trim()}
+          disabled={!input.trim() || sending || aiUnavailable}
           aria-label={t("academicAssistant.send")}
           className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition"
         >

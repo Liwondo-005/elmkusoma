@@ -178,6 +178,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Service temporarily unavailable"));
     }
 
+    @ExceptionHandler(tz.elmkusoma.ai.AiNotImplementedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAiNotImplemented(tz.elmkusoma.ai.AiNotImplementedException ex) {
+        log.warn("AI provider boundary reached: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(ex.getMessage(), "AI_PROVIDER_NOT_IMPLEMENTED"));
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
         log.warn("Response status: {} - {}", ex.getStatusCode(), ex.getReason());

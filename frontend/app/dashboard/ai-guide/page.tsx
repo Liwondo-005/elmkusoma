@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import { useRequireAuth } from "@/lib/auth"
 import { useTranslations } from "next-intl"
-import { primaryApi } from "@/lib/api"
-import { Brain, Send, Loader2, Sparkles, ArrowLeft, BookOpen, HelpCircle, Lightbulb, RefreshCw } from "lucide-react"
+import { aiApi, isAiUnavailable } from "@/lib/ai-api"
+import { Brain, Send, Loader2, Sparkles, ArrowLeft, BookOpen, HelpCircle, Lightbulb, RefreshCw, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
@@ -15,26 +15,13 @@ interface ChatMessage {
 }
 
 
-function getLocalResponse(message: string, t?: (k: string) => string): string {
-  const tr = (k: string) => (t ? t(k) : k);
-  const lower = message.toLowerCase()
-  if (lower.includes("fraction")) return tr("aiGuide.respFractions")
-  if (lower.includes("water cycle")) return tr("aiGuide.respWater")
-  if (lower.includes("what should i study") || (lower.includes("next") && lower.includes("study"))) return tr("aiGuide.respStudy")
-  if (lower.includes("practice problem") || lower.includes("quiz me")) return tr("aiGuide.respPractice")
-  if (lower.includes("writing") || lower.includes("essay")) return tr("aiGuide.respWriting")
-  if (lower.includes("today") || lower.includes("learn")) return tr("aiGuide.respToday")
-  if (lower.includes("math")) return tr("aiGuide.respMath")
-  if (lower.includes("science")) return tr("aiGuide.respScience")
-  if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) return tr("aiGuide.respHello")
-  return tr("aiGuide.respFallback")
-}
-
 export default function AIGuidePage() {
   const { user, loading: authLoading } = useRequireAuth()
   const t = useTranslations("primary")
   const SUGGESTIONS = [t("aiGuide.suggestFractions"), t("aiGuide.suggestNext"), t("aiGuide.suggestWater"), t("aiGuide.suggestPractice"), t("aiGuide.suggestWriting"), t("aiGuide.suggestToday")]
   const ts = useTranslations("status")
+  const tc = useTranslations("common")
+  const ta = useTranslations("ai")
   const firstName = user?.name?.split(" ")[0] || "Student"
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -45,36 +32,51 @@ export default function AIGuidePage() {
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [aiUnavailable, setAiUnavailable] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
+  useEffect(() => {
+    let active = true
+    aiApi
+      .getAiHealth()
+      .then((health) => {
+        if (active && !health.configured) setAiUnavailable(true)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
+
   const sendMessage = async (text?: string) => {
     const content = text || input.trim()
-    if (!content || loading) return
+    if (!content || loading || aiUnavailable) return
 
     const userMsg: ChatMessage = { role: "user", content, timestamp: new Date() }
     setMessages((prev) => [...prev, userMsg])
     setInput("")
     setLoading(true)
+    setAiError(null)
 
     try {
-      const response = await primaryApi.askAI(content)
+      const response = await aiApi.askAi(content)
       const assistantMsg: ChatMessage = {
         role: "assistant",
-        content: response.answer || getLocalResponse(content, t),
+        content: response.answer,
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, assistantMsg])
-    } catch {
-      const assistantMsg: ChatMessage = {
-        role: "assistant",
-        content: getLocalResponse(content, t),
-        timestamp: new Date(),
+    } catch (err) {
+      if (isAiUnavailable(err)) {
+        setAiUnavailable(true)
+      } else {
+        setAiError(tc("error.generic"))
       }
-      setMessages((prev) => [...prev, assistantMsg])
     } finally {
       setLoading(false)
     }
@@ -107,13 +109,27 @@ export default function AIGuidePage() {
         </div>
       </div>
 
+      {aiUnavailable && (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">{ta("notConfiguredTitle")}</p>
+            <p className="text-xs">{ta("notConfigured")}</p>
+          </div>
+        </div>
+      )}
+
       {messages.length === 1 && (
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
               onClick={() => sendMessage(s)}
-              className="rounded-xl border border-border bg-card p-3 text-left text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-foreground"
+              disabled={aiUnavailable}
+              className="rounded-xl border border-border bg-card p-3 text-left text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Lightbulb className="mb-1 size-3.5 text-amber-500" />
               {s}
@@ -156,19 +172,29 @@ export default function AIGuidePage() {
         </div>
       </div>
 
+      {aiError && (
+        <div
+          role="alert"
+          className="mt-3 flex items-center gap-2 rounded-2xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300"
+        >
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{aiError}</span>
+        </div>
+      )}
+
       <div className="mt-3 flex items-center gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder={t("aiGuide.inputPlaceholder")}
-          className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
-          disabled={loading}
+          placeholder={aiUnavailable ? ta("notConfiguredTitle") : t("aiGuide.inputPlaceholder")}
+          disabled={loading || aiUnavailable}
+          className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
         />
         <button
           onClick={() => sendMessage()}
-          disabled={!input.trim() || loading}
+          disabled={!input.trim() || loading || aiUnavailable}
           className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           <Send className="size-5" />

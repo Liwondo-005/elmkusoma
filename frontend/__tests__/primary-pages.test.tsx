@@ -1,7 +1,7 @@
 import { describe, it, expect } from "@jest/globals"
 
 describe("Primary Learner Experience", () => {
-  it("should export all 37 expected API methods", async () => {
+  it("should export all 36 expected API methods", async () => {
     const api = await import("@/lib/api")
     expect(api.primaryApi).toBeDefined()
     const methods = [
@@ -19,7 +19,6 @@ describe("Primary Learner Experience", () => {
       "getSpeakingActivities", "addSpeakingActivity", "completeSpeakingActivity",
       "getCollaborations",
       "getRealWorldMissions", "completeMission",
-      "askAI",
     ]
     for (const method of methods) {
       expect(typeof (api.primaryApi as any)[method]).toBe("function")
