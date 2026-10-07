@@ -1,48 +1,72 @@
 import Image from "next/image"
 
+// Real ELMKUSOMA team. Only verified name/role/photo data — no invented
+// bios, social accounts or contact details are added here.
 const team = [
   {
-    name: "Dr. Amina Juma",
-    role: "Founder & CEO",
-    image: "/images/team-1.png",
-    bio: "Education technologist with 12+ years of experience building digital learning solutions across East Africa.",
-    social: { linkedin: "#", twitter: "#" },
+    name: "Eng. Arthur C. A. Assenga",
+    role: "Founder",
+    image: "/images/team/founder.webp",
   },
   {
-    name: "David Ochieng",
-    role: "Head of Product",
-    image: "/images/team-2.png",
-    bio: "Product leader passionate about creating intuitive learning experiences that scale to millions.",
-    social: { linkedin: "#", twitter: "#" },
+    name: "Asimwe A. Manyusi",
+    role: "Full-Stack Engineer",
+    image: "/images/team/asimwe.webp",
   },
   {
-    name: "Grace Nkomo",
-    role: "Head of Content",
-    image: "/images/team-3.png",
-    bio: "Curriculum specialist dedicated to curating world-class courses and live class experiences.",
-    social: { linkedin: "#", twitter: "#" },
+    name: "Suleji R. Issa",
+    role: "IT",
+    image: "/images/team/suleji.webp",
   },
   {
-    name: "Manyusi Asimwe",
-    role: "CTO",
-    image: "/images/team-4.png",
-    bio: "Full-stack engineer focused on building reliable, fast and accessible educational technology.",
-    social: { linkedin: "#", twitter: "#" },
+    name: "Johnson M. Wilson",
+    role: "Computer Engineer",
+    image: "/images/team/johnson.webp",
+  },
+  {
+    name: "Idda S. Ngaiza",
+    role: "Frontend Developer",
+    image: "/images/team/idda.webp",
+  },
+  {
+    name: "Twalhiya Amour Ally",
+    role: "Computer Engineer",
+    image: "/images/team/twally.webp",
+  },
+  {
+    name: "Mwanaidi S. Shabani",
+    role: "IT",
+    image: "/images/team/naah.webp",
   },
 ]
 
-function TeamAvatar({ image, name, initials }: { image: string; name: string; initials: string }) {
+function TeamPhoto({ image, name }: { image: string; name: string }) {
   return (
-    <div className="relative aspect-square overflow-hidden bg-accent">
+    // Every supplied photo is a 4:5 portrait, so the container matches the
+    // source ratio exactly — object-cover crops rather than distorts faces.
+    <div className="relative aspect-[4/5] overflow-hidden bg-muted">
       <Image
         src={image}
         alt={name}
         fill
         className="object-cover"
-        sizes="(max-width: 768px) 100vw, 25vw"
+        sizes="(max-width: 640px) 70vw, 260px"
       />
-      <div className="absolute inset-0 flex items-center justify-center bg-accent">
-        <span className="text-4xl font-extrabold text-primary/30">{initials}</span>
+    </div>
+  )
+}
+
+function TeamCard({ member }: { member: (typeof team)[number] }) {
+  return (
+    // Fixed basis + grow keeps every card the same width while letting them
+    // share leftover space, so nothing stretches or collapses when wrapping.
+    <div className="w-full max-w-[260px] flex-1 basis-[240px]">
+      <div className="group h-full overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg">
+        <TeamPhoto image={member.image} name={member.name} />
+        <div className="p-5">
+          <h3 className="text-balance text-base font-semibold text-foreground">{member.name}</h3>
+          <p className="mt-1 text-sm font-medium text-primary">{member.role}</p>
+        </div>
       </div>
     </div>
   )
@@ -59,35 +83,14 @@ export function AboutTeam() {
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {team.map((member) => {
-            const initials = member.name
-              .split(" ")
-              .filter((_, i, arr) => i === 0 || i === arr.length - 1)
-              .map((n) => n[0])
-              .join("")
-            return (
-              <div
-                key={member.name}
-                className="group overflow-hidden rounded-2xl border border-border bg-card shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <TeamAvatar image={member.image} name={member.name} initials={initials} />
-                <div className="p-5">
-                  <h3 className="text-base font-semibold text-foreground">{member.name}</h3>
-                  <p className="mt-0.5 text-sm font-medium text-primary">{member.role}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{member.bio}</p>
-                  <div className="mt-3 flex gap-3">
-                    <a href={member.social.linkedin} aria-label={`${member.name} on LinkedIn`} className="text-sm text-muted-foreground transition-colors hover:text-primary">
-                      LinkedIn
-                    </a>
-                    <a href={member.social.twitter} aria-label={`${member.name} on Twitter`} className="text-sm text-muted-foreground transition-colors hover:text-primary">
-                      Twitter
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+        {/* Stationary wrapping layout. flex-wrap + justify-center centres
+            every row, including a final row with fewer cards, which a
+            column grid could not do. justify-center is what keeps the
+            leftover 3 cards centred under the first 4 on desktop. */}
+        <div className="mt-12 flex flex-wrap justify-center gap-6">
+          {team.map((member) => (
+            <TeamCard key={member.name} member={member} />
+          ))}
         </div>
       </div>
     </section>
