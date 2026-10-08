@@ -1967,7 +1967,7 @@ export const institutions: Institution[] = [
     educationLevel: "Nursery",
     description: "A well-established nursery with dedicated Baby-Middle-Top classes and experienced teachers.",
     location: "Temeke, DSM",
-    images: ["/images/schools/nursery/tegeta-1.jpg", "/images/schools/nursery/tegeta-2.jpg", "/images/schools/nursery/tegeta-3.jpg", "/images/schools/nursery/tegeta-4.jpg"],
+    images: ["/images/schools/nursery/tegeta-1.jpg", "/images/schools/nursery/tegeta-2.jpg", "/images/schools/nursery/tegeta-3.jpg"],
     ownership: "Private",
     verified: true,
     students: 350,
