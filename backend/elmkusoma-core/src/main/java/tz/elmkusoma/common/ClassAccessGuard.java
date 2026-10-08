@@ -2,7 +2,9 @@ package tz.elmkusoma.common;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.enrollment.domain.Enrollment;
 import tz.elmkusoma.enrollment.repository.EnrollmentRepository;
 import tz.elmkusoma.shared.domain.User;
@@ -41,6 +43,10 @@ public class ClassAccessGuard {
     private final StudentClassAssignmentRepository studentClassAssignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
 
+    /** Audit B-21: strict membership mode. Default off so existing tenants are unchanged. */
+    @Value("${elmkusoma.learning.enforce-membership:false}")
+    private boolean enforceMembership;
+
     /**
      * Class-membership enforcement for learner reads.
      *
@@ -49,6 +55,12 @@ public class ClassAccessGuard {
      * student profile AND membership rows exist; when no membership data is modeled at
      * all the read is allowed (keeps existing flows working while blocking cross-class
      * reads in tenants that do model membership).</p>
+     *
+     * <p>Audit B-21: that fail-open default is now controllable per deployment. With
+     * {@code elmkusoma.learning.enforce-membership=true} an unplaced learner is denied
+     * instead of being allowed to read every class, which closes the perimeter while
+     * leaving tenants that do not model membership unaffected. Off by default so no
+     * currently working flow changes behaviour silently.</p>
      */
     public void assertLearnerCanAccessClass(String userEmail, UUID classGroupId) {
         if (userEmail == null || classGroupId == null) {
@@ -56,10 +68,18 @@ public class ClassAccessGuard {
         }
         Student student = findStudentByUserEmail(userEmail);
         if (student == null) {
+            if (enforceMembership) {
+                log.warn("Class membership denied (strict): no learner profile for {}", userEmail);
+                throw new ForbiddenException("class", "access");
+            }
             return;
         }
         Set<UUID> memberClassIds = resolveStudentClassGroupIds(student.getId());
         if (memberClassIds.isEmpty()) {
+            if (enforceMembership) {
+                log.warn("Class membership denied (strict): student {} has no class placement", student.getId());
+                throw new ForbiddenException("You are not enrolled in any class yet");
+            }
             return;
         }
         if (!memberClassIds.contains(classGroupId)) {
@@ -77,8 +97,8 @@ public class ClassAccessGuard {
      * never treated as implicit allow: without a student profile, or without
      * membership rows proving the learner belongs to this class, the answer is
      * {@code false}. The membership union is the same existing model used
-     * everywhere else ({@code student_class_assignments} ∪ ENROLLED
-     * {@code enrollments}) — no parallel system.</p>
+     * everywhere else ({@code student_class_assignments} Ã¢Ë†Âª ENROLLED
+     * {@code enrollments}) Ã¢â‚¬â€ no parallel system.</p>
      */
     public boolean isLearnerInClass(String userEmail, UUID classGroupId) {
         if (userEmail == null || classGroupId == null) {

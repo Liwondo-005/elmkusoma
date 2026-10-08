@@ -9,6 +9,11 @@ elmkusoma:
     # Audit B-04: production requires email verification before login. Off by default elsewhere so
     # seeded/e2e fixtures are not locked out.
     require-verified-email: true
+  learning:
+    # Audit B-21: production enforces learner class membership (unplaced learners are denied
+    # class-scoped content) instead of failing open. Off elsewhere so tenants that do not model
+    # membership keep working.
+    enforce-membership: true
 
   flyway:
     enabled: true

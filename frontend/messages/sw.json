@@ -769,6 +769,8 @@
       "teacherSays": "Mwalimu anasema:",
       "submitFailed": "Imeshindwa kuwasilisha",
       "notFound": "Kazi Haikupatikana",
+      "awaitingPlacement": "Inasubiri nafasi ya darasa",
+      "awaitingPlacementDesc": "Bado hujapewa darasa. Kazi zako zitaonekana hapa baada ya kuthibitishwa nafasi yako.",
       "backToPractice": "Rudi kwenye Mazoezi",
       "whatToDo": "Cha kufanya",
       "noInstructions": "Soma maelekezo ya mwalimu wako na kamilisha kazi.",

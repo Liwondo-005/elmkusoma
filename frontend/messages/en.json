@@ -687,6 +687,8 @@
       "teacherSays": "Teacher says:",
       "submitFailed": "Failed to submit",
       "notFound": "Assignment Not Found",
+      "awaitingPlacement": "Awaiting class placement",
+      "awaitingPlacementDesc": "You are not in a class yet. Once your placement is confirmed, your assignments will appear here.",
       "backToPractice": "Back to Practice",
       "whatToDo": "What to do",
       "noInstructions": "Read the instructions from your teacher and complete the work.",

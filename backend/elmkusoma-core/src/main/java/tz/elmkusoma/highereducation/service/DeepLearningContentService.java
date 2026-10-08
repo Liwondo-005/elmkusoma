@@ -69,9 +69,13 @@ public class DeepLearningContentService {
     }
 
     public void deleteContent(UUID id) {
-        if (!contentRepository.existsById(id))
-            throw new ResourceNotFoundException("Content not found");
-        contentRepository.deleteById(id);
+// Audit P3: hard delete bypassed the project's soft-delete contract, so retention sweeps
+        // and audit trails could not see these removals. Soft delete is the convention everywhere
+        // else (BaseEntity.is_deleted).
+        DeepLearningContent entity = contentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Content not found"));
+        entity.setIsDeleted(true);
+        contentRepository.save(entity);
     }
 
     private DeepLearningContentDTO toDTO(DeepLearningContent c) {

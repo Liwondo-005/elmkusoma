@@ -2172,7 +2172,14 @@ export const gradingApi = {
 export const mediaApi = {
   upload: async (file: File, options?: UploadOptions) => {
     const token = localStorage.getItem("elmkusoma_access_token")
-    const instId = localStorage.getItem("elmkusoma_institution_id") || "a0000000-0000-0000-0000-000000000001"
+    const instId = localStorage.getItem("elmkusoma_institution_id")
+    // Audit B-42: this path used to substitute the National HQ id when no organization was stored,
+    // which silently filed every upload into the HQ tenant -- a cross-tenant data-integrity bug
+    // with no error anywhere. The server binds the file to whatever header it receives, so the
+    // only honest option is to fail loudly and let the caller surface it.
+    if (!instId) {
+      throw new Error("No organization scope available. Sign in again to upload files.")
+    }
     return uploadFile({
       url: "/api/v1/media/upload",
       file,

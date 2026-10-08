@@ -23,6 +23,8 @@ export default function AssignmentDetailPage() {
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [submission, setSubmission] = useState<AssignmentSubmission | null>(null)
   const [loading, setLoading] = useState(true)
+  /** Audit B-23: learner has no class placement yet. */
+  const [notPlaced, setNotPlaced] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [content, setContent] = useState("")
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null)
@@ -37,12 +39,19 @@ export default function AssignmentDetailPage() {
   async function loadAssignment() {
     try {
       setLoading(true)
-      const all = await learningApi.getAssignments(user!.classGroupId || "")
+      // Audit B-23: this called /v1/learning/assignments/class/ with an EMPTY class id when the
+      // learner has no placement, producing a Spring type-mismatch 400 that the catch turned into
+      // a silent empty page. Ask explicitly for the not-placed state instead.
+      if (!user?.classGroupId) {
+        setNotPlaced(true)
+        return
+      }
+      const all = await learningApi.getAssignments(user.classGroupId)
       const found = all.find((a) => a.id === params.id)
       if (found) {
         setAssignment(found)
         try {
-          // Learner-scoped endpoint: resolves users.id â†’ students.id server-side.
+          // Learner-scoped endpoint: resolves users.id Ã¢â€ â€™ students.id server-side.
           const mySub = await learningApi.getMySubmission(found.id)
           if (mySub) {
             setSubmission(mySub)
@@ -161,7 +170,15 @@ export default function AssignmentDetailPage() {
         </Button>
         <div className="rounded-2xl border border-border bg-card p-12 text-center">
           <BookOpen className="mx-auto size-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">{t("assignmentDetail.notFound")}</h3>
+          <h3 className="mt-4 text-lg font-semibold text-foreground">
+            {/* Audit B-23: distinguish "not placed yet" from "assignment not found". */}
+            {notPlaced ? t("assignmentDetail.awaitingPlacement") : t("assignmentDetail.notFound")}
+          </h3>
+          {notPlaced && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t("assignmentDetail.awaitingPlacementDesc")}
+            </p>
+          )}
         </div>
       </div>
     )
