@@ -32,8 +32,11 @@ public class ProgrammeController {
     @Operation(summary = "List all programmes in an institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
     public ResponseEntity<ApiResponse<List<ProgrammeDTO>>> listProgrammes(
-            @RequestHeader("X-Institution-Id") UUID institutionId) {
-        List<ProgrammeDTO> programmes = programmeService.listByInstitution(institutionId);
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestParam(required = false) UUID departmentId) {
+        List<ProgrammeDTO> programmes = departmentId == null
+                ? programmeService.listByInstitution(institutionId)
+                : programmeService.listByDepartment(institutionId, departmentId);
         return ResponseEntity.ok(ApiResponse.success(programmes));
     }
 

@@ -245,9 +245,7 @@ class FlywayMigrationValidationTest {
      */
     @Test
     void liveClassesStartedAt_IsDeclaredAsNullableTimestampInMigrations() throws IOException {
-        Pattern addColumn = Pattern.compile(
-                "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ADD\\s+COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?([A-Za-z0-9_]+)\\s+([A-Za-z][A-Za-z0-9_ ]*?)(\\s+NOT\\s+NULL|\\s*;|\\s+DEFAULT|\\s+REFERENCES|\\s+PRIMARY|\\s+UNIQUE|$)",
-                Pattern.CASE_INSENSITIVE);
+        Pattern addColumn = ADD_COLUMN;
 
         String declaredType = null;
         String declaredIn = null;
@@ -275,7 +273,7 @@ class FlywayMigrationValidationTest {
             if (added.find()
                     && unquote(added.group(1)).equalsIgnoreCase("live_classes")
                     && added.group(2).equalsIgnoreCase("started_at")) {
-                declaredType = added.group(3).trim().toLowerCase();
+                declaredType = normalizeDeclaredType(added.group(3));
                 declaredIn = file.getFileName().toString();
                 // Scope NOT NULL detection to this statement, not the whole file.
                 int stmtEnd = body.indexOf(';', added.start());
@@ -295,6 +293,88 @@ class FlywayMigrationValidationTest {
         assertFalse(seenNotNull,
                 "live_classes.started_at must stay nullable: SCHEDULED classes have not started and "
                         + "active rows created before V135 have no actual start (" + declaredIn + ")");
+    }
+
+    /**
+     * V136 makes Department -> Programme a real foreign key and adds course_modules.module_code.
+ * Both are mapped on entities, and the test profile builds its schema with Hibernate instead
+ * of Flyway, so a missing or mistyped migration would only surface at runtime against a real
+ * database - the exact class of bare-500 defect this suite exists to prevent. Replays the
+ * migrations to prove the columns exist and that department_id is uuid-typed, matching the
+ * UUID it references on departments(id).
+ */
+    @Test
+    void departmentProgrammeAndModuleColumns_AreDeclaredInMigrations() throws IOException {
+        Set<String> wanted = Set.of(
+                "programmes.department_id",
+                "course_modules.module_code");
+
+        Map<String, String> declared = declaredColumns(wanted);
+
+        List<String> missing = new ArrayList<>();
+        for (String column : wanted) {
+            if (!declared.containsKey(column)) {
+                missing.add(column);
+            }
+        }
+        assertTrue(missing.isEmpty(),
+                "these columns are mapped on entities but no migration declares them, so every "
+                        + "programme/module query would fail against a real database: " + missing);
+
+        assertTrue(declared.get("programmes.department_id").startsWith("uuid"),
+                "programmes.department_id must be uuid to reference departments(id), but is \""
+                        + declared.get("programmes.department_id") + "\"");
+        assertTrue(declared.get("course_modules.module_code").startsWith("character varying")
+                        || declared.get("course_modules.module_code").startsWith("varchar"),
+                "course_modules.module_code must be a varchar, but is \""
+                        + declared.get("course_modules.module_code") + "\"");
+    }
+
+    /** Column type per "table.column" for columns added via ADD COLUMN, last declaration winning. */
+    private Map<String, String> declaredColumns(Set<String> wanted) throws IOException {
+        Map<String, String> declared = new LinkedHashMap<>();
+        List<Path> ordered = migrationFiles.stream()
+                .sorted(Comparator.comparingInt(FlywayMigrationValidationTest::versionOf))
+                .toList();
+
+        for (Path file : ordered) {
+            StringBuilder normalized = new StringBuilder();
+            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("--")) {
+                    continue;
+                }
+                normalized.append(trimmed).append(' ');
+            }
+            Matcher matcher = ADD_COLUMN.matcher(normalized.toString());
+            while (matcher.find()) {
+                String key = unquote(matcher.group(1)).toLowerCase() + "." + matcher.group(2).toLowerCase();
+                if (wanted.contains(key)) {
+                    declared.put(key, normalizeDeclaredType(matcher.group(3)));
+                }
+            }
+        }
+        return declared;
+    }
+
+    /**
+     * ADD COLUMN with an optional length ("VARCHAR(50)") and a trailing explicit NULL.
+     * The type group is lazy and stops at a column constraint or the statement end, so the
+     * captured text can carry a trailing "null" that has to be stripped before comparing.
+     */
+    private static final Pattern ADD_COLUMN = Pattern.compile(
+            "ALTER\\s+TABLE\\s+([A-Za-z0-9_\\\".]+)\\s+ADD\\s+COLUMN\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?"
+                    + "([A-Za-z0-9_]+)\\s+([A-Za-z][A-Za-z0-9_ ]*?(?:\\([0-9, ]+\\))?[A-Za-z0-9_ ]*?)"
+                    + "(\\s+NOT\\s+NULL|\\s*;|\\s+DEFAULT|\\s+REFERENCES|\\s+PRIMARY|\\s+UNIQUE|$)",
+            Pattern.CASE_INSENSITIVE);
+
+    private static String normalizeDeclaredType(String rawType) {
+        String type = rawType.trim().toLowerCase().replaceAll("\\s+", " ");
+        // An explicit "NULL" column constraint is not part of the type.
+        if (type.endsWith(" null")) {
+            type = type.substring(0, type.length() - " null".length()).trim();
+        }
+        return type;
     }
 
     /** Effective (post-all-migrations) type per "table.column", last declaration winning. */

@@ -36,6 +36,7 @@ public class CourseMapper {
                 .id(module.getId())
                 .courseId(module.getCourseId())
                 .title(module.getTitle())
+                .moduleCode(module.getModuleCode())
                 .description(module.getDescription())
                 .sortOrder(module.getSortOrder())
                 .lessonCount(lessonCount)

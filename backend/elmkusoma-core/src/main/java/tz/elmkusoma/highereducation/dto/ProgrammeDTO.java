@@ -33,7 +33,20 @@ public class ProgrammeDTO {
 
     private Integer durationMonths;
 
-    private Integer creditHours;
+    /**
+     * Owning department (Department -> Programme). Nullable: institutions that do not model
+     * departments, and existing programmes, keep working without one.
+     */
+    private UUID departmentId;
+
+    /** Denormalised for display only; never accepted as input. */
+    private String departmentName;
+
+    /**
+     * Human-readable duration derived from durationMonths (12 -> "1 year",
+     * 18 -> "1.5 years", 24 -> "2 years", 36 -> "3 years"). Read-only.
+     */
+    private String durationDisplay;
 
     @Builder.Default
     private Boolean isActive = true;

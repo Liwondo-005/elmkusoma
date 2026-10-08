@@ -283,7 +283,6 @@ class TeacherHigherEdHttpSecurityTest {
                 .programmeType(ProgrammeType.DEGREE)
                 .educationLevel(EducationLevel.COLLEGE)
                 .durationMonths(36)
-                .creditHours(120)
                 .isActive(true)
                 .institutionId(institution.getId())
                 .build());
@@ -321,7 +320,6 @@ class TeacherHigherEdHttpSecurityTest {
                 + "\"programmeType\":\"DEGREE\","
                 + "\"educationLevel\":\"COLLEGE\","
                 + "\"durationMonths\":36,"
-                + "\"creditHours\":120,"
                 + "\"isActive\":true}";
     }
 

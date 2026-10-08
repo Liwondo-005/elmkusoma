@@ -1032,6 +1032,8 @@ export interface CourseModule {
   id: string
   courseId: string
   title: string
+  /** Programme-style module code; optional, so provider courses need not carry one. */
+  moduleCode?: string | null
   description: string | null
   sortOrder: number
   lessonCount: number
@@ -1693,7 +1695,7 @@ export const courseApi = {
   listModules: (courseId: string) =>
     request<CourseModule[]>(`/v1/courses/${courseId}/modules`),
 
-  createModule: (courseId: string, data: { title: string; description?: string; sortOrder?: number }) =>
+  createModule: (courseId: string, data: { title: string; moduleCode?: string; description?: string; sortOrder?: number }) =>
     request<CourseModule>(`/v1/courses/${courseId}/modules`, {
       method: "POST",
       body: JSON.stringify(data),

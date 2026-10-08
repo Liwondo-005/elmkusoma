@@ -10,7 +10,12 @@ export interface Programme {
   programmeType: ProgrammeType
   educationLevel: EducationLevelType
   durationMonths?: number
-  creditHours?: number
+  /** Department -> Programme relationship (V136). */
+  departmentId?: string
+  /** Denormalised for display; never sent as input. */
+  departmentName?: string
+  /** Duration rendered for humans (e.g. "1.5 years"); read-only. */
+  durationDisplay?: string
   isActive: boolean
   createdAt: string
   updatedAt?: string

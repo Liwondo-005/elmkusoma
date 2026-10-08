@@ -16,6 +16,9 @@ public interface ProgrammeRepository extends JpaRepository<Programme, UUID> {
 
     List<Programme> findByInstitutionIdAndEducationLevelAndIsDeletedFalse(UUID institutionId, EducationLevel educationLevel);
 
+    /** Department -> Programme relationship (programmes.department_id, V136). */
+    List<Programme> findByInstitutionIdAndDepartmentIdAndIsDeletedFalse(UUID institutionId, UUID departmentId);
+
     List<Programme> findByInstitutionIdAndProgrammeTypeAndIsDeletedFalse(UUID institutionId, ProgrammeType programmeType);
 
     long countByInstitutionIdAndIsDeletedFalse(UUID institutionId);
