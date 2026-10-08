@@ -46,6 +46,10 @@ spring:
     # was historically since 037ae99) or boot fails. Migrate still runs.
     # validate-on-migrate: false  -- NOW ENABLED after checksum repair
     validate-on-migrate: true
+    placeholders:
+      # V128: disable seeded demo accounts that ship with a published password hash.
+      # Dev/test/e2e keep them (false); production profile overrides this to true.
+      demoSeedDeactivate: "false"
 
   data:
     redis:

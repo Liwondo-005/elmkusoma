@@ -25,10 +25,27 @@ type UserFormValues = {
   phone: string
   password: string
   role: string
+  institutionId: string
   isActive: boolean
   isEmailVerified?: boolean
   isPhoneVerified?: boolean
 }
+
+/**
+ * Audit B-02: these roles resolve their authority from an organization membership. Without an
+ * institution the account logs in but every scoped API call fails, so the platform could not
+ * provision a usable institution/provider administrator.
+ */
+const ORG_SCOPED_ROLES = new Set([
+  "INSTITUTION_ADMIN",
+  "PROVIDER_ADMIN",
+  "PROVIDER_STAFF",
+  "TEACHER",
+  "INSTRUCTOR",
+  "NATIONAL_ADMIN",
+  "REGIONAL_ADMIN",
+  "DISTRICT_ADMIN",
+])
 
 const EMPTY_FORM = {
   firstName: "",
@@ -37,6 +54,7 @@ const EMPTY_FORM = {
   phone: "",
   password: "",
   role: "STUDENT",
+  institutionId: "",
   isActive: true,
   isEmailVerified: false,
   isPhoneVerified: false,
@@ -60,12 +78,36 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
     phone: "",
     password: "",
     role: "STUDENT",
+    institutionId: "",
     isActive: true,
     isEmailVerified: false,
     isPhoneVerified: false,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Audit B-02: the organization is now selectable at provisioning time.
+  const [institutions, setInstitutions] = useState<{ id: string; name: string; type?: string }[]>([])
+  const [institutionsError, setInstitutionsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    platformAdminApi
+      .listInstitutions(0, 200)
+      .then((page) => {
+        if (cancelled) return
+        setInstitutions(page?.content ?? [])
+        setInstitutionsError(null)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setInstitutions([])
+        setInstitutionsError(e?.message || t("userForm.institutionsLoadFailed"))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, t])
 
   useEffect(() => {
     if (!open) return
@@ -78,6 +120,7 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
         phone: user.phone ?? "",
         password: "",
         role: user.role ?? "STUDENT",
+        institutionId: (user as any).institutionId ?? "",
         isActive: user.isActive ?? true,
         isEmailVerified: (user as any).isEmailVerified ?? false,
         isPhoneVerified: (user as any).isPhoneVerified ?? false,
@@ -90,6 +133,7 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
         phone: "",
         password: "",
         role: "STUDENT",
+        institutionId: "",
         isActive: true,
         isEmailVerified: false,
         isPhoneVerified: false,
@@ -119,6 +163,11 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
       setError(t("userForm.errPasswordMin"))
       return
     }
+    // Audit B-02: block submission rather than creating an account that cannot resolve a scope.
+    if (!isEdit && ORG_SCOPED_ROLES.has(form.role) && !form.institutionId) {
+      setError(t("userForm.errInstitutionRequired"))
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -129,6 +178,7 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
         phone: form.phone?.trim() || undefined,
         password: form.password || undefined,
         role: form.role,
+        institutionId: form.institutionId || undefined,
         isActive: form.isActive,
         isEmailVerified: form.isEmailVerified,
         isPhoneVerified: false,
@@ -211,6 +261,42 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
                 <option value="false">{t("userForm.optInactive")}</option>
               </select>
             </div>
+          </div>
+
+          {/* Audit B-02: the organization an org-scoped account belongs to. */}
+          <div>
+            <label className={labelClass} htmlFor="user-form-institution">
+              {t("userForm.labelInstitution")}
+              {ORG_SCOPED_ROLES.has(form.role) && (
+                <span className="ml-1 text-destructive">*</span>
+              )}
+            </label>
+            {institutionsError ? (
+              <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                {institutionsError}
+              </p>
+            ) : (
+              <select
+                id="user-form-institution"
+                value={form.institutionId}
+                onChange={(e) => setForm((p) => ({ ...p, institutionId: e.target.value }))}
+                required={ORG_SCOPED_ROLES.has(form.role)}
+                disabled={institutions.length === 0}
+                className={selectClass}
+              >
+                <option value="">
+                  {institutions.length === 0
+                    ? t("userForm.noInstitutions")
+                    : t("userForm.selectInstitution")}
+                </option>
+                {institutions.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}{i.type ? ` — ${i.type}` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">{t("userForm.hintInstitution")}</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

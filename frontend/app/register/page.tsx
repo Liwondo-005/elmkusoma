@@ -38,6 +38,7 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
   const [registered, setRegistered] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState("")
   const { register: registerUser } = useAuth()
   const router = useRouter()
 
@@ -131,6 +132,7 @@ export default function RegisterPage() {
       return
     }
     setRegistered(true)
+    setRegisteredEmail(values.email)
   }
 
   if (pendingVerification) {
@@ -193,7 +195,20 @@ export default function RegisterPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 {t("accountCreatedMessage")}
               </p>
-              <Button onClick={() => router.push("/dashboard")} className="mt-6 w-full">
+              {/* Audit B-04: verification is now reachable. This page previously pushed straight
+                  to /dashboard, so the OTP screen was only reachable by typing the URL (and from
+                  forgot-password), meaning a new account could never verify. */}
+              <Button
+                onClick={() => router.push(`/verify-otp?email=${encodeURIComponent(registeredEmail)}&context=signup`)}
+                className="mt-6 w-full"
+              >
+                {t("verifyEmailNow")}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => router.push("/dashboard")}
+                className="mt-2 w-full"
+              >
                 {t("goToDashboard")}
               </Button>
             </div>

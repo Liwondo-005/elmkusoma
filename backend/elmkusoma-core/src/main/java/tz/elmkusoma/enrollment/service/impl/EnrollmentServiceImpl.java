@@ -57,11 +57,65 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .studentId(request.getStudentId())
                 .classGroupId(request.getClassGroupId())
                 .academicYearId(request.getAcademicYearId())
-                .status(Enrollment.EnrollmentStatus.ENROLLED)
+                // Audit Phase 6: the column default and enum both carried PENDING, but every call
+                // hard-coded ENROLLED, so the approval step the schema was designed for could never
+                // happen. An explicit status is honoured; the default stays ENROLLED so existing
+                // admin callers (which have no approval workflow attached) behave exactly as before.
+                .status(request.getStatus() != null
+                        ? request.getStatus()
+                        : Enrollment.EnrollmentStatus.ENROLLED)
                 .enrolledAt(LocalDateTime.now())
                 .build();
 
         return toResponse(enrollmentRepository.save(enrollment));
+    }
+
+    /**
+     * Audit Phase 6: activates a pending placement. This is the approval step that the PENDING
+     * status always implied but that no code path could perform. ClassAccessGuard only treats
+     * ENROLLED rows as membership, so a pending learner stays correctly unplaced until this runs.
+     */
+    @Override
+    public EnrollmentResponse approveEnrollment(UUID institutionId, UUID enrollmentId) {
+        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+                .filter(e -> !Boolean.TRUE.equals(e.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Enrollment", "id", enrollmentId));
+        requireInstitutionOwnership(enrollment, institutionId);
+        if (enrollment.getStatus() == Enrollment.EnrollmentStatus.ENROLLED) {
+            throw new IllegalStateException("This enrollment is already active");
+        }
+        enrollment.setStatus(Enrollment.EnrollmentStatus.ENROLLED);
+        enrollment.setEnrolledAt(LocalDateTime.now());
+        return toResponse(enrollmentRepository.save(enrollment));
+    }
+
+    /**
+     * Audit Phase 6: rejects a placement request. Uses the existing WITHDRAWN/COMPLETED vocabulary
+     * rather than inventing a new status.
+     */
+    @Override
+    public EnrollmentResponse rejectEnrollment(UUID institutionId, UUID enrollmentId, String reason) {
+        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+                .filter(e -> !Boolean.TRUE.equals(e.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("Enrollment", "id", enrollmentId));
+        requireInstitutionOwnership(enrollment, institutionId);
+        if (enrollment.getStatus() != Enrollment.EnrollmentStatus.PENDING) {
+            throw new IllegalStateException("Only a pending placement can be rejected");
+        }
+        enrollment.setStatus(Enrollment.EnrollmentStatus.WITHDRAWN);
+        enrollment.setWithdrawnAt(LocalDateTime.now());
+        if (reason != null && !reason.isBlank()) {
+            enrollment.setWithdrawReason(reason.trim());
+        }
+        return toResponse(enrollmentRepository.save(enrollment));
+    }
+
+    /** Tenant check for enrollment mutations: an approval may never cross organizations. */
+    private void requireInstitutionOwnership(Enrollment enrollment, UUID institutionId) {
+        if (enrollment.getInstitutionId() == null || institutionId == null
+                || !enrollment.getInstitutionId().equals(institutionId)) {
+            throw new ForbiddenException("enrollment", "access");
+        }
     }
 
     @Override
@@ -87,6 +141,21 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Override
     @Transactional(readOnly = true)
+    /**
+     * Audit B-22: the caller's own enrollments, resolved server-side from their user id.
+     * Returns an empty list (not a 403) when the learner has no student profile yet, so the UI can
+     * show an honest "awaiting placement" state instead of a swallowed authorization error.
+     */
+    public List<EnrollmentResponse> getEnrollmentsByUserId(UUID userId) {
+        if (userId == null) {
+            return List.of();
+        }
+        return studentRepository.findByUserIdAndIsDeletedFalse(userId)
+                .map(student -> enrollmentRepository.findByStudentIdAndIsDeletedFalse(student.getId())
+                        .stream().map(this::toResponse).toList())
+                .orElseGet(List::of);
+    }
+
     public List<EnrollmentResponse> getEnrollmentsByStudent(UUID studentId) {
         requireStudentAccess(studentId);
         List<Enrollment> enrollments = enrollmentRepository.findByStudentIdAndIsDeletedFalse(studentId);
@@ -110,7 +179,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         List<Enrollment> enrollments = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
         String role = callerRole();
         if (role == null && RequestContextHolder.getRequestAttributes() != null) {
-            // §48: an HTTP request without a resolved role must fail closed
+            // Â§48: an HTTP request without a resolved role must fail closed
             throw new ForbiddenException("enrollment", "access");
         }
         if (role == null || "ADMIN".equals(role)) {
@@ -235,10 +304,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         String role = callerRole();
         if (role == null) {
             if (RequestContextHolder.getRequestAttributes() != null) {
-                // §48: an HTTP request without a resolved role must fail closed
+                // Â§48: an HTTP request without a resolved role must fail closed
                 throw new ForbiddenException("enrollment", "access");
             }
-            return; // no request context — internal programmatic access
+            return; // no request context â€” internal programmatic access
         }
         if ("ADMIN".equals(role)) {
             return;
@@ -260,10 +329,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         String role = callerRole();
         if (role == null) {
             if (RequestContextHolder.getRequestAttributes() != null) {
-                // §48: an HTTP request without a resolved role must fail closed
+                // Â§48: an HTTP request without a resolved role must fail closed
                 throw new ForbiddenException("enrollment", "access");
             }
-            return; // no request context — internal programmatic access
+            return; // no request context â€” internal programmatic access
         }
         if ("ADMIN".equals(role)) {
             return;

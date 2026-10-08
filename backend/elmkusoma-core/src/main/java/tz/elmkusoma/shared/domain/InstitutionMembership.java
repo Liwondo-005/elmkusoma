@@ -45,6 +45,22 @@ public class InstitutionMembership {
     @Column(name = "campus_id")
     private UUID campusId;
 
+    /**
+     * Per-provider scope (audit B-14 / X-7). When set, this account administers exactly this
+     * education provider inside the institution. When null the membership keeps its historical
+     * institution-wide meaning, so no existing account changes behaviour.
+     */
+    @Column(name = "provider_id")
+    private UUID providerId;
+
+    public UUID getProviderId() {
+        return providerId;
+    }
+
+    public void setProviderId(UUID providerId) {
+        this.providerId = providerId;
+    }
+
     public UUID getDepartmentId() {
         return departmentId;
     }

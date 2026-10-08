@@ -6,7 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+
 import java.time.LocalDateTime;
+import java.util.UUID;
+
 
 @Data
 @Builder
@@ -14,13 +17,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class NotificationEvent implements Serializable {
 
-    private Long id;
-    private Long userId;
+    private UUID id;
+    private UUID userId;
     private String title;
     private String message;
     private String notificationType;
     private String targetType;
-    private Long targetId;
-    private Long institutionId;
+    private UUID targetId;
+    private UUID institutionId;
     private LocalDateTime timestamp;
 }

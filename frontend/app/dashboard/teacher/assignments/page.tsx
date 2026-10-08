@@ -8,6 +8,7 @@ import {
   FileText,
   Clock,
   CheckCircle,
+  Paperclip,
   Plus,
   Eye,
   X,
@@ -51,6 +52,9 @@ interface AssignmentSubmission {
   studentId: string
   studentName?: string
   fileUrl?: string
+  /** Audit B-24: the learner's typed answer was never surfaced to the marker. */
+  submissionText?: string
+  content?: string
   submittedAt: string
   grade?: number
   obtainedMarks?: number
@@ -541,6 +545,8 @@ export default function TeacherAssignmentsPage() {
                   <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     <th className="px-3 py-2">{t("gradebook.colStudent")}</th>
                     <th className="px-3 py-2">{t("assignments.colSubmitted")}</th>
+                    {/* Audit B-24: markers could not open the work they were grading. */}
+                    <th className="px-3 py-2">{t("assignments.colWork")}</th>
                     <th className="px-3 py-2">{t("assessments.marksLabel")}</th>
                     <th className="px-3 py-2">{t("grading.colStatus")}</th>
                     <th className="px-3 py-2">{t("assignments.colActions")}</th>
@@ -559,6 +565,34 @@ export default function TeacherAssignmentsPage() {
                         </td>
                         <td className="px-3 py-2 text-muted-foreground">
                           {new Date(s.submittedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-3 py-2">
+                          {(s.fileUrl || s.submissionText || s.content) ? (
+                            <div className="space-y-1">
+                              {s.fileUrl && (
+                                <a
+                                  href={s.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-primary underline"
+                                >
+                                  <Paperclip className="size-3" /> {t("assignments.workFile")}
+                                </a>
+                              )}
+                              {(s.submissionText || s.content) && (
+                                <details className="text-xs text-muted-foreground">
+                                  <summary className="cursor-pointer">
+                                    {t("assignments.workAnswer")}
+                                  </summary>
+                                  <p className="mt-1 max-w-xs whitespace-pre-wrap break-words">
+                                    {s.submissionText || s.content}
+                                  </p>
+                                </details>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-muted-foreground">
                           {s.obtainedMarks ?? s.grade ?? "—"}

@@ -4,11 +4,20 @@ spring:
       ddl-auto: validate
     show-sql: false
 
+elmkusoma:
+  identity:
+    # Audit B-04: production requires email verification before login. Off by default elsewhere so
+    # seeded/e2e fixtures are not locked out.
+    require-verified-email: true
+
   flyway:
     enabled: true
     validate-on-migrate: true
     out-of-order: true
     baseline-version: 6
+    placeholders:
+      # Production must not ship logins whose password hash is published in the repository.
+      demoSeedDeactivate: "true"
 
   data:
     redis:

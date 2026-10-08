@@ -37,6 +37,27 @@ public class ProviderController {
                 .body(ApiResponse.success("Provider created successfully", provider));
     }
 
+    @GetMapping("/me")
+    @Operation(summary = "Get (and provision on first use) the provider for the caller's institution")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
+    public ResponseEntity<ApiResponse<ProviderResponse>> getMyProvider(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") String actorId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                providerService.getOrCreateProviderForInstitution(institutionId, actorId)));
+    }
+
+    @PutMapping("/{id}/verification")
+    @Operation(summary = "Platform approval: verify or revoke a provider")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
+    public ResponseEntity<ApiResponse<ProviderResponse>> setVerification(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @PathVariable UUID id,
+            @RequestParam boolean verified) {
+        return ResponseEntity.ok(ApiResponse.success("Provider verification updated",
+                providerService.setProviderVerified(institutionId, id, verified)));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get an education provider by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")

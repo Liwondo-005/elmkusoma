@@ -77,6 +77,18 @@ public class NfeLearnerController {
         return ResponseEntity.ok(ApiResponse.success(learners));
     }
 
+    @GetMapping("/me")
+    @Operation(summary = "Get the caller's own provider learner record(s)")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'LEARNER', 'TEACHER', 'INSTITUTION_ADMIN', 'ADMIN', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
+    public ResponseEntity<ApiResponse<List<LearnerResponse>>> getMyLearnerRecords(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") String userId) {
+        // Audit X-3: this closes the loop. Until now a learner could be registered with a provider
+        // but had no way to see it -- the only by-user query existed in the service with no route.
+        return ResponseEntity.ok(ApiResponse.success(
+                learnerService.getLearnersByUser(institutionId, UUID.fromString(userId))));
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Update a learner")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")

@@ -1,6 +1,7 @@
 package tz.elmkusoma.nfe.certificate.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,9 @@ public class NfeCertificateRequest {
 
     private UUID providerId;
 
+    // Audit B-03: nfe_certificates.learner_id is NOT NULL but this DTO had no @NotNull, so every
+    // create attempt reached the database and failed with a 409 DataIntegrityViolationException.
+    @NotNull(message = "Learner is required")
     private UUID learnerId;
 
     private UUID programId;

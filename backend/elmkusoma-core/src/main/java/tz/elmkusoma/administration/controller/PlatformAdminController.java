@@ -213,15 +213,18 @@ public class PlatformAdminController {
     @Operation(summary = "Update institution details")
     public ResponseEntity<ApiResponse<InstitutionResponse>> updateInstitution(
             @PathVariable UUID institutionId,
+            @RequestAttribute(value = "userId", required = false) String actorId,
             @Valid @RequestBody UpdateInstitutionRequest req) {
-        InstitutionResponse response = institutionService.updateInstitution(institutionId, req);
+        InstitutionResponse response = institutionService.updateInstitution(institutionId, req, actorUuid(actorId));
         return ResponseEntity.ok(ApiResponse.success("Institution updated successfully", response));
     }
 
     @DeleteMapping("/institutions/{institutionId}")
     @Operation(summary = "Soft-delete an institution")
-    public ResponseEntity<ApiResponse<Void>> deleteInstitution(@PathVariable UUID institutionId) {
-        institutionService.deleteInstitution(institutionId);
+    public ResponseEntity<ApiResponse<Void>> deleteInstitution(
+            @PathVariable UUID institutionId,
+            @RequestAttribute(value = "userId", required = false) String actorId) {
+        institutionService.deleteInstitution(institutionId, actorUuid(actorId));
         return ResponseEntity.ok(ApiResponse.success("Institution deleted successfully", null));
     }
 
@@ -859,9 +862,37 @@ public class PlatformAdminController {
     }
 
     @GetMapping("/roles/{roleId}/permissions")
-    @Operation(summary = "Get permissions for a role / admin user id")
+    @Operation(summary = "Get permissions for a role")
     public ResponseEntity<ApiResponse<List<String>>> getRolePermissions(@PathVariable UUID roleId) {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.getRolePermissions(roleId)));
+    }
+
+    @GetMapping("/admins/{userId}/permissions")
+    @Operation(summary = "Get permissions for an admin account (keyed by user id)")
+    public ResponseEntity<ApiResponse<List<String>>> getAdminUserPermissions(@PathVariable UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(platformAdminService.getAdminUserPermissions(userId)));
+    }
+
+    @PutMapping("/admins/{userId}/permissions")
+    @Operation(summary = "Replace permissions for an admin account (keyed by user id)")
+    public ResponseEntity<ApiResponse<List<String>>> updateAdminUserPermissions(
+            @PathVariable UUID userId,
+            @Valid @RequestBody RolePermissionUpdateRequest req,
+            @RequestAttribute(value = "userId", required = false) String actorId) {
+        return ResponseEntity.ok(ApiResponse.success("Permissions updated",
+                platformAdminService.updateAdminUserPermissions(userId, req, actorId)));
+    }
+
+    /** Null-safe parse of the actor id published by the JWT request-attribute filter. */
+    private UUID actorUuid(String rawUserId) {
+        if (rawUserId == null || rawUserId.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(rawUserId.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @PutMapping("/roles/{roleId}/permissions")

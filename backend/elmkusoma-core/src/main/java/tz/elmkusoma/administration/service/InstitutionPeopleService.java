@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.administration.domain.InstitutionInvitation;
 import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.repository.InstitutionInvitationRepository;
@@ -21,6 +22,11 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// Audit B-30: this service performs multi-repository writes (10 save() calls across user,
+// membership and invitation repositories). Without a transaction boundary a partial failure
+// could persist a user without a membership -- which the authorization resolver reads as
+// "no organization". Class-level so every existing entry point becomes atomic.
+@Transactional
 public class InstitutionPeopleService {
 
     private final UserRepository userRepository;

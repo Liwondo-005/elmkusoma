@@ -68,7 +68,7 @@ public class AssessmentController {
 
     @GetMapping("/class/{classGroupId}")
     @Operation(summary = "Get assessments by class")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<List<AssessmentResponse>>> getByClass(
             @PathVariable UUID classGroupId,
             @RequestHeader("X-Institution-Id") UUID institutionId,
@@ -91,7 +91,7 @@ public class AssessmentController {
 
     @GetMapping("/subject/{subjectId}")
     @Operation(summary = "Get assessments by subject")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<List<AssessmentResponse>>> getBySubject(
             @PathVariable UUID subjectId,
             @RequestHeader("X-Institution-Id") UUID institutionId) {
@@ -126,7 +126,7 @@ public class AssessmentController {
 
     @GetMapping("/{id}/questions")
     @Operation(summary = "Get all questions for an assessment (answer key stripped for learners)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<List<QuestionResponse>>> getQuestions(
             @PathVariable UUID id,
             @RequestHeader("X-Institution-Id") UUID institutionId,
@@ -138,7 +138,7 @@ public class AssessmentController {
 
     @PostMapping("/{id}/start")
     @Operation(summary = "Start an assessment attempt")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<AttemptResponse>> startAttempt(
             @PathVariable UUID id,
             @RequestAttribute("userId") UUID callerUserId,
@@ -150,7 +150,7 @@ public class AssessmentController {
 
     @GetMapping("/{id}/my-attempt")
     @Operation(summary = "The caller's active attempt with saved answers (resume)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<AttemptResponse>> getMyAttempt(
             @PathVariable UUID id,
             @RequestAttribute("userId") UUID callerUserId,
@@ -161,7 +161,7 @@ public class AssessmentController {
 
     @PutMapping("/attempts/{attemptId}/answers")
     @Operation(summary = "Autosave one answer for an active attempt")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<AttemptResponse>> saveAnswer(
             @PathVariable UUID attemptId,
             @RequestAttribute("userId") UUID callerUserId,
@@ -172,7 +172,7 @@ public class AssessmentController {
 
     @PostMapping("/attempts/{attemptId}/submit")
     @Operation(summary = "Submit an assessment attempt")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<AttemptResponse>> submitAttempt(
             @PathVariable UUID attemptId,
             @RequestAttribute("userId") UUID callerUserId,
@@ -193,7 +193,7 @@ public class AssessmentController {
 
     @GetMapping("/{id}/results/student/{studentId}")
     @Operation(summary = "Get a student's result for an assessment (learners: own result only)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'OTHER_LEARNER', 'LEARNER', 'PARENT')")
     public ResponseEntity<ApiResponse<AssessmentResultResponse>> getResult(
             @PathVariable UUID id,
             @PathVariable UUID studentId,

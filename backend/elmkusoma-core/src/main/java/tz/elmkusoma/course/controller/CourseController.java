@@ -18,17 +18,17 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/v1/courses")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
+@PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN','PROVIDER_ADMIN','PROVIDER_STAFF')")
 @Tag(name = "Course Management", description = "Full CRUD for courses, modules, and lessons")
 public class CourseController {
 
     private final CourseService courseService;
 
-    // ── Course Endpoints ──
+    // â”€â”€ Course Endpoints â”€â”€
 
     @PostMapping
     @Operation(summary = "Create a new course")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<CourseResponse>> createCourse(
             @Valid @RequestBody CourseRequest request,
             @RequestAttribute("institutionId") UUID institutionId,
@@ -40,7 +40,7 @@ public class CourseController {
 
     @GetMapping
     @Operation(summary = "List all courses for institution")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PROVIDER_ADMIN', 'PROVIDER_STAFF', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<List<CourseResponse>>> getCourses(
             @RequestAttribute("institutionId") UUID institutionId) {
         List<CourseResponse> response = courseService.getCourses(institutionId);
@@ -49,7 +49,7 @@ public class CourseController {
 
     @GetMapping("/{courseId}")
     @Operation(summary = "Get a specific course")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PROVIDER_ADMIN', 'PROVIDER_STAFF', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<CourseResponse>> getCourseById(
             @PathVariable UUID courseId,
             @RequestAttribute("institutionId") UUID institutionId) {
@@ -59,7 +59,7 @@ public class CourseController {
 
     @PutMapping("/{courseId}")
     @Operation(summary = "Update a course")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<CourseResponse>> updateCourse(
             @PathVariable UUID courseId,
             @Valid @RequestBody CourseRequest request,
@@ -70,7 +70,7 @@ public class CourseController {
 
     @DeleteMapping("/{courseId}")
     @Operation(summary = "Delete a course")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCourse(
             @PathVariable UUID courseId,
             @RequestAttribute("institutionId") UUID institutionId) {
@@ -80,7 +80,7 @@ public class CourseController {
 
     @PostMapping("/{courseId}/toggle-publish")
     @Operation(summary = "Toggle course publish status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<CourseResponse>> togglePublish(
             @PathVariable UUID courseId,
             @RequestAttribute("institutionId") UUID institutionId) {
@@ -90,14 +90,14 @@ public class CourseController {
 
     @GetMapping("/stats")
     @Operation(summary = "Get course statistics")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<CourseStatsResponse>> getCourseStats(
             @RequestAttribute("institutionId") UUID institutionId) {
         CourseStatsResponse response = courseService.getCourseStats(institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // ── Module Endpoints ──
+    // â”€â”€ Module Endpoints â”€â”€
 
     @PostMapping("/{courseId}/modules")
     @Operation(summary = "Create a course module")
@@ -113,7 +113,7 @@ public class CourseController {
 
     @GetMapping("/{courseId}/modules")
     @Operation(summary = "List modules for a course")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PROVIDER_ADMIN', 'PROVIDER_STAFF', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<List<CourseModuleResponse>>> getModules(
             @PathVariable UUID courseId,
             @RequestAttribute("institutionId") UUID institutionId) {
@@ -131,7 +131,7 @@ public class CourseController {
         return ResponseEntity.ok(ApiResponse.success("Module deleted successfully", null));
     }
 
-    // ── Lesson Endpoints ──
+    // â”€â”€ Lesson Endpoints â”€â”€
 
     @PostMapping("/modules/{moduleId}/lessons")
     @Operation(summary = "Create a course lesson")
@@ -147,7 +147,7 @@ public class CourseController {
 
     @GetMapping("/modules/{moduleId}/lessons")
     @Operation(summary = "List lessons for a module")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'STUDENT', 'PROVIDER_ADMIN', 'PROVIDER_STAFF', 'OTHER_LEARNER', 'LEARNER')")
     public ResponseEntity<ApiResponse<List<CourseLessonResponse>>> getLessons(
             @PathVariable UUID moduleId,
             @RequestAttribute("institutionId") UUID institutionId) {

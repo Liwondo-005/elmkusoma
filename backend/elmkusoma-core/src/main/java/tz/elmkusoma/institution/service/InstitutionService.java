@@ -15,9 +15,9 @@ public interface InstitutionService {
 
     PageResponse<InstitutionResponse> listInstitutions(int page, int size);
 
-    InstitutionResponse updateInstitution(UUID id, UpdateInstitutionRequest request);
+    InstitutionResponse updateInstitution(UUID id, UpdateInstitutionRequest request, UUID actorId);
 
-    void deleteInstitution(UUID id);
+    void deleteInstitution(UUID id, UUID actorId);
 
     InstitutionResponse activateInstitution(UUID id);
 

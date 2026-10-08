@@ -981,6 +981,12 @@ export const platformAdminApi = {
     platformFetch<string[]>(`/v1/platform-admin/roles/${roleId}/permissions`, {
       method: "PUT", body: JSON.stringify({ permissions }),
     }),
+  getAdminPermissions: (userId: string) =>
+    platformFetch<string[]>(`/v1/platform-admin/admins/${userId}/permissions`),
+  updateAdminPermissions: (userId: string, permissions: string[]) =>
+    platformFetch<string[]>(`/v1/platform-admin/admins/${userId}/permissions`, {
+      method: "PUT", body: JSON.stringify({ permissions }),
+    }),
   createAdmin: (payload: AdminCreatePayload) =>
     platformFetch<AdminAccount>(`/v1/platform-admin/admins`, { method: "POST", body: JSON.stringify(payload) }),
   updateAdmin: (id: string, payload: AdminUpdatePayload) =>

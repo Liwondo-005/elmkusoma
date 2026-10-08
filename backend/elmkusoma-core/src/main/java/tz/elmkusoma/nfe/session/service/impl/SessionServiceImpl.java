@@ -26,12 +26,16 @@ public class SessionServiceImpl implements SessionService {
 
     private final NfeSessionRepository sessionRepository;
     private final OwnershipGuard ownershipGuard;
+    private final tz.elmkusoma.nfe.provider.service.NfeScopeValidator scopeValidator;
 
     @Override
     public SessionResponse createSession(UUID institutionId, SessionRequest request) {
+        // B-15: provider/program references are tenant-validated server-side.
+        UUID providerId = scopeValidator.requireOwnedProvider(institutionId, request.getProviderId()).getId();
+        UUID programId = scopeValidator.requireOwnedProgram(institutionId, request.getProgramId());
         NfeSession session = NfeSession.builder()
-                .providerId(request.getProviderId())
-                .programId(request.getProgramId())
+                .providerId(providerId)
+                .programId(programId)
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .sessionType(NfeSession.SessionType.valueOf(request.getSessionType()))
@@ -90,8 +94,14 @@ public class SessionServiceImpl implements SessionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Session", "id", sessionId));
         ownershipGuard.verifyInstitution(session.getInstitutionId(), institutionId);
 
-        if (request.getProviderId() != null) session.setProviderId(request.getProviderId());
-        if (request.getProgramId() != null) session.setProgramId(request.getProgramId());
+        // B-16: providerId is an ownership column. Repointing it is rejected rather than silently ignored.
+        if (request.getProviderId() != null && !request.getProviderId().equals(session.getProviderId())) {
+            throw new IllegalArgumentException("providerId cannot be changed after creation");
+        }
+        // programId stays mutable but is now tenant-validated.
+        if (request.getProgramId() != null) {
+            session.setProgramId(scopeValidator.requireOwnedProgram(institutionId, request.getProgramId()));
+        }
         if (request.getTitle() != null) session.setTitle(request.getTitle());
         if (request.getDescription() != null) session.setDescription(request.getDescription());
         if (request.getSessionType() != null) session.setSessionType(NfeSession.SessionType.valueOf(request.getSessionType()));

@@ -295,8 +295,10 @@ export interface Enrollment {
 export const enrollmentApi = {
   list: (page = 0, size = 20) =>
     request<PageResponse<Enrollment>>(`/v1/enrollments?page=${page}&size=${size}`),
-  byStudent: (studentId: string) =>
-    request<Enrollment[]>(`/v1/enrollments/student/${studentId}`),
+byStudent: (studentId: string) =>
+request<Enrollment[]>(`/v1/enrollments/student/${studentId}`),
+  /** Audit B-22: the caller's own enrollments; the server resolves the student from the JWT. */
+  mine: () => request<Enrollment[]>(`/v1/enrollments/me`),
   byClass: (classGroupId: string) =>
     request<Enrollment[]>(`/v1/enrollments/class/${classGroupId}`),
   enroll: (data: { studentId: string; classGroupId: string; academicYearId: string }) =>

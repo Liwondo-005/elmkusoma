@@ -137,6 +137,10 @@ public class AuthServiceImpl implements AuthService {
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
 
+    /** Audit B-04: OTP gate on login. Enabled in application-prod.yml, off for dev/test/e2e. */
+    @Value("${elmkusoma.identity.require-verified-email:false}")
+    private boolean requireVerifiedEmail;
+
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
@@ -514,6 +518,18 @@ public class AuthServiceImpl implements AuthService {
             throw new ForbiddenException("Account is deactivated. Please contact support.");
         }
 
+// Audit B-04: OTP verification is the gate for unverified accounts.
+        //
+        // Deliberately configuration-gated (elmkusoma.identity.require-verified-email, ON in
+        // application-prod.yml, OFF for dev/test/e2e). A hard gate would lock out the existing
+        // unverified accounts in this environment - including seeded and e2e fixtures - so the
+        // control is enabled where it protects real users and stays opt-in elsewhere.
+        // Runs before the MFA step-up below: an unverified account must not receive a challenge.
+        if (requireVerifiedEmail && !Boolean.TRUE.equals(user.getIsEmailVerified())) {
+            throw new ForbiddenException(
+                    "Email not verified. Please verify your email before signing in.");
+        }
+
         // Step-up: accounts with a verified authenticator never receive a full
         // session from a password alone — only a 5-minute MFA challenge.
         if (mfaService != null && mfaService.hasVerifiedFactor(user.getId())) {
@@ -528,6 +544,7 @@ public class AuthServiceImpl implements AuthService {
                     .mfaToken(mfaToken)
                     .build();
         }
+
         String accessToken = jwtTokenProvider.generateAccessTokenWithClaims(
                 user.getEmail(), user.getId(), user.getRole().name(), user.getInstitutionId(),
                 user.getSecurityVersion());
@@ -1067,6 +1084,18 @@ public class AuthServiceImpl implements AuthService {
         verificationCode.setAttempts(verificationCode.getAttempts() + 1);
         verificationCode.setUsed(true);
         verificationCodeRepository.save(verificationCode);
+
+        // Audit B-04: verifying a code now actually verifies the ACCOUNT. Previously the code was
+        // consumed and nothing else happened, so is_email_verified stayed false forever and the
+        // flag no consumer ever read.
+        userRepository.findByEmailAndIsDeletedFalse(email).ifPresent(user -> {
+            if (!Boolean.TRUE.equals(user.getIsEmailVerified())) {
+                user.setIsEmailVerified(true);
+                user.setUpdatedAt(java.time.LocalDateTime.now());
+                userRepository.save(user);
+                log.info("Email verified for account {}", email);
+            }
+        });
     }
 
     private String resolveLoginClientIp() {

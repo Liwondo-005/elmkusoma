@@ -59,6 +59,38 @@ public class EnrollmentController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/me")
+    @Operation(summary = "Get the caller's own enrollments")
+    @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'LEARNER', 'TEACHER', 'INSTITUTION_ADMIN', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> getMine(
+            @RequestAttribute("userId") UUID userId) {
+        // Audit B-22: /dashboard/enrollment previously called the admin-only list endpoint and
+        // swallowed the 403 into "you have no enrolments". This resolves the caller server-side
+        // from their own user id, so the learner page shows real placement (or a real empty state).
+        return ResponseEntity.ok(ApiResponse.success(enrollmentService.getEnrollmentsByUserId(userId)));
+    }
+
+    @PutMapping("/{id}/approve")
+    @Operation(summary = "Approve a pending placement")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    public ResponseEntity<ApiResponse<EnrollmentResponse>> approve(
+            @PathVariable UUID id,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        return ResponseEntity.ok(ApiResponse.success("Enrollment approved",
+                enrollmentService.approveEnrollment(institutionId, id)));
+    }
+
+    @PutMapping("/{id}/reject")
+    @Operation(summary = "Reject a pending placement")
+    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN')")
+    public ResponseEntity<ApiResponse<EnrollmentResponse>> reject(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            @RequestAttribute("institutionId") UUID institutionId) {
+        return ResponseEntity.ok(ApiResponse.success("Enrollment rejected",
+                enrollmentService.rejectEnrollment(institutionId, id, reason)));
+    }
+
     @GetMapping("/class/{classGroupId}")
     @Operation(summary = "Get enrollments by class group")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER')")

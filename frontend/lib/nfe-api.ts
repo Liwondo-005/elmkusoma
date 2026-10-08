@@ -36,23 +36,38 @@ async function nfeRequest<T>(url: string, options: RequestInit = {}): Promise<T>
 /**
  * Assessments, attendance and certificates are provider-scoped on the backend
  * (/providers/{providerId} path segments). The workspace belongs to a single
- * institution, so resolve the institution's first NFE provider once and reuse
- * it; institutions without a provider row get empty lists (and creates fail
- * with a clear message) rather than 404s.
+ * institution, so resolve that institution's NFE provider once and reuse it.
+ *
+ * Audit B-01: nothing used to create the nfe_education_providers row, so this
+ * always resolved to null, every create failed with "No education provider exists
+ * for this institution yet" and three lists were permanently empty. The backend
+ * now exposes GET /v1/nfe/providers/me which provisions the provider from the
+ * institution the platform already approved, so the workspace self-provisions.
  */
 let providerIdCache: string | null | undefined
 async function resolveProviderId(): Promise<string | null> {
   if (providerIdCache !== undefined) return providerIdCache
   try {
-    const providers = await nfeRequest<unknown[]>("/v1/nfe/providers")
-    providerIdCache =
-      Array.isArray(providers) && providers.length > 0 && (providers[0] as { id?: string }).id
-        ? ((providers[0] as { id: string }).id ?? null)
-        : null
+    const provider = await nfeRequest<{ id?: string } | null>("/v1/nfe/providers/me")
+    providerIdCache = provider?.id ?? null
   } catch {
-    providerIdCache = null
+    // Fall back to the list endpoint for institutions provisioned before /me existed.
+    try {
+      const providers = await nfeRequest<unknown[]>("/v1/nfe/providers")
+      providerIdCache =
+        Array.isArray(providers) && providers.length > 0 && (providers[0] as { id?: string }).id
+          ? ((providers[0] as { id: string }).id ?? null)
+          : null
+    } catch {
+      providerIdCache = null
+    }
   }
   return providerIdCache
+}
+
+/** Drops the memoised provider so a new provider switch takes effect immediately. */
+export function resetNfeProviderCache() {
+  providerIdCache = undefined
 }
 async function requireProviderId(): Promise<string> {
   const id = await resolveProviderId()

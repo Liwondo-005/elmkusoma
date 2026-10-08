@@ -119,12 +119,12 @@ class InstitutionScopeSecurityTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value(SCOPE_ERROR));
 
-        verify(institutionService, never()).updateInstitution(any(), any());
+        verify(institutionService, never()).updateInstitution(any(), any(), any());
     }
 
     @Test
     void institutionAdminMayUpdateOwnInstitution() throws Exception {
-        when(institutionService.updateInstitution(eq(targetId), any()))
+        when(institutionService.updateInstitution(eq(targetId), any(), any()))
                 .thenReturn(sampleInstitution());
 
         mockMvc.perform(put("/v1/institutions/{id}", targetId)
@@ -134,7 +134,7 @@ class InstitutionScopeSecurityTest {
                         .content("{\"name\":\"Renamed\"}"))
                 .andExpect(status().isOk());
 
-        verify(institutionService).updateInstitution(eq(targetId), any());
+        verify(institutionService).updateInstitution(eq(targetId), any(), any());
     }
 
     @Test

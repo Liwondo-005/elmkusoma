@@ -66,9 +66,12 @@ public class NotificationConsumer {
             String channel = "realtime:user:" + notification.getUserId();
             redisTemplate.convertAndSend(channel, eventData.toString());
 
-            log.info("Published realtime notification event to Redis channel: {}", channel);
+            log.info("Published notification event to Redis channel: {}", channel);
         } catch (Exception e) {
-            log.warn("Failed to publish realtime event to Redis: {}", e.getMessage());
+            // Honest failure: the durable record was already persisted above, and live STOMP
+            // delivery is realtime's job. A Redis bridge failure must not be reported as success.
+            log.warn("Redis realtime bridge unavailable for notification {}: {}",
+                    notification.getId(), e.getMessage());
         }
     }
 }

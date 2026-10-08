@@ -63,6 +63,13 @@ class PlatformAdminServiceTest {
     @Mock private tz.elmkusoma.learner.repository.LearnerNotificationRepository learnerNotificationRepository;
     @Mock private PlatformIntegrationService integrationService;
     @Mock private BackupStatusService backupStatusService;
+// Audit X-5: the provider registry now aggregates real delivery counters from the nfe_* tables.
+@Mock private tz.elmkusoma.nfe.provider.repository.EducationProviderRepository educationProviderRepository;
+@Mock private tz.elmkusoma.nfe.program.repository.NfeProgramRepository nfeProgramRepository;
+@Mock private tz.elmkusoma.nfe.learner.repository.NfeLearnerRepository nfeLearnerRepository;
+@Mock private tz.elmkusoma.nfe.session.repository.NfeSessionRepository nfeSessionRepository;
+@Mock private tz.elmkusoma.nfe.certificate.repository.NfeCertificateRepository nfeCertificateRepository;
+@Mock private tz.elmkusoma.administration.repository.AdminUserPermissionRepository adminUserPermissionRepository;
 
     @Mock private tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
 

@@ -5,15 +5,20 @@ import org.springframework.stereotype.Repository;
 import tz.elmkusoma.workers.domain.WorkerNotification;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
-public interface WorkerNotificationRepository extends JpaRepository<WorkerNotification, Long> {
+public interface WorkerNotificationRepository extends JpaRepository<WorkerNotification, UUID> {
 
-    List<WorkerNotification> findByUserIdAndIsReadFalse(Long userId);
+    // Audit B-06: keys are UUID to match core's users/institutions (V002 widened the columns).
+    List<WorkerNotification> findByUserIdAndIsReadFalse(UUID userId);
 
-    List<WorkerNotification> findByUserIdOrderByCreatedAtDesc(Long userId);
+    List<WorkerNotification> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
-    List<WorkerNotification> findByInstitutionIdOrderByCreatedAtDesc(Long institutionId);
+    List<WorkerNotification> findByInstitutionIdOrderByCreatedAtDesc(UUID institutionId);
 
-    long countByUserIdAndIsReadFalse(Long userId);
+    long countByUserIdAndIsReadFalse(UUID userId);
+
+    /** Platform-wide unread total, replacing the hardcoded user id 1 in the digest scheduler. */
+    long countByIsReadFalse();
 }

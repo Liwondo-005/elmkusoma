@@ -107,6 +107,13 @@ public class PlatformAdminService {
     private final tz.elmkusoma.parent.repository.SupportTicketRepository supportTicketRepository;
     private final PlatformFeatureRepository featureRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    // Audit X-5: provider delivery counters for the platform registry.
+    private final tz.elmkusoma.nfe.provider.repository.EducationProviderRepository educationProviderRepository;
+    private final tz.elmkusoma.nfe.program.repository.NfeProgramRepository nfeProgramRepository;
+    private final tz.elmkusoma.nfe.learner.repository.NfeLearnerRepository nfeLearnerRepository;
+    private final tz.elmkusoma.nfe.session.repository.NfeSessionRepository nfeSessionRepository;
+    private final tz.elmkusoma.nfe.certificate.repository.NfeCertificateRepository nfeCertificateRepository;
+    private final tz.elmkusoma.administration.repository.AdminUserPermissionRepository adminUserPermissionRepository;
     private final DashboardSnapshotRepository snapshotRepository;
     private final tz.elmkusoma.learner.repository.LearnerNotificationRepository learnerNotificationRepository;
     private final PlatformIntegrationService integrationService;
@@ -311,10 +318,45 @@ public class PlatformAdminService {
         return toUserSummary(user);
     }
 
+    /** Audit B-14: binds provider roles to the institution's single provider record, when it exists. */
+    private UUID resolveProviderScope(User.Role role, UUID institutionId) {
+        if (role != User.Role.PROVIDER_ADMIN && role != User.Role.PROVIDER_STAFF) {
+            return null;
+        }
+        return educationProviderRepository.findAllByInstitutionId(institutionId).stream()
+                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
+                .map(tz.elmkusoma.nfe.provider.domain.EducationProvider::getId)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** Audit B-02: roles whose authority is scoped to one organization. */
+    private static boolean requiresInstitution(User.Role role) {
+        if (role == null) {
+            return false;
+        }
+        return switch (role) {
+            case INSTITUTION_ADMIN, PROVIDER_ADMIN, PROVIDER_STAFF, TEACHER, INSTRUCTOR,
+                 NATIONAL_ADMIN, REGIONAL_ADMIN, DISTRICT_ADMIN -> true;
+            default -> false;
+        };
+    }
+
     @Transactional
     public UserSummaryResponse createUser(CreateUserRequest request) {
         if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
             throw new IllegalArgumentException("User with email " + request.getEmail() + " already exists");
+        }
+        // Audit B-02: organisation-scoped roles were creatable without an institution, producing an
+        // account that logs in but resolves no scope -- every provider/administration API call then
+        // failed with 400 and the provider workspace was unreachable. Reject it at the boundary.
+        if (requiresInstitution(request.getRole()) && request.getInstitutionId() == null) {
+            throw new IllegalArgumentException(
+                    "institutionId is required when creating a user with role " + request.getRole().name());
+        }
+        if (request.getInstitutionId() != null
+                && !institutionRepository.existsByIdAndIsDeletedFalse(request.getInstitutionId())) {
+            throw new IllegalArgumentException("Institution " + request.getInstitutionId() + " does not exist");
         }
         User user = User.builder()
                 .firstName(request.getFirstName())
@@ -333,13 +375,17 @@ public class PlatformAdminService {
         // §11: an active membership makes the account visible to the people directory,
         // scope services and permission computation for the provisioned organization.
         if (request.getInstitutionId() != null) {
-            membershipRepository.save(InstitutionMembership.builder()
+            InstitutionMembership membership = InstitutionMembership.builder()
                     .userId(user.getId())
                     .institutionId(request.getInstitutionId())
                     .role(OrganizationContextResolver.mapUserRoleToMembershipRole(request.getRole()))
                     .isActive(true)
                     .isDeleted(false)
-                    .build());
+                    // Per-provider scope (B-14): a provider account is bound to the institution's
+                    // provider record so its authority is that provider, not the whole institution.
+                    .providerId(resolveProviderScope(request.getRole(), request.getInstitutionId()))
+                    .build();
+            membershipRepository.save(membership);
         }
         writeAudit(PLATFORM_INSTITUTION_ID, "USER", user.getId(), user.getEmail(), "CREATE",
                 Map.of(), Map.of("email", user.getEmail(), "role", user.getRole().name()));
@@ -1535,13 +1581,30 @@ public class PlatformAdminService {
     }
 
     private ProviderRegistryItem toProviderRegistryItem(Institution inst) {
+        // Audit X-5: surface the provider's real delivery activity so the platform can see what a
+        // provider has actually produced, not only its verification paperwork.
+        UUID institutionId = inst.getId();
+        int programs = (int) nfeProgramRepository.countByInstitutionId(institutionId);
+        int learners = (int) nfeLearnerRepository.countByInstitutionId(institutionId);
+        int sessions = (int) nfeSessionRepository.countByInstitutionId(institutionId);
+        int certificates = (int) nfeCertificateRepository.countByInstitutionId(institutionId);
+        var providerRows = educationProviderRepository.findAllByInstitutionId(institutionId).stream()
+                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
+                .toList();
         return ProviderRegistryItem.builder()
                 .id(inst.getId()).name(inst.getName()).code(inst.getCode())
                 .type(inst.getType() != null ? inst.getType().name() : null)
                 .city(inst.getCity()).region(inst.getRegion())
                 .isActive(inst.getIsActive()).status(inst.getStatus())
-                .verificationStatus(resolveVerificationStatus(inst.getId()))
-                .adminCount(countInstitutionAdmins(inst.getId()))
+                .verificationStatus(resolveVerificationStatus(institutionId))
+                .adminCount(countInstitutionAdmins(institutionId))
+                .programs(programs)
+                .learners(learners)
+                .sessions(sessions)
+                .certificates(certificates)
+                .providerRecordPresent(!providerRows.isEmpty())
+                .providerVerified(providerRows.stream()
+                        .anyMatch(p -> Boolean.TRUE.equals(p.getIsVerified())))
                 .createdAt(inst.getCreatedAt())
                 .build();
     }
@@ -2324,7 +2387,7 @@ public class PlatformAdminService {
             userRepository.findByRoleAndIsDeletedFalse(role, PageRequest.of(0, 500)).forEach(u -> {
                 List<String> perms = List.of();
                 try {
-                    perms = rolePermissionRepository.findPermissionsByRoleId(u.getId());
+                    perms = adminUserPermissionRepository.findPermissionsByUserId(u.getId());
                 } catch (Exception e) { log.debug("No permissions for user {}: {}", u.getId(), e.getMessage()); }
                 Long recent = null;
                 try {
@@ -2348,6 +2411,45 @@ public class PlatformAdminService {
     @Transactional(readOnly = true)
     public List<String> getRolePermissions(UUID roleId) {
         return rolePermissionRepository.findPermissionsByRoleId(roleId);
+    }
+
+    /**
+     * Per-account permission matrix (audit B-10). Keyed strictly by {@code users.id} so it can
+     * never collide with {@code custom_roles.id} the way the shared role_permissions column could.
+     */
+    @Transactional(readOnly = true)
+    public List<String> getAdminUserPermissions(UUID userId) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        return adminUserPermissionRepository.findPermissionsByUserId(user.getId());
+    }
+
+    @Transactional
+    public List<String> updateAdminUserPermissions(UUID userId, RolePermissionUpdateRequest req, String actor) {
+        if (req == null || req.getPermissions() == null) {
+            throw new IllegalArgumentException("permissions list is required");
+        }
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        List<String> old = adminUserPermissionRepository.findPermissionsByUserId(userId);
+        adminUserPermissionRepository.deleteByUserIdAndIsDeletedFalse(userId);
+        adminUserPermissionRepository.flush();
+        for (String p : req.getPermissions()) {
+            if (p != null && !p.isBlank()) {
+                adminUserPermissionRepository.save(
+                        tz.elmkusoma.administration.domain.AdminUserPermission.of(userId, p.trim(), actor));
+            }
+        }
+        adminUserPermissionRepository.flush();
+
+        writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                "ADMIN_PERMISSION", userId, user.getEmail(), "UPDATE",
+                Map.of("permissions", String.join(",", old)),
+                Map.of("permissions", String.join(",", req.getPermissions())));
+        log.info("Admin permissions updated for {}: {} -> {} permissions", user.getEmail(), old.size(),
+                req.getPermissions().size());
+        return adminUserPermissionRepository.findPermissionsByUserId(userId);
     }
 
     public List<String> updateRolePermissions(UUID roleId, RolePermissionUpdateRequest req) {
@@ -2737,7 +2839,9 @@ public class PlatformAdminService {
                 .lastName(user.getLastName())
                 .role(user.getRole() != null ? user.getRole().name() : null)
                 .isActive(user.getIsActive())
-                .institutionId(null)
+                // Audit B-02: this was hard-coded to null, which hid the "account provisioned with no
+                // organization" failure from the admin UI that creates the account.
+                .institutionId(user.getInstitutionId())
                 .createdAt(user.getCreatedAt())
                 .build();
     }

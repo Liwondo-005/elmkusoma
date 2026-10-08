@@ -77,11 +77,16 @@ public class DataGovernanceService {
                 .orElse(3650);
         LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
 
+        // Audit B-30: a sweep that half-fails must not be recorded as a clean run. Each stage
+        // records its own outcome so the persisted summary is truthful instead of silently zero.
+        List<String> failures = new ArrayList<>();
+
         long archived = 0;
         try {
             archived = auditLogRepository.archiveOlderThan(cutoff);
         } catch (Exception e) {
-            log.error("Audit archive sweep failed: {}", e.getMessage());
+            log.error("Audit archive sweep failed: {}", e.getMessage(), e);
+            failures.add("auditArchive");
         }
 
         long purgedReports = 0;
@@ -92,7 +97,8 @@ public class DataGovernanceService {
             LocalDateTime reportCutoff = LocalDateTime.now().minusDays(mediaDays);
             purgedReports = contentReportRepository.purgeSoftDeletedOlderThan(reportCutoff);
         } catch (Exception e) {
-            log.error("Soft-deleted report purge failed: {}", e.getMessage());
+            log.error("Soft-deleted report purge failed: {}", e.getMessage(), e);
+            failures.add("softDeletedReportPurge");
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -101,6 +107,8 @@ public class DataGovernanceService {
         result.put("retentionDays", retentionDays);
         result.put("archivedAuditLogs", archived);
         result.put("purgedSoftDeletedReports", purgedReports);
+        result.put("failedStages", failures);
+        result.put("status", failures.isEmpty() ? "COMPLETED" : "PARTIAL_FAILURE");
 
         configRepository.findByConfigKeyAndIsDeletedFalse("data.retention.last_sweep").ifPresentOrElse(
                 entry -> {

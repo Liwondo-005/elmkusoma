@@ -18,6 +18,14 @@ public interface EnrollmentService {
 
     List<EnrollmentResponse> getEnrollmentsByStudent(UUID studentId);
 
+    /** Audit B-22: the caller's own enrollments, resolved from the authenticated user. */
+    List<EnrollmentResponse> getEnrollmentsByUserId(UUID userId);
+
+    /** Audit Phase 6: approval step for a placement created as PENDING. */
+    EnrollmentResponse approveEnrollment(UUID institutionId, UUID enrollmentId);
+
+    EnrollmentResponse rejectEnrollment(UUID institutionId, UUID enrollmentId, String reason);
+
     List<EnrollmentResponse> getEnrollmentsByClass(UUID classGroupId);
 
     EnrollmentResponse updateStatus(UUID enrollmentId, Enrollment.EnrollmentStatus status);

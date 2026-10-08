@@ -24,11 +24,18 @@ import java.util.UUID;
 public class ProgramServiceImpl implements ProgramService {
 
     private final NfeProgramRepository programRepository;
+    private final tz.elmkusoma.nfe.provider.service.NfeScopeValidator scopeValidator;
 
     @Override
     public ProgramResponse createProgram(UUID institutionId, ProgramRequest request) {
+        // B-15: the provider is resolved and tenant-checked server-side, never trusted from the body.
+        UUID providerId = scopeValidator.requireOwnedProvider(institutionId,
+                parseUuid(request.getProviderId())).getId();
+        // Ecosystem link (B-11): an optional link to the platform course this program delivers.
+        // Tenant-validated so a provider cannot claim another organisation's catalogue.
+        UUID courseId = scopeValidator.requireOwnedCourse(institutionId, request.getCourseId());
         NfeProgram program = NfeProgram.builder()
-                .providerId(UUID.fromString(request.getProviderId()))
+                .providerId(providerId)
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .programType(NfeProgram.ProgramType.valueOf(request.getProgramType()))
@@ -38,11 +45,25 @@ public class ProgramServiceImpl implements ProgramService {
                 .endDate(request.getEndDate())
                 .maxParticipants(request.getMaxParticipants())
                 .isPublished(request.getIsPublished() != null ? request.getIsPublished() : false)
+                .courseId(courseId)
+                .enrollmentOpen(request.getEnrollmentOpen() != null ? request.getEnrollmentOpen() : false)
                 .build();
         program.setInstitutionId(institutionId);
 
         NfeProgram saved = programRepository.save(program);
         return mapToResponse(saved);
+    }
+
+    /** Lenient UUID parsing so a malformed providerId becomes a 404, not a 500 (B-15). */
+    static UUID parseUuid(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @Override
@@ -86,6 +107,13 @@ public class ProgramServiceImpl implements ProgramService {
         NfeProgram program = programRepository.findByIdAndInstitutionId(programId, institutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("NFE Program", "id", programId));
 
+        // B-16: providerId is an ownership column. Reject an attempt to repoint it instead of
+        // silently ignoring it, so the caller is never told a change succeeded when it did not.
+        UUID requestedProvider = parseUuid(request.getProviderId());
+        if (requestedProvider != null && !requestedProvider.equals(program.getProviderId())) {
+            throw new IllegalArgumentException("providerId cannot be changed after creation");
+        }
+
         if (request.getTitle() != null) program.setTitle(request.getTitle());
         if (request.getDescription() != null) program.setDescription(request.getDescription());
         if (request.getProgramType() != null) program.setProgramType(NfeProgram.ProgramType.valueOf(request.getProgramType()));
@@ -95,6 +123,11 @@ public class ProgramServiceImpl implements ProgramService {
         if (request.getEndDate() != null) program.setEndDate(request.getEndDate());
         if (request.getMaxParticipants() != null) program.setMaxParticipants(request.getMaxParticipants());
         if (request.getIsPublished() != null) program.setIsPublished(request.getIsPublished());
+        // Ecosystem link is mutable so a provider can publish into an existing course later.
+        if (request.getCourseId() != null) {
+            program.setCourseId(scopeValidator.requireOwnedCourse(institutionId, request.getCourseId()));
+        }
+        if (request.getEnrollmentOpen() != null) program.setEnrollmentOpen(request.getEnrollmentOpen());
 
         NfeProgram saved = programRepository.save(program);
         return mapToResponse(saved);
@@ -139,6 +172,8 @@ public class ProgramServiceImpl implements ProgramService {
                 .endDate(program.getEndDate())
                 .maxParticipants(program.getMaxParticipants())
                 .isPublished(program.getIsPublished())
+                .courseId(program.getCourseId())
+                .enrollmentOpen(program.getEnrollmentOpen())
                 .createdAt(program.getCreatedAt())
                 .build();
     }

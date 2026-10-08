@@ -20,6 +20,8 @@ import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -31,13 +33,101 @@ public class InstitutionServiceImpl implements InstitutionService {
     private final InstitutionRepository institutionRepository;
     private final InstitutionMembershipRepository membershipRepository;
     private final UserRepository userRepository;
+    private final tz.elmkusoma.audit.repository.AuditLogRepository auditLogRepository;
+    private final tz.elmkusoma.nfe.provider.repository.EducationProviderRepository educationProviderRepository;
 
     public InstitutionServiceImpl(InstitutionRepository institutionRepository,
                                   InstitutionMembershipRepository membershipRepository,
-                                  UserRepository userRepository) {
+                                  UserRepository userRepository,
+                                  tz.elmkusoma.audit.repository.AuditLogRepository auditLogRepository,
+                                  tz.elmkusoma.nfe.provider.repository.EducationProviderRepository educationProviderRepository) {
         this.institutionRepository = institutionRepository;
         this.membershipRepository = membershipRepository;
         this.userRepository = userRepository;
+        this.auditLogRepository = auditLogRepository;
+        this.educationProviderRepository = educationProviderRepository;
+    }
+
+    /**
+     * Creates the matching {@code nfe_education_providers} row for a provider-type institution.
+     * Reuses the existing provider entity/repository -- no second provider model is introduced.
+     */
+private void provisionProviderIfProviderType(Institution institution, UUID actorId) {
+        String type = institution.getType() != null ? institution.getType().name() : null;
+        if (type == null) {
+            return;
+        }
+        tz.elmkusoma.nfe.provider.domain.EducationProvider.ProviderType providerType;
+        switch (type) {
+            case "TRAINING_PROVIDER" -> providerType =
+                    tz.elmkusoma.nfe.provider.domain.EducationProvider.ProviderType.TRAINING;
+            case "COMPANY" -> providerType =
+                    tz.elmkusoma.nfe.provider.domain.EducationProvider.ProviderType.COMPANY;
+            case "GOVERNMENT" -> providerType =
+                    tz.elmkusoma.nfe.provider.domain.EducationProvider.ProviderType.GOVERNMENT;
+            case "TRAINING", "NGO", "PROFESSIONAL_BODY", "CONTENT_PROVIDER", "EVENT_PROVIDER" ->
+                    providerType = switch (type) {
+                        case "TRAINING" -> tz.elmkusoma.nfe.provider.domain.EducationProvider.ProviderType.TRAINING;
+                        case "NGO" -> tz.elmkusoma.nfe.provider.domain.EducationProvider.ProviderType.ORGANIZATION;
+                        default -> tz.elmkusoma.nfe.provider.domain.EducationProvider.ProviderType.ORGANIZATION;
+                    };
+            default -> {
+                return; // not a provider type
+            }
+        }
+
+        tz.elmkusoma.nfe.provider.domain.EducationProvider provider =
+                tz.elmkusoma.nfe.provider.domain.EducationProvider.builder()
+                        .name(institution.getName())
+                        .providerType(providerType)
+                        .description(institution.getDescription())
+                        .logoUrl(institution.getLogoUrl())
+                        .website(institution.getWebsite())
+                        .email(institution.getEmail())
+                        .phone(institution.getPhone())
+                        .address(institution.getAddress())
+                        .city(institution.getCity())
+                        .country(institution.getCountry())
+                        .isActive(true)
+                        .isVerified(false)
+                        .build();
+        provider.setInstitutionId(institution.getId());
+        provider.setCreatedBy(actorId != null ? actorId.toString() : "platform-admin");
+        try {
+            educationProviderRepository.save(provider);
+            log.info("Provisioned NFE provider for institution {}", institution.getId());
+        } catch (Exception e) {
+            // Never fail institution provisioning over the provider mirror; /v1/nfe/providers/me
+            // self-heals it on first provider access.
+            log.warn("Could not provision NFE provider for institution {}: {}", institution.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Audit trail for institution mutations (audit B-07). create/update/delete previously wrote
+     * only a log line, so provisioning an organisation was invisible in the platform audit view.
+     * Reuses the existing audit_logs entity -- no new audit system.
+     */
+    private void audit(UUID institutionId, UUID actorId, String action,
+                       Map<String, Object> oldValues, Map<String, Object> newValues) {
+        try {
+            User actor = actorId != null ? userRepository.findById(actorId).orElse(null) : null;
+            tz.elmkusoma.audit.domain.AuditLog entry = new tz.elmkusoma.audit.domain.AuditLog();
+            entry.setInstitutionId(institutionId);
+            entry.setUserId(actorId);
+            entry.setUserEmail(actor != null ? actor.getEmail() : "system");
+            entry.setUserRole(actor != null && actor.getRole() != null ? actor.getRole().name() : "ADMIN");
+            entry.setEntityType("INSTITUTION");
+            entry.setEntityId(institutionId);
+            entry.setEntityName(institutionId != null ? institutionId.toString() : "institution");
+            entry.setAction(tz.elmkusoma.audit.domain.AuditLog.AuditAction.valueOf(action));
+            entry.setOldValues(oldValues);
+            entry.setNewValues(newValues);
+            auditLogRepository.save(entry);
+        } catch (Exception e) {
+            // An audit failure must never abort the business transaction, but it must be visible.
+            log.error("Failed to write institution audit (action={}, institution={})", action, institutionId, e);
+        }
     }
 
     @Override
@@ -84,6 +174,17 @@ public class InstitutionServiceImpl implements InstitutionService {
                 .build();
         membershipRepository.save(membership);
 
+        // Ecosystem link (audit X-1 / B-01): a provider-type institution and its NFE provider record
+        // used to be two unsynchronised tables for one concept, so a freshly created provider had no
+        // provider row and its entire workspace was inert. Provision the provider here, in the same
+        // transaction, from the institution the platform admin just approved.
+        provisionProviderIfProviderType(institution, ownerUserId);
+
+        audit(institution.getId(), ownerUserId, "CREATE", Map.of(),
+                Map.of("name", String.valueOf(institution.getName()),
+                        "type", String.valueOf(institution.getType()),
+                        "code", String.valueOf(institution.getCode())));
+
         return mapToResponse(institution);
     }
 
@@ -113,9 +214,17 @@ public class InstitutionServiceImpl implements InstitutionService {
     }
 
     @Override
-    public InstitutionResponse updateInstitution(UUID id, UpdateInstitutionRequest request) {
+    public InstitutionResponse updateInstitution(UUID id, UpdateInstitutionRequest request, UUID actorId) {
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", id));
+
+        Map<String, Object> oldValues = new LinkedHashMap<>();
+        oldValues.put("name", institution.getName());
+        oldValues.put("email", institution.getEmail());
+        oldValues.put("phone", institution.getPhone());
+        oldValues.put("city", institution.getCity());
+        oldValues.put("regionId", String.valueOf(institution.getRegionId()));
+        oldValues.put("districtId", String.valueOf(institution.getDistrictId()));
 
         if (request.getName() != null) institution.setName(request.getName());
         if (request.getDescription() != null) institution.setDescription(request.getDescription());
@@ -132,16 +241,28 @@ public class InstitutionServiceImpl implements InstitutionService {
         institution = institutionRepository.save(institution);
         log.info("Institution updated: {} (ID: {})", institution.getName(), institution.getId());
 
+        Map<String, Object> newValues = new LinkedHashMap<>();
+        newValues.put("name", institution.getName());
+        newValues.put("email", institution.getEmail());
+        newValues.put("phone", institution.getPhone());
+        newValues.put("city", institution.getCity());
+        newValues.put("regionId", String.valueOf(institution.getRegionId()));
+        newValues.put("districtId", String.valueOf(institution.getDistrictId()));
+        audit(institution.getId(), actorId, "UPDATE", oldValues, newValues);
+
         return mapToResponse(institution);
     }
 
     @Override
-    public void deleteInstitution(UUID id) {
+    public void deleteInstitution(UUID id, UUID actorId) {
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Institution", "id", id));
+        Map<String, Object> oldValues = Map.of("name", String.valueOf(institution.getName()),
+                "isActive", String.valueOf(institution.getIsActive()));
         institution.setIsDeleted(true);
         institutionRepository.save(institution);
         log.info("Institution soft-deleted: {} (ID: {})", institution.getName(), institution.getId());
+        audit(institution.getId(), actorId, "DELETE", oldValues, Map.of());
     }
 
     @Override

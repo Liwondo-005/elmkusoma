@@ -22,5 +22,9 @@ public interface ProviderService {
 
     List<ProviderResponse> getActiveProviders(UUID institutionId);
 
+    ProviderResponse getOrCreateProviderForInstitution(UUID institutionId, String actor);
+
+    ProviderResponse setProviderVerified(UUID institutionId, UUID providerId, boolean verified);
+
     ProviderStatsResponse getProviderStats(UUID institutionId);
 }

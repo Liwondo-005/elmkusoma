@@ -9,7 +9,7 @@ import { learningApi, mediaApi, type Assignment, type AssignmentSubmission } fro
 import { type LearningLevel } from "@/lib/learner-config"
 import { Button } from "@/components/ui/button"
 import { FileUpload, type FileUploadStatus } from "@/components/upload/file-upload"
-import { ArrowLeft, Clock, CheckCircle, Send, BookOpen, FileText, Star, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Clock, CheckCircle, Send, BookOpen, FileText, Star, AlertTriangle, Paperclip } from "lucide-react"
 
 export default function AssignmentDetailPage() {
   const params = useParams()
@@ -42,7 +42,7 @@ export default function AssignmentDetailPage() {
       if (found) {
         setAssignment(found)
         try {
-          // Learner-scoped endpoint: resolves users.id → students.id server-side.
+          // Learner-scoped endpoint: resolves users.id â†’ students.id server-side.
           const mySub = await learningApi.getMySubmission(found.id)
           if (mySub) {
             setSubmission(mySub)
@@ -93,6 +93,50 @@ export default function AssignmentDetailPage() {
   function isOverdue(dueDate?: string) {
     if (!dueDate) return false
     return new Date(dueDate) < new Date()
+  }
+
+  const [editingWork, setEditingWork] = useState(false)
+
+  /**
+   * Audit B-24: shows what the learner actually submitted (file link + typed answer).
+   * Neither party could see it before: the learner page never rendered these fields and the
+   * teacher submissions table had no Work column, so a marker graded blind.
+   */
+  function SubmissionWork({ submission, tone }: { submission: AssignmentSubmission | null; tone: "blue" | "muted" }) {
+    if (!submission) return null
+    const text = submission.submissionText
+    const file = submission.fileUrl
+    if (!text && !file) return null
+    return (
+      <div
+        className={
+          tone === "blue"
+            ? "mt-4 rounded-xl border border-blue-200 bg-white/70 p-4"
+            : "mt-4 rounded-xl bg-background/60 p-4"
+        }
+      >
+        {file && (
+          <p className="text-xs font-semibold text-muted-foreground">
+            <a
+              href={file}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-semibold text-primary underline"
+            >
+              <Paperclip className="size-3" /> {t("assignmentDetail.yourFile")}
+            </a>
+          </p>
+        )}
+        {text && (
+          <>
+            <p className="mt-2 text-xs font-semibold text-muted-foreground">
+              {t("assignmentDetail.yourAnswer")}
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{text}</p>
+          </>
+        )}
+      </div>
+    )
   }
 
   function getStatus() {
@@ -224,6 +268,56 @@ export default function AssignmentDetailPage() {
                 <p className="text-sm text-blue-700">{t("assignmentDetail.submittedDesc")}</p>
               </div>
             </div>
+            {/* Audit B-24: the learner's own work was never displayed after submission, and the
+                form disappeared permanently even though the backend still accepts a resubmission
+                until the work is graded. */}
+            <SubmissionWork submission={submission} tone="blue" />
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => setEditingWork(true)}
+            >
+              {t("assignmentDetail.editSubmission")}
+            </Button>
+            {editingWork && (
+              <div className="mt-4 rounded-xl border border-border bg-background p-4">
+                <p className="text-sm font-semibold text-foreground">{t("assignmentDetail.sendWork")}</p>
+                <textarea
+                  rows={5}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={t("assignmentDetail.answerPlaceholder")}
+                  className="mt-2 w-full rounded-xl border border-border bg-muted/60 p-3 text-foreground outline-none focus:border-ring focus:bg-background"
+                />
+                <div className="mt-3">
+                  <FileUpload
+                    upload={(file, options) => mediaApi.upload(file, options)}
+                    onUploaded={(result) => {
+                      setUploadedUrl((result as { url?: string })?.url ?? null)
+                    }}
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    maxSizeMB={10}
+                    label={t("assignmentDetail.chooseFile")}
+                    hint={t("assignmentDetail.uploadHint")}
+                    resetSuccessMs={0}
+                  />
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    onClick={async () => {
+                      await handleSubmit()
+                      setEditingWork(false)
+                    }}
+                    disabled={submitting || uploadStatus === "uploading"}
+                  >
+                    <Send className="size-4" /> {ts("submitted") || "Submit"}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setEditingWork(false)} disabled={submitting}>
+                    {t("assignmentDetail.cancelEdit")}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-5">
@@ -364,6 +458,8 @@ export default function AssignmentDetailPage() {
                 <p className="mt-1 text-sm text-foreground">{submission.feedback}</p>
               </div>
             )}
+            {/* Audit B-24: show the learner what was actually submitted. */}
+            <SubmissionWork submission={submission} tone="muted" />
           </div>
         </div>
       ) : status === "submitted" ? (

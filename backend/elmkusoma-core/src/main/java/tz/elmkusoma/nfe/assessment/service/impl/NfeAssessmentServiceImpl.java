@@ -24,12 +24,16 @@ import java.util.UUID;
 public class NfeAssessmentServiceImpl implements NfeAssessmentService {
 
     private final NfeAssessmentRepository assessmentRepository;
+    private final tz.elmkusoma.nfe.provider.service.NfeScopeValidator scopeValidator;
 
     @Override
     public AssessmentResponse createAssessment(UUID institutionId, UUID providerId, AssessmentRequest request) {
+        // B-15: provider/program references are tenant-validated server-side.
+        UUID ownedProviderId = scopeValidator.requireOwnedProvider(institutionId, providerId).getId();
+        UUID programId = scopeValidator.requireOwnedProgram(institutionId, request.getProgramId());
         NfeAssessment assessment = NfeAssessment.builder()
-                .providerId(providerId)
-                .programId(request.getProgramId())
+                .providerId(ownedProviderId)
+                .programId(programId)
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .assessmentType(NfeAssessment.AssessmentType.valueOf(request.getAssessmentType()))
