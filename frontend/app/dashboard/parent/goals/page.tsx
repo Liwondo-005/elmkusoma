@@ -3,28 +3,16 @@
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Target, Loader2 } from "lucide-react"
-import { parentApi, type ChildOverview, type GoalItem } from "@/lib/parent-api"
+import { parentApi, type GoalItem } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentGoalsPage() {
   const t = useTranslations("parent")
   const ts = useTranslations("status")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [goals, setGoals] = useState<GoalItem[]>([])
   const [activeCount, setActiveCount] = useState(0)
   const [completedCount, setCompletedCount] = useState(0)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (kids.length > 0) {
-        const primary = kids.find((c) => c.isPrimary) || kids[0]
-        setSelectedChildId(primary.studentId)
-      }
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+  const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
 
   useEffect(() => {
     if (!selectedChildId) return

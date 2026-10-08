@@ -3,27 +3,15 @@
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Trophy, Loader2, Star } from "lucide-react"
-import { parentApi, type ChildOverview, type AchievementItem } from "@/lib/parent-api"
+import { parentApi, type AchievementItem } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentAchievementsPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [achievements, setAchievements] = useState<AchievementItem[]>([])
   const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (kids.length > 0) {
-        const primary = kids.find((c) => c.isPrimary) || kids[0]
-        setSelectedChildId(primary.studentId)
-      }
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+  const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
 
   useEffect(() => {
     if (!selectedChildId) return

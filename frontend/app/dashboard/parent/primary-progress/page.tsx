@@ -24,13 +24,13 @@ import {
 import { useAuth } from "@/lib/auth"
 import {
   parentApi,
-  type ChildOverview,
   type SubjectPerformanceItem,
   type AttendanceDay,
   type ActivityItem,
   type TeacherItem,
   type AchievementItem,
 } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 import { TeacherInfoCard } from "@/components/primary/teacher-info-card"
 import type { TeacherInfo } from "@/lib/api"
 
@@ -173,46 +173,29 @@ export default function PrimaryProgressPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
-  const firstName = user?.name?.split(" ")[0] || t("primaryProgress.parentFallback")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || t("primaryProgress.parentFallback")
   const [subjectPerformance, setSubjectPerformance] = useState<SubjectPerformanceItem[]>([])
   const [attendance, setAttendance] = useState<AttendanceDay[]>([])
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [teachers, setTeachers] = useState<TeacherItem[]>([])
   const [achievements, setAchievements] = useState<AchievementItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { children: allChildren, selectedChildId, setSelectedChildId, loading, error } = useSelectedChild()
+
+  const children = allChildren.length > 0 ? (allChildren.filter((c) => c.isPrimary).length > 0 ? allChildren.filter((c) => c.isPrimary) : allChildren) : allChildren
+  const activeChildId = children.some((c) => c.studentId === selectedChildId)
+    ? selectedChildId
+    : children.length > 0
+      ? children[0].studentId
+      : null
 
   useEffect(() => {
-    async function load() {
-      try {
-        const kids = await parentApi.getChildren()
-        const primaryKids = kids.filter((c) => c.isPrimary)
-        setChildren(primaryKids.length > 0 ? primaryKids : kids)
-        if (primaryKids.length > 0) {
-          setSelectedChildId(primaryKids[0].studentId)
-        } else if (kids.length > 0) {
-          setSelectedChildId(kids[0].studentId)
-        }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : t("primaryProgress.loadError")
-        setError(msg)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [])
-
-  useEffect(() => {
-    if (!selectedChildId) return
+    if (!activeChildId) return
     Promise.all([
-      parentApi.getChildSubjectPerformance(selectedChildId).catch(() => ({ subjects: [] })),
-      parentApi.getChildActivity(selectedChildId).catch(() => ({ activities: [] })),
-      parentApi.getChildTeachers(selectedChildId).catch(() => ({ teachers: [] })),
-      parentApi.getChildAchievements(selectedChildId).catch(() => ({ achievements: [] })),
-      parentApi.getChildAttendance(selectedChildId).catch(() => ({ recentDays: [] })),
+      parentApi.getChildSubjectPerformance(activeChildId).catch(() => ({ subjects: [] })),
+      parentApi.getChildActivity(activeChildId).catch(() => ({ activities: [] })),
+      parentApi.getChildTeachers(activeChildId).catch(() => ({ teachers: [] })),
+      parentApi.getChildAchievements(activeChildId).catch(() => ({ achievements: [] })),
+      parentApi.getChildAttendance(activeChildId).catch(() => ({ recentDays: [] })),
     ]).then(([sp, act, tch, ach, att]) => {
       setSubjectPerformance(sp.subjects || [])
       setActivities(act.activities || [])
@@ -220,7 +203,7 @@ export default function PrimaryProgressPage() {
       setAchievements(ach.achievements || [])
       setAttendance(att.recentDays || [])
     })
-  }, [selectedChildId])
+  }, [activeChildId])
 
   if (loading) {
     return (
@@ -241,7 +224,7 @@ export default function PrimaryProgressPage() {
     )
   }
 
-  const selectedChild = children.find((c) => c.studentId === selectedChildId)
+  const selectedChild = children.find((c) => c.studentId === activeChildId)
 
   const mapTeacherToInfo = (t: TeacherItem): TeacherInfo => ({
     id: t.id,
@@ -270,7 +253,7 @@ export default function PrimaryProgressPage() {
               key={child.studentId}
               onClick={() => setSelectedChildId(child.studentId)}
               className={`shrink-0 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-                selectedChildId === child.studentId
+                activeChildId === child.studentId
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-foreground hover:bg-muted"
               }`}

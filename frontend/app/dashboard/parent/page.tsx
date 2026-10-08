@@ -5,7 +5,8 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Users, AlertTriangle, CheckCircle, Clock, FileText, BarChart3, ChevronRight, Loader2, Star, TrendingUp, Calendar, BookOpen, Video, Trophy, Target, AlertCircle, Info, PenTool, Activity } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { parentApi, type FamilyOverview, type ChildOverview, type ParentIntelligence, type AttentionItem, type PositiveSignal, type UpcomingItem } from "@/lib/parent-api"
+import { parentApi, type FamilyOverview, type ParentIntelligence, type AttentionItem, type PositiveSignal, type UpcomingItem } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 const PRIORITY_COLORS: Record<string, string> = {
   CRITICAL: "bg-red-500",
@@ -34,35 +35,24 @@ export default function ParentDashboardPage() {
   const tn = useTranslations("nav")
   const tc = useTranslations("common")
   const ts = useTranslations("status")
-  const firstName = user?.name?.split(" ")[0] || t("primaryProgress.parentFallback")
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || t("primaryProgress.parentFallback")
   const [overview, setOverview] = useState<FamilyOverview | null>(null)
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [intelligence, setIntelligence] = useState<ParentIntelligence | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [overviewLoading, setOverviewLoading] = useState(true)
+  const [overviewError, setOverviewError] = useState<string | null>(null)
+  const { children, selectedChildId, setSelectedChildId, loading, error } = useSelectedChild()
 
   useEffect(() => {
-    async function load() {
+    async function loadOverview() {
       try {
-        const [ov, kids] = await Promise.all([
-          parentApi.getOverview(),
-          parentApi.getChildren(),
-        ])
-        setOverview(ov)
-        setChildren(kids)
-        if (kids.length > 0) {
-          const primary = kids.find((c) => c.isPrimary) || kids[0]
-          setSelectedChildId(primary.studentId)
-        }
+        setOverview(await parentApi.getOverview())
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : t("dashboard.loadError")
-        setError(msg)
+        setOverviewError(err instanceof Error ? err.message : t("dashboard.loadError"))
       } finally {
-        setLoading(false)
+        setOverviewLoading(false)
       }
     }
-    load()
+    loadOverview()
   }, [])
 
   useEffect(() => {
@@ -72,7 +62,7 @@ export default function ParentDashboardPage() {
       .catch(() => setIntelligence(null))
   }, [selectedChildId])
 
-  if (loading) {
+  if (loading || overviewLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -80,10 +70,10 @@ export default function ParentDashboardPage() {
     )
   }
 
-  if (error) {
+  if (error || overviewError) {
     return (
       <div className="mx-auto max-w-4xl py-16 text-center">
-        <p className="text-sm text-muted-foreground">{error}</p>
+        <p className="text-sm text-muted-foreground">{error || overviewError}</p>
         <p className="mt-2 text-xs text-muted-foreground">
           {t("primaryProgress.errorDesc")}
         </p>

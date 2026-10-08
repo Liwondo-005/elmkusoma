@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.common.ClassAccessGuard;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.learning.domain.LessonProgress;
 import tz.elmkusoma.learning.domain.Resource;
@@ -106,6 +107,7 @@ public class ParentSelfController {
     private final ResourceRepository resourceRepository;
     private final LearnerNotificationRepository learnerNotificationRepository;
     private final StudentClassAssignmentRepository studentClassAssignmentRepository;
+    private final ClassAccessGuard classAccessGuard;
 
     private UUID getCurrentUserId(HttpServletRequest request) {
         Object userIdAttr = request.getAttribute("userId");
@@ -459,7 +461,7 @@ public class ParentSelfController {
     // ── Live Classes ──────────────────────────────────────────────────
 
     @GetMapping("/children/{studentId}/live-classes")
-    @Operation(summary = "Get live classes for a specific child's institution")
+    @Operation(summary = "Get live classes for the classes a specific child belongs to")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getChildLiveClasses(
             @PathVariable UUID studentId,
             HttpServletRequest request) {
@@ -470,9 +472,21 @@ public class ParentSelfController {
             return ResponseEntity.ok(ApiResponse.success(List.of()));
         }
 
+        // Membership comes from the shared union model (active class assignments ∪
+        // ENROLLED enrollments); a class without a classGroupId cannot be
+        // attributed to the child, so it is never listed.
+        java.util.Set<UUID> childClassGroupIds =
+                classAccessGuard.resolveStudentClassGroupIds(studentId);
+        if (childClassGroupIds.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(List.of()));
+        }
+
         List<Map<String, Object>> liveClasses = new java.util.ArrayList<>();
         var classes = liveClassRepository.findByInstitutionIdAndIsDeletedFalse(institutionId);
         for (var lc : classes) {
+            if (lc.getClassGroupId() == null || !childClassGroupIds.contains(lc.getClassGroupId())) {
+                continue;
+            }
             if (!"CANCELLED".equals(lc.getStatus())) {
                 liveClasses.add(Map.of(
                         "id", lc.getId().toString(),

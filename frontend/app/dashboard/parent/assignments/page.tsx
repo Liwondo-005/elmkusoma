@@ -1,36 +1,26 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, AlertTriangle, CheckCircle, Clock } from "lucide-react"
-import { parentApi, type AssignmentData, type ChildOverview } from "@/lib/parent-api"
+import { parentApi, type AssignmentData } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentAssignmentsPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
-  const searchParams = useSearchParams()
-  const childId = searchParams.get("child")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedId, setSelectedId] = useState(childId || "")
   const [assignments, setAssignments] = useState<AssignmentData | null>(null)
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<"pending" | "overdue" | "completed">("pending")
+  const { children, selectedChildId, setSelectedChildId, loading: childrenLoading } = useSelectedChild()
 
   useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (!selectedId && kids.length > 0) setSelectedId(kids[0].studentId)
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!selectedId) return
+    if (!selectedChildId) return
     setLoading(true)
-    parentApi.getChildAssignments(selectedId).then(setAssignments).finally(() => setLoading(false))
-  }, [selectedId])
+    parentApi.getChildAssignments(selectedChildId).then(setAssignments).finally(() => setLoading(false))
+  }, [selectedChildId])
 
   const items = tab === "pending" ? assignments?.pending : tab === "overdue" ? assignments?.overdue : assignments?.completed
 
@@ -46,9 +36,9 @@ export default function ParentAssignmentsPage() {
           {children.map((c) => (
             <button
               key={c.studentId}
-              onClick={() => setSelectedId(c.studentId)}
+              onClick={() => setSelectedChildId(c.studentId)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                selectedId === c.studentId ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-muted"
+                selectedChildId === c.studentId ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-muted"
               }`}
             >
               {c.studentName}
@@ -73,7 +63,7 @@ export default function ParentAssignmentsPage() {
         </div>
       )}
 
-      {loading ? (
+      {childrenLoading || loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>

@@ -472,6 +472,7 @@ const parentNav: Array<{ label: string; labelKey?: string; href: string; icon: t
   { label: "Attendance", labelKey: "attendance", href: "/dashboard/parent/attendance", icon: ClipboardList },
   { label: "Assignments", labelKey: "assignments", href: "/dashboard/parent/assignments", icon: FileText },
   { label: "Results", labelKey: "results", href: "/dashboard/parent/results", icon: Award },
+  { label: "Portfolio", labelKey: "portfolio", href: "/dashboard/parent/portfolio", icon: Compass },
   { label: "Achievements", labelKey: "achievements", href: "/dashboard/parent/achievements", icon: Trophy },
   { label: "Goals", labelKey: "goals", href: "/dashboard/parent/goals", icon: Target },
   { label: "Teachers", labelKey: "teachers", href: "/dashboard/parent/teachers", icon: Users },

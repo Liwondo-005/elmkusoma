@@ -4,29 +4,17 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { PenTool, Loader2, CheckCircle, AlertTriangle, Clock, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { parentApi, type ChildOverview, type ParentAssessments, type AssessmentItem } from "@/lib/parent-api"
+import { parentApi, type ParentAssessments, type AssessmentItem } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentAssessmentsPage() {
   const { user } = useAuth()
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [assessments, setAssessments] = useState<ParentAssessments | null>(null)
-  const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<"completed" | "upcoming">("completed")
-
-  useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (kids.length > 0) {
-        const primary = kids.find((c) => c.isPrimary) || kids[0]
-        setSelectedChildId(primary.studentId)
-      }
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+  const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
 
   useEffect(() => {
     if (!selectedChildId) return

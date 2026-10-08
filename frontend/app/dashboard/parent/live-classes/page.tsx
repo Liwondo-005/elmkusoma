@@ -1,22 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, Video, Clock, User, CheckCircle, AlertTriangle } from "lucide-react"
-import { parentApi, type LiveClassData, type ChildOverview } from "@/lib/parent-api"
+import { parentApi, type LiveClassData } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentLiveClassesPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
-  const searchParams = useSearchParams()
-  const childId = searchParams.get("child")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedId, setSelectedId] = useState(childId || "")
   const [liveClasses, setLiveClasses] = useState<LiveClassData | null>(null)
   const [loading, setLoading] = useState(false)
+  const { children, selectedChildId, setSelectedChildId, loading: childrenLoading, selectionSource } = useSelectedChild()
+
+  const needsChildChoice = children.length > 1 && selectionSource === "default"
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     SCHEDULED: { label: ts("scheduled"), color: "bg-blue-500/10 text-blue-500" },
@@ -26,17 +25,10 @@ export default function ParentLiveClassesPage() {
   }
 
   useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (!selectedId && kids.length > 0) setSelectedId(kids[0].studentId)
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!selectedId) return
+    if (!selectedChildId || needsChildChoice) return
     setLoading(true)
-    parentApi.getChildLiveClasses(selectedId).then(setLiveClasses).finally(() => setLoading(false))
-  }, [selectedId])
+    parentApi.getChildLiveClasses(selectedChildId).then(setLiveClasses).catch(() => setLiveClasses(null)).finally(() => setLoading(false))
+  }, [selectedChildId, needsChildChoice])
 
   const now = new Date()
   const upcoming = liveClasses?.liveClasses.filter((lc) => lc.status === "SCHEDULED" && new Date(lc.scheduledAt) > now) || []
@@ -55,9 +47,9 @@ export default function ParentLiveClassesPage() {
           {children.map((c) => (
             <button
               key={c.studentId}
-              onClick={() => setSelectedId(c.studentId)}
+              onClick={() => setSelectedChildId(c.studentId)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                selectedId === c.studentId ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-muted"
+                selectedChildId === c.studentId ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-muted"
               }`}
             >
               {c.studentName}
@@ -66,7 +58,7 @@ export default function ParentLiveClassesPage() {
         </div>
       )}
 
-      {loading ? (
+      {childrenLoading || loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -187,7 +179,10 @@ export default function ParentLiveClassesPage() {
           <p className="mt-1 text-xs text-muted-foreground">{t("liveClasses.emptyDesc")}</p>
         </div>
       ) : (
-        <p className="py-12 text-center text-sm text-muted-foreground">{t("liveClasses.selectChild")}</p>
+        <div className="py-12 text-center">
+          <p className="text-sm font-medium text-foreground">{t("liveClasses.selectChild")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("liveClasses.emptyDesc")}</p>
+        </div>
       )}
     </div>
   )

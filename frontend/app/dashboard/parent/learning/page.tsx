@@ -5,30 +5,18 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { BookOpen, Loader2, ChevronRight, Video, Clock } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { parentApi, type ChildOverview, type ParentIntelligence, type LiveClassData } from "@/lib/parent-api"
+import { parentApi, type ParentIntelligence, type LiveClassData } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentLearningPage() {
   const { user } = useAuth()
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const tc = useTranslations("common")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [intelligence, setIntelligence] = useState<ParentIntelligence | null>(null)
   const [liveClasses, setLiveClasses] = useState<Array<{ id: string; title: string; status: string; scheduledAt: string }>>([])
   const [library, setLibrary] = useState<{ categories: Array<{ name: string; description: string; items: Array<{ id: string; title: string; description: string; resourceType: string; fileUrl: string }> }> } | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (kids.length > 0) {
-        const primary = kids.find((c) => c.isPrimary) || kids[0]
-        setSelectedChildId(primary.studentId)
-      }
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+  const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
 
   useEffect(() => {
     if (!selectedChildId) return

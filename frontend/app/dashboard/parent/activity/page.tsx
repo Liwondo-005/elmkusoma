@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Activity, Loader2, BookOpen, Video, FileText, CheckCircle, Award, Clock } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { parentApi, type ChildOverview, type ParentActivity, type ActivityItem } from "@/lib/parent-api"
+import { parentApi, type ParentActivity, type ActivityItem } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 const typeIcons: Record<string, typeof Activity> = {
   LESSON_VIEWED: BookOpen,
@@ -29,10 +30,8 @@ const typeColors: Record<string, string> = {
 export default function ParentActivityPage() {
   const { user } = useAuth()
   const t = useTranslations("parent")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [activity, setActivity] = useState<ParentActivity | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
 
   function timeAgo(dateStr: string): string {
     const diff = Date.now() - new Date(dateStr).getTime()
@@ -46,17 +45,6 @@ export default function ParentActivityPage() {
     if (days < 7) return t("activity.timeDaysAgo", { count: days })
     return new Date(dateStr).toLocaleDateString("en-GB", { month: "short", day: "numeric" })
   }
-
-  useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (kids.length > 0) {
-        const primary = kids.find((c) => c.isPrimary) || kids[0]
-        setSelectedChildId(primary.studentId)
-      }
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
 
   useEffect(() => {
     if (!selectedChildId) return

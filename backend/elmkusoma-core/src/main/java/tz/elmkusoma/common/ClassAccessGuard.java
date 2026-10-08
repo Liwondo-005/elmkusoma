@@ -58,7 +58,7 @@ public class ClassAccessGuard {
         if (student == null) {
             return;
         }
-        Set<UUID> memberClassIds = memberClassGroupIds(student.getId());
+        Set<UUID> memberClassIds = resolveStudentClassGroupIds(student.getId());
         if (memberClassIds.isEmpty()) {
             return;
         }
@@ -88,7 +88,7 @@ public class ClassAccessGuard {
         if (student == null) {
             return false;
         }
-        return memberClassGroupIds(student.getId()).contains(classGroupId);
+        return resolveStudentClassGroupIds(student.getId()).contains(classGroupId);
     }
 
     /**
@@ -200,7 +200,7 @@ public class ClassAccessGuard {
     }
 
     /** Union of active class-assignment class groups and ENROLLED enrollment class groups. */
-    private Set<UUID> memberClassGroupIds(UUID studentId) {
+    public Set<UUID> resolveStudentClassGroupIds(UUID studentId) {
         Set<UUID> classGroupIds = new LinkedHashSet<>();
         for (StudentClassAssignment assignment
                 : studentClassAssignmentRepository.findByStudentIdAndIsDeletedFalse(studentId)) {

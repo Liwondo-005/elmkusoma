@@ -1,37 +1,25 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, CheckCircle, XCircle, Clock as ClockIcon } from "lucide-react"
-import { parentApi, type AttendanceData, type ChildOverview } from "@/lib/parent-api"
+import { parentApi, type AttendanceData } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentAttendancePage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
-  const searchParams = useSearchParams()
-  const childId = searchParams.get("child")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedId, setSelectedId] = useState(childId || "")
   const [attendance, setAttendance] = useState<AttendanceData | null>(null)
   const [loading, setLoading] = useState(false)
+  const { children, selectedChildId, setSelectedChildId, loading: childrenLoading } = useSelectedChild()
 
   useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (!selectedId && kids.length > 0) {
-        setSelectedId(kids[0].studentId)
-      }
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!selectedId) return
+    if (!selectedChildId) return
     setLoading(true)
-    parentApi.getChildAttendance(selectedId).then(setAttendance).finally(() => setLoading(false))
-  }, [selectedId])
+    parentApi.getChildAttendance(selectedChildId).then(setAttendance).finally(() => setLoading(false))
+  }, [selectedChildId])
 
   function statusIcon(status: string) {
     switch (status) {
@@ -64,9 +52,9 @@ export default function ParentAttendancePage() {
           {children.map((c) => (
             <button
               key={c.studentId}
-              onClick={() => setSelectedId(c.studentId)}
+              onClick={() => setSelectedChildId(c.studentId)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                selectedId === c.studentId ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-muted"
+                selectedChildId === c.studentId ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-muted"
               }`}
             >
               {c.studentName}
@@ -75,7 +63,7 @@ export default function ParentAttendancePage() {
         </div>
       )}
 
-      {loading ? (
+      {childrenLoading || loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>

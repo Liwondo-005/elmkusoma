@@ -1,33 +1,23 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, Award } from "lucide-react"
-import { parentApi, type ResultData, type ChildOverview } from "@/lib/parent-api"
+import { parentApi, type ResultData } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentResultsPage() {
   const t = useTranslations("parent")
-  const searchParams = useSearchParams()
-  const childId = searchParams.get("child")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedId, setSelectedId] = useState(childId || "")
   const [results, setResults] = useState<ResultData | null>(null)
   const [loading, setLoading] = useState(false)
+  const { children, selectedChildId, setSelectedChildId, loading: childrenLoading } = useSelectedChild()
 
   useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (!selectedId && kids.length > 0) setSelectedId(kids[0].studentId)
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!selectedId) return
+    if (!selectedChildId) return
     setLoading(true)
-    parentApi.getChildResults(selectedId).then(setResults).finally(() => setLoading(false))
-  }, [selectedId])
+    parentApi.getChildResults(selectedChildId).then(setResults).finally(() => setLoading(false))
+  }, [selectedChildId])
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -41,9 +31,9 @@ export default function ParentResultsPage() {
           {children.map((c) => (
             <button
               key={c.studentId}
-              onClick={() => setSelectedId(c.studentId)}
+              onClick={() => setSelectedChildId(c.studentId)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                selectedId === c.studentId ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-muted"
+                selectedChildId === c.studentId ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-muted"
               }`}
             >
               {c.studentName}
@@ -52,7 +42,7 @@ export default function ParentResultsPage() {
         </div>
       )}
 
-      {loading ? (
+      {childrenLoading || loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>

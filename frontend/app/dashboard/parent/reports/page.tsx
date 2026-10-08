@@ -4,28 +4,16 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { BarChart3, Loader2, TrendingUp, TrendingDown, Minus, BookOpen } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { parentApi, type ChildOverview, type ParentSubjectPerformance, type ParentLearningProgress, type SubjectPerformanceItem, type CourseProgressItem } from "@/lib/parent-api"
+import { parentApi, type ParentSubjectPerformance, type ParentLearningProgress, type SubjectPerformanceItem, type CourseProgressItem } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 export default function ParentReportsPage() {
   const { user } = useAuth()
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [subjectPerf, setSubjectPerf] = useState<ParentSubjectPerformance | null>(null)
   const [learningProgress, setLearningProgress] = useState<ParentLearningProgress | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (kids.length > 0) {
-        const primary = kids.find((c) => c.isPrimary) || kids[0]
-        setSelectedChildId(primary.studentId)
-      }
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+  const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
 
   useEffect(() => {
     if (!selectedChildId) return

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { ChevronLeft, ChevronRight, Clock, Loader2, Video, FileText, AlertTriangle, BookOpen } from "lucide-react"
 import { useAuth } from "@/lib/auth"
-import { parentApi, type ChildOverview, type ParentCalendar } from "@/lib/parent-api"
+import { parentApi, type ParentCalendar } from "@/lib/parent-api"
+import { useSelectedChild } from "@/hooks/use-selected-child"
 
 const typeColor: Record<string, string> = {
   LIVE_CLASS: "bg-blue-100 text-blue-700",
@@ -39,10 +40,8 @@ export default function ParentCalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [children, setChildren] = useState<ChildOverview[]>([])
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [calendar, setCalendar] = useState<ParentCalendar | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
 
   const weekdays = [
     t("calendar.weekdaySun"),
@@ -53,17 +52,6 @@ export default function ParentCalendarPage() {
     t("calendar.weekdayFri"),
     t("calendar.weekdaySat"),
   ]
-
-  useEffect(() => {
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids)
-      if (kids.length > 0) {
-        const primary = kids.find((c) => c.isPrimary) || kids[0]
-        setSelectedChildId(primary.studentId)
-      }
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
 
   useEffect(() => {
     if (!selectedChildId) return
