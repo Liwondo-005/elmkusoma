@@ -35,6 +35,7 @@ public class LearnerReplayController {
     private final tz.elmkusoma.learning.repository.LessonRepository lessonRepository;
     private final tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository liveClassParticipantRepository;
     private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
+    private final tz.elmkusoma.event.repository.ReplayChapterRepository chapterRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Replay>>> getReplays(
@@ -109,6 +110,10 @@ public class LearnerReplayController {
                     populateRelatedLessonTitle(r);
                     Map<String, Object> detail = new HashMap<>();
                     detail.put("replay", r);
+                    // Chapter markers, only after the entitlement check above: they describe
+                    // the recording's contents, so they belong to whoever may watch it.
+                    detail.put("chapters", chapterRepository
+                            .findByReplayIdAndIsDeletedFalseOrderByPositionSecondsAsc(r.getId()));
                     // §46/§51/§52: related data derived from the linked Event, not hardcoded empties
                     detail.put("relatedResources", buildRelatedResources(event));
                     detail.put("upcomingEvents", buildUpcomingEvents(

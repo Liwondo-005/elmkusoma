@@ -2646,6 +2646,28 @@
       "subjectsCovered": "Masomo Yanayofundishwa",
       "emptyTitle": "Bado hakuna walimu",
       "emptyDesc": "Walimu wako wataonekana hapa mara watakapopangiwa madarasa yako."
+    },
+    "chapters": {
+      "title": "Alama za sehemu",
+      "description": "Weka alama za mambo yanayostahili kurejewa. Wanafunzi huona hizi kando ya rekodi na wanaweza kuruka moja kwa moja.",
+      "recording": "Rekodi",
+      "duration": "Muda {duration}",
+      "noRecording": "Darasa hili bado halina rekodi iliyochapishwa, hivyo hakuna cha kugawa.",
+      "addSection": "Ongeza sehemu",
+      "listSection": "Sehemu",
+      "titleLabel": "Kichwa cha sehemu",
+      "titlePlaceholder": "k.m. Mfano wa kufanya kazi",
+      "positionLabel": "Nafasi",
+      "positionPlaceholder": "dd:mm",
+      "positionHint": "Sekunde kamili kutoka mwanzo, au muda kama 1:30 au 1:02:03.",
+      "add": "Ongeza sehemu",
+      "remove": "Ondoa sehemu",
+      "empty": "Bado hakuna sehemu.",
+      "invalidPosition": "Weka nafasi kwa muda kama 1:30, au kwa sekunde kamili.",
+      "pastEnd": "Kutoka {duration} ni baada ya mwisho wa rekodi hii.",
+      "duplicate": "Tayari kuna sehemu saa {time}.",
+      "added": "Sehemu {title} imeongezwa",
+      "removed": "Sehemu imeondolewa"
     }
   },
   "profile": {
@@ -4865,7 +4887,9 @@
       "quality": "Ubora",
       "qualityAuto": "Otomatiki",
       "waiting": "Inasubiri video",
-      "disconnected": "Imekatika"
+      "disconnected": "Imekatika",
+      "chapters": "Sehemu",
+      "chaptersAnnounce": "Imefika {time}"
     },
     "subtitle": "Gundua semina, warsha, webinari, na vipindi vya mafunzo",
     "myRegistrations": "Usajili Wangu",

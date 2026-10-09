@@ -2648,6 +2648,28 @@
       "subjectsCovered": "Subjects Covered",
       "emptyTitle": "No teachers yet",
       "emptyDesc": "Your teachers will appear here once assigned to your classes."
+    },
+    "chapters": {
+      "title": "Chapter markers",
+      "description": "Mark the moments worth jumping back to. Learners see these beside the recording and can skip straight to them.",
+      "recording": "Recording",
+      "duration": "Length {duration}",
+      "noRecording": "This class has no published recording yet, so there is nothing to chapter.",
+      "addSection": "Add a chapter",
+      "listSection": "Chapters",
+      "titleLabel": "Chapter title",
+      "titlePlaceholder": "e.g. Worked example",
+      "positionLabel": "Position",
+      "positionPlaceholder": "mm:ss",
+      "positionHint": "Whole seconds from the start, or a timecode such as 1:30 or 1:02:03.",
+      "add": "Add chapter",
+      "remove": "Remove chapter",
+      "empty": "No chapters yet.",
+      "invalidPosition": "Enter the position as a timecode such as 1:30, or as whole seconds.",
+      "pastEnd": "{duration} is past the end of this recording.",
+      "duplicate": "There is already a chapter at {time}.",
+      "added": "Chapter {title} added",
+      "removed": "Chapter removed"
     }
   },
   "profile": {
@@ -4287,7 +4309,9 @@
       "quality": "Quality",
       "qualityAuto": "Auto",
       "waiting": "Waiting for video",
-      "disconnected": "Disconnected"
+      "disconnected": "Disconnected",
+      "chapters": "Chapters",
+      "chaptersAnnounce": "Jumped to {time}"
     },
     "title": "Events & Workshops",
     "subtitle": "Discover seminars, workshops, webinars, and training sessions",

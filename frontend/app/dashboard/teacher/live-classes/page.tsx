@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap, CheckCircle2, Circle } from "lucide-react"
+import { Video, Plus, Clock, Users, XCircle, Loader2, AlertCircle, Calendar, Edit, Trash2, Play, Square, ExternalLink, BookOpen, GraduationCap, CheckCircle2, Circle, ListOrdered } from "lucide-react"
 import { appFetch } from "@/lib/fetch"
 
 interface LiveClass {
@@ -864,15 +864,26 @@ export default function TeacherLiveClassesPage() {
                     {(lc.status === "COMPLETED" || lc.status === "ENDED" || lc.status === "CANCELLED") && (
                       <>
                         {lc.recordingUrl && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1"
-                            onClick={() => window.open(`/live-classes/${lc.id}`, "_blank")}
-                          >
-                            <ExternalLink className="size-3" />
-                            {t("liveClasses.viewRecording")}
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              onClick={() => window.open(`/live-classes/${lc.id}`, "_blank")}
+                            >
+                              <ExternalLink className="size-3" />
+                              {t("liveClasses.viewRecording")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              onClick={() => router.push(`/dashboard/teacher/live-classes/${lc.id}/chapters`)}
+                            >
+                              <ListOrdered className="size-3" />
+                              {t("chapters.listSection")}
+                            </Button>
+                          </>
                         )}
                         <Button
                           variant="ghost"

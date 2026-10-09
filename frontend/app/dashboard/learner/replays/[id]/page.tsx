@@ -9,7 +9,7 @@ import { announce } from "@/lib/announce"
 import {
   ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize,
   Minimize, Loader2, CalendarDays, Clock, User, Eye,
-  ChevronRight, CheckCircle, AlertCircle
+  ChevronRight, CheckCircle, AlertCircle, ListOrdered
 } from "lucide-react"
 
 function formatDuration(seconds: number) {
@@ -25,8 +25,9 @@ function formatTime(seconds: number) {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   const s = Math.floor(seconds % 60)
-  if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
-  return `${m}:${s.toString().padStart(2, "0")}`
+  const pad = (n: number) => n.toString().padStart(2, "0")
+  if (h > 0) return `${h}:${pad(m)}:${pad(s)}`
+  return `${m}:${pad(s)}`
 }
 
 function formatDate(d: string) {
@@ -178,6 +179,17 @@ export default function ReplayViewerPage() {
     video.currentTime = pct * duration
   }
 
+  /** Jump to a chapter marker and resume playback from there. */
+  const seekToChapter = (positionSeconds: number) => {
+    const video = videoRef.current
+    if (!video) return
+    video.currentTime = positionSeconds
+    setCurrentTime(positionSeconds)
+    // Play() may be rejected if the learner never interacted; the seek itself still lands.
+    video.play().catch(() => {})
+    announce(t("viewer.chaptersAnnounce", { time: formatTime(positionSeconds) }))
+  }
+
   const handleSpeedChange = (s: number) => {
     const video = videoRef.current
     if (!video) return
@@ -227,6 +239,16 @@ export default function ReplayViewerPage() {
 
   const { replay, relatedResources, upcomingEvents } = data
   const replayFailed = isReplayFailed(replay)
+  const chapters = data.chapters ?? []
+  // The chapter the learner is currently inside: the last marker at or before the playhead.
+  const activeChapterId = (() => {
+    let match: string | null = null
+    for (const chapter of chapters) {
+      if (chapter.positionSeconds <= currentTime) match = chapter.id
+      else break
+    }
+    return match
+  })()
   const connectionLabel =
     connectionStatus === "connected"
       ? t("viewer.connected")
@@ -480,6 +502,39 @@ export default function ReplayViewerPage() {
         </div>
 
         <div className="space-y-6">
+          {chapters.length > 0 && (
+            <nav className="rounded-xl border border-border bg-card p-6" aria-label={t("viewer.chapters")}>
+              <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+                <ListOrdered className="size-4 text-muted-foreground" aria-hidden="true" />
+                {t("viewer.chapters")}
+              </h3>
+              <ol className="space-y-1">
+                {chapters.map((chapter) => {
+                  const isActive = chapter.id === activeChapterId
+                  return (
+                    <li key={chapter.id}>
+                      <button
+                        type="button"
+                        onClick={() => seekToChapter(chapter.positionSeconds)}
+                        aria-current={isActive ? "true" : undefined}
+                        className={`flex w-full items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors ${
+                          isActive
+                            ? "bg-primary/10 font-medium text-primary"
+                            : "text-foreground hover:bg-muted/60"
+                        }`}
+                      >
+                        <span className="min-w-0 flex-1 truncate" title={chapter.title}>{chapter.title}</span>
+                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                          {formatTime(chapter.positionSeconds)}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ol>
+            </nav>
+          )}
+
           {(replay.relatedCourseId || replay.relatedLessonId) && (
             <div className="rounded-xl border border-border bg-card p-6">
               <h3 className="mb-3 text-lg font-semibold">{t("viewer.relatedLearning")}</h3>
