@@ -2,6 +2,7 @@ package tz.elmkusoma.liveclass.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,37 @@ public class LiveRecordingMediaPublisher {
      * @param durationSeconds duration reported by LiveKit egress, when known
      * @return the persisted asset, or empty when there is nothing to publish
      */
+    /**
+     * Publishes a completed recording, tolerating a concurrent publisher.
+     *
+     * <p>V150 makes (source_type = LIVE_CLASS, source_id) unique in the database, so a genuine
+     * race - a manual End racing the expiry sweep, or the same webhook retried onto a second
+     * application instance - can no longer leave two assets for one recording. When that race is
+     * lost, the unique violation means a sibling transaction already published the row, so the
+     * existing asset is re-read and returned instead of surfacing an error to the caller.
+     *
+     * <p>The catch has to sit outside the transactional method: the losing transaction is already
+     * marked rollback-only by the constraint violation, so it cannot be reused.
+     */
+    public Optional<MediaAsset> publishRecordingSafely(LiveClass liveClass, String recordingUrl, Long durationSeconds) {
+        try {
+            return publishRecording(liveClass, recordingUrl, durationSeconds);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Concurrent recording publish for class {} resolved to the existing asset", liveClass.getId());
+            return findForLiveClass(liveClass == null ? null : liveClass.getId());
+        }
+    }
+
+    /** Failure counterpart of {@link #publishRecordingSafely}. */
+    public Optional<MediaAsset> markRecordingFailedSafely(LiveClass liveClass, String reason) {
+        try {
+            return markRecordingFailed(liveClass, reason);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Concurrent failure marking for class {} resolved to the existing asset", liveClass.getId());
+            return findForLiveClass(liveClass == null ? null : liveClass.getId());
+        }
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<MediaAsset> publishRecording(LiveClass liveClass, String recordingUrl, Long durationSeconds) {
         if (liveClass == null || liveClass.getId() == null || recordingUrl == null || recordingUrl.isBlank()) {

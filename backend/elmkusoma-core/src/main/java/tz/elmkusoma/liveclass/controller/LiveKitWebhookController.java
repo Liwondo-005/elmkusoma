@@ -690,7 +690,7 @@ public class LiveKitWebhookController {
                     // Publish into the existing media library so the recording is a
                     // discoverable asset linked back to this live class.
                     try {
-                        recordingMediaPublisher.publishRecording(liveClass, recordingUrl, null);
+                        recordingMediaPublisher.publishRecordingSafely(liveClass, recordingUrl, null);
                     } catch (Exception ex) {
                         log.warn("Could not publish recording to media library for class {}: {}",
                                 liveClassId, ex.getMessage());
@@ -719,7 +719,7 @@ public class LiveKitWebhookController {
                 liveClass.setRecordingUrl(null);
                 liveClassRepository.save(liveClass);
             }
-            recordingMediaPublisher.markRecordingFailed(liveClass, reason);
+            recordingMediaPublisher.markRecordingFailedSafely(liveClass, reason);
         } catch (Exception ex) {
             log.warn("Could not mark recording FAILED for class {}: {}", liveClass.getId(), ex.getMessage());
         }

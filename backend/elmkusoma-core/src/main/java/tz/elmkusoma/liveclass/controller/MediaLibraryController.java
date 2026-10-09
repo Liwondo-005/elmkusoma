@@ -80,6 +80,17 @@ public class MediaLibraryController {
                 || "INSTITUTION_ADMIN".equals(userRole);
     }
 
+    /**
+     * Origin keys that only server-side code may write.
+     *
+     * <p>Case-insensitive to match {@link #canViewAsset}, which resolves replay entitlement with
+     * {@code "LIVE_CLASS".equalsIgnoreCase(asset.getSourceType())} - a caller must not be able to
+     * slip past the guard with {@code live_class}.
+     */
+    private static boolean isReservedOrigin(String sourceType) {
+        return sourceType != null && "LIVE_CLASS".equalsIgnoreCase(sourceType.trim());
+    }
+
     /** Guards the class/recording listing used by the teacher media pages. */
     private boolean isMemberOfInstitution(UUID callerUserId, UUID institutionId) {
         return callerUserId != null && institutionId != null
@@ -249,6 +260,17 @@ public class MediaLibraryController {
             @RequestHeader("X-Institution-Id") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestBody MediaAssetRequest request) {
+
+        // LIVE_CLASS is a reserved origin: it is written only by the recording hand-off
+        // (LiveRecordingMediaPublisher on the webhook path, publishRecordingToMediaLibrary on the
+        // synchronous finalize path) and it is what canViewAsset uses to derive replay
+        // entitlement. Letting a request claim it would let anyone attach an arbitrary file to
+        // someone else's session and - with V150's unique (source_type, source_id) key - squat the
+        // slot so the genuine recording can never be published.
+        if (isReservedOrigin(request.getSourceType())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("sourceType LIVE_CLASS is set by the server, not the client"));
+        }
 
         MediaAsset asset = MediaAsset.builder()
                 .title(request.getTitle())

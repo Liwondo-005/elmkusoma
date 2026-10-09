@@ -188,6 +188,50 @@ class LiveRecordingMediaPublisherTest {
     }
 
     @Test
+    void publishRecordingSafely_resolvesALostRaceToTheExistingAsset() {
+        // V150 makes (source_type = LIVE_CLASS, source_id) unique, so a concurrent publisher
+        // (manual End racing the expiry sweep, or the same webhook on a second instance) loses
+        // the insert. That must degrade to "the sibling's asset is authoritative", not an error.
+        MediaAsset sibling = new MediaAsset();
+        sibling.setId(UUID.randomUUID());
+        sibling.setSourceType(LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS);
+        sibling.setSourceId(liveClass.getId());
+
+        when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(
+                LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS, liveClass.getId()))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(sibling));
+        when(mediaAssetRepository.save(any(MediaAsset.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+                        "uq_media_assets_live_class_source"));
+
+        Optional<MediaAsset> result = publisher.publishRecordingSafely(
+                liveClass, "https://storage.example/recording.mp4", 60L);
+
+        assertTrue(result.isPresent());
+        assertEquals(sibling.getId(), result.get().getId());
+    }
+
+    @Test
+    void markRecordingFailedSafely_resolvesALostRaceToTheExistingAsset() {
+        MediaAsset sibling = new MediaAsset();
+        sibling.setId(UUID.randomUUID());
+
+        when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(
+                LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS, liveClass.getId()))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(sibling));
+        when(mediaAssetRepository.save(any(MediaAsset.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+                        "uq_media_assets_live_class_source"));
+
+        Optional<MediaAsset> result = publisher.markRecordingFailedSafely(liveClass, "egress failed");
+
+        assertTrue(result.isPresent());
+        assertEquals(sibling.getId(), result.get().getId());
+    }
+
+    @Test
     void findForLiveClass_returnsLibraryAssetKeyedBySource() {
         MediaAsset asset = new MediaAsset();
         asset.setId(UUID.randomUUID());

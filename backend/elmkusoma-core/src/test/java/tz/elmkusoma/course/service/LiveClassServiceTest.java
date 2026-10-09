@@ -78,6 +78,14 @@ class LiveClassServiceTest {
         teacherId = UUID.randomUUID();
         institutionId = UUID.randomUUID();
         liveClassId = UUID.randomUUID();
+        // The recording publish is delegated to the publisher, which owns the insert in its own
+        // REQUIRES_NEW transaction and tolerates a lost race against V150's unique origin key.
+        // Give the service a real one over these mocks so the end-to-end field population these
+        // tests assert stays covered, rather than asserting against a stubbed-out collaborator.
+        org.springframework.test.util.ReflectionTestUtils.setField(liveClassService,
+                "liveRecordingMediaPublisher",
+                new tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher(
+                        mediaAssetRepository, teacherRepository));
         // Each expiry runs in its own REQUIRES_NEW transaction; without a real manager the
         // template cannot execute, so hand it a no-op status.
         lenient().when(transactionManager.getTransaction(any()))
@@ -951,6 +959,8 @@ class LiveClassServiceTest {
         lenient().when(mediaAssetRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse(
                 any(), any())).thenReturn(Collections.emptyList());
+        lenient().when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(
+                any(), any())).thenReturn(Optional.empty());
         lenient().when(replayRepository.findByLiveSessionIdAndIsDeletedFalse(any()))
                 .thenReturn(Collections.emptyList());
         lenient().when(replayRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -996,8 +1006,8 @@ class LiveClassServiceTest {
                 .build();
         existing.setId(UUID.randomUUID());
         existing.setInstitutionId(institutionId);
-        when(mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse("LIVE_CLASS", liveClassId))
-                .thenReturn(List.of(existing));
+        when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse("LIVE_CLASS", liveClassId))
+                .thenReturn(Optional.of(existing));
 
         triggerFinalization(live);
 
@@ -1009,17 +1019,24 @@ class LiveClassServiceTest {
 
     /**
      * The transient "egress:<id>" marker is LiveKit bookkeeping, not a playable URL. It must
-     * never reach the Media Library, and an unresolvable egress produces no library entry.
+     * never reach the Media Library as a playable asset - and an egress that never produced a
+     * file must not stay invisible either: it is recorded as a FAILED library asset and the
+     * marker is cleared, so the download endpoint stops reporting "still processing" forever.
      */
     @Test
-    void unresolvedEgress_shouldNotPublishMediaAsset() {
+    void unresolvedEgress_marksRecordingFailedInsteadOfPublishingIt() {
         LiveClass live = endedRecordedClass("egress:eg_12345", true);
         stubCompletionScaffolding(live);
         when(liveKitService.resolveRecordingUrl("eg_12345")).thenReturn(null);
 
         triggerFinalization(live);
 
-        verify(mediaAssetRepository, never()).save(any());
+        org.mockito.ArgumentCaptor<tz.elmkusoma.liveclass.domain.MediaAsset> captor =
+                org.mockito.ArgumentCaptor.forClass(tz.elmkusoma.liveclass.domain.MediaAsset.class);
+        verify(mediaAssetRepository).save(captor.capture());
+        assertEquals("FAILED", captor.getValue().getStatus(),
+                "an unresolvable egress must be visible as a failed recording");
+        assertNull(live.getRecordingUrl(), "the egress marker must not survive as a media URL");
     }
 
     /** Case A: recording disabled leaves the library untouched. */
@@ -1033,15 +1050,19 @@ class LiveClassServiceTest {
         verify(mediaAssetRepository, never()).save(any());
     }
 
-    /** A non-http url is not a playable recording and must not be published. */
+    /** A non-http url is not a playable recording and must never be published as one. */
     @Test
-    void nonHttpRecordingUrl_shouldNotPublishMediaAsset() {
+    void nonHttpRecordingUrl_isNotPublishedAsAPlayableAsset() {
         LiveClass live = endedRecordedClass("file:///tmp/rec.mp4", true);
         stubCompletionScaffolding(live);
 
         triggerFinalization(live);
 
-        verify(mediaAssetRepository, never()).save(any());
+        org.mockito.ArgumentCaptor<tz.elmkusoma.liveclass.domain.MediaAsset> captor =
+                org.mockito.ArgumentCaptor.forClass(tz.elmkusoma.liveclass.domain.MediaAsset.class);
+        verify(mediaAssetRepository).save(captor.capture());
+        assertEquals("FAILED", captor.getValue().getStatus(),
+                "a non-playable location must be recorded as failed, not as a ready asset");
     }
 
     /** The existing Replay behaviour must be unchanged by the media publication. */

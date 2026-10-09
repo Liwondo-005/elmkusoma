@@ -27,7 +27,6 @@ import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassAttendanceDetail;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
-import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.repository.LiveClassAttendanceDetailRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.service.LiveKitService;
@@ -66,10 +65,6 @@ public class LiveClassServiceImpl implements LiveClassService {
      */
     private static final long SCHEDULE_PAST_GRACE_MINUTES = 1;
 
-    /** Media Library values for a finalized live class recording. */
-    private static final String MEDIA_TYPE_RECORDING = "RECORDING";
-    private static final String MEDIA_SOURCE_TYPE_LIVE_CLASS = "LIVE_CLASS";
-
     /** Statuses an administrator is allowed to force-end (i.e. any running session). */
     private static final java.util.Set<String> FORCE_ENDABLE_STATUSES = java.util.Set.of(
             "STARTING", "LIVE", "IN_PROGRESS", "RECOVERING", "ENDING");
@@ -85,7 +80,6 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final StudentRepository studentRepository;
     private final LiveKitService liveKitService;
     private final ReplayRepository replayRepository;
-    private final tz.elmkusoma.liveclass.repository.MediaAssetRepository mediaAssetRepository;
     private final LessonRepository lessonRepository;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final NotificationService notificationService;
@@ -479,58 +473,16 @@ public class LiveClassServiceImpl implements LiveClassService {
         if (resolvedUrl == null || resolvedUrl.isBlank() || !resolvedUrl.startsWith("http")) {
             return;
         }
-        // A soft-deleted asset stays deleted: an explicit library deletion is not undone
-        // by reprocessing. Consistent with how Replay treats deleted rows.
-        var existing = mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse(
-                MEDIA_SOURCE_TYPE_LIVE_CLASS, liveClass.getId());
-
-        String title = liveClass.getTitle() != null ? liveClass.getTitle() : liveClass.getId().toString();
-        String description = "Live class recording - " + title;
-
-        if (!existing.isEmpty()) {
-            MediaAsset asset = existing.get(0);
-            asset.setFileUrl(resolvedUrl);
-            asset.setTitle(title);
-            asset.setDescription(description);
-            if (liveClass.getClassGroupId() != null) {
-                asset.setClassGroupId(liveClass.getClassGroupId());
-            }
-            mediaAssetRepository.save(asset);
+        if (liveRecordingMediaPublisher == null) {
             return;
         }
-
-        MediaAsset asset = MediaAsset.builder()
-                .title(title)
-                .description(description)
-                .mediaType(MEDIA_TYPE_RECORDING)
-                .fileUrl(resolvedUrl)
-                // durationSeconds is deliberately left null: LiveKit's resolved URL carries no
-                // recording length, and live_classes.recording_duration_seconds is never written
-                // by any code, so any value here would be fabricated. Same for size and mime.
-                .status("READY")
-                .visibility("INSTITUTION")
-                .sourceType(MEDIA_SOURCE_TYPE_LIVE_CLASS)
-                .sourceId(liveClass.getId())
-                .subjectId(liveClass.getSubjectId())
-                .classGroupId(liveClass.getClassGroupId())
-                // media_assets.teacher_id holds a users.id (MediaLibraryController writes the
-                // authenticated user id), so the teacher must be resolved, not copied.
-                .teacherId(resolveTeacherUserId(liveClass))
-                .build();
-        asset.setInstitutionId(liveClass.getInstitutionId());
-        mediaAssetRepository.save(asset);
-        log.info("Media Library recording published for live class {}: classGroupId={}, institutionId={}",
-                liveClass.getId(), liveClass.getClassGroupId(), liveClass.getInstitutionId());
-    }
-
-    /** LiveClass.teacherId is a teachers.id; media_assets.teacher_id stores a users.id. */
-    private UUID resolveTeacherUserId(LiveClass liveClass) {
-        if (liveClass.getTeacherId() == null) {
-            return null;
-        }
-        return teacherRepository.findById(liveClass.getTeacherId())
-                .map(Teacher::getUserId)
-                .orElse(null);
+        // Delegated to the publisher rather than inserting here: this method runs inside the
+        // session-ending transaction, and V150 makes (source_type, source_id) unique, so a lost
+        // race - a manual End while the expiry sweep is mid-completion, or a webhook retried on a
+        // second instance - would mark this whole transaction rollback-only and roll back the
+        // attendance and certificate writes above. The publisher inserts in its own REQUIRES_NEW
+        // transaction and resolves a lost race to the sibling's row instead of erroring.
+        liveRecordingMediaPublisher.publishRecordingSafely(liveClass, resolvedUrl, null);
     }
 
     /**
@@ -559,7 +511,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                     liveClass.setRecordingUrl(null);
                     liveClassRepository.save(liveClass);
                     if (liveRecordingMediaPublisher != null) {
-                        liveRecordingMediaPublisher.markRecordingFailed(liveClass, "egress " + egressId);
+                        liveRecordingMediaPublisher.markRecordingFailedSafely(liveClass, "egress " + egressId);
                     }
                     return;
                 }
@@ -571,7 +523,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 if (liveRecordingMediaPublisher != null) {
                     liveClass.setRecordingUrl(null);
                     liveClassRepository.save(liveClass);
-                    liveRecordingMediaPublisher.markRecordingFailed(liveClass, "unresolved recording location");
+                    liveRecordingMediaPublisher.markRecordingFailedSafely(liveClass, "unresolved recording location");
                 }
                 return;
             }

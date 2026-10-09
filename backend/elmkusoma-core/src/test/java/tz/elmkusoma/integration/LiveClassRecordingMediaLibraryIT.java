@@ -19,6 +19,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -157,6 +158,67 @@ class LiveClassRecordingMediaLibraryIT {
         var assets = mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse("LIVE_CLASS", CLASS_ID);
         assertTrue(assets.isEmpty() || "FAILED".equals(assets.get(0).getStatus()),
                 "a terminal egress failure must never leave a READY asset behind");
+    }
+
+    /**
+     * The database-level guard that stops a duplicated recording row.
+     *
+     * <p>Runs against the Flyway-migrated schema rather than the Hibernate create-drop schema the
+     * other cases in this class use: the uniqueness constraint is declared in V150, and
+     * {@code spring.flyway.enabled=false} under application-test.properties means the test
+     * datasource never has it. Applying the same index here and then attempting the duplicate
+     * insert proves the constraint and its partial predicates behave as intended - including that
+     * a soft-deleted row does not block a legitimate re-publish.
+     */
+    @Test
+    void uniqueOriginIndex_RejectsADuplicateRecordingButAllowsRepublishAfterDeletion() {
+        jdbcTemplate.execute("DROP INDEX IF EXISTS uq_media_assets_live_class_source");
+        jdbcTemplate.execute("CREATE UNIQUE INDEX uq_media_assets_live_class_source "
+                + "ON media_assets (source_type, source_id) "
+                + "WHERE is_deleted = false AND source_type = 'LIVE_CLASS' AND source_id IS NOT NULL");
+        try {
+            deleteAsset();
+            UUID firstId = insertRecordingAsset("first.mp4");
+
+            // A second asset for the same live class is what a lost race used to produce.
+            org.springframework.dao.DataIntegrityViolationException violation =
+                    assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
+                            () -> insertRecordingAsset("duplicate.mp4"));
+            assertNotNull(violation);
+
+            Integer rows = jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM media_assets WHERE source_type = 'LIVE_CLASS' "
+                            + "AND source_id = ? AND is_deleted = false", Integer.class, CLASS_ID);
+            assertEquals(1, rows, "exactly one asset may exist per live class recording");
+
+            // Teacher uploads carry no origin, and two of them must not collide either way.
+            insertAsset(null, null, "teacher-a.mp4");
+            insertAsset(null, null, "teacher-b.mp4");
+
+            // Soft-deleting the recording frees the key again: an explicit library deletion must
+            // not permanently block the recording from being published once more.
+            jdbcTemplate.update("UPDATE media_assets SET is_deleted = true WHERE id = ?", firstId);
+            UUID republished = insertRecordingAsset("republished.mp4");
+            assertNotNull(republished);
+        } finally {
+            jdbcTemplate.execute("DROP INDEX IF EXISTS uq_media_assets_live_class_source");
+            deleteAsset();
+        }
+    }
+
+    private UUID insertRecordingAsset(String fileName) {
+        return insertAsset("LIVE_CLASS", CLASS_ID, fileName);
+    }
+
+    private UUID insertAsset(String sourceType, UUID sourceId, String fileName) {
+        UUID id = UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO media_assets (id, institution_id, created_at, is_deleted, title, "
+                        + "media_type, file_url, status, visibility, source_type, source_id) "
+                        + "VALUES (?, ?, now(), false, ?, 'RECORDING', ?, 'READY', 'INSTITUTION', ?, ?)",
+                id, INSTITUTION_ID, "asset " + fileName, "https://storage.example/" + fileName,
+                sourceType, sourceId);
+        return id;
     }
 
     @Test
