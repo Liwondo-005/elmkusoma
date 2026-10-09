@@ -21,6 +21,7 @@ import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.highereducation.domain.LearningModule;
 import tz.elmkusoma.highereducation.domain.ModuleStatus;
 import tz.elmkusoma.highereducation.repository.LearningModuleRepository;
+import tz.elmkusoma.highereducation.domain.WorkshopSession;
 import tz.elmkusoma.highereducation.repository.WorkshopSessionRepository;
 import tz.elmkusoma.learner.domain.LearnerNotification;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
@@ -40,6 +41,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -480,7 +482,11 @@ class ProviderIsolationSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        assertFalse(workshopSessionRepository.existsById(workshopId));
+        // Workshop deletion is a soft delete (BaseEntity.is_deleted), so retention sweeps and
+        // the audit trail can still see the removal. The row must survive but be flagged.
+        WorkshopSession deleted = workshopSessionRepository.findById(workshopId).orElse(null);
+        assertNotNull(deleted, "soft delete must keep the row for the audit trail");
+        assertTrue(Boolean.TRUE.equals(deleted.getIsDeleted()), "workshop must be soft deleted");
     }
 
     @Test
@@ -525,7 +531,10 @@ class ProviderIsolationSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        assertFalse(workshopSessionRepository.existsById(workshopId));
+        // Soft delete, consistent with every other entity in the project.
+        WorkshopSession deleted = workshopSessionRepository.findById(workshopId).orElse(null);
+        assertNotNull(deleted, "soft delete must keep the row for the audit trail");
+        assertTrue(Boolean.TRUE.equals(deleted.getIsDeleted()), "workshop must be soft deleted");
     }
 
     private UUID createWorkshopFor(UUID studentId) throws Exception {
