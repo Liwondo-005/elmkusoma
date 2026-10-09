@@ -721,6 +721,17 @@ export const platformAdminApi = {
 
   getProviderQuotas: (providerId: string) =>
     platformFetch<ProviderQuota[]>(`/v1/platform-admin/providers/${providerId}/quotas`),
+  /**
+   * Audit B-48: the grant endpoint existed on the backend but had no frontend caller, so a
+   * provider could never acquire a service package from the UI. The provider id in the path
+   * must match institutionId in the body; the backend rejects a mismatch.
+   */
+  createProviderEntitlement: (providerId: string, data: {
+    serviceId: string; maxSeats?: number | null; startsAt?: string; expiresAt?: string
+  }) =>
+    platformFetch<ProviderQuota>(`/v1/platform-admin/providers/${providerId}/entitlements`, {
+      method: "POST", body: JSON.stringify({ institutionId: providerId, ...data }),
+    }),
   updateEntitlement: (entitlementId: string, data: { maxSeats?: number; status?: string }) =>
     platformFetch<ProviderQuota>(`/v1/platform-admin/entitlements/${entitlementId}`, { method: "PUT", body: JSON.stringify(data) }),
   grantSponsorSeats: (data: { providerId: string; serviceId: string; userId: string; studentId: string; seats?: number; expiresAt?: string; note?: string }) =>

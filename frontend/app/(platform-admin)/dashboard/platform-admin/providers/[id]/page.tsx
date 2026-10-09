@@ -3,10 +3,10 @@
 import { useTranslations } from "next-intl";
 
 import { useEffect, useState, useCallback } from "react"
-import { ArrowLeft, Globe, Loader2, Shield, Users, Mail, Phone, MapPin, AlertCircle, CheckCircle2, XCircle, MessageSquareWarning, Ban, RotateCcw } from "lucide-react"
+import { ArrowLeft, Globe, Loader2, Shield, Users, Mail, Phone, MapPin, AlertCircle, CheckCircle2, XCircle, MessageSquareWarning, Ban, RotateCcw, Plus } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { platformAdminApi, type ProviderGovernanceDetail } from "@/lib/platform-admin-api"
+import { platformAdminApi, type ProviderGovernanceDetail, type ServiceSummary } from "@/lib/platform-admin-api"
 
 function verificationStyle(v: string | null): string {
   switch ((v ?? "").toUpperCase()) {
@@ -38,6 +38,11 @@ export default function ProviderDetailPage() {
   const [flash, setFlash] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [notes, setNotes] = useState("")
+  // Audit B-48: grant-entitlement controls. The backend write existed but had no caller.
+  const [grantOpen, setGrantOpen] = useState(false)
+  const [catalogue, setCatalogue] = useState<ServiceSummary[]>([])
+  const [grantServiceId, setGrantServiceId] = useState("")
+  const [grantMaxSeats, setGrantMaxSeats] = useState("")
 
   const load = useCallback(() => {
     if (!id) return
@@ -47,6 +52,12 @@ export default function ProviderDetailPage() {
       .catch((e) => { setError(e.message); setProvider(null) })
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    platformAdminApi.listServices(0, 100)
+      .then((p) => setCatalogue(p.content.filter((s) => s.isActive)))
+      .catch(() => setCatalogue([]))
+  }, [])
 
   useEffect(() => { load() }, [load])
 
@@ -70,6 +81,23 @@ export default function ProviderDetailPage() {
     if (!window.confirm(`Change provider lifecycle to ${status}?`)) return
     return run("lifecycle", () => platformAdminApi.updateInstitutionLifecycle(id, status), `Provider ${status.toLowerCase()}`)
   }
+
+  const grantEntitlement = () => {
+    if (!id || !grantServiceId) return
+    const parsedSeats = grantMaxSeats.trim() === "" ? null : Number(grantMaxSeats)
+    if (parsedSeats !== null && (!Number.isInteger(parsedSeats) || parsedSeats < 0)) {
+      setError("Max seats must be a whole number of zero or more"); return
+    }
+    return run("grant",
+      () => platformAdminApi.createProviderEntitlement(id, { serviceId: grantServiceId, maxSeats: parsedSeats }),
+      "Entitlement granted")
+      .then(() => { setGrantServiceId(""); setGrantMaxSeats(""); setGrantOpen(false) })
+  }
+
+  // Only offer services this provider does not already hold; the backend rejects a duplicate
+  // for the same service, so offering one would just produce a guaranteed error.
+  const grantedServiceIds = new Set(provider?.serviceEntitlements.map((q) => q.serviceId) ?? [])
+  const grantableServices = catalogue.filter((s) => !grantedServiceIds.has(s.id))
 
   if (loading) return (
     <div className="flex items-center justify-center py-32"><Loader2 className="size-8 animate-spin text-primary" /></div>
@@ -152,7 +180,61 @@ export default function ProviderDetailPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground mb-4">Services</h2>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-foreground">Services</h2>
+            <button
+              onClick={() => setGrantOpen((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+            >
+              <Plus className="size-3.5" /> Grant service
+            </button>
+          </div>
+
+          {grantOpen && (
+            <div className="mb-4 space-y-3 rounded-xl border border-border bg-background p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Service
+                  <select
+                    value={grantServiceId}
+                    onChange={(e) => setGrantServiceId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Select a service…</option>
+                    {grantableServices.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}{s.maxSeats ? ` (max ${s.maxSeats} seats)` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Max seats (blank = unlimited)
+                  <input
+                    type="number"
+                    min={0}
+                    value={grantMaxSeats}
+                    onChange={(e) => setGrantMaxSeats(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </label>
+              </div>
+              {grantableServices.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Every active platform service is already granted to this provider.
+                </p>
+              )}
+              <button
+                onClick={grantEntitlement}
+                disabled={busy !== null || !grantServiceId || grantableServices.length === 0}
+                className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              >
+                {busy === "grant" ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
+                Grant
+              </button>
+            </div>
+          )}
+
           {services.length === 0 && provider.serviceEntitlements.length === 0 ? (
             <p className="text-sm text-muted-foreground">No platform services configured for this provider.</p>
           ) : (

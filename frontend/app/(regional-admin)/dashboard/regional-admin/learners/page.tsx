@@ -61,12 +61,7 @@ export default function RegionalLearnersPage() {
     setDistrictsLoading(true)
     setDistrictsError(null)
     try {
-      const regions = await regionalAdminApi.getRegions()
-      if (regions.length === 0) {
-        setDistricts([])
-        return
-      }
-      setDistricts(await regionalAdminApi.getDistricts(regions[0].id))
+      setDistricts(await regionalAdminApi.getAllDistricts())
     } catch (e) {
       setDistricts([])
       setDistrictsError(e instanceof Error ? e.message : t("learners.loadDistrictsError"))
