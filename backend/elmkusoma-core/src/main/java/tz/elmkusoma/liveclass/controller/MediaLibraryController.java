@@ -103,10 +103,15 @@ public class MediaLibraryController {
     @PreAuthorize("hasRole('TEACHER')")
     @Operation(summary = "Get teacher's media assets")
     public ResponseEntity<ApiResponse<List<MediaAssetResponse>>> myMedia(
-            @RequestAttribute("userId") UUID userId) {
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId) {
 
+        if (institutionId == null) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
         List<MediaAsset> assets = mediaAssetRepository
-                .findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(userId);
+                .findByTeacherIdAndInstitutionIdAndIsDeletedFalseOrderByCreatedAtDesc(
+                        userId, institutionId);
 
         List<MediaAssetResponse> response = assets.stream()
                 .map(this::toResponse)

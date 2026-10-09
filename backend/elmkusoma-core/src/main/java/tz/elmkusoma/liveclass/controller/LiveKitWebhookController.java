@@ -51,6 +51,7 @@ public class LiveKitWebhookController {
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
     private final tz.elmkusoma.learner.service.NotificationService notificationService;
+    private final tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher recordingMediaPublisher;
     private final ObjectMapper objectMapper;
 
     private final Set<String> processedWebhookKeys = ConcurrentHashMap.newKeySet();
@@ -638,8 +639,9 @@ public class LiveKitWebhookController {
             if (roomName != null && roomName.startsWith("liveclass-")) {
                 UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
                 if (liveClassId != null) {
-                    liveClassRepository.findById(liveClassId).ifPresent(lc ->
-                            log.info("Live class recording failed: classId={}", liveClassId));
+                    log.info("Live class recording failed: classId={}", liveClassId);
+                    liveClassRepository.findById(liveClassId)
+                            .ifPresent(liveClass -> markLiveClassRecordingFailed(liveClass, "egress failed"));
                 }
                 return;
             }
@@ -688,13 +690,41 @@ public class LiveKitWebhookController {
                 if (recordingUrl != null) {
                     liveClass.setRecordingUrl(recordingUrl);
                     liveClassRepository.save(liveClass);
+                    // Publish into the existing media library so the recording is a
+                    // discoverable asset linked back to this live class.
+                    try {
+                        recordingMediaPublisher.publishRecording(liveClass, recordingUrl, null);
+                    } catch (Exception ex) {
+                        log.warn("Could not publish recording to media library for class {}: {}",
+                                liveClassId, ex.getMessage());
+                    }
                     log.info("Live class recording URL updated: classId={}, url={}", liveClassId, recordingUrl);
                 } else {
-                    log.warn("Live class recording completed but no URL: classId={}", liveClassId);
+                    // No usable file: record it as a real FAILED asset and clear the egress
+                    // marker so it stops reporting as "still processing" forever.
+                    log.warn("Live class recording completed with no file: classId={}", liveClassId);
+                    markLiveClassRecordingFailed(liveClass, "egress ended without a file");
                 }
             });
         } catch (Exception e) {
             log.error("Error handling live class recording_completed webhook", e);
+        }
+    }
+
+    /**
+     * Terminal failure for a live-class recording: persists a FAILED media asset and clears the
+     * {@code egress:} marker so the recording surfaces as failed instead of pending.
+     */
+    private void markLiveClassRecordingFailed(
+            tz.elmkusoma.course.domain.LiveClass liveClass, String reason) {
+        try {
+            if (liveClass.getRecordingUrl() != null && liveClass.getRecordingUrl().startsWith("egress:")) {
+                liveClass.setRecordingUrl(null);
+                liveClassRepository.save(liveClass);
+            }
+            recordingMediaPublisher.markRecordingFailed(liveClass, reason);
+        } catch (Exception ex) {
+            log.warn("Could not mark recording FAILED for class {}: {}", liveClass.getId(), ex.getMessage());
         }
     }
 

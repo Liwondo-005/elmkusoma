@@ -2677,8 +2677,9 @@ public class PlatformAdminService {
                         var r = resourceRepository.findById(id).orElse(null);
                         if (r == null || Boolean.TRUE.equals(r.getIsDeleted())) { failures.add(id + ": not found"); break; }
                         switch (action) {
-                            case "PUBLISH" -> { }
-                            case "UNPUBLISH" -> { }
+                            // Same fix as MEDIA: these were no-ops that reported success.
+                            case "PUBLISH" -> r.setVisibility(tz.elmkusoma.learning.domain.Resource.ResourceVisibility.PUBLIC);
+                            case "UNPUBLISH" -> r.setVisibility(tz.elmkusoma.learning.domain.Resource.ResourceVisibility.DRAFT);
                             case "ARCHIVE" -> r.setIsDeleted(true);
                             case "RESTORE" -> r.setIsDeleted(false);
                             default -> { }
@@ -2690,8 +2691,11 @@ public class PlatformAdminService {
                         var m = mediaAssetRepository.findById(id).orElse(null);
                         if (m == null || Boolean.TRUE.equals(m.getIsDeleted())) { failures.add(id + ": not found"); break; }
                         switch (action) {
-                            case "PUBLISH" -> { }
-                            case "UNPUBLISH" -> { }
+                            // PUBLISH/UNPUBLISH were empty blocks that still counted as affected
+                            // and saved, so the platform UI reported success while changing
+                            // nothing. They now drive the asset's existing visibility field.
+                            case "PUBLISH" -> m.setVisibility("PUBLIC");
+                            case "UNPUBLISH" -> m.setVisibility("INSTITUTION");
                             case "ARCHIVE" -> m.setIsDeleted(true);
                             case "RESTORE" -> m.setIsDeleted(false);
                             default -> { }

@@ -84,6 +84,8 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final NotificationService notificationService;
     private final AuditService auditService;
+    /** Publishes finished/failed recordings into the existing media library (media_assets). */
+    private final tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher liveRecordingMediaPublisher;
     private final org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     /**
@@ -466,8 +468,17 @@ public class LiveClassServiceImpl implements LiveClassService {
                 liveKitService.stopRecording(egressId);
                 url = liveKitService.resolveRecordingUrl(egressId);
                 if (url == null) {
-                    log.warn("Recording URL unresolved for class {} (egress {}); no replay created",
+                    // Recording never produced a usable file. Record it as a real FAILED
+                    // library asset and clear the egress marker: leaving it in place made the
+                    // download endpoint report "still processing" for a recording that will
+                    // never exist.
+                    log.warn("Recording URL unresolved for class {} (egress {}); marked FAILED",
                             liveClass.getId(), egressId);
+                    liveClass.setRecordingUrl(null);
+                    liveClassRepository.save(liveClass);
+                    if (liveRecordingMediaPublisher != null) {
+                        liveRecordingMediaPublisher.markRecordingFailed(liveClass, "egress " + egressId);
+                    }
                     return;
                 }
                 liveClass.setRecordingUrl(url);
@@ -475,7 +486,18 @@ public class LiveClassServiceImpl implements LiveClassService {
             }
 
             if (!url.startsWith("http")) {
+                if (liveRecordingMediaPublisher != null) {
+                    liveClass.setRecordingUrl(null);
+                    liveClassRepository.save(liveClass);
+                    liveRecordingMediaPublisher.markRecordingFailed(liveClass, "unresolved recording location");
+                }
                 return;
+            }
+
+            // Publish into the existing media/video library so the recording is discoverable
+            // there and linkable from the live class (idempotent on the source key).
+            if (liveRecordingMediaPublisher != null) {
+                liveRecordingMediaPublisher.publishRecording(liveClass, url, null);
             }
 
             if (!replayRepository.findByLiveSessionIdAndIsDeletedFalse(liveClass.getId()).isEmpty()) {

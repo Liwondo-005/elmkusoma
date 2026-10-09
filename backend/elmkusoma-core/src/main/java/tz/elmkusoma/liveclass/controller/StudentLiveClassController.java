@@ -75,6 +75,11 @@ public class StudentLiveClassController {
                                     .map(u -> u.getFullName())
                                     .orElse(null)
                             : null);
+                    // Real server-derived recording signal for the discovery UI. A finished
+                    // recording resolves recording_url to its storage URL; a failed one is
+                    // cleared to null by the completion/failure handlers. The raw URL is not
+                    // exposed here: replay viewing stays entitlement-checked server side.
+                    map.put("hasRecording", lc.getRecordingUrl() != null && !lc.getRecordingUrl().isBlank());
                     return map;
                 })
                 .collect(Collectors.toList());
@@ -108,6 +113,7 @@ public class StudentLiveClassController {
                     map.put("sessionType", lc.getSessionType() != null ? lc.getSessionType().name() : "LECTURE");
                     map.put("status", lc.getStatus());
                     map.put("scheduledAt", lc.getScheduledAt() != null ? lc.getScheduledAt().toString() : null);
+                    map.put("hasRecording", lc.getRecordingUrl() != null && !lc.getRecordingUrl().isBlank());
                     return map;
                 })
                 .collect(Collectors.toList());

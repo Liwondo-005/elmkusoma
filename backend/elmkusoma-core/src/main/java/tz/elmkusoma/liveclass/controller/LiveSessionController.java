@@ -19,6 +19,7 @@ import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassChatMessageRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassIssueRepository;
 import tz.elmkusoma.liveclass.service.LiveKitService;
+import tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 public class LiveSessionController {
 
     private final LiveKitService liveKitService;
+    private final LiveRecordingMediaPublisher recordingMediaPublisher;
     private final LiveClassRepository liveClassRepository;
     private final LiveClassParticipantRepository participantRepository;
     private final LiveClassIssueRepository issueRepository;
@@ -579,6 +581,26 @@ public class LiveSessionController {
         state.put("roomName", liveKitService.generateRoomName(classId));
         state.put("presentParticipants", present.size());
         state.put("canEndSession", active);
+        // Recording outcome, taken from the media library entry so a failed recording is
+        // reported as FAILED instead of silently reading as "still processing".
+        String recordingState = recordingActive ? "RECORDING"
+                : (recordingAvailable ? "AVAILABLE" : "NONE");
+        String recordingAssetId = null;
+        try {
+            var asset = recordingMediaPublisher.findForLiveClass(classId).orElse(null);
+            if (asset != null) {
+                recordingAssetId = asset.getId().toString();
+                if (LiveRecordingMediaPublisher.STATUS_FAILED.equals(asset.getStatus())) {
+                    recordingState = "FAILED";
+                } else if ("READY".equals(asset.getStatus()) && asset.getFileUrl() != null) {
+                    recordingState = recordingActive ? "RECORDING" : "AVAILABLE";
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not read recording media asset for class {}: {}", classId, e.getMessage());
+        }
+        state.put("recordingState", recordingState);
+        state.put("recordingMediaAssetId", recordingAssetId);
 
         return ResponseEntity.ok(ApiResponse.success("Host state", state));
     }
