@@ -439,7 +439,20 @@ export default function TeacherAttendancePage() {
       setLoadingClasses(true)
       setError(null)
       const data = await teacherApi.getClasses()
-      setClasses(data)
+      // /v1/teachers/me/classes returns one row per taught subject, so a teacher
+      // assigned to the same class group for two subjects gets that classGroupId
+      // twice. Both class <select>s key their options by classGroupId, which
+      // produced "Encountered two children with the same key". Attendance is
+      // recorded per class group (see the submit payload, which carries only
+      // classGroupId), so the repeated row is redundant rather than a distinct
+      // choice — keep the first row per class group.
+      const uniqueClasses = new Map<string, TeacherClassGroup>()
+      for (const c of data) {
+        if (c.classGroupId && !uniqueClasses.has(c.classGroupId)) {
+          uniqueClasses.set(c.classGroupId, c)
+        }
+      }
+      setClasses([...uniqueClasses.values()])
     } catch {
       setError(t("classes.loadError"))
       setClasses([])
