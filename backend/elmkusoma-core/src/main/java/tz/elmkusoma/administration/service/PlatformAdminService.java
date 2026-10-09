@@ -123,7 +123,12 @@ public class PlatformAdminService {
     private final tz.elmkusoma.config.security.PermissionCacheService permissionCacheService;
     private final tz.elmkusoma.event.service.EventService eventService;
     private final tz.elmkusoma.identity.repository.PasswordResetTokenRepository passwordResetTokenRepository;
+    private final tz.elmkusoma.config.EventPublisherService eventPublisherService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    /** Base URL of the web app, used to build password-reset links. */
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl = "http://localhost:3000";
 
     // ── Command Center ──
 
@@ -483,15 +488,41 @@ public class PlatformAdminService {
     public void sendPasswordResetLink(UUID userId) {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        String rawToken = UUID.randomUUID().toString() + UUID.randomUUID().toString();
         PasswordResetToken resetToken = PasswordResetToken.builder()
-                .token(hashToken(UUID.randomUUID().toString() + UUID.randomUUID().toString()))
+                .token(hashToken(rawToken))
                 .userId(user.getId())
                 .expiresAt(LocalDateTime.now().plusHours(24))
                 .used(false)
                 .build();
         passwordResetTokenRepository.save(resetToken);
-        // TODO: Send email with reset link
-        log.info("Password reset link sent to user: {}", user.getEmail());
+
+        // Previously this only logged "sent" while nobody ever received anything. It now
+        // publishes the same email event the self-service forgot-password flow uses, so the
+        // admin action actually delivers and is audited.
+        Map<String, Object> variables = new HashMap<>();
+        String displayName = user.getFirstName() != null ? user.getFirstName() : user.getEmail();
+        variables.put("userName", displayName);
+        variables.put("resetLink", frontendUrl + "/reset-password?token=" + rawToken);
+        variables.put("expiryHours", 24);
+        try {
+            eventPublisherService.publishEmailEvent(
+                    user.getEmail(),
+                    "Reset your Elmkusoma password",
+                    "password-reset",
+                    variables,
+                    user.getInstitutionId());
+            writeAudit(user.getInstitutionId() != null ? user.getInstitutionId() : PLATFORM_INSTITUTION_ID,
+                    "USER", userId, user.getEmail(), "SEND_RESET_LINK", Map.of(), Map.of());
+            log.info("Password reset link published to user: {}", user.getEmail());
+        } catch (Exception ex) {
+            // Do not leave a live token behind that the recipient was never told about.
+            resetToken.setUsed(true);
+            passwordResetTokenRepository.save(resetToken);
+            log.error("Password reset link delivery failed for {}: {}", user.getEmail(), ex.getMessage());
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Could not deliver the reset link. Check that email delivery (SMTP) is configured on the server.");
+        }
     }
 
     // ── Institutions ──

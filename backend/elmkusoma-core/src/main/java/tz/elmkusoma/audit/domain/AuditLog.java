@@ -131,6 +131,10 @@ public class AuditLog {
     
     public enum AuditAction {
         CREATE, UPDATE, DELETE, LOGIN, LOGOUT, LOGIN_FAILED,
-        PASSWORD_CHANGE, ROLE_CHANGE, PERMISSION_CHANGE, EXPORT, IMPORT, VIEW
+        PASSWORD_CHANGE, ROLE_CHANGE, PERMISSION_CHANGE, EXPORT, IMPORT, VIEW,
+        // Administrative password reset. Distinct from PASSWORD_CHANGE, which is a
+        // self-service change by the account holder. audit_logs.action is a plain
+        // varchar column, so adding values needs no schema migration.
+        RESET_PASSWORD, SEND_RESET_LINK, USER_STATUS_CHANGE
     }
 }

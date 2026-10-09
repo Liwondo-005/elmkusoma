@@ -23,9 +23,35 @@ async function platformFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (institutionId) headers["X-Institution-Id"] = institutionId
 
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers })
-  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`)
+  if (!res.ok) throw new Error(await describeError(res))
   const json = await res.json()
   return json.data ?? json
+}
+
+/**
+ * Builds a human-readable error from a failed response. The API returns the real
+ * reason in the body (ApiResponse.error), and `res.statusText` is empty over HTTP/2
+ * and for most proxy responses - surfacing that alone produced blank messages such
+ * as "API 400: " and hid real validation/authorization failures from the user.
+ */
+async function describeError(res: Response): Promise<string> {
+  let detail = ""
+  try {
+    const raw = await res.text()
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        detail = parsed?.error || parsed?.message || ""
+      } catch {
+        detail = raw.slice(0, 200)
+      }
+    }
+  } catch {
+    // body already consumed or unreadable - fall back to status text
+  }
+  if (detail) return `API ${res.status}: ${detail}`
+  if (res.statusText) return `API ${res.status}: ${res.statusText}`
+  return `API ${res.status}`
 }
 
 export interface PlatformDashboard {
@@ -937,7 +963,7 @@ export const platformAdminApi = {
     const headers: Record<string, string> = {}
     if (token) headers["Authorization"] = `Bearer ${token}`
     const res = await fetch(`${API_BASE}/v1/platform-admin/export?type=${type}`, { headers })
-    if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`)
+    if (!res.ok) throw new Error(await describeError(res))
     const blob = await res.blob()
     const a = document.createElement("a")
     a.href = URL.createObjectURL(blob)
