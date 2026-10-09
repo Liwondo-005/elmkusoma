@@ -72,8 +72,11 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
   const institutionId = getInstitutionId()
+  // Audit B-28: a FormData body must keep the browser-generated multipart boundary, so the JSON
+  // content type is only set when we actually send JSON.
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...((options.headers as Record<string, string>) || {}),
   }
 
@@ -1445,10 +1448,16 @@ export const adminApi = {
       method: "DELETE",
     }),
 
-  triggerImport: (institutionId: string, importType: string, fileName: string) =>
-    request<ImportJobResponse>(`/v1/admin/users/import?institutionId=${institutionId}&importType=${importType}&fileName=${fileName}`, {
-      method: "POST",
-    }),
+  /** Audit B-28: the CSV itself is now uploaded; previously only its name was sent. */
+  triggerImport: (institutionId: string, importType: string, file: File) => {
+    const form = new FormData()
+    form.append("importType", importType)
+    form.append("file", file, file.name)
+    return request<ImportJobResponse>(
+      `/v1/admin/users/import?institutionId=${institutionId}`,
+      { method: "POST", body: form },
+    )
+  },
 
   listImportJobs: (institutionId: string) =>
     request<ImportJobResponse[]>(`/v1/admin/users/import?institutionId=${institutionId}`),
