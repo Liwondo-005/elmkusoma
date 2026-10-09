@@ -88,14 +88,22 @@ function Import-DotEnv {
 
 # ------------------------------------------------------------------- networking
 function Test-TcpPort {
-    param([string]$Host_, [int]$Port, [int]$TimeoutMs = 1200)
+    param([string]$Host_, [int]$Port, [int]$TimeoutMs = 3000)
+    try {
+        # Resolve first. A cold DNS cache can eat the whole budget inside
+        # BeginConnect, which reported a reachable cloud host as "NOT READY".
+        $null = [System.Net.Dns]::GetHostAddresses($Host_) | Select-Object -First 1
+    } catch { return $false }
     try {
         $c = New-Object System.Net.Sockets.TcpClient
         $a = $c.BeginConnect($Host_, $Port, $null, $null)
-        if (-not $a.AsyncWaitHandle.WaitOne($TimeoutMs)) { $c.Close(); return $false }
-        $c.EndConnect($a)
-        $c.Close()
-        return $true
+        try {
+            if (-not $a.AsyncWaitHandle.WaitOne($TimeoutMs)) { return $false }
+            $c.EndConnect($a)
+            return $true
+        } finally {
+            $c.Close()
+        }
     } catch { return $false }
 }
 
@@ -389,7 +397,7 @@ if ($target) {
         $liveKitMode = "remote"
         Write-Step "LiveKit mode: REMOTE ($($target.Scheme)://$($target.Host):$($target.Port))"
         Write-Info "No local server will be started - avoids running two competing SFUs."
-        if (Test-TcpPort -Host_ $target.Host -Port $target.Port -TimeoutMs 2500) {
+        if (Test-TcpPort -Host_ $target.Host -Port $target.Port -TimeoutMs 6000) {
             Write-Ok "remote LiveKit reachable (TCP $($target.Host):$($target.Port))"
             $liveKitReady = $true
         } else {
