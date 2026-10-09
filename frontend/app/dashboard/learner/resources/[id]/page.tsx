@@ -26,6 +26,7 @@ export default function ResourceDetailPage({ basePath = "/dashboard/learner/reso
   const { user, loading: authLoading } = useAuth()
   const t = useTranslations("learner")
   const tc = useTranslations("common")
+  const tu = useTranslations("learnerUi")
   const params = useParams()
   const resourceId = params.id as string
 
@@ -359,7 +360,7 @@ export default function ResourceDetailPage({ basePath = "/dashboard/learner/reso
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <MessageSquare className="size-5 text-primary" />
-          Annotations
+          {tu("resource.annotations")}
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
             {annotations.length}
           </span>
@@ -369,9 +370,9 @@ export default function ResourceDetailPage({ basePath = "/dashboard/learner/reso
           <textarea
             value={annotationText}
             onChange={(e) => setAnnotationText(e.target.value)}
-            placeholder="Add your note about this resource..."
+            placeholder={tu("resource.annotationPlaceholder")}
             rows={3}
-            aria-label="Annotation content"
+            aria-label={tu("resource.annotationLabel")}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
           />
           <div className="flex items-center justify-between gap-3">
@@ -382,7 +383,7 @@ export default function ResourceDetailPage({ basePath = "/dashboard/learner/reso
                 onChange={(e) => setAnnotationPrivate(e.target.checked)}
                 className="size-4 rounded border-border"
               />
-              Private note
+              {tu("resource.privateNote")}
             </label>
             <button
               onClick={submitAnnotation}
@@ -390,13 +391,13 @@ export default function ResourceDetailPage({ basePath = "/dashboard/learner/reso
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               <Send className="size-4" />
-              {annotationSubmitting ? "Saving..." : "Add annotation"}
+              {annotationSubmitting ? tc("saving") : tu("resource.addAnnotation")}
             </button>
           </div>
         </div>
 
         {annotations.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No annotations yet. Be the first to add a note.</p>
+          <p className="mt-4 text-sm text-muted-foreground">{tu("resource.noAnnotations")}</p>
         ) : (
           <ul className="mt-5 space-y-3">
             {annotations.map((a) => (
@@ -407,7 +408,7 @@ export default function ResourceDetailPage({ basePath = "/dashboard/learner/reso
                       <span className="text-sm font-semibold text-foreground">{a.studentName}</span>
                       {a.isPrivate && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          Private
+                          {tu("resource.private")}
                         </span>
                       )}
                       <span className="text-xs text-muted-foreground">
@@ -418,7 +419,7 @@ export default function ResourceDetailPage({ basePath = "/dashboard/learner/reso
                   </div>
                   <button
                     onClick={() => deleteAnnotation(a.id)}
-                    aria-label="Delete annotation"
+                    aria-label={tu("resource.deleteAnnotation")}
                     className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="size-4" />

@@ -6,11 +6,14 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Clock, FileText, BarChart3, ChevronRight, Loader2, PenTool, Video, TrendingUp, BookOpen, Shield } from "lucide-react"
 import { parentApi, type ChildOverview, type LearningProgressData, type EntitlementItem } from "@/lib/parent-api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ChildDetailPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const params = useParams()
   const studentId = params.id as string
   const [child, setChild] = useState<ChildOverview | null>(null)
@@ -147,7 +150,7 @@ export default function ChildDetailPage() {
                   <p className="text-sm font-medium text-foreground">{ent.serviceType}</p>
                   <p className="text-xs text-muted-foreground">
                     {ent.status === "ACTIVE" ? ts("active") : ent.status}
-                    {ent.expiresAt && ` · ${t("services.expiresLabel", { date: new Date(ent.expiresAt).toLocaleDateString("en-GB") })}`}
+                    {ent.expiresAt && ` · ${t("services.expiresLabel", { date: formatDate(ent.expiresAt, locale) })}`}
                   </p>
                 </div>
               </div>

@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useCallback } from "react"
 import { CreditCard, Loader2, DollarSign } from "lucide-react"
 import { platformAdminApi, type PaymentSummary, type PageResponse } from "@/lib/platform-admin-api"
+import { formatDate as fmtDate } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 const STATUS_OPTIONS = ["", "PENDING", "COMPLETED", "FAILED", "REFUNDED"]
 const PAGE_SIZE = 20
@@ -12,6 +14,7 @@ const PAGE_SIZE = 20
 export default function PaymentsPage() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
+  const locale = useLocale()
   const [data, setData] = useState<PageResponse<PaymentSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +53,7 @@ export default function PaymentsPage() {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  const formatDate = (d: string) => fmtDate(d, locale, { day: "2-digit", month: "short", year: "numeric" })
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

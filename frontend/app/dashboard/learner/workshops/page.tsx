@@ -18,6 +18,8 @@ import {
   ExternalLink,
   Trash2,
 } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate, formatTime } from "@/lib/format-date"
 
 type WorkshopSession = {
   id: string
@@ -40,7 +42,23 @@ type WorkshopSession = {
 
 const WORKSHOP_TYPES = ["Workshop", "Lab Session", "Practical Demo", "Hands-On", "Field Lab", "Studio Session"] as const
 
+const WORKSHOP_TYPE_KEYS: Record<string, string> = {
+  Workshop: "workshop.workshop",
+  "Lab Session": "workshop.labSession",
+  "Practical Demo": "workshop.practicalDemo",
+  "Hands-On": "workshop.handsOn",
+  "Field Lab": "workshop.fieldLab",
+  "Studio Session": "workshop.studioSession",
+}
+
 const STATUS_OPTIONS = ["All", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const
+
+const WORKSHOP_STATUS_KEYS: Record<string, string> = {
+  SCHEDULED: "workshop.status.scheduled",
+  IN_PROGRESS: "workshop.status.inProgress",
+  COMPLETED: "workshop.status.completed",
+  CANCELLED: "workshop.status.cancelled",
+}
 
 const TYPE_COLORS: Record<string, string> = {
   Workshop: "bg-primary/10 text-primary",
@@ -59,18 +77,24 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 function TypeBadge({ type }: { type: string }) {
+  const tu = useTranslations("learnerUi")
+  const label = WORKSHOP_TYPE_KEYS[type] ? tu(WORKSHOP_TYPE_KEYS[type]) : type
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TYPE_COLORS[type] || "bg-muted text-muted-foreground"}`}>
-      {type}
+      {label}
     </span>
   )
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const tu = useTranslations("learnerUi")
+  const label = WORKSHOP_STATUS_KEYS[status]
+    ? tu(WORKSHOP_STATUS_KEYS[status])
+    : status.replace(/_/g, " ")
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || "bg-muted text-muted-foreground"}`}>
       {status === "IN_PROGRESS" && <span className="mr-1 size-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-      {status.replace(/_/g, " ")}
+      {label}
     </span>
   )
 }
@@ -89,7 +113,9 @@ const emptyForm = {
 export default function WorkshopsPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
+  const tu = useTranslations("learnerUi")
   const { user, loading: authLoading } = useAuth()
+  const locale = useLocale()
   // Workshop sessions are created by teaching staff: the backend authorises
   // WorkshopSessionController authorises POST /v1/college/learner/workshops for
   // STUDENT / OTHER_LEARNER as well as staff, and forces the caller's own student
@@ -176,15 +202,21 @@ export default function WorkshopsPage() {
   function formatScheduledAt(dateStr: string) {
     try {
       const d = new Date(dateStr)
-      return d.toLocaleDateString("en-US", {
-        weekday: "short",
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }) + " at " + d.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+      return (
+        formatDate(d, locale, {
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }) +
+        " " +
+        tu("workshop.at", {
+          time: formatTime(d, locale, {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        })
+      )
     } catch {
       return dateStr
     }
@@ -203,7 +235,7 @@ export default function WorkshopsPage() {
 
   if (authLoading || loading) return <div role="main" aria-busy="true"><span className="sr-only">{tc("loading")}</span><LoadingState /></div>
 
-  const firstName = user?.firstName || user?.name?.split(" ")[0] || "Learner"
+  const firstName = user?.firstName || user?.name?.split(" ")[0] || tu("fallbackName")
 
   return (
     <div role="main" className="mx-auto max-w-6xl space-y-6">
@@ -244,7 +276,7 @@ export default function WorkshopsPage() {
                 required
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="e.g. Chemistry Lab: Titration"
+                placeholder={tu("workshop.titlePlaceholder")}
                 aria-label={t("title")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
@@ -258,7 +290,7 @@ export default function WorkshopsPage() {
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               >
                 {WORKSHOP_TYPES.map((wt) => (
-                  <option key={wt} value={wt}>{wt}</option>
+                  <option key={wt} value={wt}>{WORKSHOP_TYPE_KEYS[wt] ? tu(WORKSHOP_TYPE_KEYS[wt]) : wt}</option>
                 ))}
               </select>
             </div>
@@ -268,7 +300,7 @@ export default function WorkshopsPage() {
                 type="text"
                 value={form.academicYear}
                 onChange={(e) => setForm((f) => ({ ...f, academicYear: e.target.value }))}
-                placeholder="[for example 2025/2026 or 2026]"
+                placeholder={tu("workshop.academicYearPlaceholder")}
                 aria-label={t("academicYear")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
@@ -300,7 +332,7 @@ export default function WorkshopsPage() {
                 type="text"
                 value={form.location}
                 onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                placeholder="e.g. Lab Room 204"
+                placeholder={tu("workshop.locationPlaceholder")}
                 aria-label={t("location")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
@@ -323,7 +355,7 @@ export default function WorkshopsPage() {
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder="Describe the workshop session..."
+              placeholder={tu("workshop.descriptionPlaceholder")}
               aria-label={t("description")}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring resize-none"
             />
@@ -411,10 +443,10 @@ export default function WorkshopsPage() {
             key={wt}
             onClick={() => setTypeFilter(wt)}
             aria-pressed={typeFilter === wt}
-            aria-label={wt}
+            aria-label={WORKSHOP_TYPE_KEYS[wt] ? tu(WORKSHOP_TYPE_KEYS[wt]) : wt}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${typeFilter === wt ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
-            {wt}
+            {WORKSHOP_TYPE_KEYS[wt] ? tu(WORKSHOP_TYPE_KEYS[wt]) : wt}
           </button>
         ))}
       </div>
@@ -426,10 +458,10 @@ export default function WorkshopsPage() {
             key={s}
             onClick={() => setStatusFilter(s)}
             aria-pressed={statusFilter === s}
-            aria-label={s === "All" ? tc("filter") : s.replace(/_/g, " ")}
+            aria-label={s === "All" ? tc("filter") : tu(WORKSHOP_STATUS_KEYS[s])}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${statusFilter === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
-            {s === "All" ? tc("filter") : s.replace(/_/g, " ")}
+            {s === "All" ? tc("filter") : tu(WORKSHOP_STATUS_KEYS[s])}
           </button>
         ))}
       </div>
@@ -513,7 +545,7 @@ export default function WorkshopsPage() {
                 {session.durationMinutes != null && session.durationMinutes > 0 && (
                   <span className="inline-flex items-center gap-1.5">
                     <Clock className="size-3.5" />
-                    {session.durationMinutes} min
+                    {tu("workshop.minutes", { count: session.durationMinutes })}
                   </span>
                 )}
                 {session.location && (
@@ -526,7 +558,7 @@ export default function WorkshopsPage() {
                   <span className="inline-flex items-center gap-1.5">
                     <Users className="size-3.5" />
                     {session.currentParticipants ?? 0}
-                    {session.maxParticipants != null && ` / ${session.maxParticipants}`} participants
+                    {session.maxParticipants != null && ` / ${session.maxParticipants}`} {tu("workshop.participants")}
                   </span>
                 )}
               </div>

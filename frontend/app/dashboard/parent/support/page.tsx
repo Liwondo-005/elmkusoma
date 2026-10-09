@@ -4,11 +4,14 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { LifeBuoy, Loader2, Plus, Send, ChevronDown, ChevronUp } from "lucide-react"
 import { parentApi, type SupportTicketItem } from "@/lib/parent-api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate, formatDateTime } from "@/lib/format-date"
 
 export default function ParentSupportPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const tc = useTranslations("common")
+  const locale = useLocale()
   const [tickets, setTickets] = useState<SupportTicketItem[]>([])
   const [openCount, setOpenCount] = useState(0)
   const [resolvedCount, setResolvedCount] = useState(0)
@@ -148,7 +151,7 @@ export default function ParentSupportPage() {
                 <div className={`size-2 shrink-0 rounded-full ${ticket.status === "OPEN" ? "bg-orange" : "bg-green-500"}`} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">{ticket.subject}</p>
-                  <p className="text-xs text-muted-foreground">{ticket.category} · {ticket.priority} · {new Date(ticket.createdAt).toLocaleDateString("en-GB")}</p>
+                  <p className="text-xs text-muted-foreground">{ticket.category} · {ticket.priority} · {formatDate(ticket.createdAt, locale)}</p>
                 </div>
                 <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${ticket.status === "OPEN" ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"}`}>
                   {ticket.status}
@@ -163,7 +166,7 @@ export default function ParentSupportPage() {
                     <div className="mt-3 space-y-2">
                       {messages[ticket.id].map((msg) => (
                         <div key={msg.id} className="rounded-lg bg-muted/50 p-3">
-                          <p className="text-xs text-muted-foreground">{new Date(msg.createdAt).toLocaleString("en-GB")}</p>
+                          <p className="text-xs text-muted-foreground">{formatDateTime(msg.createdAt, locale)}</p>
                           <p className="mt-1 text-sm text-foreground">{msg.message}</p>
                         </div>
                       ))}

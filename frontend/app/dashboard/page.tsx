@@ -26,11 +26,13 @@ interface DashboardData {
 export default function DashboardPage() {
   const { user, loading: authLoading } = useRequireAuth()
   const router = useRouter()
+  const t = useTranslations("dashboard")
+  const tc = useTranslations("common")
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [continueItems, setContinueItems] = useState<ContinueLearningItem[]>([])
   const [activities, setActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
-  const firstName = user?.name?.split(" ")[0] || "Student"
+  const firstName = user?.name?.split(" ")[0] || t("studentFallback")
   const level = user?.learningLevel as LearningLevel | null
   const config = getDashboardConfig(level)
   const isPrimary = level?.toUpperCase() === "PRIMARY"
@@ -98,14 +100,14 @@ export default function DashboardPage() {
         ])
 
         const lessonList = (Array.isArray(lessons) ? lessons : []).map((l: any) => ({
-          title: l.title || "Untitled Lesson",
+          title: l.title || t("untitledLesson"),
           subject: l.subjectName || "",
           progress: l.completionPercentage || 0,
           id: l.id,
         }))
 
         const assignmentList = (Array.isArray(assignments) ? assignments : []).slice(0, 5).map((a: any) => ({
-          title: a.title || "Assignment",
+          title: a.title || t("assignmentFallback"),
           subject: a.subjectName || "",
           dueDate: a.dueDate,
           status: a.status || "PENDING",
@@ -113,7 +115,7 @@ export default function DashboardPage() {
         }))
 
         const liveClassList = (Array.isArray(liveClasses) ? liveClasses : []).slice(0, 3).map((lc: any) => ({
-          title: lc.title || "Live Class",
+          title: lc.title || t("liveClassFallback"),
           subject: lc.subjectName || "",
           scheduledAt: lc.scheduledAt,
           status: lc.status || "SCHEDULED",
@@ -165,9 +167,9 @@ export default function DashboardPage() {
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="text-center">
           <Loader2 className="mx-auto size-8 animate-spin text-primary" />
-          <p className="mt-4 text-sm text-muted-foreground">Opening your workspace…</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("openingWorkspace")}</p>
           <Link href={workspace} className="mt-2 inline-block text-sm font-medium text-primary hover:underline">
-            Continue
+            {tc("continue")}
           </Link>
         </div>
       </div>
@@ -188,10 +190,10 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <ProgressCard label="Enrolled Courses" value={summary?.activeEnrollments ?? 0} />
-        <ProgressCard label="Lessons Completed" value={summary?.completedLessons ?? 0} />
-        <ProgressCard label="Attendance Rate" value={summary?.monthAttendanceRate ?? 0} />
-        <ProgressCard label="Overall Average" value={summary?.overallAverage ?? 0} />
+        <ProgressCard label={t("enrolledCourses")} value={summary?.activeEnrollments ?? 0} />
+        <ProgressCard label={t("lessonsCompleted")} value={summary?.completedLessons ?? 0} />
+        <ProgressCard label={t("attendanceRate")} value={summary?.monthAttendanceRate ?? 0} />
+        <ProgressCard label={t("overallAverage")} value={summary?.overallAverage ?? 0} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -209,9 +211,9 @@ export default function DashboardPage() {
                     <Clock className="size-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">Lesson {item.lessonId.slice(0, 8)}</p>
+                    <p className="text-sm font-medium text-foreground truncate">{t("lessonRef", { id: item.lessonId.slice(0, 8) })}</p>
                     <p className="text-xs text-muted-foreground">
-                      {item.startedAt ? new Date(item.startedAt).toLocaleDateString() : "Recently started"}
+                      {item.startedAt ? new Date(item.startedAt).toLocaleDateString() : t("recentlyStarted")}
                     </p>
                   </div>
                   <div className="text-right">
@@ -237,7 +239,7 @@ export default function DashboardPage() {
 
         {/* Quick Links */}
         <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-foreground">Quick Links</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("quickLinks")}</h2>
           <div className="mt-4 space-y-2">
             {config.navItems.slice(1, 5).map((item) => (
               <Link
@@ -257,7 +259,7 @@ export default function DashboardPage() {
       {/* Today's Learning */}
       {data.recentLessons.length > 0 && (
         <section>
-          <h2 className="text-base font-semibold text-foreground">Today&apos;s Learning</h2>
+          <h2 className="text-base font-semibold text-foreground">{t("todaysLearning")}</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.recentLessons.map((lesson, i) => (
               <LearningItemCard
@@ -274,7 +276,7 @@ export default function DashboardPage() {
       {/* Recent Activity */}
       {activities.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("recentActivity")}</h2>
           <div className="space-y-3">
             {activities.map((activity, i) => (
               <div key={i} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -289,7 +291,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">
-                    {activity.type === "lesson_completed" ? "Completed a lesson" : "Attendance recorded"}
+                    {activity.type === "lesson_completed" ? t("activityLessonCompleted") : t("activityAttendanceRecorded")}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {activity.completedAt
@@ -322,7 +324,7 @@ export default function DashboardPage() {
           description={config.emptyStateDescription}
           action={
             <Link href="/dashboard/lessons" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              Browse Lessons <ArrowRight className="size-4" />
+              {t("browseLessons")} <ArrowRight className="size-4" />
             </Link>
           }
         />
@@ -350,6 +352,8 @@ function PrimaryDashboard({
 }) {
   const router = useRouter()
   const tg = useTranslations("learner")
+  const t = useTranslations("dashboard")
+  const tc = useTranslations("common")
   const hour = new Date().getHours()
   const greetingTime = hour < 12 ? tg("greeting.morning") : hour < 17 ? tg("greeting.afternoon") : tg("greeting.evening")
   const [teacherInfo, setTeacherInfo] = useState<{ count: number; firstName: string } | null>(null)
@@ -363,7 +367,7 @@ function PrimaryDashboard({
   }, [])
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6" role="main" aria-label="My Learning World">
+    <div className="mx-auto max-w-6xl space-y-6" role="main" aria-label={tg("myLearningWorld")}>
       {/* Gamification Bar */}
       <GamificationBar streak={gamification.streak} points={gamification.points} badgeCount={gamification.badgeCount} loading={gamification.loading} />
 
@@ -377,8 +381,8 @@ function PrimaryDashboard({
             <GraduationCap className="size-5 text-blue-600" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">Your Teacher: {teacherInfo.firstName}</p>
-            <p className="text-xs text-muted-foreground">{teacherInfo.count} {teacherInfo.count === 1 ? "teacher" : "teachers"} assigned</p>
+            <p className="text-sm font-medium text-foreground">{t("yourTeacher", { name: teacherInfo.firstName })}</p>
+            <p className="text-xs text-muted-foreground">{t("teachersAssigned", { count: teacherInfo.count })}</p>
           </div>
           <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
         </Link>
@@ -399,11 +403,11 @@ function PrimaryDashboard({
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                <Star className="size-3" /> Keep learning every day!
+                <Star className="size-3" /> {t("keepLearningEveryDay")}
               </span>
               {summary && summary.activeEnrollments > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-teal/10 px-3 py-1 text-xs font-semibold text-teal">
-                  <BookOpen className="size-3" /> {summary.activeEnrollments} {summary.activeEnrollments === 1 ? "subject" : "subjects"} enrolled
+                  <BookOpen className="size-3" /> {t("subjectsEnrolledCount", { count: summary.activeEnrollments })}
                 </span>
               )}
             </div>
@@ -415,9 +419,9 @@ function PrimaryDashboard({
       {continueItems.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Continue Learning</h2>
+            <h2 className="text-lg font-semibold text-foreground">{tg("continueLearning")}</h2>
             <Link href="/dashboard/lessons" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-              View all <ChevronRight className="size-3" />
+              {tc("viewAll")} <ChevronRight className="size-3" />
             </Link>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -432,15 +436,15 @@ function PrimaryDashboard({
                     <Play className="size-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">Lesson {item.lessonId.slice(0, 8)}</p>
+                    <p className="text-sm font-medium text-foreground truncate">{t("lessonRef", { id: item.lessonId.slice(0, 8) })}</p>
                     <p className="text-xs text-muted-foreground">
-                      {item.startedAt ? new Date(item.startedAt).toLocaleDateString() : "In progress"}
+                      {item.startedAt ? new Date(item.startedAt).toLocaleDateString() : tg("inProgress")}
                     </p>
                   </div>
                 </div>
                 <div className="mt-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Progress</span>
+                    <span className="text-muted-foreground">{tg("progress")}</span>
                     <span className="font-semibold text-primary">{Math.round(item.completionPercentage)}%</span>
                   </div>
                   <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -459,9 +463,9 @@ function PrimaryDashboard({
       {/* Subjects */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Subjects</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("subjects")}</h2>
           <Link href="/dashboard/lessons" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-            View all <ChevronRight className="size-3" />
+            {tc("viewAll")} <ChevronRight className="size-3" />
           </Link>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -490,7 +494,7 @@ function PrimaryDashboard({
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Upcoming Work */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Upcoming</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("upcoming")}</h2>
           {data.pendingWork.length > 0 ? (
             <div className="space-y-3">
               {data.pendingWork.slice(0, 4).map((work, i) => (
@@ -504,7 +508,7 @@ function PrimaryDashboard({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{work.title}</p>
-                    <p className="text-xs text-muted-foreground">{work.subject || "Assignment"}</p>
+                    <p className="text-xs text-muted-foreground">{work.subject || t("assignmentFallback")}</p>
                   </div>
                   {work.dueDate && (
                     <span className="text-xs text-muted-foreground">
@@ -519,8 +523,8 @@ function PrimaryDashboard({
               <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
                 <Calendar className="size-6 text-muted-foreground" />
               </div>
-              <p className="mt-3 text-sm font-medium text-foreground">All caught up!</p>
-              <p className="text-xs text-muted-foreground">No upcoming assignments right now.</p>
+              <p className="mt-3 text-sm font-medium text-foreground">{tg("allCaughtUp")}</p>
+              <p className="text-xs text-muted-foreground">{t("noUpcomingAssignments")}</p>
             </div>
           )}
         </div>
@@ -528,9 +532,9 @@ function PrimaryDashboard({
         {/* Live Learning */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Live Learning</h2>
+            <h2 className="text-lg font-semibold text-foreground">{tg("liveLearning")}</h2>
             <Link href="/dashboard/live-classes" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-              View all <ChevronRight className="size-3" />
+              {tc("viewAll")} <ChevronRight className="size-3" />
             </Link>
           </div>
           {data.liveClasses.length > 0 ? (
@@ -554,7 +558,7 @@ function PrimaryDashboard({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{lc.title}</p>
-                    <p className="text-xs text-muted-foreground">{lc.subject || "Live Class"}</p>
+                    <p className="text-xs text-muted-foreground">{lc.subject || t("liveClassFallback")}</p>
                   </div>
                   {lc.scheduledAt && (
                     <span className="text-xs text-muted-foreground">
@@ -569,8 +573,8 @@ function PrimaryDashboard({
               <div className="flex size-12 items-center justify-center rounded-2xl bg-muted">
                 <Video className="size-6 text-muted-foreground" />
               </div>
-              <p className="mt-3 text-sm font-medium text-foreground">No live classes scheduled</p>
-              <p className="text-xs text-muted-foreground">Your teacher will schedule live sessions soon.</p>
+              <p className="mt-3 text-sm font-medium text-foreground">{tg("noUpcomingClasses")}</p>
+              <p className="text-xs text-muted-foreground">{t("teacherWillSchedule")}</p>
             </div>
           )}
         </div>
@@ -578,10 +582,10 @@ function PrimaryDashboard({
 
       {/* Learning Progress */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <ProgressCard label="Subjects Enrolled" value={summary?.activeEnrollments ?? 0} />
-        <ProgressCard label="Lessons Done" value={summary?.completedLessons ?? 0} />
-        <ProgressCard label="Attendance" value={summary?.monthAttendanceRate ?? 0} />
-        <ProgressCard label="Average Score" value={summary?.overallAverage ?? 0} />
+        <ProgressCard label={t("subjectsEnrolled")} value={summary?.activeEnrollments ?? 0} />
+        <ProgressCard label={t("lessonsDone")} value={summary?.completedLessons ?? 0} />
+        <ProgressCard label={t("attendance")} value={summary?.monthAttendanceRate ?? 0} />
+        <ProgressCard label={t("averageScore")} value={summary?.overallAverage ?? 0} />
       </div>
 
       {/* Learning Passport */}
@@ -593,10 +597,10 @@ function PrimaryDashboard({
           <Map className="size-6 text-amber-600" />
         </div>
         <div className="flex-1">
-          <h3 className="text-base font-semibold text-foreground">Learning Passport</h3>
-          <p className="text-xs text-muted-foreground">Your learning adventure around the world!</p>
+          <h3 className="text-base font-semibold text-foreground">{t("learningPassport")}</h3>
+          <p className="text-xs text-muted-foreground">{t("passportTagline")}</p>
         </div>
-        <span className="text-xs font-medium text-amber-600">View stages</span>
+        <span className="text-xs font-medium text-amber-600">{t("viewStages")}</span>
         <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
       </Link>
 
@@ -605,10 +609,10 @@ function PrimaryDashboard({
         <div className="rounded-2xl border border-border bg-gradient-to-br from-amber-50/50 to-card p-6 shadow-xs">
           <div className="flex items-center gap-2 mb-4">
             <Lightbulb className="size-5 text-amber-600" />
-            <h2 className="text-lg font-semibold text-foreground">Suggested for You</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("suggestedForYou")}</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Based on your learning, here is what might help you next.
+            {t("suggestedForYouDesc")}
           </p>
           <div className="space-y-2">
             {data.pendingWork.slice(0, 2).map((work, i) => (
@@ -618,7 +622,7 @@ function PrimaryDashboard({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">{work.title}</p>
-                  <p className="text-xs text-muted-foreground">Practice this to improve your skills</p>
+                  <p className="text-xs text-muted-foreground">{t("practiceToImprove")}</p>
                 </div>
               </div>
             ))}
@@ -629,7 +633,7 @@ function PrimaryDashboard({
       {/* Teacher Feedback / Recent Activity */}
       {activities.length > 0 && (
         <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t("recentActivity")}</h2>
           <div className="space-y-3">
             {activities.map((activity, i) => (
               <div key={i} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -644,7 +648,7 @@ function PrimaryDashboard({
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">
-                    {activity.type === "lesson_completed" ? "Completed a lesson" : "Attendance recorded"}
+                    {activity.type === "lesson_completed" ? t("activityLessonCompleted") : t("activityAttendanceRecorded")}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {activity.completedAt
@@ -681,7 +685,7 @@ function PrimaryDashboard({
             href="/dashboard/lessons"
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Start Learning <ArrowRight className="size-4" />
+            {t("startLearning")} <ArrowRight className="size-4" />
           </Link>
         </div>
       )}

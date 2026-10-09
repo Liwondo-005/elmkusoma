@@ -236,7 +236,7 @@ export default function TeacherSettingsPage() {
                   <input
                     value={qualForm.qualificationName}
                     onChange={(e) => setQualForm({ ...qualForm, qualificationName: e.target.value })}
-                    placeholder="e.g. B.Ed Mathematics"
+                    placeholder={t("settings.qualNamePlaceholder")}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
                   />
                 </div>

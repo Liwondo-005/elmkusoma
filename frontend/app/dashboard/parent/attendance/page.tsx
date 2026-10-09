@@ -6,11 +6,14 @@ import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, CheckCircle, XCircle, Clock as ClockIcon } from "lucide-react"
 import { parentApi, type AttendanceData } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ParentAttendancePage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const [attendance, setAttendance] = useState<AttendanceData | null>(null)
   const [loading, setLoading] = useState(false)
   const { children, selectedChildId, setSelectedChildId, loading: childrenLoading } = useSelectedChild()
@@ -105,7 +108,7 @@ export default function ParentAttendancePage() {
                     {statusIcon(day.status)}
                     <div className="flex-1">
                       <p className="text-sm font-medium text-foreground">
-                        {new Date(day.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                        {formatDate(day.date, locale, { weekday: "short", month: "short", day: "numeric" })}
                       </p>
                       {day.remarks && <p className="text-xs text-muted-foreground">{day.remarks}</p>}
                     </div>

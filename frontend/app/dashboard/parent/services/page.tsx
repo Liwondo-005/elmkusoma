@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl"
 import { School, Bus, BookOpen, Users, Calendar, MessageSquare, ChevronRight, Loader2, Shield } from "lucide-react"
 import Link from "next/link"
 import { parentApi, type EntitlementItem } from "@/lib/parent-api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 interface ServiceItem {
   key: string
@@ -19,6 +21,7 @@ export default function ParentServicesPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const [entitlements, setEntitlements] = useState<EntitlementItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -94,7 +97,7 @@ export default function ParentServicesPage() {
                   <p className="text-sm font-medium text-foreground">{ent.serviceType}</p>
                   <p className="text-xs text-muted-foreground">
                     {ent.status === "ACTIVE" ? ts("active") : ent.status}
-                    {ent.expiresAt && ` · ${t("services.expiresLabel", { date: new Date(ent.expiresAt).toLocaleDateString("en-GB") })}`}
+                    {ent.expiresAt && ` · ${t("services.expiresLabel", { date: formatDate(ent.expiresAt, locale) })}`}
                   </p>
                 </div>
               </div>

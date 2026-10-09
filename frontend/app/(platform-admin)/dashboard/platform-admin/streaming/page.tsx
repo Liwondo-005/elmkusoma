@@ -21,6 +21,7 @@ function Stat({ icon: Icon, label, value, sub }: { icon: any; label: string; val
 
 export default function PlatformStreamingPage() {
   const t = useTranslations("platformAdmin");
+  const tn = useTranslations("nav");
   const [live, setLive] = useState<PageResponse<LiveClassSummary> | null>(null)
   const [all, setAll] = useState<PageResponse<LiveClassSummary> | null>(null)
   const [health, setHealth] = useState<PlatformHealth | null>(null)
@@ -75,9 +76,9 @@ export default function PlatformStreamingPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat icon={Activity} label="Live now" value={liveCount} sub="Sessions with status LIVE" />
-        <Stat icon={Radio} label="Total sessions" value={all?.totalElements ?? null} sub="All live class sessions" />
-        <Stat icon={HeartPulse} label="API health" value={health ? (apiUp ? "Operational" : health.apiStatus) : null} sub="From platform health endpoint" />
+        <Stat icon={Activity} label={tn("liveNow")} value={liveCount} sub={t("shared.streaming.sessionsWithStatusLive")} />
+        <Stat icon={Radio} label={t("shared.streaming.totalSessions")} value={all?.totalElements ?? null} sub={t("shared.streaming.allLiveClassSessions")} />
+        <Stat icon={HeartPulse} label={t("shared.streaming.apiHealth")} value={health ? (apiUp ? t("shared.health.operational") : health.apiStatus) : null} sub={t("shared.streaming.fromPlatformHealthEndpoint")} />
       </div>
 
       {error && (
@@ -136,7 +137,7 @@ export default function PlatformStreamingPage() {
                     onClick={() => joinAsObserver(c.id)}
                     disabled={observing === c.id}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-50"
-                    title="Join as read-only observer"
+                    title={t("shared.streaming.joinAsReadOnlyObserver")}
                   >
                     {observing === c.id ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
                     {t("streaming.observe")}</button>

@@ -11,6 +11,8 @@ import {
   Minimize, Loader2, CalendarDays, Clock, User, Eye,
   ChevronRight, CheckCircle, AlertCircle
 } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate } from "@/lib/format-date"
 
 function formatDuration(seconds: number) {
   const h = Math.floor(seconds / 3600)
@@ -29,8 +31,8 @@ function formatTime(seconds: number) {
   return `${m}:${s.toString().padStart(2, "0")}`
 }
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+function formatDate(d: string, locale: string) {
+  return fmtDate(d, locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
 }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
@@ -41,7 +43,9 @@ export default function ReplayViewerPage() {
   const params = useParams()
   const t = useTranslations("events")
   const tc = useTranslations("common")
+  const tu = useTranslations("learnerUi")
   const replayId = params.id as string
+  const locale = useLocale()
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
@@ -276,7 +280,7 @@ export default function ReplayViewerPage() {
               onClick={handleSeek}
               className="mb-2 h-1.5 w-full cursor-pointer rounded-full bg-white/30"
               role="slider"
-              aria-label="Seek"
+              aria-label={tu("video.seek")}
               aria-valuemin={0}
               aria-valuemax={duration}
               aria-valuenow={currentTime}
@@ -288,7 +292,7 @@ export default function ReplayViewerPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button onClick={togglePlay} className="text-white hover:text-primary" aria-label={playing ? "Pause" : "Play"}>
+              <button onClick={togglePlay} className="text-white hover:text-primary" aria-label={playing ? tu("video.pause") : tu("video.play")}>
                 {playing ? <Pause className="size-5" /> : <Play className="size-5" />}
               </button>
 
@@ -321,7 +325,7 @@ export default function ReplayViewerPage() {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <button onClick={toggleMute} className="text-white/70 hover:text-white" aria-label={muted ? "Unmute" : "Mute"}>
+                  <button onClick={toggleMute} className="text-white/70 hover:text-white" aria-label={muted ? tu("video.unmute") : tu("video.mute")}>
                     {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
                   </button>
                   <input
@@ -332,11 +336,11 @@ export default function ReplayViewerPage() {
                     value={muted ? 0 : volume}
                     onChange={handleVolumeChange}
                     className="w-16 accent-primary"
-                    aria-label="Volume"
+                    aria-label={tu("video.volume")}
                   />
                 </div>
 
-                <button onClick={toggleFullscreen} className="text-white/70 hover:text-white" aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
+                <button onClick={toggleFullscreen} className="text-white/70 hover:text-white" aria-label={fullscreen ? tu("video.exitFullscreen") : tu("video.fullscreen")}>
                   {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
                 </button>
               </div>
@@ -416,7 +420,7 @@ export default function ReplayViewerPage() {
                 <CalendarDays className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">{t("viewer.recordedOn")}</p>
-                  <p className="text-sm font-medium">{formatDate(replay.recordedAt)}</p>
+                  <p className="text-sm font-medium">{formatDate(replay.recordedAt, locale)}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
@@ -469,7 +473,7 @@ export default function ReplayViewerPage() {
                   >
                     <div>
                       <p className="text-sm font-medium">{ev.title}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(ev.startsAt)}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(ev.startsAt, locale)}</p>
                     </div>
                     <ChevronRight className="size-4 text-muted-foreground" />
                   </Link>

@@ -3,12 +3,17 @@
 import { useEffect, useState } from "react"
 import { Award, Loader2, AlertCircle, ShieldCheck, Ban, FileEdit, QrCode, BarChart3 } from "lucide-react"
 import { platformAdminApi, type CertificateOverview } from "@/lib/platform-admin-api"
+import { formatDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
+import { useTranslations } from "next-intl"
 
 /**
  * Platform certificate overview — renders only backend-computed aggregates.
  * When the endpoint fails, the panel states "Data unavailable" instead of inventing numbers.
  */
 export function CertificateOverviewSection() {
+  const t = useTranslations("platformAdmin")
+  const locale = useLocale()
   const [overview, setOverview] = useState<CertificateOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -113,7 +118,7 @@ export function CertificateOverviewSection() {
             Public verification checks recorded in the last 30 days.
           </p>
           <p className="mt-4 text-[11px] text-muted-foreground">
-            Counts update {new Date(overview.generatedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
+            {t("certificates.countsUpdated", { p0: formatDateTime(overview.generatedAt, locale, { dateStyle: "medium", timeStyle: "short" }) })}
           </p>
         </div>
       </div>

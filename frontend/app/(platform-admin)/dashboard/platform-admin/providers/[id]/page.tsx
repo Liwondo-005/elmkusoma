@@ -7,6 +7,8 @@ import { ArrowLeft, Globe, Loader2, Shield, Users, Mail, Phone, MapPin, AlertCir
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { platformAdminApi, type ProviderGovernanceDetail } from "@/lib/platform-admin-api"
+import { formatDateTime, formatDate } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 function verificationStyle(v: string | null): string {
   switch ((v ?? "").toUpperCase()) {
@@ -31,6 +33,7 @@ const COMPLIANCE_LABELS: Record<string, string> = {
 export default function ProviderDetailPage() {
   const t = useTranslations("platformAdmin");
   const ts = useTranslations("status");
+  const locale = useLocale()
   const { id } = useParams<{ id: string }>()
   const [provider, setProvider] = useState<ProviderGovernanceDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -146,8 +149,8 @@ export default function ProviderDetailPage() {
               <div className="flex items-center gap-3"><MapPin className="size-4 shrink-0 text-muted-foreground" /><span className="text-muted-foreground">{[provider.address, provider.city, provider.region, provider.country].filter(Boolean).join(", ")}</span></div>
             )}
             {provider.description && <p className="text-muted-foreground">{provider.description}</p>}
-            <div className="flex justify-between border-t border-border pt-3"><span className="text-muted-foreground">Registered</span><span className="text-foreground">{provider.createdAt ? new Date(provider.createdAt).toLocaleDateString("en-GB") : "—"}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Verified</span><span className="text-foreground">{provider.approvedAt ? `${new Date(provider.approvedAt).toLocaleDateString("en-GB")} by ${provider.approvedBy ?? "—"}` : "—"}</span></div>
+            <div className="flex justify-between border-t border-border pt-3"><span className="text-muted-foreground">Registered</span><span className="text-foreground">{provider.createdAt ? formatDate(provider.createdAt, locale) : "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Verified</span><span className="text-foreground">{provider.approvedAt ? `${formatDate(provider.approvedAt, locale)} by ${provider.approvedBy ?? "—"}` : "—"}</span></div>
           </div>
         </div>
 
@@ -208,7 +211,7 @@ export default function ProviderDetailPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm">
                     <span className="font-semibold text-foreground">{v.verificationType}</span>
-                    <span className="ml-2 text-xs text-muted-foreground">submitted {v.submittedAt ? new Date(v.submittedAt).toLocaleString("en-GB") : "—"} by {v.submittedByName ?? v.submittedBy?.slice(0, 8) ?? "—"}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">submitted {v.submittedAt ? formatDateTime(v.submittedAt, locale) : "—"} by {v.submittedByName ?? v.submittedBy?.slice(0, 8) ?? "—"}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button onClick={() => review(v.id, "APPROVED")} disabled={busy !== null} className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50">
@@ -234,9 +237,9 @@ export default function ProviderDetailPage() {
                 <span className="font-semibold text-foreground">{v.verificationType}</span>
                 <span className={`rounded-full px-2 py-0.5 font-semibold ${verificationStyle(v.status)}`}>{v.status}</span>
                 <span className="text-muted-foreground">
-                  {v.submittedAt ? new Date(v.submittedAt).toLocaleDateString("en-GB") : "—"}
+                  {v.submittedAt ? formatDate(v.submittedAt, locale) : "—"}
                   {v.reviewedByName ? ` · reviewed by ${v.reviewedByName}` : ""}
-                  {v.reviewedAt ? ` on ${new Date(v.reviewedAt).toLocaleDateString("en-GB")}` : ""}
+                  {v.reviewedAt ? ` on ${formatDate(v.reviewedAt, locale)}` : ""}
                 </span>
                 {v.notes && <span className="w-full text-muted-foreground">“{v.notes}”</span>}
               </li>
@@ -254,7 +257,7 @@ export default function ProviderDetailPage() {
             {provider.recentAudit.map((a) => (
               <li key={a.id} className="rounded-lg bg-muted/40 px-3 py-2 text-xs">
                 <span className="font-semibold text-foreground">{a.action}</span>
-                <span className="text-muted-foreground"> · {a.entityType} · {a.performedBy ?? a.userId} · {a.createdAt ? new Date(a.createdAt).toLocaleString("en-GB") : ""}</span>
+                <span className="text-muted-foreground"> · {a.entityType} · {a.performedBy ?? a.userId} · {a.createdAt ? formatDateTime(a.createdAt, locale) : ""}</span>
               </li>
             ))}
           </ul>

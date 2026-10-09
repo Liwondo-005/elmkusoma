@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react"
 import { AlertTriangle, Plus, Loader2, Clock, CheckCircle2 } from "lucide-react"
 import { platformAdminApi, type IncidentSummary, type PageResponse } from "@/lib/platform-admin-api"
+import { formatDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 const SEVERITY_COLORS: Record<string, string> = {
   CRITICAL: "bg-red-50 text-red-700 border-red-200",
@@ -33,6 +35,7 @@ const INCIDENT_NEXT: Record<string, string[]> = {
 export default function IncidentsPage() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
+  const locale = useLocale()
   const [data, setData] = useState<PageResponse<IncidentSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("")
@@ -129,7 +132,7 @@ export default function IncidentsPage() {
                       <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                         <span>{inc.category}</span>
                         {inc.affectedService && <span>{t("incidents.affected", { p0: inc.affectedService })}</span>}
-                        <span>{new Date(inc.detectedAt).toLocaleString("en-GB")}</span>
+                        <span>{formatDateTime(inc.detectedAt, locale)}</span>
                       </div>
                     </div>
                   </div>

@@ -5,9 +5,12 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react"
 import { Shield, Loader2 } from "lucide-react"
 import { platformAdminApi, type EntitlementSummary, type PageResponse } from "@/lib/platform-admin-api"
+import { formatDate } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 export default function EntitlementsPage() {
   const t = useTranslations("platformAdmin");
+  const locale = useLocale()
   const [data, setData] = useState<PageResponse<EntitlementSummary> | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("")
@@ -63,8 +66,8 @@ export default function EntitlementsPage() {
                       {ent.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{ent.startsAt ? new Date(ent.startsAt).toLocaleDateString("en-GB") : "-"}</td>
-<td className="px-4 py-3 text-xs text-muted-foreground">{ent.expiresAt ? new Date(ent.expiresAt).toLocaleDateString("en-GB") : t("entitlements.never")}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{ent.startsAt ? formatDate(ent.startsAt, locale) : "-"}</td>
+<td className="px-4 py-3 text-xs text-muted-foreground">{ent.expiresAt ? formatDate(ent.expiresAt, locale) : t("entitlements.never")}</td>
                 </tr>
               ))}
             </tbody>

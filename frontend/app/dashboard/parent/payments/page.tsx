@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { CreditCard, Loader2, CheckCircle, Clock, AlertCircle } from "lucide-react"
 import { parentApi, type PaymentItem, type ParentPayments } from "@/lib/parent-api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ParentPaymentsPage() {
   const t = useTranslations("parent")
@@ -75,6 +77,7 @@ export default function ParentPaymentsPage() {
 function PaymentRow({ payment }: { payment: PaymentItem }) {
   const t = useTranslations("parent")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; label: string }> = {
     COMPLETED: { icon: CheckCircle, color: "text-green-600", label: t("payments.statusPaid") },
     PENDING: { icon: Clock, color: "text-orange", label: ts("pending") },
@@ -90,7 +93,7 @@ function PaymentRow({ payment }: { payment: PaymentItem }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{payment.description || payment.serviceType}</p>
         <p className="text-xs text-muted-foreground">
-          {payment.paidAt ? new Date(payment.paidAt).toLocaleDateString("en-GB") : new Date(payment.createdAt).toLocaleDateString("en-GB")}
+          {payment.paidAt ? formatDate(payment.paidAt, locale) : formatDate(payment.createdAt, locale)}
           {payment.providerReference && ` · ${payment.providerReference}`}
         </p>
       </div>

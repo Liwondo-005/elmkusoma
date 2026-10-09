@@ -273,7 +273,7 @@ export function LiveVideoPlayer({
         <div
           className="absolute right-2 top-2 z-10 rounded-md bg-black/55 px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-white shadow-sm sm:right-3 sm:top-3 sm:text-[11px]"
           data-live-elapsed
-          aria-label="Live session duration"
+          aria-label={t("playerDurationAria")}
         >
           {liveElapsed}
         </div>

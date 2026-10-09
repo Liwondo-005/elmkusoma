@@ -7,11 +7,14 @@ import { useParams, useRouter } from "next/navigation"
 import { Building2, Loader2, ArrowLeft, Users, GraduationCap, BookOpen, MapPin, Phone, Mail, Calendar, Shield, ShieldOff, ListChecks, CheckCircle2, Circle, AlertCircle, RefreshCw, Pencil, Trash2 } from "lucide-react"
 import { platformAdminApi, type InstitutionDetail, type OffboardingChecklist } from "@/lib/platform-admin-api"
 import { InstitutionFormModal } from "@/components/platform-admin/institution-form-modal"
+import { formatDate as fmtDate } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 export default function InstitutionDetailPage() {
   const t = useTranslations("platformAdmin");
   const tc = useTranslations("common");
   const ts = useTranslations("status");
+  const locale = useLocale()
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
@@ -80,7 +83,7 @@ export default function InstitutionDetailPage() {
     }
   }
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  const formatDate = (d: string) => fmtDate(d, locale, { day: "2-digit", month: "short", year: "numeric" })
 
   if (loading) return (
     <div className="flex items-center justify-center py-32">

@@ -86,20 +86,20 @@ export default function PlatformAnalyticsPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}</div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi icon={Users} label="Total Users" value={dash?.totalUsers ?? null} sub={`${dash?.totalStudents ?? "—"} students · ${dash?.totalTeachers ?? "—"} educators`} available={hasDash} />
-            <Kpi icon={Building2} label="Institutions" value={dash?.totalInstitutions ?? null} sub="Active institutions" available={hasDash} />
-            <Kpi icon={Radio} label="Live Classes" value={dash?.totalLiveClasses ?? null} sub={`${dash?.activeLiveClasses ?? "—"} active now`} available={hasDash} />
-            <Kpi icon={Award} label="Certificates" value={dash?.totalCertificates ?? null} sub="Issued & verified" available={hasDash} />
+            <Kpi icon={Users} label={t("health.totalUsers")} value={dash?.totalUsers ?? null} sub={t("shared.kpi.studentsEducators", { p0: dash?.totalStudents ?? "—", p1: dash?.totalTeachers ?? "—" })} available={hasDash} />
+            <Kpi icon={Building2} label={t("dashboard.institutions")} value={dash?.totalInstitutions ?? null} sub={t("shared.kpi.activeInstitutions")} available={hasDash} />
+            <Kpi icon={Radio} label={t("shared.kpi.liveClasses")} value={dash?.totalLiveClasses ?? null} sub={t("shared.kpi.activeNow", { p0: dash?.activeLiveClasses ?? "—" })} available={hasDash} />
+            <Kpi icon={Award} label={t("certificates.certificates")} value={dash?.totalCertificates ?? null} sub={t("shared.kpi.issuedVerified")} available={hasDash} />
           </div>
         )}
       </div>
 
       {loading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}</div> : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi icon={AlertTriangle} label="Open Incidents" value={dash?.openIncidents ?? null} sub="Requires resolution" available={hasDash} />
-          <Kpi icon={ShieldAlert} label="Pending Verifications" value={dash?.pendingVerifications ?? null} sub="Awaiting review" available={hasDash} />
-          <Kpi icon={Package} label="Active Services" value={dash?.activeServices ?? null} sub="Enabled catalogue" available={hasDash} />
-          <Kpi icon={GraduationCap} label="Payments" value={dash?.totalPayments ?? null} sub="Total payments" available={hasDash} />
+          <Kpi icon={AlertTriangle} label={t("shared.kpi.openIncidents")} value={dash?.openIncidents ?? null} sub={t("shared.kpi.requiresResolution")} available={hasDash} />
+          <Kpi icon={ShieldAlert} label={t("verifications.pendingVerifications")} value={dash?.pendingVerifications ?? null} sub={t("shared.kpi.awaitingReview")} available={hasDash} />
+          <Kpi icon={Package} label={t("shared.kpi.activeServices")} value={dash?.activeServices ?? null} sub={t("shared.kpi.enabledCatalogue")} available={hasDash} />
+          <Kpi icon={GraduationCap} label={t("payments.payments")} value={dash?.totalPayments ?? null} sub={t("shared.kpi.totalPayments")} available={hasDash} />
         </div>
       )}
 

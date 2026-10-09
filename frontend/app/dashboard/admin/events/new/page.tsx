@@ -202,7 +202,7 @@ export default function NewEventPage() {
       })
       router.push("/dashboard/admin/events")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create event")
+      setError(err instanceof Error ? err.message : t("admin.form.createError"))
     } finally {
       setSaving(false)
     }
@@ -483,9 +483,9 @@ export default function NewEventPage() {
               aria-label={t("admin.form.formatLabel")}
             >
               <option value="">{t("admin.form.formatPlaceholder")}</option>
-              <option value="LIVE">Live</option>
-              <option value="RECORDED">Recorded</option>
-              <option value="HYBRID">Hybrid</option>
+              <option value="LIVE">{t("admin.formats.LIVE")}</option>
+              <option value="RECORDED">{t("admin.formats.RECORDED")}</option>
+              <option value="HYBRID">{t("admin.formats.HYBRID")}</option>
             </select>
           </div>
           <div>
@@ -497,10 +497,10 @@ export default function NewEventPage() {
               aria-label={t("admin.form.difficultyLabel")}
             >
               <option value="">{t("admin.form.difficultyPlaceholder")}</option>
-              <option value="BEGINNER">Beginner</option>
-              <option value="INTERMEDIATE">Intermediate</option>
-              <option value="ADVANCED">Advanced</option>
-              <option value="EXPERT">Expert</option>
+              <option value="BEGINNER">{t("admin.difficulties.BEGINNER")}</option>
+              <option value="INTERMEDIATE">{t("admin.difficulties.INTERMEDIATE")}</option>
+              <option value="ADVANCED">{t("admin.difficulties.ADVANCED")}</option>
+              <option value="EXPERT">{t("admin.difficulties.EXPERT")}</option>
             </select>
           </div>
         </div>
@@ -568,7 +568,7 @@ export default function NewEventPage() {
             className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             aria-label={t("admin.form.rescheduledFromLabel")}
           />
-          <p className="mt-1 text-xs text-muted-foreground">Event ID this was rescheduled from</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("admin.form.rescheduledFromHint")}</p>
         </div>
 
         {/* Recording Toggle */}

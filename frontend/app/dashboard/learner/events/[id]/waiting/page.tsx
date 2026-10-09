@@ -8,13 +8,15 @@ import { learnerApi, type EventItem } from "@/lib/learner-api"
 import { announce } from "@/lib/announce"
 import { useLowBandwidth } from "@/components/primary/low-bandwidth-provider"
 import { ArrowLeft, Clock, CalendarDays, Users, RefreshCw, Loader2, Play, ExternalLink, WifiOff } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate, formatTime as fmtTime } from "@/lib/format-date"
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+function formatDate(d: string, locale: string) {
+  return fmtDate(d, locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
 }
 
-function formatTime(d: string) {
-  return new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+function formatTime(d: string, locale: string) {
+  return fmtTime(d, locale, { hour: "2-digit", minute: "2-digit" })
 }
 
 function formatCountdown(diff: number) {
@@ -40,6 +42,7 @@ export default function WaitingPage() {
   const tc = useTranslations("common")
   const eventId = params.id as string
   const { isLowBandwidth } = useLowBandwidth()
+  const locale = useLocale()
 
   const [event, setEvent] = useState<EventItem | null>(null)
   const [loading, setLoading] = useState(true)
@@ -224,8 +227,8 @@ export default function WaitingPage() {
             <CalendarDays className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
             <div>
               <p className="text-xs font-medium text-muted-foreground">{t("waiting.scheduledStart")}</p>
-              <p className="text-sm font-medium">{formatDate(event.startsAt)}</p>
-              <p className="text-xs text-muted-foreground">{formatTime(event.startsAt)}</p>
+              <p className="text-sm font-medium">{formatDate(event.startsAt, locale)}</p>
+              <p className="text-xs text-muted-foreground">{formatTime(event.startsAt, locale)}</p>
               {event.timezone && <p className="text-xs text-muted-foreground">{event.timezone}</p>}
             </div>
           </div>

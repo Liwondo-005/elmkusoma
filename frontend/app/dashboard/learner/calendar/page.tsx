@@ -7,6 +7,8 @@ import { learnerApi } from "@/lib/learner-api"
 import type { EventItem } from "@/lib/learner-api"
 import { LearnerHeader, LoadingState, EmptyState } from "@/components/learner/shared"
 import { Calendar, Clock, MapPin, Users, Filter, AlertCircle } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDateTime } from "@/lib/format-date"
 
 type ViewMode = "today" | "week" | "month"
 
@@ -31,6 +33,7 @@ export default function CalendarPage() {
   const t = useTranslations("highered")
   const tc = useTranslations("common")
   const { user, loading: authLoading } = useAuth()
+  const locale = useLocale()
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -165,7 +168,7 @@ export default function CalendarPage() {
                     {event.startsAt && (
                       <span className="flex items-center gap-1.5">
                         <Clock className="size-3.5" />
-                        {new Date(event.startsAt).toLocaleString("en-US", {
+                        {formatDateTime(event.startsAt, locale, {
                           weekday: "short",
                           month: "short",
                           day: "numeric",

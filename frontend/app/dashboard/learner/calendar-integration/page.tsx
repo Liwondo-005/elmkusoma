@@ -23,6 +23,8 @@ import {
   CalendarDays,
   AlertCircle,
 } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
 
 type ViewMode = "month" | "week"
 type FilterType = "ALL" | "LIVE_SESSION" | "DEADLINE" | "PROJECT" | "RESEARCH"
@@ -94,6 +96,7 @@ export default function CalendarIntegrationPage() {
   const t = useTranslations("calendar")
   const tc = useTranslations("common")
   const tl = useTranslations("learner")
+  const locale = useLocale()
 
   const EVENT_LABELS: Record<string, string> = {
     LIVE_SESSION: t("types.LIVE_SESSION"),
@@ -145,7 +148,7 @@ export default function CalendarIntegrationPage() {
               id: `live-${cls.id}`,
               title: cls.title,
               date: formatDateKey(d),
-              time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+              time: formatTime(d, locale, { hour: "2-digit", minute: "2-digit" }),
               type: "LIVE_SESSION",
               location: cls.subjectName || undefined,
               link: `/dashboard/learner/live-classes/${cls.id}`,
@@ -219,7 +222,7 @@ export default function CalendarIntegrationPage() {
     } finally {
       setLoading(false)
     }
-  }, [user, t, tl])
+  }, [user, t, tl, locale])
 
   useEffect(() => {
     if (!user) return
@@ -234,7 +237,7 @@ export default function CalendarIntegrationPage() {
   const daysInMonth = getDaysInMonth(year, month)
   const firstDay = getFirstDayOfMonth(year, month)
 
-  const monthName = currentDate.toLocaleString("en-US", { month: "long", year: "numeric" })
+  const monthName = formatDateTime(currentDate, locale, { month: "long", year: "numeric" })
 
   const filteredEvents = events.filter((e) => {
     if (filterType !== "ALL" && e.type !== filterType) return false
@@ -466,7 +469,7 @@ export default function CalendarIntegrationPage() {
                   return (
                     <div key={i} className="py-2 text-center">
                       <span className="text-xs text-muted-foreground">
-                        {d.toLocaleDateString("en-US", { weekday: "short" })}
+                        {formatDate(d, locale, { weekday: "short" })}
                       </span>
                       <div
                         className={`mt-1 mx-auto flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
@@ -526,7 +529,7 @@ export default function CalendarIntegrationPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">
-                    {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                    {formatDate(selectedDate, locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {selectedDateEvents.length === 1
@@ -621,7 +624,7 @@ export default function CalendarIntegrationPage() {
                     ? t("today")
                     : isSameDay(eventDate, new Date(today.getTime() + 86400000))
                       ? t("tomorrow")
-                      : eventDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                      : formatDate(eventDate, locale, { weekday: "short", month: "short", day: "numeric" })
 
                   return (
                     <div key={evt.id} className="rounded-xl border border-border p-3 transition hover:bg-muted/50">

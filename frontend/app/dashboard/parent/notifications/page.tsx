@@ -4,6 +4,8 @@ import { Bell, AlertTriangle, CheckCircle, Clock, Info, Mail, Loader2 } from "lu
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { parentApi, type ParentNotificationItem } from "@/lib/parent-api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 const typeIcons: Record<string, typeof Bell> = {
   ABSENCE: AlertTriangle,
@@ -31,6 +33,7 @@ export default function ParentNotificationsPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const te = useTranslations("emptyStates")
+  const locale = useLocale()
   const [notifications, setNotifications] = useState<ParentNotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -45,7 +48,7 @@ export default function ParentNotificationsPage() {
     const days = Math.floor(hrs / 24)
     if (days === 1) return t("activity.timeYesterday")
     if (days < 7) return t("activity.timeDaysAgo", { count: days })
-    return new Date(dateStr).toLocaleDateString("en-GB", { month: "short", day: "numeric" })
+    return formatDate(dateStr, locale, { month: "short", day: "numeric" })
   }
 
   useEffect(() => {

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 
 import { Video, Search, Film, FileText, Music, Image, Loader2, AlertCircle, Play, Trash2, Clock, HardDrive, Eye, EyeOff, Tag, Calendar } from "lucide-react"
 import { appFetch } from "@/lib/fetch"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate } from "@/lib/format-date"
 
 interface MediaAsset {
   id: string
@@ -38,18 +40,11 @@ function formatDuration(seconds: number | null): string {
   return `${m}:${String(s).padStart(2, "0")}`
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })
-}
-
 export default function TeacherMediaLibraryPage() {
   const { user } = useAuth()
   const t = useTranslations("teacher")
   const tn = useTranslations("nav")
+  const locale = useLocale()
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -261,7 +256,11 @@ export default function TeacherMediaLibraryPage() {
                   )}
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {formatDate(item.createdAt)}
+                    {fmtDate(item.createdAt, locale, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </span>
                 </div>
 

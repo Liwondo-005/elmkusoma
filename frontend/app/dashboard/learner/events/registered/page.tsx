@@ -19,11 +19,13 @@ import {
   Video,
   CalendarPlus,
 } from "lucide-react"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate, formatTime as fmtTime } from "@/lib/format-date"
 
 type Tab = "upcoming" | "past" | "replays"
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", {
+function formatDate(d: string, locale: string) {
+  return fmtDate(d, locale, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -31,8 +33,8 @@ function formatDate(d: string) {
   })
 }
 
-function formatTime(d: string) {
-  return new Date(d).toLocaleTimeString("en-US", {
+function formatTime(d: string, locale: string) {
+  return fmtTime(d, locale, {
     hour: "2-digit",
     minute: "2-digit",
   })
@@ -75,6 +77,7 @@ function getEventStatus(event: EventItem): "upcoming" | "past" {
 export default function RegisteredEventsPage() {
   const t = useTranslations("events")
   const tc = useTranslations("common")
+  const locale = useLocale()
 
   const [activeTab, setActiveTab] = useState<Tab>("upcoming")
   const [upcoming, setUpcoming] = useState<EventItem[]>([])
@@ -300,10 +303,10 @@ export default function RegisteredEventsPage() {
                     </div>
                     <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1">
-                        <CalendarDays className="size-3" /> {formatDate(event.startsAt)}
+                        <CalendarDays className="size-3" /> {formatDate(event.startsAt, locale)}
                       </span>
                       <span className="flex items-center gap-1">
-                        <Clock className="size-3" /> {formatTime(event.startsAt)}
+                        <Clock className="size-3" /> {formatTime(event.startsAt, locale)}
                       </span>
                       {event.location && (
                         <span className="flex items-center gap-1">

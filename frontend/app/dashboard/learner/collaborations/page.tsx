@@ -33,35 +33,35 @@ type Collaboration = {
 
 const COLLAB_TYPE_META: Record<
   string,
-  { label: string; icon: React.ReactNode; color: string }
+  { labelKey: string; icon: React.ReactNode; color: string }
 > = {
   "study-group": {
-    label: "Study Group",
+    labelKey: "collaboration.studyGroup",
     icon: <Users className="h-4 w-4" />,
     color: "bg-blue-100 text-blue-700",
   },
   "peer-tutoring": {
-    label: "Peer Tutoring",
+    labelKey: "collaboration.peerTutoring",
     icon: <BookOpen className="h-4 w-4" />,
     color: "bg-green-100 text-green-700",
   },
   "research-team": {
-    label: "Research Team",
+    labelKey: "collaboration.researchTeam",
     icon: <Target className="h-4 w-4" />,
     color: "bg-purple-100 text-purple-700",
   },
   "project-partner": {
-    label: "Project Partner",
+    labelKey: "collaboration.projectPartner",
     icon: <UserPlus className="h-4 w-4" />,
     color: "bg-amber-100 text-amber-700",
   },
   "discussion-group": {
-    label: "Discussion Group",
+    labelKey: "collaboration.discussionGroup",
     icon: <MessageSquare className="h-4 w-4" />,
     color: "bg-pink-100 text-pink-700",
   },
   mentorship: {
-    label: "Mentorship",
+    labelKey: "collaboration.mentorship",
     icon: <Users className="h-4 w-4" />,
     color: "bg-indigo-100 text-indigo-700",
   },
@@ -75,17 +75,18 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const NEW_COLLAB_TYPES = [
-  { value: "study-group", label: "Study Group" },
-  { value: "peer-tutoring", label: "Peer Tutoring" },
-  { value: "research-team", label: "Research Team" },
-  { value: "project-partner", label: "Project Partner" },
-  { value: "discussion-group", label: "Discussion Group" },
-  { value: "mentorship", label: "Mentorship" },
+  { value: "study-group", labelKey: "collaboration.studyGroup" },
+  { value: "peer-tutoring", labelKey: "collaboration.peerTutoring" },
+  { value: "research-team", labelKey: "collaboration.researchTeam" },
+  { value: "project-partner", labelKey: "collaboration.projectPartner" },
+  { value: "discussion-group", labelKey: "collaboration.discussionGroup" },
+  { value: "mentorship", labelKey: "collaboration.mentorship" },
 ];
 
 export default function CollaborationsPage() {
   const t = useTranslations("highered");
   const tc = useTranslations("common");
+  const tu = useTranslations("learnerUi");
   const { user } = useAuth();
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,7 +173,7 @@ export default function CollaborationsPage() {
     <div role="main" className="space-y-6">
       <div className="flex items-center justify-between">
         <LearnerHeader
-          firstName={user?.firstName || user?.name?.split(" ")[0] || "Learner"}
+          firstName={user?.firstName || user?.name?.split(" ")[0] || tu("fallbackName")}
           subtitle={t("subtitle.collaborations")}
         />
         <button
@@ -243,7 +244,7 @@ export default function CollaborationsPage() {
                     {researchTeams}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Research Teams
+                    {tu("collaboration.researchTeam")}
                   </p>
                 </div>
               </div>
@@ -268,7 +269,7 @@ export default function CollaborationsPage() {
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     required
-                    placeholder="e.g. Biology Study Group"
+                    placeholder={tu("collaboration.titlePlaceholder")}
                     aria-label={t("title")}
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                   />
@@ -285,7 +286,7 @@ export default function CollaborationsPage() {
                   >
                     {NEW_COLLAB_TYPES.map((ct) => (
                       <option key={ct.value} value={ct.value}>
-                        {ct.label}
+                        {tu(ct.labelKey)}
                       </option>
                     ))}
                   </select>
@@ -299,7 +300,7 @@ export default function CollaborationsPage() {
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   rows={3}
-                  placeholder="What is the goal of this collaboration?"
+                  placeholder={tu("collaboration.goalPlaceholder")}
                   aria-label={t("description")}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                 />
@@ -348,7 +349,7 @@ export default function CollaborationsPage() {
                           {meta.icon}
                         </span>
                         <h3 className="text-base font-semibold text-foreground">
-                          {meta.label}
+                          {tu(meta.labelKey)}
                         </h3>
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           {grouped[key].length}
@@ -369,15 +370,14 @@ export default function CollaborationsPage() {
                                   <span
                                     className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${meta.color}`}
                                   >
-                                    {meta.label}
+                                    {tu(meta.labelKey)}
                                   </span>
                                   <span
                                     className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                                       STATUS_STYLES[collab.status] || "bg-gray-100 text-gray-600"
                                     }`}
                                   >
-                                    {collab.status.charAt(0).toUpperCase() +
-                                      collab.status.slice(1)}
+                                    {tu(`collaboration.status.${collab.status.toLowerCase()}`)}
                                   </span>
                                 </div>
                                 {collab.description && (

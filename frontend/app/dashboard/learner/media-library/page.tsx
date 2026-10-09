@@ -8,6 +8,8 @@ import { useLowBandwidth } from "@/components/primary/low-bandwidth-provider"
 
 import { Video, Search, Film, FileText, Music, Image, Loader2, AlertCircle, Play, Clock, HardDrive, Eye, Tag, Calendar, RefreshCw } from "lucide-react"
 import { mediaApi } from "@/lib/api"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate as fmtDate } from "@/lib/format-date"
 
 interface MediaAsset {
   id: string
@@ -55,8 +57,8 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
+function formatDate(dateStr: string, locale: string): string {
+  return fmtDate(dateStr, locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -68,6 +70,7 @@ export default function LearnerMediaLibraryPage() {
   const tc = useTranslations("common")
   const { user } = useAuth()
   const { lazyLoadImages } = useLowBandwidth()
+  const locale = useLocale()
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -215,7 +218,7 @@ export default function LearnerMediaLibraryPage() {
                   )}
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {formatDate(item.createdAt)}
+                    {formatDate(item.createdAt, locale)}
                   </span>
                 </div>
 

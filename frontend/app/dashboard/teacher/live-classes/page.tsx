@@ -439,7 +439,7 @@ export default function TeacherLiveClassesPage() {
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g. Algebra — Introduction to Linear Equations"
+                placeholder={t("liveClasses.titlePlaceholder")}
                 className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring"
               />
             </div>

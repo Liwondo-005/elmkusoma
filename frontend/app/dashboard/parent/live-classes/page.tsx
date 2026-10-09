@@ -6,11 +6,14 @@ import { useTranslations } from "next-intl"
 import { ArrowLeft, Loader2, Video, Clock, User, CheckCircle, AlertTriangle } from "lucide-react"
 import { parentApi, type LiveClassData } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function ParentLiveClassesPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const [liveClasses, setLiveClasses] = useState<LiveClassData | null>(null)
   const [loading, setLoading] = useState(false)
   const { children, selectedChildId, setSelectedChildId, loading: childrenLoading, selectionSource } = useSelectedChild()
@@ -130,7 +133,7 @@ export default function ParentLiveClassesPage() {
                       <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Clock className="size-3" />
-                          {scheduledDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {formatDate(scheduledDate, locale, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                         <span className="flex items-center gap-1"><Clock className="size-3" /> {t("liveClasses.durationMin", { count: lc.durationMinutes })}</span>
                       </div>
@@ -162,7 +165,7 @@ export default function ParentLiveClassesPage() {
                       <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Clock className="size-3" />
-                          {new Date(lc.scheduledAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          {formatDate(lc.scheduledAt, locale, { month: "short", day: "numeric" })}
                         </span>
                       </div>
                     </div>

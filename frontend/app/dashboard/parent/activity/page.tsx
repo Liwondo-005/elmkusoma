@@ -6,6 +6,8 @@ import { Activity, Loader2, BookOpen, Video, FileText, CheckCircle, Award, Clock
 import { useAuth } from "@/lib/auth"
 import { parentApi, type ParentActivity, type ActivityItem } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 const typeIcons: Record<string, typeof Activity> = {
   LESSON_VIEWED: BookOpen,
@@ -30,6 +32,7 @@ const typeColors: Record<string, string> = {
 export default function ParentActivityPage() {
   const { user } = useAuth()
   const t = useTranslations("parent")
+  const locale = useLocale()
   const [activity, setActivity] = useState<ParentActivity | null>(null)
   const { children, selectedChildId, setSelectedChildId, loading } = useSelectedChild()
 
@@ -43,7 +46,7 @@ export default function ParentActivityPage() {
     const days = Math.floor(hrs / 24)
     if (days === 1) return t("activity.timeYesterday")
     if (days < 7) return t("activity.timeDaysAgo", { count: days })
-    return new Date(dateStr).toLocaleDateString("en-GB", { month: "short", day: "numeric" })
+    return formatDate(dateStr, locale, { month: "short", day: "numeric" })
   }
 
   useEffect(() => {

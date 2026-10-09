@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import {
   Plus, Loader2, AlertCircle, PenLine, Search, LayoutTemplate, Link2,
   History, Eye, X, CheckCircle2, Ban,
@@ -14,6 +15,8 @@ import {
   type PageResponse,
 } from "@/lib/platform-admin-api"
 import { CertificateDocument, expandCertificateTokens } from "@/components/certificates/certificate-document"
+import { formatDateTime } from "@/lib/format-date"
+import { useLocale } from "@/hooks/use-locale"
 
 const TEMPLATE_TYPES = ["COMPLETION", "ACHIEVEMENT", "PARTICIPATION", "TRANSCRIPT", "CUSTOM"]
 
@@ -32,6 +35,13 @@ interface InstitutionOption {
 }
 
 export function CertificateTemplatesSection() {
+  const tp = useTranslations("platformAdmin.templates")
+  const tc = useTranslations("common")
+  const tcert = useTranslations("platformAdmin.certificates")
+  const tdet = useTranslations("platformAdmin.certificateDetail")
+  const tsg = useTranslations("platformAdmin.signatories")
+  const tu = useTranslations("platformAdmin.userForm")
+  const locale = useLocale()
   const [data, setData] = useState<PageResponse<PlatformTemplate> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,11 +72,11 @@ export function CertificateTemplatesSection() {
       })
       setData(res)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load templates")
+      setError(err instanceof Error ? err.message : tp("failedToLoad"))
     } finally {
       setLoading(false)
     }
-  }, [search, typeFilter])
+  }, [search, typeFilter, tp])
 
   useEffect(() => {
     const t = setTimeout(load, 250)
@@ -83,11 +93,11 @@ export function CertificateTemplatesSection() {
   const save = async () => {
     if (!form) return
     if (!form.name.trim()) {
-      setFormError("Template name is required.")
+      setFormError(tp("errNameRequired"))
       return
     }
     if (!form.id && !form.institutionId) {
-      setFormError("Select the institution that owns this template.")
+      setFormError(tp("errInstitutionRequired"))
       return
     }
     setSaving(true)
@@ -108,7 +118,7 @@ export function CertificateTemplatesSection() {
       setForm(null)
       await load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to save template")
+      setFormError(err instanceof Error ? err.message : tp("saveFailed"))
     } finally {
       setSaving(false)
     }
@@ -121,7 +131,7 @@ export function CertificateTemplatesSection() {
       await platformAdminApi.setCertificateTemplateStatus(template.id, !template.isActive)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update template status")
+      setError(err instanceof Error ? err.message : tp("statusUpdateFailed"))
     } finally {
       setBusy(null)
     }
@@ -135,7 +145,7 @@ export function CertificateTemplatesSection() {
       const res = await platformAdminApi.listCertificateSignatories(0, 100, { status: "ACTIVE" })
       setLinkSignatories(res.content)
     } catch (err) {
-      setLinkError(err instanceof Error ? err.message : "Failed to load signatories")
+      setLinkError(err instanceof Error ? err.message : tsg("failedToLoad"))
     }
   }
 
@@ -148,7 +158,7 @@ export function CertificateTemplatesSection() {
       setLinkModal(null)
       await load()
     } catch (err) {
-      setLinkError(err instanceof Error ? err.message : "Failed to update signatories")
+      setLinkError(err instanceof Error ? err.message : tp("updateSignatoriesFailed"))
     } finally {
       setLinkSaving(false)
     }
@@ -172,7 +182,7 @@ export function CertificateTemplatesSection() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search templates"
+            placeholder={tp("searchPlaceholder")}
             className="w-full rounded-xl border border-border bg-background pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
@@ -181,7 +191,7 @@ export function CertificateTemplatesSection() {
           onChange={(e) => setTypeFilter(e.target.value)}
           className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
         >
-          <option value="">All types</option>
+          <option value="">{tc("allTypes")}</option>
           {TEMPLATE_TYPES.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
@@ -190,7 +200,7 @@ export function CertificateTemplatesSection() {
           onClick={() => setForm({ name: "", description: "", templateType: "COMPLETION", logoUrl: "", institutionId: "" })}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
         >
-          <Plus className="size-4" /> New template
+          <Plus className="size-4" /> {tp("newTemplate")}
         </button>
       </div>
 
@@ -207,9 +217,9 @@ export function CertificateTemplatesSection() {
       ) : !data || data.content.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
           <LayoutTemplate className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No templates found</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{tp("emptyTitle")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {search || typeFilter ? "No templates match your filters." : "No certificate templates exist yet."}
+            {search || typeFilter ? tp("emptyFiltered") : tp("emptyDesc")}
           </p>
         </div>
       ) : (
@@ -218,11 +228,11 @@ export function CertificateTemplatesSection() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Template</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Institution</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Usage</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Signatories</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{tp("colTemplate")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{tcert("institution")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{tp("colUsage")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{tcert("tabSignatories")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{tcert("status")}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -237,7 +247,7 @@ export function CertificateTemplatesSection() {
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{t.institutionName || "—"}</td>
                     <td className="px-5 py-3.5 text-muted-foreground">
-                      {t.usageCount} certificate{t.usageCount === 1 ? "" : "s"}
+                      {tp("usageCount", { count: t.usageCount })}
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">{t.signatories.length}</td>
                     <td className="px-5 py-3.5">
@@ -253,10 +263,10 @@ export function CertificateTemplatesSection() {
                       <div className="flex flex-wrap justify-end gap-1.5">
                         <button
                           onClick={() => setPreviewTemplate(t)}
-                          title="Preview template"
+                          title={tp("previewTemplate")}
                           className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                         >
-                          <Eye className="size-3" /> Preview
+                          <Eye className="size-3" /> {tp("previewAction")}
                         </button>
                         <button
                           onClick={() =>
@@ -271,13 +281,13 @@ export function CertificateTemplatesSection() {
                           }
                           className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                         >
-                          <PenLine className="size-3" /> Edit
+                          <PenLine className="size-3" /> {tc("edit")}
                         </button>
                         <button
                           onClick={() => openLink(t)}
                           className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                         >
-                          <Link2 className="size-3" /> Signatories
+                          <Link2 className="size-3" /> {tcert("tabSignatories")}
                         </button>
                         <button
                           onClick={() => openVersions(t)}
@@ -295,7 +305,7 @@ export function CertificateTemplatesSection() {
                           }`}
                         >
                           {t.isActive ? <Ban className="size-3" /> : <CheckCircle2 className="size-3" />}
-                          {t.isActive ? "Deactivate" : "Activate"}
+                          {t.isActive ? tp("deactivate") : tp("activate")}
                         </button>
                       </div>
                     </td>
@@ -313,9 +323,9 @@ export function CertificateTemplatesSection() {
           <div className="mx-auto w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-base font-semibold text-foreground">
-                {form.id ? "Edit template" : "New certificate template"}
+                {form.id ? tp("titleEdit") : tp("titleNew")}
               </h2>
-              <button onClick={() => setForm(null)} className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted" aria-label="Close">
+              <button onClick={() => setForm(null)} className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted" aria-label={tc("close")}>
                 <X className="size-4" />
               </button>
             </div>
@@ -328,16 +338,16 @@ export function CertificateTemplatesSection() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block sm:col-span-2">
-                <span className="text-xs font-medium text-muted-foreground">Name *</span>
+                <span className="text-xs font-medium text-muted-foreground">{tp("labelName")}</span>
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. Standard Completion Certificate"
+                  placeholder={tp("phName")}
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Template type *</span>
+                <span className="text-xs font-medium text-muted-foreground">{tp("labelTemplateType")}</span>
                 <select
                   value={form.templateType}
                   onChange={(e) => setForm({ ...form, templateType: e.target.value })}
@@ -350,13 +360,13 @@ export function CertificateTemplatesSection() {
               </label>
               {!form.id && (
                 <label className="block">
-                  <span className="text-xs font-medium text-muted-foreground">Owning institution *</span>
+                  <span className="text-xs font-medium text-muted-foreground">{tp("labelOwningInstitution")}</span>
                   <select
                     value={form.institutionId}
                     onChange={(e) => setForm({ ...form, institutionId: e.target.value })}
                     className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
                   >
-                    <option value="">Select institution…</option>
+                    <option value="">{tp("selectInstitution")}</option>
                     {institutions.map((inst) => (
                       <option key={inst.id} value={inst.id}>{inst.name}</option>
                     ))}
@@ -365,18 +375,18 @@ export function CertificateTemplatesSection() {
               )}
               <label className="block sm:col-span-2">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Statement (supports dynamic fields like {"{{recipient.fullName}}"} and {"{{course.title}}"})
+                  {tp("labelStatement", { recipient: "{{recipient.fullName}}", course: "{{course.title}}" })}
                 </span>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder={"Awarded to {{recipient.fullName}} for successfully completing {{course.title}}."}
+                  placeholder={tp("phStatement", { recipient: "{{recipient.fullName}}", course: "{{course.title}}" })}
                 />
               </label>
               <label className="block sm:col-span-2">
-                <span className="text-xs font-medium text-muted-foreground">Logo URL (optional)</span>
+                <span className="text-xs font-medium text-muted-foreground">{tp("labelLogoUrl")}</span>
                 <input
                   value={form.logoUrl}
                   onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
@@ -388,7 +398,7 @@ export function CertificateTemplatesSection() {
 
             <div className="mt-6 flex justify-end gap-2">
               <button onClick={() => setForm(null)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted">
-                Cancel
+                {tc("cancel")}
               </button>
               <button
                 onClick={save}
@@ -396,7 +406,7 @@ export function CertificateTemplatesSection() {
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
                 {saving && <Loader2 className="size-4 animate-spin" />}
-                {form.id ? "Save changes" : "Create template"}
+                {form.id ? tu("btnSave") : tp("createTemplate")}
               </button>
             </div>
           </div>
@@ -409,10 +419,10 @@ export function CertificateTemplatesSection() {
           <div className="mx-auto w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-foreground">Authorised signatories</h2>
+                <h2 className="text-base font-semibold text-foreground">{tdet("authorisedSignatories")}</h2>
                 <p className="text-xs text-muted-foreground">{linkModal.template.name}</p>
               </div>
-              <button onClick={() => setLinkModal(null)} className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted" aria-label="Close">
+              <button onClick={() => setLinkModal(null)} className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted" aria-label={tc("close")}>
                 <X className="size-4" />
               </button>
             </div>
@@ -429,7 +439,7 @@ export function CertificateTemplatesSection() {
               </div>
             ) : linkSignatories.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                No active signatory profiles exist yet. Create one in the Signatories tab first.
+                {tp("noActiveSignatories")}
               </p>
             ) : (
               <ul className="space-y-2">
@@ -456,7 +466,7 @@ export function CertificateTemplatesSection() {
                           <p className="truncate text-xs text-muted-foreground">
                             {[s.positionTitle, s.organization].filter(Boolean).join(" · ") || "—"}
                             {" · "}
-                            {s.certificateTypes?.length ? s.certificateTypes.join(", ") : "all types"}
+                            {s.certificateTypes?.length ? s.certificateTypes.join(", ") : tc("allTypes")}
                           </p>
                         </div>
                       </label>
@@ -468,14 +478,14 @@ export function CertificateTemplatesSection() {
 
             <div className="mt-6 flex justify-end gap-2">
               <button onClick={() => setLinkModal(null)} className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted">
-                Cancel
+                {tc("cancel")}
               </button>
               <button
                 onClick={saveLinks}
                 disabled={linkSaving || linkSignatories === null}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {linkSaving && <Loader2 className="size-4 animate-spin" />} Save links
+                {linkSaving && <Loader2 className="size-4 animate-spin" />} {tp("saveLinks")}
               </button>
             </div>
           </div>
@@ -488,12 +498,12 @@ export function CertificateTemplatesSection() {
           <div className="mx-auto w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-foreground">Template versions</h2>
+                <h2 className="text-base font-semibold text-foreground">{tp("versionsTitle")}</h2>
                 <p className="text-xs text-muted-foreground">
-                  {versionsModal.template.name} — current v{versionsModal.template.version}
+                  {tp("versionsCurrent", { name: versionsModal.template.name, version: versionsModal.template.version })}
                 </p>
               </div>
-              <button onClick={() => setVersionsModal(null)} className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted" aria-label="Close">
+              <button onClick={() => setVersionsModal(null)} className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted" aria-label={tc("close")}>
                 <X className="size-4" />
               </button>
             </div>
@@ -505,17 +515,17 @@ export function CertificateTemplatesSection() {
             ) : versionsModal.versions.length === 0 ? (
               <div className="rounded-xl border border-border bg-muted/40 px-4 py-6 text-center">
                 <p className="text-sm font-medium text-foreground">
-                  v{versionsModal.template.version} (current) — no archived edits yet
+                  {tp("versionsNoneCurrent", { version: versionsModal.template.version })}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Each edit archives the previous content as a numbered version.
+                  {tp("versionsHint")}
                 </p>
               </div>
             ) : (
               <ul className="space-y-2">
                 <li className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
                   <p className="text-sm font-semibold text-foreground">
-                    v{versionsModal.template.version} (current)
+                    {tp("versionCurrent", { version: versionsModal.template.version })}
                   </p>
                   <p className="text-xs text-muted-foreground">{versionsModal.template.name}</p>
                 </li>
@@ -524,12 +534,12 @@ export function CertificateTemplatesSection() {
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-foreground">v{v.version}</p>
                       <p className="text-xs text-muted-foreground">
-                        {v.archivedAt ? new Date(v.archivedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "—"}
+                        {v.archivedAt ? formatDateTime(v.archivedAt, locale, { dateStyle: "medium", timeStyle: "short" }) : "—"}
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground">{v.name}</p>
                     {v.description ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{v.description}</p> : null}
-                    {v.archivedBy ? <p className="mt-1 text-[11px] text-muted-foreground">Archived by {v.archivedBy}</p> : null}
+                    {v.archivedBy ? <p className="mt-1 text-[11px] text-muted-foreground">{tp("archivedBy", { name: v.archivedBy })}</p> : null}
                   </li>
                 ))}
               </ul>
@@ -544,13 +554,13 @@ export function CertificateTemplatesSection() {
           <div className="mx-auto w-full max-w-5xl">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm font-medium text-white">
-                Template preview — sample layout (marked SAMPLE, not a real certificate)
+                {tp("previewBanner")}
               </p>
               <button
                 onClick={() => setPreviewTemplate(null)}
                 className="rounded-xl border border-white/30 px-4 py-2 text-sm text-white hover:bg-white/10"
               >
-                Close
+                {tc("close")}
               </button>
             </div>
             <PreviewDocument template={previewTemplate} />

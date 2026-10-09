@@ -5,9 +5,12 @@ import { useTranslations } from "next-intl"
 import { learnerApi, type Bookmark } from "@/lib/learner-api"
 import { Bookmark as BookmarkIcon, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 
 export default function DashboardBookmarksPage() {
   const tc = useTranslations("common")
+  const locale = useLocale()
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -114,7 +117,7 @@ export default function DashboardBookmarksPage() {
             </div>
             <div className="mt-3 flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground">
-                Saved {new Date(bookmark.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                Saved {formatDate(bookmark.createdAt, locale, { month: "short", day: "numeric", year: "numeric" })}
               </span>
               <button
                 onClick={() => {

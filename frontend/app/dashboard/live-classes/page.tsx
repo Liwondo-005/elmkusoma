@@ -6,6 +6,8 @@ import { useRequireAuth } from "@/lib/auth"
 import { useTranslations } from "next-intl"
 import { dashboardApi } from "@/lib/api"
 import { type LearningLevel } from "@/lib/learner-config"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate, formatTime } from "@/lib/format-date"
 import { Video, Calendar, Clock, Users, Play, CheckCircle, ArrowRight, User, AlertCircle } from "lucide-react"
 
 interface LiveClass {
@@ -45,6 +47,7 @@ export default function LiveClassesPage() {
   const { user } = useRequireAuth()
   const t = useTranslations("primary")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const [classes, setClasses] = useState<LiveClass[]>([])
   const [loading, setLoading] = useState(true)
   const level = user?.learningLevel as LearningLevel | null
@@ -211,7 +214,7 @@ export default function LiveClassesPage() {
                       {cls.scheduledAt && (
                         <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
                           <Clock className="size-3" />
-                          {new Date(cls.scheduledAt).toLocaleTimeString("en-GB", {
+                          {formatTime(cls.scheduledAt, locale, {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
@@ -254,7 +257,7 @@ export default function LiveClassesPage() {
                       {cls.scheduledAt && (
                         <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
                           <Clock className="size-3" />
-                          {new Date(cls.scheduledAt).toLocaleDateString("en-GB", {
+                          {formatDate(cls.scheduledAt, locale, {
                             weekday: "short",
                             month: "short",
                             day: "numeric",
@@ -430,7 +433,7 @@ export default function LiveClassesPage() {
                       {cls.scheduledAt && (
                         <span className="flex items-center gap-1">
                           <Clock className="size-3" />
-                          {new Date(cls.scheduledAt).toLocaleTimeString("en-GB", {
+                          {formatTime(cls.scheduledAt, locale, {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}

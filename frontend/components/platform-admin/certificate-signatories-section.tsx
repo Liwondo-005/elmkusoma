@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import {
   Plus, Loader2, AlertCircle, PenLine, Trash2, Search, Users, X, ShieldCheck,
 } from "lucide-react"
@@ -45,6 +46,10 @@ interface InstitutionOption {
 }
 
 export function CertificateSignatoriesSection() {
+  const t = useTranslations("platformAdmin.signatories")
+  const tc = useTranslations("common")
+  const tcert = useTranslations("platformAdmin.certificates")
+  const tu = useTranslations("platformAdmin.userForm")
   const [data, setData] = useState<PageResponse<Signatory> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -68,11 +73,11 @@ export function CertificateSignatoriesSection() {
       })
       setData(res)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load signatories")
+      setError(err instanceof Error ? err.message : t("failedToLoad"))
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter])
+  }, [search, statusFilter, t])
 
   useEffect(() => {
     const t = setTimeout(load, 250) // debounce typing
@@ -89,7 +94,7 @@ export function CertificateSignatoriesSection() {
   const save = async () => {
     if (!form) return
     if (!form.fullName.trim()) {
-      setFormError("Full name is required.")
+      setFormError(t("errFullNameRequired"))
       return
     }
     setSaving(true)
@@ -114,7 +119,7 @@ export function CertificateSignatoriesSection() {
       setForm(null)
       await load()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to save signatory")
+      setFormError(err instanceof Error ? err.message : t("saveFailed"))
     } finally {
       setSaving(false)
     }
@@ -128,7 +133,7 @@ export function CertificateSignatoriesSection() {
       setDeleteConfirm(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove signatory")
+      setError(err instanceof Error ? err.message : t("removeFailed"))
       setDeleteConfirm(null)
     } finally {
       setDeleting(null)
@@ -138,14 +143,14 @@ export function CertificateSignatoriesSection() {
   const onSignatureFile = (file: File | null) => {
     if (!file) return
     if (!file.type.startsWith("image/")) {
-      setFormError("Signature must be an image file.")
+      setFormError(t("errSignatureImage"))
       return
     }
     const reader = new FileReader()
     reader.onload = () => {
       const value = String(reader.result || "")
       if (value.length > MAX_SIGNATURE_CHARS) {
-        setFormError("Signature image is too large (max ~200 KB).")
+        setFormError(t("errSignatureTooLarge"))
         return
       }
       setFormError(null)
@@ -175,7 +180,7 @@ export function CertificateSignatoriesSection() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or organisation"
+            placeholder={t("searchPlaceholder")}
             className="w-full rounded-xl border border-border bg-background pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
@@ -184,15 +189,15 @@ export function CertificateSignatoriesSection() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
         >
-          <option value="">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
+          <option value="">{tcert("allStatuses")}</option>
+          <option value="ACTIVE">{tu("optActive")}</option>
+          <option value="INACTIVE">{tu("optInactive")}</option>
         </select>
         <button
           onClick={() => setForm({ ...emptyForm })}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
         >
-          <Plus className="size-4" /> New signatory
+          <Plus className="size-4" /> {t("newSignatory")}
         </button>
       </div>
 
@@ -205,11 +210,10 @@ export function CertificateSignatoriesSection() {
       {deleteConfirm && (
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 space-y-3">
           <p className="text-sm font-semibold text-destructive">
-            Remove signatory “{deleteConfirm.fullName}”?
+            {t("confirmRemoveTitle", { name: deleteConfirm.fullName })}
           </p>
           <p className="text-sm text-muted-foreground">
-            The profile is deactivated and its template links are removed (soft delete — audit history is preserved).
-            Certificates already issued keep their own record.
+            {t("confirmRemoveDesc")}
           </p>
           <div className="flex gap-2">
             <button
@@ -218,13 +222,13 @@ export function CertificateSignatoriesSection() {
               className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground hover:opacity-90 disabled:opacity-50"
             >
               {deleting === deleteConfirm.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-              Confirm remove
+              {t("confirmRemove")}
             </button>
             <button
               onClick={() => setDeleteConfirm(null)}
               className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground"
             >
-              Cancel
+              {tc("cancel")}
             </button>
           </div>
         </div>
@@ -238,11 +242,11 @@ export function CertificateSignatoriesSection() {
       ) : !data || data.content.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 text-center">
           <Users className="size-10 text-muted-foreground/50" />
-          <p className="mt-4 text-sm font-medium text-foreground">No signatories found</p>
+          <p className="mt-4 text-sm font-medium text-foreground">{t("emptyTitle")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {search || statusFilter
-              ? "No signatories match your filters."
-              : "No signatory profiles have been created yet."}
+              ? t("emptyFiltered")
+              : t("emptyDesc")}
           </p>
         </div>
       ) : (
@@ -251,11 +255,11 @@ export function CertificateSignatoriesSection() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Name</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Scope</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Authorised types</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Validity</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("colName")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("colScope")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("colAuthorisedTypes")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{t("colValidity")}</th>
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">{tcert("status")}</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
@@ -278,18 +282,18 @@ export function CertificateSignatoriesSection() {
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">
                       {s.institutionId
-                        ? s.institutionName || "Institution-scoped"
-                        : "Platform-wide"}
+                        ? s.institutionName || t("institutionScoped")
+                        : t("platformWide")}
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">
                       {s.certificateTypes && s.certificateTypes.length > 0
                         ? s.certificateTypes.join(", ")
-                        : "All types"}
+                        : tc("allTypes")}
                     </td>
                     <td className="px-5 py-3.5 text-muted-foreground">
                       {(s.validFrom || s.validUntil)
                         ? `${s.validFrom || "…"} → ${s.validUntil || "…"}`
-                        : "No limit"}
+                        : t("noLimit")}
                     </td>
                     <td className="px-5 py-3.5">
                       <span
@@ -319,13 +323,13 @@ export function CertificateSignatoriesSection() {
                           }
                           className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                         >
-                          <PenLine className="size-3" /> Edit
+                          <PenLine className="size-3" /> {tc("edit")}
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(s)}
                           className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
                         >
-                          <Trash2 className="size-3" /> Remove
+                          <Trash2 className="size-3" /> {t("removeAction")}
                         </button>
                       </div>
                     </td>
@@ -345,13 +349,13 @@ export function CertificateSignatoriesSection() {
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-5 text-primary" />
                 <h2 className="text-base font-semibold text-foreground">
-                  {form.id ? "Edit signatory" : "New signatory"}
+                  {form.id ? t("titleEdit") : t("newSignatory")}
                 </h2>
               </div>
               <button
                 onClick={() => setForm(null)}
                 className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted"
-                aria-label="Close"
+                aria-label={tc("close")}
               >
                 <X className="size-4" />
               </button>
@@ -365,51 +369,51 @@ export function CertificateSignatoriesSection() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block sm:col-span-2">
-                <span className="text-xs font-medium text-muted-foreground">Full name *</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("labelFullName")}</span>
                 <input
                   value={form.fullName}
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. Dr. Neema Mushi"
+                  placeholder={t("phFullName")}
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Position / title</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("labelPosition")}</span>
                 <input
                   value={form.positionTitle}
                   onChange={(e) => setForm({ ...form, positionTitle: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. Programme Director"
+                  placeholder={t("phPosition")}
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Organisation</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("labelOrganisation")}</span>
                 <input
                   value={form.organization}
                   onChange={(e) => setForm({ ...form, organization: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. ELMKUSOMA"
+                  placeholder={t("phOrganisation")}
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Status</span>
+                <span className="text-xs font-medium text-muted-foreground">{tcert("status")}</span>
                 <select
                   value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
                 >
-                  <option value="ACTIVE">Active (authorised)</option>
-                  <option value="INACTIVE">Inactive (not authorised)</option>
+                  <option value="ACTIVE">{t("optActiveAuthorised")}</option>
+                  <option value="INACTIVE">{t("optInactiveUnauthorised")}</option>
                 </select>
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Institution scope</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("labelInstitutionScope")}</span>
                 <select
                   value={form.institutionId}
                   onChange={(e) => setForm({ ...form, institutionId: e.target.value })}
                   className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
                 >
-                  <option value="">Platform-wide</option>
+                  <option value="">{t("platformWide")}</option>
                   {institutions.map((inst) => (
                     <option key={inst.id} value={inst.id}>
                       {inst.name}
@@ -418,7 +422,7 @@ export function CertificateSignatoriesSection() {
                 </select>
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Valid from</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("labelValidFrom")}</span>
                 <input
                   type="date"
                   value={form.validFrom}
@@ -427,7 +431,7 @@ export function CertificateSignatoriesSection() {
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground">Valid until</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("labelValidUntil")}</span>
                 <input
                   type="date"
                   value={form.validUntil}
@@ -438,7 +442,7 @@ export function CertificateSignatoriesSection() {
 
               <fieldset className="sm:col-span-2">
                 <legend className="text-xs font-medium text-muted-foreground">
-                  Authorised certificate types (none selected = all types)
+                  {t("legendCertTypes")}
                 </legend>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {CERT_TYPES.map((type) => (
@@ -463,7 +467,7 @@ export function CertificateSignatoriesSection() {
               </fieldset>
 
               <div className="sm:col-span-2">
-                <p className="text-xs font-medium text-muted-foreground">Signature image (PNG/JPG/WEBP, max ~200 KB)</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("labelSignatureImage")}</p>
                 <div className="mt-2 flex items-center gap-4">
                   <input
                     type="file"
@@ -474,11 +478,11 @@ export function CertificateSignatoriesSection() {
                   {form.signatureImage && (
                     <div className="flex items-center gap-2">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={form.signatureImage} alt="Signature preview" className="h-10 w-28 rounded border border-border bg-white object-contain" />
+                      <img src={form.signatureImage} alt={t("signaturePreviewAlt")} className="h-10 w-28 rounded border border-border bg-white object-contain" />
                       <button
                         onClick={() => setForm({ ...form, signatureImage: null })}
                         className="rounded-lg border border-border p-1 text-muted-foreground hover:bg-muted"
-                        aria-label="Remove signature"
+                        aria-label={t("removeSignatureAria")}
                       >
                         <X className="size-3.5" />
                       </button>
@@ -493,7 +497,7 @@ export function CertificateSignatoriesSection() {
                 onClick={() => setForm(null)}
                 className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
               >
-                Cancel
+                {tc("cancel")}
               </button>
               <button
                 onClick={save}
@@ -501,7 +505,7 @@ export function CertificateSignatoriesSection() {
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
                 {saving && <Loader2 className="size-4 animate-spin" />}
-                {form.id ? "Save changes" : "Create signatory"}
+                {form.id ? tu("btnSave") : t("createSignatory")}
               </button>
             </div>
           </div>

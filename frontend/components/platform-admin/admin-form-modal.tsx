@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Loader2, X } from "lucide-react"
 import { platformAdminApi, type AdminAccount } from "@/lib/platform-admin-api"
 
@@ -12,6 +13,10 @@ interface AdminFormModalProps {
 }
 
 export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModalProps) {
+  const t = useTranslations("platformAdmin.adminForm")
+  const tu = useTranslations("platformAdmin.userForm")
+  const ta = useTranslations("platformAdmin.admins")
+  const tc = useTranslations("common")
   const isEdit = Boolean(admin)
   const [form, setForm] = useState({
     firstName: "",
@@ -65,15 +70,15 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
     const lastName = form.lastName.trim()
     const email = form.email.trim()
     if (!firstName || !lastName || !email) {
-      setError("First name, last name, and email are required")
+      setError(tu("errNamesEmail"))
       return
     }
     if (!isEdit && !form.password) {
-      setError("Password is required for new admins")
+      setError(t("errPasswordRequired"))
       return
     }
     if (form.password && form.password.length < 8) {
-      setError("Password must be at least 8 characters")
+      setError(tu("errPasswordMin"))
       return
     }
     setSaving(true)
@@ -92,7 +97,7 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
           updatePayload.password = form.password
         }
         await platformAdminApi.updateAdmin(admin.userId, updatePayload)
-        onSaved("Admin updated successfully")
+        onSaved(t("updatedOk"))
       } else {
         await platformAdminApi.createAdmin({
           firstName,
@@ -103,11 +108,11 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
           role: form.role,
           institutionId: form.institutionId,
         })
-        onSaved("Admin created successfully")
+        onSaved(t("createdOk"))
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save admin")
+      setError(err instanceof Error ? err.message : t("saveFailed"))
     } finally {
       setSaving(false)
     }
@@ -121,12 +126,12 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-lg">
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-foreground">{isEdit ? "Edit Admin" : "Add Admin"}</h2>
+            <h2 className="text-lg font-bold text-foreground">{isEdit ? t("titleEdit") : ta("addAdmin")}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {isEdit ? "Update the admin details below." : "Create a new admin account."}
+              {isEdit ? t("subEdit") : t("subAdd")}
             </p>
           </div>
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label="Close">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-lg p-1 text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label={tc("close")}>
             <X className="size-5" />
           </button>
         </div>
@@ -138,28 +143,28 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">First Name *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{tu("labelFirstName")}</label>
               <input type="text" value={form.firstName} onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))} required minLength={1} maxLength={100} placeholder="John" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Last Name *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{tu("labelLastName")}</label>
               <input type="text" value={form.lastName} onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))} required minLength={1} maxLength={100} placeholder="Doe" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Email *</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{tu("labelEmail")}</label>
             <input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required maxLength={255} placeholder="admin@example.com" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Phone</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">{tu("labelPhone")}</label>
             <input type="text" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} maxLength={50} placeholder="+255 ..." className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Role *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{tu("labelRole")}</label>
               <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring">
                 {["ADMIN", "INSTITUTION_ADMIN", "NATIONAL_ADMIN", "REGIONAL_ADMIN", "DISTRICT_ADMIN"].map((r) => (
                   <option key={r} value={r}>{r}</option>
@@ -167,9 +172,9 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Institution *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("labelInstitution")}</label>
               <select value={form.institutionId ?? ""} onChange={(e) => setForm((p) => ({ ...p, institutionId: e.target.value === "" ? undefined : e.target.value }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring">
-                <option value="">-- Select Institution --</option>
+                <option value="">{t("selectInstitution")}</option>
                 {institutions.map((inst) => (
                   <option key={inst.id} value={inst.id}>{inst.name} ({inst.code})</option>
                 ))}
@@ -179,35 +184,35 @@ export function AdminFormModal({ open, admin, onClose, onSaved }: AdminFormModal
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Status</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{tu("labelStatus")}</label>
               <select value={form.isActive ? "true" : "false"} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.value === "true" }))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring">
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
+                <option value="true">{tu("optActive")}</option>
+                <option value="false">{tu("optInactive")}</option>
               </select>
             </div>
           </div>
 
           {!isEdit && (
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Password *</label>
-              <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required minLength={8} placeholder="Min 8 characters" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{tu("labelPassword")}</label>
+              <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required minLength={8} placeholder={tu("phPassword")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
             </div>
           )}
 
           {isEdit && (
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">New Password (optional)</label>
-              <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} minLength={8} placeholder="Leave blank to keep current password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">{t("labelNewPassword")}</label>
+              <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} minLength={8} placeholder={t("phKeepPassword")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
             </div>
           )}
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} disabled={saving} className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50">
-              Cancel
+              {tc("cancel")}
             </button>
             <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               {saving && <Loader2 className="size-4 animate-spin" />}
-              {isEdit ? "Save Changes" : "Create Admin"}
+              {isEdit ? tu("btnSave") : t("btnCreate")}
             </button>
           </div>
         </form>

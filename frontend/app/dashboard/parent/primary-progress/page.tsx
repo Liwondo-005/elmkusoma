@@ -31,6 +31,8 @@ import {
   type AchievementItem,
 } from "@/lib/parent-api"
 import { useSelectedChild } from "@/hooks/use-selected-child"
+import { useLocale } from "@/hooks/use-locale"
+import { formatDate } from "@/lib/format-date"
 import { TeacherInfoCard } from "@/components/primary/teacher-info-card"
 import type { TeacherInfo } from "@/lib/api"
 
@@ -173,6 +175,7 @@ export default function PrimaryProgressPage() {
   const t = useTranslations("parent")
   const tn = useTranslations("nav")
   const ts = useTranslations("status")
+  const locale = useLocale()
   const firstName = user?.firstName || user?.name?.split(" ")[0] || t("primaryProgress.parentFallback")
   const [subjectPerformance, setSubjectPerformance] = useState<SubjectPerformanceItem[]>([])
   const [attendance, setAttendance] = useState<AttendanceDay[]>([])
@@ -339,7 +342,7 @@ export default function PrimaryProgressPage() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground">{act.title}</p>
                           <p className="text-xs text-muted-foreground">
-                            {act.timestamp ? new Date(act.timestamp).toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" }) : ""}
+                            {act.timestamp ? formatDate(act.timestamp, locale, { weekday: "short", month: "short", day: "numeric" }) : ""}
                           </p>
                         </div>
                       </div>
