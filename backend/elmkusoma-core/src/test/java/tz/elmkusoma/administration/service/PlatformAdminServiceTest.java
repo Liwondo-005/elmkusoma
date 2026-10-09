@@ -805,4 +805,48 @@ class PlatformAdminServiceTest {
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> service.listDelegatedTasks(null));
     }
+
+    // ── B-49: audit log pagination ──
+
+    @Test
+    void getAuditLogs_reportsRealTotalSoPagerIsNotGuessed() {
+        when(auditLogRepository.findAll(any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(
+                        List.of(), org.springframework.data.domain.PageRequest.of(1, 20), 137L));
+
+        var page = service.getAuditLogs(1, 20, null, null, null);
+
+        assertEquals(137L, page.getTotalElements());
+        assertEquals(7, page.getTotalPages());
+        assertFalse(page.isFirst());
+        assertFalse(page.isLast());
+    }
+
+    @Test
+    void getAuditLogs_clampsNegativePageAndOversizedSize() {
+        var captor = org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        when(auditLogRepository.findAll(captor.capture()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        service.getAuditLogs(-5, 5000, null, null, null);
+
+        var requested = captor.getValue();
+        assertEquals(0, requested.getPageNumber(), "negative page must be clamped to 0");
+        assertEquals(200, requested.getPageSize(), "size must be clamped to the 200 ceiling");
+    }
+
+    @Test
+    void getAuditLogs_entityScopedLookupUsesPagedQuery() {
+        UUID entityId = UUID.randomUUID();
+        var request = org.springframework.data.domain.PageRequest.of(0, 20);
+        when(auditLogRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse(
+                eq("DELEGATION"), eq(entityId), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(), request, 41L));
+
+        var page = service.getAuditLogs(0, 20, null, "DELEGATION", entityId);
+
+        assertEquals(41L, page.getTotalElements());
+        // The unpaged List-returning method must not be used any more: it ignored page/size.
+        verify(auditLogRepository, never()).findByEntityTypeAndEntityId(anyString(), any(UUID.class));
+    }
 }

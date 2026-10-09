@@ -1443,6 +1443,13 @@ export const adminApi = {
   getRole: (institutionId: string, roleId: string) =>
     request<RoleResponse>(`/v1/admin/roles/${roleId}?institutionId=${institutionId}`),
 
+  /** B-57: roles could be created and deleted but never edited, so a role's permission set was frozen. */
+  updateRole: (institutionId: string, roleId: string, data: CreateRoleRequest) =>
+    request<RoleResponse>(`/v1/admin/roles/${roleId}?institutionId=${institutionId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
   deleteRole: (institutionId: string, roleId: string) =>
     request<void>(`/v1/admin/roles/${roleId}?institutionId=${institutionId}`, {
       method: "DELETE",
