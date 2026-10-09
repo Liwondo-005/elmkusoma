@@ -8,7 +8,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
 import tz.elmkusoma.liveclass.domain.MediaAsset;
+import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
@@ -43,6 +45,7 @@ class MediaLibraryRecordingAuthorizationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private InstitutionRepository institutionRepository;
     @Autowired private MediaAssetRepository mediaAssetRepository;
+    @Autowired private LiveClassParticipantRepository participantRepository;
     @Autowired private InstitutionMembershipRepository membershipRepository;
 
     private User outsider;
@@ -162,6 +165,78 @@ class MediaLibraryRecordingAuthorizationTest {
                         .header("X-Institution-Id", institution.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    /**
+     * The positive half of the entitlement rule: a learner who DID take part in the recorded
+ * *LiveClass* must be able to reach the recording. Without this the suite would happily pass
+ * with every recording denied to everyone, including the students it is meant to serve.
+ */
+    @Test
+    void learnerWhoParticipated_canOpenTheirRecording() throws Exception {
+        MediaAsset recording = saveRecording("Entitled Recording");
+
+        participantRepository.saveAndFlush(LiveClassParticipant.builder()
+                .liveClassId(liveClassId)
+                .userId(outsider.getId())
+                .role("LEARNER")
+                .joinedAt(java.time.LocalDateTime.now())
+                .isDeleted(false)
+                .build());
+
+        mockMvc.perform(get("/v1/media/" + recording.getId())
+                        .header("Authorization", "Bearer " + TestTokens.userToken(outsider.getEmail()))
+                        .header("X-Institution-Id", institution.getId().toString()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/v1/media/" + recording.getId() + "/download-url")
+                        .header("Authorization", "Bearer " + TestTokens.userToken(outsider.getEmail()))
+                        .header("X-Institution-Id", institution.getId().toString()))
+                .andExpect(status().isOk());
+
+        String list = mockMvc.perform(get("/v1/media")
+                        .header("Authorization", "Bearer " + TestTokens.userToken(outsider.getEmail()))
+                        .header("X-Institution-Id", institution.getId().toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        if (!list.contains("Entitled Recording")) {
+            throw new AssertionError("an entitled participant must see their own recording in the list");
+        }
+    }
+
+    /**
+     * The teacher who recorded it keeps access without being a participant row, so a session
+     * that never had a participant (or whose rows expired) is still reviewable by its teacher.
+     */
+    @Test
+    void owningTeacher_canOpenRecordingWithoutParticipationRow() throws Exception {
+        MediaAsset recording = saveRecording("Teacher Owned Recording");
+
+        User teacher = userRepository.save(User.builder()
+                .email("media-teacher-" + UUID.randomUUID() + "@test.com")
+                .passwordHash("test-hash")
+                .firstName("Media")
+                .lastName("Teacher")
+                .role(User.Role.TEACHER)
+                .institutionId(institution.getId())
+                .isActive(true)
+                .isEmailVerified(true)
+                .isDeleted(false)
+                .build());
+        // media_assets.teacher_id stores a users.id, so the asset must point at the saved user.
+        recording.setTeacherId(teacher.getId());
+        mediaAssetRepository.saveAndFlush(recording);
+        membershipRepository.save(InstitutionMembership.builder()
+                .userId(teacher.getId())
+                .institutionId(institution.getId())
+                .role(InstitutionMembership.Role.TEACHER)
+                .isActive(true)
+                .build());
+
+        mockMvc.perform(get("/v1/media/" + recording.getId())
+                        .header("Authorization", "Bearer " + TestTokens.userToken(teacher.getEmail()))
+                        .header("X-Institution-Id", institution.getId().toString()))
+                .andExpect(status().isOk());
     }
 
     @Test
