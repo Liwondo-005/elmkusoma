@@ -171,8 +171,16 @@ public class SecurityConfig {
                         // below (first match wins); every other /v1/auth route
                         // stays public exactly as before.
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/v1/auth/change-password").authenticated()
-                        .requestMatchers(PUBLIC_URLS).permitAll()
-                        .requestMatchers(ADMIN_ONLY_URLS).hasRole("ADMIN")
+                .requestMatchers(PUBLIC_URLS).permitAll()
+                // Invitation redemption is the one /v1/admin route that must be reachable
+                // without a session: the recipient has no account yet, which is precisely when
+                // they redeem. The 32-hex token *is* the credential here - it is single-use,
+                // bound to one invitation row, and expires - so this widens reach for exactly
+                // one POST and nothing else under /v1/admin. Scoped to POST so the listing and
+                // cancellation routes around it stay behind the admin fence below.
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/v1/admin/people/invitations/accept")
+                                .permitAll()
+                .requestMatchers(ADMIN_ONLY_URLS).hasRole("ADMIN")
                         // Namespace fences mirroring the class-level @PreAuthorize of the
                         // /v1/admin and /v1/platform-admin controllers, enforced at the URL
                         // level so role denials return 403 before body validation (400) or

@@ -47,6 +47,17 @@ public class ProviderController {
                 providerService.getOrCreateProviderForInstitution(institutionId, actorId)));
     }
 
+/**
+ * Platform approval: verify or revoke a provider.
+ *
+ * <p>Role set unchanged. Narrowing this to platform ADMIN was considered and rejected: the
+ * existing {@code NfeProviderStackIsolationTest.verificationEndpointSetsVerifiedFlag} asserts
+ * a PROVIDER_ADMIN verifying its own provider succeeds, so provider self-verification is a
+ * deliberate, tested part of the current contract rather than an oversight. It stays within
+ * the provider's own tenant, so it is not a cross-provider access hole. Whether verification
+ * should be separable from provider self-service is a product decision, not a defect to fix
+ * unilaterally - flagged in the audit report instead.</p>
+ */
     @PutMapping("/{id}/verification")
     @Operation(summary = "Platform approval: verify or revoke a provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")

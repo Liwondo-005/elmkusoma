@@ -12,6 +12,7 @@ import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.service.InstitutionAuditService;
 import tz.elmkusoma.administration.service.InstitutionPeopleService;
 import tz.elmkusoma.administration.service.InstitutionScopeService;
+import tz.elmkusoma.administration.service.InvitationRolePolicy;
 import tz.elmkusoma.common.ApiResponse;
 
 import java.util.List;
@@ -100,9 +101,14 @@ public class InstitutionPeopleController {
             @Valid @RequestBody InviteUserRequest request,
             @RequestAttribute UUID institutionId,
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("userEmail") String userEmail) {
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
         scopeService.validateAdminAccess(userId, institutionId, "invite_user");
-        InvitationResponse response = peopleService.inviteUser(institutionId, request, userId);
+        // The role is checked against InvitationRolePolicy against *this* caller's authority:
+        // an institution administrator may delegate inside their own tenant, but only a
+        // platform administrator may issue a PROVIDER_ADMIN or platform-role invitation.
+        InvitationResponse response = peopleService.inviteUser(institutionId, request, userId,
+                InvitationRolePolicy.isPlatformActor(userRole));
         auditService.log(institutionId, userId, userEmail, "INVITE_USER",
                 "INVITATION", response.getId().toString(), "Invitation sent to " + request.getEmail(), null);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -133,7 +139,17 @@ public class InstitutionPeopleController {
         return ResponseEntity.ok(ApiResponse.success("Invitation cancelled", null));
     }
 
+    /**
+     * Redeems an invitation.
+     *
+     * <p>Overrides the class-level {@code @PreAuthorize}: the recipient has no account yet,
+     * which is exactly when they redeem, so requiring an admin session made activation
+     * impossible for every new invitee. The single-use, expiring token is the credential here;
+     * {@code acceptInvitation} validates it, its pending status and its expiry. Every other
+     * route on this controller keeps the admin fence.</p>
+     */
     @PostMapping("/invitations/accept")
+    @PreAuthorize("permitAll()")
     @Operation(summary = "Accept an invitation")
     public ResponseEntity<ApiResponse<Void>> acceptInvitation(
             @Valid @RequestBody AcceptInvitationRequest request) {

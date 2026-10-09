@@ -33,6 +33,7 @@ import java.util.UUID;
 public class PlatformAdminController {
 
     private final PlatformAdminService platformAdminService;
+    private final tz.elmkusoma.administration.service.PlatformAccountInvitationService platformAccountInvitationService;
     private final tz.elmkusoma.administration.service.PlatformCommerceService platformCommerceService;
     private final tz.elmkusoma.certificate.service.CertificateGovernanceService certificateGovernanceService;
     private final tz.elmkusoma.institution.service.InstitutionService institutionService;
@@ -120,6 +121,24 @@ public class PlatformAdminController {
         UserSummaryResponse response = platformAdminService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("User created successfully", response));
+    }
+
+    /**
+     * Invites an account for a role only the platform may grant, including PROVIDER_ADMIN.
+     *
+     * <p>The response carries the token exactly once so it can be delivered out of band; it is
+     * never re-listed ({@code /invitations} omits tokens). The recipient sets their own password
+     * when they redeem it, so no permanent credential is ever chosen by the platform.</p>
+     */
+    @PostMapping("/invitations")
+    @Operation(summary = "Invite a provider/platform account (platform admin, expiring token, no password)")
+    public ResponseEntity<ApiResponse<InvitationResponse>> createInvitation(
+            @Valid @RequestBody PlatformInviteRequest request,
+            HttpServletRequest httpRequest) {
+        InvitationResponse response = platformAccountInvitationService
+                .invite(request, actorId(httpRequest));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Invitation created", response));
     }
 
     @PutMapping("/users/{userId}")
