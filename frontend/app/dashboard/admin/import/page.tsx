@@ -33,7 +33,7 @@ export default function AdminImportPage() {
     setError(null)
     try {
       const importType = file.name.includes("student") ? "STUDENT" : "TEACHER"
-      const job = await adminApi.triggerImport(institutionId, importType, file.name)
+      const job = await adminApi.triggerImport(institutionId, importType, file)
       setJobs((prev) => [job, ...prev])
     } catch (err) {
       setError(err instanceof Error ? err.message : t("import.failedToStartImport"))

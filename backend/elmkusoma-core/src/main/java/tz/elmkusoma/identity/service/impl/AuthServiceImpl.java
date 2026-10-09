@@ -331,7 +331,14 @@ public class AuthServiceImpl implements AuthService {
         UUID instId = user.getInstitutionId();
         if (instId == null) {
             instId = resolveDefaultInstitutionId();
-            user.setInstitutionId(instId);
+            if (instId == null) {
+                // Audit B-27: no organisation could be resolved. Do not fabricate one -- the
+                // account is created without a scope and the learner sees "awaiting placement".
+                log.warn("Registered {} with no resolvable institution; awaiting placement",
+                        request.getEmail());
+            } else {
+                user.setInstitutionId(instId);
+            }
         }
         user = userRepository.save(user);
 
@@ -386,10 +393,20 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    /**
+     * Audit B-27: this used to {@code orElse(HQ_INSTITUTION_ID)}, fabricating an organisation id
+     * even when that institution did not exist. The account then carried a scope that resolved to
+     * nothing, passed organization checks, and every tenant-scoped list came back empty with no
+     * indication that the learner was unplaced.
+     *
+     * <p>Now the id is only returned when the HQ institution actually exists. A learner with no
+     * resolvable organisation is registered without a scope and surfaces the existing
+     * "awaiting placement" state instead of silently pretending to belong somewhere.
+     */
     private UUID resolveDefaultInstitutionId() {
         return institutionRepository.findByIdAndIsDeletedFalse(HQ_INSTITUTION_ID)
                 .map(tz.elmkusoma.shared.domain.Institution::getId)
-                .orElse(HQ_INSTITUTION_ID);
+                .orElse(null);
     }
 
     private void ensureMembership(User user, UUID institutionId, User.Role role) {

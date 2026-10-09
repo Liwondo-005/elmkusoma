@@ -130,17 +130,19 @@ public class AdministrationController {
     // ── User Import ──
 
     @PostMapping("/users/import")
-    @Operation(summary = "Create a CSV import job for bulk user creation")
+    @Operation(summary = "Import users from a CSV file")
     public ResponseEntity<ApiResponse<ImportJobResponse>> createImportJob(
             @RequestParam String importType,
-            @RequestParam String fileName,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
             @RequestAttribute UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole) {
-        ImportJobResponse response = administrationService.createImportJob(importType, fileName, institutionId, userId, userEmail, userRole);
+        // Audit B-28: this used to accept only a fileName, so no rows were ever imported.
+        ImportJobResponse response = administrationService.createImportJob(importType, file,
+                institutionId, userId, userEmail, userRole);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Import job created successfully", response));
+                .body(ApiResponse.success("Import job processed successfully", response));
     }
 
     @GetMapping("/users/import")

@@ -940,8 +940,14 @@ public class PlatformAdminService {
         boolean hasEntity = entityType != null && !entityType.isBlank();
         try {
             if (entityId != null) {
-                // Filter by a specific resource (e.g. one certificate's audit trail)
-                logs = auditLogRepository.findByEntityIdAndIsDeletedFalse(entityId, pr);
+                // Audit B-49: entityType used to be silently DISCARDED whenever an entityId was
+                // supplied (else-if chain), so a delegation's audit trail could return rows for a
+                // same-id entity of another type. Type is now an additional predicate.
+                List<AuditLog> exact = entityType != null && !entityType.isBlank()
+                        ? auditLogRepository.findByEntityTypeAndEntityId(entityType.toUpperCase(), entityId)
+                        : auditLogRepository.findByEntityIdAndIsDeletedFalse(entityId, pr).getContent();
+                logs = new org.springframework.data.domain.PageImpl<>(
+                        exact, pr, exact.size());
             } else if (hasAction && hasEntity) {
                 AuditLog.AuditAction act = AuditLog.AuditAction.valueOf(action.toUpperCase());
                 logs = auditLogRepository.findByActionAndEntityTypeAndIsDeletedFalse(act, entityType.toUpperCase(), pr);

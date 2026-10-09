@@ -84,7 +84,18 @@ export const nfeApi = {
   updateProvider: (id: string, data: any) => nfeRequest<any>(`/v1/nfe/providers/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteProvider: (id: string) => nfeRequest<void>(`/v1/nfe/providers/${id}`, { method: "DELETE" }),
 
-  listPrograms: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/programs${providerId ? `?providerId=${providerId}` : ""}`),
+  /**
+   * Audit B-32/B-33: these helpers appended `?providerId=`, which no backend list endpoint
+   * declares — Spring ignores it, so callers received the whole institution-wide list while the
+   * code read as if provider scoping were applied. They now call the routes that actually scope
+   * (`/provider/{providerId}`) and resolve the active provider through the (now self-provisioning)
+   * /providers/me endpoint instead of pinning `providers[0]`.
+   */
+  listPrograms: async (): Promise<any[]> => {
+    const providerId = await resolveProviderId()
+    if (!providerId) return []
+    return nfeRequest<any[]>(`/v1/nfe/programs/provider/${providerId}`)
+  },
   getProgram: (id: string) => nfeRequest<any>(`/v1/nfe/programs/${id}`),
   createProgram: async (data: any) => {
     const providerId = await requireProviderId()
@@ -96,7 +107,10 @@ export const nfeApi = {
   },
   deleteProgram: (id: string) => nfeRequest<void>(`/v1/nfe/programs/${id}`, { method: "DELETE" }),
 
-  listLearners: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/learners${providerId ? `?providerId=${providerId}` : ""}`),
+  listLearners: async (): Promise<any[]> => {
+    const pid = await resolveProviderId()
+    return pid ? nfeRequest<any[]>(`/v1/nfe/learners/provider/${pid}`) : []
+  },
   getLearner: (id: string) => nfeRequest<any>(`/v1/nfe/learners/${id}`),
   createLearner: async (data: any) => {
     const providerId = await requireProviderId()
@@ -108,7 +122,10 @@ export const nfeApi = {
   },
   deleteLearner: (id: string) => nfeRequest<void>(`/v1/nfe/learners/${id}`, { method: "DELETE" }),
 
-  listSessions: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/sessions${providerId ? `?providerId=${providerId}` : ""}`),
+  listSessions: async (): Promise<any[]> => {
+    const pid = await resolveProviderId()
+    return pid ? nfeRequest<any[]>(`/v1/nfe/sessions/provider/${pid}`) : []
+  },
   createSession: async (data: any) => {
     const providerId = await requireProviderId()
     return nfeRequest<any>("/v1/nfe/sessions", { method: "POST", body: JSON.stringify({ ...data, providerId }) })
@@ -119,7 +136,10 @@ export const nfeApi = {
   },
   deleteSession: (id: string) => nfeRequest<void>(`/v1/nfe/sessions/${id}`, { method: "DELETE" }),
 
-  listMaterials: (providerId?: string) => nfeRequest<any[]>(`/v1/nfe/materials${providerId ? `?providerId=${providerId}` : ""}`),
+  listMaterials: async (): Promise<any[]> => {
+    const pid = await resolveProviderId()
+    return pid ? nfeRequest<any[]>(`/v1/nfe/materials/provider/${pid}`) : []
+  },
   createMaterial: async (data: any) => {
     const providerId = await requireProviderId()
     return nfeRequest<any>("/v1/nfe/materials", { method: "POST", body: JSON.stringify({ ...data, providerId }) })

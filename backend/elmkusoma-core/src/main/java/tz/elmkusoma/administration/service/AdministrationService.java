@@ -10,6 +10,7 @@ import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import tz.elmkusoma.administration.domain.*;
 import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.mapper.AdministrationMapper;
@@ -19,6 +20,7 @@ import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.config.security.OrganizationContext;
+import tz.elmkusoma.config.security.OrganizationContextResolver;
 import tz.elmkusoma.course.domain.Course;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.repository.CourseModuleRepository;
@@ -64,6 +66,8 @@ public class AdministrationService {
     private final InstitutionScopeService scopeService;
     private final InstitutionAuditService auditService2;
     private final InstitutionMembershipRepository membershipRepository;
+    /** Audit B-28: imported accounts need a real (random, unusable) password hash. */
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final CertificateRepository certificateRepository;
     private final LiveClassRepository liveClassRepository;
     private final EventRepository eventRepository;
@@ -298,19 +302,163 @@ public class AdministrationService {
 
     // ── Data Import ──
 
-    public ImportJobResponse createImportJob(String importType, String fileName, UUID institutionId,
-                                              UUID userId, String userEmail, String userRole) {
+    /**
+     * Audit B-28: the import endpoint only received a file NAME. No bytes were uploaded, no rows
+     * were read and no worker existed, so every job sat at PENDING forever. This now takes the
+     * real file, parses it and creates the users, reporting genuine totals and per-row failures.
+     *
+     * <p>Reuses the existing DataImportJob model, the existing user/membership repositories and the
+     * existing password encoder -- no new subsystem, and no fake success reporting.
+     */
+    public ImportJobResponse createImportJob(String importType, MultipartFile file,
+                                             UUID institutionId, UUID userId,
+                                             String userEmail, String userRole) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("A CSV file is required");
+        }
+        String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload.csv";
         DataImportJob job = DataImportJob.of(userId, importType, fileName, "", institutionId);
 
-        importJobRepository.save(job);
+        List<String[]> rows;
+        try (var reader = new java.io.BufferedReader(
+                new java.io.InputStreamReader(file.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+            rows = reader.lines()
+                    .filter(line -> line != null && !line.isBlank())
+                    .map(AdministrationService::splitCsvLine)
+                    .toList();
+        } catch (java.io.IOException e) {
+            throw new IllegalArgumentException("Could not read the uploaded file: " + e.getMessage());
+        }
+
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("The uploaded file is empty");
+        }
+
+        String[] header = rows.get(0);
+        int colFirst = indexOfHeader(header, "firstname", "first_name", "first name");
+        int colLast = indexOfHeader(header, "lastname", "last_name", "last name");
+        int colEmail = indexOfHeader(header, "email");
+        int colPhone = indexOfHeader(header, "phone");
+        int colRole = indexOfHeader(header, "role");
+        if (colEmail < 0 || colFirst < 0 || colLast < 0) {
+            throw new IllegalArgumentException(
+                    "CSV must contain firstName, lastName and email columns");
+        }
+
+        job.setStatus(DataImportJob.ImportStatus.PROCESSING);
+        job.setTotalRows(rows.size() - 1);
+        job.setStartedAt(LocalDateTime.now());
+        job = importJobRepository.save(job);
+
+        Map<String, Object> errors = new java.util.LinkedHashMap<>();
+        int successful = 0;
+        int failed = 0;
+        for (int i = 1; i < rows.size(); i++) {
+            String[] row = rows.get(i);
+            String email = colEmail < row.length ? row[colEmail].trim() : "";
+            try {
+                if (email.isBlank()) {
+                    throw new IllegalArgumentException("missing email");
+                }
+                if (userRepository.existsByEmailAndIsDeletedFalse(email)) {
+                    throw new IllegalArgumentException("email already registered");
+                }
+                String firstName = row[colFirst].trim();
+                String lastName = row[colLast].trim();
+                String phone = colPhone >= 0 && colPhone < row.length ? row[colPhone].trim() : null;
+                User.Role role = colRole >= 0 && colRole < row.length && !row[colRole].isBlank()
+                        ? User.Role.valueOf(row[colRole].trim().toUpperCase())
+                        : User.Role.STUDENT;
+
+                User created = userRepository.save(User.builder()
+                        .firstName(firstName)
+                        .lastName(lastName)
+                        .email(email)
+                        .phone(phone)
+                        // Imported accounts start locked with a random hash; an administrator or
+                        // the user must run a password reset before first login.
+                        .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString()))
+                        .role(role)
+                        .institutionId(institutionId)
+                        .isActive(true)
+                        .isEmailVerified(false)
+                        .isDeleted(false)
+                        .build());
+
+                membershipRepository.save(InstitutionMembership.builder()
+                        .userId(created.getId())
+                        .institutionId(institutionId)
+                        .role(OrganizationContextResolver.mapUserRoleToMembershipRole(role))
+                        .isActive(true)
+                        .isDeleted(false)
+                        .build());
+                successful++;
+            } catch (Exception e) {
+                failed++;
+                errors.put("row" + (i + 1), email.isBlank() ? "(no email)" : email + ": " + e.getMessage());
+            }
+        }
+
+        job.setProcessedRows(rows.size() - 1);
+        job.setSuccessfulRows(successful);
+        job.setFailedRows(failed);
+        job.setErrorLog(errors.isEmpty() ? null : errors);
+        job.setCompletedAt(LocalDateTime.now());
+        job.setStatus(failed == 0 ? DataImportJob.ImportStatus.COMPLETED : DataImportJob.ImportStatus.COMPLETED);
+        job = importJobRepository.save(job);
 
         auditService.recordAuditLog(institutionId, userId, userEmail, userRole,
                 "DataImportJob", job.getId(), fileName,
                 AuditLog.AuditAction.CREATE, null,
-                Map.of("importType", importType, "fileName", fileName));
+                Map.of("importType", importType, "fileName", fileName,
+                        "totalRows", rows.size() - 1, "successful", successful, "failed", failed));
 
-        log.info("Created import job: {} for institution: {}", job.getId(), institutionId);
+        log.info("Imported {} rows for institution {} ({} ok, {} failed)",
+                rows.size() - 1, institutionId, successful, failed);
         return administrationMapper.toImportJobResponse(job);
+    }
+
+    private static int indexOfHeader(String[] header, String... names) {
+        for (int i = 0; i < header.length; i++) {
+            String normalized = header[i] == null ? "" : header[i].trim().toLowerCase().replace("\"", "");
+            for (String name : names) {
+                if (normalized.equals(name)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /** Minimal RFC4180-style splitter: handles quoted fields containing commas. */
+    private static String[] splitCsvLine(String line) {
+        List<String> cells = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char ch = line.charAt(i);
+            if (inQuotes) {
+                if (ch == '"') {
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        current.append('"');
+                        i++;
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    current.append(ch);
+                }
+            } else if (ch == '"') {
+                inQuotes = true;
+            } else if (ch == ',') {
+                cells.add(current.toString().trim());
+                current.setLength(0);
+            } else {
+                current.append(ch);
+            }
+        }
+        cells.add(current.toString().trim());
+        return cells.toArray(new String[0]);
     }
 
     @Transactional(readOnly = true)
