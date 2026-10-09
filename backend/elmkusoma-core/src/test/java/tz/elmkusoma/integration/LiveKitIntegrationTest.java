@@ -257,6 +257,16 @@ class LiveKitIntegrationTest {
 
     @Test
     void webhookEndpoint_HandlesRoomEnded() throws Exception {
+        // LiveKit's actual room-close event is "room_finished"; "room_ended" is the legacy
+        // alias that must keep working.
+        String body = "{\"event\":\"room_finished\",\"room\":{\"name\":\"liveclass-test\"}}";
+        postSignedWebhook(body)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    @Test
+    void webhookEndpoint_HandlesLegacyRoomEndedAlias() throws Exception {
         String body = "{\"event\":\"room_ended\",\"room\":{\"name\":\"liveclass-test\"}}";
         postSignedWebhook(body)
             .andExpect(status().isOk())
@@ -281,7 +291,8 @@ class LiveKitIntegrationTest {
 
     @Test
     void webhookEndpoint_HandlesRecordingStarted() throws Exception {
-        String body = "{\"event\":\"recording_started\",\"egress\":{\"id\":\"egress-001\",\"roomName\":\"liveclass-test\"}}";
+        // LiveKit emits egress_started / egress_updated / egress_ended (not recording_*).
+        String body = "{\"event\":\"egress_started\",\"egress\":{\"id\":\"egress-001\",\"roomName\":\"liveclass-test\",\"status\":\"EGRESS_STARTING\"}}";
         postSignedWebhook(body)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ok"));
@@ -289,6 +300,40 @@ class LiveKitIntegrationTest {
 
     @Test
     void webhookEndpoint_HandlesRecordingCompleted() throws Exception {
+        String body = "{\"event\":\"egress_ended\",\"egress\":{\"id\":\"egress-001\",\"roomName\":\"liveclass-test\",\"status\":\"EGRESS_COMPLETE\"}}";
+        postSignedWebhook(body)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    @Test
+    void webhookEndpoint_HandlesEgressEndedWithFailureStatus() throws Exception {
+        // egress_ended is the single terminal event; a failure status must be handled as a
+        // failure instead of being treated as a completed recording.
+        String body = "{\"event\":\"egress_ended\",\"egress\":{\"id\":\"egress-002\",\"roomName\":\"liveclass-test\",\"status\":\"EGRESS_FAILED\"}}";
+        postSignedWebhook(body)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    @Test
+    void webhookEndpoint_HandlesEgressUpdatedAsNonTerminal() throws Exception {
+        String body = "{\"event\":\"egress_updated\",\"egress\":{\"id\":\"egress-003\",\"roomName\":\"liveclass-test\",\"status\":\"EGRESS_ACTIVE\"}}";
+        postSignedWebhook(body)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    @Test
+    void webhookEndpoint_LegacyRecordingStartedAlias_IsAccepted() throws Exception {
+        String body = "{\"event\":\"recording_started\",\"egress\":{\"id\":\"egress-001\",\"roomName\":\"liveclass-test\"}}";
+        postSignedWebhook(body)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ok"));
+    }
+
+    @Test
+    void webhookEndpoint_LegacyRecordingCompletedAlias_IsAccepted() throws Exception {
         String body = "{\"event\":\"recording_completed\",\"egress\":{\"id\":\"egress-001\",\"roomName\":\"liveclass-test\",\"status\":\"EGRESS_COMPLETE\"}}";
         postSignedWebhook(body)
             .andExpect(status().isOk())

@@ -19,6 +19,7 @@ import tz.elmkusoma.liveclass.repository.LiveClassChatMessageRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassHandRaiseQueueRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassSessionEventRepository;
+import tz.elmkusoma.liveclass.service.LiveKitService;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -62,6 +63,7 @@ class LiveClassWebSocketHandlerJoinGateTest {
     @Mock private TeacherRepository teacherRepository;
     @Mock private LiveClassHandRaiseQueueRepository handRaiseQueueRepository;
     @Mock private LiveClassAttendanceDetailRepository attendanceDetailRepository;
+    @Mock private LiveKitService liveKitService;
     @Mock private CorePresenceService corePresenceService;
     @Mock private EventPublisherService eventPublisherService;
 
@@ -80,7 +82,7 @@ class LiveClassWebSocketHandlerJoinGateTest {
         handler = new LiveClassWebSocketHandler(liveClassRepository, participantRepository,
                 chatMessageRepository, sessionEventRepository, userRepository, membershipRepository,
                 new ObjectMapper(), corePresenceService, eventPublisherService, teacherRepository,
-                handRaiseQueueRepository, attendanceDetailRepository);
+                handRaiseQueueRepository, attendanceDetailRepository, liveKitService);
 
         liveClass = new LiveClass();
         liveClass.setInstitutionId(institutionId);

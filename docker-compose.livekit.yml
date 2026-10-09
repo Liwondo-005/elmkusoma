@@ -16,3 +16,9 @@ services:
       - LIVEKIT_WS_PORT=7880
       - LIVEKIT_TCP_PORT=7881
       - LIVEKIT_UDP_PORT=5349
+      # Resolved by livekit.yaml into webhook.urls so the server can notify ELMKUSOMA
+      # about egress (recording) lifecycle and room close.
+      - LIVEKIT_WEBHOOK_URL=${LIVEKIT_WEBHOOK_URL:-http://host.docker.internal:8080/v1/webhooks/livekit}
+    # host.docker.internal is implicit on Docker Desktop; on plain Linux it must be mapped.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

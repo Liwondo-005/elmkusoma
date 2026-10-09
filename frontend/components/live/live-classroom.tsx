@@ -27,6 +27,7 @@ import {
   MessageSquare,
   Zap,
   BarChart3,
+  Square,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
 import { useTranslations } from "next-intl"
@@ -57,6 +58,29 @@ interface ChatMessage {
   deleted?: boolean
   /** Q&A workflow: ISO timestamp when a teacher marked the question answered. */
   answeredAt?: string | null
+}
+
+/** Reactions the room offers. Every one is broadcast by the server as a REACTION event. */
+const REACTION_EMOJI = ["👍", "❤️"] as const
+
+/** Host-continuity snapshot returned by GET /v1/live-session/classes/{id}/host-state. */
+interface HostState {
+  classId: string
+  status: string
+  active: boolean
+  startedAt: string | null
+  scheduledAt: string | null
+  durationMinutes: number | null
+  recordingEnabled: boolean | null
+  recordingActive: boolean
+  recordingEgressId: string | null
+  recordingAvailable: boolean
+  recordingUrl: string | null
+  liveKitAvailable: boolean
+  liveKitUrl: string | null
+  roomName: string
+  presentParticipants: number
+  canEndSession: boolean
 }
 
 interface HandRaiseEntry {
@@ -121,6 +145,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const ts = useTranslations("status")
   const te = useTranslations("events")
   const { user, token } = useAuth()
+
   const router = useRouter()
   const [participants, setParticipants] = useState<Participant[]>([])
   // LiveKit participant identity = JWT users.id, but LiveClass.teacherId is the
@@ -140,7 +165,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [cameraEnabled, setCameraEnabled] = useState(false)
   const [micEnabled, setMicEnabled] = useState(false)
   const [liveKitAvailable, setLiveKitAvailable] = useState(false)
-  const [videoTracks, setVideoTracks] = useState<Map<string, MediaStream>>(new Map())
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null)
   const [serviceMode, setServiceMode] = useState<"full" | "chat-only" | "unknown">("unknown")
@@ -149,6 +173,8 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [roomName, setRoomName] = useState<string | null>(null)
   const [remoteParticipants, setRemoteParticipants] = useState<Map<string, LKParticipant>>(new Map())
   const [remoteVideoTrack, setRemoteVideoTrack] = useState<TrackPublication | null>(null)
+  // Screen share is a separate publication from the camera so it can own the stage.
+  const [remoteScreenTrack, setRemoteScreenTrack] = useState<TrackPublication | null>(null)
   const [remoteAudioTrack, setRemoteAudioTrack] = useState<TrackPublication | null>(null)
   const [sessionStatus, setSessionStatus] = useState(liveClass.status)
   // Broadcast source + real device selection: the laptop camera is ONE source
@@ -173,7 +199,20 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [materialUrl, setMaterialUrl] = useState("")
   const [attachedMaterials, setAttachedMaterials] = useState<Array<{name: string; url: string}>>([])
   const [handRaiseQueue, setHandRaiseQueue] = useState<HandRaiseEntry[]>([])
-  const [showHandQueue, setShowHandQueue] = useState(false)
+  
+  // Reactions are server-broadcast ephemeral events (never persisted chat): counts here are
+  // the real room-wide tally, not a local per-client guess.
+  const [reactions, setReactions] = useState<Record<string, number>>({})
+  const [lastReaction, setLastReaction] = useState<{ emoji: string; count: number; at: number; fromMe: boolean } | null>(null)
+  // Server-authoritative snapshot of this class for host continuity (restored on mount).
+  const [hostState, setHostState] = useState<HostState | null>(null)
+  const issueDialogRef = useRef<HTMLDivElement | null>(null)
+  // Move focus into the issue dialog when it opens.
+  useEffect(() => {
+    if (showIssueModal) {
+      issueDialogRef.current?.focus()
+    }
+  }, [showIssueModal])
   const [activePolls, setActivePolls] = useState<Poll[]>([])
   const [selectedPollOption, setSelectedPollOption] = useState<number | null>(null)
   const [pollResultsById, setPollResultsById] = useState<Record<string, { results: Record<string, number>; totalVotes: number }>>({})
@@ -319,6 +358,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     // breakout → back). Remote publications belong to the previous room, so they
     // must not linger on the stage while the new room connects.
     setRemoteVideoTrack(null)
+    setRemoteScreenTrack(null)
     setRemoteAudioTrack(null)
     setRemoteParticipants(new Map())
     const room = new Room({
@@ -347,9 +387,19 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       const delay = Math.min(3000 * Math.pow(1.5, lkRetryCountRef.current), 30000)
       lkRetryCountRef.current++
       lkReconnectTimeoutRef.current = setTimeout(() => {
-        if (!disposed && roomRef.current && liveKitToken && liveKitUrl) {
-          roomRef.current.connect(liveKitUrl, liveKitToken).catch(() => scheduleLiveKitReconnect())
-        }
+        if (disposed || !roomRef.current || !liveKitUrl) return
+        // Participant tokens are short-lived (15 min), while a live class can run far
+        // longer. Reconnecting with the original token fails once it has expired, which
+        // would end a long session for good — so every attempt obtains a fresh token
+        // from the same join endpoint the room was opened with.
+        const room = roomRef.current
+        refreshLiveKitCredentials()
+          .then(creds => {
+            if (disposed || !creds) return
+            if (creds.token) setLiveKitToken(creds.token)
+            return room.connect(creds.url || liveKitUrl, creds.token || liveKitToken)
+          })
+          .catch(() => scheduleLiveKitReconnect())
       }, delay)
     }
 
@@ -381,7 +431,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       setRemoteParticipants(prev => new Map(prev).set(participant.identity, participant))
       participant.on(RoomEvent.TrackSubscribed, (_track: any, pub: TrackPublication) => {
         if (!isClassroomSource(participant.identity)) return
-        if (pub.kind === Track.Kind.Video) setRemoteVideoTrack(pub)
+        // Camera and screen share are tracked separately so a screen share actually takes
+        // the stage instead of fighting the camera publication for one slot.
+        if (pub.kind === Track.Kind.Video) {
+          if (pub.source === Track.Source.ScreenShare) setRemoteScreenTrack(pub)
+          else setRemoteVideoTrack(pub)
+        }
         if (pub.kind === Track.Kind.Audio) setRemoteAudioTrack(pub)
       })
     })
@@ -396,6 +451,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         const pub = prev as (TrackPublication & { participant?: LKParticipant }) | null
         return pub?.participant?.identity === participant.identity ? null : prev
       })
+      setRemoteScreenTrack(prev => {
+        const pub = prev as (TrackPublication & { participant?: LKParticipant }) | null
+        return pub?.participant?.identity === participant.identity ? null : prev
+      })
       setRemoteAudioTrack(prev => {
         const pub = prev as (TrackPublication & { participant?: LKParticipant }) | null
         return pub?.participant?.identity === participant.identity ? null : prev
@@ -404,12 +463,16 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
 
     room.on(RoomEvent.TrackSubscribed, (_track: any, pub: TrackPublication, participant?: LKParticipant) => {
       if (!isClassroomSource(participant?.identity)) return
-      if (pub.kind === Track.Kind.Video) setRemoteVideoTrack(pub)
+      if (pub.kind === Track.Kind.Video) {
+        if (pub.source === Track.Source.ScreenShare) setRemoteScreenTrack(pub)
+        else setRemoteVideoTrack(pub)
+      }
       if (pub.kind === Track.Kind.Audio) setRemoteAudioTrack(pub)
     })
 
     room.on(RoomEvent.TrackUnsubscribed, (_track: any, pub: TrackPublication) => {
       setRemoteVideoTrack(prev => (prev === pub ? null : prev))
+      setRemoteScreenTrack(prev => (prev === pub ? null : prev))
       setRemoteAudioTrack(prev => (prev === pub ? null : prev))
     })
 
@@ -449,6 +512,41 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     }
   }, [sessionEnded, liveClass.id, sessionStatus])
 
+  // Host continuity: on mount, ask the server for the real state of this class. This is what
+  // makes "host leaves and returns" resume the SAME session instead of guessing from local
+  // component state (which always resets). Recording state in particular lives on the server,
+  // so a host that reopens the room sees the true recording status.
+  useEffect(() => {
+    if (!token || !user || !liveClass?.id) return
+    if (!isTeacherClient && user?.role !== "Admin") return
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || ""}/v1/live-session/classes/${liveClass.id}/host-state`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "X-Institution-Id": user?.institutionId || "",
+          },
+        })
+        if (!res.ok || cancelled) return
+        const body = await res.json()
+        const state = body?.data as HostState | undefined
+        if (!state || cancelled) return
+        setHostState(state)
+        setIsRecording(Boolean(state.recordingActive))
+        setRecordingEgressId(state.recordingEgressId ?? null)
+        if (state.startedAt) applySessionStart(state.startedAt)
+        if (!state.active) setSessionStatus("COMPLETED")
+      } catch {
+        // Host state is an enhancement; a failure must not block entering the room.
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [token, user, liveClass?.id, isTeacherClient, applySessionStart])
+
   // Authoritative elapsed anchor: earliest server-recorded participant join,
   // read once per live session through the EXISTING participants endpoint
   // (full history — leavers keep their original joinedAt, rejoin preserves it).
@@ -471,29 +569,55 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     }
   }, [isInProgress, liveClass.id, applySessionStart])
 
+  // A host who closes the tab or navigates away mid-session must be warned: losing the room
+  // silently drops the recording/egress control with it. Learners keep the normal behaviour,
+  // because re-entering a live class is an everyday action for them.
   useEffect(() => {
-    if (!isInProgress || !token || !user) return
+    if (!isInProgress || !(isTeacherClient || user?.role === "Admin")) return
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [isInProgress, isTeacherClient, user?.role])
 
-    function fetchLiveKitToken() {
-      fetch(`/v1/live-session/join/${liveClass.id}`, {
+/**
+   * Fetches a fresh LiveKit participant token for this class from the existing join
+   * endpoint. Shared by the initial join, the breakout switch, the Retry action and
+   * every reconnect attempt, so no path can run on a stale (expired) token.
+   */
+  const refreshLiveKitCredentials = useCallback(async (): Promise<{ token: string | null; url: string | null } | null> => {
+    if (!token || !user) return null
+    try {
+      const res = await fetch(`/v1/live-session/join/${liveClass.id}`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "X-Institution-Id": user?.institutionId || "",
           "Content-Type": "application/json",
         },
-      }).then(r => r.json()).then(data => {
-        if (data?.data?.liveKitAvailable) {
-          setServiceMode("full")
-          setLiveKitToken(data.data.liveKitToken)
-          setLiveKitUrl(data.data.liveKitUrl)
-          setRoomName(data.data.roomName)
-        } else {
-          setServiceMode("chat-only")
-          setRoomState("error")
-          setConnected(true)
-        }
-      }).catch(() => {
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      const payload = data?.data
+      if (!payload?.liveKitAvailable) return null
+      setServiceMode("full")
+      setLiveKitToken(payload.liveKitToken ?? null)
+      setLiveKitUrl(payload.liveKitUrl ?? null)
+      setRoomName(payload.roomName ?? null)
+      return { token: payload.liveKitToken ?? null, url: payload.liveKitUrl ?? null }
+    } catch {
+      return null
+    }
+  }, [token, user, liveClass.id])
+
+  useEffect(() => {
+    if (!isInProgress || !token || !user) return
+
+    function fetchLiveKitToken() {
+      refreshLiveKitCredentials().then(creds => {
+        if (creds) return
         setServiceMode("chat-only")
         setRoomState("error")
         setConnected(true)
@@ -504,9 +628,12 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
       const wsHost = process.env.NEXT_PUBLIC_WS_HOST || window.location.hostname
       const wsPort = process.env.NEXT_PUBLIC_WS_PORT || "8080"
-      const wsUrl = `${protocol}//${wsHost}:${wsPort}/ws/live-class/${liveClass.id}?token=${encodeURIComponent(token ?? "")}`
+      const wsUrl = `${protocol}//${wsHost}:${wsPort}/ws/live-class/${liveClass.id}`
 
-      const ws = new WebSocket(wsUrl)
+      // Authenticate the socket through the subprotocol list instead of the URL, so the JWT does
+      // not end up in proxy/access logs or browser history. The server still accepts the
+      // legacy ?token= form for older clients.
+      const ws = new WebSocket(wsUrl, ["elmkusoma.jwt.v1", `bearer.${token ?? ""}`])
       wsRef.current = ws
       // Each (re)connect performs its own server-state restore after the JOIN ack.
       interactiveLoadedRef.current = false
@@ -570,6 +697,21 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             const raw = String(data.message || "")
             const isQa = raw.startsWith("[Q&A]")
             setChat((prev) => [...prev, { id: data.id ?? data.messageId ?? null, userId: data.userId, userName: data.userName, message: isQa ? raw.slice(6).trim() : raw, timestamp: data.timestamp, kind: isQa ? "QA" : "CHAT", answeredAt: data.answeredAt ?? null }])
+            break
+          }
+          case "REACTION": {
+            // Real reaction broadcast from the server (REACTION message type). Reactions are
+            // ephemeral and never enter the chat transcript; the badge count is authoritative
+            // for everyone in the room because the server echoes the event to all clients.
+            const emoji = String(data.message || "")
+            if (!emoji) break
+            const fromMe = String(data.userId || "") === myUserId
+            setReactions((prev) => ({ ...prev, [emoji]: (prev[emoji] || 0) + 1 }))
+            setLastReaction((prev) =>
+              prev && Date.now() - prev.at < 2500 && prev.emoji === emoji
+                ? { ...prev, count: prev.count + 1, at: Date.now(), fromMe: prev.fromMe || fromMe }
+                : { emoji, count: 1, at: Date.now(), fromMe },
+            )
             break
           }
           case "CHAT_HISTORY":
@@ -800,7 +942,21 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             void refreshBreakoutRooms()
             break
           case "SHARED_MEDIA":
-            setSharedMediaList((prev) => [...prev, { title: data.title || t("sharedContentFallback"), url: data.url, mediaType: data.mediaType || "VIDEO" }])
+          case "RESOURCE_SHARED":
+            if (data.url || data.title) {
+              setSharedMediaList((prev) =>
+                prev.some((m) => m.title === data.title && m.url === data.url)
+                  ? prev
+                  : [
+                      ...prev,
+                      {
+                        title: data.title || t("sharedContentFallback"),
+                        url: data.url ?? "",
+                        mediaType: data.mediaType || "VIDEO",
+                      },
+                    ],
+              )
+            }
             setChat((prev) => [...prev, {
               userId: "system",
               userName: t("systemSender"),
@@ -879,11 +1035,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         if (localStream.getTracks().length === 0) setLocalStream(null)
       }
       setCameraEnabled(false)
-      setVideoTracks((prev) => {
-        const next = new Map(prev)
-        next.delete("local-camera")
-        return next
-      })
     } else {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -898,7 +1049,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           return prev
         })
         setCameraEnabled(true)
-        setVideoTracks((prev) => new Map(prev).set("local-camera", stream))
         const room = roomRef.current
         if (room?.localParticipant) {
           const videoTrack = stream.getVideoTracks()[0]
@@ -988,7 +1138,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         prev.addTrack(newTrack)
         return prev
       })
-      setVideoTracks((prev) => new Map(prev).set("local-camera", stream))
 
       const room = roomRef.current
       if (room?.localParticipant) {
@@ -1098,7 +1247,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true })
         setScreenStream(stream)
         setScreenSharing(true)
-        setVideoTracks((prev) => new Map(prev).set("local-screen", stream))
         const room = roomRef.current
         if (room?.localParticipant) {
           const screenTrack = stream.getVideoTracks()[0]
@@ -1109,11 +1257,6 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         stream.getVideoTracks()[0].onended = () => {
           setScreenSharing(false)
           setScreenStream(null)
-          setVideoTracks((prev) => {
-            const next = new Map(prev)
-            next.delete("local-screen")
-            return next
-          })
           if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: "SCREEN_SHARE_STOP" }))
           }
@@ -1214,15 +1357,80 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     }
   }
 
-  function handleAttachMaterial() {
-    if (!materialName.trim() || !materialUrl.trim()) return
-    setAttachedMaterials((prev) => [...prev, { name: materialName.trim(), url: materialUrl.trim() }])
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "CHAT", message: t("materialSharedChat", { name: materialName.trim(), url: materialUrl.trim() }) }))
+  async function handleAttachMaterial() {
+    const title = materialName.trim()
+    const url = materialUrl.trim()
+    if (!title || !url || !liveClass?.id) return
+    setActionError("")
+    // Persisted through the existing shared-media endpoint, which also broadcasts to the
+    // room. The previous implementation only posted a chat line, so the shared-media
+    // panel never received anything and stayed permanently empty.
+    try {
+      const res = await fetch(`${API_BASE}/v1/live-session/classes/${liveClass.id}/shared-media`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ title, url, mediaType: "LINK" }),
+      })
+      if (!res.ok) {
+        setActionError(t("shareMaterialFailed"))
+        return
+      }
+      setAttachedMaterials((prev) => [...prev, { name: title, url }])
+      setSharedMediaList((prev) =>
+        prev.some((m) => m.title === title && m.url === url) ? prev : [...prev, { title, url, mediaType: "LINK" }],
+      )
+      setMaterialName("")
+      setMaterialUrl("")
+      setShowMaterialInput(false)
+    } catch {
+      setActionError(t("shareMaterialFailed"))
     }
-    setMaterialName("")
-    setMaterialUrl("")
-    setShowMaterialInput(false)
+  }
+
+  function sendReaction(emoji: string) {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) return
+    // REACTION is broadcast to the room and never persisted into the chat transcript.
+    wsRef.current.send(JSON.stringify({ type: "REACTION", messageType: "REACTION", message: emoji }))
+  }
+
+  async function handleEndSession() {
+    if (!liveClass?.id || !isInProgress) return
+    if (!isTeacherClient && user?.role !== "Admin") return
+    setActionBusy(true)
+    setActionError("")
+    try {
+      // Teachers end through their own endpoint; an administrator has no teacher-scoped
+      // route, so it uses the admin force-end (which is also institution-scoped).
+      const isAdmin = user?.role === "Admin"
+      const url = isAdmin
+        ? `${API_BASE}/v1/admin/live-sessions/${liveClass.id}/force-end`
+        : `${API_BASE}/v1/teachers/me/live-classes/${liveClass.id}/end`
+      const res = await fetch(url, {
+        method: "POST",
+        headers: authHeaders(false),
+      })
+      if (res.ok) {
+        setSessionStatus("COMPLETED")
+        setIsRecording(false)
+        setRecordingEgressId(null)
+        setChat((prev) => [
+          ...prev,
+          {
+            userId: "system",
+            userName: t("systemSender"),
+            message: t("sessionEndedByHostMsg"),
+            timestamp: new Date().toISOString(),
+            system: true,
+          },
+        ])
+      } else {
+        setActionError(t("endSessionFailed"))
+      }
+    } catch {
+      setActionError(t("endSessionFailed"))
+    } finally {
+      setActionBusy(false)
+    }
   }
 
   const [newQuizTitle, setNewQuizTitle] = useState("")
@@ -1808,25 +2016,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     setRoomState("connecting")
     setServiceMode("unknown")
     setLiveKitToken(null)
-    fetch(`/v1/live-session/join/${liveClass.id}`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "X-Institution-Id": user?.institutionId || "",
-        "Content-Type": "application/json",
-      },
-    }).then(r => r.json()).then(data => {
-      if (data?.data?.liveKitAvailable) {
-        setServiceMode("full")
-        setLiveKitToken(data.data.liveKitToken)
-        setLiveKitUrl(data.data.liveKitUrl)
-        setRoomName(data.data.roomName)
-      } else {
-        setServiceMode("chat-only")
-        setRoomState("error")
-        setConnected(true)
-      }
-    }).catch(() => {
+    // Same credential path as the initial join and the reconnect attempts, so Retry can
+    // never re-apply an expired token either.
+    refreshLiveKitCredentials().then(creds => {
+      if (creds) return
       setServiceMode("chat-only")
       setRoomState("error")
       setConnected(true)
@@ -1892,16 +2085,16 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       </div>
 
       {joinError && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-center justify-between">
+        <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-center justify-between">
           <span>{joinError}</span>
-          <button onClick={() => setJoinError("")} className="text-red-500 hover:text-red-700"><XCircle className="size-3.5" /></button>
+          <button onClick={() => setJoinError("")} aria-label={tc("close")} className="text-red-500 hover:text-red-700"><XCircle className="size-3.5" /></button>
         </div>
       )}
 
       {actionError && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-center justify-between">
+        <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-center justify-between">
           <span>{actionError}</span>
-          <button onClick={() => setActionError("")} className="text-red-500 hover:text-red-700"><XCircle className="size-3.5" /></button>
+          <button onClick={() => setActionError("")} aria-label={tc("close")} className="text-red-500 hover:text-red-700"><XCircle className="size-3.5" /></button>
         </div>
       )}
 
@@ -1912,16 +2105,23 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       )}
 
       {interactiveError && (
-        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 flex items-center justify-between">
+        <div role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 flex items-center justify-between">
           <span>{interactiveError}</span>
           <button onClick={() => { interactiveLoadedRef.current = false; void refreshInteractiveState() }} className="font-medium text-amber-600 underline">{tc("retry")}</button>
         </div>
       )}
 
       {serviceMode === "chat-only" && isInProgress && (
-        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700">
+        <div role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700">
           <p className="font-medium">{t("degradedTitle")}</p>
           <p className="mt-0.5 text-amber-600">{t("degradedDesc")}</p>
+        </div>
+      )}
+
+      {isTeacherClient && isInProgress && hostState?.recordingActive && (
+        <div role="status" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 flex items-center gap-2">
+          <Circle className="size-2.5 shrink-0 fill-red-500 text-red-500 animate-pulse motion-reduce:animate-none" aria-hidden />
+          <span>{t("recordingInProgressMsg")}</span>
         </div>
       )}
 
@@ -1932,6 +2132,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
             sessionLive={isInProgress}
             liveElapsed={isInProgress ? elapsed : null}
             remoteVideoTrack={remoteVideoTrack}
+            remoteScreenTrack={remoteScreenTrack}
             remoteAudioTrack={remoteAudioTrack}
             isTeacher={isTeacherClient}
             localStream={localStream}
@@ -1948,7 +2149,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
           >
             {isInProgress && (
               <>
-                <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent p-3">
+                <div className="absolute inset-x-0 bottom-0 z-20 flex flex-wrap items-center justify-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent p-3">
                     <ControlButton active={cameraEnabled} onClick={toggleCamera} label={cameraEnabled ? t("cameraOffLabel") : t("cameraOnLabel")}>
                       {cameraEnabled ? <Video className="size-4" /> : <VideoOff className="size-4" />}
                     </ControlButton>
@@ -1963,6 +2164,30 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                         <Circle className={cn("size-4", isRecording && "fill-red-500 text-red-500 animate-pulse")} />
                       </ControlButton>
                     )}
+                    {(isTeacherClient || user?.role === "Admin") && (
+                      <ControlButton
+                        active={false}
+                        onClick={handleEndSession}
+                        label={t("endSessionLabel")}
+                        disabled={!isInProgress || actionBusy}
+                      >
+                        <Square className="size-4" />
+                      </ControlButton>
+                    )}
+                    <div className="flex items-center gap-0.5" role="group" aria-label={t("reactionsLabel")}>
+                      {REACTION_EMOJI.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          aria-label={t("reactAria", { emoji })}
+                          aria-pressed={reactions[emoji] !== undefined}
+                          onClick={() => sendReaction(emoji)}
+                          className="flex size-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20"
+                        >
+                          <span aria-hidden>{emoji}</span>
+                        </button>
+                      ))}
+                    </div>
                     <ControlButton active={showMaterialInput} onClick={() => setShowMaterialInput(!showMaterialInput)} label={t("attachMaterialLabel")}>
                       <Paperclip className="size-4" />
                     </ControlButton>
@@ -1973,7 +2198,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       type="button"
                       onClick={() => setShowIssueModal(true)}
                       aria-label={t("reportIssueAria")}
-                      className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-red-500/20 text-white hover:bg-red-500/30 transition-colors"
+                      className="flex size-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-white/20 bg-red-500/20 text-white hover:bg-red-500/30 transition-colors"
                       title={t("reportIssueTitle")}
                     >
                       <Flag className="size-4" />
@@ -2102,15 +2327,36 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       </p>
                     </div>
                     {p.userId !== myUserId && (user?.role === "Teacher" || user?.role === "Admin") && (
-                      <div className="hidden group-hover:flex items-center gap-0.5">
-                        <button onClick={() => muteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title={t("muteLabel")}>
-                          <MicOff className="size-3" />
+                      // Always visible on coarse pointers (touch) and keyboard reachable;
+                      // hover-reveal only on precise pointers. Previously these were
+                      // hover-only, so they were unreachable by keyboard and invisible on mobile.
+                      <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:transition-opacity md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => muteParticipant(p.userId)}
+                          className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:opacity-100"
+                          aria-label={t("muteParticipantAria", { name: p.userName })}
+                          title={t("muteLabel")}
+                        >
+                          <MicOff className="size-3" aria-hidden />
                         </button>
-                        <button onClick={() => unmuteParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted" title={t("unmuteLabel")}>
-                          <Mic className="size-3" />
+                        <button
+                          type="button"
+                          onClick={() => unmuteParticipant(p.userId)}
+                          className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:opacity-100"
+                          aria-label={t("unmuteParticipantAria", { name: p.userName })}
+                          title={t("unmuteLabel")}
+                        >
+                          <Mic className="size-3" aria-hidden />
                         </button>
-                        <button onClick={() => kickParticipant(p.userId)} className="rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title={t("removeAction")}>
-                          <XCircle className="size-3" />
+                        <button
+                          type="button"
+                          onClick={() => kickParticipant(p.userId)}
+                          className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 focus-visible:opacity-100"
+                          aria-label={t("removeParticipantAria", { name: p.userName })}
+                          title={t("removeAction")}
+                        >
+                          <XCircle className="size-3" aria-hidden />
                         </button>
                       </div>
                     )}
@@ -2601,8 +2847,21 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                     key={tab}
                     type="button"
                     role="tab"
+                    id={`live-side-tab-${tab}`}
                     aria-selected={sideTab === tab}
+                    aria-controls={`live-side-panel-${tab}`}
+                    tabIndex={sideTab === tab ? 0 : -1}
                     onClick={() => setSideTab(tab)}
+                    onKeyDown={e => {
+                      const order = ["chat", "qa", "people"] as const
+                      const idx = order.indexOf(tab)
+                      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                        e.preventDefault()
+                        const next = order[(idx + (e.key === "ArrowRight" ? 1 : order.length - 1)) % order.length]
+                        setSideTab(next)
+                        document.getElementById(`live-side-tab-${next}`)?.focus()
+                      }
+                    }}
                     className={`rounded px-2 py-1 text-[10px] font-semibold uppercase ${sideTab === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
                   >
                     {tab === "chat" ? t("chatTab") : tab === "qa" ? t("qaTab") : t("peopleTab")}
@@ -2617,7 +2876,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               </span>
             </div>
             {sideTab === "people" ? (
-              <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
+              <div id="live-side-panel-people" role="tabpanel" aria-labelledby="live-side-tab-people" className="flex-1 space-y-1.5 overflow-y-auto p-4">
                 {participants.map((p) => (
                   <div key={p.userId} className="flex items-center justify-between gap-2 text-xs">
                     <span className="font-medium text-foreground">{p.userName}</span>
@@ -2647,7 +2906,16 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                 )}
               </div>
             ) : (
-            <div className="flex-1 space-y-2 overflow-y-auto p-4">
+            // Chat/Q&A log is a live region so new messages are announced instead of being
+            // silent for screen-reader users.
+            <div
+              id={sideTab === "qa" ? "live-side-panel-qa" : "live-side-panel-chat"}
+              role="tabpanel"
+              aria-labelledby={sideTab === "qa" ? "live-side-tab-qa" : "live-side-tab-chat"}
+              aria-live="polite"
+              aria-relevant="additions"
+              className="flex-1 space-y-2 overflow-y-auto p-4"
+            >
               {(() => {
                 const visible = chat.filter((c) =>
                   sideTab === "qa" ? c.kind === "QA" || (c.message || "").includes("[Q&A]") : c.kind !== "QA",
@@ -2681,22 +2949,20 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">{c.message}</p>
                           <div className="mt-0.5 flex gap-1">
-                            {["👍", "❤️"].map((r) => (
-                              <button
-                                key={r}
-                                type="button"
-                                aria-label={t("reactAria", { emoji: r })}
-                                onClick={() => {
-                                  setChat((prev) => prev.map((m) => (m === c ? { ...m, reactions: { ...(m.reactions || {}), [r]: ((m.reactions || {})[r] || 0) + 1 } } : m)))
-                                  if (wsRef.current?.readyState === WebSocket.OPEN) {
-                                    wsRef.current.send(JSON.stringify({ type: "CHAT", message: r }))
-                                  }
-                                }}
-                                className="rounded px-1 text-[10px] hover:bg-muted"
-                              >
-                                {r}{c.reactions?.[r] ? ` ${c.reactions[r]}` : ""}
-                              </button>
-                            ))}
+                            {(Object.keys(reactions).length > 0) && (
+                              <div className="mt-0.5 flex items-center gap-1">
+                                {Object.entries(reactions).map(([emoji, count]) => (
+                                  <span
+                                    key={emoji}
+                                    aria-label={t("reactCountAria", { emoji, count })}
+                                    className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]"
+                                  >
+                                    <span aria-hidden>{emoji}</span>
+                                    <span className="text-[9px] text-muted-foreground">{count}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                             {(user?.role === "Teacher" || user?.role === "Admin") && c.userId !== myUserId && (
                               <button
                                 type="button"
@@ -2762,13 +3028,30 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         </div>
       </div>
       {showIssueModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowIssueModal(false)}>
-          <div className="w-full max-w-md rounded-xl bg-card p-5 shadow-xl border border-border" onClick={e => e.stopPropagation()}>
+        // Real dialog semantics: labelled, modal, Escape closes, focus moves into the dialog.
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowIssueModal(false)}
+          onKeyDown={e => { if (e.key === "Escape") setShowIssueModal(false) }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="live-issue-dialog-title"
+            ref={issueDialogRef}
+            tabIndex={-1}
+            className="w-full max-w-md rounded-xl bg-card p-5 shadow-xl border border-border"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <h3 id="live-issue-dialog-title" className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Flag className="size-4 text-destructive" /> {t("reportIssueTitle")}
               </h3>
-              <button onClick={() => setShowIssueModal(false)} className="text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setShowIssueModal(false)}
+                aria-label={tc("close")}
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <XCircle className="size-4" />
               </button>
             </div>
@@ -2853,20 +3136,25 @@ function ControlButton({
   label,
   active,
   onClick,
+  disabled,
 }: {
   children: React.ReactNode
   label: string
   active?: boolean
   onClick?: () => void
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       aria-pressed={active}
       className={cn(
-        "flex size-10 items-center justify-center rounded-full border text-white transition-colors",
+        // 44px minimum touch target (was 40px, below the platform guideline).
+        "flex size-11 min-h-11 min-w-11 items-center justify-center rounded-full border text-white transition-colors",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         active
           ? "border-white/30 bg-white/25 hover:bg-white/35"
           : "border-white/20 bg-white/10 hover:bg-white/20",

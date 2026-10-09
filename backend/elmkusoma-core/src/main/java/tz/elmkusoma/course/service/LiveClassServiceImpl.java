@@ -65,6 +65,10 @@ public class LiveClassServiceImpl implements LiveClassService {
      */
     private static final long SCHEDULE_PAST_GRACE_MINUTES = 1;
 
+    /** Statuses an administrator is allowed to force-end (i.e. any running session). */
+    private static final java.util.Set<String> FORCE_ENDABLE_STATUSES = java.util.Set.of(
+            "STARTING", "LIVE", "IN_PROGRESS", "RECOVERING", "ENDING");
+
     private final LiveClassRepository liveClassRepository;
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
@@ -346,6 +350,29 @@ public class LiveClassServiceImpl implements LiveClassService {
         }
 
         return completeSession(liveClass, markedBy, LiveClassStatus.COMPLETED);
+    }
+
+    /**
+     * Administrative force-end. Unlike {@link #endSession(UUID, UUID, UUID)} this accepts every
+     * running state (STARTING / LIVE / IN_PROGRESS / RECOVERING) and authorises on the acting
+     * admin instead of impersonating the class teacher, so the attendance/certificate rows are
+     * attributed to the admin who actually performed the action.
+     */
+    public LiveClassResponse forceEndSession(UUID liveClassId, UUID institutionId, UUID actingUserId) {
+        LiveClass liveClass = liveClassRepository.findById(liveClassId)
+                .filter(lc -> !lc.getIsDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("LiveClass", "id", liveClassId));
+
+        if (institutionId == null || !institutionId.equals(liveClass.getInstitutionId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Access denied");
+        }
+        if (!FORCE_ENDABLE_STATUSES.contains(liveClass.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Only running classes can be force-ended. Current status: " + liveClass.getStatus());
+        }
+
+        log.info("Force-ending live class {} ({}) on behalf of admin {}", liveClassId, liveClass.getStatus(), actingUserId);
+        return completeSession(liveClass, actingUserId, LiveClassStatus.COMPLETED);
     }
 
     /**

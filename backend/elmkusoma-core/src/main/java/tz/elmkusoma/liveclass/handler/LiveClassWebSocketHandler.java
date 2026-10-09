@@ -47,6 +47,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
     private final LiveClassHandRaiseQueueRepository handRaiseQueueRepository;
     private final LiveClassAttendanceDetailRepository attendanceDetailRepository;
     private final ObjectMapper objectMapper;
+    private final tz.elmkusoma.liveclass.service.LiveKitService liveKitService;
     private final CorePresenceService corePresenceService;
     private final EventPublisherService eventPublisherService;
 
@@ -68,7 +69,8 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
                                       EventPublisherService eventPublisherService,
                                       TeacherRepository teacherRepository,
                                       LiveClassHandRaiseQueueRepository handRaiseQueueRepository,
-                                      LiveClassAttendanceDetailRepository attendanceDetailRepository) {
+                                      LiveClassAttendanceDetailRepository attendanceDetailRepository,
+                                      tz.elmkusoma.liveclass.service.LiveKitService liveKitService) {
         this.liveClassRepository = liveClassRepository;
         this.participantRepository = participantRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -81,6 +83,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         this.teacherRepository = teacherRepository;
         this.handRaiseQueueRepository = handRaiseQueueRepository;
         this.attendanceDetailRepository = attendanceDetailRepository;
+        this.liveKitService = liveKitService;
     }
 
     @Override
@@ -691,10 +694,21 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             sendError(session, "Target userId required");
             return;
         }
+        // Enforce on the media plane first: a participant with no published track or an
+        // unreachable LiveKit server must not be told they were muted.
+        boolean enforced = false;
+        try {
+            enforced = liveKitService.setParticipantMuted(classId, UUID.fromString(targetUserId), true);
+        } catch (IllegalArgumentException badId) {
+            sendError(session, "Invalid participant id");
+            return;
+        }
+
         Map<String, Object> event = new HashMap<>();
         event.put("type", "PARTICIPANT_MUTED");
         event.put("targetUserId", targetUserId);
         event.put("mutedBy", teacherId.toString());
+        event.put("enforced", enforced);
         event.put("timestamp", LocalDateTime.now().toString());
         broadcastToClass(classId, event, null);
     }
@@ -710,10 +724,19 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             sendError(session, "Target userId required");
             return;
         }
+        boolean enforced = false;
+        try {
+            enforced = liveKitService.setParticipantMuted(classId, UUID.fromString(targetUserId), false);
+        } catch (IllegalArgumentException badId) {
+            sendError(session, "Invalid participant id");
+            return;
+        }
+
         Map<String, Object> event = new HashMap<>();
         event.put("type", "PARTICIPANT_UNMUTED");
         event.put("targetUserId", targetUserId);
         event.put("unmutedBy", teacherId.toString());
+        event.put("enforced", enforced);
         event.put("timestamp", LocalDateTime.now().toString());
         broadcastToClass(classId, event, null);
     }
@@ -729,7 +752,18 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
             sendError(session, "Target userId required");
             return;
         }
-        UUID targetId = UUID.fromString(targetUserId);
+        UUID targetId;
+        try {
+            targetId = UUID.fromString(targetUserId);
+        } catch (IllegalArgumentException e) {
+            sendError(session, "Invalid participant id");
+            return;
+        }
+
+        // Enforce on the media plane first: closing only the application socket leaves the
+        // participant connected to LiveKit and still able to publish/receive.
+        boolean enforced = liveKitService.removeParticipant(classId, targetId);
+
         for (Map.Entry<String, UUID> entry : sessionUserMap.entrySet()) {
             if (entry.getValue().equals(targetId)) {
                 WebSocketSession targetSession = sessions.get(entry.getKey());
@@ -752,6 +786,7 @@ public class LiveClassWebSocketHandler extends TextWebSocketHandler {
         event.put("type", "PARTICIPANT_KICKED");
         event.put("targetUserId", targetUserId);
         event.put("kickedBy", teacherId.toString());
+        event.put("enforced", enforced);
         event.put("timestamp", LocalDateTime.now().toString());
         broadcastToClass(classId, event, null);
     }

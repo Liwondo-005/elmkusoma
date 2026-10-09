@@ -86,7 +86,7 @@ export const nfeApi = {
 
   /**
    * Audit B-32/B-33: these helpers appended `?providerId=`, which no backend list endpoint
-   * declares â€” Spring ignores it, so callers received the whole institution-wide list while the
+   * declares — Spring ignores it, so callers received the whole institution-wide list while the
    * code read as if provider scoping were applied. They now call the routes that actually scope
    * (`/provider/{providerId}`) and resolve the active provider through the (now self-provisioning)
    * /providers/me endpoint instead of pinning `providers[0]`.

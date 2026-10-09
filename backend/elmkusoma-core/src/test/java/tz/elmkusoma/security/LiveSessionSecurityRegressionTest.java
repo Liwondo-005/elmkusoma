@@ -147,6 +147,63 @@ class LiveSessionSecurityRegressionTest {
     }
 
     @Test
+    void mediaLibrary_forgedInstitutionHeader_isForbidden() throws Exception {
+        // The media library must resolve the tenant from the server-derived institution
+        // attribute and verify membership. A forged header used to expose another
+        // institution's media library to any authenticated caller.
+        mockMvc.perform(get("/v1/media")
+                        .header("X-Institution-Id", institutionB.getId().toString())
+                        .header("Authorization", "Bearer " + TestTokens.studentToken()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void recordingStop_byNonOwningTeacher_is403() throws Exception {
+        // Only the class teacher or an admin may stop a recording. Before the ownership
+        // check, any teacher of the institution could stop another teacher's recording.
+        LiveClass ownClass = liveClassRepository.save(LiveClass.builder()
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .teacherId(UUID.randomUUID())
+                .title("Recording ownership " + UUID.randomUUID().toString().substring(0, 8))
+                .scheduledAt(LocalDateTime.now().minusMinutes(10))
+                .durationMinutes(60)
+                .status("IN_PROGRESS")
+                .recordingUrl("egress:EZ_test_non_owning_teacher")
+                .isDeleted(false)
+                .build());
+
+        mockMvc.perform(post("/v1/live-session/classes/" + ownClass.getId() + "/recording/stop")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", "Bearer " + TestTokens.teacherToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void hostState_nonHostRole_isForbidden() throws Exception {
+        mockMvc.perform(get("/v1/live-session/classes/" + classInB.getId() + "/host-state")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", "Bearer " + TestTokens.studentToken()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void hostState_crossInstitution_is403() throws Exception {
+        mockMvc.perform(get("/v1/live-session/classes/" + classInB.getId() + "/host-state")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", "Bearer " + TestTokens.adminToken()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void hostState_missingClass_is404() throws Exception {
+        mockMvc.perform(get("/v1/live-session/classes/" + UUID.randomUUID() + "/host-state")
+                        .header("X-Institution-Id", TestDataSeeder.INSTITUTION_ID.toString())
+                        .header("Authorization", "Bearer " + TestTokens.adminToken()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void forceEnd_ownInstitutionClass_is200AndCompletes() throws Exception {
         LiveClass ownClass = liveClassRepository.save(LiveClass.builder()
                 .institutionId(TestDataSeeder.INSTITUTION_ID)

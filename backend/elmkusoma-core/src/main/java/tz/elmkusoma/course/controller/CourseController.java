@@ -24,7 +24,7 @@ public class CourseController {
 
     private final CourseService courseService;
 
-    // â”€â”€ Course Endpoints â”€â”€
+    // ── Course Endpoints ──
 
     @PostMapping
     @Operation(summary = "Create a new course")
@@ -97,7 +97,7 @@ public class CourseController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // â”€â”€ Module Endpoints â”€â”€
+    // ── Module Endpoints ──
 
     @PostMapping("/{courseId}/modules")
     @Operation(summary = "Create a course module")
@@ -131,7 +131,7 @@ public class CourseController {
         return ResponseEntity.ok(ApiResponse.success("Module deleted successfully", null));
     }
 
-    // â”€â”€ Lesson Endpoints â”€â”€
+    // ── Lesson Endpoints ──
 
     @PostMapping("/modules/{moduleId}/lessons")
     @Operation(summary = "Create a course lesson")

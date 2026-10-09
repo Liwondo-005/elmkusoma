@@ -77,7 +77,7 @@ public class AdministrationService {
     private static final ObjectMapper PERMISSION_PARSER = new ObjectMapper();
     private static final Set<String> TERMINAL_LIVE_STATUSES = Set.of("CANCELLED", "COMPLETED", "ENDED");
 
-    // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ System Settings ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+    // ── System Settings ──
 
     public SettingResponse createOrUpdateSetting(SettingRequest request, UUID institutionId,
                                                   String userEmail, String userRole) {
@@ -126,7 +126,7 @@ public class AdministrationService {
         return administrationMapper.toSettingResponse(setting);
     }
 
-    // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Role Management ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+    // ── Role Management ──
 
     public RoleResponse createRole(CreateRoleRequest request, UUID institutionId,
                                     String userEmail, String userRole) {
@@ -204,7 +204,7 @@ public class AdministrationService {
         log.info("Deleted role: {} from institution: {}", role.getName(), institutionId);
     }
 
-    // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Dashboard ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+    // ── Dashboard ──
 
     @Transactional(readOnly = true)
     public DashboardResponse getDashboard(UUID institutionId) {
@@ -300,7 +300,7 @@ public class AdministrationService {
         return response;
     }
 
-    // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Data Import ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+    // ── Data Import ──
 
     /**
      * Audit B-28: the import endpoint only received a file NAME. No bytes were uploaded, no rows
@@ -480,7 +480,7 @@ public class AdministrationService {
         return administrationMapper.toImportJobResponse(job);
     }
 
-    // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Enhanced Dashboard ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+    // ── Enhanced Dashboard ──
 
     @Transactional(readOnly = true)
     public EnhancedDashboardResponse getEnhancedDashboard(UUID institutionId,
@@ -543,7 +543,7 @@ public class AdministrationService {
         // Organization health summary
         var healthSummary = buildHealthSummary(institutionId);
 
-        // Live class stats ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â real repository data (never placeholders)
+        // Live class stats — real repository data (never placeholders)
         List<LiveClass> liveClasses = liveClassRepository.findByInstitutionIdAndIsDeletedFalse(institutionId);
         LocalDateTime now = LocalDateTime.now();
         long liveClassesLiveNow = liveClasses.stream()
@@ -656,7 +656,7 @@ public class AdministrationService {
         }
 
         // Every emitted action resolves to a route that actually exists in the
-        // admin workspace ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Ãƒâ€šÃ‚Â§018 forbids advertising actions that cannot be run.
+        // admin workspace — §018 forbids advertising actions that cannot be run.
         return actions;
     }
 
@@ -670,7 +670,7 @@ public class AdministrationService {
 
     private EnhancedDashboardResponse.WorkQueueSummary buildWorkQueueSummary(UUID institutionId,
                                                                               String currentUserRole) {
-        // Every count below is an organization-scoped repository query ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no placeholders.
+        // Every count below is an organization-scoped repository query — no placeholders.
         long pendingInvitations = auditService2.countPendingInvitations(institutionId);
         long draftCourses = Math.max(0, courseRepository.countByInstitutionIdAndIsDeletedFalse(institutionId)
                 - courseRepository.countByInstitutionIdAndIsPublishedAndIsDeletedFalse(institutionId, true));
@@ -718,7 +718,7 @@ public class AdministrationService {
 
         // Infrastructure health: Spring Actuator HealthIndicator via HealthEndpoint.
         // If no health endpoint is injectable in this context the component is reported
-        // as UNKNOWN with the honest reason ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â never as a fabricated HEALTHY.
+        // as UNKNOWN with the honest reason — never as a fabricated HEALTHY.
         HealthEndpoint endpoint = healthEndpointProvider.getIfAvailable();
         if (endpoint != null) {
             try {
@@ -901,7 +901,7 @@ public class AdministrationService {
         }
     }
 
-    // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Org-Scoped Search ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+    // ── Org-Scoped Search ──
 
     @Transactional(readOnly = true)
     public List<GlobalSearchResult> orgSearch(UUID institutionId, String query, String type, int limit) {
@@ -917,7 +917,7 @@ public class AdministrationService {
                     .limit(limit)
                     .forEach(u -> results.add(GlobalSearchResult.builder()
                             .id(u.getId()).type("USER").title(u.getFullName())
-                            .subtitle(u.getEmail() + " ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â " + u.getRole())
+                            .subtitle(u.getEmail() + " — " + u.getRole())
                             .build()));
         }
 
@@ -926,7 +926,7 @@ public class AdministrationService {
                     .filter(i -> i.getName().toLowerCase().contains(q) || i.getCode().toLowerCase().contains(q))
                     .ifPresent(i -> results.add(GlobalSearchResult.builder()
                             .id(i.getId()).type("INSTITUTION").title(i.getName())
-                            .subtitle(i.getCode() + " ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â " + i.getType())
+                            .subtitle(i.getCode() + " — " + i.getType())
                             .build()));
         }
 
@@ -946,14 +946,14 @@ public class AdministrationService {
                     .forEach(l -> results.add(GlobalSearchResult.builder()
                             .id(l.getId()).type("LIVE_CLASS").title(l.getTitle())
                             .subtitle(l.getStatus() + (l.getScheduledAt() != null
-                                    ? " ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â " + l.getScheduledAt().toLocalDate() : ""))
+                                    ? " — " + l.getScheduledAt().toLocalDate() : ""))
                             .build()));
         }
 
         return results.stream().limit(limit).toList();
     }
 
-    // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Access & Permission Center ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+    // ── Access & Permission Center ──
 
     @Transactional(readOnly = true)
     public MyAccessResponse getMyAccess(OrganizationContext context) {
@@ -1038,7 +1038,7 @@ public class AdministrationService {
         }
     }
 
-    // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Data Export ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
+    // ── Data Export ──
 
     @Transactional(readOnly = true)
     public byte[] exportData(UUID institutionId, String entityType) {

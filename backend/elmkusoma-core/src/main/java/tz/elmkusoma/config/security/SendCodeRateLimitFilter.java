@@ -21,8 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Global (per-client-IP) rate limit for {@code POST /v1/auth/send-code}.
  *
  * <p>The service layer already enforces the per-email 60s cooldown; this
- * filter closes the remaining gap Ã¢â‚¬â€ a single client spraying many distinct
- * emails Ã¢â‚¬â€ with a fixed hourly window per IP. Returns {@code 429} with the
+ * filter closes the remaining gap — a single client spraying many distinct
+ * emails — with a fixed hourly window per IP. Returns {@code 429} with the
  * standard {@code ApiResponse} error shape and a {@code Retry-After} header.</p>
  */
 @Component

@@ -179,7 +179,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         List<Enrollment> enrollments = enrollmentRepository.findByClassGroupIdAndIsDeletedFalse(classGroupId);
         String role = callerRole();
         if (role == null && RequestContextHolder.getRequestAttributes() != null) {
-            // Â§48: an HTTP request without a resolved role must fail closed
+            // §48: an HTTP request without a resolved role must fail closed
             throw new ForbiddenException("enrollment", "access");
         }
         if (role == null || "ADMIN".equals(role)) {
@@ -304,10 +304,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         String role = callerRole();
         if (role == null) {
             if (RequestContextHolder.getRequestAttributes() != null) {
-                // Â§48: an HTTP request without a resolved role must fail closed
+                // §48: an HTTP request without a resolved role must fail closed
                 throw new ForbiddenException("enrollment", "access");
             }
-            return; // no request context â€” internal programmatic access
+            return; // no request context — internal programmatic access
         }
         if ("ADMIN".equals(role)) {
             return;
@@ -329,10 +329,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         String role = callerRole();
         if (role == null) {
             if (RequestContextHolder.getRequestAttributes() != null) {
-                // Â§48: an HTTP request without a resolved role must fail closed
+                // §48: an HTTP request without a resolved role must fail closed
                 throw new ForbiddenException("enrollment", "access");
             }
-            return; // no request context â€” internal programmatic access
+            return; // no request context — internal programmatic access
         }
         if ("ADMIN".equals(role)) {
             return;

@@ -125,7 +125,7 @@ public class PlatformAdminService {
     private final tz.elmkusoma.identity.repository.PasswordResetTokenRepository passwordResetTokenRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
-    // â”€â”€ Command Center â”€â”€
+    // ── Command Center ──
 
     @Transactional(readOnly = true)
     public PlatformDashboardResponse getPlatformDashboard() {
@@ -267,7 +267,7 @@ public class PlatformAdminService {
                 .build();
     }
 
-    // â”€â”€ Users â”€â”€
+    // ── Users ──
 
     @Transactional(readOnly = true)
     public PageResponse<UserSummaryResponse> listUsers(int page, int size, String role, String search) {
@@ -366,14 +366,14 @@ public class PlatformAdminService {
                 .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
-                // Â§11: provisioning binds the account to its organization scope â€” without this
+                // §11: provisioning binds the account to its organization scope — without this
                 // the user resolves no institution and every scope check fails open or denies.
                 .institutionId(request.getInstitutionId())
                 .isActive(true)
                 .isEmailVerified(false)
                 .build();
         user = userRepository.save(user);
-        // Â§11: an active membership makes the account visible to the people directory,
+        // §11: an active membership makes the account visible to the people directory,
         // scope services and permission computation for the provisioned organization.
         if (request.getInstitutionId() != null) {
             InstitutionMembership membership = InstitutionMembership.builder()
@@ -494,7 +494,7 @@ public class PlatformAdminService {
         log.info("Password reset link sent to user: {}", user.getEmail());
     }
 
-    // â”€â”€ Institutions â”€â”€
+    // ── Institutions ──
 
     @Transactional(readOnly = true)
     public PageResponse<InstitutionSummaryResponse> listInstitutions(int page, int size, String search, String type) {
@@ -554,7 +554,7 @@ public class PlatformAdminService {
         return toInstitutionSummary(inst);
     }
 
-    // â”€â”€ Institution Lifecycle (offboarding per spec: ACTIVE â†’ SUSPENDED â†’ DEACTIVATED â†’ ARCHIVED) â”€â”€
+    // ── Institution Lifecycle (offboarding per spec: ACTIVE → SUSPENDED → DEACTIVATED → ARCHIVED) ──
 
     private static final Set<String> LIFECYCLE_STATUSES = Set.of("ACTIVE", "SUSPENDED", "DEACTIVATED", "ARCHIVED");
     private static final Map<String, Set<String>> LIFECYCLE_TRANSITIONS = Map.of(
@@ -576,7 +576,7 @@ public class PlatformAdminService {
             return toInstitutionSummary(inst);
         }
         if (!LIFECYCLE_TRANSITIONS.getOrDefault(current, Set.of()).contains(target)) {
-            throw new IllegalStateException("Invalid lifecycle transition: " + current + " â†’ " + target);
+            throw new IllegalStateException("Invalid lifecycle transition: " + current + " → " + target);
         }
         String oldStatus = current;
         inst.setStatus(target);
@@ -584,11 +584,11 @@ public class PlatformAdminService {
         institutionRepository.save(inst);
         writeAudit(institutionId, "INSTITUTION", institutionId, inst.getName(), "UPDATE",
                 Map.of("status", oldStatus), Map.of("status", target));
-        log.info("Institution {} lifecycle: {} â†’ {} by platform admin", institutionId, oldStatus, target);
+        log.info("Institution {} lifecycle: {} → {} by platform admin", institutionId, oldStatus, target);
         return toInstitutionSummary(inst);
     }
 
-    // â”€â”€ Provider Quotas / Entitlements â”€â”€
+    // ── Provider Quotas / Entitlements ──
 
     @Transactional(readOnly = true)
     public List<ProviderQuotaResponse> listProviderQuotas(UUID providerId) {
@@ -685,7 +685,7 @@ public class PlatformAdminService {
         writeAudit(ent.getInstitutionId(), "ENTITLEMENT", entitlementId, String.valueOf(ent.getServiceId()), "UPDATE",
                 Map.of("maxSeats", String.valueOf(oldMax), "status", String.valueOf(oldStatus)),
                 Map.of("maxSeats", String.valueOf(ent.getMaxSeats()), "status", String.valueOf(ent.getStatus())));
-        log.info("Provider entitlement {} updated: maxSeats {} â†’ {}, status {} â†’ {}",
+        log.info("Provider entitlement {} updated: maxSeats {} → {}, status {} → {}",
                 entitlementId, oldMax, ent.getMaxSeats(), oldStatus, ent.getStatus());
         PlatformService svc = platformServiceRepository.findById(ent.getServiceId()).orElse(null);
         return ProviderQuotaResponse.builder()
@@ -760,7 +760,7 @@ public class PlatformAdminService {
         }
     }
 
-    // â”€â”€ Live Classes â”€â”€
+    // ── Live Classes ──
 
     @Transactional(readOnly = true)
     public PageResponse<LiveClassSummaryResponse> listLiveClasses(int page, int size, String status) {
@@ -792,7 +792,7 @@ public class PlatformAdminService {
         return new PageResponse<>(content, classes.getNumber(), classes.getSize(), classes.getTotalElements(), classes.getTotalPages(), classes.isFirst(), classes.isLast());
     }
 
-    // â”€â”€ Payments â”€â”€
+    // ── Payments ──
 
     @Transactional(readOnly = true)
     public PageResponse<PaymentSummaryResponse> listPayments(int page, int size, String status) {
@@ -819,7 +819,7 @@ public class PlatformAdminService {
         return new PageResponse<>(content, payments.getNumber(), payments.getSize(), payments.getTotalElements(), payments.getTotalPages(), payments.isFirst(), payments.isLast());
     }
 
-    // â”€â”€ Certificates â”€â”€
+    // ── Certificates ──
 
     /**
      * Range sentinels for the platform certificate search. Postgres cannot infer the type of a
@@ -890,7 +890,7 @@ public class PlatformAdminService {
         return new PageResponse<>(content, certs.getNumber(), certs.getSize(), certs.getTotalElements(), certs.getTotalPages(), certs.isFirst(), certs.isLast());
     }
 
-    // â”€â”€ Security â”€â”€
+    // ── Security ──
 
     @Transactional(readOnly = true)
     public List<SecurityEventResponse> getUnresolvedSecurityEvents() {
@@ -930,7 +930,7 @@ public class PlatformAdminService {
                 .build();
     }
 
-    // â”€â”€ Audit â”€â”€
+    // ── Audit ──
 
     @Transactional(readOnly = true)
     public List<AuditLogResponse> getAuditLogs(int page, int size, String action, String entityType, UUID entityId) {
@@ -981,7 +981,7 @@ public class PlatformAdminService {
                 .toList();
     }
 
-    // â”€â”€ Global Search â”€â”€
+    // ── Global Search ──
 
     @Transactional(readOnly = true)
     public List<GlobalSearchResult> globalSearch(String query, String type, int limit) {
@@ -1026,7 +1026,7 @@ public class PlatformAdminService {
             try {
                 List<PlatformIncident> incs = incidentRepository.findByIsDeletedFalseOrderByDetectedAtDesc(PageRequest.of(0, 100)).getContent().stream()
                         .filter(i -> (i.getTitle() != null && i.getTitle().toLowerCase().contains(q)) || (i.getCategory() != null && i.getCategory().toLowerCase().contains(q))).limit(limit).toList();
-                results.addAll(incs.stream().map(i -> GlobalSearchResult.builder().type("INCIDENT").id(i.getId()).title(i.getTitle()).subtitle(i.getSeverity() + " Â· " + i.getStatus()).build()).toList());
+                results.addAll(incs.stream().map(i -> GlobalSearchResult.builder().type("INCIDENT").id(i.getId()).title(i.getTitle()).subtitle(i.getSeverity() + " · " + i.getStatus()).build()).toList());
             } catch (Exception e) { log.debug("Search incident failed: {}", e.getMessage()); }
         }
         if (type == null || type.equalsIgnoreCase("service") || type.equalsIgnoreCase("all")) {
@@ -1097,7 +1097,7 @@ public class PlatformAdminService {
         return results.stream().limit(limit).toList();
     }
 
-    // â”€â”€ Services â”€â”€
+    // ── Services ──
 
     @Transactional(readOnly = true)
     public PageResponse<ServiceSummaryResponse> listServices(int page, int size, String category) {
@@ -1151,7 +1151,7 @@ public class PlatformAdminService {
         return toServiceSummary(svc);
     }
 
-    // â”€â”€ Incidents â”€â”€
+    // ── Incidents ──
 
     @Transactional(readOnly = true)
     public PageResponse<IncidentSummaryResponse> listIncidents(int page, int size, String status, String severity) {
@@ -1208,7 +1208,7 @@ public class PlatformAdminService {
         if (!current.equals(target)) {
             Set<String> allowed = INCIDENT_TRANSITIONS.getOrDefault(current, Set.of());
             if (!allowed.contains(target)) {
-                throw new IllegalStateException("Invalid incident transition: " + current + " â†’ " + target);
+                throw new IllegalStateException("Invalid incident transition: " + current + " → " + target);
             }
             inc.setStatus(target);
             LocalDateTime now = LocalDateTime.now();
@@ -1224,12 +1224,12 @@ public class PlatformAdminService {
             writeAudit(PLATFORM_INSTITUTION_ID, "INCIDENT", id, inc.getTitle(), "UPDATE",
                     Map.of("status", current), Map.of("status", target,
                             "notes", notes != null ? notes : ""));
-            log.info("Incident {} status: {} â†’ {}", id, current, target);
+            log.info("Incident {} status: {} → {}", id, current, target);
         }
         return toIncidentSummary(inc);
     }
 
-    // â”€â”€ Platform Config â”€â”€
+    // ── Platform Config ──
 
     @Transactional(readOnly = true)
     public List<PlatformConfigResponse> listConfig(String category) {
@@ -1267,7 +1267,7 @@ public class PlatformAdminService {
                 .updatedAt(entry.getUpdatedAt()).build();
     }
 
-    // â”€â”€ Notifications â”€â”€
+    // ── Notifications ──
 
     @Transactional(readOnly = true)
     public PageResponse<NotificationSummaryResponse> listNotifications(int page, int size) {
@@ -1298,7 +1298,7 @@ public class PlatformAdminService {
                 .sentAt(notif.getSentAt()).readCount(0).build();
     }
 
-    // â”€â”€ Delegations â”€â”€
+    // ── Delegations ──
 
     /** Authority types supported by the platform governance model. Do not invent others in the UI. */
     public static final Set<String> DELEGATION_AUTHORITIES = Set.of(
@@ -1609,7 +1609,7 @@ public class PlatformAdminService {
                 .toList();
     }
 
-    // â”€â”€ Provider Governance (providers ARE institutions of provider types â€” no duplicate model) â”€â”€
+    // ── Provider Governance (providers ARE institutions of provider types — no duplicate model) ──
 
     public static final Set<String> PROVIDER_TYPES = Set.of(
             "TRAINING_PROVIDER", "PROFESSIONAL_BODY", "COMPANY", "NGO",
@@ -1783,7 +1783,7 @@ public class PlatformAdminService {
                 .build();
     }
 
-    /** Honest compliance flags derived only from real persisted state â€” never invented. */
+    /** Honest compliance flags derived only from real persisted state — never invented. */
     private List<String> buildComplianceFlags(Institution inst, List<ProviderVerificationItem> history) {
         List<String> flags = new ArrayList<>();
         if ((inst.getEmail() == null || inst.getEmail().isBlank())
@@ -1866,10 +1866,10 @@ public class PlatformAdminService {
     }
 
     /**
-     * Delegation-enforced provider verification review (spec Â§033).
+     * Delegation-enforced provider verification review (spec §033).
      * The actor must be a platform-level admin OR hold an ACTIVE delegation with
      * authority PROVIDER_VERIFICATION covering the entity's scope. Frontend button
-     * hiding is NOT security â€” this check runs on every call.
+     * hiding is NOT security — this check runs on every call.
      */
     public VerificationSummaryResponse reviewProviderVerification(UUID verificationId, UUID actorId,
                                                                   String status, String notes) {
@@ -1995,7 +1995,7 @@ public class PlatformAdminService {
         return tasks;
     }
 
-    // â”€â”€ Verifications â”€â”€
+    // ── Verifications ──
 
     private static final Set<String> VERIFIABLE_ENTITY_TYPES = Set.of("INSTITUTION", "PROVIDER", "SERVICE");
 
@@ -2142,7 +2142,7 @@ public class PlatformAdminService {
         }
     }
 
-    // â”€â”€ Entitlements â”€â”€
+    // ── Entitlements ──
 
     @Transactional(readOnly = true)
     public PageResponse<EntitlementSummaryResponse> listEntitlements(int page, int size, String status) {
@@ -2160,7 +2160,7 @@ public class PlatformAdminService {
         return new PageResponse<>(content, entPage.getNumber(), entPage.getSize(), entPage.getTotalElements(), entPage.getTotalPages(), entPage.isFirst(), entPage.isLast());
     }
 
-    // â”€â”€ Enhanced Dashboard â”€â”€
+    // ── Enhanced Dashboard ──
 
     @Transactional(readOnly = true)
     public EnhancedPlatformDashboardResponse getEnhancedDashboard() {
@@ -2190,7 +2190,7 @@ public class PlatformAdminService {
                 .build();
     }
 
-    // â”€â”€ Platform Learning/Content/Event/Media/Resources â”€â”€
+    // ── Platform Learning/Content/Event/Media/Resources ──
 
     @Transactional(readOnly = true)
     public PageResponse<PlatformCourseResponse> listPlatformCourses(int page, int size, String search) {
@@ -2262,7 +2262,7 @@ public class PlatformAdminService {
         return new PageResponse<>(content, p.getNumber(), p.getSize(), p.getTotalElements(), p.getTotalPages(), p.isFirst(), p.isLast());
     }
 
-    // â”€â”€ Support Cases (M26) â”€â”€
+    // ── Support Cases (M26) ──
 
     private static final Map<String, Set<String>> TICKET_TRANSITIONS = Map.of(
             "OPEN", Set.of("ASSIGNED", "INVESTIGATING", "ACTION_REQUIRED", "RESOLVED", "CLOSED"),
@@ -2301,7 +2301,7 @@ public class PlatformAdminService {
         String current = t.getStatus() != null ? t.getStatus() : "OPEN";
         if (!current.equals(target)) {
             if (!TICKET_TRANSITIONS.getOrDefault(current, Set.of()).contains(target)) {
-                throw new IllegalStateException("Invalid ticket transition: " + current + " â†’ " + target);
+                throw new IllegalStateException("Invalid ticket transition: " + current + " → " + target);
             }
             t.setStatus(target);
             if ("RESOLVED".equals(target) || "CLOSED".equals(target)) {
@@ -2310,7 +2310,7 @@ public class PlatformAdminService {
             supportTicketRepository.save(t);
             writeAudit(t.getInstitutionId(), "SUPPORT_TICKET", ticketId, t.getSubject(), "UPDATE",
                     Map.of("status", current), Map.of("status", target));
-            log.info("Support ticket {} status: {} â†’ {}", ticketId, current, target);
+            log.info("Support ticket {} status: {} → {}", ticketId, current, target);
         }
         return SupportTicketResponse.builder()
                 .id(t.getId()).userId(t.getUserId()).title(t.getSubject()).description(t.getDescription())
@@ -2319,7 +2319,7 @@ public class PlatformAdminService {
                 .build();
     }
 
-    // â”€â”€ Content Moderation (M10/M11) â”€â”€
+    // ── Content Moderation (M10/M11) ──
 
     private static final Set<String> REPORT_ACTIONS = Set.of("REVIEWING", "RESOLVED", "DISMISSED", "APPEALED");
 
@@ -2382,7 +2382,7 @@ public class PlatformAdminService {
         contentReportRepository.save(r);
         writeAudit(r.getInstitutionId(), "CONTENT_REPORT", reportId, r.getEntityTitle(), "UPDATE",
                 Map.of("status", old), Map.of("status", target));
-        log.info("Content report {} action: {} â†’ {}", reportId, old, target);
+        log.info("Content report {} action: {} → {}", reportId, old, target);
         return ContentReportResponse.builder()
                 .id(r.getId()).entityType(r.getEntityType()).entityId(r.getEntityId()).entityTitle(r.getEntityTitle())
                 .reporterId(r.getReporterId()).reason(r.getReason()).description(r.getDescription())
@@ -2391,7 +2391,7 @@ public class PlatformAdminService {
                 .build();
     }
 
-    // â”€â”€ Data Governance Export (M24) â”€â”€
+    // ── Data Governance Export (M24) ──
 
     public String exportPlatformData(String type) {
         String t = type != null ? type.toUpperCase() : "USERS";
@@ -2435,7 +2435,7 @@ public class PlatformAdminService {
                 ? "\"" + v.replace("\"", "\"\"") + "\"" : v;
     }
 
-    // â”€â”€ BATCH 13: Admins, Role Permissions, Offboarding, Bulk, Features, Delivery, Snapshots â”€â”€
+    // ── BATCH 13: Admins, Role Permissions, Offboarding, Bulk, Features, Delivery, Snapshots ──
 
     private static final Set<String> ADMIN_ROLES = Set.of("ADMIN", "INSTITUTION_ADMIN", "NATIONAL_ADMIN",
             "REGIONAL_ADMIN", "DISTRICT_ADMIN", "PROVIDER_ADMIN");
@@ -2528,7 +2528,7 @@ public class PlatformAdminService {
         writeAudit(PLATFORM_INSTITUTION_ID, "ROLE_PERMISSION", roleId, "Role permissions", "UPDATE",
                 Map.of("permissions", String.join(",", old)),
                 Map.of("permissions", String.join(",", req.getPermissions())));
-        log.info("Role permissions updated for {}: {} â†’ {} permissions", roleId, old.size(), req.getPermissions().size());
+        log.info("Role permissions updated for {}: {} → {} permissions", roleId, old.size(), req.getPermissions().size());
         return rolePermissionRepository.findPermissionsByRoleId(roleId);
     }
 
@@ -2719,13 +2719,13 @@ public class PlatformAdminService {
         String current = f.getStatus();
         if (!current.equals(target)) {
             if (!FEATURE_TRANSITIONS.getOrDefault(current, Set.of()).contains(target)) {
-                throw new IllegalStateException("Invalid feature transition: " + current + " â†’ " + target);
+                throw new IllegalStateException("Invalid feature transition: " + current + " → " + target);
             }
             f.setStatus(target);
             featureRepository.save(f);
             writeAudit(PLATFORM_INSTITUTION_ID, "FEATURE", f.getId(), f.getName(), "UPDATE",
                     Map.of("status", current), Map.of("status", target));
-            log.info("Feature {} status: {} â†’ {}", key, current, target);
+            log.info("Feature {} status: {} → {}", key, current, target);
         }
         return FeatureStatusResponse.builder()
                 .key(f.getFeatureKey()).name(f.getName()).status(f.getStatus())
@@ -2829,7 +2829,7 @@ public class PlatformAdminService {
         return backupStatusService.getBackupStatus();
     }
 
-    // â”€â”€ Organization Members & Roles â”€â”€
+    // ── Organization Members & Roles ──
 
     public List<OrgMemberResponse> listInstitutionMembers(UUID institutionId) {
         if (!institutionRepository.existsById(institutionId)) {
@@ -2891,7 +2891,7 @@ public class PlatformAdminService {
                 .build();
     }
 
-    // â”€â”€ Mappers â”€â”€
+    // ── Mappers ──
 
     private UserSummaryResponse toUserSummary(User user) {
         return UserSummaryResponse.builder()
