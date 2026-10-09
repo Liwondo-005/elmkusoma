@@ -108,12 +108,17 @@ class CrossOrgAttackTest {
     }
 
     @Test
-    void fileIdManipulation_CrossInstitution_Returns403() throws Exception {
+    void fileIdManipulation_CrossInstitution_IsDenied() throws Exception {
         String studentToken = TestTokens.studentToken();
 
         mockMvc.perform(get("/v1/media/00000000-0000-0000-0000-000000000055")
                 .header("Authorization", "Bearer " + studentToken))
-            .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
+        // STUDENT is now an accepted role on /v1/media/{id} so learners can open recordings
+        // of sessions they took part in. The request reaches the handler, which answers 404
+        // for anything the caller is not entitled to - the same response as "no such asset",
+        // so the endpoint cannot probe which recordings exist. Access is still denied; only
+        // the status changed, and to the less revealing one.
     }
 
     @Test
