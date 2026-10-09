@@ -137,7 +137,8 @@ class LogoutDenylistTest {
                 studentRepository, studentClassAssignmentRepository, revokedTokenRepository,
                 verificationCodeRepository, parentRepository, teacherRepository, membershipRepository,
                 institutionRepository, classGroupRepository, academicYearRepository, enrollmentRepository,
-                rateLimitService, eventPublisherService, notificationService, auditService, mfaService);
+                rateLimitService, eventPublisherService, notificationService, auditService, mfaService,
+                new tz.elmkusoma.identity.service.PasswordPolicy());
         ReflectionTestUtils.setField(authService, "accessTokenExpirationMs", 3_600_000L);
         ReflectionTestUtils.setField(authService, "tenantAwareRedisTemplate", tenantRedis);
 

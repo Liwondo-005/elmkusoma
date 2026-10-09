@@ -10,10 +10,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.mockito.ArgumentCaptor;
 import tz.elmkusoma.administration.domain.InstitutionInvitation;
 import tz.elmkusoma.administration.repository.InstitutionInvitationRepository;
+import tz.elmkusoma.identity.service.OtpMailService;
 import tz.elmkusoma.nfe.provider.domain.EducationProvider;
 import tz.elmkusoma.nfe.provider.repository.EducationProviderRepository;
 import tz.elmkusoma.shared.domain.Institution;
@@ -31,6 +34,9 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -83,6 +89,10 @@ class ProviderAdminProvisioningSecurityTest {
 
     @Autowired
     private EducationProviderRepository providerRepository;
+
+    /** Lets the test read the activation code that would otherwise only reach the mailbox. */
+    @MockitoBean
+    private OtpMailService otpMailService;
 
     private UUID tenantA;
     private UUID tenantB;
@@ -284,10 +294,7 @@ class ProviderAdminProvisioningSecurityTest {
         String email = "provadmin-redeem-" + run + "@test.com";
         String token = issuePlatformInvitation(email, "PROVIDER_ADMIN");
 
-        mockMvc.perform(post("/v1/admin/people/invitations/accept")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"token\":\"" + token + "\",\"password\":\"Chosen-Secret-42\"}"))
-                .andExpect(status().isOk());
+        activate(token, "Chosen-Secret-42");
 
         User created = userRepository.findByEmailAndIsDeletedFalse(email)
                 .orElseThrow(() -> new AssertionError("redeemer was not created"));
@@ -324,10 +331,7 @@ class ProviderAdminProvisioningSecurityTest {
                 .andExpect(status().isCreated());
         String token = latestToken(outsiderB.getEmail());
 
-        mockMvc.perform(post("/v1/admin/people/invitations/accept")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"token\":\"" + token + "\",\"password\":\"Chosen-Secret-42\"}"))
-                .andExpect(status().isOk());
+        activate(token, "Chosen-Secret-42");
 
         User after = userRepository.findByIdAndIsDeletedFalse(outsiderB.getId()).orElseThrow();
         assertEquals(originalInstitution, after.getInstitutionId(),
@@ -340,14 +344,12 @@ class ProviderAdminProvisioningSecurityTest {
         String email = "provadmin-replay-" + run + "@test.com";
         String token = issuePlatformInvitation(email, "PROVIDER_ADMIN");
 
-        mockMvc.perform(post("/v1/admin/people/invitations/accept")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"token\":\"" + token + "\",\"password\":\"Chosen-Secret-42\"}"))
-                .andExpect(status().isOk());
+        activate(token, "Chosen-Secret-42");
 
-        mockMvc.perform(post("/v1/admin/people/invitations/accept")
+        // The invitation is now ACCEPTED, so a second activation cannot start at all.
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"token\":\"" + token + "\",\"password\":\"Chosen-Secret-43\"}"))
+                        .content("{\"token\":\"" + token + "\"}"))
                 .andExpect(status().is4xxClientError());
     }
 
@@ -362,9 +364,9 @@ class ProviderAdminProvisioningSecurityTest {
         invitation.setExpiresAt(LocalDateTime.now().minusMinutes(1));
         invitationRepository.save(invitation);
 
-        mockMvc.perform(post("/v1/admin/people/invitations/accept")
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"token\":\"" + token + "\",\"password\":\"Chosen-Secret-42\"}"))
+                        .content("{\"token\":\"" + token + "\"}"))
                 .andExpect(status().is4xxClientError());
 
         assertTrue(userRepository.findByEmailAndIsDeletedFalse(email).isEmpty(),
@@ -373,9 +375,9 @@ class ProviderAdminProvisioningSecurityTest {
 
     @Test
     void garbageToken_isRejected() throws Exception {
-        mockMvc.perform(post("/v1/admin/people/invitations/accept")
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"token\":\"" + "0".repeat(32) + "\",\"password\":\"Chosen-Secret-42\"}"))
+                        .content("{\"token\":\"" + "0".repeat(32) + "\"}"))
                 .andExpect(status().is4xxClientError());
     }
 
@@ -397,13 +399,116 @@ class ProviderAdminProvisioningSecurityTest {
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build());
 
-        mockMvc.perform(post("/v1/admin/people/invitations/accept")
+        mockMvc.perform(post("/v1/admin/people/invitations/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"token\":\"" + token + "\",\"password\":\"Chosen-Secret-42\"}"))
+                        .content("{\"token\":\"" + token + "\",\"code\":\"" + "12345"
+                                + "\",\"password\":\"Chosen-Secret-42\"}"))
                 .andExpect(status().is4xxClientError());
 
         assertTrue(userRepository.findByEmailAndIsDeletedFalse(email).isEmpty(),
                 "an institution-issued PROVIDER_ADMIN invitation must not be redeemable");
+    }
+
+    // ── the invited mailbox must prove ownership ─────────────────────────────────────────
+
+    /**
+     * The core of the fix. The invitation token is returned to the inviter, so anyone holding
+     * it could previously register an account under a third party's address with a password of
+     * their choosing - and that party could then never claim it, because registration treats
+     * the address as taken. Holding the token must now create nothing at all.
+     */
+    @Test
+    void holdingTheTokenAloneCannotCreateAnAccount() throws Exception {
+        String email = "provadmin-tokenonly-" + run + "@test.com";
+        String token = issuePlatformInvitation(email, "PROVIDER_ADMIN");
+
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\"}"))
+                .andExpect(status().isOk());
+
+        assertTrue(userRepository.findByEmailAndIsDeletedFalse(email).isEmpty(),
+                "step 1 must not create an account, so it cannot create a membership either");
+
+        InstitutionInvitation invitation = invitationRepository
+                .findByTokenAndIsDeletedFalse(token).orElseThrow();
+        assertEquals("AWAITING_VERIFICATION", invitation.getStatus(),
+                "the invitation waits for proof of the mailbox before anything is activated");
+    }
+
+    /** Confirming with a guessed code must not activate anything. */
+    @Test
+    void confirmationWithTheWrongCodeIsRefused() throws Exception {
+        String email = "provadmin-wrongcode-" + run + "@test.com";
+        String token = issuePlatformInvitation(email, "PROVIDER_ADMIN");
+
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/v1/admin/people/invitations/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\",\"code\":\"00000\","
+                                + "\"password\":\"Chosen-Secret-42\"}"))
+                .andExpect(status().is4xxClientError());
+
+        assertTrue(userRepository.findByEmailAndIsDeletedFalse(email).isEmpty(),
+                "a wrong code must not create an account");
+    }
+
+    /** The code is emailed to the invited address, never to one the caller supplies. */
+    @Test
+    void theCodeGoesToTheInvitedAddress() throws Exception {
+        String email = "provadmin-dest-" + run + "@test.com";
+        String token = issuePlatformInvitation(email, "PROVIDER_ADMIN");
+
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\"}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<String> recipient = ArgumentCaptor.forClass(String.class);
+        verify(otpMailService, atLeastOnce()).sendVerificationCode(recipient.capture(), anyString());
+        assertEquals(email.toLowerCase(java.util.Locale.ROOT), recipient.getValue());
+    }
+
+    /** Redemption now applies the same password screen as registration. */
+    @Test
+    void activationRejectsACommonlyUsedPassword() throws Exception {
+        String email = "provadmin-weakpw-" + run + "@test.com";
+        String token = issuePlatformInvitation(email, "PROVIDER_ADMIN");
+
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/v1/admin/people/invitations/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\",\"code\":\"" + lastMailedCode()
+                                + "\",\"password\":\"password123\"}"))
+                .andExpect(status().isBadRequest());
+
+        assertTrue(userRepository.findByEmailAndIsDeletedFalse(email).isEmpty(),
+                "a weak password must not create an account");
+    }
+
+    @Test
+    void activationRejectsAPasswordDerivedFromTheEmailAddress() throws Exception {
+        String email = "provadmin-weakpw2-" + run + "@test.com";
+        String token = issuePlatformInvitation(email, "PROVIDER_ADMIN");
+
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/v1/admin/people/invitations/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\",\"code\":\"" + lastMailedCode()
+                                + "\",\"password\":\"Provadmin-weakpw2-" + run + "\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     // ── public registration ──────────────────────────────────────────────────────────────
@@ -433,6 +538,32 @@ class ProviderAdminProvisioningSecurityTest {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Runs both activation steps the way an invitee would: request the code, then confirm with
+     * the code that was mailed to the invited address.
+     *
+     * <p>The mail service is mocked so the test can read the code. In production the code only
+     * ever travels to the invited mailbox, which is the whole point of the second factor.</p>
+     */
+    private void activate(String token, String password) throws Exception {
+        mockMvc.perform(post("/v1/admin/people/invitations/activate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/v1/admin/people/invitations/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\",\"code\":\"" + lastMailedCode()
+                                + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk());
+    }
+
+    private String lastMailedCode() {
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        verify(otpMailService, atLeastOnce()).sendVerificationCode(anyString(), code.capture());
+        return code.getValue();
+    }
 
     private String issuePlatformInvitation(String email, String role) throws Exception {
         MvcResult result = mockMvc.perform(post("/v1/platform-admin/invitations")

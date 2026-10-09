@@ -10,14 +10,22 @@ import tz.elmkusoma.administration.domain.InstitutionInvitation;
 import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.repository.InstitutionInvitationRepository;
 import tz.elmkusoma.config.security.PermissionCacheService;
+import tz.elmkusoma.identity.domain.VerificationCode;
+import tz.elmkusoma.identity.repository.VerificationCodeRepository;
+import tz.elmkusoma.identity.service.OtpMailService;
+import tz.elmkusoma.identity.service.PasswordPolicy;
 import tz.elmkusoma.nfe.provider.repository.EducationProviderRepository;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Slf4j
@@ -38,6 +46,16 @@ public class InstitutionPeopleService {
     private final PermissionCacheService permissionCacheService;
     private final PasswordEncoder passwordEncoder;
     private final EducationProviderRepository educationProviderRepository;
+    private final VerificationCodeRepository verificationCodeRepository;
+    private final OtpMailService otpMailService;
+    private final PasswordPolicy passwordPolicy;
+
+    /** Mirrors the OTP lifetime used by the public registration verification flow. */
+    private static final int CODE_EXPIRY_MINUTES = 10;
+    private static final int RESEND_COOLDOWN_SECONDS = 60;
+    private static final String PENDING = "PENDING";
+    private static final String AWAITING_VERIFICATION = "AWAITING_VERIFICATION";
+    private static final java.security.SecureRandom SECURE_RANDOM = new java.security.SecureRandom();
 
     public List<PeopleMemberResponse> listPeople(UUID institutionId, int page, int size) {
         List<User> users = scopeService.getUsersInInstitution(institutionId);
@@ -230,21 +248,89 @@ public class InstitutionPeopleService {
         invitationRepository.save(invitation);
     }
 
-    public void acceptInvitation(String token, String password) {
-        InstitutionInvitation invitation = invitationRepository.findByTokenAndIsDeletedFalse(token)
-                // A typed not-found rather than a bare RuntimeException: this endpoint is now
-                // reachable without a session, and an unmapped exception would report a guessed
-                // token as an HTTP 500 server fault instead of a client error.
-                .orElseThrow(() -> new tz.elmkusoma.common.exception.ResourceNotFoundException(
-                        "Invitation", "token", token));
+    /**
+     * Step 1 of activation: proves the invitation is live and mails a one-time code to the
+     * address it was issued for. It deliberately creates nothing.
+ *
+ * <p>The invitation token proves the <em>inviter's</em> intent, not the redeemer's identity:
+     * the token is returned in the invite's API response, so the inviter always holds it. If the
+     * token alone could activate an account, any administrator could register an account under
+     * a third party's address with a password of their choosing - and that party could then
+     * never claim it, because registration treats the address as taken. Ownership of the mailbox
+     * is therefore a second, independent factor, checked in {@link #confirmInvitation}.</p>
+     */
+    @Transactional
+    public void startInvitationActivation(String token) {
+        InstitutionInvitation invitation = loadRedeemableInvitation(token);
 
-        if (!"PENDING".equals(invitation.getStatus())) {
-            throw new IllegalStateException("Invitation is not pending");
+        // Always the invited address. Never a client-supplied one, or the factor proves nothing.
+        String email = invitation.getEmail().toLowerCase(Locale.ROOT);
+
+        VerificationCode existing = verificationCodeRepository
+                .findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email).orElse(null);
+        if (existing != null && existing.getCreatedAt() != null
+                && existing.getCreatedAt().plusSeconds(RESEND_COOLDOWN_SECONDS).isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException(
+                    "Please wait " + RESEND_COOLDOWN_SECONDS + " seconds before requesting a new code");
         }
 
-        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new IllegalStateException("Invitation has expired");
+        // A resend supersedes every older unused code so a stale one can never activate.
+        for (VerificationCode stale : verificationCodeRepository
+                .findAllByEmailAndUsedFalseOrderByCreatedAtDesc(email)) {
+            stale.setUsed(true);
+            verificationCodeRepository.save(stale);
         }
+
+        String code = String.format("%05d", SECURE_RANDOM.nextInt(100_000));
+        verificationCodeRepository.save(VerificationCode.builder()
+                .email(email)
+                .code(sha256Hex(code))
+                .expiresAt(LocalDateTime.now().plusMinutes(CODE_EXPIRY_MINUTES))
+                .used(false)
+                .attempts(0)
+                .build());
+
+        otpMailService.sendVerificationCode(email, code);
+
+        // The invitation stays redeemable while the code is outstanding; only acceptance closes it.
+        invitation.setStatus("AWAITING_VERIFICATION");
+        invitationRepository.save(invitation);
+
+        log.info("Invitation activation code issued for {} (invitation {})", email, invitation.getId());
+    }
+
+    /**
+     * Step 2 of activation: the code proves the caller controls the invited mailbox, and only
+     * then is the account created and the membership bound.
+     */
+    @Transactional
+    public void confirmInvitation(String token, String code, String password) {
+        InstitutionInvitation invitation = loadRedeemableInvitation(token);
+
+        // Order matters: reject a weak password before spending an attempt.
+        passwordPolicy.rejectWeak(invitation.getEmail(), password);
+
+        String email = invitation.getEmail().toLowerCase(Locale.ROOT);
+        VerificationCode verification = verificationCodeRepository
+                .findTopByEmailAndUsedFalseOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Enter the verification code sent to " + email));
+
+        if (!verification.isValid()) {
+            // Count the miss so a 5-digit space cannot be walked, and reuse the same message
+            // for "wrong code", "expired" and "locked" so none of them are distinguishable.
+            verification.setAttempts(verification.getAttempts() + 1);
+            verificationRepositorySave(verification);
+            throw new IllegalArgumentException("That verification code is not valid");
+        }
+        if (!constantTimeEquals(verification.getCode(), sha256Hex(code))) {
+            verification.setAttempts(verification.getAttempts() + 1);
+            verificationRepositorySave(verification);
+            throw new IllegalArgumentException("That verification code is not valid");
+        }
+
+        verification.setUsed(true);
+        verificationRepositorySave(verification);
 
         // Create or find user. §11: a new account receives the invited organization role —
         // existing accounts keep their global identity (multi-role via membership, §13).
@@ -292,11 +378,11 @@ public class InstitutionPeopleService {
                     return userRepository.save(newUser);
                 });
 
-        // Existing user: mark the address proven (they just proved it by redeeming the token),
-        // but never re-point their account at another tenant and never resurrect a suspended
-        // account. Both were reachable before: an institution administrator could invite an
-        // existing user from a different institution, keep the token, and redeem it to move
-        // that person's global institution_id into their own tenant.
+        // Existing user: the mailbox is now proven, so the address may be marked verified, but
+        // never re-point their account at another tenant and never resurrect a suspended one.
+        // Both were reachable before: an institution administrator could invite an existing
+        // user from a different institution, keep the token, and redeem it to move that
+        // person's global institution_id into their own tenant.
         if (!Boolean.TRUE.equals(user.getIsEmailVerified())) {
             user.setIsEmailVerified(true);
         }
@@ -330,6 +416,56 @@ public class InstitutionPeopleService {
         invitationRepository.save(invitation);
 
         log.info("Invitation accepted for user {} in institution {}", user.getEmail(), invitation.getInstitutionId());
+    }
+
+    /**
+     * Loads an invitation that may still be activated, or throws.
+     *
+     * <p>AWAITING_VERIFICATION is accepted here as well as PENDING: the code step moves the
+     * invitation into that state, so confirmation has to be able to read it back.</p>
+     */
+    private InstitutionInvitation loadRedeemableInvitation(String token) {
+        InstitutionInvitation invitation = invitationRepository.findByTokenAndIsDeletedFalse(token)
+                // A typed not-found rather than a bare RuntimeException: this endpoint is
+                // reachable without a session, and an unmapped exception would report a guessed
+                // token as an HTTP 500 server fault instead of a client error.
+                .orElseThrow(() -> new tz.elmkusoma.common.exception.ResourceNotFoundException(
+                        "Invitation", "token", token));
+
+        if (!PENDING.equals(invitation.getStatus()) && !AWAITING_VERIFICATION.equals(invitation.getStatus())) {
+            throw new IllegalStateException("Invitation is not pending");
+        }
+
+        if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("Invitation has expired");
+        }
+        return invitation;
+    }
+
+    private void verificationRepositorySave(VerificationCode verification) {
+        verificationCodeRepository.save(verification);
+    }
+
+    /** Length-independent comparison of two hex digests. */
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
     }
 
     /** Inverse of OrganizationContextResolver.mapUserRoleToMembershipRole. */
