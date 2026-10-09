@@ -58,6 +58,8 @@ $LogDir = Join-Path $RepoRoot ".devlogs"
 
 # Child processes started by this script, so shutdown never orphans them.
 $script:Children = @()
+# Set once shutdown has run, so the finally block cannot redo the work.
+$script:ShutDown = $false
 
 function Write-Step  { param($m) Write-Host "==> $m" -ForegroundColor Cyan }
 function Write-Ok    { param($m) Write-Host "    [ok]   $m" -ForegroundColor Green }
@@ -295,6 +297,11 @@ function Start-LiveKitLocal {
 
 # ------------------------------------------------------------------- lifecycle
 function Stop-Children {
+    # Reachable from both the supervision loop and the finally block, so this
+    # must be idempotent: a second pass would reprint the banner and issue
+    # taskkill against PIDs that are already gone.
+    if ($script:ShutDown) { return }
+    $script:ShutDown = $true
     if (-not $script:Children) { return }
     Write-Host ""
     Write-Step "shutting down"
@@ -303,9 +310,20 @@ function Stop-Children {
             if (-not $p.HasExited) {
                 Write-Info "stopping pid $($p.Id)"
                 # Kill the whole tree: mvn/npm spawn children of their own.
+                # If the wrapper already died, its children can no longer be
+                # reached this way, so also sweep any port we own.
                 & taskkill /PID $p.Id /T /F 2>&1 | Out-Null
             }
         } catch { }
+    }
+    # Sweep anything still holding a port this script opened, so a dead
+    # wrapper cannot leave an orphaned JVM or node process behind.
+    foreach ($port in @($LiveKitPort, $BackendPort, $FrontendPort)) {
+        $owner = Get-PortOwner -Port $port
+        if ($owner) {
+            Write-Info "releasing :$port (pid $($owner.Pid), $($owner.Name))"
+            & taskkill /PID $owner.Pid /T /F 2>&1 | Out-Null
+        }
     }
     Write-Ok "all started processes stopped (no orphans)"
 }
