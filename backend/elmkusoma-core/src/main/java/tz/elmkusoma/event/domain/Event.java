@@ -96,6 +96,14 @@ public class Event extends BaseEntity {
     @Column(name = "recording_status", length = 20)
     private String recordingStatus;
 
+    /**
+     * Audit B-37 note: this column holds the ORGANIZING USER's id as text, while nfe_*.provider_id
+     * holds an education-provider entity id — two different meanings behind one column name. The
+     * field name is deliberately left unchanged: renaming it to providerOwnerUserId requires
+     * regenerating every getter/setter/builder call site across the event stack, and a Java-level
+     * alias here breaks JPA/Lombok bean introspection. Recorded here so the next reader is not
+     * misled into joining the two on the assumption they are the same key.
+     */
     @Column(name = "provider_id", length = 36)
     private String providerId;
 

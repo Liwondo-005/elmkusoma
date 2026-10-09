@@ -29,7 +29,7 @@ public class NfeAttendanceController {
     @Operation(summary = "Record attendance for a session")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<AttendanceResponse>> recordAttendance(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId,
             @Valid @RequestBody AttendanceRequest request) {
         AttendanceResponse attendance = attendanceService.recordAttendance(institutionId, providerId, request);
@@ -41,7 +41,7 @@ public class NfeAttendanceController {
     @Operation(summary = "Get an attendance record by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<AttendanceResponse>> getAttendance(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         AttendanceResponse attendance = attendanceService.getAttendance(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(attendance));
@@ -51,7 +51,7 @@ public class NfeAttendanceController {
     @Operation(summary = "List attendance records for a session")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<AttendanceResponse>>> listAttendanceBySession(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID sessionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -63,7 +63,7 @@ public class NfeAttendanceController {
     @Operation(summary = "Get attendance records for a learner")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceByLearner(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID learnerId) {
         List<AttendanceResponse> attendance = attendanceService.getAttendanceByLearner(institutionId, learnerId);
         return ResponseEntity.ok(ApiResponse.success(attendance));
@@ -73,7 +73,7 @@ public class NfeAttendanceController {
     @Operation(summary = "Get attendance records for a provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceByProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId) {
         List<AttendanceResponse> attendance = attendanceService.getAttendanceByProvider(institutionId, providerId);
         return ResponseEntity.ok(ApiResponse.success(attendance));
@@ -83,7 +83,7 @@ public class NfeAttendanceController {
     @Operation(summary = "Update an attendance record")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<AttendanceResponse>> updateAttendance(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody AttendanceRequest request) {
         AttendanceResponse attendance = attendanceService.updateAttendance(institutionId, id, request);
@@ -94,7 +94,7 @@ public class NfeAttendanceController {
     @Operation(summary = "Soft-delete an attendance record")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAttendance(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         attendanceService.deleteAttendance(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Attendance deleted successfully", null));

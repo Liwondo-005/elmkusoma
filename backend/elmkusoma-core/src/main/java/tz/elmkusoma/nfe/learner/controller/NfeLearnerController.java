@@ -29,7 +29,7 @@ public class NfeLearnerController {
     @Operation(summary = "Create a new learner/participant")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<LearnerResponse>> createLearner(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @Valid @RequestBody LearnerRequest request) {
         LearnerResponse learner = learnerService.createLearner(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -40,7 +40,7 @@ public class NfeLearnerController {
     @Operation(summary = "Get a learner by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<LearnerResponse>> getLearner(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         LearnerResponse learner = learnerService.getLearner(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(learner));
@@ -50,7 +50,7 @@ public class NfeLearnerController {
     @Operation(summary = "List all learners in an institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<LearnerResponse>>> listLearners(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<LearnerResponse> learners = learnerService.listLearners(institutionId, page, size);
@@ -61,7 +61,7 @@ public class NfeLearnerController {
     @Operation(summary = "Get learners by provider ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<LearnerResponse>>> getLearnersByProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId) {
         List<LearnerResponse> learners = learnerService.getLearnersByProvider(institutionId, providerId);
         return ResponseEntity.ok(ApiResponse.success(learners));
@@ -71,7 +71,7 @@ public class NfeLearnerController {
     @Operation(summary = "Get learners by user ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<LearnerResponse>>> getLearnersByUser(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID userId) {
         List<LearnerResponse> learners = learnerService.getLearnersByUser(institutionId, userId);
         return ResponseEntity.ok(ApiResponse.success(learners));
@@ -81,7 +81,7 @@ public class NfeLearnerController {
     @Operation(summary = "Get the caller's own provider learner record(s)")
     @PreAuthorize("hasAnyRole('STUDENT', 'OTHER_LEARNER', 'LEARNER', 'TEACHER', 'INSTITUTION_ADMIN', 'ADMIN', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<LearnerResponse>>> getMyLearnerRecords(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestAttribute("userId") String userId) {
         // Audit X-3: this closes the loop. Until now a learner could be registered with a provider
         // but had no way to see it -- the only by-user query existed in the service with no route.
@@ -93,7 +93,7 @@ public class NfeLearnerController {
     @Operation(summary = "Update a learner")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<LearnerResponse>> updateLearner(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody LearnerRequest request) {
         LearnerResponse learner = learnerService.updateLearner(institutionId, id, request);
@@ -104,7 +104,7 @@ public class NfeLearnerController {
     @Operation(summary = "Soft-delete a learner")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteLearner(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         learnerService.deleteLearner(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Learner deleted successfully", null));

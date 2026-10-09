@@ -29,7 +29,7 @@ public class SessionController {
     @Operation(summary = "Create a new session")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<SessionResponse>> createSession(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @Valid @RequestBody SessionRequest request) {
         SessionResponse session = sessionService.createSession(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -40,7 +40,7 @@ public class SessionController {
     @Operation(summary = "Get a session by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<SessionResponse>> getSession(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         SessionResponse session = sessionService.getSession(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(session));
@@ -50,7 +50,7 @@ public class SessionController {
     @Operation(summary = "List all sessions in an institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<SessionResponse>>> listSessions(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<SessionResponse> sessions = sessionService.listSessions(institutionId, page, size);
@@ -61,7 +61,7 @@ public class SessionController {
     @Operation(summary = "Get sessions by provider ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessionsByProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId) {
         List<SessionResponse> sessions = sessionService.getSessionsByProvider(institutionId, providerId);
         return ResponseEntity.ok(ApiResponse.success(sessions));
@@ -71,7 +71,7 @@ public class SessionController {
     @Operation(summary = "Get sessions by program ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessionsByProgram(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID programId) {
         List<SessionResponse> sessions = sessionService.getSessionsByProgram(institutionId, programId);
         return ResponseEntity.ok(ApiResponse.success(sessions));
@@ -81,7 +81,7 @@ public class SessionController {
     @Operation(summary = "Get sessions by status")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<SessionResponse>>> getSessionsByStatus(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable String status) {
         List<SessionResponse> sessions = sessionService.getSessionsByStatus(institutionId, status);
         return ResponseEntity.ok(ApiResponse.success(sessions));
@@ -91,7 +91,7 @@ public class SessionController {
     @Operation(summary = "Update a session")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<SessionResponse>> updateSession(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody SessionRequest request) {
         SessionResponse session = sessionService.updateSession(institutionId, id, request);
@@ -102,7 +102,7 @@ public class SessionController {
     @Operation(summary = "Soft-delete a session")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteSession(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         sessionService.deleteSession(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Session deleted successfully", null));

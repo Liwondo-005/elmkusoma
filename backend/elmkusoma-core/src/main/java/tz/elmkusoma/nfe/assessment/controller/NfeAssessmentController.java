@@ -29,7 +29,7 @@ public class NfeAssessmentController {
     @Operation(summary = "Create a new assessment for a provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<AssessmentResponse>> createAssessment(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId,
             @Valid @RequestBody AssessmentRequest request) {
         AssessmentResponse assessment = assessmentService.createAssessment(institutionId, providerId, request);
@@ -41,7 +41,7 @@ public class NfeAssessmentController {
     @Operation(summary = "Get an assessment by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<AssessmentResponse>> getAssessment(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         AssessmentResponse assessment = assessmentService.getAssessment(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(assessment));
@@ -51,7 +51,7 @@ public class NfeAssessmentController {
     @Operation(summary = "List all assessments for a provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<AssessmentResponse>>> listAssessments(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -63,7 +63,7 @@ public class NfeAssessmentController {
     @Operation(summary = "Get all published assessments for a provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<AssessmentResponse>>> getPublishedAssessments(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId) {
         List<AssessmentResponse> assessments = assessmentService.getPublishedAssessments(institutionId, providerId);
         return ResponseEntity.ok(ApiResponse.success(assessments));
@@ -73,7 +73,7 @@ public class NfeAssessmentController {
     @Operation(summary = "Update an assessment")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<AssessmentResponse>> updateAssessment(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody AssessmentRequest request) {
         AssessmentResponse assessment = assessmentService.updateAssessment(institutionId, id, request);
@@ -84,7 +84,7 @@ public class NfeAssessmentController {
     @Operation(summary = "Soft-delete an assessment")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAssessment(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         assessmentService.deleteAssessment(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Assessment deleted successfully", null));
