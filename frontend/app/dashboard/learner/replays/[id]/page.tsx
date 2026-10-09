@@ -61,8 +61,11 @@ export default function ReplayViewerPage() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("waiting")
   const [quality, setQuality] = useState<"auto" | "1080p" | "720p" | "480p">("auto")
-  const captionSrc = data?.replay?.captionUrl || "/captions/sample-en.vtt"
-  const captionSrcSw = "/captions/sample-sw.vtt"
+  // Only a caption track the recording pipeline actually produced may be offered. The
+  // previous fallback pointed at bundled sample .vtt files, so every replay displayed
+  // unrelated placeholder text as if it were real captions - an accessibility lie for the
+  // learners who depend on them.
+  const captionSrc = data?.replay?.captionUrl || null
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
@@ -263,9 +266,6 @@ export default function ReplayViewerPage() {
           >
             {captionSrc && (
               <track kind="captions" src={captionSrc} srcLang="en" label="English" default />
-            )}
-            {captionSrcSw && (
-              <track kind="captions" src={captionSrcSw} srcLang="sw" label="Kiswahili" />
             )}
           </video>
           <span className="sr-only">{t("viewer.eventContext")}: {replay.title}</span>
