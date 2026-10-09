@@ -58,3 +58,8 @@ elmkusoma_dump.sql
 frontend/e2e/test-results/
 frontend/e2e/playwright-report/
 frontend/test-results/
+
+# Dev launcher artifacts (start-dev.ps1)
+# .tools/ holds the downloaded livekit-server binary; .devlogs/ holds run logs.
+.tools/
+.devlogs/
