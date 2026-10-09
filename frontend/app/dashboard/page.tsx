@@ -120,6 +120,29 @@ export default function DashboardPage() {
           id: lc.id,
         }))
 
+        // Audit B-55: the subject grid used to render a hardcoded eight-subject list where every
+        // card linked to the same /dashboard/lessons URL, so it was inert regardless of what the
+        // learner was actually enrolled in. Derive the real subjects from the lessons the learner
+        // has, and link each card through to that subject's filtered lesson list.
+        // NB: the lucide `Map` icon is imported in this file, so the global Map constructor has
+        // to be referenced through globalThis to avoid resolving to the icon component.
+        const bySubject = new globalThis.Map<string, { name: string; lessonCount: number; progressSum: number }>()
+        for (const l of lessonList) {
+          const name = (l.subject || "").trim()
+          if (!name) continue
+          const entry = bySubject.get(name) ?? { name, lessonCount: 0, progressSum: 0 }
+          entry.lessonCount += 1
+          entry.progressSum += l.progress
+          bySubject.set(name, entry)
+        }
+        const subjectList = Array.from(bySubject.values())
+          .map((s) => ({
+            name: s.name,
+            lessonCount: s.lessonCount,
+            progress: s.lessonCount === 0 ? 0 : Math.round(s.progressSum / s.lessonCount),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+
         setData({
           totalLessons: lessonList.length,
           pendingAssignments: assignmentList.filter((a) => a.status === "PENDING" || a.status === "ACTIVE").length,
@@ -128,7 +151,7 @@ export default function DashboardPage() {
           recentLessons: lessonList.slice(0, 6),
           pendingWork: assignmentList,
           liveClasses: liveClassList,
-          subjects: [],
+          subjects: subjectList,
         })
       } catch { /* loads with zero data */ }
 
@@ -465,24 +488,36 @@ function PrimaryDashboard({
           </Link>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {primarySubjects.map((subject) => {
-            const Icon = subject.icon
-            return (
-              <Link
-                key={subject.name}
-                href="/dashboard/lessons"
-                className="group flex flex-col items-center gap-3 rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
-              >
-                <div className={`flex size-12 items-center justify-center rounded-2xl ${subject.bgColor}`}>
-                  <Icon className={`size-6 ${subject.color}`} />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground">{subject.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{subject.description}</p>
-                </div>
-              </Link>
-            )
-          })}
+          {data.subjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-4">
+              No subjects yet. Lessons assigned to your class will appear here.
+            </p>
+          ) : (
+            data.subjects.map((subject) => {
+              // Reuse the icon/colour for known curriculum subjects; fall back to a neutral
+              // style for anything the platform has added since the config was written.
+              const theme = primarySubjects.find((s) => s.name === subject.name)
+              const Icon = theme?.icon ?? BookOpen
+              return (
+                <Link
+                  key={subject.name}
+                  href={`/dashboard/lessons?subject=${encodeURIComponent(subject.name)}`}
+                  className="group flex flex-col items-center gap-3 rounded-xl border border-border p-4 transition-all hover:shadow-md hover:border-primary/30"
+                >
+                  <div className={`flex size-12 items-center justify-center rounded-2xl ${theme?.bgColor ?? "bg-muted"}`}>
+                    <Icon className={`size-6 ${theme?.color ?? "text-muted-foreground"}`} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">{subject.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {subject.lessonCount} lesson{subject.lessonCount === 1 ? "" : "s"}
+                      {subject.progress > 0 && ` · ${subject.progress}% complete`}
+                    </p>
+                  </div>
+                </Link>
+              )
+            })
+          )}
         </div>
       </div>
 
