@@ -963,10 +963,18 @@ public class PlatformAdminService {
 
     // ── Audit ──
 
+    /**
+     * Audit B-49: returns a real PageResponse instead of a bare List. The previous signature
+     * discarded Page.getTotalElements(), so the client could not know how many pages existed and
+     * the UI fell back to "a full page means there might be another" — which shows a dead Next
+     * button on the final page and hides real pages whenever the total is not a multiple of size.
+     * The entityId branch also loaded every matching row unpaged; that is now a real paged query.
+     */
     @Transactional(readOnly = true)
-    public List<AuditLogResponse> getAuditLogs(int page, int size, String action, String entityType, UUID entityId) {
+    public PageResponse<AuditLogResponse> getAuditLogs(int page, int size, String action, String entityType, UUID entityId) {
         Page<AuditLog> logs;
-        PageRequest pr = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        int safeSize = Math.max(1, Math.min(size, 200));
+        PageRequest pr = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         boolean hasAction = action != null && !action.isBlank();
         boolean hasEntity = entityType != null && !entityType.isBlank();
         try {
@@ -974,11 +982,10 @@ public class PlatformAdminService {
                 // Audit B-49: entityType used to be silently DISCARDED whenever an entityId was
                 // supplied (else-if chain), so a delegation's audit trail could return rows for a
                 // same-id entity of another type. Type is now an additional predicate.
-                List<AuditLog> exact = entityType != null && !entityType.isBlank()
-                        ? auditLogRepository.findByEntityTypeAndEntityId(entityType.toUpperCase(), entityId)
-                        : auditLogRepository.findByEntityIdAndIsDeletedFalse(entityId, pr).getContent();
-                logs = new org.springframework.data.domain.PageImpl<>(
-                        exact, pr, exact.size());
+                logs = entityType != null && !entityType.isBlank()
+                        ? auditLogRepository.findByEntityTypeAndEntityIdAndIsDeletedFalse(
+                                entityType.toUpperCase(), entityId, pr)
+                        : auditLogRepository.findByEntityIdAndIsDeletedFalse(entityId, pr);
             } else if (hasAction && hasEntity) {
                 AuditLog.AuditAction act = AuditLog.AuditAction.valueOf(action.toUpperCase());
                 logs = auditLogRepository.findByActionAndEntityTypeAndIsDeletedFalse(act, entityType.toUpperCase(), pr);
@@ -994,7 +1001,7 @@ public class PlatformAdminService {
             logs = auditLogRepository.findAll(pr);
         }
 
-        return logs.getContent().stream()
+        List<AuditLogResponse> content = logs.getContent().stream()
                 .map(log -> AuditLogResponse.builder()
                         .id(log.getId())
                         .userId(log.getUserId())
@@ -1010,6 +1017,9 @@ public class PlatformAdminService {
                         .createdAt(log.getCreatedAt())
                         .build())
                 .toList();
+
+        return new PageResponse<>(content, logs.getNumber(), logs.getSize(),
+                logs.getTotalElements(), logs.getTotalPages(), logs.isFirst(), logs.isLast());
     }
 
     // ── Global Search ──

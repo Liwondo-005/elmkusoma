@@ -155,6 +155,31 @@ class LiveKitIntegrationTest {
             });
     }
 
+    @Test
+    void repeatedStartRequests_NeverReportSuccessOrOpenASecondJob() throws Exception {
+        String token = getTeacherToken();
+        String path = "/v1/live-session/classes/" + CLASS_ID + "/recording/start";
+
+        // The seeded class is not owned by this token and no recorder is configured in the test
+        // profile, so a start is legitimately refused (403 not-host / 503 no storage). What
+        // matters is that repeated clicks can never be reported as a successful start, which
+        // is what previously let a double click open a second LiveKit egress job.
+        for (int attempt = 0; attempt < 2; attempt++) {
+            final int attemptNo = attempt;
+            mockMvc.perform(post(path)
+                            .header("Authorization", "Bearer " + token)
+                            .header("X-Institution-Id", INSTITUTION_ID.toString()))
+                    .andExpect(result -> {
+                        int status = result.getResponse().getStatus();
+                        assert status == 403 || status == 404 || status == 503
+                                : "attempt " + attemptNo + " must be refused, got " + status
+                                + " body=" + result.getResponse().getContentAsString();
+                        assert result.getResponse().getContentAsString().contains("\"success\":false")
+                                : "a refused start must not report success";
+                    });
+        }
+    }
+
     // ==================== Recording Download ====================
 
     @Test

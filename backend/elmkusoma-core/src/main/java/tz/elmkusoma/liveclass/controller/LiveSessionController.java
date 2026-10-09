@@ -391,6 +391,20 @@ public class LiveSessionController {
                     "Recording storage is not configured on the server. Ask your administrator to enable it."));
         }
 
+        // Idempotency: recordingUrl holds the "egress:<id>" marker while a capture is running.
+        // A repeated start (double click, retried request) must not open a second LiveKit egress
+        // job - it would duplicate the recording and orphan the first job's file. Report the
+        // already-running capture instead, which is truthful and settles the UI on one id.
+        String existing = liveClass.getRecordingUrl();
+        if (existing != null && existing.startsWith("egress:")) {
+            Map<String, String> alreadyRunning = new HashMap<>();
+            alreadyRunning.put("egressId", existing.substring("egress:".length()));
+            alreadyRunning.put("alreadyRecording", "true");
+            log.info("Recording already active for class {} (egress {}); ignoring duplicate start",
+                    classId, alreadyRunning.get("egressId"));
+            return ResponseEntity.ok(ApiResponse.success("Recording already in progress", alreadyRunning));
+        }
+
         String egressId = liveKitService.startRecording(classId);
         if (egressId != null) {
             liveClass.setRecordingUrl("egress:" + egressId);

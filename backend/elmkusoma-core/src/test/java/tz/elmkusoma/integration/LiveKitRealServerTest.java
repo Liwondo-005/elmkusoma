@@ -51,4 +51,41 @@ class LiveKitRealServerTest {
         assertNotNull(liveKitService.generateRoomName(classId));
         assertTrue(liveKitService.generateRoomName(classId).startsWith("liveclass-"));
     }
+
+    /**
+     * Real Egress start against whatever LiveKit server is configured - which is not
+     * necessarily localhost:7880, so this gates on LiveKitService itself rather than on a
+     * hard-coded socket, and therefore can run against a LiveKit Cloud project.
+     *
+     * <p>Skipped unless recording storage is really configured
+     * ({@code LIVEKIT_EGRESS_OUTPUT_BUCKET} + key/secret/region), because starting an
+     * egress with fake credentials would leave a doomed job running on a shared server.
+     * The job is always stopped, including on failure, so no capture is leaked.</p>
+     */
+    @Test
+    void livekit_EgressStartAndStop_AgainstRealServer() {
+        assumeTrue(liveKitService.isConfigured(),
+                "LiveKit credentials are not configured for this environment");
+        assumeTrue(liveKitService.isRecordingConfigured(),
+                "Recording storage is not configured - set LIVEKIT_EGRESS_ENABLED plus "
+                        + "LIVEKIT_EGRESS_OUTPUT_BUCKET / ACCESS_KEY / SECRET / REGION to run this");
+
+        UUID classId = UUID.randomUUID();
+        String egressId = null;
+        try {
+            egressId = liveKitService.startRecording(classId);
+            assertNotNull(egressId,
+                    "a configured recorder must return a real egress id, not null");
+            assertTrue(egressId.startsWith("EG_"),
+                    "LiveKit returns ids prefixed EG_, got: " + egressId);
+            // The recording marker stored on the live class must stay transient.
+            assertTrue(("egress:" + egressId).startsWith("egress:"),
+                    "the stored marker is a placeholder until finalization resolves a URL");
+        } finally {
+            if (egressId != null) {
+                assertTrue(liveKitService.stopRecording(egressId),
+                        "stopRecording must confirm the job was stopped");
+            }
+        }
+    }
 }

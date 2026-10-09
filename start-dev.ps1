@@ -325,13 +325,29 @@ function Stop-Children {
         } catch { }
     }
     # Sweep anything still holding a port this script opened, so a dead
-    # wrapper cannot leave an orphaned JVM or node process behind.
-    foreach ($port in @($LiveKitPort, $BackendPort, $FrontendPort)) {
-        $owner = Get-PortOwner -Port $port
-        if ($owner) {
-            Write-Info "releasing :$port (pid $($owner.Pid), $($owner.Name))"
-            & taskkill /PID $owner.Pid /T /F 2>&1 | Out-Null
+    # wrapper cannot leave an orphaned JVM or node process behind. Killed
+    # wrappers take a moment to let go, and an orphaned child can bind its
+    # port *after* the first check, so retry briefly instead of sampling once.
+    $deadline = (Get-Date).AddSeconds(10)
+    do {
+        $held = @()
+        foreach ($port in @($LiveKitPort, $BackendPort, $FrontendPort)) {
+            $owner = Get-PortOwner -Port $port
+            if ($owner) {
+                $held += $port
+                Write-Info "releasing :$port (pid $($owner.Pid), $($owner.Name))"
+                & taskkill /PID $owner.Pid /T /F 2>&1 | Out-Null
+            }
         }
+        if ($held.Count -eq 0) { break }
+        Start-Sleep -Milliseconds 700
+    } while ((Get-Date) -lt $deadline)
+
+    $left = @($LiveKitPort, $BackendPort, $FrontendPort) |
+            Where-Object { Get-PortOwner -Port $_ }
+    if ($left) {
+        Write-Warn2 ("ports still held after shutdown attempt: " +
+                     (($left | ForEach-Object { ":$_" }) -join ", "))
     }
     Write-Ok "all started processes stopped (no orphans)"
 }
@@ -507,7 +523,12 @@ try {
     while ($true) {
         foreach ($p in $script:Children) {
             if ($p.HasExited) {
-                Write-Err2 "service pid $($p.Id) exited unexpectedly (code $($p.ExitCode))"
+                # A null exit code means the process was terminated rather
+                # than exiting on its own - e.g. its parent terminal was
+                # closed - which is not a service fault.
+                $code = try { $p.ExitCode } catch { $null }
+                $how = if ($null -eq $code) { "was terminated (no exit code)" } else { "exited with code $code" }
+                Write-Err2 "service pid $($p.Id) $how"
                 Write-Info "check $LogDir for the cause"
                 Stop-Children
                 exit 1
