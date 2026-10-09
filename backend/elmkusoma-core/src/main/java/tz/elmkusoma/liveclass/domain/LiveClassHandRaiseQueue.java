@@ -33,5 +33,6 @@ public class LiveClassHandRaiseQueue extends BaseEntity {
     private Integer position;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 }

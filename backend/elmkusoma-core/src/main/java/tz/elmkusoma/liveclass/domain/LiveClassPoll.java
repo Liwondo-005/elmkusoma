@@ -33,6 +33,7 @@ public class LiveClassPoll extends BaseEntity {
     private String options;
 
     @Column(name = "status", length = 20)
+    @Builder.Default
     private String status = "ACTIVE";
 
     @Column(name = "closed_at")

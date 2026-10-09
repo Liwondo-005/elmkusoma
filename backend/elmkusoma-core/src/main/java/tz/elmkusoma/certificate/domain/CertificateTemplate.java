@@ -43,10 +43,12 @@ public class CertificateTemplate extends BaseEntity {
     private String signatureLine3;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     /** Current content version; incremented (and the previous content archived) on every edit. */
     @Column(name = "version", nullable = false)
+    @Builder.Default
     private Integer version = 1;
 
     /** Guard: version/active must be present for the NOT NULL columns regardless of build path. */

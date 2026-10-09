@@ -26,5 +26,6 @@ public class LiveClassQuiz extends BaseEntity {
     private String title;
 
     @Column(name = "status", length = 20)
+    @Builder.Default
     private String status = "DRAFT";
 }

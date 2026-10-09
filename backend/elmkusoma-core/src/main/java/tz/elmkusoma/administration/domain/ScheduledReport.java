@@ -39,6 +39,7 @@ public class ScheduledReport extends BaseEntity {
     private String recipients;
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "ACTIVE";
 
     @Column(name = "next_run_at", nullable = false)
@@ -48,5 +49,6 @@ public class ScheduledReport extends BaseEntity {
     private LocalDateTime lastRunAt;
 
     @Column(name = "run_count", nullable = false)
+    @Builder.Default
     private Integer runCount = 0;
 }

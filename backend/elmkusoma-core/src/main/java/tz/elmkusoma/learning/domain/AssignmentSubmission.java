@@ -47,11 +47,14 @@ public class AssignmentSubmission extends BaseEntity {
 
     /** Workflow state: DRAFT | SUBMITTED | GRADED | RETURNED. */
     @Column(name = "status", length = 30)
+    @Builder.Default
     private String status = "SUBMITTED";
 
     @Column(name = "is_draft")
+    @Builder.Default
     private Boolean isDraft = false;
 
     @Column(name = "is_late")
+    @Builder.Default
     private Boolean isLate = false;
 }

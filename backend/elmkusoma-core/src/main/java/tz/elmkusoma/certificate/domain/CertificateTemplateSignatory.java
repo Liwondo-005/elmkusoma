@@ -28,5 +28,6 @@ public class CertificateTemplateSignatory extends BaseEntity {
     private UUID signatoryId;
 
     @Column(name = "display_order", nullable = false)
+    @Builder.Default
     private Integer displayOrder = 0;
 }

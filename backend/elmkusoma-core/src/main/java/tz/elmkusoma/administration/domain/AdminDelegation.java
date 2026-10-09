@@ -30,9 +30,11 @@ public class AdminDelegation extends BaseEntity {
     private String permissions;
 
     @Column(nullable = false)
+    @Builder.Default
     private String scope = "PLATFORM";
 
     @Column(nullable = false, length = 60)
+    @Builder.Default
     private String authority = "GENERAL_ADMIN";
 
     @Column(columnDefinition = "TEXT")
@@ -46,9 +48,11 @@ public class AdminDelegation extends BaseEntity {
     private String resourceIds;
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "ACTIVE";
 
     @Column(name = "starts_at", nullable = false)
+    @Builder.Default
     private LocalDateTime startsAt = LocalDateTime.now();
 
     @Column(name = "expires_at")

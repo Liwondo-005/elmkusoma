@@ -31,8 +31,10 @@ public class LiveClassAttendanceDetail extends BaseEntity {
     private LocalDateTime leftAt;
 
     @Column(name = "total_seconds")
+    @Builder.Default
     private Integer totalSeconds = 0;
 
     @Column(name = "percentage", precision = 5, scale = 2)
+    @Builder.Default
     private BigDecimal percentage = BigDecimal.ZERO;
 }

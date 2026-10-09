@@ -23,8 +23,10 @@ public class LiveClassBreakoutRoom extends BaseEntity {
     private String name;
 
     @Column(name = "max_participants")
+    @Builder.Default
     private Integer maxParticipants = 10;
 
     @Column(name = "status", length = 20)
+    @Builder.Default
     private String status = "WAITING";
 }

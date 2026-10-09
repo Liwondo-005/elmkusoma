@@ -26,5 +26,6 @@ public class SupportTicketMessage extends BaseEntity {
     private String message;
 
     @Column(name = "is_internal")
+    @Builder.Default
     private Boolean isInternal = false;
 }

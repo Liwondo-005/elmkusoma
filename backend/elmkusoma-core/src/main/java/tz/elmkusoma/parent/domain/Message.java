@@ -29,12 +29,15 @@ public class Message extends BaseEntity {
     private String body;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private String status = "SENT";
 
     @Column(name = "is_read", nullable = false)
+    @Builder.Default
     private Boolean isRead = false;
 
     @Column(name = "message_type", nullable = false, length = 20)
+    @Builder.Default
     private String messageType = "DIRECT";
 
     public enum MessageStatus {

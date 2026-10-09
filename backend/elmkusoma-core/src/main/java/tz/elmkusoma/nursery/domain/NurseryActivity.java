@@ -56,6 +56,7 @@ public class NurseryActivity extends BaseEntity {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private ActivityStatus status = ActivityStatus.PLANNED;
 
     @Column(name = "conducted_by", nullable = false)

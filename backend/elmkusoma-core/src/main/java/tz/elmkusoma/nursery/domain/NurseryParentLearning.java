@@ -38,6 +38,7 @@ public class NurseryParentLearning extends BaseEntity {
 
     @Column(name = "completion_status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private CompletionStatus completionStatus = CompletionStatus.PENDING;
 
     @Column(name = "completed_date")

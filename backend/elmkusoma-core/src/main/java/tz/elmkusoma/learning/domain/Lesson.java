@@ -41,9 +41,11 @@ public class Lesson extends BaseEntity {
     private Integer sortOrder;
 
     @Column(name = "is_published", nullable = false)
+    @Builder.Default
     private Boolean isPublished = false;
 
     /** Lifecycle: DRAFT | READY | PUBLISHED | ARCHIVED */
     @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private String status = "DRAFT";
 }

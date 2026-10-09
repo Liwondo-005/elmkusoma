@@ -29,6 +29,7 @@ public class PlatformNotification extends BaseEntity {
     private String notificationType;
 
     @Column(nullable = false)
+    @Builder.Default
     private String priority = "NORMAL";
 
     @Column(name = "target_audience")
@@ -44,12 +45,14 @@ public class PlatformNotification extends BaseEntity {
     private String sentBy;
 
     @Column(name = "sent_at", nullable = false)
+    @Builder.Default
     private LocalDateTime sentAt = LocalDateTime.now();
 
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
     @Column(name = "read_count")
+    @Builder.Default
     private Integer readCount = 0;
 
     @JdbcTypeCode(SqlTypes.JSON)

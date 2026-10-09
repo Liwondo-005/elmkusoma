@@ -42,6 +42,7 @@ public class SecondaryErrorBank extends BaseEntity {
 
     @Column(name = "frequency")
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Frequency frequency = Frequency.COMMON;
 
     public enum Frequency {

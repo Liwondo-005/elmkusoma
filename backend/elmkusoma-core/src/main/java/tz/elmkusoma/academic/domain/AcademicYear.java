@@ -30,8 +30,10 @@ public class AcademicYear extends BaseEntity {
     private LocalDate endDate;
 
     @Column(name = "is_current", nullable = false)
+    @Builder.Default
     private Boolean isCurrent = false;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 }

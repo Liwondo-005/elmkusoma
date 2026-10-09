@@ -43,9 +43,11 @@ public class LiveClass extends BaseEntity {
     private LocalDateTime startedAt;
 
     @Column(name = "duration_minutes", nullable = false)
+    @Builder.Default
     private Integer durationMinutes = 60;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private String status = "SCHEDULED";
 
     @Column(name = "max_participants")
@@ -58,10 +60,12 @@ public class LiveClass extends BaseEntity {
     private String recordingUrl;
 
     @Column(name = "recording_enabled")
+    @Builder.Default
     private Boolean recordingEnabled = false;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "session_type", length = 30)
+    @Builder.Default
     private LiveClassSessionType sessionType = LiveClassSessionType.LECTURE;
 
     /**
@@ -71,12 +75,15 @@ public class LiveClass extends BaseEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "broadcast_source", length = 30)
+    @Builder.Default
     private LiveBroadcastSource broadcastSource = LiveBroadcastSource.BROWSER;
 
     @Column(name = "timezone", length = 50)
+    @Builder.Default
     private String timezone = "Africa/Dar_es_Salaam";
 
     @Column(name = "is_recurring")
+    @Builder.Default
     private Boolean isRecurring = false;
 
     @Column(name = "recurrence_pattern", length = 50)
@@ -89,6 +96,7 @@ public class LiveClass extends BaseEntity {
     private UUID parentRecurringId;
 
     @Column(name = "lobby_enabled")
+    @Builder.Default
     private Boolean lobbyEnabled = false;
 
     /** Optional Lesson link (Lesson ↔ Live Class connection, nullable). */

@@ -33,5 +33,6 @@ public class CourseModule extends BaseEntity {
     private String description;
 
     @Column(name = "sort_order", nullable = false)
+    @Builder.Default
     private Integer sortOrder = 0;
 }

@@ -34,10 +34,12 @@ public class NurseryMission extends BaseEntity {
     private MissionType missionType;
 
     @Column(name = "reward_points")
+    @Builder.Default
     private Integer rewardPoints = 0;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private MissionStatus status = MissionStatus.PENDING;
 
     @Column(name = "due_date")

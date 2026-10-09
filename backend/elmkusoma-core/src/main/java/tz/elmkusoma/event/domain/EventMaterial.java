@@ -38,9 +38,11 @@ public class EventMaterial extends BaseEntity {
     private Integer durationMinutes;
 
     @Column(name = "sort_order")
+    @Builder.Default
     private Integer sortOrder = 0;
 
     @Column(name = "is_public", nullable = false)
+    @Builder.Default
     private Boolean isPublic = true;
 
     @Column(name = "uploaded_by")

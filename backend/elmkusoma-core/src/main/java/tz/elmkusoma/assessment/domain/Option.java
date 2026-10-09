@@ -23,6 +23,7 @@ public class Option extends BaseEntity {
     private String optionText;
 
     @Column(name = "is_correct", nullable = false)
+    @Builder.Default
     private Boolean isCorrect = false;
 
     @Column(name = "sort_order", nullable = false)

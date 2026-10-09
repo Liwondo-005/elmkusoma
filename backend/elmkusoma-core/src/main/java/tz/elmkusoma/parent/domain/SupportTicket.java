@@ -30,9 +30,11 @@ public class SupportTicket extends BaseEntity {
     private String category;
 
     @Column(nullable = false)
+    @Builder.Default
     private String priority = "NORMAL";
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "OPEN";
 
     @Column(name = "assigned_to")

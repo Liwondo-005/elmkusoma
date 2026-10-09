@@ -23,6 +23,7 @@ public class InstitutionService extends BaseEntity {
     private String featureKey;
 
     @Column(name = "enabled", nullable = false)
+    @Builder.Default
     private Boolean enabled = false;
 
     @Column(name = "configuration", columnDefinition = "JSONB")

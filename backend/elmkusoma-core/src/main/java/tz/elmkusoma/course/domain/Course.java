@@ -36,9 +36,11 @@ public class Course extends BaseEntity {
     private String category;
 
     @Column(name = "is_published", nullable = false)
+    @Builder.Default
     private Boolean isPublished = false;
 
     @Column(name = "is_featured", nullable = false)
+    @Builder.Default
     private Boolean isFeatured = false;
 
     public enum CourseLevel {

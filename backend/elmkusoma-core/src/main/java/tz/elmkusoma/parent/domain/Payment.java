@@ -30,6 +30,7 @@ public class Payment extends BaseEntity {
     private BigDecimal amount;
 
     @Column(length = 10)
+    @Builder.Default
     private String currency = "TZS";
 
     private String description;
@@ -46,6 +47,7 @@ public class Payment extends BaseEntity {
     private String providerReference;
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "PENDING";
 
     @Column(name = "paid_at")

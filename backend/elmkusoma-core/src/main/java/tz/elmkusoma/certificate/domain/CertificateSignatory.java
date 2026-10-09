@@ -51,6 +51,7 @@ public class CertificateSignatory extends BaseEntity {
 
     @Column(name = "status", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private SignatoryStatus status = SignatoryStatus.ACTIVE;
 
     @Column(name = "valid_from")

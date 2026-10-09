@@ -29,9 +29,11 @@ public class ReplayProgress {
     private UUID userId;
 
     @Column(name = "position_seconds", nullable = false)
+    @Builder.Default
     private Integer positionSeconds = 0;
 
     @Column(name = "completed", nullable = false)
+    @Builder.Default
     private Boolean completed = false;
 
     @Column(name = "updated_at")

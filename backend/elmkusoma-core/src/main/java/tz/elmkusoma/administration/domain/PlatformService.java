@@ -30,9 +30,11 @@ public class PlatformService extends BaseEntity {
     private String category;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(name = "requires_verification", nullable = false)
+    @Builder.Default
     private Boolean requiresVerification = false;
 
     @Column(name = "max_seats")
@@ -42,6 +44,7 @@ public class PlatformService extends BaseEntity {
     private BigDecimal monthlyPrice;
 
     @Column(length = 10)
+    @Builder.Default
     private String currency = "TZS";
 
     @JdbcTypeCode(SqlTypes.JSON)

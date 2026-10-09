@@ -34,10 +34,12 @@ public class NurseryDailyQuest extends BaseEntity {
     private QuestType questType;
 
     @Column(name = "reward_points")
+    @Builder.Default
     private Integer rewardPoints = 0;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private QuestStatus status = QuestStatus.PENDING;
 
     @Column(name = "due_date")

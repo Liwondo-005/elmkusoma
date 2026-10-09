@@ -32,9 +32,11 @@ public class CourseLesson extends BaseEntity {
     private Integer durationMinutes;
 
     @Column(name = "sort_order", nullable = false)
+    @Builder.Default
     private Integer sortOrder = 0;
 
     @Column(name = "is_free", nullable = false)
+    @Builder.Default
     private Boolean isFree = false;
 
     public enum ContentType {

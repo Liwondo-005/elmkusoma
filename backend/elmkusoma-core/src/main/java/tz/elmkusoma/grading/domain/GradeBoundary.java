@@ -39,5 +39,6 @@ public class GradeBoundary extends BaseEntity {
     private BigDecimal gpaPoints;
 
     @Column(name = "sort_order", nullable = false)
+    @Builder.Default
     private Integer sortOrder = 0;
 }

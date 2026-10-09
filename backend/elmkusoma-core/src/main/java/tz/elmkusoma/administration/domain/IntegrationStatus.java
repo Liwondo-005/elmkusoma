@@ -26,12 +26,14 @@ public class IntegrationStatus extends BaseEntity {
     private String category;
 
     @Column(name = "connection_status", nullable = false, length = 20)
+    @Builder.Default
     private String connectionStatus = "UNKNOWN";
 
     @Column(name = "last_success_at")
     private LocalDateTime lastSuccessAt;
 
     @Column(name = "failure_count", nullable = false)
+    @Builder.Default
     private Integer failureCount = 0;
 
     @Column(name = "webhook_status", length = 20)
@@ -41,6 +43,7 @@ public class IntegrationStatus extends BaseEntity {
     private String retryStatus;
 
     @Column(name = "config_status", nullable = false, length = 20)
+    @Builder.Default
     private String configStatus = "UNKNOWN";
 
     @Column(columnDefinition = "TEXT")

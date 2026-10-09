@@ -25,6 +25,7 @@ public class Student extends BaseEntity {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private StudentStatus status = StudentStatus.ACTIVE;
 
     @Column(name = "date_of_birth")
@@ -61,5 +62,6 @@ public class Student extends BaseEntity {
     private String guardianRelationship;
 
     @Column(name = "enrollment_date", nullable = false)
+    @Builder.Default
     private LocalDate enrollmentDate = LocalDate.now();
 }

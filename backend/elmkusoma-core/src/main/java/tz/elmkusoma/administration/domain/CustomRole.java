@@ -26,9 +26,11 @@ public class CustomRole extends BaseEntity {
     private String description;
 
     @Column(name = "is_system_role", nullable = false)
+    @Builder.Default
     private Boolean isSystemRole = false;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     public static CustomRole of(String name, String displayName,

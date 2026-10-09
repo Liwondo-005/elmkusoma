@@ -51,15 +51,19 @@ public class Replay extends BaseEntity {
     private Long fileSizeBytes;
 
     @Column(name = "view_count", nullable = false)
+    @Builder.Default
     private Integer viewCount = 0;
 
     @Column(name = "last_position_seconds", nullable = false)
+    @Builder.Default
     private Integer lastPositionSeconds = 0;
 
     @Transient
+    @Builder.Default
     private Integer positionSeconds = 0;
 
     @Transient
+    @Builder.Default
     private Boolean completed = false;
 
     @Transient

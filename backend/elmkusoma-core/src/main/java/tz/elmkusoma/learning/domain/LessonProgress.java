@@ -24,6 +24,7 @@ public class LessonProgress extends BaseEntity {
     private UUID studentId;
 
     @Column(name = "completion_percentage", nullable = false)
+    @Builder.Default
     private Double completionPercentage = 0.0;
 
     @Column(name = "started_at")

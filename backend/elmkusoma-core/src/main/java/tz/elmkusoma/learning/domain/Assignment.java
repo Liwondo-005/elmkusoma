@@ -45,6 +45,7 @@ public class Assignment extends BaseEntity {
     private String instructions;
 
     @Column(name = "status", length = 20)
+    @Builder.Default
     private String status = "PUBLISHED";
 
     /** Optional Lesson link (Lesson ↔ Assignment connection, nullable). */
@@ -61,5 +62,6 @@ public class Assignment extends BaseEntity {
 
     /** Whether submissions are accepted after due_date (marked late). */
     @Column(name = "allow_late_submission")
+    @Builder.Default
     private Boolean allowLateSubmission = false;
 }
