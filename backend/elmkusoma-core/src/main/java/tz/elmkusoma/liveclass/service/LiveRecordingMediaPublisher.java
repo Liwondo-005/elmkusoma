@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
+import tz.elmkusoma.teacher.domain.Teacher;
+import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +37,7 @@ public class LiveRecordingMediaPublisher {
     public static final String STATUS_FAILED = "FAILED";
 
     private final MediaAssetRepository mediaAssetRepository;
+    private final TeacherRepository teacherRepository;
 
     /**
      * Creates (or refreshes) the library asset for a completed recording.
@@ -49,6 +52,12 @@ public class LiveRecordingMediaPublisher {
         if (liveClass == null || liveClass.getId() == null || recordingUrl == null || recordingUrl.isBlank()) {
             return Optional.empty();
         }
+        // The transient egress:<id> marker is LiveKit bookkeeping, not a playable URL, and must
+        // never reach a learner-facing library.
+        if (!recordingUrl.startsWith("http")) {
+            log.warn("Refusing to publish non-http recording location for class {}: {}", liveClass.getId(), recordingUrl);
+            return Optional.empty();
+        }
         MediaAsset asset = findOrCreate(liveClass);
         asset.setFileUrl(recordingUrl);
         asset.setDurationSeconds(durationSeconds);
@@ -61,7 +70,8 @@ public class LiveRecordingMediaPublisher {
             asset.setDescription("Recording of the live class \"" + liveClass.getTitle() + "\"");
         }
         asset.setSubjectId(liveClass.getSubjectId());
-        asset.setTeacherId(liveClass.getTeacherId());
+        asset.setClassGroupId(liveClass.getClassGroupId());
+        asset.setTeacherId(resolveTeacherUserId(liveClass));
         MediaAsset saved = mediaAssetRepository.save(asset);
         log.info("Live class recording published to media library: classId={}, assetId={}",
                 liveClass.getId(), saved.getId());
@@ -91,7 +101,8 @@ public class LiveRecordingMediaPublisher {
         asset.setDescription("Recording failed for the live class \"" + liveClass.getTitle() + "\""
                 + (reason == null || reason.isBlank() ? "" : " (" + reason + ")"));
         asset.setSubjectId(liveClass.getSubjectId());
-        asset.setTeacherId(liveClass.getTeacherId());
+        asset.setClassGroupId(liveClass.getClassGroupId());
+        asset.setTeacherId(resolveTeacherUserId(liveClass));
         MediaAsset saved = mediaAssetRepository.save(asset);
         log.warn("Live class recording marked FAILED in media library: classId={}, assetId={}, reason={}",
                 liveClass.getId(), saved.getId(), reason);
@@ -125,5 +136,19 @@ public class LiveRecordingMediaPublisher {
         // BaseEntity is not part of the Lombok builder, so tenancy is set explicitly.
         asset.setInstitutionId(liveClass.getInstitutionId());
         return asset;
+    }
+
+    /**
+     * LiveClass.teacherId is a {@code teachers.id}, but {@code media_assets.teacher_id} holds a
+     * {@code users.id} (MediaLibraryController writes the authenticated user id), so the teacher
+     * must be resolved rather than copied - otherwise the asset is filed under a foreign id.
+     */
+    private UUID resolveTeacherUserId(LiveClass liveClass) {
+        if (liveClass.getTeacherId() == null) {
+            return null;
+        }
+        return teacherRepository.findById(liveClass.getTeacherId())
+                .map(Teacher::getUserId)
+                .orElse(null);
     }
 }

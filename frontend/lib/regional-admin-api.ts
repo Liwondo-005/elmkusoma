@@ -629,6 +629,44 @@ export const regionalAdminApi = {
   getDistricts: (regionId: string) => regionalFetch<DistrictInfo[]>(`/v1/regional-admin/regions/${regionId}/districts`),
   getDistrict: (districtId: string) => regionalFetch<DistrictDetail>(`/v1/regional-admin/districts/${districtId}`),
 
+  /**
+   * Audit B-51: the learner/teacher/education-staff pages used to load districts from
+   * regions[0] only. A regional administrator who supervises more than one region therefore
+   * got a district filter covering just the first region, so filtering to a district in any
+   * other region was impossible. Aggregates every district across all readable regions,
+   * de-duplicated by id and sorted by name.
+   *
+   * Partial failures are tolerated: as long as one region resolves, its districts are used.
+   * Only a total failure throws, so a single flaky region cannot blank the whole filter.
+   */
+  getAllDistricts: async (): Promise<DistrictInfo[]> => {
+    const regions = await regionalFetch<RegionInfo[]>("/v1/regional-admin/regions")
+    if (regions.length === 0) return []
+    const results = await Promise.allSettled(
+      regions.map((r) => regionalFetch<DistrictInfo[]>(`/v1/regional-admin/regions/${r.id}/districts`)),
+    )
+    const merged: DistrictInfo[] = []
+    let firstError: unknown = null
+    let loaded = 0
+    for (const res of results) {
+      if (res.status === "fulfilled") {
+        loaded += 1
+        merged.push(...res.value)
+      } else if (firstError === null) {
+        firstError = res.reason
+      }
+    }
+    if (loaded === 0 && firstError !== null) throw firstError
+    const seen = new Set<string>()
+    return merged
+      .filter((d) => {
+        if (seen.has(d.id)) return false
+        seen.add(d.id)
+        return true
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+  },
+
   listInstitutions: (params: { page?: number; size?: number; search?: string; districtId?: string; type?: string } = {}) =>
     regionalFetch<PageResponse<RegionalInstitution>>(`/v1/regional-admin/institutions${qs({ page: params.page ?? 0, size: params.size ?? 20, search: params.search, districtId: params.districtId, type: params.type })}`),
   getInstitutionGovernance: (institutionId: string) =>

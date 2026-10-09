@@ -27,6 +27,7 @@ import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassAttendanceDetail;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
+import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.repository.LiveClassAttendanceDetailRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.service.LiveKitService;
@@ -65,6 +66,10 @@ public class LiveClassServiceImpl implements LiveClassService {
      */
     private static final long SCHEDULE_PAST_GRACE_MINUTES = 1;
 
+    /** Media Library values for a finalized live class recording. */
+    private static final String MEDIA_TYPE_RECORDING = "RECORDING";
+    private static final String MEDIA_SOURCE_TYPE_LIVE_CLASS = "LIVE_CLASS";
+
     /** Statuses an administrator is allowed to force-end (i.e. any running session). */
     private static final java.util.Set<String> FORCE_ENDABLE_STATUSES = java.util.Set.of(
             "STARTING", "LIVE", "IN_PROGRESS", "RECOVERING", "ENDING");
@@ -80,6 +85,7 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final StudentRepository studentRepository;
     private final LiveKitService liveKitService;
     private final ReplayRepository replayRepository;
+    private final tz.elmkusoma.liveclass.repository.MediaAssetRepository mediaAssetRepository;
     private final LessonRepository lessonRepository;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final NotificationService notificationService;
@@ -452,6 +458,82 @@ public class LiveClassServiceImpl implements LiveClassService {
     }
 
     /**
+     * Media Library representation of a finalized recording (mediaType = RECORDING).
+     *
+     * <p>Idempotent: the asset is keyed on source_type = LIVE_CLASS + source_id =
+     * liveClass.id, which is the same origin link the library already exposes through
+     * {@code GET /v1/media/recordings/{sourceType}/{sourceId}}. Reprocessing a session -
+     * which happens because {@code completeSession} can run more than once, e.g. a manual
+     * end followed by the expiry sweep - therefore refreshes the existing row instead of
+     * creating a second one.</p>
+     *
+     * <p>Only a resolved, playable http(s) URL is ever stored. The transient
+     * {@code egress:<id>} marker is a LiveKit bookkeeping value, not a media URL, and must
+     * never reach a learner-facing library.</p>
+     *
+     * <p>Ownership is taken from the live class itself (its institution, its class, its
+     * subject) rather than from any request input, so a recording cannot be filed under
+     * another tenant.</p>
+     */
+    private void publishRecordingToMediaLibrary(LiveClass liveClass, String resolvedUrl) {
+        if (resolvedUrl == null || resolvedUrl.isBlank() || !resolvedUrl.startsWith("http")) {
+            return;
+        }
+        // A soft-deleted asset stays deleted: an explicit library deletion is not undone
+        // by reprocessing. Consistent with how Replay treats deleted rows.
+        var existing = mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse(
+                MEDIA_SOURCE_TYPE_LIVE_CLASS, liveClass.getId());
+
+        String title = liveClass.getTitle() != null ? liveClass.getTitle() : liveClass.getId().toString();
+        String description = "Live class recording - " + title;
+
+        if (!existing.isEmpty()) {
+            MediaAsset asset = existing.get(0);
+            asset.setFileUrl(resolvedUrl);
+            asset.setTitle(title);
+            asset.setDescription(description);
+            if (liveClass.getClassGroupId() != null) {
+                asset.setClassGroupId(liveClass.getClassGroupId());
+            }
+            mediaAssetRepository.save(asset);
+            return;
+        }
+
+        MediaAsset asset = MediaAsset.builder()
+                .title(title)
+                .description(description)
+                .mediaType(MEDIA_TYPE_RECORDING)
+                .fileUrl(resolvedUrl)
+                // durationSeconds is deliberately left null: LiveKit's resolved URL carries no
+                // recording length, and live_classes.recording_duration_seconds is never written
+                // by any code, so any value here would be fabricated. Same for size and mime.
+                .status("READY")
+                .visibility("INSTITUTION")
+                .sourceType(MEDIA_SOURCE_TYPE_LIVE_CLASS)
+                .sourceId(liveClass.getId())
+                .subjectId(liveClass.getSubjectId())
+                .classGroupId(liveClass.getClassGroupId())
+                // media_assets.teacher_id holds a users.id (MediaLibraryController writes the
+                // authenticated user id), so the teacher must be resolved, not copied.
+                .teacherId(resolveTeacherUserId(liveClass))
+                .build();
+        asset.setInstitutionId(liveClass.getInstitutionId());
+        mediaAssetRepository.save(asset);
+        log.info("Media Library recording published for live class {}: classGroupId={}, institutionId={}",
+                liveClass.getId(), liveClass.getClassGroupId(), liveClass.getInstitutionId());
+    }
+
+    /** LiveClass.teacherId is a teachers.id; media_assets.teacher_id stores a users.id. */
+    private UUID resolveTeacherUserId(LiveClass liveClass) {
+        if (liveClass.getTeacherId() == null) {
+            return null;
+        }
+        return teacherRepository.findById(liveClass.getTeacherId())
+                .map(Teacher::getUserId)
+                .orElse(null);
+    }
+
+    /**
      * Stops an active LiveKit Egress, resolves the final file URL and creates the
      * learner-facing Replay row. Everything is best-effort: a recording problem must
      * never roll back ending the class (attendance/certificates above).
@@ -494,11 +576,10 @@ public class LiveClassServiceImpl implements LiveClassService {
                 return;
             }
 
-            // Publish into the existing media/video library so the recording is discoverable
-            // there and linkable from the live class (idempotent on the source key).
-            if (liveRecordingMediaPublisher != null) {
-                liveRecordingMediaPublisher.publishRecording(liveClass, url, null);
-            }
+            // Media Library representation. This runs before the replay guard on purpose:
+            // reprocessing a session whose replay already exists must still be able to
+            // repair a missing or stale library entry, and it is idempotent either way.
+            publishRecordingToMediaLibrary(liveClass, url);
 
             if (!replayRepository.findByLiveSessionIdAndIsDeletedFalse(liveClass.getId()).isEmpty()) {
                 return;

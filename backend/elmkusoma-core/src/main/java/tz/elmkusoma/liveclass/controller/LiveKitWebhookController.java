@@ -471,8 +471,7 @@ public class LiveKitWebhookController {
 
     private void handleRecordingStarted(Map<String, Object> payload) {
         try {
-            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
-            String roomName = room != null ? (String) room.get("name") : null;
+            String roomName = resolveRoomName(payload);
 
             if (roomName != null && roomName.startsWith("liveclass-")) {
                 UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
@@ -519,8 +518,7 @@ public class LiveKitWebhookController {
             Object egressObj = payload.get("egress");
             Map<String, Object> egress = egressObj instanceof Map
                     ? (Map<String, Object>) egressObj : payload;
-            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
-            String roomName = room != null ? (String) room.get("name") : null;
+            String roomName = resolveRoomName(payload);
 
             // LiveKit emits a single terminal "egress_ended" event for both success and
             // failure; the status field is the only discriminator. Route terminal failure
@@ -633,8 +631,7 @@ public class LiveKitWebhookController {
 
     private void handleRecordingFailed(Map<String, Object> payload) {
         try {
-            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
-            String roomName = room != null ? (String) room.get("name") : null;
+            String roomName = resolveRoomName(payload);
 
             if (roomName != null && roomName.startsWith("liveclass-")) {
                 UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
@@ -726,6 +723,33 @@ public class LiveKitWebhookController {
         } catch (Exception ex) {
             log.warn("Could not mark recording FAILED for class {}: {}", liveClass.getId(), ex.getMessage());
         }
+    }
+
+    /**
+     * Room name for any webhook payload.
+     *
+     * <p>Room lifecycle events carry a top-level {@code room.name}, but LiveKit reports the room
+     * inside {@code EgressInfo} for every egress event (proto field {@code room_name}). Reading
+     * only {@code room.name} therefore resolved {@code null} for real {@code egress_ended} /
+     * {@code egress_started} deliveries, so a live class recording was never matched to its class:
+     * {@code recording_url} stayed at the {@code egress:<id>} marker and no media asset, Replay
+     * or availability notification was created. Both shapes are accepted here.
+     */
+    private String resolveRoomName(Map<String, Object> payload) {
+        Object roomObj = payload.get("room");
+        if (roomObj instanceof Map<?, ?> room && room.get("name") instanceof String name) {
+            return name;
+        }
+        Object egressObj = payload.get("egress");
+        if (egressObj instanceof Map<?, ?> egress) {
+            if (egress.get("room_name") instanceof String snake) {
+                return snake;
+            }
+            if (egress.get("roomName") instanceof String camel) {
+                return camel;
+            }
+        }
+        return null;
     }
 
     private UUID extractLiveClassIdFromRoomName(String roomName) {

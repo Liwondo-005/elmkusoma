@@ -29,7 +29,7 @@ public class ProgramController {
     @Operation(summary = "Create a new NFE program")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<ProgramResponse>> createProgram(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @Valid @RequestBody ProgramRequest request) {
         ProgramResponse program = programService.createProgram(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -40,7 +40,7 @@ public class ProgramController {
     @Operation(summary = "Get an NFE program by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<ProgramResponse>> getProgram(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         ProgramResponse program = programService.getProgram(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(program));
@@ -50,7 +50,7 @@ public class ProgramController {
     @Operation(summary = "List all NFE programs in an institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<ProgramResponse>>> listPrograms(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<ProgramResponse> programs = programService.listPrograms(institutionId, page, size);
@@ -61,7 +61,7 @@ public class ProgramController {
     @Operation(summary = "Get programs by provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<ProgramResponse>>> getProgramsByProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId) {
         List<ProgramResponse> programs = programService.getProgramsByProvider(institutionId, providerId);
         return ResponseEntity.ok(ApiResponse.success(programs));
@@ -71,7 +71,7 @@ public class ProgramController {
     @Operation(summary = "Get all published NFE programs")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<ProgramResponse>>> getPublishedPrograms(
-            @RequestHeader("X-Institution-Id") UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         List<ProgramResponse> programs = programService.getPublishedPrograms(institutionId);
         return ResponseEntity.ok(ApiResponse.success(programs));
     }
@@ -80,7 +80,7 @@ public class ProgramController {
     @Operation(summary = "Update an NFE program")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<ProgramResponse>> updateProgram(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody ProgramRequest request) {
         ProgramResponse program = programService.updateProgram(institutionId, id, request);
@@ -91,7 +91,7 @@ public class ProgramController {
     @Operation(summary = "Soft-delete an NFE program")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProgram(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         programService.deleteProgram(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Program deleted successfully", null));

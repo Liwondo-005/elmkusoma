@@ -20,6 +20,7 @@ import tz.elmkusoma.event.repository.EventMaterialRepository;
 import tz.elmkusoma.event.repository.EventRepository;
 import tz.elmkusoma.highereducation.domain.LearningModule;
 import tz.elmkusoma.highereducation.domain.ModuleStatus;
+import tz.elmkusoma.highereducation.domain.WorkshopSession;
 import tz.elmkusoma.highereducation.repository.LearningModuleRepository;
 import tz.elmkusoma.highereducation.domain.WorkshopSession;
 import tz.elmkusoma.highereducation.repository.WorkshopSessionRepository;
@@ -482,8 +483,8 @@ class ProviderIsolationSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        // Workshop deletion is a soft delete (BaseEntity.is_deleted), so retention sweeps and
-        // the audit trail can still see the removal. The row must survive but be flagged.
+        // Audit B-56: workshop deletion is a soft delete (BaseEntity.is_deleted), so retention
+        // sweeps and the audit trail can still see the removal. The row must survive but be flagged.
         WorkshopSession deleted = workshopSessionRepository.findById(workshopId).orElse(null);
         assertNotNull(deleted, "soft delete must keep the row for the audit trail");
         assertTrue(Boolean.TRUE.equals(deleted.getIsDeleted()), "workshop must be soft deleted");
@@ -531,7 +532,7 @@ class ProviderIsolationSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        // Soft delete, consistent with every other entity in the project.
+        // Audit B-56: soft delete, consistent with every other entity in the project.
         WorkshopSession deleted = workshopSessionRepository.findById(workshopId).orElse(null);
         assertNotNull(deleted, "soft delete must keep the row for the audit trail");
         assertTrue(Boolean.TRUE.equals(deleted.getIsDeleted()), "workshop must be soft deleted");

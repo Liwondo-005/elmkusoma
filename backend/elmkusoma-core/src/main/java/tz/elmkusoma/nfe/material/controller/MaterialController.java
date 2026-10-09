@@ -29,7 +29,7 @@ public class MaterialController {
     @Operation(summary = "Create a new learning material")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<MaterialResponse>> createMaterial(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @Valid @RequestBody MaterialRequest request) {
         MaterialResponse material = materialService.createMaterial(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -40,7 +40,7 @@ public class MaterialController {
     @Operation(summary = "Get a material by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<MaterialResponse>> getMaterial(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         MaterialResponse material = materialService.getMaterial(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(material));
@@ -50,7 +50,7 @@ public class MaterialController {
     @Operation(summary = "List all materials in an institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<MaterialResponse>>> listMaterials(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<MaterialResponse> materials = materialService.listMaterials(institutionId, page, size);
@@ -61,7 +61,7 @@ public class MaterialController {
     @Operation(summary = "Get materials by provider ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<MaterialResponse>>> getMaterialsByProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId) {
         List<MaterialResponse> materials = materialService.getMaterialsByProvider(institutionId, providerId);
         return ResponseEntity.ok(ApiResponse.success(materials));
@@ -71,7 +71,7 @@ public class MaterialController {
     @Operation(summary = "Get materials by program ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<MaterialResponse>>> getMaterialsByProgram(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID programId) {
         List<MaterialResponse> materials = materialService.getMaterialsByProgram(institutionId, programId);
         return ResponseEntity.ok(ApiResponse.success(materials));
@@ -81,7 +81,7 @@ public class MaterialController {
     @Operation(summary = "Update a material")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<MaterialResponse>> updateMaterial(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody MaterialRequest request) {
         MaterialResponse material = materialService.updateMaterial(institutionId, id, request);
@@ -92,7 +92,7 @@ public class MaterialController {
     @Operation(summary = "Soft-delete a material")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteMaterial(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         materialService.deleteMaterial(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Material deleted successfully", null));

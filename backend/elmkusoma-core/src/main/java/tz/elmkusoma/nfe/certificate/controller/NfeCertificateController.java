@@ -29,7 +29,7 @@ public class NfeCertificateController {
     @Operation(summary = "Create a new certificate for a provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<NfeCertificateResponse>> createCertificate(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId,
             @Valid @RequestBody NfeCertificateRequest request) {
         NfeCertificateResponse certificate = certificateService.createCertificate(institutionId, providerId, request);
@@ -41,7 +41,7 @@ public class NfeCertificateController {
     @Operation(summary = "Get a certificate by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<NfeCertificateResponse>> getCertificate(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         NfeCertificateResponse certificate = certificateService.getCertificate(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(certificate));
@@ -51,7 +51,7 @@ public class NfeCertificateController {
     @Operation(summary = "List all certificates for a provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<NfeCertificateResponse>>> listCertificates(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID providerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -63,7 +63,7 @@ public class NfeCertificateController {
     @Operation(summary = "Get certificates for a learner")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<NfeCertificateResponse>>> getCertificatesByLearner(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID learnerId) {
         List<NfeCertificateResponse> certificates = certificateService.getCertificatesByLearner(institutionId, learnerId);
         return ResponseEntity.ok(ApiResponse.success(certificates));
@@ -73,7 +73,7 @@ public class NfeCertificateController {
     @Operation(summary = "Verify a certificate by verification code")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<NfeCertificateResponse>> verifyCertificate(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable String verificationCode) {
         NfeCertificateResponse certificate = certificateService.verifyCertificate(institutionId, verificationCode);
         return ResponseEntity.ok(ApiResponse.success(certificate));
@@ -83,7 +83,7 @@ public class NfeCertificateController {
     @Operation(summary = "Update a certificate")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<NfeCertificateResponse>> updateCertificate(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody NfeCertificateRequest request) {
         NfeCertificateResponse certificate = certificateService.updateCertificate(institutionId, id, request);
@@ -94,7 +94,7 @@ public class NfeCertificateController {
     @Operation(summary = "Soft-delete a certificate")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCertificate(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         certificateService.deleteCertificate(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Certificate deleted successfully", null));

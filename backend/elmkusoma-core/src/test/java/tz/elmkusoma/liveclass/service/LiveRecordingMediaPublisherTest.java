@@ -9,6 +9,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
+import tz.elmkusoma.teacher.domain.Teacher;
+import tz.elmkusoma.teacher.repository.TeacherRepository;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,27 +37,41 @@ import static org.mockito.Mockito.when;
 class LiveRecordingMediaPublisherTest {
 
     @Mock private MediaAssetRepository mediaAssetRepository;
+    @Mock private TeacherRepository teacherRepository;
 
     private LiveRecordingMediaPublisher publisher;
 
     private UUID institutionId;
     private UUID subjectId;
     private UUID teacherId;
+    private UUID teacherUserId;
+    private UUID classGroupId;
     private LiveClass liveClass;
 
     @BeforeEach
     void setUp() {
-        publisher = new LiveRecordingMediaPublisher(mediaAssetRepository);
+        publisher = new LiveRecordingMediaPublisher(mediaAssetRepository, teacherRepository);
         institutionId = UUID.randomUUID();
         subjectId = UUID.randomUUID();
         teacherId = UUID.randomUUID();
+        teacherUserId = UUID.randomUUID();
+        classGroupId = UUID.randomUUID();
 
         liveClass = new LiveClass();
         liveClass.setId(UUID.randomUUID());
         liveClass.setInstitutionId(institutionId);
         liveClass.setSubjectId(subjectId);
         liveClass.setTeacherId(teacherId);
+        liveClass.setClassGroupId(classGroupId);
         liveClass.setTitle("Mathematics: Fractions");
+    }
+
+    /** LiveClass.teacherId is a teachers.id; media_assets.teacher_id stores a users.id. */
+    private void stubTeacher() {
+        Teacher teacher = new Teacher();
+        teacher.setId(teacherId);
+        teacher.setUserId(teacherUserId);
+        lenient().when(teacherRepository.findById(teacherId)).thenReturn(Optional.of(teacher));
     }
 
     private void stubSave() {
@@ -64,6 +81,7 @@ class LiveRecordingMediaPublisherTest {
 
     @Test
     void publishRecording_createsReadyInstitutionScopedAsset() {
+        stubTeacher();
         when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(
                 LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS, liveClass.getId()))
                 .thenReturn(Optional.empty());
@@ -81,7 +99,9 @@ class LiveRecordingMediaPublisherTest {
         assertEquals(liveClass.getId(), saved.getSourceId());
         assertEquals(institutionId, saved.getInstitutionId(), "library asset must inherit class tenancy");
         assertEquals(subjectId, saved.getSubjectId());
-        assertEquals(teacherId, saved.getTeacherId());
+        assertEquals(classGroupId, saved.getClassGroupId());
+        // Resolved, not copied: media_assets.teacher_id holds a users.id.
+        assertEquals(teacherUserId, saved.getTeacherId());
         assertEquals("https://storage.example/recording.mp4", saved.getFileUrl());
         assertEquals(1_800L, saved.getDurationSeconds());
         assertEquals("Mathematics: Fractions", saved.getTitle());
@@ -119,7 +139,17 @@ class LiveRecordingMediaPublisherTest {
     }
 
     @Test
+    void publishRecording_refusesEgressMarkerBecauseItIsNotAPlayableUrl() {
+        // The transient egress:<id> marker is LiveKit bookkeeping. Publishing it would put a
+        // non-playable entry in a learner-facing library.
+        assertTrue(publisher.publishRecording(liveClass, "egress:RM_xYz123", 60L).isEmpty());
+
+        verify(mediaAssetRepository, never()).save(any(MediaAsset.class));
+    }
+
+    @Test
     void markRecordingFailed_createsQueryableFailedAssetWithReason() {
+        stubTeacher();
         when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(
                 LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS, liveClass.getId()))
                 .thenReturn(Optional.empty());

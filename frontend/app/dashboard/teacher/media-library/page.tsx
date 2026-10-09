@@ -24,6 +24,8 @@ interface MediaAsset {
   sourceId: string | null
   teacherId: string | null
   courseId: string | null
+  /** Class this asset targets; set for live class recordings (V149). */
+  classGroupId: string | null
   subjectId: string | null
   tags: string | null
   createdAt: string

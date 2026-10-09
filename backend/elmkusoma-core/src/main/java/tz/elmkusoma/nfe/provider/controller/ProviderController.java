@@ -30,7 +30,7 @@ public class ProviderController {
     @Operation(summary = "Create a new education provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<ProviderResponse>> createProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @Valid @RequestBody ProviderRequest request) {
         ProviderResponse provider = providerService.createProvider(institutionId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -41,7 +41,7 @@ public class ProviderController {
     @Operation(summary = "Get (and provision on first use) the provider for the caller's institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<ProviderResponse>> getMyProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestAttribute("userId") String actorId) {
         return ResponseEntity.ok(ApiResponse.success(
                 providerService.getOrCreateProviderForInstitution(institutionId, actorId)));
@@ -51,7 +51,7 @@ public class ProviderController {
     @Operation(summary = "Platform approval: verify or revoke a provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<ProviderResponse>> setVerification(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @RequestParam boolean verified) {
         return ResponseEntity.ok(ApiResponse.success("Provider verification updated",
@@ -62,7 +62,7 @@ public class ProviderController {
     @Operation(summary = "Get an education provider by ID")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<ProviderResponse>> getProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         ProviderResponse provider = providerService.getProvider(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success(provider));
@@ -72,7 +72,7 @@ public class ProviderController {
     @Operation(summary = "List all education providers in an institution")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<PageResponse<ProviderResponse>>> listProviders(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<ProviderResponse> providers = providerService.listProviders(institutionId, page, size);
@@ -83,7 +83,7 @@ public class ProviderController {
     @Operation(summary = "Get all active education providers")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<List<ProviderResponse>>> getActiveProviders(
-            @RequestHeader("X-Institution-Id") UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         List<ProviderResponse> providers = providerService.getActiveProviders(institutionId);
         return ResponseEntity.ok(ApiResponse.success(providers));
     }
@@ -92,7 +92,7 @@ public class ProviderController {
     @Operation(summary = "Update an education provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<ProviderResponse>> updateProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
             @Valid @RequestBody ProviderRequest request) {
         ProviderResponse provider = providerService.updateProvider(institutionId, id, request);
@@ -103,7 +103,7 @@ public class ProviderController {
     @Operation(summary = "Soft-delete an education provider")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProvider(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute UUID institutionId,
             @PathVariable UUID id) {
         providerService.deleteProvider(institutionId, id);
         return ResponseEntity.ok(ApiResponse.success("Provider deleted successfully", null));
@@ -113,7 +113,7 @@ public class ProviderController {
     @Operation(summary = "Get provider dashboard statistics")
     @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PROVIDER_ADMIN', 'PROVIDER_STAFF')")
     public ResponseEntity<ApiResponse<ProviderStatsResponse>> getProviderStats(
-            @RequestHeader("X-Institution-Id") UUID institutionId) {
+            @RequestAttribute UUID institutionId) {
         return ResponseEntity.ok(ApiResponse.success(providerService.getProviderStats(institutionId)));
     }
 }

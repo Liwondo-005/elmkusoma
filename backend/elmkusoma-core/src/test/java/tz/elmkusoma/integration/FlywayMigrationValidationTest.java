@@ -303,6 +303,32 @@ class FlywayMigrationValidationTest {
  * migrations to prove the columns exist and that department_id is uuid-typed, matching the
  * UUID it references on departments(id).
  */
+    /**
+     * V149 adds media_assets.class_group_id, the class target that makes a live class
+     * recording appear in the Media Library. MediaAsset maps @Column(name = "class_group_id")
+     * and the test profile builds its schema from the entity, so a missing migration would
+     * only surface at runtime against a real database.
+     */
+    @Test
+    void mediaAssetsClassGroup_IsDeclaredInMigrations() throws IOException {
+        Map<String, String> declared = declaredColumns(Set.of("media_assets.class_group_id"));
+
+        assertTrue(declared.containsKey("media_assets.class_group_id"),
+                "MediaAsset maps @Column(name = \"class_group_id\") but no migration declares it, "
+                        + "so saving a recording would fail against a real database");
+        assertTrue(declared.get("media_assets.class_group_id").startsWith("uuid"),
+                "media_assets.class_group_id must be uuid to reference class_groups(id), but is \""
+                        + declared.get("media_assets.class_group_id") + "\"");
+    }
+
+    /**
+     * V136 makes Department -> Programme a real foreign key and adds course_modules.module_code.
+     * Both are mapped on entities, and the test profile builds its schema with Hibernate instead
+     * of Flyway, so a missing or mistyped migration would only surface at runtime against a real
+     * database - the exact class of bare-500 defect this suite exists to prevent. Replays the
+     * migrations to prove the columns exist and that department_id is uuid-typed, matching the
+     * UUID it references on departments(id).
+     */
     @Test
     void departmentProgrammeAndModuleColumns_AreDeclaredInMigrations() throws IOException {
         Set<String> wanted = Set.of(

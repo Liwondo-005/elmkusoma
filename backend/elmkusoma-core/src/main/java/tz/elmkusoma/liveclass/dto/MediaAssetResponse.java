@@ -28,6 +28,7 @@ public class MediaAssetResponse {
     private UUID sourceId;
     private UUID teacherId;
     private UUID courseId;
+    private UUID classGroupId;
     private UUID subjectId;
     private String tags;
     private LocalDateTime createdAt;

@@ -507,27 +507,28 @@ public class RegionalAdminService {
                                                      UUID institutionId, UUID districtId) {
         Scope scope = resolveScope(userId);
         List<User.Role> roles = List.of(User.Role.STUDENT, User.Role.OTHER_LEARNER, User.Role.LEARNER);
-        return pagedUsers(scope, roles, search, institutionId, districtId, page, size).stream()
+        UserPage learners = pagedUsers(scope, roles, search, institutionId, districtId, page, size);
+        List<LearnerSummary> mapped = learners.content().stream()
                 .map(u -> toLearnerSummary(scope, u))
-                .collect(Collectors.collectingAndThen(Collectors.toList(),
-                        list -> toPageResponse(list, page, clampSize(size), -1)));
+                .toList();
+        return toPageResponse(mapped, page, clampSize(size), learners.totalElements());
     }
 
     public PageResponse<TeacherSummary> getTeachers(UUID userId, int page, int size, String search,
                                                     UUID institutionId, UUID districtId) {
         Scope scope = resolveScope(userId);
         List<User.Role> roles = List.of(User.Role.TEACHER, User.Role.INSTRUCTOR);
-        List<User> users = pagedUsers(scope, roles, search, institutionId, districtId, page, size);
-        List<TeacherSummary> mapped = users.stream().map(u -> toTeacherSummary(scope, u)).toList();
-        return toPageResponse(mapped, page, clampSize(size), -1);
+        UserPage users = pagedUsers(scope, roles, search, institutionId, districtId, page, size);
+        List<TeacherSummary> mapped = users.content().stream().map(u -> toTeacherSummary(scope, u)).toList();
+        return toPageResponse(mapped, page, clampSize(size), users.totalElements());
     }
 
     public PageResponse<EducationStaffSummary> getEducationStaff(UUID userId, int page, int size, String search,
                                                                  UUID institutionId, UUID districtId) {
         Scope scope = resolveScope(userId);
         List<User.Role> roles = List.of(User.Role.INSTITUTION_ADMIN);
-        List<User> users = pagedUsers(scope, roles, search, institutionId, districtId, page, size);
-        List<EducationStaffSummary> mapped = users.stream().map(u -> EducationStaffSummary.builder()
+        UserPage staff = pagedUsers(scope, roles, search, institutionId, districtId, page, size);
+        List<EducationStaffSummary> mapped = staff.content().stream().map(u -> EducationStaffSummary.builder()
                 .id(u.getId())
                 .fullName(u.getFullName())
                 .email(u.getEmail())
@@ -537,7 +538,7 @@ public class RegionalAdminService {
                 .isActive(u.getIsActive())
                 .createdAt(u.getCreatedAt())
                 .build()).toList();
-        return toPageResponse(mapped, page, clampSize(size), -1);
+        return toPageResponse(mapped, page, clampSize(size), staff.totalElements());
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -1370,7 +1371,14 @@ public class RegionalAdminService {
                 .build();
     }
 
-    private List<User> pagedUsers(Scope scope, List<User.Role> roles, String search,
+/**
+     * Audit B-50: paged user lists used to discard the repository's total element count, so
+     * toPageResponse fell back to "total = rows on this page". The UI pager then never rendered
+     * and a regional administrator was silently capped at the first 20 learners/teachers/staff.
+     */
+    private record UserPage(List<User> content, long totalElements) { }
+
+    private UserPage pagedUsers(Scope scope, List<User.Role> roles, String search,
                                   UUID institutionId, UUID districtId, int page, int size) {
         List<UUID> ids = targetInstitutionIds(scope, institutionId, districtId);
         String q = normalize(search);
@@ -1379,7 +1387,7 @@ public class RegionalAdminService {
                 PageRequest.of(page, clampSize(size)))
                 : userRepository.findScopedByRoles(roles, q, ids, scope.regionId(),
                 PageRequest.of(page, clampSize(size)));
-        return result.getContent();
+        return new UserPage(result.getContent(), result.getTotalElements());
     }
 
     private LearnerSummary toLearnerSummary(Scope scope, User user) {
