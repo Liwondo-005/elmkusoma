@@ -28,6 +28,7 @@ import {
   Zap,
   BarChart3,
   Square,
+  Loader2,
 } from "lucide-react"
 import type { LiveClass } from "@/lib/learner-api"
 import { useTranslations } from "next-intl"
@@ -194,6 +195,7 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [issueSent, setIssueSent] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingEgressId, setRecordingEgressId] = useState<string | null>(null)
+  const [recordingBusy, setRecordingBusy] = useState(false)
   const [showMaterialInput, setShowMaterialInput] = useState(false)
   const [materialName, setMaterialName] = useState("")
   const [materialUrl, setMaterialUrl] = useState("")
@@ -1326,35 +1328,68 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     // Recording is teacher/admin-only on the server (403 for anyone else) —
     // never show/allow the action for learners.
     if (!isTeacherClient && user?.role !== "Admin") return
+    // Guards against a double click firing two Start requests, which would otherwise open a
+    // second LiveKit egress job for the same session.
+    if (recordingBusy) return
+    setRecordingBusy(true)
+    setActionError("")
     try {
       const token = localStorage.getItem("elmkusoma_access_token")
       const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
-      if (isRecording && recordingEgressId) {
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
+
+      if (isRecording) {
         const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/stop`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
         })
-        if (res.ok) {
-          setIsRecording(false)
-          setRecordingEgressId(null)
-          setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingStoppedMsg"), timestamp: new Date().toISOString(), system: true }])
+        if (!res.ok) {
+          setActionError(await describeRecordingError(res))
+          return
         }
-      } else {
-        const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/start`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          const egressId = data?.data?.egressId
-          setIsRecording(true)
-          setRecordingEgressId(egressId || null)
-          setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingStartedMsg"), timestamp: new Date().toISOString(), system: true }])
-        }
+        setIsRecording(false)
+        setRecordingEgressId(null)
+        setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingStoppedMsg"), timestamp: new Date().toISOString(), system: true }])
+        return
       }
+
+      const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/start`, {
+        method: "POST",
+        headers,
+      })
+      if (!res.ok) {
+        // Never flip to "recording" on a failed or refused request. The server answers 503 when
+        // LiveKit or its recording storage is unavailable and 403/404 when the caller is not
+        // the host; previously these were swallowed silently.
+        setActionError(await describeRecordingError(res))
+        return
+      }
+      const data = await res.json().catch(() => null)
+      const egressId = data?.data?.egressId
+      if (!egressId) {
+        // A 200 without an egress id means no capture is actually running. Trusting it would
+        // show a false recording indicator.
+        setActionError(t("recordingStartUnconfirmed"))
+        return
+      }
+      setIsRecording(true)
+      setRecordingEgressId(egressId)
+      setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: data?.data?.alreadyRecording ? t("recordingAlreadyActiveMsg") : t("recordingStartedMsg"), timestamp: new Date().toISOString(), system: true }])
     } catch {
-      setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingToggleFailed"), timestamp: new Date().toISOString(), system: true }])
+      setActionError(t("recordingToggleFailed"))
+    } finally {
+      setRecordingBusy(false)
     }
+  }
+
+  /** Turns a non-2xx recording response into a message the teacher can act on. */
+  async function describeRecordingError(res: Response): Promise<string> {
+    const body = await res.json().catch(() => null)
+    const detail = body?.error || body?.message
+    if (res.status === 503) return detail || t("recordingUnavailable")
+    if (res.status === 403) return detail || t("recordingNotAllowed")
+    if (res.status === 404) return detail || t("recordingSessionNotFound")
+    return detail || `${t("recordingToggleFailed")} (${res.status})`
   }
 
   async function handleAttachMaterial() {
@@ -2160,8 +2195,23 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
                       <MonitorUp className="size-4" />
                     </ControlButton>
                     {(isTeacherClient || user?.role === "Admin") && (
-                      <ControlButton active={isRecording} onClick={toggleRecording} label={isRecording ? t("stopRecordingLabel") : t("startRecordingLabel")}>
-                        <Circle className={cn("size-4", isRecording && "fill-red-500 text-red-500 animate-pulse")} />
+                      <ControlButton
+                        active={isRecording}
+                        onClick={toggleRecording}
+                        disabled={recordingBusy}
+                        label={
+                          recordingBusy
+                            ? t("recordingBusyLabel")
+                            : isRecording
+                              ? t("stopRecordingLabel")
+                              : t("startRecordingLabel")
+                        }
+                      >
+                        {recordingBusy ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Circle className={cn("size-4", isRecording && "fill-red-500 text-red-500 animate-pulse")} />
+                        )}
                       </ControlButton>
                     )}
                     {(isTeacherClient || user?.role === "Admin") && (
