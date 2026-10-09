@@ -104,7 +104,14 @@ public class LiveSessionController {
             }
         }
 
-        String token = liveKitService.generateToken(classId, userId, userId.toString(), isTeacher);
+        // Existing participant role (LEARNER / MODERATOR / OBSERVER) decides media grants, so a
+        // host's role change is enforced by LiveKit itself rather than being advisory.
+        String participantRole = participantRepository
+                .findByLiveClassIdAndUserIdAndIsDeletedFalse(classId, userId)
+                .map(tz.elmkusoma.liveclass.domain.LiveClassParticipant::getRole)
+                .orElse(null);
+
+        String token = liveKitService.generateToken(classId, userId, userId.toString(), isTeacher, participantRole);
         String roomName = liveKitService.generateRoomName(classId);
 
         LiveSessionJoinResponse response = LiveSessionJoinResponse.builder()
@@ -263,10 +270,10 @@ public class LiveSessionController {
         List<LiveClassParticipant> allParticipants = participantRepository
                 .findByLiveClassIdAndIsDeletedFalse(classId);
 
-        int peak = allParticipants.stream()
-                .filter(p -> p.getLeftAt() == null)
-                .mapToInt(p -> 1).sum();
-        if (peak == 0) peak = (int) totalParticipants;
+        // Real peak concurrency: sweep the join/leave intervals and keep the maximum number
+        // of participants present at any moment. Previously this was just the current online
+        // count (or the total participant count), which is not a peak at all.
+        int peak = computePeakConcurrency(allParticipants);
         long avgDuration = (long) allParticipants.stream()
                 .filter(p -> p.getDurationSeconds() != null)
                 .mapToLong(LiveClassParticipant::getDurationSeconds)
@@ -281,6 +288,40 @@ public class LiveSessionController {
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(analytics));
+    }
+
+    /**
+     * Maximum number of participants simultaneously present, computed from the persisted
+     * join/leave intervals (sweep line over +1/-1 events). Participants still present have
+     * no leftAt and therefore stay counted for the rest of the sweep.
+     */
+    public static int computePeakConcurrency(List<LiveClassParticipant> participants) {
+        if (participants == null || participants.isEmpty()) {
+            return 0;
+        }
+        record Event(LocalDateTime at, int delta) { }
+        List<Event> events = new ArrayList<>();
+        for (LiveClassParticipant p : participants) {
+            if (p.getJoinedAt() != null) {
+                events.add(new Event(p.getJoinedAt(), 1));
+            }
+            if (p.getLeftAt() != null) {
+                events.add(new Event(p.getLeftAt(), -1));
+            }
+        }
+        if (events.isEmpty()) {
+            return 0;
+        }
+        // Sweep in chronological order; at an identical instant a join is applied before a
+        // leave so a participant who leaves exactly as another joins is not double-counted.
+        events.sort(Comparator.comparing(Event::at).thenComparingInt(e -> -e.delta()));
+        int current = 0;
+        int peak = 0;
+        for (Event e : events) {
+            current += e.delta();
+            peak = Math.max(peak, current);
+        }
+        return peak;
     }
 
     @PostMapping("/report/{classId}")
@@ -335,16 +376,8 @@ public class LiveSessionController {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
 
-        boolean isTeacher = false;
-        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
-        if (liveClass.getTeacherId() != null && teacher != null && liveClass.getTeacherId().equals(teacher.getId())) {
-            isTeacher = true;
-        }
-        if (!isTeacher) {
-            User user = userRepository.findById(userId).orElse(null);
-            if (user == null || (user.getRole() != User.Role.ADMIN && user.getRole() != User.Role.INSTITUTION_ADMIN)) {
-                return ResponseEntity.status(403).body(ApiResponse.error("Only the teacher can start recording"));
-            }
+        if (!isClassHostOrAdmin(liveClass, userId, institutionId)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Only the teacher can start recording"));
         }
 
         if (!liveKitService.isAvailable()) {
@@ -383,6 +416,13 @@ public class LiveSessionController {
         }
         if (!liveClass.getInstitutionId().equals(institutionId)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+
+        // Institution membership alone is not enough to stop someone else's recording:
+        // require the owning teacher or an admin, exactly like the ingest endpoints.
+        if (!isClassHostOrAdmin(liveClass, userId, institutionId)) {
+            return ResponseEntity.status(403).body(ApiResponse.error(
+                    "Only the teacher of this class or an administrator can stop its recording"));
         }
 
         String recordingUrl = liveClass.getRecordingUrl();
@@ -485,6 +525,64 @@ public class LiveSessionController {
 
     // ------------------------------------------------------------------
     // External ingest: OBS / hardware encoder / studio -> existing room
+    /**
+     * Host-continuity state for the current live class. A host that reloads, navigates
+     * away, or loses the room must be able to resume the SAME in-progress session with its
+     * real recording state instead of guessing from local component state. This is
+     * read-only and derived entirely from persisted LiveClass/participant data.
+     */
+    @GetMapping("/classes/{classId}/host-state")
+    @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
+    @Operation(summary = "Get live class host state (session continuity, recording, participants)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getHostState(
+            @PathVariable UUID classId,
+            @RequestAttribute UUID userId,
+            @RequestAttribute UUID institutionId) {
+
+        LiveClass liveClass = liveClassRepository.findById(classId)
+                .filter(lc -> !Boolean.TRUE.equals(lc.getIsDeleted()))
+                .orElse(null);
+        if (liveClass == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("Live class not found"));
+        }
+        if (!liveClass.getInstitutionId().equals(institutionId)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
+        }
+        if (!isClassHostOrAdmin(liveClass, userId, institutionId)) {
+            return ResponseEntity.status(403).body(ApiResponse.error(
+                    "Only the teacher of this class or an administrator can view its host state"));
+        }
+
+        String status = liveClass.getStatus();
+        boolean active = "IN_PROGRESS".equals(status) || "LIVE".equals(status) || "STARTING".equals(status);
+        String rawRecordingUrl = liveClass.getRecordingUrl();
+        boolean recordingActive = rawRecordingUrl != null && rawRecordingUrl.startsWith("egress:");
+        String egressId = recordingActive ? rawRecordingUrl.substring("egress:".length()) : null;
+        boolean recordingAvailable = rawRecordingUrl != null && rawRecordingUrl.startsWith("http");
+        List<tz.elmkusoma.liveclass.domain.LiveClassParticipant> present =
+                participantRepository.findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId);
+
+        Map<String, Object> state = new HashMap<>();
+        state.put("classId", liveClass.getId());
+        state.put("status", status);
+        state.put("active", active);
+        state.put("startedAt", liveClass.getStartedAt());
+        state.put("scheduledAt", liveClass.getScheduledAt());
+        state.put("durationMinutes", liveClass.getDurationMinutes());
+        state.put("recordingEnabled", liveClass.getRecordingEnabled());
+        state.put("recordingActive", recordingActive);
+        state.put("recordingEgressId", egressId);
+        state.put("recordingAvailable", recordingAvailable);
+        state.put("recordingUrl", recordingAvailable ? rawRecordingUrl : null);
+        state.put("liveKitAvailable", liveKitService.isAvailable());
+        state.put("liveKitUrl", liveKitService.isAvailable() ? liveKitService.getServerUrl() : null);
+        state.put("roomName", liveKitService.generateRoomName(classId));
+        state.put("presentParticipants", present.size());
+        state.put("canEndSession", active);
+
+        return ResponseEntity.ok(ApiResponse.success("Host state", state));
+    }
+
     // ------------------------------------------------------------------
 
     /**
@@ -500,20 +598,33 @@ public class LiveSessionController {
         if (liveClass.getInstitutionId() == null || !liveClass.getInstitutionId().equals(institutionId)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
-        boolean allowed;
-        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
-        if (liveClass.getTeacherId() != null && teacher != null && liveClass.getTeacherId().equals(teacher.getId())) {
-            allowed = true;
-        } else {
-            User user = userRepository.findById(userId).orElse(null);
-            allowed = user != null && (user.getRole() == User.Role.ADMIN
-                    || user.getRole() == User.Role.INSTITUTION_ADMIN);
-        }
-        if (!allowed) {
+        if (!isClassHostOrAdmin(liveClass, userId, institutionId)) {
             return ResponseEntity.status(403).body(ApiResponse.error(
                     "Only the teacher of this class can manage its ingest source"));
         }
         return null;
+    }
+
+    /**
+     * Shared ownership guard: true when the caller owns the class as its teacher, or is an
+     * ADMIN / INSTITUTION_ADMIN. Reused by the ingest endpoints and the recording controls
+     * so "any teacher of the institution" can never operate another teacher's session.
+     */
+    private boolean isClassHostOrAdmin(LiveClass liveClass, UUID userId, UUID institutionId) {
+        if (liveClass == null || userId == null) {
+            return false;
+        }
+        if (institutionId != null && liveClass.getInstitutionId() != null
+                && !liveClass.getInstitutionId().equals(institutionId)) {
+            return false;
+        }
+        Teacher teacher = teacherService.getOrCreateTeacherByUserId(userId, institutionId);
+        if (liveClass.getTeacherId() != null && teacher != null && liveClass.getTeacherId().equals(teacher.getId())) {
+            return true;
+        }
+        User user = userRepository.findById(userId).orElse(null);
+        return user != null && (user.getRole() == User.Role.ADMIN
+                || user.getRole() == User.Role.INSTITUTION_ADMIN);
     }
 
     @GetMapping("/classes/{classId}/ingress")

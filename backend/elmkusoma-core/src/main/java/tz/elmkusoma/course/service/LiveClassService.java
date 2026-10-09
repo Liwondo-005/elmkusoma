@@ -21,6 +21,14 @@ public interface LiveClassService {
     LiveClassResponse endSession(UUID teacherId, UUID liveClassId, UUID markedBy);
 
     /**
+     * Administrative force-end: accepts any running status (STARTING/LIVE/IN_PROGRESS/
+     * RECOVERING/ENDING) and authorises on the acting admin's institution instead of
+     * impersonating the class teacher, so attendance and certificates are attributed to
+     * the admin who actually performed the action.
+     */
+    LiveClassResponse forceEndSession(UUID liveClassId, UUID institutionId, UUID actingUserId);
+
+    /**
      * Authoritative expiry sweep: ends every started class whose scheduled start plus
      * configured duration has already elapsed, finalising attendance, certificates and
      * the recording/replay chain exactly like a manual end (no client, teacher or

@@ -51,7 +51,7 @@ export default function AssignmentDetailPage() {
       if (found) {
         setAssignment(found)
         try {
-          // Learner-scoped endpoint: resolves users.id Ã¢â€ â€™ students.id server-side.
+          // Learner-scoped endpoint: resolves users.id → students.id server-side.
           const mySub = await learningApi.getMySubmission(found.id)
           if (mySub) {
             setSubmission(mySub)

@@ -52,7 +52,7 @@ public class PlatformAdminController {
         return role != null ? role.toString() : "ADMIN";
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Command Center Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Command Center ──
 
     @GetMapping("/dashboard")
     @Operation(summary = "Get platform-wide dashboard overview with KPIs")
@@ -84,7 +84,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Users Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Users ──
 
     @GetMapping("/users")
     @Operation(summary = "List all users across the platform")
@@ -165,7 +165,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Password reset link sent", null));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Institutions Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Institutions ──
 
     @GetMapping("/institutions")
     @Operation(summary = "List all institutions across the platform")
@@ -245,7 +245,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Member role updated", response));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Live Classes Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Live Classes ──
 
     @GetMapping("/live-classes")
     @Operation(summary = "List live classes across the platform")
@@ -257,7 +257,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Payments & Entitlements Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Payments & Entitlements ──
 
     @GetMapping("/payments")
     @Operation(summary = "List payments across the platform")
@@ -269,7 +269,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Certificates Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Certificates ──
 
     @GetMapping("/certificates")
     @Operation(summary = "List certificates issued across the platform (search + filters)")
@@ -302,7 +302,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(certificateGovernanceService.getCertificateDetail(certificateId)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Security Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Security ──
 
     @GetMapping("/security/events")
     @Operation(summary = "List unresolved security events")
@@ -318,7 +318,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Security event resolved", response));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Audit Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Audit ──
 
     @GetMapping("/audit/logs")
     @Operation(summary = "Get platform-wide audit logs (optionally filtered by a specific entity id)")
@@ -332,7 +332,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Global Search Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Global Search ──
 
     @GetMapping("/search")
     @Operation(summary = "Global platform search across authorized resources")
@@ -344,7 +344,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Enhanced Dashboard Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Enhanced Dashboard ──
 
     @GetMapping("/dashboard/enhanced")
     @Operation(summary = "Get enhanced platform dashboard with all KPIs")
@@ -352,7 +352,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.getEnhancedDashboard()));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Services Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Services ──
 
     @GetMapping("/services")
     @Operation(summary = "List platform services")
@@ -376,7 +376,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Service updated", platformAdminService.updateService(serviceId, req)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Incidents Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Incidents ──
 
     @GetMapping("/incidents")
     @Operation(summary = "List platform incidents")
@@ -403,7 +403,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.updateIncidentStatus(incidentId, status, notes)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Platform Config Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Platform Config ──
 
     @GetMapping("/config")
     @Operation(summary = "List platform configuration")
@@ -422,7 +422,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Config updated", platformAdminService.updateConfig(key, body.get("value"), actor)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Notifications Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Notifications ──
 
     @GetMapping("/notifications")
     @Operation(summary = "List platform notifications")
@@ -440,7 +440,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Notification sent", platformAdminService.sendNotification(req, actor)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Delegations Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Delegations ──
 
     @GetMapping("/delegations")
     @Operation(summary = "List admin delegations")
@@ -472,7 +472,7 @@ public class PlatformAdminController {
     }
 
     @PostMapping("/delegations/{delegationId}/approve")
-    @Operation(summary = "Approve a pending delegation (PENDING_APPROVAL Ã¢â€ â€™ ACTIVE)")
+    @Operation(summary = "Approve a pending delegation (PENDING_APPROVAL → ACTIVE)")
     public ResponseEntity<ApiResponse<DelegationSummaryResponse>> approveDelegation(
             @PathVariable UUID delegationId,
             @RequestBody(required = false) DelegationDecisionRequest req,
@@ -483,7 +483,7 @@ public class PlatformAdminController {
     }
 
     @PostMapping("/delegations/{delegationId}/reject")
-    @Operation(summary = "Reject a pending delegation (PENDING_APPROVAL Ã¢â€ â€™ REJECTED)")
+    @Operation(summary = "Reject a pending delegation (PENDING_APPROVAL → REJECTED)")
     public ResponseEntity<ApiResponse<DelegationSummaryResponse>> rejectDelegation(
             @PathVariable UUID delegationId,
             @RequestBody(required = false) DelegationDecisionRequest req,
@@ -510,7 +510,7 @@ public class PlatformAdminController {
                 "permissions", PlatformAdminService.DELEGATION_PERMISSIONS)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Verifications Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Verifications ──
 
     @GetMapping("/verifications/pending")
     @Operation(summary = "List pending verification records")
@@ -544,7 +544,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.reviewVerification(verificationId, actorId, status, notes)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Entitlements Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Entitlements ──
 
     @GetMapping("/entitlements")
     @Operation(summary = "List platform entitlements")
@@ -555,7 +555,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.listEntitlements(page, size, status)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Platform Learning/Content/Event/Media/Resources Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Platform Learning/Content/Event/Media/Resources ──
 
     @GetMapping("/courses")
     @Operation(summary = "List courses across platform (governance)")
@@ -633,9 +633,9 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(platformAdminService.listPlatformResources(page, size)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Provider Quotas / Entitlements Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Provider Quotas / Entitlements ──
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Provider Governance (providers = institutions of provider types) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Provider Governance (providers = institutions of provider types) ──
 
     @GetMapping("/providers/registry")
     @Operation(summary = "Provider registry: institutions of provider types with verification status")
@@ -695,7 +695,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Entitlement updated", platformAdminService.updateProviderEntitlement(entitlementId, request)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Institution Lifecycle (offboarding) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Institution Lifecycle (offboarding) ──
 
     @PutMapping("/institutions/{institutionId}/lifecycle")
     @Operation(summary = "Update institution lifecycle status (ACTIVE/SUSPENDED/DEACTIVATED/ARCHIVED)")
@@ -705,10 +705,10 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Lifecycle updated", platformAdminService.updateInstitutionLifecycle(institutionId, request.getStatus())));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Commerce: Sponsored Seats (Payment Model B/C) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Commerce: Sponsored Seats (Payment Model B/C) ──
 
     @PostMapping("/commerce/sponsor-seats")
-    @Operation(summary = "Grant sponsored seats from a provider package (spec Ã‚Â§36)")
+    @Operation(summary = "Grant sponsored seats from a provider package (spec §36)")
     public ResponseEntity<ApiResponse<SponsorGrantResponse>> grantSponsoredSeats(
             @Valid @RequestBody SponsorSeatGrantRequest request) {
         UUID grantedBy = null;
@@ -723,7 +723,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Entitlement revoked", "REVOKED"));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Support Cases (M26) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Support Cases (M26) ──
 
     @GetMapping("/support/tickets")
     @Operation(summary = "List platform support tickets")
@@ -735,7 +735,7 @@ public class PlatformAdminController {
     }
 
     @PutMapping("/support/tickets/{ticketId}/status")
-    @Operation(summary = "Advance support ticket status (OPEN Ã¢â€ â€™ ASSIGNED Ã¢â€ â€™ INVESTIGATING Ã¢â€ â€™ RESOLVED Ã¢â€ â€™ CLOSED)")
+    @Operation(summary = "Advance support ticket status (OPEN → ASSIGNED → INVESTIGATING → RESOLVED → CLOSED)")
     public ResponseEntity<ApiResponse<SupportTicketResponse>> updateSupportTicketStatus(
             @PathVariable UUID ticketId,
             @RequestParam String status) {
@@ -743,7 +743,7 @@ public class PlatformAdminController {
                 platformAdminService.updateSupportTicketStatus(ticketId, status)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Content Moderation (M10/M11) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Content Moderation (M10/M11) ──
 
     @GetMapping("/moderation/reports")
     @Operation(summary = "List content reports (moderation queue)")
@@ -770,10 +770,10 @@ public class PlatformAdminController {
                 platformAdminService.actOnContentReport(reportId, request)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Data Governance Export (M24) Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Data Governance Export (M24) ──
 
     @GetMapping("/export")
-    @Operation(summary = "Export platform data as CSV (users|institutions|audit) Ã¢â‚¬â€ audit-logged")
+    @Operation(summary = "Export platform data as CSV (users|institutions|audit) — audit-logged")
     public ResponseEntity<byte[]> exportPlatformData(@RequestParam(defaultValue = "users") String type) {
         String csv = platformAdminService.exportPlatformData(type);
         return ResponseEntity.ok()
@@ -782,7 +782,7 @@ public class PlatformAdminController {
                 .body(csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ BATCH 13: Integrations, Webhooks, Backup, Policy, Governance, Admins, Features Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── BATCH 13: Integrations, Webhooks, Backup, Policy, Governance, Admins, Features ──
 
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
     private final tz.elmkusoma.administration.service.BackupStatusService backupStatusService;
@@ -965,7 +965,7 @@ public class PlatformAdminController {
     }
 
     @PostMapping("/content/bulk-action")
-    @Operation(summary = "Bulk content action (COURSE|EVENT|RESOURCE Ãƒâ€” PUBLISH|UNPUBLISH|ARCHIVE|RESTORE)")
+    @Operation(summary = "Bulk content action (COURSE|EVENT|RESOURCE × PUBLISH|UNPUBLISH|ARCHIVE|RESTORE)")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> bulkContentAction(
             @RequestBody BulkContentActionRequest req) {
         return ResponseEntity.ok(ApiResponse.success("Bulk action applied", platformAdminService.bulkContentAction(req)));
@@ -1017,7 +1017,7 @@ public class PlatformAdminController {
                 platformAdminService.revokeCertificatePlatform(certificateId, reason, actor)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Certificate Template Governance Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Certificate Template Governance ──
 
     @GetMapping("/certificate-templates")
     @Operation(summary = "List certificate templates across the platform (with usage and signatories)")
@@ -1086,7 +1086,7 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(certificateGovernanceService.getTemplateVersions(templateId)));
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Certificate Signatories Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Certificate Signatories ──
 
     @GetMapping("/certificate-signatories")
     @Operation(summary = "List signatory profiles with authorisation scope")

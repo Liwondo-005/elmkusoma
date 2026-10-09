@@ -28,13 +28,23 @@ public class MediaLibraryController {
 
     private final MediaAssetRepository mediaAssetRepository;
     private final MediaProxyService mediaProxyService;
+    private final tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('STUDENT','TEACHER','OTHER_LEARNER','INSTITUTION_ADMIN')")
     @Operation(summary = "List media assets for institution")
     public ResponseEntity<ApiResponse<List<MediaAssetResponse>>> listMedia(
-            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute("institutionId") UUID institutionId,
             @RequestParam(required = false) String type) {
+
+        // The tenant must come from the server-derived attribute, and the caller must
+        // actually belong to it. Without this check any authenticated user could set
+        // X-Institution-Id to another tenant and read that tenant's media library.
+        if (!membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, institutionId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("You are not a member of this institution"));
+        }
 
         List<MediaAsset> assets;
         if (type != null && !type.isEmpty()) {

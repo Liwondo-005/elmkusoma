@@ -25,7 +25,7 @@ public class AdministrationController {
 
     private final AdministrationService administrationService;
 
-    // â”€â”€ Dashboard â”€â”€
+    // ── Dashboard ──
 
     @GetMapping("/dashboard")
     @Operation(summary = "Get institution dashboard aggregations")
@@ -45,7 +45,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // â”€â”€ Access & Permission Center â”€â”€
+    // ── Access & Permission Center ──
 
     @GetMapping("/my-access")
     @Operation(summary = "Effective access of the calling administrator: role, organization, membership, scope, and permissions")
@@ -55,7 +55,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    // â”€â”€ Settings â”€â”€
+    // ── Settings ──
 
     @GetMapping("/settings")
     @Operation(summary = "List all system settings for institution")
@@ -85,7 +85,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success("Setting updated successfully", response));
     }
 
-    // â”€â”€ Role Management â”€â”€
+    // ── Role Management ──
 
     @PostMapping("/roles")
     @Operation(summary = "Create a custom role")
@@ -127,7 +127,7 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success("Role deleted successfully", null));
     }
 
-    // â”€â”€ User Import â”€â”€
+    // ── User Import ──
 
     @PostMapping("/users/import")
     @Operation(summary = "Create a CSV import job for bulk user creation")

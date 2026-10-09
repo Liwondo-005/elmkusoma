@@ -97,8 +97,8 @@ public class ClassAccessGuard {
      * never treated as implicit allow: without a student profile, or without
      * membership rows proving the learner belongs to this class, the answer is
      * {@code false}. The membership union is the same existing model used
-     * everywhere else ({@code student_class_assignments} Ã¢Ë†Âª ENROLLED
-     * {@code enrollments}) Ã¢â‚¬â€ no parallel system.</p>
+     * everywhere else ({@code student_class_assignments} ∪ ENROLLED
+     * {@code enrollments}) — no parallel system.</p>
      */
     public boolean isLearnerInClass(String userEmail, UUID classGroupId) {
         if (userEmail == null || classGroupId == null) {

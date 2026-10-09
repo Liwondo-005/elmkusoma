@@ -33,6 +33,8 @@ public class LearnerReplayController {
     private final tz.elmkusoma.event.repository.EventMaterialRepository materialRepository;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.learning.repository.LessonRepository lessonRepository;
+    private final tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository liveClassParticipantRepository;
+    private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Replay>>> getReplays(
@@ -59,6 +61,13 @@ public class LearnerReplayController {
                     .toList();
             total = replays.size();
         }
+        // The list is filtered to sessions the learner actually took part in, matching the
+        // per-replay entitlement check below, so the listing cannot advertise recordings the
+        // learner is not allowed to open.
+        if (userId != null) {
+            replays = replays.stream().filter(r -> hasReplayEntitlement(r, userId)).toList();
+            total = replays.size();
+        }
         Map<UUID, ReplayProgress> progressMap = loadProgress(userId, replays);
         populateRelatedLessonId(replays);
         replays.forEach(r -> enrich(r, userId, progressMap));
@@ -72,14 +81,27 @@ public class LearnerReplayController {
             @PathVariable UUID id,
             @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
             @RequestAttribute(value = "userId", required = false) UUID userId) {
-        return replayRepository.findById(id)
+        // Entitlement check: a learner may only open a replay of a session they were actually part
+        // of (live-class participant row, or event registration). Institution membership alone
+        // used to be enough, which exposed every recording in the institution to every student.
+        Replay replay = replayRepository.findById(id)
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .filter(r -> institutionId == null || institutionId.equals(r.getInstitutionId()))
-                .map(r -> {
-                    r.setViewCount(r.getViewCount() + 1);
-                    replayRepository.save(r);
-                    enrich(r, userId, Map.of());
-                    Event event = r.getEventId() != null ? eventRepository.findById(r.getEventId()).orElse(null) : null;
+                .orElse(null);
+        if (replay == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (userId != null && !hasReplayEntitlement(replay, userId)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(tz.elmkusoma.common.ApiResponse.error(
+                            "You were not a participant in this recorded session"));
+        }
+        {
+            Replay r = replay;
+            r.setViewCount(r.getViewCount() + 1);
+            replayRepository.save(r);
+            enrich(r, userId, Map.of());
+            Event event = r.getEventId() != null ? eventRepository.findById(r.getEventId()).orElse(null) : null;
                     if (event == null && r.getLiveSessionId() != null) {
                         liveClassRepository.findById(r.getLiveSessionId())
                                 .ifPresent(lc -> r.setRelatedLessonId(lc.getLessonId()));
@@ -97,8 +119,25 @@ public class LearnerReplayController {
                     detail.put("relatedModuleId", event != null ? event.getRelatedModuleId() : null);
                     detail.put("relatedLessonId", event != null ? event.getRelatedLessonId() : r.getRelatedLessonId());
                     return ResponseEntity.ok(ApiResponse.success(detail));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        }
+    }
+
+    /**
+     * Replay entitlement for a learner: they must have been an actual participant in the
+     * recorded session — a LiveClassParticipant row for live-class replays, or an
+     * EventRegistration for event replays.
+     */
+    private boolean hasReplayEntitlement(Replay replay, UUID userId) {
+        if (replay.getLiveSessionId() != null) {
+            return liveClassParticipantRepository
+                    .existsByLiveClassIdAndUserIdAndIsDeletedFalse(replay.getLiveSessionId(), userId);
+        }
+        if (replay.getEventId() != null) {
+            return eventRegistrationRepository
+                    .existsByEventIdAndUserIdAndIsDeletedFalse(replay.getEventId(), userId);
+        }
+        // Replay with no session/event link: no participant evidence exists, so deny.
+        return false;
     }
 
     @GetMapping("/{id}/progress")
@@ -252,9 +291,8 @@ public class LearnerReplayController {
             r.setCompleted(false);
         }
         r.setVideoUrl(r.getRecordingUrl());
-        if (r.getCaptionUrl() == null || r.getCaptionUrl().isBlank()) {
-            r.setCaptionUrl("/captions/sample-en.vtt");
-        }
+        // captionUrl is left null when no caption track was produced for the recording —
+        // never substitute a sample file, which would be presented to learners as real captions.
         r.setRecordedAt(r.getCreatedAt());
         if (r.getEventId() != null && (r.getEventTitle() == null || r.getPresenterName() == null)) {
             Event event = eventRepository.findById(r.getEventId()).orElse(null);

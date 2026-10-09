@@ -55,6 +55,9 @@ public class LiveKitWebhookController {
 
     private final Set<String> processedWebhookKeys = ConcurrentHashMap.newKeySet();
 
+    /** Tolerance for clock drift between ELMKUSOMA and the LiveKit server. */
+    private static final long CLOCK_SKEW_SECONDS = 60;
+
     @PostMapping
     public ResponseEntity<Map<String, String>> handleWebhook(
             @RequestBody byte[] rawBody,
@@ -95,19 +98,26 @@ public class LiveKitWebhookController {
             }
 
             switch (event) {
+                // LiveKit room lifecycle. The server emits "room_finished" when the last
+                // participant leaves and the room closes; the legacy "room_ended" name is
+                // still accepted so already-configured servers and existing tests keep working.
                 case "room_started" -> handleRoomStarted(payload);
-                case "room_ended" -> handleRoomEnded(payload);
+                case "room_finished", "room_ended" -> handleRoomEnded(payload, event);
                 case "participant_joined" -> handleParticipantEvent(payload, event);
                 case "participant_left" -> handleParticipantEvent(payload, event);
-                case "recording_started" -> {
+                // Egress (recording) lifecycle. LiveKit names these egress_started /
+                // egress_updated / egress_ended; egress_ended carries the file results and
+                // the terminal status, so it drives both success and failure handling.
+                case "egress_started", "recording_started" -> {
                     log.info("Recording started: {}", payload.get("egress"));
                     handleRecordingStarted(payload);
                 }
-                case "recording_completed" -> {
+                case "egress_updated" -> log.debug("Egress updated (non-terminal): {}", payload.get("egress"));
+                case "egress_ended", "recording_completed" -> {
                     log.info("Recording completed: {}", payload.get("egress"));
                     handleRecordingCompleted(payload);
                 }
-                case "recording_failed" -> {
+                case "egress_failed", "recording_failed" -> {
                     log.error("Recording failed: {}", payload.get("egress"));
                     handleRecordingFailed(payload);
                 }
@@ -167,6 +177,21 @@ public class LiveKitWebhookController {
                     log.warn("LiveKit webhook issuer mismatch: iss={}", iss);
                     return "FAILED";
                 }
+            }
+
+            // Replay window: the JWT must be currently valid. Without exp/nbf validation a
+            // captured Authorization header stays usable forever, which defeats the
+            // body-hash binding as a replay defence.
+            long nowSeconds = System.currentTimeMillis() / 1000;
+            Object expClaim = claims.get("exp");
+            if (!(expClaim instanceof Number expNum) || expNum.longValue() <= nowSeconds) {
+                log.warn("LiveKit webhook rejected: token expired");
+                return "FAILED";
+            }
+            Object nbfClaim = claims.get("nbf");
+            if (nbfClaim instanceof Number nbfNum && nbfNum.longValue() > nowSeconds + CLOCK_SKEW_SECONDS) {
+                log.warn("LiveKit webhook rejected: token not yet valid");
+                return "FAILED";
             }
 
             String providedHash = claims.get("sha256") instanceof String s ? s : null;
@@ -328,11 +353,11 @@ public class LiveKitWebhookController {
         }
     }
 
-    private void handleRoomEnded(Map<String, Object> payload) {
+    private void handleRoomEnded(Map<String, Object> payload, String eventName) {
         try {
             UUID eventId = resolveEventId(payload);
             if (eventId == null) {
-                log.debug("room_ended with no event mapping (room={})", payload.get("room"));
+                log.debug("{} with no event mapping (room={})", eventName, payload.get("room"));
                 return;
             }
             eventRepository.findById(eventId).ifPresent(event -> {
@@ -350,10 +375,10 @@ public class LiveKitWebhookController {
                 event.setStatus("ENDED");
                 event.setEventStatus(EventStatus.ENDED);
                 eventRepository.save(event);
-                log.info("Event set ENDED from LiveKit room_ended: eventId={}", eventId);
+                log.info("Event set ENDED from LiveKit {}: eventId={}", eventName, eventId);
             });
         } catch (Exception e) {
-            log.error("Error handling room_ended webhook", e);
+            log.error("Error handling {} webhook", eventName, e);
         }
     }
 
@@ -496,6 +521,16 @@ public class LiveKitWebhookController {
             Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
             String roomName = room != null ? (String) room.get("name") : null;
 
+            // LiveKit emits a single terminal "egress_ended" event for both success and
+            // failure; the status field is the only discriminator. Route terminal failure
+            // statuses to the failure handler so Replay/event recordingStatus are not left
+            // stuck in PROCESSING.
+            if (isTerminalEgressFailure(egress)) {
+                log.warn("Egress ended in a failure state: {}", egress.get("status"));
+                handleRecordingFailed(payload);
+                return;
+            }
+
             String recordingUrl = null;
             Integer durationSeconds = null;
             if (egress != null) {
@@ -580,6 +615,19 @@ public class LiveKitWebhookController {
         } catch (Exception e) {
             log.error("Error handling recording_completed webhook", e);
         }
+    }
+
+    /**
+     * Terminal egress statuses that mean the recording did NOT produce a usable file.
+     * LiveKit's EgressStatus enum: EGRESS_STARTING, EGRESS_ACTIVE, EGRESS_ENDING,
+     * EGRESS_COMPLETE, EGRESS_ABORTED, EGRESS_FAILED.
+     */
+    private boolean isTerminalEgressFailure(Map<String, Object> egress) {
+        if (egress == null || egress.get("status") == null) {
+            return false;
+        }
+        String status = egress.get("status").toString().trim().toUpperCase();
+        return "EGRESS_FAILED".equals(status) || "EGRESS_ABORTED".equals(status) || "FAILED".equals(status);
     }
 
     private void handleRecordingFailed(Map<String, Object> payload) {
