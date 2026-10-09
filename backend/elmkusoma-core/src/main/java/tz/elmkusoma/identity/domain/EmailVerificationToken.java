@@ -31,6 +31,7 @@ public class EmailVerificationToken {
     private LocalDateTime expiresAt;
 
     @Column(name = "used", nullable = false)
+    @Builder.Default
     private Boolean used = false;
 
     @CreationTimestamp

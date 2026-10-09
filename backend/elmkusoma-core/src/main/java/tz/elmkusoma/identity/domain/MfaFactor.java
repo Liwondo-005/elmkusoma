@@ -39,6 +39,7 @@ public class MfaFactor {
     private String label;
 
     @Column(name = "verified", nullable = false)
+    @Builder.Default
     private Boolean verified = false;
 
     @CreationTimestamp

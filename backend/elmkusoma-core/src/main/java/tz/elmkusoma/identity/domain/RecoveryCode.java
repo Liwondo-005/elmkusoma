@@ -31,6 +31,7 @@ public class RecoveryCode {
     private String codeHash;
 
     @Column(name = "used", nullable = false)
+    @Builder.Default
     private Boolean used = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)

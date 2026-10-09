@@ -29,5 +29,6 @@ public class RubricCriteria extends BaseEntity {
     private BigDecimal maxPoints;
 
     @Column(name = "sort_order", nullable = false)
+    @Builder.Default
     private Integer sortOrder = 0;
 }

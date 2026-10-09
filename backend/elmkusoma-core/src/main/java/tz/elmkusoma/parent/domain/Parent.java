@@ -24,6 +24,7 @@ public class Parent extends BaseEntity {
 
     @Column(name = "relationship_type", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private RelationshipType relationshipType = RelationshipType.GUARDIAN;
 
     @Column(name = "emergency_contact")

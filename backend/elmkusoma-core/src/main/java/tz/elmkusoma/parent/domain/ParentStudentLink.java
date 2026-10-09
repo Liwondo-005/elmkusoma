@@ -23,9 +23,11 @@ public class ParentStudentLink extends BaseEntity {
 
     @Column(name = "relationship_type", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Parent.RelationshipType relationshipType = Parent.RelationshipType.GUARDIAN;
 
     @Column(name = "is_primary", nullable = false)
+    @Builder.Default
     private Boolean isPrimary = false;
 
     @ManyToOne(fetch = FetchType.LAZY)

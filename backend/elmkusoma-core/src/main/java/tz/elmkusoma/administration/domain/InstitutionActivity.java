@@ -42,6 +42,7 @@ public class InstitutionActivity {
     private String metadataJson;
 
     @Column(name = "is_read", nullable = false)
+    @Builder.Default
     private Boolean isRead = false;
 
     @CreationTimestamp
