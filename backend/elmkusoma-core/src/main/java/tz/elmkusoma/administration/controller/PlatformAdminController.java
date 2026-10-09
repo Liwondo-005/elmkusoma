@@ -321,14 +321,14 @@ public class PlatformAdminController {
     // ── Audit ──
 
     @GetMapping("/audit/logs")
-    @Operation(summary = "Get platform-wide audit logs (optionally filtered by a specific entity id)")
-    public ResponseEntity<ApiResponse<List<AuditLogResponse>>> getAuditLogs(
+    @Operation(summary = "Get platform-wide audit logs (paged; optionally filtered by a specific entity)")
+    public ResponseEntity<ApiResponse<PageResponse<AuditLogResponse>>> getAuditLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) UUID entityId) {
-        List<AuditLogResponse> response = platformAdminService.getAuditLogs(page, size, action, entityType, entityId);
+        PageResponse<AuditLogResponse> response = platformAdminService.getAuditLogs(page, size, action, entityType, entityId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

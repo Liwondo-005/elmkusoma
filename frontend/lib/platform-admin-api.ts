@@ -825,12 +825,17 @@ export const platformAdminApi = {
   resolveSecurityEvent: (eventId: string) =>
     platformFetch<SecurityEventItem>(`/v1/platform-admin/security/events/${eventId}/resolve`, { method: "POST" }),
 
+  /**
+   * Audit B-49: returns a real PageResponse so callers know the total page count. The endpoint
+   * previously returned a bare array, which forced the audit page to guess whether a Next button
+   * should be enabled by checking whether the current page happened to be full.
+   */
   getAuditLogs: (page = 0, size = 20, action?: string, entityType?: string, entityId?: string) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
     if (action) params.set("action", action)
     if (entityType) params.set("entityType", entityType)
     if (entityId) params.set("entityId", entityId)
-    return platformFetch<AuditLogEntry[]>(`/v1/platform-admin/audit/logs?${params}`)
+    return platformFetch<PageResponse<AuditLogEntry>>(`/v1/platform-admin/audit/logs?${params}`)
   },
 
   search: (q: string, type?: string) => {
