@@ -104,7 +104,7 @@ export default function AssessmentsPage() {
                     <p className="text-xs text-muted-foreground">{assessment.totalMarks || 0} {t("assessments.marksSuffix")}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">{assessment.status || t("assessments.draftFallback")}</span>
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">{assessment.isPublished ? t("form.published") : t("assessments.draftFallback")}</span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => { setConfirmDeleteId(null); setEditRow(assessment) }}

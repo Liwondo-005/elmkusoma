@@ -52,7 +52,7 @@ import java.util.HashSet;
 @RestController
 @RequestMapping("/v1/learner")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('OTHER_LEARNER', 'TEACHER', 'STUDENT', 'INSTITUTION_ADMIN', 'ADMIN')")
+@PreAuthorize("hasAnyRole('OTHER_LEARNER', 'LEARNER', 'TEACHER', 'STUDENT', 'INSTITUTION_ADMIN', 'ADMIN')")
 @Tag(name = "General Learner", description = "General Learner / Participant workspace")
 @Slf4j
 public class LearnerController {
