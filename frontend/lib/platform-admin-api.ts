@@ -141,6 +141,73 @@ export interface PlatformInvitation {
   expiresAt?: string
 }
 
+export type ContactMessageStatus =
+  | "NEW"
+  | "IN_PROGRESS"
+  | "AWAITING_RESPONSE"
+  | "RESOLVED"
+  | "CLOSED"
+
+/** What the server actually recorded about notification. NOT_CONFIGURED means nobody was emailed. */
+export type ContactNotificationStatus = "NOT_CONFIGURED" | "PENDING" | "SENT" | "FAILED"
+
+export interface ContactMessageRecord {
+  id: string
+  reference: string
+  name: string
+  email: string
+  category: string
+  subject: string
+  message: string
+  status: ContactMessageStatus
+  priority: string
+  assignedTo: string | null
+  createdAt: string | null
+  resolvedAt: string | null
+  notificationStatus: ContactNotificationStatus
+  notificationError: string | null
+  notificationAttempts: number
+  notifiedAt: string | null
+  userId: string | null
+  ipAddress: string | null
+  userAgent: string | null
+}
+
+export interface ContactMessageReply {
+  id: string
+  authorId: string | null
+  message: string
+  internal: boolean
+  delivered: boolean
+  createdAt: string | null
+}
+
+export type LegalDocType = "TERMS" | "PRIVACY" | "COOKIE" | "SUPPORT_POLICY"
+
+export interface LegalDocumentRecord {
+  id: string
+  type: LegalDocType
+  title: string
+  content: string
+  effectiveDate: string | null
+  /** Working-copy revision. Moves when the draft is edited. */
+  draftVersion: number
+  /** What the public is actually reading. Null until first publication. */
+  publishedVersion: number | null
+  lastModifiedBy: string | null
+  updatedAt: string | null
+}
+
+export interface LegalVersionRecord {
+  id: string
+  version: number
+  title: string
+  content: string
+  effectiveDate: string | null
+  publishedAt: string | null
+  publishedBy: string | null
+}
+
 export interface UserCreatePayload {
   firstName: string
   lastName: string
@@ -908,6 +975,63 @@ export const platformAdminApi = {
   },
   updateConfig: (key: string, value: string) =>
     platformFetch<PlatformConfigItem>(`/v1/platform-admin/config/${key}`, { method: "PUT", body: JSON.stringify({ value }) }),
+
+  listContactMessages: (params: { page?: number; size?: number; status?: string; q?: string } = {}) => {
+    const search = new URLSearchParams()
+    search.set("page", String(params.page ?? 0))
+    search.set("size", String(params.size ?? 20))
+    if (params.status) search.set("status", params.status)
+    if (params.q) search.set("q", params.q)
+    return platformFetch<PageResponse<ContactMessageRecord>>(
+      `/v1/platform-admin/contact-messages?${search.toString()}`)
+  },
+  getContactMessage: (id: string) =>
+    platformFetch<ContactMessageRecord>(`/v1/platform-admin/contact-messages/${id}`),
+  updateContactMessageStatus: (id: string, status: ContactMessageStatus) =>
+    platformFetch<ContactMessageRecord>(
+      `/v1/platform-admin/contact-messages/${id}/status?status=${status}`,
+      { method: "PUT" }),
+  assignContactMessage: (id: string, assigneeId: string | null) =>
+    platformFetch<ContactMessageRecord>(`/v1/platform-admin/contact-messages/${id}/assign`, {
+      method: "PUT",
+      body: JSON.stringify({ assigneeId }),
+    }),
+  contactMessageReplies: (id: string) =>
+    platformFetch<ContactMessageReply[]>(`/v1/platform-admin/contact-messages/${id}/replies`),
+  replyToContactMessage: (id: string, message: string, internal: boolean) =>
+    platformFetch<{ id: string; internal: boolean; delivered: boolean }>(
+      `/v1/platform-admin/contact-messages/${id}/replies`,
+      { method: "POST", body: JSON.stringify({ message, internal }) }),
+  /** Re-attempts notification on the same enquiry. Never creates a second ticket. */
+  renotifyContactMessage: (id: string) =>
+    platformFetch<ContactMessageRecord>(`/v1/platform-admin/contact-messages/${id}/notify`,
+      { method: "POST" }),
+
+  listLegalDocuments: (type?: LegalDocType) =>
+    platformFetch<LegalDocumentRecord[]>(
+      `/v1/platform-admin/legal-documents${type ? `?type=${type}` : ""}`),
+  createLegalDocument: (payload: { type: LegalDocType; title: string; content: string; effectiveDate?: string }) =>
+    platformFetch<LegalDocumentRecord>("/v1/platform-admin/legal-documents", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateLegalDocument: (
+    id: string,
+    payload: { title: string; content: string; effectiveDate?: string }) =>
+    platformFetch<LegalDocumentRecord>(`/v1/platform-admin/legal-documents/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  publishLegalDocument: (id: string) =>
+    platformFetch<LegalDocumentRecord>(`/v1/platform-admin/legal-documents/${id}/publish`,
+      { method: "POST" }),
+  legalDocumentVersions: (id: string) =>
+    platformFetch<LegalVersionRecord[]>(`/v1/platform-admin/legal-documents/${id}/versions`),
+  revertLegalDocument: (id: string, version: number) =>
+    platformFetch<LegalDocumentRecord>(`/v1/platform-admin/legal-documents/${id}/revert`, {
+      method: "POST",
+      body: JSON.stringify({ version }),
+    }),
 
   listNotifications: (page = 0, size = 20) =>
     platformFetch<PageResponse<NotificationSummary>>(`/v1/platform-admin/notifications?page=${page}&size=${size}`),

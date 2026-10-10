@@ -3,10 +3,33 @@
 import Link from "next/link"
 import { Logo } from "@/components/logo"
 import { useTranslations } from "next-intl"
+import { useSiteSettings, telHref, whatsappClickToChat } from "@/hooks/use-site-settings"
 
 export function SiteFooter() {
   const tNav = useTranslations("nav")
   const tCommon = useTranslations("common")
+  const { value } = useSiteSettings()
+
+  const contactEmail = value("public.contact.email")
+  const contactPhone = value("public.contact.phone")
+  const contactAddress = value("public.contact.address")
+  const phoneHref = telHref(contactPhone)
+  const whatsappHref = whatsappClickToChat(value("public.contact.whatsapp"))
+
+  // Rendered only when an administrator has configured a real, validated URL. Nothing here
+  // invents an account: an unconfigured platform shows no social links at all rather than a
+  // link to the bare facebook.com domain.
+  const socialLinks = [
+    { key: "public.social.facebook" as const, label: "Facebook" },
+    { key: "public.social.instagram" as const, label: "Instagram" },
+    { key: "public.social.youtube" as const, label: "YouTube" },
+    { key: "public.social.linkedin" as const, label: "LinkedIn" },
+    { key: "public.social.tiktok" as const, label: "TikTok" },
+    { key: "public.social.x" as const, label: "X" },
+  ]
+    .map((social) => ({ ...social, href: value(social.key) }))
+    .filter((social): social is { key: typeof social.key; label: string; href: string } =>
+      Boolean(social.href))
 
   const columns = [
     {
@@ -68,25 +91,29 @@ export function SiteFooter() {
           <div>
             <h4 className="text-sm font-semibold text-foreground">{tCommon("contactUs")}</h4>
             <ul className="mt-4 space-y-3">
-              <li className="text-sm text-muted-foreground">
-                Dar es Salaam, Tanzania
-              </li>
-              <li>
-                <a
-                  href="tel:+255700000000"
-                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                >
-                  +255 700 000 000
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:info@elmkusoma.co.tz"
-                  className="text-sm text-muted-foreground transition-colors hover:text-primary"
-                >
-                  info@elmkusoma.co.tz
-                </a>
-              </li>
+              {contactAddress && (
+                <li className="text-sm text-muted-foreground">{contactAddress}</li>
+              )}
+              {contactPhone && phoneHref && (
+                <li>
+                  <a
+                    href={phoneHref}
+                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    {contactPhone}
+                  </a>
+                </li>
+              )}
+              {contactEmail && (
+                <li>
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    {contactEmail}
+                  </a>
+                </li>
+              )}
               <li>
                 <Link
                   href="/contact"
@@ -96,23 +123,35 @@ export function SiteFooter() {
                 </Link>
               </li>
             </ul>
-            <div className="mt-5 flex flex-wrap gap-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Facebook">
-                Facebook
-              </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Instagram">
-                Instagram
-              </a>
-              <a href="https://wa.me/255700000000" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="WhatsApp">
-                WhatsApp
-              </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="Twitter">
-                Twitter
-              </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-primary" aria-label="LinkedIn">
-                LinkedIn
-              </a>
-            </div>
+            {socialLinks.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-4">
+                {socialLinks.map((social) => (
+                  <a
+                    key={social.key}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                    aria-label={social.label}
+                  >
+                    {social.label}
+                  </a>
+                ))}
+                {/* Click-to-chat only: this opens a chat the visitor sends, it does not
+                    deliver anything to the support team in the background. */}
+                {whatsappHref && (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-muted-foreground transition-colors hover:text-primary"
+                    aria-label="WhatsApp"
+                  >
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-6 sm:flex-row">

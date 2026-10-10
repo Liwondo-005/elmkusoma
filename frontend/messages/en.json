@@ -504,7 +504,8 @@
     "districtScope": "District scope",
     "sendAnnouncement": "Send announcement",
     "exportReport": "Export report",
-    "runDataQuality": "Run data quality"
+    "runDataQuality": "Run data quality",
+    "publicSite": "Public site & legal"
   },
   "dashboard": {
     "welcomeBack": "Welcome back",
@@ -2779,7 +2780,12 @@
     "notStarted": "Not Started",
     "overdue": "Overdue",
     "cancelled": "Cancelled",
-    "scheduled": "Scheduled"
+    "scheduled": "Scheduled",
+    "NEW": "New",
+    "IN_PROGRESS": "In progress",
+    "AWAITING_RESPONSE": "Awaiting response",
+    "RESOLVED": "Resolved",
+    "CLOSED": "Closed"
   },
   "auth": {
     "login": "Login",
@@ -6651,6 +6657,10 @@
       "statusTitle": "Platform Status",
       "checking": "Checking...",
       "statusLine": "DB: {db} | API: {api}"
+    },
+    "publicSite": {
+      "published": "Published",
+      "publishSuccess": "Published. Visitors now see this version."
     }
   },
   "admin": {
@@ -9172,5 +9182,86 @@
     "emptyTitle": "Nothing to show yet",
     "emptyDesc": "Portfolio details appear once the school publishes results, attendance, courses and achievements.",
     "sourceNote": "Every item here comes from your child's school records."
+  },
+  "siteContact": {
+    "messageTooShort": "Please write at least 20 characters so we can help properly.",
+    "submitFailed": "We could not send your message. Please try again.",
+    "receivedTitle": "Message received",
+    "storedReference": "Your reference is {reference}. Keep it for any follow-up.",
+    "notified": "Our support team has been notified and will get back to you.",
+    "storedNotNotified": "Your message has been stored with the reference above, but no support address is configured yet, so nobody has been notified. Please email us directly using the address on this page.",
+    "storedNotNotifiedFailed": "Your message has been stored with the reference above, but notifying the support team failed. Please email us directly using the address on this page so we do not miss it.",
+    "categoryLabel": "What is this about?",
+    "categoryRequired": "Please choose a category.",
+    "category": {
+      "GENERAL": "General enquiry",
+      "SUPPORT": "Technical support",
+      "PARTNERSHIP": "Partnership",
+      "FEEDBACK": "Feedback",
+      "COMPLAINT": "Complaint"
+    },
+    "whatsappOpensChat": "Opens a chat you send yourself. Nothing is sent automatically.",
+    "sending": "Sending...",
+    "sendAnother": "Send another message"
+  },
+  "legal": {
+    "loading": "Loading the current published version...",
+    "versionMeta": "Version {version} · effective {effectiveDate}",
+    "noPublishedVersion": "No version has been published on the platform yet, so the built-in text below is shown. A Platform Administrator must review and publish the official version before this page can be considered the current terms."
+  },
+  "title": "Public site, legal & support",
+  "subtitle": "Contact details shown to visitors, the legal documents they read, and the enquiry inbox.",
+  "tabSettings": "Contact & social",
+  "tabLegal": "Legal content",
+  "tabInbox": "Enquiry inbox",
+  "loading": "Loading...",
+  "loadFailed": "Could not load. Check your connection and try again.",
+  "saveFailed": "Could not save. Check your connection and try again.",
+  "save": "Save",
+  "invalidValue": "This value is not in a format the site can safely use.",
+  "unsetNotice": "An empty value means the detail is not published. Unset phone numbers, WhatsApp numbers and social links are hidden from visitors rather than shown as placeholders, so please only fill in details that are real.",
+  "group": {
+    "PUBLIC_CONTACT": "Public contact details",
+    "PUBLIC_SOCIAL": "Official social media links",
+    "SUPPORT_INTERNAL": "Support routing (never public)"
+  },
+  "documents": "Documents",
+  "draft": "Draft",
+  "published": "Published. Visitors now see this version.",
+  "notPublished": "not published yet",
+  "createDraft": "Create draft",
+  "editDraft": "Edit draft",
+  "selectDocument": "Choose a document to edit, or create a draft for one that does not exist yet.",
+  "draftHeading": "Working copy",
+  "draftExplainer": "Edits change the draft only. Visitors keep reading the published version until you publish.",
+  "draftSaved": "Draft saved. Publish it when you are ready for visitors to see the change.",
+  "reverted": "Earlier version restored into the draft. Publish it to make it live.",
+  "titleLabel": "Title",
+  "effectiveDateLabel": "Effective date",
+  "contentLabel": "Content",
+  "contentFormatNote": "Plain text. Paragraphs are separated by a blank line. HTML is not accepted and is never rendered as markup.",
+  "saveDraft": "Save draft",
+  "publish": "Publish",
+  "history": "Published history",
+  "historyExplainer": "Every published version is kept. Restoring an older version copies it into the draft; it does not erase anything that was published before.",
+  "noVersions": "Nothing has been published yet.",
+  "restoreIntoDraft": "Restore into draft",
+  "newDocumentBody": "Draft placeholder. Replace this text with the reviewed legal content before publishing.",
+  "legalType": {
+    "TERMS": "Terms & Conditions",
+    "PRIVACY": "Privacy Policy",
+    "COOKIE": "Cookie Policy",
+    "SUPPORT_POLICY": "Support Policy"
+  },
+  "filterStatus": "Status",
+  "allStatuses": "All statuses",
+  "inboxEmpty": "No enquiries have been received yet.",
+  "selectMessage": "Select an enquiry to read it.",
+  "retryNotification": "Retry notification",
+  "notification": {
+    "SENT": "Support team notified",
+    "PENDING": "Notification pending",
+    "FAILED": "Notification failed",
+    "NOT_CONFIGURED": "No recipient configured - nobody was notified"
   }
 }

@@ -504,7 +504,8 @@
     "districtScope": "Kiwango cha wilaya",
     "sendAnnouncement": "Tuma tangazo",
     "exportReport": "Hamisha ripoti",
-    "runDataQuality": "Endesha ubora wa data"
+    "runDataQuality": "Endesha ubora wa data",
+    "publicSite": "Tovuti ya umma na sheria"
   },
   "dashboard": {
     "welcomeBack": "Karibu Tena",
@@ -2777,7 +2778,12 @@
     "notStarted": "Haijaanza",
     "overdue": "Imechelewa",
     "cancelled": "Imefutwa",
-    "scheduled": "Imepangwa"
+    "scheduled": "Imepangwa",
+    "NEW": "Mpya",
+    "IN_PROGRESS": "Inaendelea",
+    "AWAITING_RESPONSE": "Inasubiri jibu",
+    "RESOLVED": "Imesuluhishwa",
+    "CLOSED": "Imefungwa"
   },
   "auth": {
     "login": "Ingia",
@@ -6644,6 +6650,10 @@
       "statusTitle": "Hali ya Jukwaa",
       "checking": "Inakaguliwa...",
       "statusLine": "DB: {db} | API: {api}"
+    },
+    "publicSite": {
+      "published": "Published",
+      "publishSuccess": "Imechapishwa. Wageni sasa wanaona toleo hili."
     }
   },
   "admin": {
@@ -9165,5 +9175,86 @@
     "emptyTitle": "Hakuna kitu cha kuonyesha bado",
     "emptyDesc": "Kanzidata huja baada ya shulea kuchapisha matokeo, uhudhurishaji, kozi na mafanikio.",
     "sourceNote": "Kila kitu hapa kinatoka kwenye rekodi za shule ya mtoto wako."
+  },
+  "siteContact": {
+    "messageTooShort": "Tafadhali andika angalau herufi 20 ili tuweze kukusaidia vizuri.",
+    "submitFailed": "Hatukuweza kutuma ujumbe wako. Tafadhali jaribu tena.",
+    "receivedTitle": "Ujumbe umepokelewa",
+    "storedReference": "Kumbukumbu yako ni {reference}. Iweka kwa mazungumzo yoyote yaliyoendelea.",
+    "notified": "Timu yetu ya msaudo imeambishwa na itajibu haraka.",
+    "storedNotNotified": "Ujumbe wako umehifadhiwa kwa kumbukumbu iliyo juu, lakini anwani ya msaudo bado haijasarazishwa, kwa hivyo hakuna aliyeyeambishwa. Tafadhali tutumie barua pepe moja kwa moja kwa anwani iliyo kwenye ukurasa huu.",
+    "storedNotNotifiedFailed": "Ujumbe wako umehifadhiwa kwa kumbukumbu iliyo juu, lakini kumpeleka taarifa kwa timu ya msaudo kumeshindwa. Tafadhali tutumie barua pepe moja kwa moja ili tusikose.",
+    "categoryLabel": "Hili ni kuhusu nini?",
+    "categoryRequired": "Tafadhali chagua kategoria.",
+    "category": {
+      "GENERAL": "Hoji ya kawaida",
+      "SUPPORT": "Msaudo wa kiufunzi",
+      "PARTNERSHIP": "Ushirikiano",
+      "FEEDBACK": "Maoni",
+      "COMPLAINT": "Malalamiko"
+    },
+    "whatsappOpensChat": "Hufungua mazungumzo unayotuma mwenyewe. Hakuna chochote kinachotumwa kiotomatiki.",
+    "sending": "Inatuma...",
+    "sendAnother": "Tuma ujumbe mwingine"
+  },
+  "legal": {
+    "loading": "Inapakia toleo lililochapishwa la sasa...",
+    "versionMeta": "Toleo {version} · linaanza {effectiveDate}",
+    "noPublishedVersion": "Hakuna tofeo lililochapishwa bado kwenye mfumo, kwa hivyo maandishi yaliyojiriwa hapa chini yanaonyeshwa. Msimamizi wa Jukwaa lazima aupithe na achapishie toleo rasmi kabla ya ukurasa huu kukubaliwa kama masharti yanayotumika."
+  },
+  "title": "Tovuti ya umma, sheria na msaudo",
+  "subtitle": "Mawasiliano ya mawasilisho kwa wageni, waraka sheria wanazosoma, na sanduku ya ujumbe.",
+  "tabSettings": "Mawasiliano na mitandao",
+  "tabLegal": "Maudhui ya sheria",
+  "tabInbox": "Sanduku ya ujumbe",
+  "loading": "Inapakia...",
+  "loadFailed": "Haikuwezi kupakia. Angalia muunganisho wako na jaribu tena.",
+  "saveFailed": "Haikuwezi kuhifadhi. Angalia muunganisho wako na jaribu tena.",
+  "save": "Hifadhi",
+  "invalidValue": "Thamani hii si katika muundo ambao tovuti inaweza kutumia kwa usalama.",
+  "unsetNotice": "Thamani tupu maana maelezo hayo hayajaochapishwa. Namba za simu, WhatsApp na viungo vya mitandao ambavyo havijasetwa hufichwa badala ya kuonyeshwa kama mifano, kwa hivyo tafadhali weka tu taarifa halisi.",
+  "group": {
+    "PUBLIC_CONTACT": "Mawasiliano ya umma",
+    "PUBLIC_SOCIAL": "Viungo rasmi vya mitandao ya kijamii",
+    "SUPPORT_INTERNAL": "Usambazaji wa msaudo (ha chapishwi kwa umma)"
+  },
+  "documents": "Waraka",
+  "draft": "Rasimu",
+  "published": "Imechapishwa. Wageni sasa wanaona toleo hili.",
+  "notPublished": "bado haijachapishwa",
+  "createDraft": "Tengeneza rasimu",
+  "editDraft": "Hariri rasimu",
+  "selectDocument": "Chagua waraka kuhariri, au tengeneza rasimu kwa yenye bado haipo.",
+  "draftHeading": "Nakala ya kazi",
+  "draftExplainer": "Mabadiliko yatabadilisha rasimu pekee. Wageni wataendelea kusoma toleo lililochapishwa hadi uchapishwe.",
+  "draftSaved": "Rasimu imehifadhiwa. Chapisha pale unapopelekwa na wageni wauone mabadiliko.",
+  "reverted": "Toleo la awali limerudishwa kwenye rasimu. Chapisha ili kuwa live.",
+  "titleLabel": "Kichwa",
+  "effectiveDateLabel": "Tarehe ya kuanza",
+  "contentLabel": "Yaliyomo",
+  "contentFormatNote": "Maandishi rahisi. Vipara hufuanywa kwa mstari mtu. HTML haipokelewi wala kuonyeshwa kama markup.",
+  "saveDraft": "Hifadhi rasimu",
+  "publish": "Chapisha",
+  "history": "Historia ya vilivyochapishwa",
+  "historyExplainer": "Kila toleo lililochapishwa linahifadhiwa. Kurudisha toleo la awali kunakili kwenye rasimu; hakuna kilichofutwa.",
+  "noVersions": "Hakuna kitu kilichochapishwa bado.",
+  "restoreIntoDraft": "Rudisha kwenye rasimu",
+  "newDocumentBody": "Mahali pa rasimu. Badilisha maandishi haya na maudhui ya sheria yaliyopitiwa kabla ya kuchapisha.",
+  "legalType": {
+    "TERMS": "Masharti na Vigezo",
+    "PRIVACY": "Sera ya Faragha",
+    "COOKIE": "Sera ya Kuki",
+    "SUPPORT_POLICY": "Sera ya Msaudo"
+  },
+  "filterStatus": "Hali",
+  "allStatuses": "Hali zote",
+  "inboxEmpty": "Hakujapokea ujumbe bado.",
+  "selectMessage": "Chagua ujumba ili kuusoma.",
+  "retryNotification": "Jaribu tena kumtaarifa",
+  "notification": {
+    "SENT": "Timu ya msaudo imeambishwa",
+    "PENDING": "Taarifa inasubiri",
+    "FAILED": "Imeshindwa kutumia taarifa",
+    "NOT_CONFIGURED": "Hakuna mpokeaji aliyewekwa - hakuna aliyeyeambishwa"
   }
 }

@@ -81,6 +81,7 @@ const NAV_SECTIONS: NavSection[] = [
   ]},
   { title: "SUPPORT", titleKey: "groupSupport", items: [
     { label: "Cases", labelKey: "cases", href: "/dashboard/platform-admin/support", icon: LifeBuoy },
+    { label: "Public site & legal", labelKey: "publicSite", href: "/dashboard/platform-admin/public-site", icon: Globe },
     { label: "Search", labelKey: "search", href: "/dashboard/platform-admin/search", icon: SearchCode },
   ]},
 ]
