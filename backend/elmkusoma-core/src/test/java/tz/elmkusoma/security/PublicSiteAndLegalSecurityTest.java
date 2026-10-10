@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -229,6 +230,41 @@ class PublicSiteAndLegalSecurityTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.notificationStatus").value("NOT_CONFIGURED"))
                 .andExpect(jsonPath("$.data.reference").exists());
+    }
+
+    /**
+     * The counterpart to the test above: once a recipient is configured, the enquiry must
+     * actually attempt notification.
+     *
+     * <p>Asserted as "not NOT_CONFIGURED" rather than a fixed QUEUED, because the outcome of
+     * handing the message to the async mail worker depends on whether RabbitMQ happens to be
+     * reachable from the test run, which is not what this test is about. What it is about is
+     * that the recipient was resolved and the delivery path was entered. QUEUED and FAILED both
+     * prove that; NOT_CONFIGURED proves the opposite.</p>
+     *
+     * <p>SENT is excluded deliberately: the process can only prove it queued the message.</p>
+     */
+    @Test
+    void contactForm_attemptsDeliveryWhenRecipientIsConfigured() throws Exception {
+        setConfig("support.notify.email", "info@elmkusoma.co.tz");
+        setConfig("support.notify.adminEmail", "");
+
+        MvcResult created = mockMvc.perform(post("/v1/public/contact")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validContact("Habari", "habari@example.com")))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String reference = JsonPath.read(created.getResponse().getContentAsString(), "$.data.reference");
+        String status = contactMessageRepository.findByReferenceAndIsDeletedFalse(reference)
+                .orElseThrow().getNotificationStatus();
+
+        assertNotEquals("NOT_CONFIGURED", status,
+                "a configured recipient must be resolved and delivery attempted");
+        assertNotEquals("SENT", status,
+                "queueing a message cannot prove it was delivered");
+        assertTrue("QUEUED".equals(status) || "FAILED".equals(status),
+                "expected the notification path to have been entered, got: " + status);
     }
 
     @Test
