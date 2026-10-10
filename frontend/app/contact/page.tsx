@@ -162,7 +162,7 @@ export default function ContactPage() {
                     </p>
                     {/* Truthful about delivery. Claiming "we'll reply within 24 hours" when no
                         support address is configured is a promise the platform cannot keep. */}
-                    {receipt.notificationStatus === "SENT" ? (
+                    {(receipt.notificationStatus === "QUEUED" || receipt.notificationStatus === "SENT") ? (
                       <p className="mt-2 max-w-sm text-sm text-muted-foreground">{tSite("notified")}</p>
                     ) : (
                       <p

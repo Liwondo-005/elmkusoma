@@ -168,7 +168,11 @@ public class ContactMessageService {
                         variables,
                         working.getInstitutionId());
             }
-            working.setNotificationStatus("SENT");
+            // QUEUED, not SENT. Publishing hands the message to the async mail worker; whether
+            // that worker can actually reach an SMTP relay is not known here and is not
+            // knowable from this process. Recording SENT would tell a visitor their enquiry
+            // was delivered on the strength of a queue write.
+            working.setNotificationStatus("QUEUED");
             working.setNotificationError(null);
             working.setNotificationAttempts(attempts + 1);
             working.setNotifiedAt(LocalDateTime.now());
@@ -257,7 +261,13 @@ public class ContactMessageService {
         return saved;
     }
 
-    /** Best-effort copy of a reply to the enquirer. Never fails the reply itself. */
+    /**
+     * Best-effort hand-off of a reply to the mail worker.
+     *
+     * <p>Returns false rather than pretending. The value is stored as {@code delivered}, and
+     * a queued message is not a delivered one, so the flag means "handed to the mail
+     * pipeline", never "the enquirer has this in their inbox".</p>
+     */
     private boolean publishReply(ContactMessage message, String body) {
         String recipient = siteSettings.rawValue("support.notify.email");
         if (!PublicSiteSettingsService.isDeliverableAddress(recipient)) {

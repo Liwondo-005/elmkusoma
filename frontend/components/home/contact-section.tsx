@@ -91,7 +91,7 @@ export function ContactSection() {
               {/* Delivery is reported as it actually is. When no support address is
                   configured the enquiry is safely stored but nobody was emailed, and saying
                   "we'll be in touch shortly" there would be a promise the platform cannot keep. */}
-              {receipt.notificationStatus === "SENT" ? (
+              {(receipt.notificationStatus === "QUEUED" || receipt.notificationStatus === "SENT") ? (
                 <p className="mt-2 mx-auto max-w-sm text-sm text-muted-foreground">
                   {tSite("notified")}
                 </p>

@@ -148,7 +148,7 @@ export default function SupportPage() {
                     {/* Previously this page set local state and showed "Message sent! We will
                         get back to you within 24 hours." Nothing was sent at all. The state is
                         now reported as the server reports it. */}
-                    {receipt.notificationStatus !== "SENT" && (
+                    {(receipt.notificationStatus !== "QUEUED" && receipt.notificationStatus !== "SENT") && (
                       <p
                         className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
                         role="status"

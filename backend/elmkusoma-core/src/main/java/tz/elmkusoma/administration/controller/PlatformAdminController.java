@@ -14,16 +14,22 @@ import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.service.PlatformAdminService;
 import tz.elmkusoma.audit.dto.ActivityFeedResponse;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.common.exception.ResourceNotFoundException;
 import tz.elmkusoma.common.PageResponse;
 import tz.elmkusoma.event.dto.EventRequest;
 import tz.elmkusoma.event.dto.EventResponse;
 import tz.elmkusoma.institution.dto.request.CreateInstitutionRequest;
 import tz.elmkusoma.institution.dto.request.UpdateInstitutionRequest;
 import tz.elmkusoma.institution.dto.response.InstitutionResponse;
+import tz.elmkusoma.parent.domain.SupportTicket;
+import tz.elmkusoma.parent.repository.SupportTicketRepository;
+import tz.elmkusoma.parent.domain.SupportTicketMessage;
+import tz.elmkusoma.parent.repository.SupportTicketMessageRepository;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/platform-admin")
@@ -34,6 +40,8 @@ public class PlatformAdminController {
 
     private final PlatformAdminService platformAdminService;
     private final tz.elmkusoma.administration.service.PlatformAccountInvitationService platformAccountInvitationService;
+    private final SupportTicketMessageRepository supportTicketMessageRepository;
+    private final SupportTicketRepository supportTicketRepository;
     private final tz.elmkusoma.administration.service.PlatformCommerceService platformCommerceService;
     private final tz.elmkusoma.certificate.service.CertificateGovernanceService certificateGovernanceService;
     private final tz.elmkusoma.institution.service.InstitutionService institutionService;
@@ -873,6 +881,18 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success("Sweep complete", dataGovernanceService.runSweep(actor)));
     }
 
+    /**
+     * Loads a ticket or reports it missing.
+     *
+     * <p>Called before any thread is read or written so an unknown id is a 404 rather than an
+     * empty thread, which would otherwise read as "this case has no messages yet".</p>
+     */
+    private SupportTicket requireTicket(UUID ticketId) {
+        return supportTicketRepository.findById(ticketId)
+                .filter(t -> !Boolean.TRUE.equals(t.getIsDeleted()))
+                .orElseThrow(() -> new ResourceNotFoundException("SupportTicket", "id", ticketId));
+    }
+
     @GetMapping("/data-governance/quality")
     @Operation(summary = "Data quality checks (live queries)")
     public ResponseEntity<ApiResponse<List<DataQualityCheckResponse>>> dataQuality() {
@@ -886,6 +906,63 @@ public class PlatformAdminController {
             @RequestBody java.util.Map<String, UUID> body) {
         return ResponseEntity.ok(ApiResponse.success("Ticket assigned",
                 platformAdminService.assignSupportTicket(ticketId, body.get("assigneeId"))));
+    }
+
+    /**
+     * Reads a ticket's conversation.
+     *
+     * <p>Platform Admin could list, transition and assign tickets but had no way to read the
+     * thread, so a case could be triaged in the abstract and never actually read. This closes
+     * that gap against the existing {@code support_ticket_messages} table rather than
+     * introducing a second messaging model.</p>
+     *
+     * <p>Internal notes are visible here and only here. The parent-facing read path in
+     * {@code ParentSelfController} serves the ticket's own requester, so an internal note must
+     * not be part of what it returns - that filtering is enforced in its service.</p>
+     */
+    @GetMapping("/support/tickets/{ticketId}/messages")
+    @Operation(summary = "Read a support ticket's conversation, internal notes included")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> supportTicketMessages(
+            @PathVariable UUID ticketId) {
+        // Confirms the ticket exists and is readable before its thread is disclosed.
+        requireTicket(ticketId);
+        List<Map<String, Object>> messages = supportTicketMessageRepository
+                .findByTicketIdAndIsDeletedFalseOrderByCreatedAtAsc(ticketId).stream()
+                .map(m -> Map.<String, Object>of(
+                        "id", m.getId(),
+                        "senderId", String.valueOf(m.getSenderId()),
+                        "message", m.getMessage(),
+                        "internal", Boolean.TRUE.equals(m.getIsInternal()),
+                        "createdAt", String.valueOf(m.getCreatedAt())))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(messages));
+    }
+
+    @PostMapping("/support/tickets/{ticketId}/messages")
+    @Operation(summary = "Reply to a support ticket, or record an internal note")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> addSupportTicketMessage(
+            @PathVariable UUID ticketId,
+            @RequestBody java.util.Map<String, Object> body,
+            HttpServletRequest request) {
+        SupportTicket ticket = requireTicket(ticketId);
+        String text = body.get("message") == null ? null : String.valueOf(body.get("message"));
+        if (text == null || text.isBlank() || text.length() > 5000) {
+            throw new IllegalArgumentException("A reply must be between 1 and 5000 characters");
+        }
+        // "internal" is parsed defensively: a non-boolean body value must not silently become
+        // an internal note, nor silently become a customer-visible reply by accident.
+        boolean internal = Boolean.parseBoolean(String.valueOf(body.get("internal")));
+
+        SupportTicketMessage saved = supportTicketMessageRepository.save(
+                SupportTicketMessage.builder()
+                        .ticketId(ticket.getId())
+                        .senderId(actorId(request))
+                        .message(text.trim())
+                        .isInternal(internal)
+                        .build());
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "id", saved.getId(),
+                "internal", Boolean.TRUE.equals(saved.getIsInternal()))));
     }
 
     @GetMapping("/admins")

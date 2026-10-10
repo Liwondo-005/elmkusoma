@@ -38,13 +38,19 @@ export interface ContactSubmission {
 }
 
 /**
- * What the server actually reports about delivery.
+ * What the server actually recorded about notification.
  *
  * NOT_CONFIGURED means the enquiry is stored but no support address is set, so nobody was
- * emailed. The form must say so rather than claim the message was sent — that distinction is
- * the whole reason this endpoint returns the field.
+ * emailed. QUEUED means the message was handed to the async mail worker — which is not proof
+ * that it reached anybody, and is deliberately not reported as "sent". The form must not claim
+ * delivery it cannot see; that distinction is the whole reason this endpoint returns the field.
  */
-export type NotificationStatus = "NOT_CONFIGURED" | "PENDING" | "SENT" | "FAILED"
+export type NotificationStatus =
+  | "NOT_CONFIGURED"
+  | "PENDING"
+  | "QUEUED"
+  | "SENT"
+  | "FAILED"
 
 export interface ContactReceipt {
   reference: string

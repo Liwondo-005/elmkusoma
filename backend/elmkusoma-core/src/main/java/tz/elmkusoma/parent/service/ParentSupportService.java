@@ -76,7 +76,9 @@ public class ParentSupportService {
     }
 
     public List<SupportTicketMessage> getMessages(UUID ticketId) {
-        return messageRepository.findByTicketIdAndIsDeletedFalseOrderByCreatedAtAsc(ticketId);
+        // Excludes internal notes. This is the requester's view of their own ticket; staff
+        // notes about them are not theirs to read. Previously every message was returned here.
+        return messageRepository.findVisibleToRequester(ticketId);
     }
 
     @Transactional
@@ -90,7 +92,7 @@ public class ParentSupportService {
     }
 
     private SupportTicketItem toTicketItem(SupportTicket t) {
-        long msgCount = messageRepository.countByTicketIdAndIsDeletedFalse(t.getId());
+        long msgCount = messageRepository.countVisibleToRequester(t.getId());
         return SupportTicketItem.builder()
                 .id(t.getId().toString())
                 .subject(t.getSubject())

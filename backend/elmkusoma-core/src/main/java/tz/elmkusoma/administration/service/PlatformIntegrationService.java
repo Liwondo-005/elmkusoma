@@ -50,6 +50,19 @@ public class PlatformIntegrationService {
     private String paymentWebhookSecret;
     @Value("${spring.mail.host:}")
     private String mailHost;
+
+    @Value("${spring.mail.port:25}")
+    private int mailPort;
+
+    /**
+     * Presence only. Never read into a response, a log line or an audit detail - only its
+     * presence or absence is ever reported.
+     */
+    @Value("${spring.mail.username:}")
+    private String mailUsername;
+
+    @Value("${spring.mail.password:}")
+    private String mailPassword;
     @Value("${file.upload.dir:${user.dir}/uploads}")
     private String uploadDir;
 
@@ -90,11 +103,44 @@ public class PlatformIntegrationService {
                         + (configStatus.equals("NOT_CONFIGURED") ? " — webhook secret not configured" : "");
             }
             case "email" -> {
-                configStatus = (mailHost != null && !mailHost.isBlank()) ? "CONFIGURED" : "NOT_CONFIGURED";
-                connection = "UNKNOWN";
-                detail = configStatus.equals("CONFIGURED")
-                        ? "SMTP host configured (" + mailHost + ") — delivery requires provider logs"
-                        : "No SMTP host configured — email delivery unavailable";
+                // Email gets a richer status than "is a string present".
+                //
+                // application.yml defaults spring.mail.host to localhost so that a developer
+                // can run MailHog/Mailpit without setting anything. Reading that default as
+                // CONFIGURED told an operator email was ready for production when nothing
+                // external was reachable at all. A development sink is now reported as
+                // NOT_CONFIGURED for production purposes, with the reason stated.
+                boolean hostPresent = mailHost != null && !mailHost.isBlank();
+                boolean devSink = hostPresent && isDevelopmentMailSink(mailHost);
+                boolean credentialsPresent = mailUsername != null && !mailUsername.isBlank()
+                        && mailPassword != null && !mailPassword.isBlank();
+
+                if (!hostPresent) {
+                    configStatus = "NOT_CONFIGURED";
+                    connection = "UNKNOWN";
+                    detail = "No SMTP host configured — contact enquiries are stored but nobody is emailed";
+                } else if (devSink) {
+                    configStatus = "NOT_CONFIGURED";
+                    connection = "UNKNOWN";
+                    detail = "spring.mail.host is the development default (" + describeHost(mailHost)
+                            + ") — not a production mail service. Set SPRING_MAIL_HOST to a real provider.";
+                } else if (!credentialsPresent) {
+                    configStatus = "CONFIGURED_UNVERIFIED";
+                    connection = "UNKNOWN";
+                    detail = "SMTP host set (" + describeHost(mailHost) + ") but no username/password"
+                            + " — delivery is unauthenticated and unverified";
+                } else {
+                    // Socket-level reachability only. Opening a TCP connection to the SMTP port
+                    // and reading its banner never sends a message, so a probe cannot mail a
+                    // customer. It proves the port answers, not that credentials or a relay
+                    // are correct, so that stays CONFIGURED_UNVERIFIED rather than HEALTHY.
+                    String tcp = probeTcpHostPort(mailHost, mailPort);
+                    connection = tcp;
+                    configStatus = "Operational".equalsIgnoreCase(tcp) ? "CONFIGURED_UNVERIFIED" : "FAILED";
+                    detail = "SMTP host " + describeHost(mailHost) + ":" + mailPort
+                            + " reachable=" + !"Failing".equalsIgnoreCase(tcp)
+                            + " (credentials present, not exercised)";
+                }
             }
             case "sms" -> {
                 configStatus = "NOT_CONFIGURED";
@@ -233,6 +279,65 @@ public class PlatformIntegrationService {
         } catch (Exception e) {
             return "Failing";
         }
+    }
+
+    /**
+     * True for hosts that only exist to capture mail in development.
+     *
+     * <p>application.yml ships {@code spring.mail.host: localhost} so a developer needs no
+     * configuration to see outgoing mail. That default is not evidence that production
+     * email works, and reporting it as CONFIGURED is how an operator ends up believing a
+     * deployment can send mail when it cannot.</p>
+     */
+    private static boolean isDevelopmentMailSink(String host) {
+        String h = host.trim().toLowerCase(java.util.Locale.ROOT);
+        return h.equals("localhost")
+                || h.equals("127.0.0.1")
+                || h.equals("::1")
+                || h.equals("0.0.0.0")
+                || h.equals("mailhog")
+                || h.equals("mailpit")
+                || h.endsWith(".mailhog")
+                || h.endsWith(".mailpit");
+    }
+
+    /**
+     * Socket-level reachability check against host:port.
+     *
+     * <p>Connects and reads the SMTP greeting, then closes. No message is transmitted, so a
+     * health check can never mail a real person. It cannot prove credentials or relay
+     * behaviour, which is why callers must not read "Operational" as full delivery health.</p>
+     */
+    private static String probeTcpHostPort(String host, int port) {
+        try {
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(host, port), 2000);
+                // The 220 greeting proves an SMTP service answered, not just a stray open port.
+                socket.setSoTimeout(2000);
+                try (java.io.InputStream in = socket.getInputStream()) {
+                    String banner = new String(in.readNBytes(3), java.nio.charset.StandardCharsets.US_ASCII);
+                    return banner.startsWith("220") ? "Operational" : "Degraded";
+                }
+            }
+        } catch (java.io.IOException | RuntimeException e) {
+            return "Failing";
+        }
+    }
+
+    /**
+ * Describes an SMTP host for a probe detail.
+ *
+     * <p>{@link #redact} parses a URL and renders a bare hostname as {@code null://***}, which
+     * is both useless and misleading in an SMTP context. A mail hostname is not a secret, but
+     * it is operator-supplied input that ends up in a persisted, admin-visible field, so it is
+     * accepted only when it looks like a hostname and reduced to {@code ***} otherwise.</p>
+     */
+    private static String describeHost(String host) {
+        if (host == null) {
+            return "***";
+        }
+        String trimmed = host.trim();
+        return trimmed.matches("^[A-Za-z0-9.\\-]{1,255}$") ? trimmed : "***";
     }
 
     private String redact(String url) {
