@@ -8,7 +8,7 @@ import {
   AlertTriangle, BarChart3, Database, Globe, Zap, Package, Radio,
   MessageSquare, ShieldCheck, Key, BookOpen, Calendar, Image as ImageIcon,
   Library, SearchCode, LifeBuoy, Plug, HardDrive, FileSearch, Layers,
-  Building2, GraduationCap, Mic2
+  Building2, GraduationCap, Mic2, Newspaper
 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
@@ -59,6 +59,9 @@ const NAV_SECTIONS: NavSection[] = [
   ]},
   { title: "COMMUNICATION", titleKey: "groupCommunication", items: [
     { label: "Notifications", labelKey: "notifications", href: "/dashboard/platform-admin/communications", icon: MessageSquare },
+    // Public news sits here rather than under Support: it is editorial publishing, not case
+    // handling, and this is the group an editor already looks in.
+    { label: "News", labelKey: "news", href: "/dashboard/platform-admin/news", icon: Newspaper },
   ]},
   { title: "INTELLIGENCE", titleKey: "groupIntelligence", items: [
     { label: "Analytics", labelKey: "analytics", href: "/dashboard/platform-admin/analytics", icon: BarChart3 },
