@@ -50,17 +50,18 @@ public class ProviderController {
 /**
  * Platform approval: verify or revoke a provider.
  *
- * <p>Role set unchanged. Narrowing this to platform ADMIN was considered and rejected: the
- * existing {@code NfeProviderStackIsolationTest.verificationEndpointSetsVerifiedFlag} asserts
- * a PROVIDER_ADMIN verifying its own provider succeeds, so provider self-verification is a
- * deliberate, tested part of the current contract rather than an oversight. It stays within
- * the provider's own tenant, so it is not a cross-provider access hole. Whether verification
- * should be separable from provider self-service is a product decision, not a defect to fix
- * unilaterally - flagged in the audit report instead.</p>
- */
+ * <p>Platform ADMIN only. This previously also accepted INSTITUTION_ADMIN and PROVIDER_ADMIN,
+ * which let a provider flip {@code is_verified} on its own provider record - self-approval of
+ * the trust decision verification represents, and a second way around the real review workflow
+ * in {@code /v1/verifications}. The operation summary always described it as platform approval;
+ * the role list was the part that was wrong.</p>
+ *
+ * <p>Previously-asserted provider self-verification is now a 403 by decision, not oversight:
+ * see {@code ProviderAdminProvisioningSecurityTest}.</p>
+     */
     @PutMapping("/{id}/verification")
     @Operation(summary = "Platform approval: verify or revoke a provider")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTITUTION_ADMIN', 'PROVIDER_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ProviderResponse>> setVerification(
             @RequestAttribute UUID institutionId,
             @PathVariable UUID id,
