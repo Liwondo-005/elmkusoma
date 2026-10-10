@@ -102,8 +102,13 @@ test.describe("public news", () => {
     // The article must actually be listed, not merely reachable by direct URL.
     await expect(page.getByRole("heading", { name: "E2E archive headline" })).toBeVisible()
 
-    await page.getByRole("link", { name: /E2E archive headline/ }).first().click()
-    await expect(page).toHaveURL(new RegExp(`/news/${published.slug}$`))
+    // Click through rather than navigating directly: this is what proves the card is a real link
+    // to the article, which a direct goto would not exercise.
+    const card = page.getByRole("link", { name: /E2E archive headline/ }).first()
+    await expect(card).toBeVisible()
+    await expect(card).toHaveAttribute("href", /\/news\/e2e-archive-headline$/)
+    await card.click()
+    await expect(page).toHaveURL(new RegExp(`/news/e2e-archive-headline$`))
 
     // Shareable: a refresh on the same URL re-renders the article.
     await page.reload()

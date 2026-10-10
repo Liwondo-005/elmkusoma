@@ -128,6 +128,24 @@
             <version>2.0.24</version>
         </dependency>
 
+        <!--
+          HTML sanitiser for news article bodies.
+
+          This is the first sanitiser dependency in this build. News content previously refused HTML
+          outright and was rendered as React text nodes, which makes stored XSS structurally
+          impossible but also means editors cannot bold or link anything. Public news needs real
+          formatting, so the trade changes: allow a conservative tag and attribute allowlist server
+          side, sanitise on write, and render the stored result as markup.
+
+          The allowlist is deny-by-default (Jsoup Safelist), so a tag or attribute that is not named
+          is stripped rather than filtered by a blacklist that could miss a variant.
+        -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.1</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

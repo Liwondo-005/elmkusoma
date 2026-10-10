@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { ArrowLeft, Newspaper } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
-import { formatNewsDate, newsApi, type NewsArticleView } from "@/lib/news-api"
+import { containsMarkup, formatNewsDate, newsApi, type NewsArticleView } from "@/lib/news-api"
 import { isApiError } from "@/lib/fetch"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -121,18 +121,35 @@ export default function NewsArticlePage() {
                 {article.authorName && <span>{article.authorName}</span>}
               </div>
 
-              {/* Plain text only. See the class comment for why there is no HTML rendering here. */}
-              <div className="mt-8 space-y-4">
-                {(article.body ?? "")
-                  .split(/\n\s*\n/)
-                  .map((block) => block.trim())
-                  .filter((block) => block.length > 0)
-                  .map((paragraph, index) => (
-                    <p key={index} className="leading-relaxed text-foreground">
-                      {paragraph}
-                    </p>
-                  ))}
-              </div>
+              {/*
+                The only place in this codebase that renders markup, and it is the only place that
+                is allowed to: the body arrives sanitised from NewsContentSanitizer, which cleans
+                it against a deny-by-default tag/attribute allowlist on write and validates every
+                link href. Anything not on that list never reaches this component.
+
+                Defence in depth rather than a single barrier - if the sanitiser were ever removed,
+                this would still be the only exposure, which is worth knowing when changing either
+                side. Content that came from anywhere other than /v1/public/news/{slug} must never
+                be passed through here.
+              */}
+              {article.body && containsMarkup(article.body) ? (
+                <div
+                  className="news-body mt-8 space-y-4"
+                  dangerouslySetInnerHTML={{ __html: article.body }}
+                />
+              ) : (
+                <div className="mt-8 space-y-4">
+                  {(article.body ?? "")
+                    .split(/\n\s*\n/)
+                    .map((block) => block.trim())
+                    .filter((block) => block.length > 0)
+                    .map((paragraph, index) => (
+                      <p key={index} className="leading-relaxed text-foreground">
+                        {paragraph}
+                      </p>
+                    ))}
+                </div>
+              )}
             </div>
           )}
         </article>

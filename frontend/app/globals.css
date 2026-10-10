@@ -300,3 +300,64 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Article prose for sanitised news bodies.
+ *
+ * Scoped to .news-body rather than applied globally: the server's allowlist permits only
+ * formatting tags, so every rule here is presentation for a tag that is already known to be
+ * safe. Nothing here can introduce an element that escaped sanitisation - these selectors only
+ * describe what the markup already is.
+ */
+@layer components {
+  .news-body p {
+    @apply leading-relaxed text-foreground;
+  }
+  .news-body h2 {
+    @apply mt-8 text-2xl font-bold tracking-tight text-foreground;
+  }
+  .news-body h3 {
+    @apply mt-6 text-xl font-semibold tracking-tight text-foreground;
+  }
+  .news-body h4 {
+    @apply mt-5 text-lg font-semibold text-foreground;
+  }
+  .news-body strong,
+  .news-body b {
+    @apply font-semibold text-foreground;
+  }
+  .news-body em,
+  .news-body i {
+    @apply italic;
+  }
+  .news-body u {
+    @apply underline underline-offset-4;
+  }
+  .news-body ul {
+    @apply ml-5 list-disc space-y-1.5 text-foreground;
+  }
+  .news-body ol {
+    @apply ml-5 list-decimal space-y-1.5 text-foreground;
+  }
+  .news-body li::marker {
+    @apply text-primary;
+  }
+  .news-body blockquote {
+    @apply border-l-4 border-primary/40 pl-4 italic text-muted-foreground;
+  }
+  .news-body a {
+    @apply font-medium text-primary underline underline-offset-4 hover:text-primary/80;
+  }
+  .news-body code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-sm text-foreground;
+  }
+  .news-body pre {
+    @apply overflow-x-auto rounded-lg bg-muted p-4 text-sm;
+  }
+  .news-body pre code {
+    @apply bg-transparent p-0;
+  }
+  .news-body hr {
+    @apply my-8 border-border;
+  }
+}

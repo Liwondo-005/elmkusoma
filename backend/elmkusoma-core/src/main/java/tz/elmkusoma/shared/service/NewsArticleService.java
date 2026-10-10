@@ -57,20 +57,12 @@ public class NewsArticleService {
     /** Bounded collision retries, mirroring the reference generator in ContactMessageService. */
     private static final int SLUG_ATTEMPTS = 8;
 
-    /**
-     * A tag-shaped construct: an opening or closing angle bracket immediately followed by a tag
-     * name and eventually a closing bracket.
-     *
-     * <p>No whitespace is allowed between {@code <} and the tag name, which is what keeps ordinary
-     * prose safe - "grades below &lt; 5" and "a &lt; b &gt; c" are not tag-shaped, while
-     * {@code <script>}, {@code </p>} and {@code <img src=x>} all are. Requiring the closing
-     * bracket also means a stray unmatched {@code <} in prose is left alone.</p>
-     *
-     * <p>The client already renders bodies as React text nodes, so stored markup could never
-     * execute; this is the second of the two barriers, enforced at the boundary rather than
-     * assumed downstream.</p>
-     */
-    private static final Pattern TAG_LIKE = Pattern.compile("</?[a-zA-Z][a-zA-Z0-9]*(\\s[^<>]*)?/?>");
+/**
+     * Tags that survive sanitisation. Body text is sanitised on write rather than rejected, so
+     * editors can format; see {@link NewsContentSanitizer} for what the allowlist permits and why
+     * it is deny-by-default.
+ */
+    private final NewsContentSanitizer sanitizer;
 
     private final NewsArticleRepository repository;
     private final PublicSiteSettingsService siteSettings;
@@ -136,7 +128,9 @@ public class NewsArticleService {
         NewsArticle article = NewsArticle.builder()
                 .title(request.getTitle().trim())
                 .summary(request.getSummary().trim())
-                .body(request.getBody())
+                // Sanitised on write, so what is stored is already safe. The public endpoint serves
+                // this column verbatim rather than re-cleaning on every read.
+                .body(sanitizer.sanitize(request.getBody()))
                 .slug(resolveSlug(request.getSlug(), request.getTitle()))
                 .category(trimToNull(request.getCategory()))
                 .coverImageUrl(trimToNull(request.getCoverImageUrl()))
@@ -165,7 +159,7 @@ public class NewsArticleService {
 
         article.setTitle(request.getTitle().trim());
         article.setSummary(request.getSummary().trim());
-        article.setBody(request.getBody());
+        article.setBody(sanitizer.sanitize(request.getBody()));
         // An article that already has a URL keeps it. Re-deriving the slug on every edit would
         // silently break any link already shared for the article.
         if (blankToNull(request.getSlug()) != null) {
@@ -357,9 +351,6 @@ public class NewsArticleService {
         requireLength("Title", request.getTitle(), MAX_TITLE_LENGTH);
         requireLength("Summary", request.getSummary(), MAX_SUMMARY_LENGTH);
         requireLength("Body", request.getBody(), MAX_BODY_LENGTH);
-        requirePlainText("Title", request.getTitle());
-        requirePlainText("Summary", request.getSummary());
-        requirePlainText("Body", request.getBody());
 
         if (request.getExpiresAt() != null && request.getScheduledAt() != null
                 && !request.getExpiresAt().isAfter(request.getScheduledAt())) {
@@ -479,13 +470,6 @@ public class NewsArticleService {
                     action, before, snapshot(article));
         } catch (Exception ex) {
             log.warn("Audit write failed for NEWS_ARTICLE {} {}: {}", action, article.getId(), ex.getMessage());
-        }
-    }
-
-    private static void requirePlainText(String field, String value) {
-        if (TAG_LIKE.matcher(value).find()) {
-            throw new IllegalArgumentException(
-                    field + " must be plain text. HTML markup is not accepted in news content.");
         }
     }
 

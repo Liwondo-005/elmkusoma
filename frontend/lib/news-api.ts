@@ -67,6 +67,12 @@ export const newsApi = {
     appFetch<NewsArticleView>(`/v1/public/news/${encodeURIComponent(slug)}`),
 }
 
+/** Mirrors NewsContentSanitizer.containsMarkup on the server. */
+export function containsMarkup(value: string | undefined): boolean {
+  if (!value) return false
+  return /<\s*\/?\s*[a-zA-Z][^>]*>/.test(value)
+}
+
 /** Formats an ISO timestamp for display, falling back to the raw value if unparseable. */
 export function formatNewsDate(iso: string | undefined, locale: string): string {
   if (!iso) return ""

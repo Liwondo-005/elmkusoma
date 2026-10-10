@@ -2673,7 +2673,9 @@
       "duplicate": "Tayari kuna sehemu saa {time}.",
       "added": "Sehemu {title} imeongezwa",
       "removed": "Sehemu imeondolewa"
-    }
+    },
+    "colAverage": "Wastani",
+    "colRemarks": "Maelezo"
   },
   "profile": {
     "title": "Wasifu",
@@ -6725,7 +6727,7 @@
       "fieldSummary": "Muhtasari",
       "fieldSummaryHint": "Inaonyeshwa kwenye kadi na orodha. Upeo wa herufi 500.",
       "fieldBody": "Maandishi kamili",
-      "fieldBodyHint": "Maandishi rahisi. Acha mstari mrefu kati ya vipara. HTML hairuhusiwi.",
+      "fieldBodyHint": "Maandishi yenye muundo yanakubaliwa na kusafiwa: herufi nzito, mitala, vichwa, orodha, viungo na manukuu yanabaki; maandishi ya script, mframes na vitendakazi vinavyotengeneza matukio vinachondolewa.",
       "fieldSlug": "Sehemu ya URL",
       "fieldSlugHint": "Acha tupu ili kutengenezwa kutoka kichwa. Maneno madogo yaliyounganishwa kwa mstari.",
       "fieldSlugPlaceholder": "muaka-wa-kwanza-unanza-januari",
@@ -6737,7 +6739,7 @@
       "fieldExpires": "Inaisha",
       "fieldExpiresHint": "Baada ya wakati huu makala hutoka kwenye tovuti kiotomatiki.",
       "fieldCover": "URL ya picha ya kichwa",
-      "fieldCoverHint": "Si lazima. Lazima ianze na http://, https:// au /. Acha tupu kwa picha ya kawaida.",
+      "fieldCoverHint": "Pakia picha (png, jpg, webp au gif, hadi 5 MB) au bandika URL iliyopo. SVG haikubaliwi kwa sababu inaweza kubeba script.",
       "fieldCoverPlaceholder": "https://… au /v1/content/courses/cover.jpg",
       "priorityNormal": "Kawaida",
       "priorityImportant": "Muhimu",
@@ -6783,7 +6785,13 @@
       "expiresAt": "Inaisha {date}",
       "lastModifiedBy": "Na {who}",
       "paginationLabel": "Kurasa za makala",
-      "pageOf": "Ukurasa {page} kati ya {total}"
+      "pageOf": "Ukurasa {page} kati ya {total}",
+      "previous": "Iliyotangulia",
+      "next": "Ifuatayo",
+      "uploadingCover": "Inapakia picha ya kichwa…",
+      "uploadFailed": "Hatukuweza kupakia picha ya kichwa.",
+      "coverPreviewAlt": "Picha ya kichwa iliyochaguliwa",
+      "clearCover": "Ondoa picha ya kichwa"
     }
   },
   "admin": {
@@ -8526,7 +8534,9 @@
     "connectionQualityPoor": "Duni",
     "connectionQualityGood": "Nzuri",
     "connectionQualityExcellent": "Bora sana",
-    "connectionQualityUnknown": "Inapima"
+    "connectionQualityUnknown": "Inapima",
+    "playerLiveScreenAria": "Skrini ya moja kwa moja",
+    "playerYourScreenAria": "Skrini yako"
   },
   "categories": {
     "admin": "Admin",
@@ -9352,5 +9362,21 @@
     "pageOf": "Ukurasa {page} kati ya {total}",
     "previous": "Iliyotangulia",
     "next": "Ifuatayo"
+  },
+  "status": {
+    "active": "Imefunguliwa",
+    "inactive": "Imezimwa",
+    "scheduled": "Imepangwa",
+    "cancelled": "Imeghairiwa",
+    "completed": "Imekamilika",
+    "overdue": "Imepitwa na wakati",
+    "submitted": "Imewasilishwa",
+    "notStarted": "Haijaanza",
+    "present": "Ipo",
+    "absent": "Hayakuja",
+    "late": "Imchelewa",
+    "excused": "Imetolewa",
+    "pending": "Inasubiri",
+    "inProgress": "Inaendelea"
   }
 }

@@ -32,6 +32,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,6 +71,9 @@ class NewsArticleSecurityTest {
 
     @Autowired
     private tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
+
+    @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     private String platformToken;
     private String institutionAdminToken;
@@ -505,27 +510,100 @@ class NewsArticleSecurityTest {
     // ── content safety ─────────────────────────────────────────────────────────────────────
 
     @Test
-    void markupInSummaryIsRejected() throws Exception {
-        String body = articleJson("Title is fine", "Summary is fine")
-                .replaceFirst("\\\"summary\\\":\\\"Summary[^\\\"]*\\\"",
-                        "\"summary\":\"Summary with <script>alert(1)</script>\"");
+    void scriptTagsAreStrippedFromTheStoredBody() throws Exception {
+        // Sanitisation, not rejection: the article is saved, and what is stored must contain no
+        // executable markup. Asserting on the stored body is what makes this meaningful - a test
+        // that only checked the HTTP status would pass even if the script tag had been persisted.
+        String body = "{\"title\":\"Formatted\",\"summary\":\"S\","
+                + "\"body\":\"<p>Safe text</p><script>alert(1)</script>\"}";
 
-        mockMvc.perform(post("/v1/platform-admin/news")
+        String created = mockMvc.perform(post("/v1/platform-admin/news")
                         .header("Authorization", "Bearer " + platformToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String stored = JsonPath.read(created, "$.data.body");
+        assertFalse(stored.toLowerCase(java.util.Locale.ROOT).contains("<script"),
+                "a script tag must never survive into the stored body: " + stored);
+        assertTrue(stored.contains("Safe text"),
+                "sanitisation must keep the surrounding text, not discard the whole body");
     }
 
     @Test
-    void scriptTagInBodyIsRejectedOutright() throws Exception {
-        String body = "{\"title\":\"T\",\"summary\":\"S\",\"body\":\"<script>alert(1)</script>\"}";
+    void allowedFormattingIsPreserved() throws Exception {
+        String body = "{\"title\":\"Formatted\",\"summary\":\"S\",\"body\":"
+                + "\"<p>Read <strong>this</strong> and <a href=\\\"https://example.org/a\\\">this link</a>.</p>\"}";
 
-        mockMvc.perform(post("/v1/platform-admin/news")
+        String created = mockMvc.perform(post("/v1/platform-admin/news")
                         .header("Authorization", "Bearer " + platformToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String stored = JsonPath.read(created, "$.data.body");
+        assertTrue(stored.contains("<strong>"), "bold must survive: " + stored);
+        assertTrue(stored.contains("href=\"https://example.org/a\""), "safe links must survive: " + stored);
+    }
+
+    @Test
+    void xssCorpusIsNeutralised() throws Exception {
+        // Each payload is something that executes if the allowlist leaks. Asserted on the stored
+        // value, because a 201 alone would say nothing about what was actually persisted.
+        String[] payloads = {
+                "<img src=x onerror=alert(1)>",
+                "<a href=\"javascript:alert(1)\">click</a>",
+                "<a href=\"JaVaScRiPt:alert(1)\">click</a>",
+                "<a href=\"java\nscript:alert(1)\">click</a>",
+                "<iframe src=\"https://evil.example\"></iframe>",
+                "<style>body{display:none}</style>",
+                "<object data=\"x\"></object>",
+                "<svg onload=alert(1)></svg>",
+                "<div style=\"background:url(javascript:alert(1))\">x</div>",
+                "<form action=\"https://evil.example\"><input name=a></form>",
+                "<a href=\"https://ok.example\" target=\"_blank\" onclick=\"alert(1)\">x</a>",
+                "<p onmouseover=\"alert(1)\">x</p>",
+                "<body onload=alert(1)>",
+                "<math><mtext><script>alert(1)</script></mtext></math>",
+        };
+
+        for (int index = 0; index < payloads.length; index++) {
+            String payload = payloads[index];
+            // Serialised through Jackson rather than concatenated: one of the payloads contains a
+            // literal newline, and hand-built JSON with an unescaped control character is invalid,
+            // which would have tested the JSON parser rather than the sanitiser.
+            //
+            // Each title is unique because the slug is derived from it, and fourteen identical
+            // titles would exhaust the collision suffixes and fail for the wrong reason.
+            String requestJson = objectMapper.writeValueAsString(java.util.Map.of(
+                    "title", "Corpus case " + index,
+                    "summary", "S",
+                    "body", payload));
+
+            String created = mockMvc.perform(post("/v1/platform-admin/news")
+                            .header("Authorization", "Bearer " + platformToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestJson))
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString();
+
+            String stored = JsonPath.<String>read(created, "$.data.body")
+                    .toLowerCase(java.util.Locale.ROOT);
+
+            assertFalse(stored.contains("onerror"), "event handler survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("onload"), "event handler survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("onclick"), "event handler survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("onmouseover"), "event handler survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("javascript:"), "javascript: survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("<script"), "script tag survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("<iframe"), "iframe survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("<object"), "object survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("<svg"), "svg survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("<style"), "style tag survived for: " + payload + " -> " + stored);
+            assertFalse(stored.contains("<form"), "form survived for: " + payload + " -> " + stored);
+        }
     }
 
     @Test
@@ -679,6 +757,91 @@ class NewsArticleSecurityTest {
                     "identical articles must not reshuffle between requests");
         }
         assertEquals(3, first.size());
+    }
+
+    // ── cover image upload ──────────────────────────────────────────────────────────────────
+
+    @Test
+    void platformAdminCanUploadACoverImage() throws Exception {
+        byte[] png = new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0};
+
+        String body = mockMvc.perform(multipart("/v1/platform-admin/news/cover")
+                        .file(new org.springframework.mock.web.MockMultipartFile("file", "cover.png",
+                                "image/png", png))
+                        .header("Authorization", "Bearer " + platformToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.url").value(org.hamcrest.Matchers.startsWith("/v1/content/news-covers/")))
+                .andReturn().getResponse().getContentAsString();
+
+        // The returned URL must actually serve, or the admin has been handed a broken image.
+        String url = JsonPath.read(body, "$.data.url");
+        mockMvc.perform(get(url))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"));
+    }
+
+    @Test
+    void svgIsRefusedBecauseItCanCarryScript() throws Exception {
+        byte[] svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>"
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        mockMvc.perform(multipart("/v1/platform-admin/news/cover")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "cover.svg", "image/svg+xml", svg))
+                        .header("Authorization", "Bearer " + platformToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void aFileWhoseBytesAreNotAnImageIsRefused() throws Exception {
+        // Named .png, declared image/png, but actually HTML. The extension and content-type checks
+        // would both pass; only looking at the bytes catches this.
+        byte[] html = "<html><script>alert(1)</script></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        mockMvc.perform(multipart("/v1/platform-admin/news/cover")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "cover.png", "image/png", html))
+                        .header("Authorization", "Bearer " + platformToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void nonImageContentTypeIsRefused() throws Exception {
+        mockMvc.perform(multipart("/v1/platform-admin/news/cover")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "cover.png", "text/html", "<html></html>".getBytes()))
+                        .header("Authorization", "Bearer " + platformToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void onlyPlatformAdminMayUploadACover() throws Exception {
+        byte[] png = new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+
+        mockMvc.perform(multipart("/v1/platform-admin/news/cover")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "cover.png", "image/png", png)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(multipart("/v1/platform-admin/news/cover")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "cover.png", "image/png", png))
+                        .header("Authorization", "Bearer " + institutionAdminToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void coverServingRejectsPathTraversal() throws Exception {
+        // Asserted as 400/404 specifically rather than is4xxClientError(): a generic 4xx assertion
+        // also passes on 405, which is what an unmapped path returns - so the original version of
+        // this test would have passed while the endpoint did not exist at all.
+        mockMvc.perform(get("/v1/content/news-covers/..%2F..%2F..%2Fapplication.properties"))
+                .andExpect(result -> assertTrue(
+                        result.getResponse().getStatus() == 400 || result.getResponse().getStatus() == 404,
+                        "traversal must be refused, got " + result.getResponse().getStatus()));
+        mockMvc.perform(get("/v1/content/news-covers/not-a-uuid.png"))
+                .andExpect(status().isBadRequest());
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────────────────

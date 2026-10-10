@@ -1135,6 +1135,35 @@ revertLegalDocument: (id: string, version: number) =>
   deleteNewsArticle: (id: string) =>
     platformFetch<void>(`/v1/platform-admin/news/${id}`, { method: "DELETE" }),
 
+  /**
+   * Uploads a cover image and returns its public URL.
+   *
+   * <p>Not JSON: this is multipart, so it bypasses platformFetch rather than being bent to fit
+   * its Content-Type. The error is reshaped to match platformFetch's `API <status>: <detail>` form
+   * so callers can treat both transports the same way.</p>
+   */
+  uploadNewsCover: async (file: File): Promise<string> => {
+    const token = getToken()
+    const institutionId = getInstitutionId()
+    const form = new FormData()
+    form.append("file", file)
+
+    const headers: Record<string, string> = {}
+    if (token) headers["Authorization"] = `Bearer ${token}`
+    if (institutionId) headers["X-Institution-Id"] = institutionId
+
+    const res = await fetch(`${API_BASE}/v1/platform-admin/news/cover`, {
+      method: "POST",
+      headers,
+      body: form,
+    })
+    if (!res.ok) throw new Error(await describeError(res))
+    const json = await res.json()
+    const data = json.data ?? json
+    if (!data?.url) throw new Error("Upload succeeded but no URL was returned")
+    return data.url as string
+  },
+
   listNotifications: (page = 0, size = 20) =>
     platformFetch<PageResponse<NotificationSummary>>(`/v1/platform-admin/notifications?page=${page}&size=${size}`),
   sendNotification: (data: { title: string; message: string; notificationType: string; priority?: string; targetAudience?: string }) =>

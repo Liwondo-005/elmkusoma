@@ -2675,7 +2675,9 @@
       "duplicate": "There is already a chapter at {time}.",
       "added": "Chapter {title} added",
       "removed": "Chapter removed"
-    }
+    },
+    "colAverage": "Average",
+    "colRemarks": "Remarks"
   },
   "profile": {
     "title": "Profile",
@@ -6732,7 +6734,7 @@
       "fieldSummary": "Summary",
       "fieldSummaryHint": "Shown on cards and listings. Maximum 500 characters.",
       "fieldBody": "Full text",
-      "fieldBodyHint": "Plain text. Leave a blank line between paragraphs. HTML is rejected.",
+      "fieldBodyHint": "Rich text is allowed and sanitised: bold, italics, headings, lists, links and quotes are kept; scripts, embedded frames and event handlers are stripped.",
       "fieldSlug": "URL slug",
       "fieldSlugHint": "Leave blank to generate one from the title. Lower-case words joined by hyphens.",
       "fieldSlugPlaceholder": "term-one-begins-in-january",
@@ -6744,7 +6746,7 @@
       "fieldExpires": "Expires",
       "fieldExpiresHint": "After this moment the article leaves the public site automatically.",
       "fieldCover": "Cover image URL",
-      "fieldCoverHint": "Optional. Must start with http://, https:// or /. Leave blank for a neutral placeholder.",
+      "fieldCoverHint": "Upload an image (png, jpg, webp or gif, up to 5 MB) or paste an existing URL. SVG is not accepted because it can carry script.",
       "fieldCoverPlaceholder": "https://… or /v1/content/courses/cover.jpg",
       "priorityNormal": "Normal",
       "priorityImportant": "Important",
@@ -6790,7 +6792,13 @@
       "expiresAt": "Expires {date}",
       "lastModifiedBy": "By {who}",
       "paginationLabel": "Article pagination",
-      "pageOf": "Page {page} of {total}"
+      "pageOf": "Page {page} of {total}",
+      "previous": "Previous",
+      "next": "Next",
+      "uploadingCover": "Uploading cover image…",
+      "uploadFailed": "Could not upload the cover image.",
+      "coverPreviewAlt": "Selected cover image",
+      "clearCover": "Remove cover image"
     }
   },
   "admin": {
@@ -8538,7 +8546,9 @@
     "connectionQualityPoor": "Poor",
     "connectionQualityGood": "Good",
     "connectionQualityExcellent": "Excellent",
-    "connectionQualityUnknown": "Measuring"
+    "connectionQualityUnknown": "Measuring",
+    "playerLiveScreenAria": "Live screen",
+    "playerYourScreenAria": "Your screen"
   },
   "categories": {
     "admin": "Admin",
@@ -9359,5 +9369,21 @@
     "pageOf": "Page {page} of {total}",
     "previous": "Previous",
     "next": "Next"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "scheduled": "Scheduled",
+    "cancelled": "Cancelled",
+    "completed": "Completed",
+    "overdue": "Overdue",
+    "submitted": "Submitted",
+    "notStarted": "Not started",
+    "present": "Present",
+    "absent": "Absent",
+    "late": "Late",
+    "excused": "Excused",
+    "pending": "Pending",
+    "inProgress": "In progress"
   }
 }

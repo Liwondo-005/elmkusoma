@@ -67,6 +67,7 @@ export default function NewsAdminPage() {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<NewsArticlePayload>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -143,6 +144,24 @@ export default function NewsAdminPage() {
     }),
     [form]
   )
+
+  async function handleCoverFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    // Cleared so selecting the same file twice in a row still fires a change event.
+    event.target.value = ""
+    if (!file) return
+
+    setUploading(true)
+    setFormError(null)
+    try {
+      const url = await platformAdminApi.uploadNewsCover(file)
+      setForm((prev) => ({ ...prev, coverImageUrl: url }))
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : t("uploadFailed"))
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function handleSave(event: React.FormEvent) {
     event.preventDefault()
@@ -331,13 +350,49 @@ export default function NewsAdminPage() {
           </div>
 
           <Field label={t("fieldCover")} hint={t("fieldCoverHint")}>
-            <input
-              value={form.coverImageUrl ?? ""}
-              onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })}
-              className={inputClass}
-              maxLength={1000}
-              placeholder={t("fieldCoverPlaceholder")}
-            />
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={handleCoverFile}
+                disabled={uploading}
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+              />
+              {uploading && (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  {t("uploadingCover")}
+                </p>
+              )}
+              {form.coverImageUrl && (
+                <div className="flex items-start gap-3">
+                  {/* Plain <img> rather than next/image: the URL is an arbitrary admin-supplied
+                      host, and next/image would need that host added to remotePatterns first. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.coverImageUrl}
+                    alt={t("coverPreviewAlt")}
+                    className="size-24 rounded-lg border border-border object-cover"
+                  />
+                  <div className="min-w-0">
+                    <input
+                      value={form.coverImageUrl ?? ""}
+                      onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })}
+                      className={inputClass}
+                      maxLength={1000}
+                      placeholder={t("fieldCoverPlaceholder")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, coverImageUrl: "" })}
+                      className="mt-1 text-xs font-medium text-destructive hover:underline"
+                    >
+                      {t("clearCover")}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </Field>
 
           {formError && (

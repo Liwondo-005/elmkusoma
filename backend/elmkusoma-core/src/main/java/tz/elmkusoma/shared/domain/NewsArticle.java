@@ -19,10 +19,11 @@ import lombok.experimental.SuperBuilder;
  * editorial lifecycle, so the two are kept apart rather than sharing one table and two sets of
  * contradictory predicates.</p>
  *
- * <p>{@code body} is plain text on purpose, exactly as in {@link LegalDocument}. This build has
- * no HTML sanitiser available, so rather than accept markup and hope a filter catches it, article
- * bodies are refused as HTML and rendered as text by the client. Stored XSS has no surface to
- * attach to.</p>
+ * <p>{@code body} holds sanitised rich text. It began life as plain text rendered as React text
+ * nodes, which makes stored XSS structurally impossible, but cannot express the bold, links and
+ * lists public news needs. {@link tz.elmkusoma.shared.service.NewsContentSanitizer} now cleans
+ * the body against a deny-by-default allowlist on write, so this column only ever contains
+ * markup that is safe to render as HTML.</p>
  *
  * <p>{@code publishedAt} is written by the server on publish and never read from a request. The
  * NEW indicator is derived from it, so accepting it from a client would let any article claim to
