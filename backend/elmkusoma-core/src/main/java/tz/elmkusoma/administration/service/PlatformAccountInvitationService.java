@@ -45,10 +45,16 @@ public class PlatformAccountInvitationService {
         }
         if (userRepository.existsByEmailAndIsDeletedFalse(request.getEmail())) {
             // Redeeming an invitation for an existing address would silently attach a second
-            // organization to somebody's account. Surface it as a conflict instead.
-            throw new org.springframework.dao.DuplicateKeyException(
+            // organization to somebody's account. Surface it as a client error instead.
+            //
+            // Deliberately IllegalArgumentException, not DuplicateKeyException: a
+            // DuplicateKeyException is a DataIntegrityViolationException, and that handler
+            // replaces the message with a generic "Data conflict - constraint violation", so the
+            // admin would never learn which address already exists or why it matters.
+            throw new IllegalArgumentException(
                     "An account already exists for " + request.getEmail()
-                            + "; invitations are only for activating a new account");
+                            + ". Invitations activate a new account; to add an organization to an"
+                            + " existing member, invite them from that institution instead.");
         }
 
         InvitationResponse invitation = peopleService.inviteUser(

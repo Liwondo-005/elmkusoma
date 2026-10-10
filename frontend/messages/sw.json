@@ -6620,7 +6620,14 @@
       "subEdit": "Sasisha maelezo ya mtumiaji hapa chini.",
       "titleAdd": "Ongeza Mtumiaji",
       "titleEdit": "Hariri Mtumiaji",
-      "updatedOk": "Mtumiaji amesasishwa kwa mafanikio"
+      "updatedOk": "Mtumiaji amesasishwa kwa mafanikio",
+      "inviteToggleLabel": "Tuma mwaliko badala ya kuweka nenosiri",
+      "inviteToggleHint": "Mpokeaji hupokea kiungo cha matumizi moja kikichaka baada ya muda, anakonyesha anaamiliki anwani hiyo, kisha huwa na nenosiri lake mwenyewe. Ndio bora kwa akaunti za msimamizi wa mtoa huduma na za jukwaa.",
+      "btnInvite": "Tuma mwaliko",
+      "inviteIssuedTitle": "Mwaliko umeundwa",
+      "inviteIssuedHint": "Ushiriki wa kuchapa umetumwa kwa {email}. Unakomeshwa baada ya muda, na mwaliko huu ndio unaweza kuiamsha - mwingine unaweza kuombwa ikiwa umepoteka.",
+      "inviteTokenLabel": "Kitambulisho cha kiungo",
+      "inviteTokenHint": "Kinaonyeshwa mara moja tu na hakitaorodheshwa tena. Mpelee kwa mpokeaji, au waombe anapate msimu mpya."
     },
     "delegatedWork": {
       "title": "Kazi Yangu Niliyokabidhiwa",

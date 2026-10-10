@@ -6627,7 +6627,14 @@
       "subEdit": "Update the user details below.",
       "titleAdd": "Add User",
       "titleEdit": "Edit User",
-      "updatedOk": "User updated successfully"
+      "updatedOk": "User updated successfully",
+      "inviteToggleLabel": "Send an invitation instead of setting a password",
+      "inviteToggleHint": "The recipient receives a single-use link that expires, proves they control the address, and then chooses their own password. Prefer this for provider and platform administrator accounts.",
+      "btnInvite": "Send invitation",
+      "inviteIssuedTitle": "Invitation created",
+      "inviteIssuedHint": "Activation has been sent to {email}. It expires, and only this invitation can activate it — a new one can be issued if it is lost.",
+      "inviteTokenLabel": "Activation link token",
+      "inviteTokenHint": "Shown once and never listed again. Pass it to the recipient, or let them request a new code from the activation page."
     },
     "delegatedWork": {
       "title": "My Delegated Work",

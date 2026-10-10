@@ -119,6 +119,28 @@ export interface UserSummary {
   phone?: string
 }
 
+/**
+ * Request for an expiring platform-issued invitation. No password by design: the recipient
+ * chooses their own when they redeem, after proving control of the address.
+ */
+export interface PlatformInvitationPayload {
+  email: string
+  institutionId: string
+  role: string
+  firstName?: string
+  lastName?: string
+}
+
+/** Response for a created invitation. `token` is returned exactly once, never re-listed. */
+export interface PlatformInvitation {
+  id: string
+  email: string
+  role: string
+  status: string
+  token?: string
+  expiresAt?: string
+}
+
 export interface UserCreatePayload {
   firstName: string
   lastName: string
@@ -683,6 +705,16 @@ export const platformAdminApi = {
     platformFetch<UserSummary>(`/v1/platform-admin/users/${userId}/status?active=${active}`, { method: "PUT" }),
   createUser: (payload: UserCreatePayload) =>
     platformFetch<UserSummary>(`/v1/platform-admin/users`, { method: "POST", body: JSON.stringify(payload) }),
+  /**
+   * Issues an expiring, single-delivery invitation instead of creating the account outright.
+   * The recipient activates it and chooses their own password, so the platform never sets a
+   * permanent credential. The token is returned once and is not re-listable.
+   */
+  createInvitation: (payload: PlatformInvitationPayload) =>
+    platformFetch<PlatformInvitation>(`/v1/platform-admin/invitations`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   updateUser: (id: string, payload: UserUpdatePayload) =>
     platformFetch<UserSummary>(`/v1/platform-admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteUser: (id: string) =>

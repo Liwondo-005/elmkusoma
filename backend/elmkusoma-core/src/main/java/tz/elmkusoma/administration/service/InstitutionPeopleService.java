@@ -239,9 +239,16 @@ public class InstitutionPeopleService {
 
     public void cancelInvitation(UUID institutionId, UUID invitationId) {
         InstitutionInvitation invitation = invitationRepository.findById(invitationId)
-                .orElseThrow(() -> new RuntimeException("Invitation not found"));
+                // Typed so a bad id is a 404. A bare RuntimeException is unmapped, so asking to
+                // cancel an invitation that does not exist reported an HTTP 500 server fault -
+                // which reads as "the system broke" rather than "that id is wrong".
+                .orElseThrow(() -> new tz.elmkusoma.common.exception.ResourceNotFoundException(
+                        "Invitation", "id", invitationId));
+        // Reported as not-found rather than forbidden: telling a caller that an id exists but
+        // belongs elsewhere is an existence oracle across tenants.
         if (!invitation.getInstitutionId().equals(institutionId)) {
-            throw new SecurityException("Invitation does not belong to this institution");
+            throw new tz.elmkusoma.common.exception.ResourceNotFoundException(
+                    "Invitation", "id", invitationId);
         }
         invitation.setStatus("CANCELLED");
         invitation.setIsDeleted(true);
