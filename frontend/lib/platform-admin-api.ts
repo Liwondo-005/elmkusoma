@@ -208,6 +208,53 @@ export interface LegalVersionRecord {
   publishedBy: string | null
 }
 
+export type NewsPriority = "NORMAL" | "IMPORTANT" | "URGENT"
+
+export type NewsStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED"
+
+/** The full admin view, including the working-copy fields the public payload omits. */
+export interface NewsArticleRecord {
+  id: string
+  slug: string
+  title: string
+  summary: string
+  body: string
+  category: string | null
+  coverImageUrl: string | null
+  authorName: string | null
+  status: NewsStatus
+  publishedAt: string | null
+  scheduledAt: string | null
+  expiresAt: string | null
+  featured: boolean
+  priority: NewsPriority
+  sortOrder: number
+  lastModifiedBy: string | null
+  publishedBy: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+/**
+ * Save payload. Deliberately has no `status` and no `publishedAt`: lifecycle changes go through
+ * their own endpoints, and the server owns the publication timestamp.
+ */
+export interface NewsArticlePayload {
+  title: string
+  summary: string
+  body: string
+  slug?: string
+  category?: string
+  coverImageUrl?: string
+  authorName?: string
+  priority?: NewsPriority
+  featured?: boolean
+  sortOrder?: number
+  /** Local datetime-local value; converted to ISO before sending. */
+  scheduledAt?: string | null
+  expiresAt?: string | null
+}
+
 export interface UserCreatePayload {
   firstName: string
   lastName: string
@@ -1027,11 +1074,66 @@ export const platformAdminApi = {
       { method: "POST" }),
   legalDocumentVersions: (id: string) =>
     platformFetch<LegalVersionRecord[]>(`/v1/platform-admin/legal-documents/${id}/versions`),
-  revertLegalDocument: (id: string, version: number) =>
+revertLegalDocument: (id: string, version: number) =>
     platformFetch<LegalDocumentRecord>(`/v1/platform-admin/legal-documents/${id}/revert`, {
       method: "POST",
       body: JSON.stringify({ version }),
     }),
+
+  // ── public news ────────────────────────────────────────────────────────────────────────
+  // Lifecycle transitions are separate calls rather than a status field on save, so an ordinary
+  // edit can never publish an article by accident.
+
+  listNews: (params: {
+    page?: number
+    size?: number
+    status?: NewsStatus
+    category?: string
+    featured?: boolean
+    q?: string
+  } = {}) => {
+    const search = new URLSearchParams()
+    search.set("page", String(params.page ?? 0))
+    search.set("size", String(params.size ?? 20))
+    if (params.status) search.set("status", params.status)
+    if (params.category) search.set("category", params.category)
+    if (params.featured !== undefined) search.set("featured", String(params.featured))
+    if (params.q) search.set("q", params.q)
+    return platformFetch<PageResponse<NewsArticleRecord>>(`/v1/platform-admin/news?${search.toString()}`)
+  },
+
+  getNewsArticle: (id: string) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}`),
+
+  createNewsArticle: (payload: NewsArticlePayload) =>
+    platformFetch<NewsArticleRecord>("/v1/platform-admin/news", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateNewsArticle: (id: string, payload: NewsArticlePayload) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  publishNewsArticle: (id: string) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}/publish`, { method: "POST" }),
+
+  unpublishNewsArticle: (id: string) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}/unpublish`, { method: "POST" }),
+
+  archiveNewsArticle: (id: string) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}/archive`, { method: "POST" }),
+
+  setNewsFeatured: (id: string, featured: boolean) =>
+    platformFetch<NewsArticleRecord>(`/v1/platform-admin/news/${id}/featured`, {
+      method: "POST",
+      body: JSON.stringify({ featured }),
+    }),
+
+  deleteNewsArticle: (id: string) =>
+    platformFetch<void>(`/v1/platform-admin/news/${id}`, { method: "DELETE" }),
 
   listNotifications: (page = 0, size = 20) =>
     platformFetch<PageResponse<NotificationSummary>>(`/v1/platform-admin/notifications?page=${page}&size=${size}`),

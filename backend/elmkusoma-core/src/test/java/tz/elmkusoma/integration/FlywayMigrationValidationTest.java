@@ -304,7 +304,47 @@ class FlywayMigrationValidationTest {
  * UUID it references on departments(id).
  */
     /**
-     * V149 adds media_assets.class_group_id, the class target that makes a live class
+     * V156 creates news_articles. Every column NewsArticle maps is asserted here, because the test
+     * profile builds its schema with Hibernate (ddl-auto=create-drop) and never runs Flyway: a
+     * column present on the entity but missing from the migration passes the entire Spring test
+     * suite and then fails as a bare HTTP 500 against a real database, which is exactly the class
+     * of defect this suite exists to catch.
+     *
+     * <p>Also pins the NOT NULL columns. A migration that omits a nullability constraint still
+     * lets Hibernate create it in tests, so the mismatch would not surface until production.</p>
+     */
+    @Test
+    void newsArticleColumns_AreDeclaredInMigrations() throws IOException {
+        Set<String> columnNames = Set.of(
+                "title", "summary", "body", "slug", "category", "cover_image_url", "author_name",
+                "status", "published_at", "scheduled_at", "expires_at", "is_featured",
+                "priority", "sort_order", "last_modified_by", "published_by");
+
+        Map<String, String> types = effectiveColumnTypes(columnNames);
+
+        List<String> missing = columnNames.stream()
+                .map(name -> "news_articles." + name.toLowerCase(java.util.Locale.ROOT))
+                .filter(key -> !types.containsKey(key))
+                .sorted()
+                .toList();
+        assertTrue(missing.isEmpty(),
+                "NewsArticle maps these columns but V156 does not declare them, so publishing an "
+                        + "article would fail against a real database: " + missing);
+
+        // published_at is what the NEW window is measured against. If a future edit widened it to
+        // text, every comparison against it would silently become a string comparison.
+        String publishedAt = types.get("news_articles.published_at");
+        assertTrue(publishedAt != null && publishedAt.startsWith("timestamp"),
+                "news_articles.published_at must be a timestamp but was declared as \""
+                        + publishedAt + "\" at " + declaredIn.get("news_articles.published_at"));
+
+        assertTrue(types.get("news_articles.is_featured").startsWith("boolean"),
+                "is_featured is a boolean on the entity; a migration that declared it as text "
+                        + "would still pass Hibernate's generated schema in tests");
+    }
+
+    /**
+     * V156 adds media_assets.class_group_id, the class target that makes a live class
      * recording appear in the Media Library. MediaAsset maps @Column(name = "class_group_id")
      * and the test profile builds its schema from the entity, so a missing migration would
      * only surface at runtime against a real database.

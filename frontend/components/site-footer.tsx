@@ -54,6 +54,7 @@ export function SiteFooter() {
       title: tCommon("platform"),
       links: [
         { label: tNav("about"), href: "/about" },
+        { label: tNav("news"), href: "/news" },
         { label: tCommon("verifyCertificate"), href: "/certificates/verify" },
         { label: tCommon("becomeInstructor"), href: "/register" },
         { label: tCommon("forInstitutions"), href: "/register" },

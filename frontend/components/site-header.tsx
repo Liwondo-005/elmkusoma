@@ -15,6 +15,7 @@ const nav = [
   { key: "courses", href: "/courses" },
   { key: "liveClasses", href: "/live-classes" },
   { key: "about", href: "/about" },
+  { key: "news", href: "/news" },
 ] as const
 
 export function SiteHeader() {

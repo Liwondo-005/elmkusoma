@@ -29,6 +29,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/schools/vocational",
     "/schools/universities",
     "/live-classes",
+    "/news",
   ]
 
   return publicPaths.map((path) => ({
