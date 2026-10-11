@@ -333,3 +333,123 @@ MINIO_BUCKET=<bucket>
 ---
 
 *End of audit. No application code or configuration was modified.*
+
+---
+
+# 10. Remediation addendum — 2026-10-11
+
+**Added after the audit. Everything above §10 is the original, unedited audit: no finding was
+removed, downgraded or rewritten.** This section records what was subsequently done about
+those findings.
+
+Full detail, evidence and the honest verification split live in:
+- `ELMKUSOMA_ENVIRONMENT_AND_RECORDING_STORAGE_REMEDIATION.md` — changes, evidence, blockers
+- `ELMKUSOMA_CREDENTIAL_SETUP_AND_FINAL_VERIFICATION.md` — developer checklist + E2E procedure
+
+> No credential appears in any of these documents.
+
+## 10.1 Finding status
+
+| # | Finding | Status |
+|---|---|---|
+| P0-1 | `LIVEKIT_EGRESS_S3_ACCESS_KEY` empty | **OPEN — developer must supply** |
+| P0-2 | `LIVEKIT_EGRESS_S3_SECRET` empty | **OPEN — developer must supply** |
+| P0-3 | `LIVEKIT_EGRESS_ENABLED=false` | **OPEN — deliberately left off** (enable only after storage is proven) |
+| P1-4 | `MFA_ENCRYPTION_KEY` absent | **OPEN — value still developer-supplied**; generation instructions + rotation warning added to the template |
+| P1-5 | `FRONTEND_URL` not wired | **FIXED** (§10.2) |
+| P1-6 | `.env` loaded by core only | **RESOLVED** — loader bounded + tested; per-module ownership now documented in the template header rather than left implicit |
+| P2-7 | SMTP unset | **OPEN — developer must supply**; both consumers (core OTP + workers queue mail) now documented |
+| P2-8 | MinIO dev defaults, no prod override | **OPEN — documented as local-only**; no prod override added (changing defaults would alter working dev behaviour) |
+| P2-9 | No production guard against `localhost` links | **FIXED** (§10.2) |
+| P3-10 | Template drift | **FIXED** (§10.3) |
+
+## 10.2 Fixes made
+
+**`FRONTEND_URL` wiring (P1-5).** `application.yml` now declares
+`app.frontend-url: ${FRONTEND_URL:${APP_FRONTEND_URL:http://localhost:3000}}`, so the name the
+template advertises actually reaches `AuthServiceImpl` and `PlatformAdminService`. The local
+default is unchanged, so existing behaviour outside configuration is identical.
+
+**Production guard (P2-9).** New `FrontendUrlValidator` fails startup with an actionable message
+when the base URL is blank, non-absolute, trailing-slashed, or has a query/fragment — and under
+the `prod` profile rejects `localhost` / `127.0.0.1` / `0.0.0.0` / `::1` / `*.localhost`, closing
+the "production silently emails localhost links" gap.
+
+**Environment loading (P1-6).** `../.env` is now accepted only from a directory containing
+`.env.example`, so an unrelated parent-directory `.env` can no longer be loaded by accident.
+Diagnostics print the path, count and **key names** — never values.
+
+**Recording configuration validation (new).** `LiveKitEgressConfigValidator` reports, at startup,
+exactly which `LIVEKIT_EGRESS_*` / `LIVEKIT_API_*` settings are missing when recording is enabled,
+and flags a non-absolute endpoint. It **logs rather than aborts**: recording storage is optional,
+and failing startup would take down unrelated features. The existing request-time `503` refusal
+remains the enforcement boundary. No network call is made to B2.
+
+**Template (P3-10).** `backend/.env.example` rewritten around real consumers: exact variable
+names, consuming module, format, secret flag, restart requirement, generation commands, and
+setup/verification/failure/rollback sections for B2. Active keys on copy are unchanged from the
+original template.
+
+**Also fixed (found during revalidation, not in the original audit):**
+- `application-prod.yml` had `flyway` / `data` / `rabbitmq` nested under a top-level
+  `elmkusoma:` key, so **every production override was inert** — prod kept dev Redis/RabbitMQ
+  hosts and `demoSeedDeactivate` never reached Flyway, so V142 never deactivated the seeded demo
+  accounts whose password hashes are published in the repository. Nesting corrected; **no value
+  changed**.
+- `payment.webhook.secret` was unreachable from `backend/.env` (same defect class as
+  P1-5). An explicit `${PAYMENT_WEBHOOK_SECRET:}` mapping was added; **empty still rejects every
+  webhook** — verification was not weakened.
+
+**Reported, deliberately not changed:**
+- `docker-compose.yml` carries committed development credentials (shared `JWT_SECRET`, DB
+  password, MinIO root, RabbitMQ `guest`). Replacing them invalidates local tokens and is a
+  deployment decision; **must be replaced from a secret store before any shared/production use**.
+- Unsupported `MEDIA_STORAGE` values fail with an opaque `NoSuchBeanDefinitionException`
+  (supported modes: exactly `minio` and `local`); a clearer message needs bean-creation
+  restructuring disproportionate to a message-only improvement.
+
+## 10.3 Corrections to statements above
+
+- **§8 "Present but not wired" → `FRONTEND_URL`**: now wired (P1-5 fixed).
+- **§9 recommendation of `APP_FRONTEND_URL`**: superseded — `FRONTEND_URL` is the documented
+  name and now works; `APP_FRONTEND_URL` remains accepted.
+- **`backend/.env.example` previously claimed playback of a recording goes through
+  authorization-checked media endpoints.** Code inspection does not support that for live-class
+  recordings: the frontend consumes `recordingUrl` directly (`<a href>`, `<video src>`,
+  `window.open`), and `MediaProxyService` serves *media-library* resources only. Listing
+  endpoints **are** `@PreAuthorize`-gated, so an unauthorized user never learns the URL — but
+  that is URL secrecy, not a per-request entitlement check. The template text was corrected
+  rather than repeated; the underlying question is recorded as an open risk below.
+
+## 10.4 Evidence
+
+| Command | Result |
+|---|---|
+| `mvn -o -q -DskipTests compile` | exit **0** |
+| `mvn -o test -Dtest=…(4 new classes)…` | **42 tests, 0 failures, 0 errors** |
+| `mvn -o test` (final, full suite) | **`Tests run: 1421, Failures: 0, Errors: 0, Skipped: 5` — `BUILD SUCCESS`** |
+| `npx tsc --noEmit` (`frontend`) | exit **0** |
+| `git check-ignore -v backend/.env` | matched `.gitignore:9` |
+| secret-pattern scan of tracked files | **none** (AWS / B2 / private key / `sk-` / `ghp_` / `xox*`) |
+
+Baseline was **1377 / 0 / 0 / 5**; final is **1421 / 0 / 0 / 5** — **+44 new tests, skipped count
+unchanged**. The 5 skips are pre-existing credential-gated integration tests
+(`EventD03ComplianceTest` 1, `LiveKitIntegrationTest` 1, `LiveKitRealServerTest` 3); nothing was
+skipped or deleted to obtain the build.
+
+Git: branch `main`, HEAD unchanged at **`5c8daca0`**, tree clean of staged/committed changes —
+**no commit, push, rebase, merge, reset or force operation was performed in this pass.**
+
+## 10.5 Still UNVERIFIED
+
+No B2 credential exists, recording is disabled, and no authorisation to record was given.
+**A real upload was not attempted and B2 must not be described as working.** Unverified:
+
+- B2 credential validity, bucket reachability, path-style addressing
+- a recording actually uploading to `elmkusoma-live-recordings`
+- the `file_results[].location` scheme (never observed — decides the playback model)
+- replay publication from a real `egress_ended` (logic covered by unit/concurrency tests only)
+- playback of a real recording, authorized vs unauthorized
+
+Full remaining-work list: `ELMKUSOMA_ENVIRONMENT_AND_RECORDING_STORAGE_REMEDIATION.md` §11,
+risks and why each could not be closed: §12.

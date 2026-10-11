@@ -4,17 +4,13 @@ spring:
       ddl-auto: validate
     show-sql: false
 
-elmkusoma:
-  identity:
-    # Audit B-04: production requires email verification before login. Off by default elsewhere so
-    # seeded/e2e fixtures are not locked out.
-    require-verified-email: true
-  learning:
-    # Audit B-21: production enforces learner class membership (unplaced learners are denied
-    # class-scoped content) instead of failing open. Off elsewhere so tenants that do not model
-    # membership keep working.
-    enforce-membership: true
-
+  # The flyway / data / rabbitmq blocks below were previously indented under a
+  # top-level `elmkusoma:` key, so Spring bound them as elmkusoma.flyway.*,
+  # elmkusoma.data.* and elmkusoma.rabbitmq.* - names nothing reads. Every
+  # production override in this file was therefore inert: prod kept the dev
+  # Redis/RabbitMQ hosts (localhost) and never deactivated the seeded demo
+  # accounts whose password hashes are published in the repository (V142).
+  # The nesting is corrected here; no value has been changed.
   flyway:
     enabled: true
     validate-on-migrate: true
@@ -35,6 +31,17 @@ elmkusoma:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+
+elmkusoma:
+  identity:
+    # Audit B-04: production requires email verification before login. Off by default elsewhere so
+    # seeded/e2e fixtures are not locked out.
+    require-verified-email: true
+  learning:
+    # Audit B-21: production enforces learner class membership (unplaced learners are denied
+    # class-scoped content) instead of failing open. Off elsewhere so tenants that do not model
+    # membership keep working.
+    enforce-membership: true
 
 # Prod overrides the dev fallback secret: the well-known local default must
 # never be usable in production. Boot fails fast when LIVEKIT_API_SECRET is
