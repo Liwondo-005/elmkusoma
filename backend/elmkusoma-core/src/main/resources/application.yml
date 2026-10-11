@@ -168,6 +168,23 @@ services:
   workers:
     url: ${WORKERS_SERVICE_URL:http://localhost:8082}
 
+# Course image storage.
+#
+# file.upload.dir is now declared here rather than left to a ${user.dir} default inside a
+# controller. It used to resolve against the process working directory, which meant the bytes
+# moved or vanished depending on where the process happened to be started from. Point it at a
+# persistent volume in production; a multi-instance deployment should set
+# COURSE_IMAGE_STORAGE=media-service instead so the objects live in MinIO and any instance can
+# serve them.
+file:
+  upload:
+    dir: ${FILE_UPLOAD_DIR:${user.dir}/uploads}
+
+course:
+  image:
+    # filesystem | media-service
+    storage: ${COURSE_IMAGE_STORAGE:filesystem}
+
 logging:
   level:
     tz.elmkusoma: INFO
