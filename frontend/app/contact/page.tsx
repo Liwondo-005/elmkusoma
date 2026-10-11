@@ -10,6 +10,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Mail, Clock, MapPin, CheckCircle } from "lucide-react"
+import { SocialLinks } from "@/components/social-links"
 import { publicSiteApi, CONTACT_CATEGORIES, type ContactReceipt } from "@/lib/public-site-api"
 import { useSiteSettings } from "@/hooks/use-site-settings"
 
@@ -146,6 +147,16 @@ export default function ContactPage() {
                       <p className="mt-1.5 text-sm text-muted-foreground">{contactAddress}</p>
                     </div>
                   )}
+
+                  {/* One shared component, same as the footer: the contact page is where a
+                      visitor looks for a way to reach ELMKUSOMA, so the configured platforms
+                      belong here as well as in the footer. Renders nothing when unconfigured. */}
+                  <SocialLinks
+                    variant="icon-label"
+                    includeWhatsApp
+                    whatsappMessage={tSite("whatsappDefaultMessage")}
+                    label={tSite("socialGroupLabel")}
+                  />
                 </div>
               </div>
 

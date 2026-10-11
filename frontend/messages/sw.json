@@ -6654,7 +6654,8 @@
       "group": {
         "PUBLIC_CONTACT": "Mawasiliano ya umma",
         "PUBLIC_SOCIAL": "Viungo rasmi vya mitandao ya kijamii",
-        "SUPPORT_INTERNAL": "Usambazaji wa msaudo (ha chapishwi kwa umma)"
+        "SUPPORT_INTERNAL": "Usambazaji wa msaudo (ha chapishwi kwa umma)",
+        "PUBLIC_LOCATION": "Eneo la ofisi kuu"
       },
       "documents": "Waraka",
       "draft": "Rasimu",
@@ -9336,7 +9337,9 @@
     "whatsappOpensChat": "Hufungua mazungumzo unayotuma mwenyewe. Hakuna chochote kinachotumwa kiotomatiki.",
     "sending": "Inatuma...",
     "sendAnother": "Tuma ujumbe mwingine",
-    "queued": "Ujumbe wako umehifadhiwa na kuwasilishwa kwa huduma yetu ya barua pepe. Uhakikiwa wa kupeleka hapa hakuna — ikiwa hatujibu ndani ya siku, tafadhali wasiliana nasi moja kwa moja kwa anwani iliyo kwenye ukurasa huu."
+    "queued": "Ujumbe wako umehifadhiwa na kuwasilishwa kwa huduma yetu ya barua pepe. Uhakikiwa wa kupeleka hapa hakuna — ikiwa hatujibu ndani ya siku, tafadhali wasiliana nasi moja kwa moja kwa anwani iliyo kwenye ukurasa huu.",
+    "socialGroupLabel": "ELMKUSOMA katika mitandao ya kijamii",
+    "whatsappDefaultMessage": "Habari ELMKUSOMA, nina swali."
   },
   "siteLocation": {
     "eyebrow": "Eneo letu",
@@ -9344,6 +9347,11 @@
     "viewOnMap": "Tazama kwenye Ramani",
     "getDirections": "Pata Maelekezo",
     "mapNotAvailable": "Eneo halisi la ramani bado halijathibitishwa. Chuo kinaonyeshwa hapo juu; mahali halisi ya ofisi kutapatikana baada ya kuthibitishwa."
+  },
+  "siteSocial": {
+    "groupLabel": "Mitandao ya kijamii ya ELMKUSOMA",
+    "followOn": "Fuata ELMKUSOMA kwenye {platform}",
+    "whatsapp": "Ongea na ELMKUSOMA kwa WhatsApp"
   },
   "legal": {
     "loading": "Inapakia toleo lililochapishwa la sasa...",

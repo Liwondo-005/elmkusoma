@@ -52,13 +52,38 @@ const SETTING_GROUPS: { id: string; keys: string[] }[] = [
     id: "SUPPORT_INTERNAL",
     keys: ["support.notify.email", "support.notify.adminEmail", "support.whatsapp.enabled"],
   },
+  {
+    id: "PUBLIC_LOCATION",
+    keys: [
+      "public.location.name",
+      "public.location.campus",
+      "public.location.city",
+      "public.location.country",
+      "public.location.building",
+      "public.location.address",
+      "public.location.mapUrl",
+      "public.location.directionsUrl",
+      "public.location.description",
+      "public.location.hours",
+    ],
+  },
 ]
 
-/** Client-side mirror of the server's URL rule, to fail fast without inventing a warning. */
+/**
+ * Client-side mirror of the server's URL rule, to fail fast without inventing a warning.
+ *
+ * <p>Must stay in step with `PublicSiteSettings.validationError`. It is a convenience only: the
+ * server rejects regardless, and this is what turns a 400 into an inline message before the
+ * round trip. The location map/directions keys are included because they are URLs too, and
+ * leaving them out let a `javascript:` value sit in the field looking perfectly editable until
+ * the save came back 400.</p>
+ */
 function looksUnsafe(value: string, key: string): boolean {
   const trimmed = value.trim()
   if (!trimmed) return false
-  if (key.startsWith("public.social.")) return !/^https?:\/\/\S+$/.test(trimmed)
+  if (key.startsWith("public.social.") || key.endsWith("mapUrl") || key.endsWith("directionsUrl")) {
+    return !/^https?:\/\/\S+$/.test(trimmed)
+  }
   if (key === "public.contact.whatsapp") return !/^\d{8,15}$/.test(trimmed)
   if (key === "public.contact.phone") return !/^\+[\d ()-]{6,24}$/.test(trimmed)
   if (key.endsWith("email")) return !/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(trimmed)

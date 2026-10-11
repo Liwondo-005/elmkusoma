@@ -6661,7 +6661,8 @@
       "group": {
         "PUBLIC_CONTACT": "Public contact details",
         "PUBLIC_SOCIAL": "Official social media links",
-        "SUPPORT_INTERNAL": "Support routing (never public)"
+        "SUPPORT_INTERNAL": "Support routing (never public)",
+        "PUBLIC_LOCATION": "Headquarters location"
       },
       "documents": "Documents",
       "draft": "Draft",
@@ -9343,7 +9344,9 @@
     "whatsappOpensChat": "Opens a chat you send yourself. Nothing is sent automatically.",
     "sending": "Sending...",
     "sendAnother": "Send another message",
-    "queued": "Your message has been stored and handed to our mail service. Delivery is not confirmed here — if we do not reply within a day, please contact us directly using the address on this page."
+    "queued": "Your message has been stored and handed to our mail service. Delivery is not confirmed here — if we do not reply within a day, please contact us directly using the address on this page.",
+    "socialGroupLabel": "ELMKUSOMA on social media",
+    "whatsappDefaultMessage": "Hello ELMKUSOMA, I have a question."
   },
   "siteLocation": {
     "eyebrow": "Our location",
@@ -9351,6 +9354,11 @@
     "viewOnMap": "View on Map",
     "getDirections": "Get Directions",
     "mapNotAvailable": "An exact map location has not been confirmed yet. The campus is shown above; a precise office location will be published once it is verified."
+  },
+  "siteSocial": {
+    "groupLabel": "ELMKUSOMA social media",
+    "followOn": "Follow ELMKUSOMA on {platform}",
+    "whatsapp": "Chat with ELMKUSOMA on WhatsApp"
   },
   "legal": {
     "loading": "Loading the current published version...",
