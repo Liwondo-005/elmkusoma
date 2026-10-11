@@ -129,21 +129,53 @@ test.describe("ELMKUSOMA Headquarters section", () => {
     expect(order!.count).toBe(1)
   })
 
-  test("map and directions actions are hidden while no destination is verified", async ({ page }) => {
+  /**
+   * Map and directions must match the saved configuration exactly.
+   *
+   * <p>Deliberately data-driven rather than asserting "hidden". The owner may or may not have
+   * configured a destination, and the honest rule is the same either way: an action is rendered if
+   * and only if a destination backs it. Hard-coding "no map button" would pass vacuously on a page
+   * where the section failed to render at all, which is the opposite of what this proves.</p>
+   */
+  test("map and directions actions match the saved configuration", async ({ page }) => {
     await page.goto("/")
     const section = await headquartersSection(page)
 
-    // Assert the section rendered first. Otherwise "no map button" would also pass on a page
-    // where the section was missing entirely, which is the opposite of what this proves.
+    // Assert the section rendered first, so an absent button cannot pass on a missing section.
     await expect(section.locator("#headquarters-heading")).toBeVisible()
 
-    // A map button with no destination behind it is a dead control that implies a precision the
-    // platform does not have, so it must be absent rather than rendered disabled.
-    await expect(section.getByRole("link", { name: /view on map/i })).toHaveCount(0)
-    await expect(section.getByRole("link", { name: /get directions/i })).toHaveCount(0)
+    const configured = await page.evaluate(async () => {
+      const res = await fetch("/v1/public/site-settings")
+      const body = await res.json()
+      const data = body?.data ?? {}
+      return {
+        mapUrl: data["public.location.mapUrl"] ?? null,
+        directionsUrl: data["public.location.directionsUrl"] ?? null,
+      }
+    })
 
-    // ...and the section explains why, instead of silently omitting the actions.
-    await expect(section).toContainText(/map location has not been confirmed/i)
+    const mapLinks = await section.getByRole("link", { name: /view on map/i }).all()
+    const directionsLinks = await section.getByRole("link", { name: /get directions/i }).all()
+
+    if (configured.mapUrl) {
+      expect(mapLinks.length).toBeGreaterThan(0)
+      // Every rendered map link points at the configured destination, and nothing else.
+      for (const link of mapLinks) {
+        expect(await link.getAttribute("href")).toBe(configured.mapUrl)
+        expect(await link.getAttribute("target")).toBe("_blank")
+        expect(await link.getAttribute("rel")).toContain("noopener")
+      }
+    } else {
+      // No destination: a button would be a dead control implying a precision we do not have.
+      expect(mapLinks).toHaveLength(0)
+      await expect(section).toContainText(/map location has not been confirmed/i)
+    }
+
+    if (configured.directionsUrl) {
+      expect(directionsLinks.length).toBeGreaterThan(0)
+    } else {
+      expect(directionsLinks).toHaveLength(0)
+    }
   })
 
   test("no invented building, address or coordinates are shown", async ({ page }) => {

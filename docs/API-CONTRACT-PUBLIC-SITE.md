@@ -48,7 +48,7 @@ Keys:
 | `public.location.building` | Exact building/office. **Optional until verified** |
 | `public.location.address` | Exact street address. **Optional until verified** |
 | `public.location.mapUrl` | Verified map destination. **Optional**; the map action is hidden while empty |
-| `public.location.directionsUrl` | Verified directions URL. **Optional** |
+| `public.location.directionsUrl` | Verified directions URL. **Optional**; currently unset |
 | `public.location.description` | Short public location description |
 | `public.location.hours` | Opening hours. **Optional**; only shown when supplied |
 
