@@ -29,6 +29,7 @@ import tz.elmkusoma.config.security.OrganizationContextResolver;
 import tz.elmkusoma.shared.domain.Institution;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.shared.dto.PublicSiteSettings;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
 import tz.elmkusoma.shared.repository.InstitutionRepository;
 import tz.elmkusoma.shared.repository.UserRepository;
@@ -1290,6 +1291,21 @@ public class PlatformAdminService {
     public PlatformConfigResponse updateConfig(String key, String value, String modifiedBy) {
         PlatformConfigEntry entry = configRepository.findByConfigKeyAndIsDeletedFalse(key)
                 .orElseThrow(() -> new ResourceNotFoundException("PlatformConfig", "key", key));
+
+        // Public-facing keys are validated on write, not only on read.
+        //
+        // The public endpoint already drops a value that fails its format check, but doing that
+        // alone made a rejected save indistinguishable from a successful one: the admin saw
+        // "Config updated" and the value in the field, and the link simply never appeared on the
+        // public site. Rejecting here reports the failure to the person who can fix it.
+        //
+        // Only approved public keys are constrained. Internal settings keep whatever rules they
+        // already have, and a blank value is always allowed because it means "unset this".
+        String problem = PublicSiteSettings.validationError(key, value);
+        if (problem != null) {
+            throw new IllegalArgumentException("The value for \"" + key + "\" " + problem);
+        }
+
         boolean sensitive = Boolean.TRUE.equals(entry.getIsSensitive());
         String oldValue = sensitive ? "****" : String.valueOf(entry.getConfigValue());
         String newValue = sensitive ? "****" : String.valueOf(value);

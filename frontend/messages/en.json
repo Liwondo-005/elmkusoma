@@ -9345,6 +9345,13 @@
     "sendAnother": "Send another message",
     "queued": "Your message has been stored and handed to our mail service. Delivery is not confirmed here — if we do not reply within a day, please contact us directly using the address on this page."
   },
+  "siteLocation": {
+    "eyebrow": "Our location",
+    "fallbackName": "ELMKUSOMA Headquarters",
+    "viewOnMap": "View on Map",
+    "getDirections": "Get Directions",
+    "mapNotAvailable": "An exact map location has not been confirmed yet. The campus is shown above; a precise office location will be published once it is verified."
+  },
   "legal": {
     "loading": "Loading the current published version...",
     "versionMeta": "Version {version} · effective {effectiveDate}",

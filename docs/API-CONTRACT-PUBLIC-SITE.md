@@ -41,6 +41,41 @@ Keys:
 | `public.social.linkedin` | Full URL |
 | `public.social.tiktok` | Full URL |
 | `public.social.x` | Full URL |
+| `public.location.name` | Headquarters section heading |
+| `public.location.campus` | University or campus the headquarters is at |
+| `public.location.city` | City |
+| `public.location.country` | Country |
+| `public.location.building` | Exact building/office. **Optional until verified** |
+| `public.location.address` | Exact street address. **Optional until verified** |
+| `public.location.mapUrl` | Verified map destination. **Optional**; the map action is hidden while empty |
+| `public.location.directionsUrl` | Verified directions URL. **Optional** |
+| `public.location.description` | Short public location description |
+| `public.location.hours` | Opening hours. **Optional**; only shown when supplied |
+
+### Write-path validation (added after a silent-failure defect)
+
+`PUT /v1/platform-admin/config/{key}` **rejects** an unacceptable value for any key on
+`APPROVED_KEYS` with **400** and a message naming the problem:
+
+- `public.social.*`, `public.location.mapUrl`, `public.location.directionsUrl` — must match
+  `^https?://[\x20-\x7E]+$`. `javascript:`, `data:` and `vbscript:` are rejected.
+- `public.contact.whatsapp` — digits only including country code, 8–15 digits.
+- `public.contact.phone` — international format, `+` then digits/spaces/dashes.
+- `public.contact.email`, `public.contact.supportEmail` — must be a valid address.
+- Everything else on the list — free text, max 500 characters.
+
+A **blank value is always accepted** and means "unset this"; that is how an unverified map link
+or a wrong phone number can be removed again.
+
+Keys **not** on `APPROVED_KEYS` are not format-checked. They are internal settings (SMTP hosts,
+retention windows, feature flags) and constraining them here would break unrelated administration.
+
+> **Why this exists.** Validation previously ran only on the read path, which silently *dropped* a
+> rejected value. An administrator could save `javascript:…` to `public.social.facebook`, receive
+> `200 Config updated`, see the value in the field — and the link would simply never appear on the
+> public site. A rejected save was indistinguishable from a successful one. The read-side filter is
+> retained as a safety net for values arriving by direct database edit or a migration seed, but the
+> write path is now where a bad value is reported.
 
 ### `POST /v1/public/contact`
 

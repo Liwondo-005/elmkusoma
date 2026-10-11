@@ -10,31 +10,24 @@ import tz.elmkusoma.administration.repository.PlatformConfigRepository;
 import tz.elmkusoma.shared.dto.PublicSiteSettings;
 
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * Reads public site configuration from {@code platform_config}.
  *
- * <p>Validation lives here rather than only on the admin write path, because a value can also
- * arrive by direct database edit or a migration seed, and the public endpoint must not become
- * the place that starts serving a {@code javascript:} URL.</p>
+ * <p>Validation lives in {@link PublicSiteSettings} rather than only on the admin write path,
+ * because a value can also arrive by direct database edit or a migration seed, and the public
+ * endpoint must not become the place that starts serving a {@code javascript:} URL.</p>
+ *
+ * <p>This filtering is a safety net, not the primary defence: the admin write path rejects an
+ * unacceptable value with 400. Silently dropping it here would otherwise make a rejected save
+ * look exactly like a successful one that the public site simply chose not to show.</p>
  */
 @Service
 @RequiredArgsConstructor
 public class PublicSiteSettingsService {
 
     private static final Logger log = LoggerFactory.getLogger(PublicSiteSettingsService.class);
-
-    /** Only these schemes may reach a browser. Explicitly not javascript:, data:, vbscript:. */
-    private static final Pattern SAFE_URL = Pattern.compile("^https?://[\\x20-\\x7E]+$");
-
-    /** International format for a dialable number: leading + then digits, spaces and dashes. */
-    private static final Pattern SAFE_PHONE = Pattern.compile("^\\+[0-9 ()-]{6,24}$");
-
-    /** Click-to-chat needs bare digits with country code and nothing else. */
-    private static final Pattern WHATSAPP_DIGITS = Pattern.compile("^[0-9]{8,15}$");
 
     private final PlatformConfigRepository configRepository;
 
@@ -85,20 +78,6 @@ public class PublicSiteSettingsService {
     }
 
     private static boolean isSafeForKey(String key, String value) {
-        String lower = key.toLowerCase(Locale.ROOT);
-        if (lower.startsWith("public.social.")) {
-            return SAFE_URL.matcher(value).matches();
-        }
-        if ("public.contact.whatsapp".equals(key)) {
-            return WHATSAPP_DIGITS.matcher(value).matches();
-        }
-        if ("public.contact.phone".equals(key)) {
-            return SAFE_PHONE.matcher(value).matches();
-        }
-        if ("public.contact.email".equals(key) || "public.contact.supportEmail".equals(key)) {
-            return isDeliverableAddress(value);
-        }
-        // Working hours, response time and address are free text rendered as text nodes.
-        return value.length() <= 500;
+        return PublicSiteSettings.validationError(key, value) == null;
     }
 }
