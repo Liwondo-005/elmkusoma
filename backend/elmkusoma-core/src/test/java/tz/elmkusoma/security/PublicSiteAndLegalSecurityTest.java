@@ -22,6 +22,7 @@ import tz.elmkusoma.shared.repository.LegalDocumentVersionRepository;
 import tz.elmkusoma.testutil.TestDataSeeder;
 import tz.elmkusoma.testutil.TestTokens;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -128,6 +129,22 @@ class PublicSiteAndLegalSecurityTest {
         setConfig("public.social.facebook", "");
         setConfig("support.notify.email", "");
         setConfig("support.notify.adminEmail", "");
+
+        // The test profile builds its schema with Hibernate and never runs Flyway, so the rows
+        // V153/V158 would have seeded do not exist. updateConfig answers 404 for an unknown key,
+        // which is correct behaviour and not what these tests are exercising, so the rows the
+        // write-path tests touch are created here.
+        setConfig("public.social.instagram", "");
+        setConfig("public.location.name", "ELMKUSOMA Headquarters");
+        setConfig("public.location.campus", "University of Dar es Salaam (UDSM)");
+        setConfig("public.location.city", "Dar es Salaam");
+        setConfig("public.location.country", "Tanzania");
+        setConfig("public.location.description", "Campus-level headquarters description.");
+        setConfig("public.location.building", "");
+        setConfig("public.location.address", "");
+        setConfig("public.location.mapUrl", "");
+        setConfig("public.location.directionsUrl", "");
+        setConfig("public.location.hours", "");
     }
 
     // ── public settings ────────────────────────────────────────────────────────────────
@@ -549,6 +566,146 @@ class PublicSiteAndLegalSecurityTest {
         return "{\"type\":\"" + type + "\",\"title\":\"" + title + "\",\"content\":\""
                 + content.replace("\\", "\\\\").replace("\n", "\\n").replace("\"", "\\\"")
                 + "\"}";
+    }
+
+    // ── admin write path ─────────────────────────────────────────────────────────────────
+
+    /**
+     * The defect this pins: the public endpoint silently dropped an invalid value, so a save that
+     * the server had effectively rejected was indistinguishable from one that worked. The admin saw
+     * "Config updated" and the value in the field, and the link simply never appeared on the public
+     * site. Rejecting at the write path turns that into an honest 400.
+     */
+    @Test
+    void configWrite_rejectsAnUnsafePublicUrlInsteadOfSilentlyDroppingIt() throws Exception {
+        mockMvc.perform(put("/v1/platform-admin/config/public.social.facebook")
+                        .header("Authorization", "Bearer " + platformToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"value\":\"javascript:alert(document.cookie)\"}"))
+                .andExpect(status().isBadRequest());
+
+        // The rejected value must not have been persisted, so it cannot resurface later.
+        String body = mockMvc.perform(get("/v1/public/site-settings"))
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(body.contains("javascript:"), "a rejected write must not leave the value stored");
+    }
+
+    @Test
+    void configWrite_acceptsTheOwnerSuppliedSocialUrls() throws Exception {
+        // Both carry a trailing path and a query string, which a naive "must end in a slash" or
+        // "no query allowed" check would reject.
+        for (String url : List.of(
+                "https://www.facebook.com/share/1Exp9TeDmL/",
+                "https://www.instagram.com/elmkusoma_20?srtk=bnFrZG00NmpzcG8=")) {
+            String key = url.contains("facebook") ? "public.social.facebook" : "public.social.instagram";
+            mockMvc.perform(put("/v1/platform-admin/config/" + key)
+                            .header("Authorization", "Bearer " + platformToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"value\":\"" + url + "\"}"))
+                    .andExpect(status().isOk());
+        }
+
+        String body = mockMvc.perform(get("/v1/public/site-settings"))
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(body.contains("facebook.com/share/1Exp9TeDmL"),
+                "the supplied Facebook URL must survive a round trip");
+        assertTrue(body.contains("elmkusoma_20"),
+                "the supplied Instagram URL must survive a round trip");
+    }
+
+    @Test
+    void configWrite_rejectsMalformedPublicValuesWithAReason() throws Exception {
+        for (Map.Entry<String, String> bad : List.of(
+                Map.entry("public.contact.email", "not-an-email"),
+                Map.entry("public.contact.whatsapp", "+255 700 000 000"),
+                Map.entry("public.contact.phone", "0713000000"),
+                Map.entry("public.location.mapUrl", "javascript:alert(1)"))) {
+            mockMvc.perform(put("/v1/platform-admin/config/" + bad.getKey())
+                            .header("Authorization", "Bearer " + platformToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"value\":\"" + bad.getValue().replace("\"", "\\\"") + "\"}"))
+                    // A reason, not a bare status: the admin has to know what to correct.
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").exists());
+        }
+    }
+
+    /** Clearing a value must always be possible, or a bad setting could never be removed. */
+    @Test
+    void configWrite_allowsClearingAPublicValue() throws Exception {
+        mockMvc.perform(put("/v1/platform-admin/config/public.social.facebook")
+                        .header("Authorization", "Bearer " + platformToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"value\":\"\"}"))
+                .andExpect(status().isOk());
+
+        String body = mockMvc.perform(get("/v1/public/site-settings"))
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(body.contains("public.social.facebook"),
+                "a cleared link must be absent rather than present-and-empty");
+    }
+
+    @Test
+    void configWrite_isNotReachableAnonymously() throws Exception {
+        mockMvc.perform(put("/v1/platform-admin/config/public.social.facebook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"value\":\"https://example.com\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    /** Saving a location field must leave every other setting exactly as it was. */
+    @Test
+    void configWrite_ofLocationFields_doesNotTouchOtherSettings() throws Exception {
+        String facebookBefore = readConfig("public.social.facebook");
+        String emailBefore = readConfig("public.contact.email");
+
+        mockMvc.perform(put("/v1/platform-admin/config/public.location.city")
+                        .header("Authorization", "Bearer " + platformToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"value\":\"Dodoma\"}"))
+                .andExpect(status().isOk());
+
+        assertEquals(facebookBefore, readConfig("public.social.facebook"),
+                "saving a location field must not rewrite an unrelated social setting");
+        assertEquals(emailBefore, readConfig("public.contact.email"),
+                "saving a location field must not rewrite an unrelated contact setting");
+
+        setConfig("public.location.city", "Dar es Salaam");
+    }
+
+    // ── headquarters location ────────────────────────────────────────────────────────────
+
+    @Test
+    void locationSettings_arePublishedAtCampusLevelOnly() throws Exception {
+        // The campus-level keys the owner supplied are public; the precise-location keys stay
+        // absent until verified, so no dead "View on Map" control is implied.
+        String body = mockMvc.perform(get("/v1/public/site-settings"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        for (String absent : List.of("public.location.mapUrl", "public.location.directionsUrl",
+                "public.location.building", "public.location.address", "public.location.hours")) {
+            assertFalse(body.contains(absent),
+                    absent + " must stay absent while unverified, not published as a blank");
+        }
+    }
+
+    @Test
+    void locationSettings_appearOnceTheOwnerConfiguresAMapDestination() throws Exception {
+        setConfig("public.location.mapUrl", "https://www.openstreetmap.org/?mlat=-6.79&mlon=39.21#map=16/-6.79/39.21");
+
+        mockMvc.perform(get("/v1/public/site-settings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data['public.location.mapUrl']")
+                        .value("https://www.openstreetmap.org/?mlat=-6.79&mlon=39.21#map=16/-6.79/39.21"));
+
+        setConfig("public.location.mapUrl", "");
+    }
+
+    private String readConfig(String key) {
+        return configRepository.findByConfigKeyAndIsDeletedFalse(key)
+                .map(PlatformConfigEntry::getConfigValue)
+                .orElse(null);
     }
 
     private void setConfig(String key, String value) {

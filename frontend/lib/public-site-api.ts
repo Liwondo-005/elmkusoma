@@ -23,6 +23,19 @@ export interface SiteSettings {
   "public.social.linkedin"?: string
   "public.social.tiktok"?: string
   "public.social.x"?: string
+  // Headquarters. The campus-level keys are populated; building, address, mapUrl,
+  // directionsUrl and hours stay absent until the owner verifies them, so the public
+  // section hides the map and directions actions rather than showing dead controls.
+  "public.location.name"?: string
+  "public.location.campus"?: string
+  "public.location.city"?: string
+  "public.location.country"?: string
+  "public.location.building"?: string
+  "public.location.address"?: string
+  "public.location.mapUrl"?: string
+  "public.location.directionsUrl"?: string
+  "public.location.description"?: string
+  "public.location.hours"?: string
 }
 
 export interface ContactSubmission {

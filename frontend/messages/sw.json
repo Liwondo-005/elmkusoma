@@ -9338,6 +9338,13 @@
     "sendAnother": "Tuma ujumbe mwingine",
     "queued": "Ujumbe wako umehifadhiwa na kuwasilishwa kwa huduma yetu ya barua pepe. Uhakikiwa wa kupeleka hapa hakuna — ikiwa hatujibu ndani ya siku, tafadhali wasiliana nasi moja kwa moja kwa anwani iliyo kwenye ukurasa huu."
   },
+  "siteLocation": {
+    "eyebrow": "Eneo letu",
+    "fallbackName": "Ofisi Kuu ya ELMKUSOMA",
+    "viewOnMap": "Tazama kwenye Ramani",
+    "getDirections": "Pata Maelekezo",
+    "mapNotAvailable": "Eneo halisi la ramani bado halijathibitishwa. Chuo kinaonyeshwa hapo juu; mahali halisi ya ofisi kutapatikana baada ya kuthibitishwa."
+  },
   "legal": {
     "loading": "Inapakia toleo lililochapishwa la sasa...",
     "versionMeta": "Toleo {version} · linaanza {effectiveDate}",
