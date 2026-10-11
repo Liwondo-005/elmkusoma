@@ -1,8 +1,10 @@
 package tz.elmkusoma.course.repository;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -11,6 +13,7 @@ import tz.elmkusoma.course.domain.LiveClass;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -87,4 +90,18 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
     /** Lesson ↔ Live Class: every non-deleted live class linked to a lesson. */
     @Query("SELECT lc FROM LiveClass lc WHERE lc.isDeleted = false AND lc.lessonId = :lessonId ORDER BY lc.scheduledAt DESC")
     List<LiveClass> findByLessonIdAndIsDeletedFalse(@Param("lessonId") UUID lessonId);
+
+    /**
+     * Row-locking read used to serialise recording publication.
+     * <p>Two independent paths publish the same recording: session completion (manual end
+     * or the expiry sweep) and the LiveKit {@code egress_ended} webhook. They overlap
+     * whenever the upload finishes near the moment the class ends, and with cloud storage
+     * the webhook usually wins the race. Both take this lock first, so the
+     * "does the Replay / MediaAsset already exist?" check that follows is safe and exactly
+     * one of each row is created. Lock order is always the live class row first, so the two
+     * paths cannot deadlock against each other.</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT lc FROM LiveClass lc WHERE lc.id = :id")
+    Optional<LiveClass> findByIdForUpdate(@Param("id") UUID id);
 }

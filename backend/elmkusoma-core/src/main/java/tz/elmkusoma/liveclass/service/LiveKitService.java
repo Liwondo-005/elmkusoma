@@ -572,6 +572,50 @@ public class LiveKitService {
     }
 
     /**
+     * Normalises a LiveKit file-result {@code location} into a usable URL.
+     *
+     * <p>The LiveKit protocol types {@code FileInfo.location} as a plain {@code string} and
+     * documents no scheme, so the value cannot be assumed to be an http(s) URL. LiveKit Cloud
+     * with S3-compatible storage may return an {@code s3://bucket/key} URI or a bare object key
+     * depending on the storage provider. Accepting only {@code http} silently dropped those
+     * recordings, which surfaced as a missing Replay and MediaAsset.</p>
+     *
+     * <p>Anything that is not already http(s) is rebuilt from the CONFIGURED endpoint and
+     * bucket - never from the response - so a hostile or malformed location cannot redirect a
+     * recording at an attacker-controlled host. Returns null when no URL can be derived, so
+     * callers never persist a fabricated location.</p>
+     */
+    public String toPlayableRecordingUrl(String location) {
+        if (location == null || location.isBlank()) {
+            return null;
+        }
+        String value = location.trim();
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            return value;
+        }
+
+        String bucket = config.getEgress().getOutputBucket();
+        String endpoint = config.getEgress().getEndpoint();
+        if (bucket == null || bucket.isBlank() || endpoint == null || endpoint.isBlank()) {
+            // No endpoint configured (plain AWS): a non-http location cannot be turned into a
+            // URL here. Return null rather than inventing one. The value itself is not logged:
+            // a location can be a signed URL, and the query part of one is a short-lived secret.
+            log.warn("Recording location is not http(s) and no egress endpoint is configured; "
+                            + "cannot derive a URL (length={})",
+                    value.length());
+            return null;
+        }
+
+        String objectPath = value.startsWith("s3://") ? value.substring("s3://".length()) : value;
+        // Tolerate "key" as well as "bucket/key".
+        if (!objectPath.startsWith(bucket + "/")) {
+            objectPath = bucket + "/" + objectPath;
+        }
+        String base = endpoint.endsWith("/") ? endpoint.substring(0, endpoint.length() - 1) : endpoint;
+        return base + "/" + objectPath;
+    }
+
+    /**
      * Polls ListEgress until the egress completes and returns the final file URL,
      * or null if it fails / does not become available in time.
      * NOTE: there is no GetEgress RPC - LiveKit answers it with 404 bad_route, so the
@@ -610,9 +654,10 @@ public class LiveKitService {
                             for (JsonNode f : files) {
                                 String url = f.path("location").asText(null);
                                 if (url == null) url = f.path("url").asText(null);
-                                if (url != null && url.startsWith("http")) {
+                                String playable = toPlayableRecordingUrl(url);
+                                if (playable != null) {
                                     log.info("Resolved recording URL for egress {} (attempt {})", egressId, attempt);
-                                    return url;
+                                    return playable;
                                 }
                             }
                         }

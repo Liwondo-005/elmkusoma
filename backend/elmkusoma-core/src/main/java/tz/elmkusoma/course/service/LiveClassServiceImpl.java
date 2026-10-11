@@ -8,8 +8,6 @@ import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.attendance.domain.AttendanceRecord;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
-import tz.elmkusoma.audit.domain.AuditLog;
-import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.course.domain.LiveBroadcastSource;
@@ -19,18 +17,15 @@ import tz.elmkusoma.course.domain.LiveClassSessionType;
 import tz.elmkusoma.course.dto.CreateLiveClassRequest;
 import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.course.repository.LiveClassRepository;
-import tz.elmkusoma.event.domain.Replay;
-import tz.elmkusoma.event.repository.ReplayRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
-import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassAttendanceDetail;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
-import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.repository.LiveClassAttendanceDetailRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.service.LiveKitService;
+import tz.elmkusoma.liveclass.service.LiveRecordingPublisher;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.student.domain.Student;
@@ -66,10 +61,6 @@ public class LiveClassServiceImpl implements LiveClassService {
      */
     private static final long SCHEDULE_PAST_GRACE_MINUTES = 1;
 
-    /** Media Library values for a finalized live class recording. */
-    private static final String MEDIA_TYPE_RECORDING = "RECORDING";
-    private static final String MEDIA_SOURCE_TYPE_LIVE_CLASS = "LIVE_CLASS";
-
     /** Statuses an administrator is allowed to force-end (i.e. any running session). */
     private static final java.util.Set<String> FORCE_ENDABLE_STATUSES = java.util.Set.of(
             "STARTING", "LIVE", "IN_PROGRESS", "RECOVERING", "ENDING");
@@ -84,12 +75,9 @@ public class LiveClassServiceImpl implements LiveClassService {
     private final CertificateRepository certificateRepository;
     private final StudentRepository studentRepository;
     private final LiveKitService liveKitService;
-    private final ReplayRepository replayRepository;
-    private final tz.elmkusoma.liveclass.repository.MediaAssetRepository mediaAssetRepository;
+    private final LiveRecordingPublisher liveRecordingPublisher;
     private final LessonRepository lessonRepository;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
-    private final NotificationService notificationService;
-    private final AuditService auditService;
     private final org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     /**
@@ -456,175 +444,21 @@ public class LiveClassServiceImpl implements LiveClassService {
     }
 
     /**
-     * Media Library representation of a finalized recording (mediaType = RECORDING).
-     *
-     * <p>Idempotent: the asset is keyed on source_type = LIVE_CLASS + source_id =
-     * liveClass.id, which is the same origin link the library already exposes through
-     * {@code GET /v1/media/recordings/{sourceType}/{sourceId}}. Reprocessing a session -
-     * which happens because {@code completeSession} can run more than once, e.g. a manual
-     * end followed by the expiry sweep - therefore refreshes the existing row instead of
-     * creating a second one.</p>
-     *
-     * <p>Only a resolved, playable http(s) URL is ever stored. The transient
-     * {@code egress:<id>} marker is a LiveKit bookkeeping value, not a media URL, and must
-     * never reach a learner-facing library.</p>
-     *
-     * <p>Ownership is taken from the live class itself (its institution, its class, its
-     * subject) rather than from any request input, so a recording cannot be filed under
-     * another tenant.</p>
-     */
-    private void publishRecordingToMediaLibrary(LiveClass liveClass, String resolvedUrl) {
-        if (resolvedUrl == null || resolvedUrl.isBlank() || !resolvedUrl.startsWith("http")) {
-            return;
-        }
-        // A soft-deleted asset stays deleted: an explicit library deletion is not undone
-        // by reprocessing. Consistent with how Replay treats deleted rows.
-        var existing = mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse(
-                MEDIA_SOURCE_TYPE_LIVE_CLASS, liveClass.getId());
-
-        String title = liveClass.getTitle() != null ? liveClass.getTitle() : liveClass.getId().toString();
-        String description = "Live class recording - " + title;
-
-        if (!existing.isEmpty()) {
-            MediaAsset asset = existing.get(0);
-            asset.setFileUrl(resolvedUrl);
-            asset.setTitle(title);
-            asset.setDescription(description);
-            if (liveClass.getClassGroupId() != null) {
-                asset.setClassGroupId(liveClass.getClassGroupId());
-            }
-            mediaAssetRepository.save(asset);
-            return;
-        }
-
-        MediaAsset asset = MediaAsset.builder()
-                .title(title)
-                .description(description)
-                .mediaType(MEDIA_TYPE_RECORDING)
-                .fileUrl(resolvedUrl)
-                // durationSeconds is deliberately left null: LiveKit's resolved URL carries no
-                // recording length, and live_classes.recording_duration_seconds is never written
-                // by any code, so any value here would be fabricated. Same for size and mime.
-                .status("READY")
-                .visibility("INSTITUTION")
-                .sourceType(MEDIA_SOURCE_TYPE_LIVE_CLASS)
-                .sourceId(liveClass.getId())
-                .subjectId(liveClass.getSubjectId())
-                .classGroupId(liveClass.getClassGroupId())
-                // media_assets.teacher_id holds a users.id (MediaLibraryController writes the
-                // authenticated user id), so the teacher must be resolved, not copied.
-                .teacherId(resolveTeacherUserId(liveClass))
-                .build();
-        asset.setInstitutionId(liveClass.getInstitutionId());
-        mediaAssetRepository.save(asset);
-        log.info("Media Library recording published for live class {}: classGroupId={}, institutionId={}",
-                liveClass.getId(), liveClass.getClassGroupId(), liveClass.getInstitutionId());
-    }
-
-    /** LiveClass.teacherId is a teachers.id; media_assets.teacher_id stores a users.id. */
-    private UUID resolveTeacherUserId(LiveClass liveClass) {
-        if (liveClass.getTeacherId() == null) {
-            return null;
-        }
-        return teacherRepository.findById(liveClass.getTeacherId())
-                .map(Teacher::getUserId)
-                .orElse(null);
-    }
-
-    /**
      * Stops an active LiveKit Egress, resolves the final file URL and creates the
      * learner-facing Replay row. Everything is best-effort: a recording problem must
      * never roll back ending the class (attendance/certificates above).
      */
     private void finalizeRecordingAndCreateReplay(LiveClass liveClass) {
+        // Cheap local guard: a class that never started a recording has nothing to publish,
+        // and we already hold the entity, so skip the publisher's own lookup. The publisher
+        // repeats this check because the webhook path has no such shortcut.
+        if (liveClass.getRecordingUrl() == null || liveClass.getRecordingUrl().isBlank()) {
+            return;
+        }
         try {
-            String url = liveClass.getRecordingUrl();
-            if (url == null || url.isBlank()) {
-                return;
-            }
-
-            if (url.startsWith("egress:")) {
-                String egressId = url.substring("egress:".length());
-                liveKitService.stopRecording(egressId);
-                url = liveKitService.resolveRecordingUrl(egressId);
-                if (url == null) {
-                    log.warn("Recording URL unresolved for class {} (egress {}); no replay created",
-                            liveClass.getId(), egressId);
-                    return;
-                }
-                liveClass.setRecordingUrl(url);
-                liveClass = liveClassRepository.save(liveClass);
-            }
-
-            if (!url.startsWith("http")) {
-                return;
-            }
-
-            // Media Library representation. This runs before the replay guard on purpose:
-            // reprocessing a session whose replay already exists must still be able to
-            // repair a missing or stale library entry, and it is idempotent either way.
-            publishRecordingToMediaLibrary(liveClass, url);
-
-            if (!replayRepository.findByLiveSessionIdAndIsDeletedFalse(liveClass.getId()).isEmpty()) {
-                return;
-            }
-
-            Replay replay = Replay.builder()
-                    .liveSessionId(liveClass.getId())
-                    .eventId(null)
-                    .title(liveClass.getTitle())
-                    .description("Live class recording - " + (liveClass.getTitle() != null ? liveClass.getTitle() : liveClass.getId()))
-                    .recordingUrl(url)
-                    .status("AVAILABLE")
-                    .viewCount(0)
-                    .lastPositionSeconds(0)
-                    .institutionId(liveClass.getInstitutionId())
-                    .build();
-            replayRepository.save(replay);
-            log.info("Replay created for live class {}: url={}", liveClass.getId(), url);
-            notifyReplayAvailable(liveClass);
-            auditReplayGenerated(liveClass, replay);
+            liveRecordingPublisher.resolveAndPublish(liveClass.getId());
         } catch (Exception e) {
             log.warn("Finalize recording/replay skipped for class {}: {}", liveClass.getId(), e.getMessage());
-        }
-    }
-
-    /** §9: existing notification channel — fired only when a replay actually exists. */
-    private void notifyReplayAvailable(LiveClass liveClass) {
-        try {
-            if (notificationService == null || liveClass.getInstitutionId() == null) {
-                return;
-            }
-            UUID teacherUserId = teacherRepository.findById(liveClass.getTeacherId())
-                    .map(Teacher::getUserId).orElse(null);
-            notificationService.notifyInstitutionStudentsExcluding(
-                    liveClass.getInstitutionId(), teacherUserId,
-                    "Recording Available",
-                    "The recording for \"" + liveClass.getTitle() + "\" is now available to watch.",
-                    "REPLAY_AVAILABLE", "live_class", liveClass.getId());
-        } catch (Exception ex) {
-            log.warn("Replay available notification failed for live class {}: {}", liveClass.getId(), ex.getMessage());
-        }
-    }
-
-    /** §13: audit trail for recording/replay generation, via the existing audit service. */
-    private void auditReplayGenerated(LiveClass liveClass, Replay replay) {
-        try {
-            if (auditService == null) {
-                return;
-            }
-            UUID actorUserId = teacherRepository.findById(liveClass.getTeacherId())
-                    .map(Teacher::getUserId).orElse(null);
-            String actorEmail = actorUserId != null
-                    ? userRepository.findById(actorUserId).map(User::getEmail).orElse(null)
-                    : null;
-            auditService.recordAuditLog(liveClass.getInstitutionId(), actorUserId, actorEmail, "TEACHER",
-                    "replay", replay.getId(), replay.getTitle(), AuditLog.AuditAction.CREATE,
-                    null, Map.of(
-                            "liveClassId", String.valueOf(liveClass.getId()),
-                            "recordingUrl", String.valueOf(replay.getRecordingUrl())));
-        } catch (Exception ex) {
-            log.warn("Audit write failed for replay {}: {}", replay.getId(), ex.getMessage());
         }
     }
 

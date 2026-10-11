@@ -51,6 +51,7 @@ public class LiveKitWebhookController {
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
     private final tz.elmkusoma.learner.service.NotificationService notificationService;
+    private final tz.elmkusoma.liveclass.service.LiveRecordingPublisher liveRecordingPublisher;
     private final ObjectMapper objectMapper;
 
     private final Set<String> processedWebhookKeys = ConcurrentHashMap.newKeySet();
@@ -679,20 +680,29 @@ public class LiveKitWebhookController {
         }
     }
 
+    /**
+     * Completes a live class recording from the LiveKit {@code egress_ended} webhook.
+     *
+     * <p>This is normally the path that files the recording, not a repair: with object storage
+     * the upload takes far longer than the in-request polling window at session end, so by the
+     * time this arrives the class has usually already been finalised without a Replay. Either
+     * way the call publishes directly, because the egress ending is itself the evidence that
+     * the recording is complete - no need to wait for session end. Session completion then
+     * converges on the same rows: publication is idempotent and serialised on the live class
+     * row, so a repeated webhook, or one that races session completion, still yields exactly
+     * one Replay and one Media Asset.</p>
+     */
     private void handleLiveClassRecordingCompleted(String roomName, String recordingUrl) {
         try {
             UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
             if (liveClassId == null) return;
 
-            liveClassRepository.findById(liveClassId).ifPresent(liveClass -> {
-                if (recordingUrl != null) {
-                    liveClass.setRecordingUrl(recordingUrl);
-                    liveClassRepository.save(liveClass);
-                    log.info("Live class recording URL updated: classId={}, url={}", liveClassId, recordingUrl);
-                } else {
-                    log.warn("Live class recording completed but no URL: classId={}", liveClassId);
-                }
-            });
+            if (recordingUrl == null || recordingUrl.isBlank()) {
+                log.warn("Live class recording completed but no URL: classId={}", liveClassId);
+                return;
+            }
+            log.info("Live class recording completed: classId={}", liveClassId);
+            liveRecordingPublisher.publishResolved(liveClassId, recordingUrl);
         } catch (Exception e) {
             log.error("Error handling live class recording_completed webhook", e);
         }
