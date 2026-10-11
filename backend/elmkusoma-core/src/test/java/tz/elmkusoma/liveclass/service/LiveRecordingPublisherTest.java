@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import tz.elmkusoma.event.domain.Replay;
 import tz.elmkusoma.event.repository.ReplayRepository;
 import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.repository.MediaAssetRepository;
+import tz.elmkusoma.testutil.TestDataSeeder;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -41,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * one.</p>
  */
 @SpringBootTest
+@Import(TestDataSeeder.class)
 @TestPropertySource(locations = "classpath:application-test.properties")
 @Transactional
 class LiveRecordingPublisherTest {
@@ -71,7 +74,9 @@ class LiveRecordingPublisherTest {
     private UUID newLiveClass(String recordingUrl) {
         LiveClass lc = LiveClass.builder()
                 .title("Recording publication test")
-                .teacherId(UUID.randomUUID())
+                // live_classes.teacher_id is a real FK to teachers (LiveClass maps a @ManyToOne
+                // Teacher), so the seeded teacher must be used rather than a random UUID.
+                .teacherId(TestDataSeeder.TEACHER_ID)
                 .scheduledAt(LocalDateTime.of(2026, 1, 12, 9, 0))
                 // @SuperBuilder ignores the field's `= 60` initializer (no @Builder.Default),
                 // so it must be passed explicitly or the NOT NULL column gets null.
