@@ -31,9 +31,11 @@ public class VerificationCode {
     private LocalDateTime expiresAt;
 
     @Column(name = "used", nullable = false)
+    @Builder.Default
     private Boolean used = false;
 
     @Column(name = "attempts", nullable = false)
+    @Builder.Default
     private Integer attempts = 0;
 
     @Column(name = "created_at", nullable = false, updatable = false)

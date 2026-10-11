@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import tz.elmkusoma.academic.domain.Subject;
 import tz.elmkusoma.academic.repository.SubjectRepository;
 import tz.elmkusoma.attendance.repository.AttendanceRecordRepository;
+import tz.elmkusoma.audit.service.AuditService;
 import tz.elmkusoma.certificate.repository.CertificateRepository;
 import tz.elmkusoma.course.domain.LiveClass;
 import tz.elmkusoma.course.domain.LiveClass.LiveClassStatus;
@@ -17,10 +18,13 @@ import tz.elmkusoma.course.domain.LiveClassSessionType;
 import tz.elmkusoma.course.dto.CreateLiveClassRequest;
 import tz.elmkusoma.course.dto.LiveClassResponse;
 import tz.elmkusoma.course.repository.LiveClassRepository;
+import tz.elmkusoma.event.repository.ReplayRepository;
 import tz.elmkusoma.exception.ResourceNotFoundException;
+import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.learning.domain.Lesson;
 import tz.elmkusoma.learning.repository.LessonRepository;
 import tz.elmkusoma.liveclass.domain.LiveClassParticipant;
+import tz.elmkusoma.liveclass.domain.MediaAsset;
 import tz.elmkusoma.liveclass.repository.LiveClassAttendanceDetailRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.shared.domain.User;
@@ -54,10 +58,13 @@ class LiveClassServiceTest {
     @Mock private CertificateRepository certificateRepository;
     @Mock private LessonRepository lessonRepository;
     @Mock private TeacherAssignmentRepository teacherAssignmentRepository;
+    @Mock private NotificationService notificationService;
+    @Mock private AuditService auditService;
     @Mock private StudentRepository studentRepository;
     @Mock private org.springframework.transaction.PlatformTransactionManager transactionManager;
+    @Mock private tz.elmkusoma.liveclass.repository.MediaAssetRepository mediaAssetRepository;
+    @Mock private ReplayRepository replayRepository;
     @Mock private tz.elmkusoma.liveclass.service.LiveKitService liveKitService;
-    @Mock private tz.elmkusoma.liveclass.service.LiveRecordingPublisher liveRecordingPublisher;
 
     @InjectMocks
     private LiveClassServiceImpl liveClassService;
@@ -71,6 +78,14 @@ class LiveClassServiceTest {
         teacherId = UUID.randomUUID();
         institutionId = UUID.randomUUID();
         liveClassId = UUID.randomUUID();
+        // The recording publish is delegated to the publisher, which owns the insert in its own
+        // REQUIRES_NEW transaction and tolerates a lost race against V150's unique origin key.
+        // Give the service a real one over these mocks so the end-to-end field population these
+        // tests assert stays covered, rather than asserting against a stubbed-out collaborator.
+        org.springframework.test.util.ReflectionTestUtils.setField(liveClassService,
+                "liveRecordingMediaPublisher",
+                new tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher(
+                        mediaAssetRepository, teacherRepository));
         // Each expiry runs in its own REQUIRES_NEW transaction; without a real manager the
         // template cannot execute, so hand it a no-op status.
         lenient().when(transactionManager.getTransaction(any()))
@@ -941,52 +956,129 @@ class LiveClassServiceTest {
     private void stubCompletionScaffolding(LiveClass live) {
         // All lenient: the negative tests below deliberately return before these are reached.
         lenient().when(liveClassRepository.save(any(LiveClass.class))).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(mediaAssetRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(mediaAssetRepository.findBySourceTypeAndSourceIdAndIsDeletedFalse(
+                any(), any())).thenReturn(Collections.emptyList());
+        lenient().when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(
+                any(), any())).thenReturn(Optional.empty());
+        lenient().when(replayRepository.findByLiveSessionIdAndIsDeletedFalse(any()))
+                .thenReturn(Collections.emptyList());
+        lenient().when(replayRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(teacherRepository.findById(any())).thenReturn(Optional.empty());
     }
 
-    /**
-     * Publication moved to {@link LiveRecordingPublisher} so the LiveKit egress_ended webhook
-     * can drive it as well. With object storage the upload routinely outlives the in-request
-     * polling window at session end, so session completion is usually NOT what files the
-     * recording - the webhook is. What stays here is the handoff; the behaviour itself is
-     * covered by LiveRecordingPublisherTest against real repositories.
-     */
     @Test
-    void finalizedRecording_handsTheClassToThePublisher() {
+    void finalizedRecording_shouldBePublishedToMediaLibrary() {
         LiveClass live = endedRecordedClass("https://cdn.test/rec.mp4", true);
         stubCompletionScaffolding(live);
 
         triggerFinalization(live);
 
-        verify(liveRecordingPublisher).resolveAndPublish(liveClassId);
+        org.mockito.ArgumentCaptor<tz.elmkusoma.liveclass.domain.MediaAsset> captor =
+                org.mockito.ArgumentCaptor.forClass(tz.elmkusoma.liveclass.domain.MediaAsset.class);
+        verify(mediaAssetRepository).save(captor.capture());
+        MediaAsset asset = captor.getValue();
+
+        assertEquals("RECORDING", asset.getMediaType());
+        assertEquals("https://cdn.test/rec.mp4", asset.getFileUrl());
+        assertEquals("LIVE_CLASS", asset.getSourceType());
+        assertEquals(liveClassId, asset.getSourceId(), "must be keyed on the originating live class");
+        assertEquals(live.getClassGroupId(), asset.getClassGroupId(), "recording must target its class");
+        assertEquals(institutionId, asset.getInstitutionId(), "ownership comes from the live class");
+        assertEquals(live.getTitle(), asset.getTitle());
     }
 
     /**
-     * Ending a class must never fail because its recording could not be filed: attendance and
-     * certificates above this call have to stand regardless of storage availability.
+     * Case D: finalization runs more than once (manual End followed by the expiry sweep, or a
+     * reprocess). A second run must refresh the existing asset, never create a second one.
      */
     @Test
-    void publisherFailure_neverBreaksSessionCompletion() {
-        LiveClass live = endedRecordedClass("egress:eg_1", true);
+    void finalizedRecording_twice_shouldNotDuplicateMediaAsset() {
+        LiveClass live = endedRecordedClass("https://cdn.test/rec.mp4", true);
         stubCompletionScaffolding(live);
-        doThrow(new IllegalStateException("storage unavailable"))
-                .when(liveRecordingPublisher).resolveAndPublish(any());
 
-        assertDoesNotThrow(() -> triggerFinalization(live));
+        MediaAsset existing = MediaAsset.builder()
+                .title("stale")
+                .mediaType("RECORDING")
+                .fileUrl("https://cdn.test/old.mp4")
+                .sourceType("LIVE_CLASS")
+                .sourceId(liveClassId)
+                .build();
+        existing.setId(UUID.randomUUID());
+        existing.setInstitutionId(institutionId);
+        when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse("LIVE_CLASS", liveClassId))
+                .thenReturn(Optional.of(existing));
+
+        triggerFinalization(live);
+
+        // One save, and it updated the existing row rather than inserting.
+        verify(mediaAssetRepository).save(same(existing));
+        assertEquals("https://cdn.test/rec.mp4", existing.getFileUrl(), "existing entry must be refreshed");
+        assertEquals(live.getClassGroupId(), existing.getClassGroupId());
     }
 
     /**
-     * Case A: a class that never started a recording has no egress and nothing to publish, so
-     * it must not be handed to the publisher at all - a Replay is learner-facing.
+     * The transient "egress:<id>" marker is LiveKit bookkeeping, not a playable URL. It must
+     * never reach the Media Library as a playable asset - and an egress that never produced a
+     * file must not stay invisible either: it is recorded as a FAILED library asset and the
+     * marker is cleared, so the download endpoint stops reporting "still processing" forever.
      */
     @Test
-    void recordingDisabledWithNoUrl_doesNotHandOffToThePublisher() {
+    void unresolvedEgress_marksRecordingFailedInsteadOfPublishingIt() {
+        LiveClass live = endedRecordedClass("egress:eg_12345", true);
+        stubCompletionScaffolding(live);
+        when(liveKitService.resolveRecordingUrl("eg_12345")).thenReturn(null);
+
+        triggerFinalization(live);
+
+        org.mockito.ArgumentCaptor<tz.elmkusoma.liveclass.domain.MediaAsset> captor =
+                org.mockito.ArgumentCaptor.forClass(tz.elmkusoma.liveclass.domain.MediaAsset.class);
+        verify(mediaAssetRepository).save(captor.capture());
+        assertEquals("FAILED", captor.getValue().getStatus(),
+                "an unresolvable egress must be visible as a failed recording");
+        assertNull(live.getRecordingUrl(), "the egress marker must not survive as a media URL");
+    }
+
+    /** Case A: recording disabled leaves the library untouched. */
+    @Test
+    void recordingDisabledWithNoUrl_shouldNotPublishMediaAsset() {
         LiveClass live = endedRecordedClass(null, false);
         stubCompletionScaffolding(live);
 
         triggerFinalization(live);
 
-        verify(liveRecordingPublisher, never()).resolveAndPublish(any());
+        verify(mediaAssetRepository, never()).save(any());
+    }
+
+    /** A non-http url is not a playable recording and must never be published as one. */
+    @Test
+    void nonHttpRecordingUrl_isNotPublishedAsAPlayableAsset() {
+        LiveClass live = endedRecordedClass("file:///tmp/rec.mp4", true);
+        stubCompletionScaffolding(live);
+
+        triggerFinalization(live);
+
+        org.mockito.ArgumentCaptor<tz.elmkusoma.liveclass.domain.MediaAsset> captor =
+                org.mockito.ArgumentCaptor.forClass(tz.elmkusoma.liveclass.domain.MediaAsset.class);
+        verify(mediaAssetRepository).save(captor.capture());
+        assertEquals("FAILED", captor.getValue().getStatus(),
+                "a non-playable location must be recorded as failed, not as a ready asset");
+    }
+
+    /** The existing Replay behaviour must be unchanged by the media publication. */
+    @Test
+    void finalizedRecording_stillCreatesExactlyOneReplay() {
+        LiveClass live = endedRecordedClass("https://cdn.test/rec.mp4", true);
+        stubCompletionScaffolding(live);
+
+        triggerFinalization(live);
+
+        org.mockito.ArgumentCaptor<tz.elmkusoma.event.domain.Replay> captor =
+                org.mockito.ArgumentCaptor.forClass(tz.elmkusoma.event.domain.Replay.class);
+        verify(replayRepository).save(captor.capture());
+        assertEquals(liveClassId, captor.getValue().getLiveSessionId());
+        assertEquals("https://cdn.test/rec.mp4", captor.getValue().getRecordingUrl());
+        assertEquals(institutionId, captor.getValue().getInstitutionId());
     }
 
     private Lesson buildLessonRow(UUID lessonInstitutionId, UUID classGroupId, String title) {

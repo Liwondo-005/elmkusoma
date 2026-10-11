@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,6 +28,7 @@ import tz.elmkusoma.identity.dto.response.AuthResponse;
 import tz.elmkusoma.identity.repository.EmailVerificationTokenRepository;
 import tz.elmkusoma.identity.repository.PasswordResetTokenRepository;
 import tz.elmkusoma.identity.repository.RevokedTokenRepository;
+import tz.elmkusoma.identity.service.PasswordPolicy;
 import tz.elmkusoma.identity.service.impl.AuthServiceImpl;
 import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.shared.domain.Institution;
@@ -87,6 +89,16 @@ class AuthServiceTest {
     private AuditService auditService;
     @Mock
     private MfaService mfaService;
+
+    // Concrete collaborator, so @InjectMocks would otherwise inject null.
+
+
+    @Spy
+
+
+    private PasswordPolicy passwordPolicy = new PasswordPolicy();
+
+
 
     @InjectMocks
     private AuthServiceImpl authService;

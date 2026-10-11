@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Loader2, X } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { platformAdminApi, type UserSummary, type UserCreatePayload, type UserUpdatePayload } from "@/lib/platform-admin-api"
+import { platformAdminApi, type UserSummary, type UserCreatePayload, type UserUpdatePayload, type PlatformInvitation } from "@/lib/platform-admin-api"
 
 const ROLES = [
   "STUDENT",
@@ -83,8 +83,13 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
     isEmailVerified: false,
     isPhoneVerified: false,
   })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+const [saving, setSaving] = useState(false)
+const [error, setError] = useState<string | null>(null)
+  // Opt-in only: provisioning by password stays the default so nothing changes for an admin who
+  // has not opted in. Invitation mode is for roles the platform alone grants, where a permanent
+  // platform-chosen credential is the thing to avoid.
+  const [inviteMode, setInviteMode] = useState(false)
+  const [issuedInvitation, setIssuedInvitation] = useState<PlatformInvitation | null>(null)
   // Audit B-02: the organization is now selectable at provisioning time.
   const [institutions, setInstitutions] = useState<{ id: string; name: string; type?: string }[]>([])
   const [institutionsError, setInstitutionsError] = useState<string | null>(null)
@@ -155,11 +160,12 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
       setError(t("userForm.errNamesEmail"))
       return
     }
-    if (!isEdit && !form.password) {
+    if (!isEdit && !inviteMode && !form.password) {
       setError(t("userForm.errPasswordRequired"))
       return
     }
-    if (form.password && form.password.length < 8) {
+    // Not required in invite mode: the recipient chooses their own when they redeem.
+    if (!inviteMode && form.password && form.password.length < 8) {
       setError(t("userForm.errPasswordMin"))
       return
     }
@@ -186,6 +192,18 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
       if (isEdit && user) {
         await platformAdminApi.updateUser(user.id, payload)
         onSaved(t("userForm.updatedOk"))
+      } else if (inviteMode) {
+        // No password is sent: the invitation expires, is delivered once, and the recipient
+        // sets their own secret after proving they control the address.
+        const invitation = await platformAdminApi.createInvitation({
+          email,
+          institutionId: form.institutionId,
+          role: form.role,
+          firstName,
+          lastName,
+        })
+        setIssuedInvitation(invitation)
+        return
       } else {
         await platformAdminApi.createUser(payload)
         onSaved(t("userForm.createdOk"))
@@ -223,6 +241,28 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
           <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{error}</div>
         )}
 
+        {issuedInvitation ? (
+          <div className="space-y-4" role="status">
+            <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
+              <p className="font-semibold">{t("userForm.inviteIssuedTitle")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("userForm.inviteIssuedHint", { email: issuedInvitation.email })}
+              </p>
+            </div>
+            {issuedInvitation.token && (
+              <div>
+                <label className={labelClass}>{t("userForm.inviteTokenLabel")}</label>
+                <input readOnly value={issuedInvitation.token} className={`${inputClass} font-mono`} onFocus={(e) => e.currentTarget.select()} />
+                <p className="mt-1 text-xs text-muted-foreground">{t("userForm.inviteTokenHint")}</p>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button type="button" onClick={onClose} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                {tc("close")}
+              </button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -317,6 +357,25 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
           </div>
 
           {!isEdit && (
+            <div className="rounded-xl border border-border bg-muted/40 p-3">
+              <label className="flex items-start gap-2 text-xs text-foreground">
+                <input
+                  type="checkbox"
+                  checked={inviteMode}
+                  onChange={(e) => setInviteMode(e.target.checked)}
+                  className="mt-0.5 accent-primary"
+                />
+                <span>
+                  <span className="font-medium">{t("userForm.inviteToggleLabel")}</span>
+                  <span className="mt-0.5 block text-muted-foreground">
+                    {t("userForm.inviteToggleHint")}
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
+
+          {!isEdit && !inviteMode && (
             <div>
               <label className={labelClass}>{t("userForm.labelPassword")}</label>
               <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required minLength={8} placeholder={t("userForm.phPassword")} className={inputClass} />
@@ -329,10 +388,15 @@ export function UserFormModal({ open, user, onClose, onSaved }: UserFormModalPro
             </button>
             <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               {saving && <Loader2 className="size-4 animate-spin" />}
-              {isEdit ? t("userForm.btnSave") : t("userForm.btnCreate")}
+              {isEdit
+                ? t("userForm.btnSave")
+                : inviteMode
+                  ? t("userForm.btnInvite")
+                  : t("userForm.btnCreate")}
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   )

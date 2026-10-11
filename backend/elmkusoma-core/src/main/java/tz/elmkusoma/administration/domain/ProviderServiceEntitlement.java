@@ -24,9 +24,11 @@ public class ProviderServiceEntitlement extends BaseEntity {
     private UUID serviceId;
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "ACTIVE";
 
     @Column(name = "seats_used")
+    @Builder.Default
     private Integer seatsUsed = 0;
 
     @Column(name = "max_seats")

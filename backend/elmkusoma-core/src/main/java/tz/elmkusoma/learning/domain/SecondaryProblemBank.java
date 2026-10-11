@@ -43,9 +43,11 @@ public class SecondaryProblemBank extends BaseEntity {
 
     @Column(name = "difficulty_level", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private DifficultyLevel difficultyLevel = DifficultyLevel.BASIC;
 
     @Column(name = "marks")
+    @Builder.Default
     private Integer marks = 1;
 
     public enum ProblemType {

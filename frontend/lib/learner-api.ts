@@ -486,8 +486,17 @@ export interface ReplayItem {
   captionUrl?: string | null
 }
 
+/** A titled timestamp on a recording, recorded by the recording's owner. */
+export interface ReplayChapter {
+  id: string
+  title: string
+  positionSeconds: number
+}
+
 export interface ReplayDetail {
   replay: ReplayItem
+  /** Ordered by position. Absent or empty when nobody has chaptered this recording. */
+  chapters?: ReplayChapter[]
   relatedResources: Resource[]
   upcomingEvents: EventItem[]
 }

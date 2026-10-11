@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react"
-import { Shield, Loader2, Plus, Trash2, X } from "lucide-react"
+import { Shield, Loader2, Plus, Trash2, X, Pencil, Check } from "lucide-react"
 import { adminApi, getInstitutionId, type RoleResponse, type CreateRoleRequest } from "@/lib/api"
 
 const PERMISSION_OPTIONS = [
@@ -31,6 +31,13 @@ export default function AdminRolesPage() {
   const [newPermissions, setNewPermissions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  // B-57: editing an existing role. System roles stay read-only, matching the backend.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editDisplayName, setEditDisplayName] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [editPermissions, setEditPermissions] = useState<string[]>([])
+  const [updating, setUpdating] = useState(false)
 
   const institutionId = getInstitutionId()
 
@@ -84,8 +91,40 @@ export default function AdminRolesPage() {
     }
   }
 
+  function startEdit(role: RoleResponse) {
+    setEditingId((prev) => (prev === role.id ? null : role.id))
+    setEditName(role.name)
+    setEditDisplayName(role.displayName)
+    setEditDescription(role.description ?? "")
+    setEditPermissions(role.permissions)
+    setError(null)
+  }
+
+  async function handleUpdate() {
+    if (!institutionId || !editingId) return
+    setUpdating(true)
+    try {
+      const updated = await adminApi.updateRole(institutionId, editingId, {
+        name: editName.trim(),
+        displayName: editDisplayName.trim(),
+        description: editDescription.trim() || undefined,
+        permissions: editPermissions,
+      })
+      setRoles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      setEditingId(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("roles.failedToUpdateRole"))
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   function togglePermission(perm: string) {
     setNewPermissions((prev) => (prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]))
+  }
+
+  function toggleEditPermission(perm: string) {
+    setEditPermissions((prev) => (prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]))
   }
 
   return (
@@ -189,45 +228,124 @@ export default function AdminRolesPage() {
         <div className="space-y-3">
           {roles.map((role) => (
             <div key={role.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">{role.displayName}</span>
-                    <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {role.name}
-                    </span>
-                    {role.isSystemRole && (
-                      <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                        {t("roles.system")}</span>
+              {editingId === role.id ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block text-xs font-medium text-muted-foreground">
+                      {t("roles.nameEGClass")}
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-ring"
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-muted-foreground">
+                      {t("roles.displayNameEG")}
+                      <input
+                        type="text"
+                        value={editDisplayName}
+                        onChange={(e) => setEditDisplayName(e.target.value)}
+                        className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-ring"
+                      />
+                    </label>
+                  </div>
+                  <label className="block text-xs font-medium text-muted-foreground">
+                    {t("roles.descriptionOptional")}
+                    <input
+                      type="text"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-ring"
+                    />
+                  </label>
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">{t("roles.permissions")}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {PERMISSION_OPTIONS.map((perm) => (
+                        <button
+                          key={perm}
+                          type="button"
+                          onClick={() => toggleEditPermission(perm)}
+                          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            editPermissions.includes(perm)
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {perm}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleUpdate}
+                      disabled={updating || !editName.trim() || !editDisplayName.trim()}
+                      className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {updating ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                      {t("roles.saveChanges")}
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="flex h-9 items-center gap-2 rounded-lg border border-border px-4 text-xs font-medium text-foreground hover:bg-muted"
+                    >
+                      <X className="size-3.5" /> {tc("cancel")}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">{role.displayName}</span>
+                      <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {role.name}
+                      </span>
+                      {role.isSystemRole && (
+                        <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          {t("roles.system")}</span>
+                      )}
+                      {!role.isActive && (
+                        <span className="rounded bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                          {ts("inactive")}</span>
+                      )}
+                    </div>
+                    {role.description && (
+                      <p className="mt-1 text-xs text-muted-foreground">{role.description}</p>
                     )}
-                    {!role.isActive && (
-                      <span className="rounded bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
-                        {ts("inactive")}</span>
+                    {role.permissions.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {role.permissions.map((perm) => (
+                          <span key={perm} className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {perm}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  {role.description && (
-                    <p className="mt-1 text-xs text-muted-foreground">{role.description}</p>
-                  )}
-                  {role.permissions.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {role.permissions.map((perm) => (
-                        <span key={perm} className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          {perm}
-                        </span>
-                      ))}
+                  {!role.isSystemRole && (
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        onClick={() => startEdit(role)}
+                        disabled={deleting === role.id}
+                        className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                        aria-label={t("roles.editRole")}
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(role.id)}
+                        disabled={deleting === role.id}
+                        className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-destructive/5 hover:text-destructive disabled:opacity-50"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
                     </div>
                   )}
                 </div>
-                {!role.isSystemRole && (
-                  <button
-                    onClick={() => handleDelete(role.id)}
-                    disabled={deleting === role.id}
-                    className="shrink-0 rounded-lg border border-border p-2 text-muted-foreground hover:bg-destructive/5 hover:text-destructive disabled:opacity-50"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           ))}
         </div>

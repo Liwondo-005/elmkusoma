@@ -21,4 +21,6 @@ public interface ReplayRepository extends JpaRepository<Replay, UUID> {
             String status, UUID institutionId, org.springframework.data.domain.Pageable pageable);
 
     List<Replay> findByLiveSessionIdAndIsDeletedFalse(UUID liveSessionId);
+
+    List<Replay> findByLiveSessionIdInAndStatusAndIsDeletedFalse(List<UUID> liveSessionIds, String status);
 }

@@ -33,6 +33,7 @@ public class InstitutionMembership {
     private Role role;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     @Builder.Default

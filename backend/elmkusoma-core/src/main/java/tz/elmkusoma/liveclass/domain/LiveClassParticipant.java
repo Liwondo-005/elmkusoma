@@ -26,6 +26,7 @@ public class LiveClassParticipant extends BaseEntity {
     private UUID userId;
 
     @Column(name = "role", nullable = false, length = 20)
+    @Builder.Default
     private String role = "LEARNER";
 
     @Column(name = "joined_at")

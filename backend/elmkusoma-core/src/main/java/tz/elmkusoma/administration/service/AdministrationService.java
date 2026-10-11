@@ -181,6 +181,67 @@ public class AdministrationService {
         return administrationMapper.toRoleResponse(role, permissions);
     }
 
+    /**
+     * B-57: institution roles could be created and deleted but never edited. Once a custom role
+     * existed its permission set was frozen, so correcting a typo or granting a missing permission
+     * meant deleting the role and every user assignment went with it. System roles stay immutable
+     * and remain undeletable.
+     */
+    public RoleResponse updateRole(UUID roleId, CreateRoleRequest request, UUID institutionId,
+                                   String userEmail, String userRole) {
+        CustomRole role = roleRepository.findByIdAndIsDeletedFalse(roleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
+
+        if (!role.getInstitutionId().equals(institutionId)) {
+            throw new tz.elmkusoma.exception.ForbiddenException("role", "update");
+        }
+
+        if (role.getIsSystemRole()) {
+            throw new IllegalStateException("Cannot edit system roles");
+        }
+
+        List<String> oldPermissions = permissionRepository.findPermissionsByRoleId(role.getId());
+        List<String> newPermissions = request.getPermissions() == null
+                ? oldPermissions
+                : request.getPermissions().stream().filter(p -> p != null && !p.isBlank())
+                        .map(String::trim).distinct().sorted().toList();
+
+        if (request.getName() != null && !request.getName().isBlank()
+                && !request.getName().equals(role.getName())) {
+            if (roleRepository.existsByNameAndInstitutionIdAndIsDeletedFalse(request.getName(), institutionId)) {
+                throw new IllegalArgumentException("Role with name '" + request.getName() + "' already exists");
+            }
+            role.setName(request.getName().trim());
+        }
+        if (request.getDisplayName() != null && !request.getDisplayName().isBlank()) {
+            role.setDisplayName(request.getDisplayName().trim());
+        }
+        // Only overwrite the description when the caller actually sent one, so a partial update
+        // does not silently blank a description that was already set.
+        if (request.getDescription() != null) {
+            role.setDescription(request.getDescription().isBlank() ? null : request.getDescription().trim());
+        }
+        roleRepository.save(role);
+
+        if (request.getPermissions() != null && !newPermissions.equals(oldPermissions)) {
+            permissionRepository.deleteByRoleId(role.getId());
+            permissionRepository.flush();
+            for (String permission : newPermissions) {
+                permissionRepository.save(RolePermission.of(role.getId(), permission));
+            }
+        }
+        permissionRepository.flush();
+
+        auditService.recordAuditLog(institutionId, null, userEmail, userRole,
+                "CustomRole", role.getId(), role.getName(),
+                AuditLog.AuditAction.UPDATE, null,
+                Map.of("oldPermissions", oldPermissions, "newPermissions", newPermissions));
+
+        log.info("Updated role {} for institution {}: {} -> {} permissions",
+                role.getName(), institutionId, oldPermissions.size(), newPermissions.size());
+        return administrationMapper.toRoleResponse(role, newPermissions);
+    }
+
     public void deleteRole(UUID roleId, UUID institutionId, String userEmail, String userRole) {
         CustomRole role = roleRepository.findByIdAndIsDeletedFalse(roleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));

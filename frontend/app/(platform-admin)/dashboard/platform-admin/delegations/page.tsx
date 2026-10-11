@@ -31,7 +31,9 @@ function DelegationDetailPanel({ id, onChanged, onClose }: { id: string; onChang
     setLoading(true); setError(null)
     Promise.all([
       platformAdminApi.getDelegation(id),
-      platformAdminApi.getAuditLogs(0, 20, undefined, "DELEGATION", id).catch(() => [] as AuditLogEntry[]),
+      platformAdminApi.getAuditLogs(0, 20, undefined, "DELEGATION", id)
+        .then((r) => r.content)
+        .catch(() => [] as AuditLogEntry[]),
     ])
       .then(([d, a]) => { setDetail(d); setAudit(a) })
       .catch((e) => setError(e.message))

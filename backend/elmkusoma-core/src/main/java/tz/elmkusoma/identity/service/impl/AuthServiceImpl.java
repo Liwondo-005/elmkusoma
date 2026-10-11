@@ -30,6 +30,7 @@ import tz.elmkusoma.identity.repository.RevokedTokenRepository;
 import tz.elmkusoma.identity.repository.VerificationCodeRepository;
 import tz.elmkusoma.identity.service.AuthService;
 import tz.elmkusoma.identity.service.MfaService;
+import tz.elmkusoma.identity.service.PasswordPolicy;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.shared.domain.InstitutionMembership;
 import tz.elmkusoma.shared.domain.User;
@@ -63,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
     private final NotificationService notificationService;
     private final AuditService auditService;
     private final MfaService mfaService;
+    private final PasswordPolicy passwordPolicy;
 
     @Value("${app.frontend-url:http://localhost:3000}")
     private String frontendUrl = "http://localhost:3000";
@@ -161,8 +163,9 @@ public class AuthServiceImpl implements AuthService {
                             RateLimitService rateLimitService,
                             EventPublisherService eventPublisherService,
                             NotificationService notificationService,
-                            AuditService auditService,
-                            MfaService mfaService) {
+AuditService auditService,
+                             MfaService mfaService,
+                             PasswordPolicy passwordPolicy) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -185,6 +188,7 @@ public class AuthServiceImpl implements AuthService {
         this.notificationService = notificationService;
         this.auditService = auditService;
         this.mfaService = mfaService;
+        this.passwordPolicy = passwordPolicy;
     }
 
     private void auditRecoveryEvent(User user, SecurityEvent.SecurityEventType type,
@@ -215,32 +219,14 @@ public class AuthServiceImpl implements AuthService {
             User.Role.OTHER_LEARNER
     );
 
-    private static final java.util.Set<String> COMMON_PASSWORDS = java.util.Set.of(
-            "password", "password1", "password12", "password123",
-            "12345678", "123456789", "qwerty", "qwerty123", "abc12345",
-            "letmein", "letmein123", "welcome", "welcome123", "admin123",
-            "user12345", "test12345", "changeme", "changeme123", "iloveyou123",
-            "football123", "monkey123", "dragon123", "elmkusoma", "elmkusoma123",
-            "tanzania", "tanzania123");
-
-    /**
-     * Minimal breached-obvious-password screen. Exact (case-insensitive)
-     * dictionary match plus the account's own email local-part.
-     */
+/**
+ * The password screen now lives in {@link PasswordPolicy} so every entry point that sets a
+ * secret shares one dictionary. The old copy distinguished "too common" from "contains your
+ * email address" in its message; the shared policy folds both into one rejection, because
+ * which rule fired tells an attacker which word to swap out.
+ */
     private void rejectCommonPassword(String email, String password) {
-        if (password == null) {
-            return;
-        }
-        String lowered = password.toLowerCase();
-        if (COMMON_PASSWORDS.contains(lowered)) {
-            throw new IllegalArgumentException("Password is too common. Choose a less predictable password.");
-        }
-        if (email != null && email.contains("@")) {
-            String localPart = email.substring(0, email.indexOf('@')).toLowerCase();
-            if (!localPart.isBlank() && (lowered.equals(localPart) || lowered.contains(localPart))) {
-                throw new IllegalArgumentException("Password must not contain your email address.");
-            }
-        }
+        passwordPolicy.rejectWeak(email, password);
     }
 
     private User.Role resolveRegistrationRole(String requestedRole) {

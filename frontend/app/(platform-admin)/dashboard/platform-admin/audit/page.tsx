@@ -15,15 +15,24 @@ export default function AuditLogsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
+  // Audit B-49: the endpoint now returns a real PageResponse, so the pager uses the server's
+  // total instead of guessing from whether the current page happened to be full.
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
       const data = await platformAdminApi.getAuditLogs(page, PAGE_SIZE)
-      setLogs(data)
+      setLogs(data.content)
+      setTotalPages(data.totalPages)
+      setTotalElements(data.totalElements)
     } catch (err) {
       setError(err instanceof Error ? err.message : t("audit.failedToLoadAudit"))
+      setLogs([])
+      setTotalPages(0)
+      setTotalElements(0)
     } finally {
       setLoading(false)
     }
@@ -113,18 +122,21 @@ export default function AuditLogsPage() {
         </div>
       )}
 
-      {logs.length === PAGE_SIZE && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
+            disabled={page === 0 || loading}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
             {t("audit.prev")}</button>
-          <span className="text-sm text-muted-foreground">{t("audit.page", { p0: page + 1 })}</span>
+          <span className="text-sm text-muted-foreground">
+            {t("audit.page", { p0: page + 1 })} / {totalPages}
+            {totalElements > 0 && ` · ${totalElements}`}
+          </span>
           <button
             onClick={() => setPage((p) => p + 1)}
-            disabled={logs.length < PAGE_SIZE}
+            disabled={page >= totalPages - 1 || loading}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
           >
             {tc("next")}</button>

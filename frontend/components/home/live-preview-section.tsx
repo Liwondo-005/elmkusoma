@@ -8,33 +8,37 @@ import { LiveClassCard } from "@/components/live-class-card"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { LiveClass } from "@/lib/data"
+import { useAuth } from "@/lib/auth"
 
 function mapApiToCard(
-  lc: ApiLiveClass,
+  lc: ApiLiveClass & { teacherName?: string | null; subjectName?: string | null; hasRecording?: boolean | null },
   sx: { recorded: string; liveNow: string; ended: string; intermediate: string },
 ): LiveClass {
-  const now = new Date()
-  const scheduled = new Date(lc.scheduledAt)
-  const end = new Date(scheduled.getTime() + lc.durationMinutes * 60000)
-  const isPast = end < now
-  const isLive = scheduled <= now && end >= now
+  // Status comes from the API. It was previously recomputed in the browser from
+  // scheduledAt+duration, which mislabelled CANCELLED and in-progress sessions.
+  const status = (lc.status ?? "").toUpperCase()
+  const scheduled = lc.scheduledAt ? new Date(lc.scheduledAt) : null
+  const isLive = ["IN_PROGRESS", "LIVE", "STARTING", "ENDING"].includes(status)
+  const isPast = ["COMPLETED", "ENDED", "CANCELLED", "SERVICE_UNAVAILABLE"].includes(status)
 
-  let status: LiveClass["status"]
+  let bucket: LiveClass["status"]
   let badge: string
-  if (isPast) { status = "past"; badge = sx.recorded }
-  else if (isLive) { status = "live"; badge = sx.liveNow }
-  else { status = "scheduled"; badge = scheduled.toLocaleDateString() }
+  if (isLive) { bucket = "live"; badge = sx.liveNow }
+  else if (isPast) { bucket = "past"; badge = status === "CANCELLED" ? "CANCELLED" : sx.recorded }
+  else { bucket = "scheduled"; badge = scheduled ? scheduled.toLocaleDateString() : "" }
 
   return {
     id: lc.id,
     title: lc.title,
-    subtitle: lc.description?.slice(0, 40) || "",
-    instructor: "",
+    subtitle: lc.subjectName ?? "",
+    instructor: lc.teacherName ?? "",
     image: "/images/class-default.png",
-    status,
+    status: bucket,
     badge,
-    time: isPast ? sx.ended : scheduled.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    time: isPast ? sx.ended : scheduled ? scheduled.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "",
     level: "Intermediate",
+    hasRecording: lc.hasRecording === true,
+    canJoin: isLive,
   }
 }
 
@@ -42,18 +46,22 @@ export function LivePreviewSection() {
   const t = useTranslations("home")
   const tn = useTranslations("nav")
   const [classes, setClasses] = useState<LiveClass[]>([])
+  const { token, loading: authLoading } = useAuth()
 
   useEffect(() => {
+    if (authLoading || !token) return
     const sx = {
       recorded: t("live.statusRecorded"),
       liveNow: t("live.statusLiveNow"),
       ended: t("live.statusEnded"),
       intermediate: t("live.levelIntermediate"),
     }
-    dashboardApi.getLiveClasses()
-      .then((data) => setClasses(((data as ApiLiveClass[]) || []).slice(0, 4).map((lc) => mapApiToCard(lc, sx))))
+    // Same real endpoint as the /live-classes discovery page: it returns running,
+    // upcoming and recently finished sessions.
+    dashboardApi.getStudentLiveClasses()
+      .then((data) => setClasses(((data as (ApiLiveClass & { teacherName?: string | null; hasRecording?: boolean | null })[]) || []).slice(0, 4).map((lc) => mapApiToCard(lc, sx))))
       .catch(() => setClasses([]))
-  }, [t])
+  }, [t, token, authLoading])
 
   if (classes.length === 0) return null
 

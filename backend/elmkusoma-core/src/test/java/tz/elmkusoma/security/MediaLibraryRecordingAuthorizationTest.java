@@ -22,7 +22,9 @@ import tz.elmkusoma.testutil.TestTokens;
 
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -275,5 +277,86 @@ class MediaLibraryRecordingAuthorizationTest {
                         .header("Authorization", "Bearer " + TestTokens.userToken(outsider.getEmail()))
                         .header("X-Institution-Id", institution.getId().toString()))
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * LIVE_CLASS is a reserved origin: only the recording hand-off writes it, because
+     * {@code canViewAsset} derives replay entitlement from it and V150 makes
+     * {@code (source_type, source_id)} unique. A client that could claim it would attach an
+     * arbitrary file to someone else's session and squat the one slot the genuine recording
+     * needs - permanently blocking that session's recording from ever reaching the library.
+     */
+    @Test
+    void createMedia_cannotClaimLiveClassOrigin() throws Exception {
+        User teacher = saveTeacher("origin");
+
+        mockMvc.perform(post("/v1/media")
+                        .header("Authorization", "Bearer " + TestTokens.userToken(teacher.getEmail()))
+                        .header("X-Institution-Id", institution.getId().toString())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"forged recording\",\"mediaType\":\"RECORDING\","
+                                + "\"fileUrl\":\"https://cdn.test/forged.mp4\","
+                                + "\"sourceType\":\"LIVE_CLASS\",\"sourceId\":\"" + liveClassId + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, mediaAssetRepository
+                        .findBySourceTypeAndSourceIdAndIsDeletedFalse("LIVE_CLASS", liveClassId).size(),
+                "the reserved origin must not be written by a client request");
+    }
+
+    /** The entitlement check is case-insensitive, so the guard must be too. */
+    @Test
+    void createMedia_cannotClaimLiveClassOriginInAnotherCasing() throws Exception {
+        User teacher = saveTeacher("origin-casing");
+
+        for (String casing : new String[] {"live_class", "Live_Class", " LIVE_CLASS "}) {
+            mockMvc.perform(post("/v1/media")
+                            .header("Authorization", "Bearer " + TestTokens.userToken(teacher.getEmail()))
+                            .header("X-Institution-Id", institution.getId().toString())
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"title\":\"forged recording\",\"mediaType\":\"RECORDING\","
+                                    + "\"fileUrl\":\"https://cdn.test/forged.mp4\","
+                                    + "\"sourceType\":\"" + casing + "\",\"sourceId\":\"" + liveClassId + "\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        assertEquals(0, mediaAssetRepository
+                        .findBySourceTypeAndSourceIdAndIsDeletedFalse("LIVE_CLASS", liveClassId).size());
+    }
+
+    /** The guard must not stop ordinary uploads, which never carry that origin. */
+    @Test
+    void createMedia_stillAcceptsAnOrdinaryUpload() throws Exception {
+        User teacher = saveTeacher("ordinary");
+
+        mockMvc.perform(post("/v1/media")
+                        .header("Authorization", "Bearer " + TestTokens.userToken(teacher.getEmail()))
+                        .header("X-Institution-Id", institution.getId().toString())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"lesson video\",\"mediaType\":\"VIDEO\","
+                                + "\"fileUrl\":\"https://cdn.test/lesson.mp4\","
+                                + "\"sourceType\":\"COURSE\",\"sourceId\":\"" + UUID.randomUUID() + "\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    private User saveTeacher(String tag) {
+        User teacher = userRepository.save(User.builder()
+                .email("media-" + tag + "-" + UUID.randomUUID() + "@test.com")
+                .passwordHash("test-hash")
+                .firstName("Media")
+                .lastName("Teacher")
+                .role(User.Role.TEACHER)
+                .institutionId(institution.getId())
+                .isActive(true)
+                .isEmailVerified(true)
+                .isDeleted(false)
+                .build());
+        membershipRepository.save(InstitutionMembership.builder()
+                .userId(teacher.getId())
+                .institutionId(institution.getId())
+                .role(InstitutionMembership.Role.TEACHER)
+                .isActive(true)
+                .build());
+        return teacher;
     }
 }

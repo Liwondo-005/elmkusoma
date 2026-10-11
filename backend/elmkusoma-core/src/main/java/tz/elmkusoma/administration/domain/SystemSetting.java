@@ -27,12 +27,14 @@ public class SystemSetting extends BaseEntity {
     private Map<String, Object> settingValue;
 
     @Column(name = "setting_type", nullable = false)
+    @Builder.Default
     private String settingType = "STRING";
 
     @Column(name = "description")
     private String description;
 
     @Column(name = "is_public", nullable = false)
+    @Builder.Default
     private Boolean isPublic = false;
 
     public static SystemSetting of(String settingKey, Map<String, Object> settingValue,

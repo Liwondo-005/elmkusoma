@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import tz.elmkusoma.common.BaseEntity;
+import tz.elmkusoma.teacher.domain.Teacher;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -22,6 +23,10 @@ public class LiveClass extends BaseEntity {
 
     @Column(name = "teacher_id", nullable = false)
     private UUID teacherId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "teacher_id", insertable = false, updatable = false)
+    private Teacher teacher;
 
     @Column(name = "title", nullable = false, length = 300)
     private String title;
@@ -43,10 +48,64 @@ public class LiveClass extends BaseEntity {
     private LocalDateTime startedAt;
 
     @Column(name = "duration_minutes", nullable = false)
+    @Builder.Default
     private Integer durationMinutes = 60;
 
-    @Column(name = "status", nullable = false, length = 20)
+@Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private String status = "SCHEDULED";
+
+    // ── public discovery (V157) ───────────────────────────────────────────────────────────────
+    // Editorial state, deliberately NOT another value of `status`. See V157 for why publication
+    // and session lifecycle are orthogonal: a class can be SCHEDULED and invisible, or ENDED and
+    // still publicly listed as Past content.
+
+    /** DRAFT | PENDING_APPROVAL | APPROVED | PUBLISHED | REJECTED. */
+    @Column(name = "publication_status", nullable = false, length = 20,
+            columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'DRAFT'")
+    @Builder.Default
+    private String publicationStatus = "DRAFT";
+
+    /**
+     * PUBLIC | AUTHENTICATED | INSTITUTION | PRIVATE | INVITED | RESTRICTED.
+     *
+     * <p>Reuses the vocabulary {@code EventServiceImpl} already applies to {@code Event}, rather
+     * than inventing a parallel one. Defaults to INSTITUTION so every existing class keeps its
+     * current reachability.</p>
+     */
+    @Column(name = "access_level", nullable = false, length = 30,
+            columnDefinition = "VARCHAR(30) NOT NULL DEFAULT 'INSTITUTION'")
+    @Builder.Default
+    private String accessLevel = "INSTITUTION";
+
+    /** Representative card image. Null is normal: the client renders a branded placeholder. */
+    @Column(name = "cover_image_url", length = 1000)
+    private String coverImageUrl;
+
+    /**
+     * When the session actually finished.
+     *
+     * <p>Written by the completion path. Previously past-ness was inferred from
+     * {@code scheduledAt}, which cannot distinguish a 09:00 class that ran two hours from one that
+     * was cancelled at 09:01.</p>
+     */
+    @Column(name = "ended_at")
+    private LocalDateTime endedAt;
+
+    @Column(name = "submitted_for_review_at")
+    private LocalDateTime submittedForReviewAt;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
+    @Column(name = "reviewed_by", length = 255)
+    private String reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    @Column(name = "review_note", length = 500)
+    private String reviewNote;
 
     @Column(name = "max_participants")
     private Integer maxParticipants;
@@ -58,10 +117,12 @@ public class LiveClass extends BaseEntity {
     private String recordingUrl;
 
     @Column(name = "recording_enabled")
+    @Builder.Default
     private Boolean recordingEnabled = false;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "session_type", length = 30)
+    @Builder.Default
     private LiveClassSessionType sessionType = LiveClassSessionType.LECTURE;
 
     /**
@@ -71,12 +132,15 @@ public class LiveClass extends BaseEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "broadcast_source", length = 30)
+    @Builder.Default
     private LiveBroadcastSource broadcastSource = LiveBroadcastSource.BROWSER;
 
     @Column(name = "timezone", length = 50)
+    @Builder.Default
     private String timezone = "Africa/Dar_es_Salaam";
 
     @Column(name = "is_recurring")
+    @Builder.Default
     private Boolean isRecurring = false;
 
     @Column(name = "recurrence_pattern", length = 50)
@@ -89,6 +153,7 @@ public class LiveClass extends BaseEntity {
     private UUID parentRecurringId;
 
     @Column(name = "lobby_enabled")
+    @Builder.Default
     private Boolean lobbyEnabled = false;
 
     /** Optional Lesson link (Lesson ↔ Live Class connection, nullable). */
@@ -98,5 +163,29 @@ public class LiveClass extends BaseEntity {
     public enum LiveClassStatus {
         SCHEDULED, STARTING, IN_PROGRESS, LIVE, ENDING, COMPLETED, ENDED, CANCELLED,
         SERVICE_DEGRADED, SERVICE_UNAVAILABLE, RECOVERING
+    }
+
+    /**
+     * Editorial publication state, a separate axis from {@link LiveClassStatus}.
+     *
+     * <p>Publication answers "may an anonymous visitor discover this?", which is owned by Platform
+     * Admin and outlives the session. Keeping it out of the session enum is what lets a class be
+     * SCHEDULED yet invisible, and ENDED yet still publicly listed as Past content.</p>
+     */
+    public enum PublicationStatus {
+        DRAFT, PENDING_APPROVAL, APPROVED, PUBLISHED, REJECTED
+    }
+
+    /**
+     * Who may discover and join. Vocabulary borrowed from {@code Event.accessLevel} so the two
+     * features cannot drift apart.
+     */
+    public enum AccessLevel {
+        PUBLIC, AUTHENTICATED, INSTITUTION, PRIVATE, INVITED, RESTRICTED
+    }
+
+    public boolean isPubliclyDiscoverable() {
+        return PublicationStatus.PUBLISHED.name().equals(publicationStatus)
+                && AccessLevel.PUBLIC.name().equals(accessLevel);
     }
 }

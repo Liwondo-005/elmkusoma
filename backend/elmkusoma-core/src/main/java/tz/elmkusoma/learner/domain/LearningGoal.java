@@ -32,16 +32,19 @@ public class LearningGoal extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "goal_type", length = 30)
+    @Builder.Default
     private GoalType goalType = GoalType.PERSONAL;
 
     @Column(name = "target_date")
     private LocalDate targetDate;
 
     @Column(name = "progress_percentage")
+    @Builder.Default
     private Integer progressPercentage = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
+    @Builder.Default
     private GoalStatus status = GoalStatus.ACTIVE;
 
     @Column(name = "completed_at")

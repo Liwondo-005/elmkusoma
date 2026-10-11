@@ -35,6 +35,11 @@ public class InstitutionInvitation {
     @Column(name = "token", nullable = false)
     private String token;
 
+    // @Builder.Default is required, not decorative: Lombok's builder initialises its own
+    // fields to null and ignores plain field initialisers unless they are annotated. Without
+    // it these two went to the database as NULL and every invitation insert failed the
+    // NOT NULL constraint on institution_invitations (surfacing as a 409).
+    @Builder.Default
     @Column(name = "status", nullable = false)
     private String status = "PENDING";
 
@@ -48,6 +53,7 @@ public class InstitutionInvitation {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Builder.Default
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
 }

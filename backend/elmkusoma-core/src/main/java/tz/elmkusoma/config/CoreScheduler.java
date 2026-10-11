@@ -24,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -52,6 +53,9 @@ public class CoreScheduler {
     private final NotificationService notificationService;
     private final tz.elmkusoma.oversight.service.OversightAnnouncementService oversightAnnouncementService;
     private final tz.elmkusoma.course.service.LiveClassService liveClassService;
+    private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
+    private final tz.elmkusoma.teacher.repository.TeacherRepository teacherRepository;
+    private final tz.elmkusoma.shared.repository.InstitutionMembershipRepository membershipRepository;
 
     /**
      * Authoritative live-class expiry. A started session ends when its ACTUAL start
@@ -147,6 +151,104 @@ public class CoreScheduler {
             log.info("Daily PLATFORM_ANALYTICS snapshot created");
         } catch (Exception e) {
             log.error("Daily analytics snapshot failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Live class start reminders, mirroring the existing event reminders above.
+     *
+     * <p>Events had a reminder sweep but live classes did not, so a learner who booked a session
+     * had to remember to open the app: the "upcoming" list is the only thing that would have told
+     * them. Live classes have no per-learner registration table, so the audience is the
+     * institution's students (the same audience the class was announced to via
+     * {@code notifyInstitutionStudentsExcluding}), with the hosting teacher excluded.
+     *
+     * <p>Idempotent exactly like the event path: the existing notification lookup on
+     * (user, target, type) means a re-run never re-sends an offset that already went out.
+     */
+    @Scheduled(fixedRate = 300000, initialDelay = 45000)
+    @Transactional
+    public void sendLiveClassStartReminders() {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            List<tz.elmkusoma.course.domain.LiveClass> startingSoon =
+                    liveClassRepository.findByStatusInAndIsDeletedFalse(List.of("SCHEDULED"));
+            int sent = 0;
+            for (tz.elmkusoma.course.domain.LiveClass liveClass : startingSoon) {
+                if (liveClass.getScheduledAt() == null || liveClass.getInstitutionId() == null) {
+                    continue;
+                }
+                long minutesUntilStart = ChronoUnit.MINUTES.between(now, liveClass.getScheduledAt());
+                for (Map.Entry<String, Long> offset : REMINDER_OFFSETS_MINUTES.entrySet()) {
+                    String type = offset.getKey();
+                    long minutes = offset.getValue();
+                    boolean due = minutesUntilStart <= minutes
+                            && minutesUntilStart >= minutes - REMINDER_GRACE_MINUTES;
+                    if (!due) {
+                        continue;
+                    }
+                    sent += sendLiveClassReminder(liveClass, type, minutes);
+                }
+            }
+            if (sent > 0) {
+                log.info("Sent {} live class start reminders", sent);
+            }
+        } catch (Exception e) {
+            log.error("Live class start reminders failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Sends one live-class reminder offset to the institution's students, one learner at a time.
+     *
+     * <p>Deliberately not the bulk {@code notifyInstitutionStudentsExcluding} used elsewhere: the
+     * event reminder path above is idempotent through a per-learner
+     * (user, target, notificationType) existence check, and a live-class offset needs the same
+     * guard so the 5-minute sweep cannot re-notify every student. Delivery, persistence,
+     * preference filtering and the unread badge still all go through the existing
+     * NotificationService.
+     */
+    private int sendLiveClassReminder(tz.elmkusoma.course.domain.LiveClass liveClass,
+                                     String notificationType, long minutesBefore) {
+        String humanOffset = minutesBefore >= 60
+                ? (minutesBefore / 60) + " hour(s)"
+                : minutesBefore + " minutes";
+        try {
+            UUID teacherUserId = liveClass.getTeacherId() == null ? null
+                    : teacherRepository.findById(liveClass.getTeacherId())
+                            .map(tz.elmkusoma.teacher.domain.Teacher::getUserId).orElse(null);
+
+            List<tz.elmkusoma.shared.domain.InstitutionMembership> members = membershipRepository
+                    .findByInstitutionIdAndIsActiveTrue(liveClass.getInstitutionId());
+            int sent = 0;
+            for (tz.elmkusoma.shared.domain.InstitutionMembership member : members) {
+                // OTHER_LEARNER is the non-Student learner seat in this product, and the
+                // discovery endpoint already admits both roles, so a reminder that skipped it
+                // would leave exactly the people who can see the class uninformed.
+                if (member.getRole() != tz.elmkusoma.shared.domain.InstitutionMembership.Role.STUDENT
+                        && member.getRole() != tz.elmkusoma.shared.domain.InstitutionMembership.Role.OTHER_LEARNER) {
+                    continue;
+                }
+                if (teacherUserId != null && teacherUserId.equals(member.getUserId())) {
+                    continue; // the host does not need a reminder about their own class
+                }
+                if (learnerNotificationRepository
+                        .existsByUserIdAndTargetIdAndNotificationTypeAndIsDeletedFalse(
+                                member.getUserId(), liveClass.getId(), notificationType)) {
+                    continue; // already reminded for this offset
+                }
+                notificationService.notifyUser(
+                        member.getUserId(),
+                        "Live class starting soon: " + liveClass.getTitle(),
+                        "\"" + liveClass.getTitle() + "\" starts in " + humanOffset + " ("
+                                + liveClass.getScheduledAt() + "). Open Live Classes to join.",
+                        notificationType, "live_class", liveClass.getId());
+                sent++;
+            }
+            return sent;
+        } catch (Exception e) {
+            log.warn("Live class reminder failed for class {}: {}", liveClass.getId(), e.getMessage());
+            return 0;
         }
     }
 

@@ -35,6 +35,7 @@ public class Entitlement extends BaseEntity {
     private UUID paymentId;
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "ACTIVE";
 
     @Column(name = "starts_at", nullable = false)

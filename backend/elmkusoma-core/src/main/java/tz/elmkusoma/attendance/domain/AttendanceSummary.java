@@ -33,18 +33,23 @@ public class AttendanceSummary extends BaseEntity {
     private UUID termId;
 
     @Column(name = "total_school_days", nullable = false)
+    @Builder.Default
     private Integer totalSchoolDays = 0;
 
     @Column(name = "days_present", nullable = false)
+    @Builder.Default
     private Integer daysPresent = 0;
 
     @Column(name = "days_absent", nullable = false)
+    @Builder.Default
     private Integer daysAbsent = 0;
 
     @Column(name = "days_late", nullable = false)
+    @Builder.Default
     private Integer daysLate = 0;
 
     @Column(name = "days_excused", nullable = false)
+    @Builder.Default
     private Integer daysExcused = 0;
 
     @Column(name = "attendance_percentage")

@@ -155,7 +155,7 @@ class LiveAttendanceIntegrityTest {
     private LiveClass liveClassInProgress(int minutes) {
         return liveClassRepository.save(LiveClass.builder()
                 .institutionId(TestDataSeeder.INSTITUTION_ID)
-                .teacherId(UUID.randomUUID())
+                .teacherId(TestDataSeeder.TEACHER_ID)
                 .title("Integrity class " + UUID.randomUUID().toString().substring(0, 8))
                 .scheduledAt(LocalDateTime.now().minusMinutes(30))
                 .startedAt(LocalDateTime.now().minusMinutes(30))

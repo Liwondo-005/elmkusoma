@@ -52,6 +52,8 @@ public class LiveKitWebhookController {
     private final tz.elmkusoma.administration.service.PlatformIntegrationService integrationService;
     private final tz.elmkusoma.learner.service.NotificationService notificationService;
     private final tz.elmkusoma.liveclass.service.LiveRecordingPublisher liveRecordingPublisher;
+    /** Publishes finished/failed recordings into the existing media library (media_assets). */
+    private final tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher recordingMediaPublisher;
     private final ObjectMapper objectMapper;
 
     private final Set<String> processedWebhookKeys = ConcurrentHashMap.newKeySet();
@@ -471,8 +473,7 @@ public class LiveKitWebhookController {
 
     private void handleRecordingStarted(Map<String, Object> payload) {
         try {
-            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
-            String roomName = room != null ? (String) room.get("name") : null;
+            String roomName = resolveRoomName(payload);
 
             if (roomName != null && roomName.startsWith("liveclass-")) {
                 UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
@@ -519,8 +520,7 @@ public class LiveKitWebhookController {
             Object egressObj = payload.get("egress");
             Map<String, Object> egress = egressObj instanceof Map
                     ? (Map<String, Object>) egressObj : payload;
-            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
-            String roomName = room != null ? (String) room.get("name") : null;
+            String roomName = resolveRoomName(payload);
 
             // LiveKit emits a single terminal "egress_ended" event for both success and
             // failure; the status field is the only discriminator. Route terminal failure
@@ -633,14 +633,14 @@ public class LiveKitWebhookController {
 
     private void handleRecordingFailed(Map<String, Object> payload) {
         try {
-            Map<String, Object> room = payload.get("room") instanceof Map ? (Map<String, Object>) payload.get("room") : null;
-            String roomName = room != null ? (String) room.get("name") : null;
+            String roomName = resolveRoomName(payload);
 
             if (roomName != null && roomName.startsWith("liveclass-")) {
                 UUID liveClassId = extractLiveClassIdFromRoomName(roomName);
                 if (liveClassId != null) {
-                    liveClassRepository.findById(liveClassId).ifPresent(lc ->
-                            log.info("Live class recording failed: classId={}", liveClassId));
+                    log.info("Live class recording failed: classId={}", liveClassId);
+                    liveClassRepository.findById(liveClassId)
+                            .ifPresent(liveClass -> markLiveClassRecordingFailed(liveClass, "egress failed"));
                 }
                 return;
             }
@@ -698,14 +698,66 @@ public class LiveKitWebhookController {
             if (liveClassId == null) return;
 
             if (recordingUrl == null || recordingUrl.isBlank()) {
-                log.warn("Live class recording completed but no URL: classId={}", liveClassId);
+                // No usable file: record it as a real FAILED asset and clear the egress
+                // marker so it stops reporting as "still processing" forever.
+                log.warn("Live class recording completed with no file: classId={}", liveClassId);
+                liveClassRepository.findById(liveClassId)
+                        .ifPresent(lc -> markLiveClassRecordingFailed(lc, "egress ended without a file"));
                 return;
             }
+            // Publish through the same component session completion uses, so the Replay is
+            // filed here too. Session completion polls for a bounded window and then gives
+            // up, and with object storage the upload routinely outlasts it - so this webhook,
+            // not session end, is normally what files the recording.
             log.info("Live class recording completed: classId={}", liveClassId);
             liveRecordingPublisher.publishResolved(liveClassId, recordingUrl);
         } catch (Exception e) {
             log.error("Error handling live class recording_completed webhook", e);
         }
+    }
+
+    /**
+     * Terminal failure for a live-class recording: persists a FAILED media asset and clears the
+     * {@code egress:} marker so the recording surfaces as failed instead of pending.
+     */
+    private void markLiveClassRecordingFailed(
+            tz.elmkusoma.course.domain.LiveClass liveClass, String reason) {
+        try {
+            if (liveClass.getRecordingUrl() != null && liveClass.getRecordingUrl().startsWith("egress:")) {
+                liveClass.setRecordingUrl(null);
+                liveClassRepository.save(liveClass);
+            }
+            recordingMediaPublisher.markRecordingFailedSafely(liveClass, reason);
+        } catch (Exception ex) {
+            log.warn("Could not mark recording FAILED for class {}: {}", liveClass.getId(), ex.getMessage());
+        }
+    }
+
+    /**
+     * Room name for any webhook payload.
+     *
+     * <p>Room lifecycle events carry a top-level {@code room.name}, but LiveKit reports the room
+     * inside {@code EgressInfo} for every egress event (proto field {@code room_name}). Reading
+     * only {@code room.name} therefore resolved {@code null} for real {@code egress_ended} /
+     * {@code egress_started} deliveries, so a live class recording was never matched to its class:
+     * {@code recording_url} stayed at the {@code egress:<id>} marker and no media asset, Replay
+     * or availability notification was created. Both shapes are accepted here.
+     */
+    private String resolveRoomName(Map<String, Object> payload) {
+        Object roomObj = payload.get("room");
+        if (roomObj instanceof Map<?, ?> room && room.get("name") instanceof String name) {
+            return name;
+        }
+        Object egressObj = payload.get("egress");
+        if (egressObj instanceof Map<?, ?> egress) {
+            if (egress.get("room_name") instanceof String snake) {
+                return snake;
+            }
+            if (egress.get("roomName") instanceof String camel) {
+                return camel;
+            }
+        }
+        return null;
     }
 
     private UUID extractLiveClassIdFromRoomName(String roomName) {

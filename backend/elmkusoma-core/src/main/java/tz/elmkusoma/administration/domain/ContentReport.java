@@ -36,6 +36,7 @@ public class ContentReport extends BaseEntity {
     private String description;
 
     @Column(nullable = false, length = 30)
+    @Builder.Default
     private String status = "OPEN";
 
     @Column(name = "resolution_notes", columnDefinition = "TEXT")

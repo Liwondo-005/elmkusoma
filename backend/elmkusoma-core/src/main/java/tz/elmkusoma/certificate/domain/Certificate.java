@@ -70,6 +70,7 @@ public class Certificate extends BaseEntity {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private CertificateStatus status = CertificateStatus.DRAFT;
 
     @Column(name = "verification_code", nullable = false, unique = true)

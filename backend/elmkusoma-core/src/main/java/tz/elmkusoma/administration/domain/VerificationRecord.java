@@ -29,6 +29,7 @@ public class VerificationRecord extends BaseEntity {
     private String verificationType;
 
     @Column(nullable = false)
+    @Builder.Default
     private String status = "PENDING";
 
     @Column(name = "submitted_by")
@@ -38,6 +39,7 @@ public class VerificationRecord extends BaseEntity {
     private UUID reviewedBy;
 
     @Column(name = "submitted_at", nullable = false)
+    @Builder.Default
     private LocalDateTime submittedAt = LocalDateTime.now();
 
     @Column(name = "reviewed_at")

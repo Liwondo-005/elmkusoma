@@ -30,5 +30,6 @@ public class Attempt extends BaseEntity {
     private LocalDateTime submittedAt;
 
     @Column(name = "is_completed", nullable = false)
+    @Builder.Default
     private Boolean isCompleted = false;
 }

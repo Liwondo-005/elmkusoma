@@ -27,12 +27,14 @@ public class UserRoleAssignment extends BaseEntity {
     private UUID assignedBy;
 
     @Column(name = "assigned_at", nullable = false)
+    @Builder.Default
     private LocalDateTime assignedAt = LocalDateTime.now();
 
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     public static UserRoleAssignment of(UUID userId, UUID roleId, UUID assignedBy,

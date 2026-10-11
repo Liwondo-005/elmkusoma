@@ -43,7 +43,8 @@ export function CertificateDetailDrawer({ certificateId, onClose }: CertificateD
       const res = await platformAdminApi.getCertificateDetail(certificateId)
       setDetail(res)
       try {
-        setAudit(await platformAdminApi.getAuditLogs(0, 15, undefined, undefined, certificateId))
+        const page = await platformAdminApi.getAuditLogs(0, 15, undefined, undefined, certificateId)
+        setAudit(page.content)
       } catch {
         setAudit(null) // honest "Data unavailable" state below
       }

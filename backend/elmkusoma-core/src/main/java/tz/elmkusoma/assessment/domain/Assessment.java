@@ -39,6 +39,7 @@ public class Assessment extends BaseEntity {
     private Integer passMarks;
 
     @Column(name = "is_published", nullable = false)
+    @Builder.Default
     private Boolean isPublished = false;
 
     @Column(name = "status", length = 30)

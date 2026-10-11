@@ -44,12 +44,14 @@ public class Event extends BaseEntity {
     private java.time.LocalDateTime endsAt;
 
     @Column(name = "duration_minutes")
+    @Builder.Default
     private Integer durationMinutes = 60;
 
     @Column(name = "max_participants")
     private Integer maxParticipants;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private String status = "DRAFT";
 
     @Column(name = "thumbnail_url", length = 500)
@@ -59,13 +61,16 @@ public class Event extends BaseEntity {
     private String tags;
 
     @Column(name = "is_free", nullable = false)
+    @Builder.Default
     private Boolean isFree = true;
 
     @Column(name = "requires_approval", nullable = false)
+    @Builder.Default
     private Boolean requiresApproval = false;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "event_status", length = 30)
+    @Builder.Default
     private EventStatus eventStatus = EventStatus.DRAFT;
 
     @Enumerated(EnumType.STRING)
@@ -79,6 +84,7 @@ public class Event extends BaseEntity {
     private Integer maxCapacity;
 
     @Column(name = "current_registrations")
+    @Builder.Default
     private Integer currentRegistrations = 0;
 
     @Column(name = "related_course_id", length = 36)

@@ -15,6 +15,9 @@ import {
   Clock,
   Wifi,
   WifiOff,
+  Signal,
+  SignalLow,
+  AlertTriangle,
   Hand,
   XCircle,
   Flag,
@@ -36,7 +39,7 @@ import { learnerApi } from "@/lib/learner-api"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
-import { Room, RoomEvent, Track, Participant as LKParticipant, TrackPublication } from "livekit-client"
+import { Room, RoomEvent, Track, ConnectionQuality, Participant as LKParticipant, TrackPublication } from "livekit-client"
 import { LiveVideoPlayer, type LivePlayerState } from "@/components/live/live-video-player"
 import { useMediaDevices } from "@/hooks/use-media-devices"
 
@@ -159,6 +162,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
   const [message, setMessage] = useState("")
   const [connected, setConnected] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
+  // LiveKit's own assessment of THIS participant's uplink/downlink, derived from real
+  // media statistics. null until the room reports one, so nothing is shown before the
+  // first measurement rather than a guessed default.
+  const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality | null>(null)
   const [elapsed, setElapsed] = useState("00:00:00")
   const [joinError, setJoinError] = useState("")
   const [handRaised, setHandRaised] = useState(false)
@@ -426,7 +433,17 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     })
 
     room.on(RoomEvent.Disconnected, () => {
+      setConnectionQuality(null)
       scheduleLiveKitReconnect()
+    })
+
+    // LiveKit reports Poor/Good/Excellent from real media statistics (packet loss, RTT,
+    // jitter). Scoped to this participant: a remote peer's poor uplink is not the local
+    // user's problem and showing it would be misleading.
+    room.on(RoomEvent.ConnectionQualityChanged, (quality: ConnectionQuality, participant?: LKParticipant) => {
+      if (!participant || participant.identity === room.localParticipant.identity) {
+        setConnectionQuality(quality)
+      }
     })
 
     room.on(RoomEvent.ParticipantConnected, (participant: LKParticipant) => {
@@ -2116,6 +2133,29 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
               <><WifiOff className="size-3 text-muted-foreground" /> <span className="text-muted-foreground">{t("offlineLabel")}</span></>
             )}
           </span>
+          {/* Only rendered once LiveKit has actually measured this participant's link, so the
+              badge never claims a quality the SDK has not reported. */}
+          {connected && connectionQuality && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
+                connectionQuality === ConnectionQuality.Excellent ? "bg-teal/10 text-teal" :
+                connectionQuality === ConnectionQuality.Good ? "bg-teal/10 text-teal" :
+                connectionQuality === ConnectionQuality.Poor ? "bg-red-100 text-red-700" :
+                "bg-muted text-muted-foreground"
+              )}
+              title={t("connectionQualityLabel")}
+            >
+              {connectionQuality === ConnectionQuality.Poor && <AlertTriangle className="size-3" />}
+              {connectionQuality === ConnectionQuality.Excellent && <Signal className="size-3" />}
+              {connectionQuality === ConnectionQuality.Good && <Signal className="size-3" />}
+              {connectionQuality === ConnectionQuality.Unknown && <SignalLow className="size-3" />}
+              {connectionQuality === ConnectionQuality.Poor ? t("connectionQualityPoor")
+                : connectionQuality === ConnectionQuality.Good ? t("connectionQualityGood")
+                : connectionQuality === ConnectionQuality.Excellent ? t("connectionQualityExcellent")
+                : t("connectionQualityUnknown")}
+            </span>
+          )}
         </div>
       </div>
 

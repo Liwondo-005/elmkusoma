@@ -29,10 +29,12 @@ public class BulkAttendanceSession extends BaseEntity {
     private Integer totalStudents;
 
     @Column(name = "marked_count", nullable = false)
+    @Builder.Default
     private Integer markedCount = 0;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private SessionStatus status = SessionStatus.IN_PROGRESS;
 
     public enum SessionStatus {

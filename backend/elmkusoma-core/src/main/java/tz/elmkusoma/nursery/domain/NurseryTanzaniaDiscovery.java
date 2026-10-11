@@ -39,6 +39,7 @@ public class NurseryTanzaniaDiscovery extends BaseEntity {
     private String imageUrl;
 
     @Column(name = "is_published", nullable = false)
+    @Builder.Default
     private Boolean isPublished = false;
 
     public enum DiscoveryCategory {

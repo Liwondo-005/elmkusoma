@@ -19,24 +19,31 @@ public class ParentNotificationPreference extends BaseEntity {
     private UUID parentId;
 
     @Column(name = "attendance_alerts", nullable = false)
+    @Builder.Default
     private Boolean attendanceAlerts = true;
 
     @Column(name = "grade_alerts", nullable = false)
+    @Builder.Default
     private Boolean gradeAlerts = true;
 
     @Column(name = "fee_alerts", nullable = false)
+    @Builder.Default
     private Boolean feeAlerts = true;
 
     @Column(name = "general_announcements", nullable = false)
+    @Builder.Default
     private Boolean generalAnnouncements = true;
 
     @Column(name = "sms_enabled", nullable = false)
+    @Builder.Default
     private Boolean smsEnabled = false;
 
     @Column(name = "email_enabled", nullable = false)
+    @Builder.Default
     private Boolean emailEnabled = true;
 
     @Column(name = "push_enabled", nullable = false)
+    @Builder.Default
     private Boolean pushEnabled = true;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,6 +15,7 @@ import tz.elmkusoma.config.EventPublisherService;
 import tz.elmkusoma.config.security.JwtTokenProvider;
 import tz.elmkusoma.config.security.RateLimitService;
 import tz.elmkusoma.identity.service.MfaService;
+import tz.elmkusoma.identity.service.PasswordPolicy;
 import tz.elmkusoma.learner.service.NotificationService;
 import tz.elmkusoma.enrollment.repository.EnrollmentRepository;
 import tz.elmkusoma.exception.ForbiddenException;
@@ -80,6 +82,14 @@ class AuthRecoverySecurityTest {
     @Mock private NotificationService notificationService;
     @Mock private AuditService auditService;
     @Mock private MfaService mfaService;
+
+    /**
+     * A real instance, spied. PasswordPolicy is a concrete collaborator, not an interface, so
+     * {@code @InjectMocks} would otherwise pass null and every reset would NPE on the way to
+     * the assertion about rejecting common passwords.
+     */
+    @Spy
+    private PasswordPolicy passwordPolicy = new PasswordPolicy();
 
     @InjectMocks
     private AuthServiceImpl authService;

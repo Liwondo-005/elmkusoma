@@ -116,6 +116,18 @@ public class AdministrationController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @PutMapping("/roles/{roleId}")
+    @Operation(summary = "Update a custom role's details and permissions")
+    public ResponseEntity<ApiResponse<RoleResponse>> updateRole(
+            @PathVariable UUID roleId,
+            @Valid @RequestBody CreateRoleRequest request,
+            @RequestAttribute UUID institutionId,
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute("userRole") String userRole) {
+        return ResponseEntity.ok(ApiResponse.success("Role updated successfully",
+                administrationService.updateRole(roleId, request, institutionId, userEmail, userRole)));
+    }
+
     @DeleteMapping("/roles/{roleId}")
     @Operation(summary = "Delete a custom role")
     public ResponseEntity<ApiResponse<Void>> deleteRole(

@@ -76,8 +76,9 @@ class NfeProviderStackIsolationTest {
     private Institution instB;
     private UUID instBId;
     private String run;
-    private User providerA;
-    private String tokenA;
+private User providerA;
+private String tokenA;
+private String platformAdminToken;
 
     @BeforeEach
     void setUp() {
@@ -254,13 +255,54 @@ class NfeProviderStackIsolationTest {
         assertFalse(Boolean.TRUE.equals(before.getIsVerified()), "precondition: not verified yet");
 
         mockMvc.perform(put("/v1/nfe/providers/" + ownProvider + "/verification")
-                        .header("Authorization", "Bearer " + tokenA)
+                        .header("Authorization", "Bearer " + platformToken())
                         .header("X-Institution-Id", tenantA.toString())
                         .param("verified", "true"))
                 .andExpect(status().isOk());
 
         EducationProvider after = providerRepository.findByIdAndInstitutionId(ownProvider, tenantA).orElseThrow();
         assertTrue(Boolean.TRUE.equals(after.getIsVerified()), "is_verified must now be true");
+    }
+
+    /**
+     * Verification is the platform's trust decision, so a provider may not grant it to itself.
+     *
+     * <p>This endpoint previously accepted PROVIDER_ADMIN and INSTITUTION_ADMIN and an earlier
+     * version of this test asserted that self-verification succeeded. That was a governance
+     * hole, not a contract worth keeping: it let a provider approve its own provider record and
+     * sidestepped the real review workflow in {@code /v1/verifications}. The write is now
+     * platform-only, so the provider's own request is denied and changes nothing.</p>
+     */
+    @Test
+    @DisplayName("B-12: a provider cannot verify its own provider record")
+    void providerAdminCannotSelfVerify() throws Exception {
+        UUID ownProvider = provisionProvider(tenantA);
+
+        mockMvc.perform(put("/v1/nfe/providers/" + ownProvider + "/verification")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .header("X-Institution-Id", tenantA.toString())
+                        .param("verified", "true"))
+                .andExpect(status().isForbidden());
+
+        EducationProvider after = providerRepository.findByIdAndInstitutionId(ownProvider, tenantA).orElseThrow();
+        assertFalse(Boolean.TRUE.equals(after.getIsVerified()),
+                "a denied self-verification must not flip the flag");
+    }
+
+    /** A platform admin acting against a tenant they do not belong to still gets nothing. */
+    @Test
+    @DisplayName("B-12: platform approval is still tenant-scoped")
+    void platformAdminCannotVerifyAProviderInAnotherTenant() throws Exception {
+        UUID foreignProvider = provisionProvider(instBId);
+
+        mockMvc.perform(put("/v1/nfe/providers/" + foreignProvider + "/verification")
+                        .header("Authorization", "Bearer " + platformToken())
+                        .header("X-Institution-Id", tenantA.toString())
+                        .param("verified", "true"))
+                .andExpect(status().isNotFound());
+
+        EducationProvider after = providerRepository.findByIdAndInstitutionId(foreignProvider, instBId).orElseThrow();
+        assertFalse(Boolean.TRUE.equals(after.getIsVerified()));
     }
 
     @Test
@@ -304,6 +346,21 @@ class NfeProviderStackIsolationTest {
                 .isActive(true)
                 .isDeleted(false)
                 .build());
+    }
+
+    /**
+     * A platform ADMIN, created on demand and cached.
+     *
+     * <p>TestDataSeeder's admin@elmkusoma.tz is an INSTITUTION_ADMIN, which /v1/nfe/providers
+     * verification now rejects, so a real ADMIN is needed to exercise the approval path.</p>
+     */
+    private synchronized String platformToken() {
+        if (platformAdminToken == null) {
+            String email = "nfe-platform-" + run + "@test.com";
+            saveUser(email, User.Role.ADMIN, tenantA);
+            platformAdminToken = TestTokens.userToken(email);
+        }
+        return platformAdminToken;
     }
 
     private User saveUser(String email, User.Role role, UUID institutionId) {

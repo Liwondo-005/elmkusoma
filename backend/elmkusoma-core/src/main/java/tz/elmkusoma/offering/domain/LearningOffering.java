@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -50,9 +51,11 @@ public class LearningOffering extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "visibility", nullable = false, length = 20)
+    @Builder.Default
     private Resource.ResourceVisibility visibility = Resource.ResourceVisibility.INSTITUTION;
 
     @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
     private String status = "DRAFT";
 
     public static final String STATUS_DRAFT = "DRAFT";

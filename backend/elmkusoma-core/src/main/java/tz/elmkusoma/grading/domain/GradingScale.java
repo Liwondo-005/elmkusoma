@@ -37,9 +37,11 @@ public class GradingScale extends BaseEntity {
     private BigDecimal maxValue;
 
     @Column(name = "is_default", nullable = false)
+    @Builder.Default
     private Boolean isDefault = false;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private Boolean isActive = true;
 
     public enum ScaleType {

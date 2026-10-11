@@ -42,6 +42,7 @@ public class NurseryStory extends BaseEntity {
     private String readingLevel;
 
     @Column(name = "is_published", nullable = false)
+    @Builder.Default
     private Boolean isPublished = false;
 
     public enum StoryType {

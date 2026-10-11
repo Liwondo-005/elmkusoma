@@ -12,6 +12,7 @@ import tz.elmkusoma.administration.dto.*;
 import tz.elmkusoma.administration.service.InstitutionAuditService;
 import tz.elmkusoma.administration.service.InstitutionPeopleService;
 import tz.elmkusoma.administration.service.InstitutionScopeService;
+import tz.elmkusoma.administration.service.InvitationRolePolicy;
 import tz.elmkusoma.common.ApiResponse;
 
 import java.util.List;
@@ -100,9 +101,14 @@ public class InstitutionPeopleController {
             @Valid @RequestBody InviteUserRequest request,
             @RequestAttribute UUID institutionId,
             @RequestAttribute("userId") UUID userId,
-            @RequestAttribute("userEmail") String userEmail) {
+            @RequestAttribute("userEmail") String userEmail,
+            @RequestAttribute(value = "userRole", required = false) String userRole) {
         scopeService.validateAdminAccess(userId, institutionId, "invite_user");
-        InvitationResponse response = peopleService.inviteUser(institutionId, request, userId);
+        // The role is checked against InvitationRolePolicy against *this* caller's authority:
+        // an institution administrator may delegate inside their own tenant, but only a
+        // platform administrator may issue a PROVIDER_ADMIN or platform-role invitation.
+        InvitationResponse response = peopleService.inviteUser(institutionId, request, userId,
+                InvitationRolePolicy.isPlatformActor(userRole));
         auditService.log(institutionId, userId, userEmail, "INVITE_USER",
                 "INVITATION", response.getId().toString(), "Invitation sent to " + request.getEmail(), null);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -133,11 +139,34 @@ public class InstitutionPeopleController {
         return ResponseEntity.ok(ApiResponse.success("Invitation cancelled", null));
     }
 
-    @PostMapping("/invitations/accept")
-    @Operation(summary = "Accept an invitation")
-    public ResponseEntity<ApiResponse<Void>> acceptInvitation(
-            @Valid @RequestBody AcceptInvitationRequest request) {
-        peopleService.acceptInvitation(request.getToken(), request.getPassword());
+    /**
+     * Step 1 of activation. Sends a one-time code to the address the invitation was issued for
+     * and creates nothing.
+     *
+     * <p>Overrides the class-level {@code @PreAuthorize}: the recipient has no account yet,
+     * which is precisely when they activate. The invitation token is the credential for this
+     * step. Every other route on this controller keeps the admin fence.</p>
+     */
+    @PostMapping("/invitations/activate")
+    @PreAuthorize("permitAll()")
+    @Operation(summary = "Begin invitation activation: email a verification code to the invited address")
+    public ResponseEntity<ApiResponse<Void>> startActivation(
+            @Valid @RequestBody StartActivationRequest request) {
+        peopleService.startInvitationActivation(request.getToken());
+        return ResponseEntity.ok(ApiResponse.success(
+                "A verification code has been sent to the invited email address", null));
+    }
+
+    /**
+     * Step 2 of activation. The emailed code proves control of the invited mailbox; only then
+     * is the account created and the membership bound.
+     */
+    @PostMapping("/invitations/confirm")
+    @PreAuthorize("permitAll()")
+    @Operation(summary = "Complete invitation activation with the emailed code and a chosen password")
+    public ResponseEntity<ApiResponse<Void>> confirmActivation(
+            @Valid @RequestBody ConfirmActivationRequest request) {
+        peopleService.confirmInvitation(request.getToken(), request.getCode(), request.getPassword());
         return ResponseEntity.ok(ApiResponse.success("Invitation accepted", null));
     }
 }

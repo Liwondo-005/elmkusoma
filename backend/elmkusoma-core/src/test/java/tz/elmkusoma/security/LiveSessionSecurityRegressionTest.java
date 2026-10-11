@@ -62,9 +62,13 @@ class LiveSessionSecurityRegressionTest {
     @Autowired
     private LiveClassRepository liveClassRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     private Institution institutionB;
     private LiveClass classInB;
     private User memberlessUser;
+    private UUID otherTeacherId;
 
     @BeforeAll
     void createFixtures() {
@@ -82,7 +86,7 @@ class LiveSessionSecurityRegressionTest {
         // Session-scoped (no classGroupId) so only the institution checks gate access.
         classInB = liveClassRepository.save(LiveClass.builder()
                 .institutionId(institutionB.getId())
-                .teacherId(UUID.randomUUID())
+                .teacherId(TestDataSeeder.TEACHER_ID)
                 .title("Foreign live class " + run)
                 .scheduledAt(LocalDateTime.now().plusHours(1))
                 .durationMinutes(60)
@@ -103,6 +107,27 @@ class LiveSessionSecurityRegressionTest {
                 .isDeleted(false)
                 .build();
         memberlessUser = userRepository.save(user);
+
+        // A second teacher in the seeded institution, so "non-owning teacher" is expressible.
+        // live_classes.teacher_id references teachers.id, so a real row is required, and
+        // teachers.user_id references users.id in turn.
+        User otherTeacherUser = userRepository.save(User.builder()
+                .email("otherteacher-live-" + run + "@test.com")
+                .passwordHash("test-hash")
+                .firstName("Other")
+                .lastName("Teacher")
+                .role(User.Role.TEACHER)
+                .institutionId(TestDataSeeder.INSTITUTION_ID)
+                .isActive(true)
+                .isEmailVerified(true)
+                .isDeleted(false)
+                .build());
+        otherTeacherId = UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO teachers (id, institution_id, user_id, employee_number, status, "
+                        + "created_at, is_deleted) VALUES (?, ?, ?, ?, 'ACTIVE', ?, false)",
+                otherTeacherId, TestDataSeeder.INSTITUTION_ID, otherTeacherUser.getId(),
+                "EMP-OTHER-" + run, LocalDateTime.now());
     }
 
     @Test
@@ -161,9 +186,11 @@ class LiveSessionSecurityRegressionTest {
     void recordingStop_byNonOwningTeacher_is403() throws Exception {
         // Only the class teacher or an admin may stop a recording. Before the ownership
         // check, any teacher of the institution could stop another teacher's recording.
+        // The class is therefore owned by a *different* teacher in the same institution,
+        // which is exactly the case the check must refuse.
         LiveClass ownClass = liveClassRepository.save(LiveClass.builder()
                 .institutionId(TestDataSeeder.INSTITUTION_ID)
-                .teacherId(UUID.randomUUID())
+                .teacherId(otherTeacherId)
                 .title("Recording ownership " + UUID.randomUUID().toString().substring(0, 8))
                 .scheduledAt(LocalDateTime.now().minusMinutes(10))
                 .durationMinutes(60)
@@ -207,7 +234,7 @@ class LiveSessionSecurityRegressionTest {
     void forceEnd_ownInstitutionClass_is200AndCompletes() throws Exception {
         LiveClass ownClass = liveClassRepository.save(LiveClass.builder()
                 .institutionId(TestDataSeeder.INSTITUTION_ID)
-                .teacherId(UUID.randomUUID())
+                .teacherId(TestDataSeeder.TEACHER_ID)
                 .title("Force end target " + UUID.randomUUID().toString().substring(0, 8))
                 .scheduledAt(LocalDateTime.now().minusMinutes(30))
                 .durationMinutes(60)
