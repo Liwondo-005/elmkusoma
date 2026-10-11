@@ -121,7 +121,7 @@ class EventD03ComplianceTest {
                             + "scheduled_at, duration_minutes, status, max_participants, recording_enabled, "
                             + "session_type, timezone, is_recurring, lobby_enabled, recording_url) "
                             + "VALUES (?, ?, ?, false, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    CLASS_B, INST_B, LocalDateTime.now(), TestDataSeeder.TEACHER_USER_ID,
+                    CLASS_B, INST_B, LocalDateTime.now(), TestDataSeeder.TEACHER_ID,
                     "Cross Institution Class", LocalDateTime.now().plusHours(2), 60,
                     "IN_PROGRESS", 50, true, "LECTURE", "Africa/Dar_es_Salaam", false, false,
                     "https://cdn.example.com/rec-b.mp4");

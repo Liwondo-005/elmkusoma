@@ -52,4 +52,29 @@ public class CreateLiveClassRequest {
      * existing laptop-camera default), keeping older clients fully compatible.
      */
     private String broadcastSource;
+
+    /**
+     * Representative card image, as a URL returned by the cover upload endpoint.
+     *
+     * <p>A URL rather than a file: uploads go through their own endpoint so the image can be
+     * validated and stored once, then referenced by the class. Absolute or root-relative only.</p>
+     */
+    @jakarta.validation.constraints.Pattern(
+            regexp = "^$|^(https?://|/)[\\x20-\\x7E]+$",
+            message = "Cover image URL must start with http://, https:// or /")
+    @jakarta.validation.constraints.Size(max = 1000,
+            message = "Cover image URL must not exceed 1000 characters")
+    private String coverImageUrl;
+
+    /**
+     * Who may discover and join this class.
+     *
+     * <p>Accepted but never trusted to grant visibility on its own: a class is publicly
+     * discoverable only when it is also PUBLISHED by a Platform Admin, which is what stops a
+     * teacher from self-publishing. Defaults to INSTITUTION, preserving current behaviour.</p>
+     */
+    @jakarta.validation.constraints.Pattern(
+            regexp = "PUBLIC|AUTHENTICATED|INSTITUTION|PRIVATE|INVITED|RESTRICTED",
+            message = "Access level must be one of: PUBLIC, AUTHENTICATED, INSTITUTION, PRIVATE, INVITED, RESTRICTED")
+    private String accessLevel;
 }

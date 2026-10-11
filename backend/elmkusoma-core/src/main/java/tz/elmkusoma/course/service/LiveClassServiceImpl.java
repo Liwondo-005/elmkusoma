@@ -178,6 +178,11 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .isRecurring(Boolean.TRUE.equals(request.getIsRecurring()))
                 .recurrencePattern(request.getRecurrencePattern())
                 .lobbyEnabled(Boolean.TRUE.equals(request.getLobbyEnabled()))
+                .coverImageUrl(normaliseOptional(request.getCoverImageUrl()))
+                .accessLevel(normaliseAccessLevel(request.getAccessLevel()))
+                // Publication always starts as a draft, whatever the caller sends. This request DTO
+                // has no publication field precisely so a teacher cannot publish by accident.
+                .publicationStatus(LiveClass.PublicationStatus.DRAFT.name())
                 .build();
         liveClass.setInstitutionId(institutionId);
 
@@ -212,14 +217,28 @@ public class LiveClassServiceImpl implements LiveClassService {
             throw new IllegalArgumentException("Cannot edit a " + currentStatus.toLowerCase().replace('_', ' ') + " class");
         }
 
-        if (request.getTitle() != null) liveClass.setTitle(request.getTitle());
-        if (request.getDescription() != null) liveClass.setDescription(request.getDescription());
+        // Any material change to a class that is already publicly listed returns it to DRAFT so a
+        // Platform Admin re-examines it before the change stays visible. Editing what visitors
+        // already see, or when they see it, must not ride along silently on an unrelated edit.
+        boolean materialChange = false;
+
+        if (request.getTitle() != null && !request.getTitle().equals(liveClass.getTitle())) {
+            liveClass.setTitle(request.getTitle());
+            materialChange = true;
+        }
+        if (request.getDescription() != null && !request.getDescription().equals(liveClass.getDescription())) {
+            liveClass.setDescription(request.getDescription());
+            materialChange = true;
+        }
         if (request.getScheduledAt() != null) {
             LocalDateTime newScheduledAt = parseDateTime(request.getScheduledAt());
             if (newScheduledAt != null && newScheduledAt.isBefore(LocalDateTime.now().minusMinutes(SCHEDULE_PAST_GRACE_MINUTES))) {
                 throw new IllegalArgumentException("Scheduled time must be in the future");
             }
-            liveClass.setScheduledAt(newScheduledAt);
+            if (newScheduledAt != null && !newScheduledAt.equals(liveClass.getScheduledAt())) {
+                liveClass.setScheduledAt(newScheduledAt);
+                materialChange = true;
+            }
         }
         if (request.getDurationMinutes() != null) liveClass.setDurationMinutes(request.getDurationMinutes());
         if (request.getSubjectId() != null) liveClass.setSubjectId(request.getSubjectId());
@@ -236,6 +255,25 @@ public class LiveClassServiceImpl implements LiveClassService {
         }
         if (request.getBroadcastSource() != null) {
             liveClass.setBroadcastSource(parseBroadcastSource(request.getBroadcastSource()));
+        }
+        if (request.getCoverImageUrl() != null) {
+            String requestedCover = normaliseOptional(request.getCoverImageUrl());
+            if (!java.util.Objects.equals(requestedCover, liveClass.getCoverImageUrl())) {
+                liveClass.setCoverImageUrl(requestedCover);
+                materialChange = true;
+            }
+        }
+        if (request.getAccessLevel() != null && !request.getAccessLevel().isBlank()) {
+            String requested = normaliseAccessLevel(request.getAccessLevel());
+            if (!requested.equals(liveClass.getAccessLevel())) {
+                liveClass.setAccessLevel(requested);
+                materialChange = true;
+            }
+        }
+
+        if (materialChange && LiveClass.PublicationStatus.PUBLISHED.name().equals(liveClass.getPublicationStatus())) {
+            liveClass.setPublicationStatus(LiveClass.PublicationStatus.DRAFT.name());
+            liveClass.setPublishedAt(null);
         }
 
         if (liveClass.getScheduledAt() != null) {
@@ -384,6 +422,13 @@ public class LiveClassServiceImpl implements LiveClassService {
      */
     private LiveClassResponse completeSession(LiveClass liveClass, UUID markedBy, LiveClassStatus terminalStatus) {
         liveClass.setStatus(terminalStatus.name());
+        // Record when it actually finished. Past Classes previously inferred this from
+        // scheduledAt, which cannot distinguish a 09:00 class that ran two hours from one that was
+        // cancelled at 09:01. Guarded so a repeated call cannot move the recorded end time, which
+        // matters because the expiry sweep can reach the same session a second time.
+        if (liveClass.getEndedAt() == null) {
+            liveClass.setEndedAt(LocalDateTime.now());
+        }
         LiveClass saved = liveClassRepository.save(liveClass);
 
         createAttendanceFromParticipants(saved, markedBy);
@@ -972,6 +1017,38 @@ public class LiveClassServiceImpl implements LiveClassService {
                 throw new IllegalArgumentException("Invalid date/time format: " + dateTimeStr
                         + ". Expected format: yyyy-MM-ddTHH:mm:ss");
             }
+        }
+    }
+
+    /**
+     * Trims an optional string, collapsing blank to null.
+     *
+     * <p>Blank is meaningfully different from "absent" for a nullable column: a client sending
+     * {@code ""} for an optional field usually means "clear it", and storing an empty string makes
+     * downstream {@code isBlank()} checks behave inconsistently with {@code == null}.</p>
+     */
+    private static String normaliseOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
+     * Validates an access level against the shared {@code Event} vocabulary.
+     *
+     * <p>Defaults to INSTITUTION rather than PUBLIC, so an unrecognised or absent value can never
+     * widen a class's reach.</p>
+     */
+    private static String normaliseAccessLevel(String value) {
+        if (value == null || value.isBlank()) {
+            return LiveClass.AccessLevel.INSTITUTION.name();
+        }
+        try {
+            return LiveClass.AccessLevel.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT)).name();
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unknown access level: " + value);
         }
     }
 }

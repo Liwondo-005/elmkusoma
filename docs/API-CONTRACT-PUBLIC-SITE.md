@@ -97,6 +97,46 @@ a caller can only ever see rows addressed to their own address.
 200 `ApiResponse<List<ContactMessageSummary>>` — reference, subject, category, status,
 receivedAt, lastUpdateAt, replyCount. **Never includes internal notes.**
 
+### `GET /v1/public/live-classes/live` · `/upcoming` · `/past`
+
+Anonymous discovery of live classes. **No authentication, no tenant header.**
+
+A class reaches these endpoints only when it is **both** `publication_status = 'PUBLISHED'`
+**and** `access_level = 'PUBLIC'`. Those are two independent decisions and either alone is
+insufficient: approval alone does not expose a session, and setting the access level to PUBLIC
+alone does not publish it. Every pre-existing class backfills to `DRAFT` + `INSTITUTION` and
+therefore stays invisible.
+
+There is no status filter, institution filter or `includeRestricted` parameter. Eligibility is
+decided by the repository query, so there is no caller-supplied input that could widen it.
+
+| Path | Returns |
+|---|---|
+| `/live` | Sessions in an active state (`STARTING`, `IN_PROGRESS`, `LIVE`, `ENDING`). Service-degraded and cancelled sessions are excluded. |
+| `/upcoming` | `SCHEDULED`, ordered by `scheduledAt` ascending. |
+| `/past` | `COMPLETED` and `ENDED`, newest first. `CANCELLED` is excluded — a cancelled session is not a completed learning event, and listing it beside real past classes with a replay affordance would misrepresent what happened. |
+
+Query parameter `limit` (default `6`) is clamped server-side to 24.
+
+200 `ApiResponse<List<PublicLiveClassView>>` — `id`, `title`, `description`, `subjectName`,
+`teacherName`, `institutionName`, `coverImageUrl`, `scheduledAt`, `startedAt`, `endedAt`,
+`timezone`, `durationMinutes`, `status`, `maxParticipants`, `hasRecording`.
+
+Deliberately **absent**, and asserted by tests: `recordingUrl`, `teacherId`, `institutionId`,
+`classGroupId`, `subjectId`, `publicationStatus`, `accessLevel`, `reviewedBy`.
+
+- `hasRecording` is a **boolean, never a URL**. It is true only when the class has a usable
+  recording URL that is not an `egress:` handle **and** a `Replay` row exists with status
+  `AVAILABLE`, so a PROCESSING or FAILED replay never produces a replay button.
+- `teacherName` resolves through `teachers.id → users.id`. A teacher with no name recorded yields
+  `null`, and the card omits the line, rather than inventing a placeholder such as "ELMKUSOMA Faculty".
+- Timestamps are naive local time **as stored**, paired with `timezone` so the client renders the
+  class in its own zone rather than the visitor's browser zone.
+
+**A public card is not a grant of access.** The authenticated join endpoint
+(`POST /v1/live-session/join/{classId}`) is unchanged and revalidates role, institution
+membership, class-group enrolment and live status server-side.
+
 ---
 
 ## 2. Platform Admin — `ADMIN` only
@@ -129,6 +169,35 @@ values. No parallel settings store is created.
 | GET | `/v1/platform-admin/legal-documents/{id}/versions` | Immutable published history, newest first |
 | POST | `/v1/platform-admin/legal-documents/{id}/revert` | body `{"version": n}` — copies old version n's content into the working copy as a **new** draft. History is never rewritten. |
 | DELETE | `/v1/platform-admin/legal-documents/{id}` | Removes the working copy and its unpublished state. Published history is retained. |
+
+### Live-class publication governance
+
+Editorial state is `publication_status`: `DRAFT → PENDING_APPROVAL → APPROVED → PUBLISHED`
+(or `REJECTED`). This is **separate** from `status`, which is the session lifecycle
+(`SCHEDULED`, `IN_PROGRESS`, …). Publication answers "may an anonymous visitor see this at all";
+`status` answers "is it happening right now". Collapsing them would make neither representable.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/v1/platform-admin/live-classes/governance` | `page`, `size`, `publicationStatus`, `accessLevel` |
+| POST | `/v1/platform-admin/live-classes/governance/{id}/approve` | `PENDING_APPROVAL` → `APPROVED`. Does **not** make it public. |
+| POST | `/v1/platform-admin/live-classes/governance/{id}/reject` | Body `{"note": "..."}`. **A reason is required** — without one the teacher cannot act on it. → `REJECTED`. |
+| POST | `/v1/platform-admin/live-classes/governance/{id}/publish` | `APPROVED` → `PUBLISHED`. 409 unless `access_level = PUBLIC`. |
+| POST | `/v1/platform-admin/live-classes/governance/{id}/unpublish` | `PUBLISHED` → `APPROVED`. Soft: attendance, recordings, ownership and audit history are untouched. |
+| POST | `/v1/platform-admin/live-classes/governance/{id}/archive` | Soft delete + return to `DRAFT`. 409 while the session is `STARTING`/`IN_PROGRESS`/`LIVE`, because archiving a running session would orphan the LiveKit room. |
+
+Every transition writes an audit log. A teacher can never publish their own class.
+
+### Teacher submission
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/v1/teachers/me/live-classes/{id}/submit-for-approval` | Owning teacher only; 403 otherwise. Only from `DRAFT` or `REJECTED`, and only while `SCHEDULED`. |
+| POST | `/v1/teachers/me/live-classes/cover` | `multipart/form-data`, field `file`. Image content is checked by **magic bytes**, not by declared MIME type or extension, so an HTML file named `.png` is rejected. |
+
+Material edits — title, description, `scheduledAt`, cover image or access level — to a class that
+is already `PUBLISHED` return it to `DRAFT` and clear `publishedAt`, so a change to what visitors
+already see cannot ride along silently on an unrelated edit.
 
 ## 3. Content format
 

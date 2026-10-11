@@ -84,7 +84,86 @@ public interface LiveClassRepository extends JpaRepository<LiveClass, UUID> {
     @Query("SELECT lc FROM LiveClass lc WHERE lc.isDeleted = false AND lc.institutionId = :institutionId AND LOWER(lc.title) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY lc.scheduledAt DESC")
     List<LiveClass> searchByInstitutionIdAndQuery(@Param("institutionId") UUID institutionId, @Param("query") String query);
 
-    /** Lesson ↔ Live Class: every non-deleted live class linked to a lesson. */
+/** Lesson ↔ Live Class: every non-deleted live class linked to a lesson. */
     @Query("SELECT lc FROM LiveClass lc WHERE lc.isDeleted = false AND lc.lessonId = :lessonId ORDER BY lc.scheduledAt DESC")
     List<LiveClass> findByLessonIdAndIsDeletedFalse(@Param("lessonId") UUID lessonId);
+
+    // ── public discovery (V157) ─────────────────────────────────────────────────────────────
+    //
+    // Public eligibility is decided here rather than in the service, so there is no input a
+    // caller could supply to widen it. Two conditions, both required: the class is PUBLISHED for
+    // public discovery, and its access level is PUBLIC. Approval alone does not expose a class -
+    // a teacher must also have declared it publicly joinable - which is what stops one
+    // administrative click from putting every teacher's session on the marketing site.
+    //
+    // CANCELLED is excluded from Past deliberately. A cancelled session is not a completed
+    // learning event, and listing it beside real past classes with a "watch replay" affordance
+    // would misrepresent what happened.
+
+    /** Live Now: genuinely in progress, by authoritative session status and elapsed duration. */
+    @Query("""
+            SELECT lc FROM LiveClass lc
+            WHERE lc.isDeleted = false
+              AND lc.publicationStatus = 'PUBLISHED'
+              AND lc.accessLevel = 'PUBLIC'
+              AND lc.status IN :activeStatuses
+              AND COALESCE(lc.startedAt, lc.scheduledAt) <= :now
+            ORDER BY COALESCE(lc.startedAt, lc.scheduledAt) DESC, lc.id ASC
+            """)
+    List<LiveClass> findPublicLiveNow(@Param("now") LocalDateTime now,
+                                      @Param("activeStatuses") List<String> activeStatuses,
+                                      Pageable pageable);
+
+    /** Upcoming: scheduled to start in the future. */
+    @Query("""
+            SELECT lc FROM LiveClass lc
+            WHERE lc.isDeleted = false
+              AND lc.publicationStatus = 'PUBLISHED'
+              AND lc.accessLevel = 'PUBLIC'
+              AND lc.status = 'SCHEDULED'
+              AND lc.scheduledAt > :now
+            ORDER BY lc.scheduledAt ASC, lc.id ASC
+            """)
+    List<LiveClass> findPublicUpcoming(@Param("now") LocalDateTime now, Pageable pageable);
+
+    /**
+     * Past: the session actually finished.
+     *
+     * <p>Ordered by {@code endedAt} rather than {@code scheduledAt}, so a long class that started
+     * at 09:00 and ran until 11:00 sorts by when it ended. Classes completed before V157 have a
+     * null {@code endedAt} and fall back to {@code scheduledAt}, which is the best available
+     * estimate for them.</p>
+     */
+    @Query("""
+            SELECT lc FROM LiveClass lc
+            WHERE lc.isDeleted = false
+              AND lc.publicationStatus = 'PUBLISHED'
+              AND lc.accessLevel = 'PUBLIC'
+              AND lc.status IN :endedStatuses
+            ORDER BY COALESCE(lc.endedAt, lc.scheduledAt) DESC, lc.id ASC
+            """)
+    List<LiveClass> findPublicPast(@Param("endedStatuses") List<String> endedStatuses,
+                                  Pageable pageable);
+
+    /** Platform Admin publication queue: every class with a publication state, newest first. */
+    @Query("""
+            SELECT lc FROM LiveClass lc
+            WHERE lc.isDeleted = false
+              AND (:publicationStatus IS NULL OR lc.publicationStatus = :publicationStatus)
+              AND (:accessLevel IS NULL OR lc.accessLevel = :accessLevel)
+            ORDER BY lc.updatedAt DESC, lc.id ASC
+            """)
+    Page<LiveClass> findForPublicationReview(@Param("publicationStatus") String publicationStatus,
+                                            @Param("accessLevel") String accessLevel,
+                                            Pageable pageable);
+
+    /** True when any publicly discoverable class exists. Lets the landing section hide cleanly. */
+    @Query("""
+            SELECT COUNT(lc) > 0 FROM LiveClass lc
+            WHERE lc.isDeleted = false
+              AND lc.publicationStatus = 'PUBLISHED'
+              AND lc.accessLevel = 'PUBLIC'
+              AND lc.status IN ('SCHEDULED', 'STARTING', 'IN_PROGRESS', 'LIVE', 'ENDING', 'COMPLETED', 'ENDED')
+            """)
+    boolean hasAnyPubliclyDiscoverable();
 }

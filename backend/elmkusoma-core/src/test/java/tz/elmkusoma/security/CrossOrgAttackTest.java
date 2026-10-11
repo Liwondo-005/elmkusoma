@@ -253,7 +253,7 @@ class CrossOrgAttackTest {
                         + "recording_enabled, session_type, timezone, is_recurring, lobby_enabled) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 liveClassId, foreignInstitutionId, java.time.LocalDateTime.now(), false,
-                tz.elmkusoma.testutil.TestDataSeeder.TEACHER_USER_ID, "XOrg foreign live class",
+                tz.elmkusoma.testutil.TestDataSeeder.TEACHER_ID, "XOrg foreign live class",
                 "Cross-org isolation probe",
                 java.time.LocalDateTime.now().plusHours(1), 60, "SCHEDULED", 50,
                 false, "LECTURE", "Africa/Dar_es_Salaam", false, false);

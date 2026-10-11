@@ -28,6 +28,8 @@ import tz.elmkusoma.student.repository.StudentRepository;
 import tz.elmkusoma.testutil.TestTokens;
 
 import java.time.LocalDate;
+import tz.elmkusoma.testutil.TestDataSeeder;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -200,7 +202,7 @@ class ParentLiveClassesHttpSecurityTest {
 
     private LiveClass saveLiveClass(String title, UUID classGroupId, String status) {
         return liveClassRepository.save(LiveClass.builder()
-                .teacherId(UUID.randomUUID())
+                .teacherId(TestDataSeeder.TEACHER_ID)
                 .title(title)
                 .scheduledAt(LocalDateTime.now().plusHours(1))
                 .durationMinutes(60)

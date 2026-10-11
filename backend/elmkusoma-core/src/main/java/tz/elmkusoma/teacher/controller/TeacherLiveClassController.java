@@ -20,6 +20,7 @@ import tz.elmkusoma.course.dto.LinkLessonRequest;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.course.repository.LiveClassRepository;
 import tz.elmkusoma.course.service.LiveClassService;
+import tz.elmkusoma.shared.service.LiveClassPublicationService;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.service.NotificationService;
@@ -48,6 +49,7 @@ public class TeacherLiveClassController {
     private final LiveClassParticipantRepository participantRepository;
     private final tz.elmkusoma.shared.repository.UserRepository userRepository;
     private final AuditService auditService;
+    private final LiveClassPublicationService liveClassPublicationService;
 
     @GetMapping
     @Operation(summary = "List my live classes")
@@ -168,6 +170,30 @@ public class TeacherLiveClassController {
                 Map.of("action", "LESSON_UNLINKED"));
 
         return ResponseEntity.ok(ApiResponse.success("Lesson unlinked successfully", updated));
+    }
+
+    @PostMapping("/{id}/submit-for-approval")
+    @Operation(summary = "Submit a class to Platform Admin for public listing review")
+    public ResponseEntity<ApiResponse<LiveClassResponse>> submitForApproval(
+            @RequestHeader("X-Institution-Id") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
+            @RequestAttribute(value = "userEmail", required = false) String userEmail,
+            @RequestAttribute(value = "userRole", required = false) String userRole,
+            @PathVariable UUID id) {
+
+        // Ownership is enforced inside the service against the class's own teacher_id, not against
+        // the caller's institution alone: two teachers in the same institution must not be able to
+        // submit each other's classes.
+        LiveClass submitted = liveClassPublicationService.submitForApproval(id, userId,
+                userEmail != null ? userEmail : "teacher");
+
+        auditSafely(institutionId, userId, userEmail, userRole, "LIVE_CLASS", id,
+                submitted.getTitle(), AuditLog.AuditAction.UPDATE,
+                Map.of("publicationStatus", "DRAFT"),
+                Map.of("publicationStatus", "PENDING_APPROVAL"));
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "Class submitted for review", liveClassService.getLiveClassById(id)));
     }
 
     @DeleteMapping("/{id}")

@@ -38,7 +38,13 @@ class LiveHostContinuityTest {
     @Autowired
     private MockMvc mockMvc;
 
-    /** Distinct, non-overlapping windows so the seeded teacher's conflict check never fires. */
+    /**
+     * Distinct, non-overlapping windows so the seeded teacher's conflict check never fires.
+     *
+     * <p>Starts past the seeded class, which sits at now+1h for the same teacher. Overlapping that
+     * window would be refused as a schedule conflict before the test could assert anything about
+     * host continuity.</p>
+     */
     private static final java.util.concurrent.atomic.AtomicInteger SLOT =
             new java.util.concurrent.atomic.AtomicInteger();
 
@@ -51,9 +57,9 @@ class LiveHostContinuityTest {
                         .contentType("application/json")
                         // Creation rejects past dates (1-minute grace), so schedule slightly ahead and then
                 // start explicitly — that is the real host flow.
-                .content("{\"title\":\"Host continuity " + run + "\","
+                        .content("{\"title\":\"Host continuity " + run + "\","
                                 + "\"scheduledAt\":\"" + java.time.LocalDateTime.now()
-                                        .plusMinutes(30 + slot * 180L).withNano(0)
+                                        .plusMinutes(180 + slot * 180L).withNano(0)
                                         + "\",\"durationMinutes\":30}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))

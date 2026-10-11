@@ -217,7 +217,7 @@ Event event = eventRepository.save(Event.builder()
     private LiveClass liveClass() {
         return liveClassRepository.save(LiveClass.builder()
                 .institutionId(TestDataSeeder.INSTITUTION_ID)
-                .teacherId(UUID.randomUUID())
+                .teacherId(TestDataSeeder.TEACHER_ID)
                 .title("Entitlement class " + UUID.randomUUID().toString().substring(0, 8))
                 .scheduledAt(LocalDateTime.now().minusHours(1))
                 .durationMinutes(60)
