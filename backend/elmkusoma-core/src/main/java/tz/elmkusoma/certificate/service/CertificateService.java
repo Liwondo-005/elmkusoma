@@ -291,6 +291,17 @@ public class CertificateService {
         // only at the point of setup.
         requireAuthorizedSignatories(certificate);
 
+        // Refuse a second live certificate for an award the student already holds.
+        //
+        // Without this, an operator could issue the same certificate any number of times, and each
+        // issuance produced a distinct serial number, a distinct verification code and its own QR
+        // code. A holder with three certificates for one course cannot show which is genuine, and
+        // a verifier checking one of them has no way to know it is not the withdrawn copy.
+        //
+        // Revoked and soft-deleted certificates are excluded deliberately: if an award was withdrawn,
+        // re-issuing it is the remedy, and the record of the mistake should not block the fix.
+        requireNotAlreadyAwarded(certificate);
+
         // Freeze who signed it. The certificate referenced the live signatory row, so editing a
         // signatory's name, title or signature image today would silently rewrite the appearance
         // of documents issued years ago.
@@ -376,6 +387,36 @@ public class CertificateService {
      * certificates and the absence of a signature is a legitimate configuration, not a defect -
      * inventing a "missing signatory" failure would block certificates that are working today.</p>
      */
+    /**
+     * Refuses issuance when the student already holds a live certificate for this same award.
+     *
+     * <p>"Same award" means the same student, template, certificate type and title. Anything less
+     * specific would block legitimate distinct certificates: a student may hold several
+     * participation certificates for different sessions, or a completion certificate per course.</p>
+     *
+     * <p>A certificate with no template is skipped, because template identity is what distinguishes
+     * one award from another here. Those paths are the automatic participation-certificate routes,
+     * which already de-duplicate against the session title before creating anything.</p>
+     */
+    private void requireNotAlreadyAwarded(Certificate certificate) {
+        if (certificate.getTemplateId() == null || certificate.getTitle() == null
+                || certificate.getTitle().isBlank()) {
+            return;
+        }
+        certificateRepository.findLiveAward(
+                        certificate.getStudentId(),
+                        certificate.getTemplateId(),
+                        certificate.getCertificateType(),
+                        certificate.getTitle())
+                .filter(existing -> !existing.getId().equals(certificate.getId()))
+                .ifPresent(existing -> {
+                    throw new IllegalStateException(
+                            "This student already holds a live certificate for this award "
+                                    + "(serial " + existing.getSerialNumber()
+                                    + "). Revoke it first if it must be replaced.");
+                });
+    }
+
     private void requireAuthorizedSignatories(Certificate certificate) {
         List<CertificateTemplateSignatory> links =
                 templateSignatoryRepository.findByTemplateId(certificate.getTemplateId());

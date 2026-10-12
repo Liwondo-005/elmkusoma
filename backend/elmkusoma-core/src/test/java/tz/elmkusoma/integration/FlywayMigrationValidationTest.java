@@ -429,7 +429,31 @@ class FlywayMigrationValidationTest {
                         + firstLineContaining(migration, "access_level VARCHAR"));
     }
 
-    /** Reads a migration by file name from the located migration directory. */
+    /**
+     * V162 makes duplicate live awards impossible. The index must stay PARTIAL: an unconditional
+     * unique index would permanently block re-issuing an award after a mistake, because the revoked
+     * row would still occupy the key and the operator would have to destroy the record of the
+     * error to fix it.
+     */
+    @Test
+    void liveAwardUniqueness_IsPartialSoRevokedCertificatesDoNotBlockReissue() throws IOException {
+        String migration = readMigration("V162__certificate_live_award_uniqueness.sql");
+
+        assertTrue(migration.contains("ux_certificates_live_award"),
+                "V162 must prevent two live certificates for one award");
+        assertTrue(migration.contains("WHERE is_deleted = false AND status <> 'REVOKED'"),
+                "the live-award index must exclude revoked and soft-deleted rows, otherwise a "
+                        + "withdrawn award could never be re-issued");
+        // The service-level check alone is a check-then-act race; only the database arbitrates two
+        // concurrent issuances.
+        assertTrue(migration.contains("CREATE UNIQUE INDEX"),
+                "V162 must use a UNIQUE index: an application-level check cannot survive two "
+                        + "concurrent issuances both reading 'no existing certificate'");
+    }
+
+    /**
+     * Reads a migration by file name from the located migration directory.
+     */
     private String readMigration(String fileName) throws IOException {
         Path path = migrationDir.resolve(fileName);
         assertTrue(Files.exists(path), "migration must exist: " + fileName);

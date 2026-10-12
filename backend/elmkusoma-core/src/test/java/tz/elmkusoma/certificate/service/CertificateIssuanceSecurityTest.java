@@ -247,6 +247,68 @@ class CertificateIssuanceSecurityTest {
     }
 
     @Test
+    void issue_isRefusedWhenTheStudentAlreadyHoldsThisLiveAward() {
+        // Two certificates for one award: each has its own serial number, verification code and QR
+        // code, so a holder cannot indicate which is genuine and a verifier cannot tell that one of
+        // them is the withdrawn copy.
+        Certificate certificate = draftCertificate();
+        when(certificateRepository.findByIdAndIsDeletedFalse(certificate.getId()))
+                .thenReturn(Optional.of(certificate));
+        when(templateSignatoryRepository.findByTemplateId(templateId)).thenReturn(List.of());
+
+        Certificate existing = issuedCertificate();
+        existing.setSerialNumber("CERT-CMP-2026-000099");
+        when(certificateRepository.findLiveAward(studentId, templateId,
+                Certificate.CertificateType.COMPLETION, "Certificate of Completion"))
+                .thenReturn(Optional.of(existing));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> certificateService.issueCertificate(certificate.getId(), institutionId,
+                        UUID.randomUUID(), "admin@x.tz", "ADMIN"));
+        assertTrue(ex.getMessage().contains("already holds"), ex.getMessage());
+
+        assertEquals(Certificate.CertificateStatus.DRAFT, certificate.getStatus(),
+                "a refused certificate must not have been marked issued");
+    }
+
+    @Test
+    void issue_isAllowedForADifferentAwardOnTheSameTemplate() {
+        // A student may hold several certificates from one template: participation in session A and
+        // session B are different awards. Blocking on template alone would break that.
+        Certificate certificate = draftCertificate();
+        when(certificateRepository.findByIdAndIsDeletedFalse(certificate.getId()))
+                .thenReturn(Optional.of(certificate));
+        when(templateSignatoryRepository.findByTemplateId(templateId)).thenReturn(List.of());
+        when(certificateRepository.findLiveAward(any(), any(), any(), any())).thenReturn(Optional.empty());
+        when(learnerNotificationRepository.save(any(tz.elmkusoma.learner.domain.LearnerNotification.class)))
+                .thenReturn(null);
+
+        certificateService.issueCertificate(certificate.getId(), institutionId,
+                UUID.randomUUID(), "admin@x.tz", "ADMIN");
+
+        assertEquals(Certificate.CertificateStatus.ISSUED, certificate.getStatus());
+    }
+
+    @Test
+    void issue_doesNotTreatTheCertificateItselfAsADuplicate() {
+        Certificate certificate = draftCertificate();
+        when(certificateRepository.findByIdAndIsDeletedFalse(certificate.getId()))
+                .thenReturn(Optional.of(certificate));
+        when(templateSignatoryRepository.findByTemplateId(templateId)).thenReturn(List.of());
+        when(learnerNotificationRepository.save(any(tz.elmkusoma.learner.domain.LearnerNotification.class)))
+                .thenReturn(null);
+
+        // The lookup returns the very certificate being issued; it must not block itself.
+        when(certificateRepository.findLiveAward(any(), any(), any(), any()))
+                .thenReturn(Optional.of(certificate));
+
+        certificateService.issueCertificate(certificate.getId(), institutionId,
+                UUID.randomUUID(), "admin@x.tz", "ADMIN");
+
+        assertEquals(Certificate.CertificateStatus.ISSUED, certificate.getStatus());
+    }
+
+    @Test
     void issue_isAllowedForATemplateWithNoSignatories() {
         // A template with no signature slots is a legitimate configuration, not a defect.
         Certificate certificate = draftCertificate();

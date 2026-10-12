@@ -97,4 +97,27 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
     long countByCertificateTypeAndIsDeletedFalse(Certificate.CertificateType type);
 
     long countByTemplateIdAndIsDeletedFalse(UUID templateId);
+
+    /**
+     * A live certificate already awarded to this student for the same template, type and title.
+     *
+     * <p>Used to refuse a second issuance of an award the student already holds. Revoked
+     * certificates are excluded on purpose: if an award is withdrawn, re-issuing it is the correct
+     * remedy and must not be blocked by the record of the mistake. Soft-deleted rows are excluded
+     * for the same reason.</p>
+     *
+     * <p>This is an application-level check for a clear message. It is not sufficient on its own,
+     * because two concurrent issuances can both read "none exists" before either writes; V162 adds
+     * the partial unique index that actually makes the check safe under concurrency.</p>
+     */
+    @Query("SELECT c FROM Certificate c WHERE c.studentId = :studentId "
+            + "AND c.templateId = :templateId "
+            + "AND c.certificateType = :certificateType "
+            + "AND c.title = :title "
+            + "AND c.isDeleted = false "
+            + "AND c.status <> tz.elmkusoma.certificate.domain.Certificate$CertificateStatus.REVOKED")
+    Optional<Certificate> findLiveAward(@Param("studentId") UUID studentId,
+                                        @Param("templateId") UUID templateId,
+                                        @Param("certificateType") Certificate.CertificateType certificateType,
+                                        @Param("title") String title);
 }
