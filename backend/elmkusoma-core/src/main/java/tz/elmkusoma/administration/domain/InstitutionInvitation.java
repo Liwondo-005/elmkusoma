@@ -29,6 +29,20 @@ public class InstitutionInvitation {
     @Column(name = "role", nullable = false)
     private String role;
 
+    /**
+     * The provider this invitation grants scope over, when the invitee is being provisioned as
+     * provider staff (authority level C -&gt; D).
+     *
+     * <p>Recorded at issue time rather than inferred at redemption. It used to be inferred, by
+     * taking the institution's first live provider - which silently bound staff to the wrong
+     * provider whenever an institution had more than one.</p>
+     *
+     * <p>NULL for every non-provider invitation, and for provider invitations issued before this
+     * existed; redemption falls back to the institution-wide scope in that case.</p>
+     */
+    @Column(name = "provider_id")
+    private UUID providerId;
+
     @Column(name = "invited_by", nullable = false)
     private UUID invitedBy;
 

@@ -106,6 +106,25 @@ public class PlatformAdminController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    /**
+     * Everyone holding a membership scoped to one provider.
+     *
+     * <p>A distinct path rather than a {@code providerId} query parameter on {@code /users}: the
+     * provider list and the user list are both cross-platform reads, and mixing them behind one
+     * optional parameter made the paging semantics ambiguous - a provider filter has to narrow
+     * <em>before</em> paging, which the generic list cannot express.</p>
+     */
+    @GetMapping("/providers/{providerId}/users")
+    @Operation(summary = "List the users scoped to one provider")
+    public ResponseEntity<ApiResponse<PageResponse<UserSummaryResponse>>> listUsersByProvider(
+            @PathVariable UUID providerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        PageResponse<UserSummaryResponse> response =
+                platformAdminService.listUsersByProvider(providerId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @GetMapping("/users/{userId}")
     @Operation(summary = "Get user details")
     public ResponseEntity<ApiResponse<UserSummaryResponse>> getUser(@PathVariable UUID userId) {

@@ -38,6 +38,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByIdAndIsDeletedFalse(UUID id);
 
+    /**
+     * A page of live users drawn from a known id set, newest first.
+     *
+     * <p>Used where the id set comes from a relationship rather than a predicate - a provider's
+     * staff roster, for example. Pageable on purpose: {@code findAllById} would load the entire
+     * roster and discard all but the requested page.</p>
+     */
+    @Query("SELECT u FROM User u WHERE u.id IN :ids AND u.isDeleted = false")
+    Page<User> findAllByIdInAndIsDeletedFalse(@Param("ids") java.util.List<UUID> ids, Pageable pageable);
+
     Page<User> findByRoleAndIsDeletedFalse(User.Role role, Pageable pageable);
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.isDeleted = false GROUP BY u.email HAVING COUNT(u) > 1")

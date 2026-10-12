@@ -26,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -358,10 +359,8 @@ public class InstitutionPeopleService {
         // user row rather than trusted from the invitation, so a demoted or deleted issuer
         // fails closed instead of leaving a redeemable platform-only token.
         if (InvitationRolePolicy.isPlatformOnly(invitation.getRole())) {
-            boolean issuedByPlatform = userRepository.findByIdAndIsDeletedFalse(invitation.getInvitedBy())
-                    .map(issuer -> InvitationRolePolicy.isPlatformActor(issuer.getRole().name()))
-                    .orElse(false);
-            if (!issuedByPlatform) {
+            boolean issuerMayStillGrant = mayIssuerGrantRole(invitation);
+            if (!issuerMayStillGrant) {
                 throw new SecurityException("This invitation cannot grant the requested role");
             }
         }
@@ -410,8 +409,11 @@ public class InstitutionPeopleService {
         membership.setRole(membershipRole); // §48: invited role wins over any client-supplied value
         membership.setIsActive(true);
         // A provider-role invitation must arrive pre-bound to the provider record, the same way
-        // PlatformAdminService.createUser binds it, or the account has no provider scope.
-        UUID providerScope = resolveProviderScopeForInvitation(invitation.getRole(), invitation.getInstitutionId());
+        // PlatformAdminService.createUser binds it, or the account has no provider scope. The
+        // provider the invitation named wins, so an owner staffing one provider in a
+        // multi-provider institution cannot accidentally grant the wrong one.
+        UUID providerScope = resolveProviderScopeForInvitation(invitation.getRole(),
+                invitation.getInstitutionId(), invitation.getProviderId());
         if (providerScope != null) {
             membership.setProviderId(providerScope);
         }
@@ -518,14 +520,67 @@ public class InstitutionPeopleService {
     }
 
     /**
-     * Binds a provider-role membership to the institution's provider record, mirroring
+     * Whether the invitation's issuer may still grant this invitation's role.
+     *
+     * <p>Two authorities can create a PROVIDER_STAFF invitation. Platform Admin can, as it always
+     * could. A Provider Owner can too, but only for staff of a provider they actually administer -
+     * the level C to D workflow. The distinction is carried by {@code provider_id}: an invitation
+     * that names a provider is an owner-issued one and is re-checked against live membership, so an
+     * owner demoted or removed after issuing still has a token that fails closed.</p>
+     *
+     * <p>An owner-issued invitation for a provider the issuer no longer owns is refused, and a
+     * PROVIDER_STAFF invitation with no {@code provider_id} keeps requiring a platform issuer
+     * exactly as before. PROVIDER_ADMIN and every platform role are unchanged: they remain
+     * platform-only, and an owner cannot mint a peer owner.</p>
+     */
+    private boolean mayIssuerGrantRole(InstitutionInvitation invitation) {
+        Optional<User> issuer = userRepository.findByIdAndIsDeletedFalse(invitation.getInvitedBy());
+        if (issuer.isEmpty()) {
+            // Deleted issuer: nothing left that could authorise this.
+            return false;
+        }
+        String issuerRole = issuer.get().getRole() == null ? "" : issuer.get().getRole().name();
+        if (InvitationRolePolicy.isPlatformActor(issuerRole)) {
+            return true;
+        }
+
+        String invitedRole = invitation.getRole() == null
+                ? "" : invitation.getRole().trim().toUpperCase(Locale.ROOT);
+        if (!"PROVIDER_STAFF".equals(invitedRole) || invitation.getProviderId() == null) {
+            return false;
+        }
+        return membershipRepository.findByUserIdAndIsActiveTrue(invitation.getInvitedBy()).stream()
+                .anyMatch(m -> !Boolean.TRUE.equals(m.getIsDeleted())
+                        && invitation.getProviderId().equals(m.getProviderId()));
+    }
+
+    /**
+     * Binds a provider-role membership to a provider record, mirroring
      * {@code PlatformAdminService.resolveProviderScope}. Without it the account would have no
      * {@code provider_id} and its provider authority would be unscoped.
+     *
+     * <p>An invitation that names its provider (provider staff invited through a provider's own
+     * workspace) is honoured exactly. Only when it does not - an older row, or a platform-level
+     * invitation - does this fall back to the institution's first live provider. The {@code findFirst}
+     * fallback is now a genuine last resort rather than the normal path: an institution can host
+     * more than one provider, and granting the first one by accident bound staff to a provider
+     * nobody chose.</p>
      */
-    private UUID resolveProviderScopeForInvitation(String invitationRole, UUID institutionId) {
+    private UUID resolveProviderScopeForInvitation(String invitationRole, UUID institutionId,
+                                                   UUID chosenProviderId) {
         String role = invitationRole == null ? "" : invitationRole.trim().toUpperCase(java.util.Locale.ROOT);
         if (!"PROVIDER_ADMIN".equals(role) && !"PROVIDER_STAFF".equals(role)) {
             return null;
+        }
+        if (chosenProviderId != null) {
+            boolean live = educationProviderRepository.findById(chosenProviderId)
+                    .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
+                    .isPresent();
+            // Fall through to the legacy lookup if the recorded provider has since been deleted,
+            // so an invitation issued before that still redeems rather than becoming unredeemable.
+            if (live) {
+                return chosenProviderId;
+            }
         }
         return educationProviderRepository.findAllByInstitutionId(institutionId).stream()
                 .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))

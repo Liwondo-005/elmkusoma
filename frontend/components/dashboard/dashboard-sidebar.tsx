@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play, KeyRound, Wrench } from "lucide-react"
+import { LayoutDashboard, BookOpen, Video, FileText, BarChart3, MessageSquare, Award, Bookmark, User, Settings, LogOut, ClipboardList, GraduationCap, PenTool, School, Users, Shield, ShieldCheck, ClipboardCheck, Calendar, CalendarDays, Bell, Clock, TrendingUp, Library, HeartPulse, FileBarChart, Trophy, Target, Activity, Film, Compass, Backpack, Map, Lightbulb, FlaskConical, Mic, Swords, Zap, AlertCircle, Home, Palette, Globe, Eye, Radio, Search, Brain, ChevronLeft, ChevronRight, Play, KeyRound, Wrench, UserCog } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Logo } from "@/components/logo"
 import { cn } from "@/lib/utils"
@@ -459,7 +459,10 @@ const providerNavSections: ProviderNavSection[] = [
   },
   {
     group: "ACCOUNT", groupKey: "groupAccount",
-    items: [{ label: "Settings", labelKey: "settings", href: "/dashboard/provider/settings", icon: Settings }],
+    items: [
+      { label: "Staff", labelKey: "staff", href: "/dashboard/provider/staff", icon: UserCog },
+      { label: "Settings", labelKey: "settings", href: "/dashboard/provider/settings", icon: Settings },
+    ],
   },
 ]
 

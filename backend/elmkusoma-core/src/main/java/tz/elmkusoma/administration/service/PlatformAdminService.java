@@ -291,18 +291,65 @@ public class PlatformAdminService {
             users = userRepository.findAllByIsDeletedFalse(PageRequest.of(page, size, Sort.by("createdAt").descending()));
         }
 
+        // One query for the whole page rather than one per user: provider membership is what makes
+        // this directory useful, and a per-row lookup would tax the most-used admin screen.
+        Map<UUID, List<InstitutionMembership>> membershipsByUser =
+                membershipsByUserId(users.getContent().stream().map(User::getId).toList());
+
         List<UserSummaryResponse> content = users.getContent().stream()
-                .map(this::toUserSummary)
+                .map(user -> toUserSummary(user, membershipsByUser.getOrDefault(user.getId(), List.of())))
                 .toList();
 
         return new PageResponse<>(content, users.getNumber(), users.getSize(), users.getTotalElements(), users.getTotalPages(), users.isFirst(), users.isLast());
+    }
+
+    /**
+     * Every user holding a membership scoped to one provider.
+     *
+     * <p>Answers "who works for this provider" - the question the directory could not previously
+     * answer, because {@code users} carries no provider column and the role alone tells you only
+     * that someone is provider staff somewhere.</p>
+     *
+     * <p>Paged rather than returned whole: a large provider would otherwise stream its entire
+     * roster into memory and through a single response.</p>
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<UserSummaryResponse> listUsersByProvider(UUID providerId, int page, int size) {
+        var members = membershipRepository.findByProviderIdAndIsDeletedFalse(providerId);
+        List<UUID> userIds = members.stream().map(InstitutionMembership::getUserId).distinct().toList();
+        if (userIds.isEmpty()) {
+            return new PageResponse<>(List.of(), page, size, 0, 0, true, true);
+        }
+        Page<User> users = userRepository.findAllByIdInAndIsDeletedFalse(
+                userIds, PageRequest.of(page, size, Sort.by("createdAt").descending()));
+
+        Map<UUID, List<InstitutionMembership>> membershipsByUser = membershipsByUserId(
+                users.getContent().stream().map(User::getId).toList());
+
+        List<UserSummaryResponse> content = users.getContent().stream()
+                .map(user -> toUserSummary(user, membershipsByUser.getOrDefault(user.getId(), List.of())))
+                .toList();
+
+        return new PageResponse<>(content, users.getNumber(), users.getSize(), users.getTotalElements(),
+                users.getTotalPages(), users.isFirst(), users.isLast());
+    }
+
+    private Map<UUID, List<InstitutionMembership>> membershipsByUserId(List<UUID> userIds) {
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<InstitutionMembership>> byUser = new java.util.HashMap<>();
+        for (InstitutionMembership m : membershipRepository.findByUserIdInAndIsDeletedFalse(userIds)) {
+            byUser.computeIfAbsent(m.getUserId(), k -> new java.util.ArrayList<>()).add(m);
+        }
+        return byUser;
     }
 
     @Transactional(readOnly = true)
     public UserSummaryResponse getUser(UUID userId) {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
-        return toUserSummary(user);
+        return toUserSummary(user, membershipsByUserId(List.of(userId)).getOrDefault(userId, List.of()));
     }
 
     public UserSummaryResponse updateUserStatus(UUID userId, boolean active) {
@@ -2954,7 +3001,26 @@ public class PlatformAdminService {
 
     // ── Mappers ──
 
+    /**
+     * Single-user summary, re-reading that user's memberships.
+     *
+     * <p>Used by the mutate-and-return paths (activate, create, update) so the response reflects
+     * the membership that was just written - otherwise creating a provider account and reading the
+     * response back would show no {@code providerIds}, which reads as a failed write.</p>
+     */
     private UserSummaryResponse toUserSummary(User user) {
+        return toUserSummary(user,
+                membershipsByUserId(List.of(user.getId())).getOrDefault(user.getId(), List.of()));
+    }
+
+    private UserSummaryResponse toUserSummary(User user, List<InstitutionMembership> memberships) {
+        // Deduplicated but order-preserving: someone who staffs two providers should see both ids,
+        // and should never see the same provider twice because of a duplicated membership row.
+        List<UUID> providerIds = memberships.stream()
+                .map(InstitutionMembership::getProviderId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
         return UserSummaryResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -2966,6 +3032,10 @@ public class PlatformAdminService {
                 // organization" failure from the admin UI that creates the account.
                 .institutionId(user.getInstitutionId())
                 .createdAt(user.getCreatedAt())
+                .isEmailVerified(user.getIsEmailVerified())
+                .phone(user.getPhone())
+                .providerIds(providerIds)
+                .membershipCount(memberships.size())
                 .build();
     }
 
