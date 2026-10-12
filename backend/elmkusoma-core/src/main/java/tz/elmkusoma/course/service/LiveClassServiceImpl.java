@@ -2,6 +2,7 @@ package tz.elmkusoma.course.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tz.elmkusoma.academic.domain.Subject;
@@ -371,6 +372,8 @@ public class LiveClassServiceImpl implements LiveClassService {
                 String egressId = liveKitService.startRecording(saved.getId());
                 if (egressId != null) {
                     saved.setRecordingUrl("egress:" + egressId);
+                    // Fresh capture: any stop accepted for an earlier recording no longer applies.
+                    saved.setRecordingStopRequested(false);
                     saved = liveClassRepository.save(saved);
                     log.info("Auto-recording started for live class {}", saved.getId());
                 } else {
@@ -552,10 +555,22 @@ public class LiveClassServiceImpl implements LiveClassService {
                 liveKitService.stopRecording(egressId);
                 url = liveKitService.resolveRecordingUrl(egressId);
                 if (url == null) {
-                    // Recording never produced a usable file. Record it as a real FAILED
-                    // library asset and clear the egress marker: leaving it in place made the
-                    // download endpoint report "still processing" for a recording that will
-                    // never exist.
+                    // The upload to object storage routinely outlasts this in-request polling
+                    // window. Clearing the marker and marking FAILED here destroyed recordings
+                    // that had already been written to the bucket - and with LiveKit Cloud no
+                    // egress_ended webhook arrives to converge, because the webhook has to be
+                    // configured on the LiveKit side, not in this app's livekit.yaml.
+                    // Keep the marker while egress is still running so reconciliation can file it.
+                    if (!liveKitService.isEgressFinished(egressId)) {
+                        log.info("Recording for class {} is still uploading (egress {}); "
+                                        + "keeping marker for reconciliation",
+                                liveClass.getId(), egressId);
+                        return;
+                    }
+                    // Egress is genuinely finished and still produced no file: record it as a
+                    // real FAILED library asset and clear the egress marker, so the download
+                    // endpoint stops reporting "still processing" for a recording that will never
+                    // exist.
                     log.warn("Recording URL unresolved for class {} (egress {}); marked FAILED",
                             liveClass.getId(), egressId);
                     liveClass.setRecordingUrl(null);
@@ -605,6 +620,46 @@ public class LiveClassServiceImpl implements LiveClassService {
         } catch (Exception e) {
             log.warn("Finalize recording/replay skipped for class {}: {}", liveClass.getId(), e.getMessage());
         }
+    }
+
+    /**
+     * Retries finalizing recordings whose storage location was still unresolved when the class
+     * ended.
+     *
+     * <p>Uploading to object storage routinely outlasts the in-request polling window, and the
+     * LiveKit {@code egress_ended} webhook that would otherwise converge the row is only delivered
+     * when a webhook URL is configured on the LiveKit side - {@code livekit.yaml} in this repo
+     * configures a <em>self-hosted</em> server and has no effect on LiveKit Cloud. Without this
+     * sweep a recording that was written successfully stays invisible forever.
+     *
+     * <p>Safe to run repeatedly: finalization is idempotent, guarded by the replay uniqueness
+     * check and by the media asset's (source_type, source_id) unique constraint.
+     *
+     * @return how many pending recordings were re-examined
+     */
+    public int reconcilePendingRecordings() {
+        List<LiveClass> pending;
+        try {
+            pending = liveClassRepository.findWithUnresolvedRecordingMarker(
+                    PageRequest.of(0, 25));
+        } catch (Exception e) {
+            log.warn("Recording reconciliation could not list pending classes: {}", e.getMessage());
+            return 0;
+        }
+        int examined = 0;
+        for (LiveClass liveClass : pending) {
+            examined++;
+            try {
+                finalizeRecordingAndCreateReplay(liveClass);
+            } catch (Exception e) {
+                log.warn("Recording reconciliation failed for class {}: {}",
+                        liveClass.getId(), e.getMessage());
+            }
+        }
+        if (examined > 0) {
+            log.info("Re-examined {} live class recording(s) awaiting upload completion", examined);
+        }
+        return examined;
     }
 
     /** §9: existing notification channel — fired only when a replay actually exists. */

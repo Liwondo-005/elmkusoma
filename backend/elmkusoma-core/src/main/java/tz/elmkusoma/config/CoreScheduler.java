@@ -77,6 +77,23 @@ public class CoreScheduler {
         }
     }
 
+    /**
+     * Files recordings whose upload finished after the class already ended.
+     *
+     * <p>The in-request polling window at session end is shorter than a real object-storage upload,
+     * and the LiveKit {@code egress_ended} webhook only arrives when a webhook URL is configured on
+     * the LiveKit side. With LiveKit Cloud neither is enough on its own, so a recording that was
+     * written successfully to the bucket would otherwise stay unresolved and invisible.
+     */
+    @Scheduled(fixedRate = 120000, initialDelay = 60000)
+    public void reconcilePendingRecordings() {
+        try {
+            liveClassService.reconcilePendingRecordings();
+        } catch (Exception e) {
+            log.warn("Recording reconciliation sweep failed: {}", e.getMessage());
+        }
+    }
+
     /** Nationaladmin.md §23 — publish scheduled jurisdictional announcements. */
     @Scheduled(fixedRate = 60000)
     public void publishDueAnnouncements() {

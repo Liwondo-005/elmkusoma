@@ -131,6 +131,58 @@ class LiveRecordingMediaPublisherTest {
     }
 
     @Test
+    void publishRecording_replacesDescriptionLeftByAnEarlierFailure() {
+        // Regression: an asset marked FAILED keeps its "Recording failed ..." description. When the
+        // upload later succeeds, publishing must replace that generated text, otherwise the card
+        // reads READY while still telling the teacher the recording failed.
+        MediaAsset existing = new MediaAsset();
+        existing.setId(UUID.randomUUID());
+        existing.setSourceType(LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS);
+        existing.setSourceId(liveClass.getId());
+        existing.setInstitutionId(institutionId);
+        existing.setStatus(LiveRecordingMediaPublisher.STATUS_FAILED);
+        existing.setDescription("Recording failed for the live class \"Kiswahili\" (egress EG_abc)");
+
+        when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(
+                LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS, liveClass.getId()))
+                .thenReturn(Optional.of(existing));
+        stubSave();
+
+        publisher.publishRecording(liveClass, "https://storage.example/recording.mp4", 60L);
+
+        ArgumentCaptor<MediaAsset> captor = ArgumentCaptor.forClass(MediaAsset.class);
+        verify(mediaAssetRepository).save(captor.capture());
+        MediaAsset saved = captor.getValue();
+        assertEquals(LiveRecordingMediaPublisher.STATUS_READY, saved.getStatus());
+        assertFalse(saved.getDescription().contains("Recording failed"),
+                "stale failure description must not survive a successful publish");
+        assertTrue(saved.getDescription().contains("Recording of the live class"));
+    }
+
+    @Test
+    void publishRecording_preservesDescriptionWrittenByAPerson() {
+        // A description a human typed is not this pipeline's to overwrite.
+        MediaAsset existing = new MediaAsset();
+        existing.setId(UUID.randomUUID());
+        existing.setSourceType(LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS);
+        existing.setSourceId(liveClass.getId());
+        existing.setInstitutionId(institutionId);
+        existing.setDescription("Week 3 Kiswahili revision - teacher notes");
+
+        when(mediaAssetRepository.findFirstBySourceTypeAndSourceIdAndIsDeletedFalse(
+                LiveRecordingMediaPublisher.SOURCE_LIVE_CLASS, liveClass.getId()))
+                .thenReturn(Optional.of(existing));
+        stubSave();
+
+        publisher.publishRecording(liveClass, "https://storage.example/recording.mp4", 60L);
+
+        ArgumentCaptor<MediaAsset> captor = ArgumentCaptor.forClass(MediaAsset.class);
+        verify(mediaAssetRepository).save(captor.capture());
+        assertEquals("Week 3 Kiswahili revision - teacher notes",
+                captor.getValue().getDescription());
+    }
+
+    @Test
     void publishRecording_ignoresBlankUrlInsteadOfPublishingEmptyAsset() {
         assertTrue(publisher.publishRecording(liveClass, "   ", 60L).isEmpty());
         assertTrue(publisher.publishRecording(liveClass, null, 60L).isEmpty());

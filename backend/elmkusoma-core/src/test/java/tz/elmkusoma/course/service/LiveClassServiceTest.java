@@ -1028,6 +1028,9 @@ class LiveClassServiceTest {
         LiveClass live = endedRecordedClass("egress:eg_12345", true);
         stubCompletionScaffolding(live);
         when(liveKitService.resolveRecordingUrl("eg_12345")).thenReturn(null);
+        // The failure branch is only reached once LiveKit confirms the job is finished; while
+        // it is still uploading the marker has to survive so the sweep can file it later.
+        when(liveKitService.isEgressFinished("eg_12345")).thenReturn(true);
 
         triggerFinalization(live);
 
@@ -1037,6 +1040,27 @@ class LiveClassServiceTest {
         assertEquals("FAILED", captor.getValue().getStatus(),
                 "an unresolvable egress must be visible as a failed recording");
         assertNull(live.getRecordingUrl(), "the egress marker must not survive as a media URL");
+    }
+
+    /**
+     * The other half of the same branch: an egress whose upload is still running must keep its
+     * marker, because that marker is the only thing that lets the reconciliation sweep find the
+     * recording again. Clearing it (or filing it as FAILED) here destroyed recordings that had
+     * already been written to the bucket - and with LiveKit Cloud no egress_ended webhook arrives
+     * to converge, since the webhook has to be configured on the LiveKit side.
+     */
+    @Test
+    void unresolvedEgressStillUploading_keepsTheMarkerForReconciliation() {
+        LiveClass live = endedRecordedClass("egress:eg_12345", true);
+        stubCompletionScaffolding(live);
+        when(liveKitService.resolveRecordingUrl("eg_12345")).thenReturn(null);
+        when(liveKitService.isEgressFinished("eg_12345")).thenReturn(false);
+
+        triggerFinalization(live);
+
+        verify(mediaAssetRepository, never()).save(any());
+        assertEquals("egress:eg_12345", live.getRecordingUrl(),
+                "an upload that is still running must keep its egress marker for the sweep");
     }
 
     /** Case A: recording disabled leaves the library untouched. */

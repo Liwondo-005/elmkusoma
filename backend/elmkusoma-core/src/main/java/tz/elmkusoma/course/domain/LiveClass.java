@@ -129,6 +129,21 @@ public class LiveClass extends BaseEntity {
     @Builder.Default
     private Boolean recordingEnabled = false;
 
+    /**
+     * True once a stop request for the current capture has been ACCEPTED by LiveKit.
+     *
+     * <p>{@link #recordingUrl} alone cannot answer "is a capture still running?": the
+     * {@code egress:<id>} marker stays in place both while the job runs and while the accepted
+     * stop is still uploading its file. Without this flag host-state had to infer the difference
+     * from the class status, so a teacher who stopped mid-class and reloaded saw
+     * {@code recordingActive: true} for a job that had already been stopped. Read only while the
+     * marker is present, and reset whenever a new marker is written (see V162).</p>
+     */
+    @Column(name = "recording_stop_requested", nullable = false,
+            columnDefinition = "boolean not null default false")
+    @Builder.Default
+    private Boolean recordingStopRequested = false;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "session_type", length = 30)
     @Builder.Default

@@ -69,6 +69,13 @@ interface ChatMessage {
 /** Reactions the room offers. Every one is broadcast by the server as a REACTION event. */
 const REACTION_EMOJI = ["👍", "❤️"] as const
 
+/**
+ * Upper bound on a recording control request. Without one, a server that never answers leaves
+ * the Stop/Start button spinning forever with no error to show; the server-side reconciliation
+ * sweep is what actually recovers a recording whose response was lost.
+ */
+const RECORDING_REQUEST_TIMEOUT_MS = 30_000
+
 /** Host-continuity snapshot returned by GET /v1/live-session/classes/{id}/host-state. */
 interface HostState {
   classId: string
@@ -82,6 +89,10 @@ interface HostState {
   recordingEgressId: string | null
   recordingAvailable: boolean
   recordingUrl: string | null
+  /** RECORDING | FINALIZING | PUBLISHING | AVAILABLE | FAILED | NONE */
+  recordingState?: string
+  /** True while a stop was accepted but the file is still being finalised. */
+  recordingStopRequested?: boolean
   liveKitAvailable: boolean
   liveKitUrl: string | null
   roomName: string
@@ -1359,23 +1370,54 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
 
       if (isRecording) {
+        // The server acknowledges the stop as soon as LiveKit accepts it and then finishes the
+        // upload and the Media Library entry in the background, so this returns promptly. The
+        // timeout is what stops a hung request from leaving the button spinning forever.
         const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/stop`, {
           method: "POST",
           headers,
+          signal: AbortSignal.timeout(RECORDING_REQUEST_TIMEOUT_MS),
         })
         if (!res.ok) {
           setActionError(await describeRecordingError(res))
           return
         }
+        const stopped = await res.json().catch(() => null)
+        const state: string | undefined = stopped?.data?.state
         setIsRecording(false)
         setRecordingEgressId(null)
-        setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: t("recordingStoppedMsg"), timestamp: new Date().toISOString(), system: true }])
+        // Keep the host-continuity snapshot truthful after a stop: the REC banner and the
+        // "finalising" banner are both driven by host-state, which is otherwise only read on
+        // mount, so without this a stop left the red REC indicator on until a reload.
+        setHostState((prev) =>
+          prev
+            ? {
+                ...prev,
+                recordingActive: false,
+                recordingStopRequested: state === "FINALIZING",
+                recordingState: state ?? prev.recordingState,
+              }
+            : prev,
+        )
+        // "Stop accepted" is not "recording saved": only report a library entry that the
+        // server has actually confirmed, and surface a terminal failure instead of silently
+        // implying success.
+        if (state === "FAILED") {
+          setActionError(t("recordingFailedMsg"))
+          return
+        }
+        const message =
+          state === "FINALIZING" || state === "PUBLISHING"
+            ? t("recordingFinalizingMsg")
+            : t("recordingStoppedMsg")
+        setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message, timestamp: new Date().toISOString(), system: true }])
         return
       }
 
       const res = await fetch(`${base}/v1/live-session/classes/${liveClass.id}/recording/start`, {
         method: "POST",
         headers,
+        signal: AbortSignal.timeout(RECORDING_REQUEST_TIMEOUT_MS),
       })
       if (!res.ok) {
         // Never flip to "recording" on a failed or refused request. The server answers 503 when
@@ -1394,6 +1436,9 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
       }
       setIsRecording(true)
       setRecordingEgressId(egressId)
+      setHostState((prev) =>
+        prev ? { ...prev, recordingActive: true, recordingStopRequested: false, recordingState: "RECORDING" } : prev,
+      )
       setChat((prev) => [...prev, { userId: "system", userName: t("systemSender"), message: data?.data?.alreadyRecording ? t("recordingAlreadyActiveMsg") : t("recordingStartedMsg"), timestamp: new Date().toISOString(), system: true }])
     } catch {
       setActionError(t("recordingToggleFailed"))
@@ -1409,6 +1454,10 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
     if (res.status === 503) return detail || t("recordingUnavailable")
     if (res.status === 403) return detail || t("recordingNotAllowed")
     if (res.status === 404) return detail || t("recordingSessionNotFound")
+    // 409 = a stop was already accepted and the previous file is still uploading; a new
+    // capture cannot start until it resolves. Use the localised copy rather than the raw
+    // server sentence.
+    if (res.status === 409) return t("recordingFinalizingMsg")
     return detail || `${t("recordingToggleFailed")} (${res.status})`
   }
 
@@ -2200,6 +2249,15 @@ export function LiveClassroom({ liveClass }: { liveClass: LiveClass }) {
         <div role="status" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 flex items-center gap-2">
           <Circle className="size-2.5 shrink-0 fill-red-500 text-red-500 animate-pulse motion-reduce:animate-none" aria-hidden />
           <span>{t("recordingInProgressMsg")}</span>
+        </div>
+      )}
+
+      {/* A stop that was accepted but whose file is still uploading: the capture is over, so
+          the red REC indicator is wrong here, but the recording is not yet in the library. */}
+      {isTeacherClient && isInProgress && !hostState?.recordingActive && hostState?.recordingStopRequested && (
+        <div role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-700 flex items-center gap-2">
+          <Circle className="size-2.5 shrink-0 fill-amber-500 text-amber-500" aria-hidden />
+          <span>{t("recordingFinalizingMsg")}</span>
         </div>
       )}
 

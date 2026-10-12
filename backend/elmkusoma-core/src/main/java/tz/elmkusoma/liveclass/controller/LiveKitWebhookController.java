@@ -514,6 +514,30 @@ public class LiveKitWebhookController {
         }
     }
 
+    /**
+     * First file descriptor of an EgressInfo, whichever shape LiveKit used.
+     *
+     * <p>{@code file_results} / {@code fileResults} is an array with one entry per output;
+     * {@code file} / {@code fileResult} is a single output object (accepted as a one-element
+     * array too, defensively). A missing, null or empty field yields {@code null}. The polling
+     * path in {@code LiveKitService.resolveRecordingUrl} already understands all four, so the
+     * webhook and the poller must not disagree about what a finished egress looks like.</p>
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> firstFileResult(Map<String, Object> egress) {
+        for (String key : new String[] {"file_results", "fileResults", "file", "fileResult"}) {
+            Object node = egress.get(key);
+            if (node instanceof java.util.List<?> files && !files.isEmpty()
+                    && files.get(0) instanceof Map) {
+                return (Map<String, Object>) files.get(0);
+            }
+            if (node instanceof Map<?, ?> single && !single.isEmpty()) {
+                return (Map<String, Object>) single;
+            }
+        }
+        return null;
+    }
+
     private void handleRecordingCompleted(Map<String, Object> payload) {
         try {
             // EgressInfo is wrapped under "egress", but some payloads put it at top level.
@@ -535,11 +559,13 @@ public class LiveKitWebhookController {
             String recordingUrl = null;
             Integer durationSeconds = null;
             if (egress != null) {
-                // LiveKit serializes proto fields in snake_case (file_results / location).
-                Object fileResults = egress.get("file_results");
-                if (fileResults == null) fileResults = egress.get("fileResults");
-                if (fileResults instanceof java.util.List<?> files && !files.isEmpty()) {
-                    Map<String, Object> firstFile = (Map<String, Object>) files.get(0);
+                // LiveKit serializes proto fields in snake_case (file_results / location), and a
+                // single-output egress can come back as a singular `file` object rather than a
+                // one-element array. Reading only the plural form computed a null location for a
+                // real EGRESS_COMPLETE, which routed it to the failure handler - so a recording
+                // that had uploaded successfully was marked FAILED and never published.
+                Map<String, Object> firstFile = firstFileResult(egress);
+                if (firstFile != null) {
                     Object loc = firstFile.get("location");
                     if (!(loc instanceof String) || loc.toString().isBlank()) loc = firstFile.get("url");
                     if (loc instanceof String) recordingUrl = (String) loc;

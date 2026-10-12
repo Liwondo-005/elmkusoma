@@ -403,6 +403,15 @@ public class LiveSessionController {
         // already-running capture instead, which is truthful and settles the UI on one id.
         String existing = liveClass.getRecordingUrl();
         if (existing != null && existing.startsWith("egress:")) {
+            if (Boolean.TRUE.equals(liveClass.getRecordingStopRequested())) {
+                // The marker is still there only because the file is still uploading: this stop
+                // was already accepted. Answering "already recording" here would flip the UI back
+                // to a REC indicator for a job LiveKit has finished, so refuse truthfully.
+                log.info("Start refused for class {}: previous recording {} is still finalising",
+                        classId, existing.substring("egress:".length()));
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(
+                        "The previous recording is still being finalised. Try again once it appears in the Media Library."));
+            }
             Map<String, String> alreadyRunning = new HashMap<>();
             alreadyRunning.put("egressId", existing.substring("egress:".length()));
             alreadyRunning.put("alreadyRecording", "true");
@@ -414,6 +423,8 @@ public class LiveSessionController {
         String egressId = liveKitService.startRecording(classId);
         if (egressId != null) {
             liveClass.setRecordingUrl("egress:" + egressId);
+            // A new capture supersedes any stop requested for a previous one.
+            liveClass.setRecordingStopRequested(false);
             liveClassRepository.save(liveClass);
 
             Map<String, String> result = new HashMap<>();
@@ -424,10 +435,19 @@ public class LiveSessionController {
         return ResponseEntity.status(500).body(ApiResponse.error("Failed to start recording"));
     }
 
+    /**
+     * How long a stop request will wait for LiveKit to report the finished file before handing
+     * the rest to the webhook / reconciliation sweep. The old unbounded window was 15 x 1.5s
+     * (22.5s, and up to 10s per attempt if LiveKit was slow) spent entirely on the request
+     * thread, which is what made "Stop recording" appear to hang.
+     */
+    private static final int STOP_RESOLVE_ATTEMPTS = 6;
+    private static final long STOP_RESOLVE_SLEEP_MS = 1000L;
+
     @PostMapping("/classes/{classId}/recording/stop")
     @PreAuthorize("hasAnyRole('TEACHER','INSTITUTION_ADMIN','ADMIN')")
     @Operation(summary = "Stop recording a live class session (teacher only)")
-    public ResponseEntity<ApiResponse<String>> stopRecording(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> stopRecording(
             @PathVariable UUID classId,
             @RequestAttribute UUID userId,
             @RequestAttribute UUID institutionId) {
@@ -449,27 +469,111 @@ public class LiveSessionController {
 
         String recordingUrl = liveClass.getRecordingUrl();
         if (recordingUrl == null || !recordingUrl.startsWith("egress:")) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("No active recording found"));
+            // Idempotent: a double click, a retried request or a second tab must not turn into
+            // an error. Nothing is capturing, so answer 200 with the state that already holds.
+            log.info("Stop requested for class {} but no egress marker is present; reporting current state",
+                    classId);
+            return ResponseEntity.ok(ApiResponse.success("Recording already stopped",
+                    stopState(liveClass)));
         }
 
         String egressId = recordingUrl.substring("egress:".length());
         boolean stopped = liveKitService.stopRecording(egressId);
 
-        if (stopped) {
-            // resolve the final file URL right away so download/replay can serve it
-            try {
-                String url = liveKitService.resolveRecordingUrl(egressId);
-                if (url != null) {
-                    liveClass.setRecordingUrl(url);
-                    liveClassRepository.save(liveClass);
-                }
-            } catch (Exception e) {
-                log.warn("Recording URL resolve skipped for class {}: {}", classId, e.getMessage());
+        if (!stopped) {
+            // StopEgress errors on a job LiveKit already finished. That is not a failure: the
+            // recording is already final, so report success instead of "Failed to stop recording".
+            // One status read answers it - a second isEgressFinished() call would issue another
+            // ListEgress round trip on this same request thread.
+            String status = liveKitService.egressStatus(egressId);
+            if (status != null && liveKitService.isEgressFinished(egressId, status)) {
+                log.info("Recording for class {} was already finished by LiveKit (status={})",
+                        classId, status);
+                stopped = true;
             }
-            log.info("Recording stopped for class {} by teacher {}", classId, userId);
-            return ResponseEntity.ok(ApiResponse.success("Recording stopped", egressId));
         }
-        return ResponseEntity.status(500).body(ApiResponse.error("Failed to stop recording"));
+
+        if (!stopped) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to stop recording"));
+        }
+
+        // Stop has been ACCEPTED - that is not the same as the recording being finished or
+        // published. Record it first, so every later reader (host-state after a reload, a second
+        // tab, the UI polling) can tell "capture stopped, file still finalising" from "capture
+        // running" instead of guessing from the class status. The flag is persisted before the
+        // wait below, so it is visible even while this request is still resolving the location.
+        liveClass.setRecordingStopRequested(true);
+        liveClass = liveClassRepository.save(liveClass);
+
+        // Give an already-final file a short chance to be reported, then stop
+        // waiting: the upload, the Replay row and the Media Asset row are finished by the
+        // webhook and by the reconciliation sweep, both of which are idempotent. The egress
+        // marker is deliberately left in place while the location is still unknown, so no
+        // later pass can lose the id it needs to resolve the file.
+        String resolved = null;
+        try {
+            resolved = liveKitService.resolveRecordingUrl(
+                    egressId, STOP_RESOLVE_ATTEMPTS, STOP_RESOLVE_SLEEP_MS);
+            if (resolved != null) {
+                liveClass.setRecordingUrl(resolved);
+                liveClass = liveClassRepository.save(liveClass);
+            }
+        } catch (Exception e) {
+            log.warn("Recording URL resolve skipped for class {}: {}", classId, e.getMessage());
+        }
+
+        log.info("Recording stop accepted for class {} by {} (egress {}, locationResolved={})",
+                classId, userId, egressId, resolved != null);
+        return ResponseEntity.ok(ApiResponse.success("Recording stop requested", stopState(liveClass)));
+    }
+
+    /**
+     * State of a recording after a stop request, in the same vocabulary as host-state's
+     * {@code recordingState}: {@code FINALIZING} (egress/ upload still outstanding),
+     * {@code PUBLISHING} (location resolved, library entry not ready), {@code AVAILABLE},
+     * {@code FAILED}, {@code NONE}.
+     *
+     * <p>A 200 from this endpoint therefore always means "stop was accepted", never "the
+     * recording is published" - publication is asserted only once a library entry actually
+     * carries the file. The raw storage location is never included.</p>
+     */
+    private Map<String, Object> stopState(LiveClass liveClass) {
+        String stored = liveClass.getRecordingUrl();
+        boolean egressPending = stored != null && stored.startsWith("egress:");
+        boolean locationResolved = stored != null && stored.startsWith("http");
+
+        String state;
+        if (egressPending) {
+            state = "FINALIZING";
+        } else {
+            tz.elmkusoma.liveclass.domain.MediaAsset asset = null;
+            try {
+                asset = recordingMediaPublisher.findForLiveClass(liveClass.getId()).orElse(null);
+            } catch (Exception e) {
+                log.warn("Could not read recording media asset for class {}: {}",
+                        liveClass.getId(), e.getMessage());
+            }
+            if (asset != null && LiveRecordingMediaPublisher.STATUS_FAILED.equals(asset.getStatus())) {
+                state = "FAILED";
+            } else if (asset != null && asset.getFileUrl() != null) {
+                state = "AVAILABLE";
+            } else if (locationResolved) {
+                state = "PUBLISHING";
+            } else {
+                state = "NONE";
+            }
+        }
+
+        // "Capture running" and "stop accepted, file still finalising" share the same marker,
+        // so the persisted stop flag is what separates them - exactly like host-state does.
+        boolean stopRequested = egressPending && Boolean.TRUE.equals(liveClass.getRecordingStopRequested());
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("egressId", egressPending ? stored.substring("egress:".length()) : null);
+        body.put("state", state);
+        body.put("recordingActive", egressPending && !stopRequested);
+        body.put("stopRequested", stopRequested);
+        return body;
     }
 
     @GetMapping("/classes/{classId}/recording/download")
@@ -620,6 +724,14 @@ public class LiveSessionController {
         boolean recordingActive = rawRecordingUrl != null && rawRecordingUrl.startsWith("egress:");
         String egressId = recordingActive ? rawRecordingUrl.substring("egress:".length()) : null;
         boolean recordingAvailable = rawRecordingUrl != null && rawRecordingUrl.startsWith("http");
+        // The marker covers two different situations, and only the persisted flag can tell
+        // them apart: a capture that is still running, and a stop that was accepted whose file
+        // is still finalising. Reading LiveKit here is not an option (it inherits a 30s
+        // timeout), and inferring from the class status alone is what made a reload after a
+        // mid-class stop report recordingActive=true for a job that had already been stopped.
+        boolean stopRequested = recordingActive
+                && Boolean.TRUE.equals(liveClass.getRecordingStopRequested());
+        boolean captureRunning = recordingActive && active && !stopRequested;
         List<tz.elmkusoma.liveclass.domain.LiveClassParticipant> present =
                 participantRepository.findByLiveClassIdAndIsDeletedFalseAndLeftAtIsNull(classId);
 
@@ -631,18 +743,27 @@ public class LiveSessionController {
         state.put("scheduledAt", liveClass.getScheduledAt());
         state.put("durationMinutes", liveClass.getDurationMinutes());
         state.put("recordingEnabled", liveClass.getRecordingEnabled());
-        state.put("recordingActive", recordingActive);
+        state.put("recordingActive", captureRunning);
+        state.put("recordingStopRequested", stopRequested);
         state.put("recordingEgressId", egressId);
         state.put("recordingAvailable", recordingAvailable);
-        state.put("recordingUrl", recordingAvailable ? rawRecordingUrl : null);
+        // Never the storage location: this is client-facing JSON for a LIVE_CLASS recording.
+        // The value is the authorised application playback route, or null when there is none.
+        state.put("recordingUrl", recordingAvailable ? recordingPlaybackUrls.forLiveClass(classId) : null);
         state.put("liveKitAvailable", liveKitService.isAvailable());
         state.put("liveKitUrl", liveKitService.isAvailable() ? liveKitService.getServerUrl() : null);
         state.put("roomName", liveKitService.generateRoomName(classId));
         state.put("presentParticipants", present.size());
         state.put("canEndSession", active);
-        // Recording outcome, taken from the media library entry so a failed recording is
-        // reported as FAILED instead of silently reading as "still processing".
-        String recordingState = recordingActive ? "RECORDING"
+        // Lifecycle, in the states the rest of the app already speaks:
+        //   RECORDING   capture still running (marker present, no stop accepted, class active)
+        //   FINALIZING  stop requested / class over; upload or location resolution still pending
+        //   PUBLISHING  location resolved; Replay / Media Asset not yet READY
+        //   AVAILABLE   published and playable
+        //   FAILED      terminal failure already recorded in the library
+        //   NONE        nothing was recorded
+        String recordingState = recordingActive
+                ? (captureRunning ? "RECORDING" : "FINALIZING")
                 : (recordingAvailable ? "AVAILABLE" : "NONE");
         String recordingAssetId = null;
         try {
@@ -652,7 +773,11 @@ public class LiveSessionController {
                 if (LiveRecordingMediaPublisher.STATUS_FAILED.equals(asset.getStatus())) {
                     recordingState = "FAILED";
                 } else if ("READY".equals(asset.getStatus()) && asset.getFileUrl() != null) {
-                    recordingState = recordingActive ? "RECORDING" : "AVAILABLE";
+                    recordingState = recordingActive
+                            ? (captureRunning ? "RECORDING" : "FINALIZING")
+                            : "AVAILABLE";
+                } else if (!recordingActive) {
+                    recordingState = "PUBLISHING";
                 }
             }
         } catch (Exception e) {
