@@ -29,8 +29,23 @@
 -- silently rewrites the appearance of certificates issued years ago, because those documents
 -- reference the signatory row, not a copy of it.
 
-ALTER TABLE certificates
-    ALTER COLUMN status TYPE VARCHAR(20);
+-- certificates.status is varchar(255) and must stay that way. The ALTER below is deliberately
+-- sized to the current column, NOT to the longest status name: narrowing a lifecycle column to
+-- today's vocabulary turns every future state someone adds into a silent truncation, and the
+-- failure would only surface as an unreadable status on an existing certificate. This asserts the
+-- width instead of reducing it.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'certificates' AND column_name = 'status'
+          AND character_maximum_length IS NOT NULL
+          AND character_maximum_length < 16
+    ) THEN
+        RAISE EXCEPTION
+            'certificates.status is too narrow for PENDING_APPROVAL; widen it rather than truncating the lifecycle';
+    END IF;
+END $$;
 
 -- Template families.
 --

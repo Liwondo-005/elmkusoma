@@ -23,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -532,9 +533,37 @@ class FlywayMigrationValidationTest {
     }
 
     /**
-     * The approval workflow stores decisions durably. A migration that declared the table without
-     * a uniqueness rule would let two live decisions accumulate for one stage and make the
-     * certificate's status ambiguous.
+     * V161 must not narrow {@code certificates.status}. The live column is varchar(255); shrinking
+     * it to today's longest status name would silently truncate every future lifecycle value
+     * someone adds, and the damage would only show up later as an unreadable status on a stored
+     * certificate.
+     *
+     * <p>16 is not arbitrary: {@code PENDING_APPROVAL} is exactly 16 characters (7 + 1 + 8). The
+     * guard has to reject varchar(15) and accept varchar(16).</p>
+     */
+    @Test
+    void certificateStatus_IsNeverNarrowed() throws IOException {
+        String migration = readMigration("V161__certificate_approvals_and_template_families.sql");
+
+        assertFalse(migration.contains("ALTER COLUMN status TYPE"),
+                "V161 must not retype certificates.status; narrowing a lifecycle column truncates "
+                        + "future status values");
+        assertTrue(migration.contains("character_maximum_length"),
+                "V161 should assert the existing status width instead of replacing it");
+
+        Map<String, String> status = declaredColumns(Set.of("certificates.status"));
+        // The guard threshold must equal the real length of the longest status value.
+        int pendingApproval = "PENDING_APPROVAL".length();
+        assertEquals(16, pendingApproval,
+                "PENDING_APPROVAL length changed; update the V161 width guard to match");
+        assertTrue(migration.contains("< " + pendingApproval),
+                "V161 width guard must reject any width below " + pendingApproval);
+    }
+
+    /**
+     * The partial index is what makes re-approval after rejection possible while still preventing
+     * two live decisions for one stage. Asserting only that the index exists would not catch it
+     * being redefined as unconditional.
      */
     @Test
     void certificateApprovals_ConstrainOneCurrentDecisionPerStage() throws IOException {
@@ -545,6 +574,11 @@ class FlywayMigrationValidationTest {
         // The partial unique index is what stops a second live decision appearing for a stage.
         assertTrue(migration.contains("ux_certificate_approvals_current_stage"),
                 "V161 must enforce one current decision per (certificate, stage)");
+        // It must be partial. An unconditional index would forbid a REJECTED row coexisting with a
+        // later re-submitted one, which is the exact case the workflow exists to support.
+        assertTrue(migration.contains("WHERE is_deleted = false AND decision_status IN ('PENDING', 'APPROVED')"),
+                "ux_certificate_approvals_current_stage must be a PARTIAL index covering only current "
+                        + "PENDING/APPROVED decisions, so a refusal can stay on record alongside a re-approval");
         assertTrue(migration.contains("FOREIGN KEY (certificate_id) REFERENCES certificates (id)"),
                 "approvals must reference the certificate they belong to");
     }
