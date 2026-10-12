@@ -17,6 +17,9 @@ import tz.elmkusoma.certificate.repository.*;
 import tz.elmkusoma.exception.ForbiddenException;
 import tz.elmkusoma.exception.ResourceNotFoundException;
 import tz.elmkusoma.learner.repository.LearnerNotificationRepository;
+import tz.elmkusoma.shared.domain.User;
+import tz.elmkusoma.student.domain.Student;
+import tz.elmkusoma.student.domain.StudentStatus;
 import tz.elmkusoma.student.repository.StudentRepository;
 
 import java.time.LocalDate;
@@ -35,6 +38,10 @@ class CertificateServiceTest {
     @Mock
     private CertificateTemplateRepository templateRepository;
     @Mock
+    private CertificateSignatoryRepository signatoryRepository;
+    @Mock
+    private CertificateTemplateSignatoryRepository templateSignatoryRepository;
+    @Mock
     private CertificateRepository certificateRepository;
     @Mock
     private TranscriptRepository transcriptRepository;
@@ -46,6 +53,8 @@ class CertificateServiceTest {
     private AuditService auditService;
     @Mock
     private StudentRepository studentRepository;
+    @Mock
+    private tz.elmkusoma.shared.repository.UserRepository userRepository;
     @Mock
     private LearnerNotificationRepository learnerNotificationRepository;
     @Mock
@@ -87,6 +96,19 @@ class CertificateServiceTest {
 
         when(templateRepository.findByIdAndIsDeletedFalse(templateId)).thenReturn(Optional.of(template));
         when(certificateRepository.countByInstitutionId(institutionId)).thenReturn(0L);
+
+        // The recipient is now resolved from the student record rather than taken from the
+        // request, so the fixture has to provide one. Previously a missing student was silently
+        // tolerated and the caller's raw id was stored.
+        UUID studentUserId = UUID.randomUUID();
+        Student studentRecord = Student.builder().status(StudentStatus.ACTIVE).build();
+        studentRecord.setId(request.getStudentId());
+        studentRecord.setUserId(studentUserId);
+        studentRecord.setInstitutionId(institutionId);
+        when(studentRepository.findByIdAndIsDeletedFalse(request.getStudentId()))
+                .thenReturn(Optional.of(studentRecord));
+        when(userRepository.findByIdAndIsDeletedFalse(studentUserId)).thenReturn(Optional.of(
+                User.builder().firstName("John").lastName("Doe").build()));
 
         Certificate savedCertificate = Certificate.builder()
                 .templateId(templateId)
@@ -193,7 +215,7 @@ class CertificateServiceTest {
         when(certificateMapper.toCertificateResponse(any(Certificate.class))).thenReturn(expectedResponse);
 
         CertificateResponse response = certificateService.issueCertificate(
-                certificateId, institutionId, "admin@test.com", "ADMIN");
+                certificateId, institutionId, issuedByUserId, "admin@test.com", "ADMIN");
 
         assertNotNull(response);
         assertEquals("ISSUED", response.getStatus());
@@ -216,7 +238,7 @@ class CertificateServiceTest {
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> certificateService.issueCertificate(
-                        certificateId, institutionId, "admin@test.com", "ADMIN"));
+                        certificateId, institutionId, issuedByUserId, "admin@test.com", "ADMIN"));
         assertTrue(exception.getMessage().contains("DRAFT"));
     }
 
@@ -246,7 +268,7 @@ class CertificateServiceTest {
         when(certificateMapper.toCertificateResponse(any(Certificate.class))).thenReturn(expectedResponse);
 
         CertificateResponse response = certificateService.revokeCertificate(
-                certificateId, institutionId, request, "admin@test.com", "ADMIN");
+                certificateId, institutionId, request, issuedByUserId, "admin@test.com", "ADMIN");
 
         assertNotNull(response);
         assertEquals("REVOKED", response.getStatus());
@@ -272,7 +294,7 @@ class CertificateServiceTest {
 
         assertThrows(IllegalStateException.class,
                 () -> certificateService.revokeCertificate(
-                        certificateId, institutionId, request, "admin@test.com", "ADMIN"));
+                        certificateId, institutionId, request, issuedByUserId, "admin@test.com", "ADMIN"));
     }
 
     @Test
@@ -292,7 +314,7 @@ class CertificateServiceTest {
         when(certificateRepository.findByVerificationCodeAndIsDeletedFalse("ABC123"))
                 .thenReturn(Optional.of(certificate));
 
-        CertificateVerificationResponse response = certificateService.verifyCertificate("ABC123");
+        CertificateVerificationResponse response = certificateService.verifyCertificate("ABC123", "test-client");
 
         assertTrue(response.isValid());
         assertEquals("John Doe", response.getStudentName());
@@ -317,7 +339,7 @@ class CertificateServiceTest {
         when(certificateRepository.findByVerificationCodeAndIsDeletedFalse("ABC123"))
                 .thenReturn(Optional.of(certificate));
 
-        CertificateVerificationResponse response = certificateService.verifyCertificate("ABC123");
+        CertificateVerificationResponse response = certificateService.verifyCertificate("ABC123", "test-client");
 
         assertFalse(response.isValid());
         assertEquals("REVOKED", response.getStatus());
@@ -329,7 +351,7 @@ class CertificateServiceTest {
         when(certificateRepository.findByVerificationCodeAndIsDeletedFalse("INVALID"))
                 .thenReturn(Optional.empty());
 
-        CertificateVerificationResponse response = certificateService.verifyCertificate("INVALID");
+        CertificateVerificationResponse response = certificateService.verifyCertificate("INVALID", "test-client");
 
         assertFalse(response.isValid());
         assertEquals("Certificate not found", response.getMessage());

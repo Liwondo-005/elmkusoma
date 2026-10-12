@@ -10,6 +10,8 @@ import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateStatus;
 import tz.elmkusoma.certificate.domain.Certificate.CertificateType;
 import tz.elmkusoma.certificate.domain.CertificateTemplate;
+import tz.elmkusoma.certificate.domain.CertificateSignatory;
+import tz.elmkusoma.certificate.domain.CertificateTemplateSignatory;
 import tz.elmkusoma.certificate.domain.Transcript;
 import tz.elmkusoma.certificate.domain.TranscriptEntry;
 import tz.elmkusoma.certificate.dto.*;
@@ -43,17 +45,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CertificateService {
 
     private final CertificateTemplateRepository templateRepository;
+    private final CertificateSignatoryRepository signatoryRepository;
+    private final CertificateTemplateSignatoryRepository templateSignatoryRepository;
     private final CertificateRepository certificateRepository;
     private final TranscriptRepository transcriptRepository;
     private final TranscriptEntryRepository transcriptEntryRepository;
     private final CertificateMapper certificateMapper;
     private final AuditService auditService;
     private final StudentRepository studentRepository;
+    private final tz.elmkusoma.shared.repository.UserRepository userRepository;
     private final LearnerNotificationRepository learnerNotificationRepository;
     private final tz.elmkusoma.shared.repository.InstitutionRepository institutionRepository;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private tz.elmkusoma.administration.service.PlatformPolicyService platformPolicyService;
+
+    /**
+     * Public base URL of the web app, used to build the verification link printed on a
+     * certificate. The same property already exists for auth emails; the certificate module simply
+     * was not reading it, which is why every verification URL was a bare relative path.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:3000}")
+    private String publicFrontendUrl;
 
     private static final ConcurrentHashMap<String, VerifyWindow> verifyWindows = new ConcurrentHashMap<>();
     private static final int MAX_VERIFY_ATTEMPTS = 10;
@@ -69,8 +82,41 @@ public class CertificateService {
         private final AtomicInteger attempts = new AtomicInteger();
     }
 
-    // ── Template Management ──
+    /**
+     * Absolute verification URL, or the relative route when no public base URL is configured.
+     *
+     * <p>Null-safe on purpose: a missing configuration value must degrade to the old relative
+     * behaviour rather than aborting the issuance of a certificate that is otherwise valid.</p>
+     */
+    private String buildVerificationUrl(String verificationCode) {
+        String path = "/certificates/verify/" + verificationCode;
+        if (publicFrontendUrl == null || publicFrontendUrl.isBlank()) {
+            return path;
+        }
+        return publicFrontendUrl.replaceAll("/+$", "") + path;
+    }
 
+    /**
+     * The student's own name, from the user account they sign in with.
+     *
+     * <p>Returns null rather than a placeholder. A certificate that says "Student" where a name
+     * should be is worse than a refusal, so the caller treats null as a blocking condition.</p>
+     */
+    private String resolveStudentName(Student student) {
+        if (student.getUserId() == null) {
+            return null;
+        }
+        return userRepository.findByIdAndIsDeletedFalse(student.getUserId())
+                .map(user -> {
+                    String first = user.getFirstName() == null ? "" : user.getFirstName().trim();
+                    String last = user.getLastName() == null ? "" : user.getLastName().trim();
+                    String combined = (first + " " + last).trim();
+                    return combined.isEmpty() ? null : combined;
+                })
+                .orElse(null);
+    }
+
+    // ── Template Management ──
     public TemplateResponse createTemplate(CreateTemplateRequest request, UUID institutionId,
                                             String userEmail, String userRole) {
         if (templateRepository.existsByNameAndInstitutionIdAndIsDeletedFalse(request.getName(), institutionId)) {
@@ -122,23 +168,52 @@ public class CertificateService {
             throw new ForbiddenException("template", "use");
         }
 
+        // A deactivated template must stop producing certificates. Platform Admins deactivate a
+        // template to withdraw it - after a policy change, a brand dispute, or because it was
+        // wrong - and that is meaningless while issuance ignores the flag.
+        if (!Boolean.TRUE.equals(template.getIsActive())) {
+            throw new IllegalStateException("This template has been deactivated and cannot be used");
+        }
+
         // Generate serial number
         String serialNumber = generateSerialNumber(institutionId, request.getCertificateType());
 
         // Generate verification code
         String verificationCode = generateVerificationCode();
 
-        // Build verification URL (public web route used by the verification page and QR codes)
-        String verificationUrl = "/certificates/verify/" + verificationCode;
+        // Absolute verification URL, built from the configured public frontend base URL. It was a
+        // bare relative path, which cannot be printed onto a certificate, embedded in a QR code or
+        // emailed - the three things it exists for.
+        String verificationUrl = buildVerificationUrl(verificationCode);
 
-        // Resolve student ID: if not a valid student record, try to find by user ID
-        UUID studentId = request.getStudentId();
-        if (studentId != null) {
-            Student student = studentRepository.findByUserIdAndIsDeletedFalse(studentId)
-                    .orElse(null);
-            if (student != null) {
-                studentId = student.getId();
-            }
+        // Resolve the recipient from the authoritative student record.
+        //
+        // Previously the id was resolved but, on a miss, the raw client value was carried straight
+        // through - so a caller could supply any id at all. The record must exist, must belong to
+        // this institution, and its name is what gets printed.
+        UUID requestedId = request.getStudentId();
+        if (requestedId == null) {
+            throw new IllegalArgumentException("A student must be selected for a certificate");
+        }
+        Student student = studentRepository.findByIdAndIsDeletedFalse(requestedId)
+                .or(() -> studentRepository.findByUserIdAndIsDeletedFalse(requestedId))
+                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", requestedId));
+
+        // Tenant check on the student. A certificate is an institutional record about one of its
+        // own students; issuing one for a student from another school is a cross-tenant write.
+        if (student.getInstitutionId() != null
+                && !student.getInstitutionId().equals(institutionId)) {
+            throw new ForbiddenException("student", "certify");
+        }
+        UUID studentId = student.getId();
+
+        // Name comes from the record, not the request. The recipient's name on a certificate is
+        // the one field a visitor relies on to prove the document is theirs; it must not be
+        // whatever the operator typed.
+        String studentName = resolveStudentName(student);
+        if (studentName == null || studentName.isBlank()) {
+            throw new IllegalArgumentException(
+                    "The selected student has no recorded name, so a certificate cannot be issued for them");
         }
 
         Certificate certificate = Certificate.builder()
@@ -149,8 +224,10 @@ public class CertificateService {
                 .certificateType(request.getCertificateType())
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .studentName(request.getStudentName())
-                .studentIdNumber(request.getStudentIdNumber())
+                .studentName(studentName)
+                // An id number is identifying data and is not read from the request. The
+                // institution's own admission reference is what a certificate would print.
+                .studentIdNumber(student.getAdmissionNumber())
                 .courseOrProgramme(request.getCourseOrProgramme())
                 .instructorName(request.getInstructorName())
                 .grade(request.getGrade())
@@ -170,7 +247,7 @@ public class CertificateService {
                 "Certificate", certificate.getId(), certificate.getSerialNumber(),
                 AuditLog.AuditAction.CREATE, null,
                 Map.of("serialNumber", serialNumber, "type", request.getCertificateType().name(),
-                        "studentName", request.getStudentName(), "title", request.getTitle()));
+                        "studentName", studentName, "title", request.getTitle()));
 
         log.info("Generated certificate: {} for student: {} in institution: {}",
                 serialNumber, request.getStudentId(), institutionId);
@@ -178,7 +255,7 @@ public class CertificateService {
     }
 
     public CertificateResponse issueCertificate(UUID certificateId, UUID institutionId,
-                                                  String userEmail, String userRole) {
+                                                  UUID actorUserId, String userEmail, String userRole) {
         if (platformPolicyService != null && !platformPolicyService.certificateIssueEnabled()) {
             throw new IllegalStateException("Platform policy forbids issuing certificates");
         }
@@ -192,6 +269,15 @@ public class CertificateService {
         if (certificate.getStatus() != CertificateStatus.DRAFT) {
             throw new IllegalStateException("Only DRAFT certificates can be issued");
         }
+
+        // Re-check every linked signatory at the moment of issuance.
+        //
+        // Signatory authorization was only ever enforced when a signatory was LINKED to a
+        // template. Nothing re-checked it when the certificate was actually issued, so a
+        // signatory deactivated, expired, or moved to another institution afterwards still had
+        // their name and signature printed. Authorization has to hold at the point of use, not
+        // only at the point of setup.
+        requireAuthorizedSignatories(certificate);
 
         certificate.setStatus(CertificateStatus.ISSUED);
         certificate.setIssueDate(LocalDateTime.now());
@@ -211,7 +297,10 @@ public class CertificateService {
             log.warn("Failed to create certificate issuance notification for student {}: {}", certificate.getStudentId(), e.getMessage());
         }
 
-        auditService.recordAuditLog(institutionId, null, userEmail, userRole,
+        // The actor is recorded. It used to be null, which meant the audit trail showed that a
+        // certificate had been issued or revoked but not by whom - the one fact anyone reading the
+        // trail is looking for.
+        auditService.recordAuditLog(institutionId, actorUserId, userEmail, userRole,
                 "Certificate", certificate.getId(), certificate.getSerialNumber(),
                 AuditLog.AuditAction.UPDATE,
                 Map.of("status", "DRAFT"), Map.of("status", "ISSUED"));
@@ -220,9 +309,74 @@ public class CertificateService {
         return certificateMapper.toCertificateResponse(certificate);
     }
 
+    /**
+     * Refuses to issue when a signatory linked to the template is no longer authorized.
+     *
+     * <p>Checks, at issuance: the link still exists and is not soft-deleted; the signatory is
+     * ACTIVE; the signatory belongs to the issuing institution; the signatory's validity window
+     * covers today; and the signatory's allowed certificate types include this one.</p>
+     *
+     * <p>A template with no signatories is allowed. Many institutions issue unbranded
+     * certificates and the absence of a signature is a legitimate configuration, not a defect -
+     * inventing a "missing signatory" failure would block certificates that are working today.</p>
+     */
+    private void requireAuthorizedSignatories(Certificate certificate) {
+        List<CertificateTemplateSignatory> links =
+                templateSignatoryRepository.findByTemplateId(certificate.getTemplateId());
+        if (links == null || links.isEmpty()) {
+            return;
+        }
+
+        LocalDate today = LocalDate.now();
+        for (CertificateTemplateSignatory link : links) {
+            if (Boolean.TRUE.equals(link.getIsDeleted())) {
+                continue;
+            }
+            CertificateSignatory signatory = signatoryRepository
+                    .findByIdAndIsDeletedFalse(link.getSignatoryId())
+                    .orElse(null);
+            if (signatory == null) {
+                continue; // link to a deleted signatory: nothing can be printed, so nothing is
+            }
+            if (signatory.getStatus() != CertificateSignatory.SignatoryStatus.ACTIVE) {
+                throw new IllegalStateException("A signatory on this template is no longer active: "
+                        + signatory.getFullName());
+            }
+            if (signatory.getInstitutionId() != null && certificate.getInstitutionId() != null
+                    && !signatory.getInstitutionId().equals(certificate.getInstitutionId())) {
+                throw new ForbiddenException("signatory", "use");
+            }
+            if (signatory.getValidFrom() != null && signatory.getValidFrom().isAfter(today)) {
+                throw new IllegalStateException("A signatory on this template is not yet valid: "
+                        + signatory.getFullName());
+            }
+            if (signatory.getValidUntil() != null && signatory.getValidUntil().isBefore(today)) {
+                throw new IllegalStateException("A signatory on this template has expired: "
+                        + signatory.getFullName());
+            }
+            if (!isTypeAllowed(signatory, certificate.getCertificateType())) {
+                throw new ForbiddenException("signatory", "use for this certificate type");
+            }
+        }
+    }
+
+    /** NULL or blank means "all types", which is how the governance screen expresses it. */
+    private boolean isTypeAllowed(CertificateSignatory signatory, CertificateType type) {
+        String allowed = signatory.getCertificateTypes();
+        if (allowed == null || allowed.isBlank()) {
+            return true;
+        }
+        for (String candidate : allowed.split(",")) {
+            if (candidate.trim().equalsIgnoreCase(type.name())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public CertificateResponse revokeCertificate(UUID certificateId, UUID institutionId,
                                                     RevokeCertificateRequest request,
-                                                    String userEmail, String userRole) {
+                                                    UUID actorUserId, String userEmail, String userRole) {
         Certificate certificate = certificateRepository.findByIdAndIsDeletedFalse(certificateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Certificate", "id", certificateId));
 
@@ -239,12 +393,12 @@ public class CertificateService {
         certificate.setRevokedAt(LocalDateTime.now());
         certificateRepository.save(certificate);
 
-        auditService.recordAuditLog(institutionId, null, userEmail, userRole,
+        auditService.recordAuditLog(institutionId, actorUserId, userEmail, userRole,
                 "Certificate", certificate.getId(), certificate.getSerialNumber(),
                 AuditLog.AuditAction.UPDATE,
                 Map.of("status", "ISSUED"), Map.of("status", "REVOKED", "reason", request.getReason()));
 
-        auditService.recordSecurityEvent(institutionId, null, userEmail,
+        auditService.recordSecurityEvent(institutionId, actorUserId, userEmail,
                 SecurityEvent.SecurityEventType.CERTIFICATE_REVOKED,
                 "Certificate " + certificate.getSerialNumber() + " revoked: " + request.getReason(),
                 SecurityEvent.Severity.MEDIUM, null, null);
@@ -255,9 +409,28 @@ public class CertificateService {
 
     // ── Certificate Verification ──
 
-    public CertificateVerificationResponse verifyCertificate(String verificationCode) {
-        // Rate limit: sliding one-minute window (reset when the window expires)
-        String key = "verify";
+    /**
+     * Public verification. Reachable without authentication, so it is treated as the highest-risk
+     * surface in the certificate module.
+     *
+     * <p>Three defects this replaces, all found by audit:</p>
+     * <ul>
+     *   <li>The rate-limit bucket was keyed on the constant {@code "verify"}, so all callers shared
+     *       one 10-per-minute budget. A single third party could exhaust it and deny verification
+     *       to every legitimate visitor. Now keyed per caller.</li>
+     *   <li>The response carried the row's internal UUID, the student's grade, the skills list and
+     *       the instructor's name, and echoed the free-text revocation reason to an anonymous
+     *       caller. A revocation reason can contain disciplinary detail that is nobody's business.
+     *       All of that is gone; see {@link #toPublicVerification}.</li>
+     *   <li>A DRAFT certificate that had not expired fell through to the success branch and
+     *       returned {@code valid=false} alongside the message "Certificate is valid and
+     *       verified". The status and the message now always agree.</li>
+     * </ul>
+     */
+    public CertificateVerificationResponse verifyCertificate(String verificationCode, String clientKey) {
+        // Per-caller sliding window. The key is supplied by the controller from the request's
+        // remote address; unknown callers share one bucket rather than getting a free pass.
+        String key = (clientKey == null || clientKey.isBlank()) ? "unknown" : clientKey;
         VerifyWindow window = verifyWindows.compute(key, (k, w) ->
                 (w == null || System.currentTimeMillis() - w.startedAt >= WINDOW_MS) ? new VerifyWindow() : w);
         if (window.attempts.get() >= MAX_VERIFY_ATTEMPTS) {
@@ -269,6 +442,9 @@ public class CertificateService {
                 .orElse(null);
 
         if (certificate == null) {
+            // Failed lookups are audited too. Returning early without a record left brute-force
+            // guessing completely invisible, which is exactly when the trail matters.
+            auditVerification(null, null, "NOT_FOUND", false);
             return CertificateVerificationResponse.builder()
                     .valid(false)
                     .status("NOT_FOUND")
@@ -281,74 +457,87 @@ public class CertificateService {
                         .map(tz.elmkusoma.shared.domain.Institution::getName)
                         .orElse(null);
 
-        CertificateVerificationResponse response;
-        if (certificate.getStatus() == CertificateStatus.REVOKED) {
-            response = CertificateVerificationResponse.builder()
-                    .valid(false)
-                    .id(certificate.getId().toString())
-                    .serialNumber(certificate.getSerialNumber())
-                    .studentName(certificate.getStudentName())
-                    .certificateType(certificate.getCertificateType().name())
-                    .title(certificate.getTitle())
-                    .courseTitle(certificate.getTitle())
-                    .instructorName(certificate.getInstructorName())
-                    .grade(certificate.getGrade())
-                    .skills(certificate.getSkills())
-                    .completionDate(certificate.getCompletionDate())
-                    .institutionName(institutionName)
-                    .status(certificate.getStatus().name())
-                    .issueDate(certificate.getIssueDate())
-                    .message("This certificate has been revoked: " + certificate.getRevokedReason())
-                    .build();
-        } else if (certificate.getExpiryDate() != null && certificate.getExpiryDate().isBefore(LocalDate.now())) {
-            response = CertificateVerificationResponse.builder()
-                    .valid(false)
-                    .id(certificate.getId().toString())
-                    .serialNumber(certificate.getSerialNumber())
-                    .studentName(certificate.getStudentName())
-                    .certificateType(certificate.getCertificateType().name())
-                    .title(certificate.getTitle())
-                    .courseTitle(certificate.getTitle())
-                    .instructorName(certificate.getInstructorName())
-                    .grade(certificate.getGrade())
-                    .skills(certificate.getSkills())
-                    .completionDate(certificate.getCompletionDate())
-                    .institutionName(institutionName)
-                    .status(certificate.getStatus().name())
-                    .issueDate(certificate.getIssueDate())
-                    .message("This certificate has expired")
-                    .build();
+        // Resolve the four states the public page must distinguish, in precedence order.
+        boolean revoked = certificate.getStatus() == CertificateStatus.REVOKED;
+        boolean expired = certificate.getExpiryDate() != null
+                && certificate.getExpiryDate().isBefore(LocalDate.now());
+        boolean issued = certificate.getStatus() == CertificateStatus.ISSUED;
+
+        final boolean valid;
+        final String publicStatus;
+        final String message;
+        if (revoked) {
+            valid = false;
+            publicStatus = "REVOKED";
+            // Deliberately not the stored reason: it is free text an administrator typed and may
+            // contain detail about the holder that an anonymous visitor has no right to.
+            message = "This certificate has been revoked by the issuing institution.";
+        } else if (expired) {
+            valid = false;
+            publicStatus = "EXPIRED";
+            message = "This certificate has expired";
+        } else if (issued) {
+            valid = true;
+            publicStatus = "ISSUED";
+            message = "Certificate is valid and verified";
         } else {
-            response = CertificateVerificationResponse.builder()
-                    .valid(certificate.getStatus() == CertificateStatus.ISSUED)
-                    .id(certificate.getId().toString())
-                    .serialNumber(certificate.getSerialNumber())
-                    .studentName(certificate.getStudentName())
-                    .certificateType(certificate.getCertificateType().name())
-                    .title(certificate.getTitle())
-                    .courseTitle(certificate.getTitle())
-                    .instructorName(certificate.getInstructorName())
-                    .grade(certificate.getGrade())
-                    .skills(certificate.getSkills())
-                    .completionDate(certificate.getCompletionDate())
-                    .institutionName(institutionName)
-                    .status(certificate.getStatus().name())
-                    .issueDate(certificate.getIssueDate())
-                    .message("Certificate is valid and verified")
-                    .build();
+            // A draft is never presented as valid, and the message no longer claims otherwise.
+            valid = false;
+            publicStatus = certificate.getStatus().name();
+            message = "This certificate has not been issued";
         }
 
-        // Record real verification activity through the existing audit system.
-        try {
-            auditService.recordAuditLog(certificate.getInstitutionId(), null, null, "PUBLIC",
-                    "Certificate", certificate.getId(), certificate.getSerialNumber(),
-                    AuditLog.AuditAction.VIEW, null,
-                    java.util.Map.of("outcome", response.getStatus() != null ? response.getStatus() : "UNKNOWN",
-                            "valid", response.isValid()));
-        } catch (Exception e) {
-            log.warn("Failed to audit certificate verification for {}: {}", certificate.getSerialNumber(), e.getMessage());
-        }
+        CertificateVerificationResponse response = toPublicVerification(certificate, institutionName,
+                valid, publicStatus, message);
+
+        auditVerification(certificate.getInstitutionId(), certificate, publicStatus, valid);
         return response;
+    }
+
+    /**
+     * Builds the anonymous response.
+     *
+     * <p>Includes: what a holder needs to confirm the document is theirs and genuine — serial,
+     * holder name, certificate type, title, awarding institution, issue and completion dates.</p>
+     *
+     * <p>Excludes, deliberately: the internal row id, the grade, the skills list, the student's id
+     * number and the instructor's name. None is needed to verify a certificate, and a grade or a
+     * student number on an unauthenticated endpoint is an academic record disclosure.</p>
+     */
+    private CertificateVerificationResponse toPublicVerification(Certificate certificate,
+                                                                 String institutionName,
+                                                                 boolean valid,
+                                                                 String publicStatus,
+                                                                 String message) {
+        return CertificateVerificationResponse.builder()
+                .valid(valid)
+                .serialNumber(certificate.getSerialNumber())
+                .studentName(certificate.getStudentName())
+                .certificateType(certificate.getCertificateType().name())
+                .title(certificate.getTitle())
+                .courseTitle(certificate.getCourseOrProgramme() != null
+                        ? certificate.getCourseOrProgramme() : certificate.getTitle())
+                .completionDate(certificate.getCompletionDate())
+                .institutionName(institutionName)
+                .status(publicStatus)
+                .issueDate(certificate.getIssueDate())
+                .message(message)
+                .build();
+    }
+
+    private void auditVerification(UUID institutionId, Certificate certificate,
+                                   String outcome, boolean valid) {
+        try {
+            auditService.recordAuditLog(institutionId, null, null, "PUBLIC",
+                    "Certificate",
+                    certificate == null ? null : certificate.getId(),
+                    certificate == null ? null : certificate.getSerialNumber(),
+                    AuditLog.AuditAction.VIEW, null,
+                    java.util.Map.of("outcome", outcome, "valid", valid));
+        } catch (Exception e) {
+            // Audit must never turn a public verification into a 500.
+            log.warn("Failed to audit certificate verification ({}): {}", outcome, e.getMessage());
+        }
     }
 
     // ── Certificate Queries ──
@@ -361,8 +550,14 @@ public class CertificateService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CertificateResponse> getCertificatesByStudent(UUID studentId, Pageable pageable) {
-        return certificateRepository.findByStudentIdAndIsDeletedFalse(studentId, pageable)
+    public Page<CertificateResponse> getCertificatesByStudent(UUID studentId, UUID institutionId,
+                                                              Pageable pageable) {
+        // Scoped by institution as well as student. The previous query filtered on studentId only,
+        // so any caller who could reach this endpoint could read another school's certificates by
+        // guessing or obtaining a student id - a cross-tenant IDOR on an endpoint that carries role
+        // checks but no ownership predicate.
+        return certificateRepository
+                .findByStudentIdAndInstitutionIdAndIsDeletedFalse(studentId, institutionId, pageable)
                 .map(certificateMapper::toCertificateResponse);
     }
 

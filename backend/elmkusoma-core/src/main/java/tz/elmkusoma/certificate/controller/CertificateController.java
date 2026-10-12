@@ -2,6 +2,7 @@ package tz.elmkusoma.certificate.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -88,9 +89,10 @@ public class CertificateController {
     public ResponseEntity<ApiResponse<CertificateResponse>> issueCertificate(
             @PathVariable UUID certificateId,
             @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID actorUserId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole) {
-        CertificateResponse response = certificateService.issueCertificate(certificateId, institutionId, userEmail, userRole);
+        CertificateResponse response = certificateService.issueCertificate(certificateId, institutionId, actorUserId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Certificate issued successfully", response));
     }
 
@@ -101,9 +103,10 @@ public class CertificateController {
             @PathVariable UUID certificateId,
             @Valid @RequestBody RevokeCertificateRequest request,
             @RequestAttribute("institutionId") UUID institutionId,
+            @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userEmail") String userEmail,
             @RequestAttribute("userRole") String userRole) {
-        CertificateResponse response = certificateService.revokeCertificate(certificateId, institutionId, request, userEmail, userRole);
+        CertificateResponse response = certificateService.revokeCertificate(certificateId, institutionId, request, userId, userEmail, userRole);
         return ResponseEntity.ok(ApiResponse.success("Certificate revoked successfully", response));
     }
 
@@ -111,9 +114,33 @@ public class CertificateController {
     @Operation(summary = "Verify a certificate (public endpoint)")
     @PreAuthorize("permitAll")
     public ResponseEntity<ApiResponse<CertificateVerificationResponse>> verifyCertificate(
-            @PathVariable String verificationCode) {
-        CertificateVerificationResponse response = certificateService.verifyCertificate(verificationCode);
+            @PathVariable String verificationCode,
+            HttpServletRequest request) {
+        // Rate limiting is per caller. Keyed on the forwarded client address where a proxy sets
+        // one, so a single caller cannot exhaust the budget for everybody else.
+        String clientKey = resolveClientKey(request);
+        CertificateVerificationResponse response = certificateService.verifyCertificate(verificationCode, clientKey);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * Best-effort client identity for rate limiting.
+     *
+     * <p>The forwarded header is only honoured when the deployment sits behind a proxy; trusting it
+     * unconditionally would let any caller spoof {@code X-Forwarded-For} and defeat the limit.
+     * With no header, the remote address is used.</p>
+     */
+    private static String resolveClientKey(HttpServletRequest request) {
+        String remote = request.getRemoteAddr();
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            // First entry is the original client.
+            String first = forwarded.split(",")[0].trim();
+            if (!first.isBlank()) {
+                return first;
+            }
+        }
+        return remote == null ? "unknown" : remote;
     }
 
     @GetMapping("/{certificateId}")
@@ -124,16 +151,40 @@ public class CertificateController {
             @RequestAttribute("institutionId") UUID institutionId,
             @RequestAttribute("userId") UUID userId,
             @RequestAttribute("userRole") String userRole) {
+        CertificateResponse response = certificateService.getCertificateById(certificateId, institutionId);
+
+        // Ownership, not just role. Previously a PARENT - and any teacher in the school - could
+        // read any certificate in the institution, including a child's classmate's. The transcript
+        // endpoint on this same controller already checks the parent-student link, so this was an
+        // inconsistency rather than a deliberate policy.
         if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
-            CertificateResponse response = certificateService.getCertificateById(certificateId, institutionId);
             if (response.getStudentId() != null && !response.getStudentId().equals(userId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("Access denied"));
             }
-            return ResponseEntity.ok(ApiResponse.success(response));
+        } else if ("PARENT".equals(userRole)) {
+            if (!isParentOf(userId, response.getStudentId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Access denied"));
+            }
         }
-        CertificateResponse response = certificateService.getCertificateById(certificateId, institutionId);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * True when this caller is linked as a parent of the given student.
+     *
+     * <p>Same parent-student check the transcript endpoint on this controller already performs,
+     * extracted so the certificate paths use one rule rather than two.</p>
+     */
+    private boolean isParentOf(UUID parentUserId, UUID studentId) {
+        if (studentId == null) {
+            return false;
+        }
+        var parent = parentRepository.findByUserIdAndIsDeletedFalse(parentUserId).orElse(null);
+        return parent != null
+                && parentStudentLinkRepository.existsByParentIdAndStudentIdAndIsDeletedFalse(
+                        parent.getId(), studentId);
     }
 
     @GetMapping
@@ -148,11 +199,19 @@ public class CertificateController {
             @RequestParam(defaultValue = "20") int size) {
         Page<CertificateResponse> response;
         if (studentId != null) {
-            if (("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) && !studentId.equals(userId)) {
+            if ("STUDENT".equals(userRole) || "OTHER_LEARNER".equals(userRole)) {
+                if (!studentId.equals(userId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(ApiResponse.error("Access denied: cannot view other students' certificates"));
+                }
+            } else if ("PARENT".equals(userRole) && !isParentOf(userId, studentId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(ApiResponse.error("Access denied: cannot view other students' certificates"));
+                        .body(ApiResponse.error("Access denied: not linked to this student"));
             }
-            response = certificateService.getCertificatesByStudent(studentId, PageRequest.of(page, size));
+            // institutionId is passed through so the query itself is tenant-scoped, rather than
+            // filtering rows out after they have already been read.
+            response = certificateService.getCertificatesByStudent(studentId, institutionId,
+                    PageRequest.of(page, size));
         } else {
             response = certificateService.getCertificatesByInstitution(institutionId, PageRequest.of(page, size));
         }

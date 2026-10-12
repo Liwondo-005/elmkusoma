@@ -50,6 +50,15 @@ public interface CertificateRepository extends JpaRepository<Certificate, UUID> 
 
     Page<Certificate> findByStudentIdAndIsDeletedFalse(UUID studentId, Pageable pageable);
 
+    /**
+     * Tenant-scoped lookup. Callers must use this rather than the studentId-only variant: a
+     * certificate belongs to one institution, and a query that filters on student alone will
+     * happily return another school's rows for a student id from a different tenant.
+     */
+    Page<Certificate> findByStudentIdAndInstitutionIdAndIsDeletedFalse(UUID studentId,
+                                                                       UUID institutionId,
+                                                                       Pageable pageable);
+
     Page<Certificate> findByInstitutionIdAndIsDeletedFalse(UUID institutionId, Pageable pageable);
 
     long countByInstitutionIdAndStatusAndIsDeletedFalse(UUID institutionId, Certificate.CertificateStatus status);
