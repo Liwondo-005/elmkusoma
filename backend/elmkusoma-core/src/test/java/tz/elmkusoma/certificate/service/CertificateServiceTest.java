@@ -80,6 +80,22 @@ class CertificateServiceTest {
         templateId = UUID.randomUUID();
         certificateId = UUID.randomUUID();
         issuedByUserId = UUID.randomUUID();
+
+        // Issuance re-resolves and revalidates the template. Tests that care about a specific
+        // template override this; the default keeps the pre-existing lifecycle tests working.
+        // lenient() because this class runs Mockito's strict stubs: many tests here never reach the
+        // issuance path at all, and an unused shared stub would otherwise fail them.
+        CertificateTemplate issuable = CertificateTemplate.builder()
+                .name("Default Template")
+                .templateType(CertificateTemplate.TemplateType.COMPLETION)
+                .isActive(true)
+                .build();
+        issuable.setId(templateId);
+        issuable.setInstitutionId(institutionId);
+        lenient().when(templateRepository.findByIdAndIsDeletedFalse(templateId))
+                .thenReturn(Optional.of(issuable));
+        lenient().when(certificateRepository.findLiveAward(any(), any(), any(), any()))
+                .thenReturn(Optional.empty());
     }
 
     @Test

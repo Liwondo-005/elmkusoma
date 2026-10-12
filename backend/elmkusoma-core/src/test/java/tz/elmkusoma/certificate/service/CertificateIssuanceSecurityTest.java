@@ -98,6 +98,12 @@ class CertificateIssuanceSecurityTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         when(certificateMapper.toCertificateResponse(any(Certificate.class)))
                 .thenReturn(tz.elmkusoma.certificate.dto.CertificateResponse.builder().build());
+        // Issuance resolves and revalidates the template. Default to a valid, active, correctly
+        // typed template in the same institution so each test only has to override the specific
+        // aspect it is exercising.
+        when(templateRepository.findByIdAndIsDeletedFalse(templateId))
+                .thenAnswer(inv -> Optional.of(activeTemplate()));
+        when(certificateRepository.findLiveAward(any(), any(), any(), any())).thenReturn(Optional.empty());
     }
 
     // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ cross-tenant issuance ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
@@ -244,6 +250,73 @@ class CertificateIssuanceSecurityTest {
                 UUID.randomUUID(), "admin@x.tz", "ADMIN");
 
         assertEquals(Certificate.CertificateStatus.ISSUED, certificate.getStatus());
+    }
+
+    @Test
+    void issue_refusesWhenTheTemplateWasDeactivatedDuringReview() {
+        // Generation checks isActive, but issuance did not. A certificate drafted against a
+        // template can sit in review for weeks while that template is withdrawn, then be issued
+        // from it anyway - producing documents the institution has already disowned.
+        Certificate certificate = draftCertificate();
+        when(certificateRepository.findByIdAndIsDeletedFalse(certificate.getId()))
+                .thenReturn(Optional.of(certificate));
+
+        CertificateTemplate deactivated = activeTemplate();
+        deactivated.setIsActive(false);
+        when(templateRepository.findByIdAndIsDeletedFalse(templateId)).thenReturn(Optional.of(deactivated));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> certificateService.issueCertificate(certificate.getId(), institutionId,
+                        UUID.randomUUID(), "admin@x.tz", "ADMIN"));
+        assertTrue(ex.getMessage().contains("deactivated"), ex.getMessage());
+    }
+
+    @Test
+    void issue_refusesWhenTheTemplateWasDeletedDuringReview() {
+        Certificate certificate = draftCertificate();
+        when(certificateRepository.findByIdAndIsDeletedFalse(certificate.getId()))
+                .thenReturn(Optional.of(certificate));
+        when(templateRepository.findByIdAndIsDeletedFalse(templateId)).thenReturn(Optional.empty());
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> certificateService.issueCertificate(certificate.getId(), institutionId,
+                        UUID.randomUUID(), "admin@x.tz", "ADMIN"));
+        assertTrue(ex.getMessage().contains("no longer exists"), ex.getMessage());
+    }
+
+    @Test
+    void issue_refusesATemplateOwnedByAnotherInstitution() {
+        Certificate certificate = draftCertificate();
+        when(certificateRepository.findByIdAndIsDeletedFalse(certificate.getId()))
+                .thenReturn(Optional.of(certificate));
+
+        CertificateTemplate foreign = activeTemplate();
+        foreign.setInstitutionId(UUID.randomUUID());
+        when(templateRepository.findByIdAndIsDeletedFalse(templateId)).thenReturn(Optional.of(foreign));
+
+        assertThrows(ForbiddenException.class,
+                () -> certificateService.issueCertificate(certificate.getId(), institutionId,
+                        UUID.randomUUID(), "admin@x.tz", "ADMIN"));
+    }
+
+    @Test
+    void issue_refusesATemplateTypedForADifferentKindOfAward() {
+        // A TRANSCRIPT-labelled template rendering an ACHIEVEMENT certificate is exactly the
+        // substitution to prevent: the document would present as a formal transcript.
+        Certificate certificate = draftCertificate();
+        certificate.setCertificateType(Certificate.CertificateType.ACHIEVEMENT);
+        when(certificateRepository.findByIdAndIsDeletedFalse(certificate.getId()))
+                .thenReturn(Optional.of(certificate));
+
+        CertificateTemplate transcriptTemplate = activeTemplate();
+        transcriptTemplate.setTemplateType(CertificateTemplate.TemplateType.TRANSCRIPT);
+        when(templateRepository.findByIdAndIsDeletedFalse(templateId))
+                .thenReturn(Optional.of(transcriptTemplate));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> certificateService.issueCertificate(certificate.getId(), institutionId,
+                        UUID.randomUUID(), "admin@x.tz", "ADMIN"));
+        assertTrue(ex.getMessage().contains("TRANSCRIPT"), ex.getMessage());
     }
 
     @Test
@@ -487,6 +560,7 @@ class CertificateIssuanceSecurityTest {
                 .name("Standard completion")
                 .templateType(CertificateTemplate.TemplateType.COMPLETION)
                 .build();
+        template.setId(templateId);
         template.setInstitutionId(institutionId);
         template.setIsActive(true);
         return template;

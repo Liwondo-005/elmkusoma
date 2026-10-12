@@ -278,8 +278,7 @@ public class CertificateService {
 
         // Approval gate, enforced server-side. Before V161 a certificate went straight from DRAFT
         // to ISSUED on an admin click, so "approved" never meant anything.
-        CertificateTemplate issueTemplate = certificate.getTemplateId() == null ? null
-                : templateRepository.findByIdAndIsDeletedFalse(certificate.getTemplateId()).orElse(null);
+        CertificateTemplate issueTemplate = requireIssuableTemplate(certificate);
         approvalService.assertIssuable(certificate, issueTemplate);
 
         // Re-check every linked signatory at the moment of issuance.
@@ -387,6 +386,55 @@ public class CertificateService {
      * certificates and the absence of a signature is a legitimate configuration, not a defect -
      * inventing a "missing signatory" failure would block certificates that are working today.</p>
      */
+    /**
+     * The template this certificate will be rendered from, validated at the moment of issuance.
+     *
+     * <p>Generation checks the template is active and compatible, but issuance did not. A
+     * certificate drafted against a template could sit in review for weeks while that template was
+     * deactivated, deleted, or had its type changed, and then be issued against it anyway. A
+     * deactivated template is usually withdrawn precisely because the design turned out to be
+     * wrong, so issuing from it produces documents the institution has already disowned.</p>
+     *
+     * <p>Returning null for a certificate with no template is deliberate and unchanged: the
+     * automatic participation-certificate paths create certificates without a template, and a
+     * missing template there is a legitimate configuration rather than a defect. Those paths are
+     * not rendered from a template at all, so template validation does not apply to them.</p>
+     */
+    private CertificateTemplate requireIssuableTemplate(Certificate certificate) {
+        if (certificate.getTemplateId() == null) {
+            return null;
+        }
+        CertificateTemplate template = templateRepository
+                .findByIdAndIsDeletedFalse(certificate.getTemplateId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "The template this certificate was drafted against no longer exists, so it "
+                                + "cannot be issued. Re-issue it against a current template."));
+
+        if (!Boolean.TRUE.equals(template.getIsActive())) {
+            throw new IllegalStateException(
+                    "The template for this certificate has been deactivated and cannot be issued from");
+        }
+
+        if (template.getInstitutionId() != null
+                && !template.getInstitutionId().equals(certificate.getInstitutionId())) {
+            throw new ForbiddenException("template", "issue");
+        }
+
+        // A template typed for one kind of award must not render another. Without this, an
+        // achievement template could be used to produce what reads as a transcript certificate.
+        // Compared by name because TemplateType and CertificateType are distinct enum types that
+        // happen to share their vocabulary; a TRANSCRIPT-labelled template rendering an
+        // ACHIEVEMENT certificate is exactly the substitution to prevent.
+        if (template.getTemplateType() != null && certificate.getCertificateType() != null
+                && !template.getTemplateType().name().equals(certificate.getCertificateType().name())) {
+            throw new IllegalStateException(
+                    "This template produces " + template.getTemplateType()
+                            + " certificates but the certificate is " + certificate.getCertificateType());
+        }
+
+        return template;
+    }
+
     /**
      * Refuses issuance when the student already holds a live certificate for this same award.
      *
