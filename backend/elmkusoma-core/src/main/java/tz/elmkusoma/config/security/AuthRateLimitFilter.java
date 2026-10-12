@@ -28,9 +28,11 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final long HOUR = 3_600_000L;
 
     private final RateLimitService rateLimitService;
+    private final ClientIpResolver clientIpResolver;
 
-    public AuthRateLimitFilter(RateLimitService rateLimitService) {
+    public AuthRateLimitFilter(RateLimitService rateLimitService, ClientIpResolver clientIpResolver) {
         this.rateLimitService = rateLimitService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @Override
@@ -114,15 +116,16 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         };
     }
 
+    /**
+     * The per-IP bucket key.
+     *
+     * <p>Delegated to {@link ClientIpResolver}. This previously read {@code X-Forwarded-For} and
+     * {@code X-Real-IP} unconditionally, both of which the caller chooses. Varying the header per
+     * request meant an unlimited number of buckets on the login and password-reset paths, which are
+     * precisely the endpoints these limits exist to constrain. The forwarded header is now honoured
+     * only behind a configured trusted proxy; otherwise the socket address is used.</p>
+     */
     private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 }

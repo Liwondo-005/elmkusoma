@@ -132,17 +132,30 @@ class LoginAttemptServiceRegressionTest {
         assertTrue(service.recordFailure("u19@example.com", ip2));
     }
 
+    /**
+     * A caller-supplied {@code X-Forwarded-For} must not select the rate-limit bucket.
+     *
+     * <p>This previously asserted that the first forwarded entry was preferred. That is precisely
+     * the flaw: the header is chosen by the client, so trusting it let one host present a fresh
+     * bucket per request and evade the per-IP limit entirely, which is the control that stops one
+     * address spraying many accounts. The per-account limit is unaffected either way.</p>
+     *
+     * <p>With no trusted proxy configured the socket address is used, because a client cannot forge
+     * it. The forwarded header is honoured only when the peer is a configured trusted proxy, which is
+     * covered in {@link ClientIpResolverTest}.</p>
+     */
     @Test
-    void resolveClientIp_prefersFirstForwardedEntry() {
-        HttpServletRequest proxied = mock(HttpServletRequest.class);
-        when(proxied.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4, 5.6.7.8");
-        when(proxied.getRemoteAddr()).thenReturn("9.9.9.9");
-        assertEquals("1.2.3.4", LoginAttemptService.resolveClientIp(proxied));
+    void resolveClientIp_ignoresSpoofableForwardedHeader() {
+        HttpServletRequest spoofed = mock(HttpServletRequest.class);
+        when(spoofed.getHeader("X-Forwarded-For")).thenReturn("1.2.3.4, 5.6.7.8");
+        when(spoofed.getRemoteAddr()).thenReturn("9.9.9.9");
+        assertEquals("9.9.9.9", LoginAttemptService.resolveClientIp(spoofed),
+                "an untrusted peer's forwarded header must not change the rate-limit key");
 
-        HttpServletRequest direct = mock(HttpServletRequest.class);
-        when(direct.getHeader("X-Forwarded-For")).thenReturn("  ");
-        when(direct.getRemoteAddr()).thenReturn("9.9.9.9");
-        assertEquals("9.9.9.9", LoginAttemptService.resolveClientIp(direct));
+        HttpServletRequest blankHeader = mock(HttpServletRequest.class);
+        when(blankHeader.getHeader("X-Forwarded-For")).thenReturn("  ");
+        when(blankHeader.getRemoteAddr()).thenReturn("9.9.9.9");
+        assertEquals("9.9.9.9", LoginAttemptService.resolveClientIp(blankHeader));
 
         assertEquals("unknown", LoginAttemptService.resolveClientIp(null));
     }

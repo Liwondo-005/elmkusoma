@@ -16,6 +16,7 @@ import tz.elmkusoma.certificate.domain.Certificate;
 import tz.elmkusoma.certificate.domain.CertificateApproval;
 import tz.elmkusoma.certificate.service.CertificateService;
 import tz.elmkusoma.common.ApiResponse;
+import tz.elmkusoma.config.security.ClientIpResolver;
 import tz.elmkusoma.parent.repository.ParentRepository;
 import tz.elmkusoma.parent.repository.ParentStudentLinkRepository;
 import tz.elmkusoma.student.repository.StudentRepository;
@@ -32,6 +33,7 @@ public class CertificateController {
 
     private final CertificateService certificateService;
     private final tz.elmkusoma.certificate.service.CertificateApprovalService certificateApprovalService;
+    private final ClientIpResolver clientIpResolver;
     private final StudentRepository studentRepository;
     private final ParentRepository parentRepository;
     private final ParentStudentLinkRepository parentStudentLinkRepository;
@@ -127,23 +129,16 @@ public class CertificateController {
     }
 
     /**
-     * Best-effort client identity for rate limiting.
+     * Best-effort client identity for rate limiting, delegated to the shared resolver.
      *
-     * <p>The forwarded header is only honoured when the deployment sits behind a proxy; trusting it
-     * unconditionally would let any caller spoof {@code X-Forwarded-For} and defeat the limit.
-     * With no header, the remote address is used.</p>
+     * <p>This previously read {@code X-Forwarded-For} unconditionally, while the surrounding
+     * comment claimed the header was only honoured behind a proxy. The comment described the
+     * behaviour that should exist; the code did the opposite. Because the header is chosen by the
+     * caller, varying it per request produced a fresh rate-limit bucket per request, which is the
+     * exact opposite of the control's purpose for an unauthenticated verification endpoint.</p>
      */
-    private static String resolveClientKey(HttpServletRequest request) {
-        String remote = request.getRemoteAddr();
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            // First entry is the original client.
-            String first = forwarded.split(",")[0].trim();
-            if (!first.isBlank()) {
-                return first;
-            }
-        }
-        return remote == null ? "unknown" : remote;
+    private String resolveClientKey(HttpServletRequest request) {
+        return clientIpResolver.resolve(request);
     }
 
     @GetMapping("/{certificateId}")
