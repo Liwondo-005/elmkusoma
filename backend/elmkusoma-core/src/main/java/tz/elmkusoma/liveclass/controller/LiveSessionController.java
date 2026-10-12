@@ -18,8 +18,11 @@ import tz.elmkusoma.liveclass.dto.*;
 import tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassChatMessageRepository;
 import tz.elmkusoma.liveclass.repository.LiveClassIssueRepository;
+import tz.elmkusoma.liveclass.service.LiveClassRecordingAccessService;
 import tz.elmkusoma.liveclass.service.LiveKitService;
 import tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher;
+import tz.elmkusoma.liveclass.service.RecordingPlaybackService;
+import tz.elmkusoma.liveclass.service.RecordingPlaybackUrls;
 import tz.elmkusoma.shared.domain.User;
 import tz.elmkusoma.shared.repository.UserRepository;
 import tz.elmkusoma.shared.repository.InstitutionMembershipRepository;
@@ -50,6 +53,9 @@ public class LiveSessionController {
     private final TeacherService teacherService;
     private final InstitutionMembershipRepository membershipRepository;
     private final ClassAccessGuard classAccessGuard;
+    private final LiveClassRecordingAccessService recordingAccess;
+    private final RecordingPlaybackService recordingPlaybackService;
+    private final RecordingPlaybackUrls recordingPlaybackUrls;
 
     @PostMapping("/join/{classId}")
     @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER')")
@@ -495,26 +501,7 @@ public class LiveSessionController {
             return ResponseEntity.status(401).body(ApiResponse.error("Authentication required"));
         }
 
-        boolean allowed;
-        if ("ADMIN".equals(userRole) || "INSTITUTION_ADMIN".equals(userRole) || "NATIONAL_ADMIN".equals(userRole)) {
-            allowed = true;
-        } else if ("TEACHER".equals(userRole)) {
-            // teacher owns the class (teacherId may store either Teacher.id or User.id)
-            allowed = teacherRepository.findByUserIdAndInstitutionId(userId, callerInstitutionId)
-                    .map(t -> liveClass.getTeacherId() != null
-                            && (liveClass.getTeacherId().equals(t.getId()) || liveClass.getTeacherId().equals(userId)))
-                    .orElse(liveClass.getTeacherId() != null && liveClass.getTeacherId().equals(userId));
-        } else {
-            // learner: must be an active member of the class's institution
-            allowed = membershipRepository.existsByUserIdAndInstitutionIdAndIsActiveTrue(userId, callerInstitutionId);
-            if (allowed && liveClass.getClassGroupId() != null) {
-                // class-scoped session: prove membership of the target class
-                // (student_class_assignments ∪ ENROLLED enrollments, strict)
-                String email = userRepository.findById(userId).map(User::getEmail).orElse(null);
-                allowed = classAccessGuard.isLearnerInClass(email, liveClass.getClassGroupId());
-            }
-        }
-        if (!allowed) {
+        if (!recordingAccess.isAllowed(liveClass, userId, callerInstitutionId, userRole)) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied"));
         }
 
@@ -529,7 +516,10 @@ public class LiveSessionController {
             result.put("message", "Recording is still being processed");
         } else if (recordingUrl.startsWith("http")) {
             result.put("status", "READY");
-            result.put("downloadUrl", recordingUrl);
+            // Application-owned, entitlement-checked playback URL. The stored location is a
+            // private object-storage URL and is never handed to a client: shipping it would
+            // make the JSON response the only authorisation boundary in the whole path.
+            result.put("downloadUrl", recordingPlaybackUrls.forLiveClass(classId));
             result.put("filename", "live-class-" + classId + ".mp4");
         } else {
             result.put("status", "UNKNOWN");
@@ -537,6 +527,61 @@ public class LiveSessionController {
         }
 
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /**
+     * Streams a live-class recording to an authorised caller.
+     *
+     * <p>This is the recording <em>access</em> path: the byte fetch itself is authorised here
+     * on every request, so a copied URL is worthless without a live session that satisfies
+     * the same institution, ownership and class-membership rules as every other recording
+     * endpoint. It honours {@code Range} so {@code <video>} seeking and resumption work, and
+     * the storage URL, object key and any signed query never leave the server.</p>
+     */
+    @GetMapping("/classes/{classId}/recording/playback")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','OTHER_LEARNER','INSTITUTION_ADMIN','ADMIN')")
+    @Operation(summary = "Stream a live-class recording (authorised, Range-capable)")
+    public ResponseEntity<org.springframework.core.io.Resource> playRecording(
+            @RequestAttribute(value = "userId", required = false) UUID userId,
+            @RequestAttribute(value = "institutionId", required = false) UUID institutionId,
+            @RequestAttribute(value = "userRole", required = false) String userRole,
+            @RequestHeader(value = "X-Institution-Id", required = false) UUID headerInstitutionId,
+            @RequestHeader(value = "Range", required = false) String range,
+            @PathVariable UUID classId) {
+
+        UUID callerInstitutionId = institutionId != null ? institutionId : headerInstitutionId;
+
+        LiveClass liveClass = recordingAccess.findClass(classId);
+        if (liveClass == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (callerInstitutionId == null || !liveClass.getInstitutionId().equals(callerInstitutionId)) {
+            // Cross-institution ID manipulation: deny without leaking existence.
+            return ResponseEntity.status(403).build();
+        }
+        if (userId == null) {
+            return ResponseEntity.status(401).build();
+        }
+        if (!recordingAccess.isAllowed(liveClass, userId, callerInstitutionId, userRole)) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return streamRecording(liveClass.getRecordingUrl(), range);
+    }
+
+    /**
+     * Re-validates the stored location and proxies the bytes. Error bodies stay empty on
+     * purpose: a client must not be able to learn whether an id exists, where the object
+     * lives, or which storage provider is behind it.
+     */
+    private ResponseEntity<org.springframework.core.io.Resource> streamRecording(String storedLocation, String range) {
+        java.util.Optional<String> fetchUrl = recordingPlaybackService.resolveFetchUrl(storedLocation);
+        if (fetchUrl.isEmpty()) {
+            return ResponseEntity.status(storedLocation == null || storedLocation.isBlank()
+                    ? 404 : 503).build();
+        }
+        return recordingPlaybackService.stream(fetchUrl.get(), range)
+                .orElseGet(() -> ResponseEntity.status(502).build());
     }
 
     // ------------------------------------------------------------------

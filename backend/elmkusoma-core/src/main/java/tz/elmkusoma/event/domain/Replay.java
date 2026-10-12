@@ -1,5 +1,6 @@
 package tz.elmkusoma.event.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -32,7 +33,14 @@ public class Replay extends BaseEntity {
     @Column(name = "description")
     private String description;
 
+    /**
+     * Private object-storage location (or an {@code egress:<id>} marker). Write-only on
+     * purpose: it is server-side state that the playback proxy re-validates and fetches,
+     * never something a client needs. Clients receive the transient {@code videoUrl}, which
+     * is the entitlement-checked application playback URL.
+     */
     @Column(name = "recording_url")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String recordingUrl;
 
     @Column(name = "caption_url")

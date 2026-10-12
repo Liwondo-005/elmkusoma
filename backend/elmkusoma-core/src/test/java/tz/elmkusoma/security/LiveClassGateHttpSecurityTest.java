@@ -32,6 +32,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -64,6 +65,9 @@ class LiveClassGateHttpSecurityTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
 
     @Autowired
     private InstitutionRepository institutionRepository;
@@ -239,7 +243,25 @@ class LiveClassGateHttpSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("READY"))
-                .andExpect(jsonPath("$.data.downloadUrl").value(classOpen.getRecordingUrl()));
+                // The entitlement-checked application playback URL, never the stored object
+                // location. Handing out the storage URL made the JSON response the only
+                // authorisation boundary in the whole recording path.
+                .andExpect(jsonPath("$.data.downloadUrl")
+                        .value(recordingPlaybackUrls.forLiveClass(classOpen.getId())));
+    }
+
+    @Test
+    void recordingDownload_neverExposesTheStoredStorageLocation() throws Exception {
+        String body = mockMvc.perform(get("/v1/live-session/classes/" + classOpen.getId() + "/recording/download")
+                        .header("Authorization", "Bearer " + token(learnerA))
+                        .header("X-Institution-Id", instA.getId().toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertFalse(body.contains(classOpen.getRecordingUrl()),
+                "the stored object-storage location must never reach a client: " + body);
+        assertFalse(body.contains("cdn.test"),
+                "the storage host must never reach a client: " + body);
     }
 
     @Test

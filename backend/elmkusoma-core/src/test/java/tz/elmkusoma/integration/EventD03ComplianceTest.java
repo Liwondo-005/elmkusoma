@@ -65,6 +65,10 @@ class EventD03ComplianceTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /** Application-owned playback URL builder; the raw storage location must never leak. */
+    @Autowired
+    private tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -147,7 +151,22 @@ class EventD03ComplianceTest {
                         .header("Authorization", "Bearer " + TestTokens.studentToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("READY"))
-                .andExpect(jsonPath("$.data.downloadUrl").value("https://cdn.example.com/rec-a.mp4"));
+                // The entitlement-checked application playback URL, never the stored object
+                // location. Returning the storage location made the JSON response the only
+                // authorisation boundary in the whole recording path.
+                .andExpect(jsonPath("$.data.downloadUrl")
+                        .value(recordingPlaybackUrls.forLiveClass(TestDataSeeder.CLASS_ID)));
+    }
+
+    @Test
+    void recordingDownload_NeverReturnsTheStoredStorageLocation() throws Exception {
+        String body = mockMvc.perform(get("/v1/live-session/classes/" + TestDataSeeder.CLASS_ID + "/recording/download")
+                        .header("Authorization", "Bearer " + TestTokens.studentToken()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertFalse(body.contains("cdn.example.com"),
+                "the private object-storage host must never reach a client: " + body);
     }
 
     @Test

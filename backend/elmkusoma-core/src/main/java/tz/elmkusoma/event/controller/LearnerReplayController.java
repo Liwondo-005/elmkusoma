@@ -33,9 +33,9 @@ public class LearnerReplayController {
     private final tz.elmkusoma.event.repository.EventMaterialRepository materialRepository;
     private final tz.elmkusoma.course.repository.LiveClassRepository liveClassRepository;
     private final tz.elmkusoma.learning.repository.LessonRepository lessonRepository;
-    private final tz.elmkusoma.liveclass.repository.LiveClassParticipantRepository liveClassParticipantRepository;
-    private final tz.elmkusoma.event.repository.EventRegistrationRepository eventRegistrationRepository;
+    private final tz.elmkusoma.event.service.ReplayEntitlementService replayEntitlementService;
     private final tz.elmkusoma.event.repository.ReplayChapterRepository chapterRepository;
+    private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Replay>>> getReplays(
@@ -66,7 +66,8 @@ public class LearnerReplayController {
         // per-replay entitlement check below, so the listing cannot advertise recordings the
         // learner is not allowed to open.
         if (userId != null) {
-            replays = replays.stream().filter(r -> hasReplayEntitlement(r, userId)).toList();
+            replays = replays.stream()
+                    .filter(r -> replayEntitlementService.hasEntitlement(r, userId)).toList();
             total = replays.size();
         }
         Map<UUID, ReplayProgress> progressMap = loadProgress(userId, replays);
@@ -92,7 +93,7 @@ public class LearnerReplayController {
         if (replay == null) {
             return ResponseEntity.notFound().build();
         }
-        if (userId != null && !hasReplayEntitlement(replay, userId)) {
+        if (userId != null && !replayEntitlementService.hasEntitlement(replay, userId)) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
                     .body(tz.elmkusoma.common.ApiResponse.error(
                             "You were not a participant in this recorded session"));
@@ -125,24 +126,6 @@ public class LearnerReplayController {
                     detail.put("relatedLessonId", event != null ? event.getRelatedLessonId() : r.getRelatedLessonId());
                     return ResponseEntity.ok(ApiResponse.success(detail));
         }
-    }
-
-    /**
-     * Replay entitlement for a learner: they must have been an actual participant in the
-     * recorded session — a LiveClassParticipant row for live-class replays, or an
-     * EventRegistration for event replays.
-     */
-    private boolean hasReplayEntitlement(Replay replay, UUID userId) {
-        if (replay.getLiveSessionId() != null) {
-            return liveClassParticipantRepository
-                    .existsByLiveClassIdAndUserIdAndIsDeletedFalse(replay.getLiveSessionId(), userId);
-        }
-        if (replay.getEventId() != null) {
-            return eventRegistrationRepository
-                    .existsByEventIdAndUserIdAndIsDeletedFalse(replay.getEventId(), userId);
-        }
-        // Replay with no session/event link: no participant evidence exists, so deny.
-        return false;
     }
 
     @GetMapping("/{id}/progress")
@@ -295,7 +278,8 @@ public class LearnerReplayController {
             r.setPositionSeconds(0);
             r.setCompleted(false);
         }
-        r.setVideoUrl(r.getRecordingUrl());
+        // Playback URL, not the storage location - see ReplayController#playReplay.
+        r.setVideoUrl(recordingPlaybackUrls.forReplay(r.getId()));
         // captionUrl is left null when no caption track was produced for the recording —
         // never substitute a sample file, which would be presented to learners as real captions.
         r.setRecordedAt(r.getCreatedAt());

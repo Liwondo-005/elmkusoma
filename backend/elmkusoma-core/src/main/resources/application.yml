@@ -141,6 +141,18 @@ app:
   # No trailing slash. Validated at startup by FrontendUrlValidator, which
   # rejects a loopback host outright under the prod profile.
   frontend-url: ${FRONTEND_URL:${APP_FRONTEND_URL:http://localhost:3000}}
+  recording-playback:
+    # The recording byte path. GET /v1/replays/{id}/playback and
+    # GET /v1/live-session/classes/{id}/recording/playback re-check role, institution,
+    # class ownership and session participation on every request (including every Range
+    # request a player makes while seeking), then proxy the bytes from the configured
+    # egress endpoint. Clients are given these application URLs instead of the private
+    # object-storage location.
+    # Bounded resource consumption: no buffering (the stream is piped straight through),
+    # redirects are never followed, and these two timeouts bound how long one request can
+    # hold a request thread and an upstream connection.
+    connect-timeout-ms: ${RECORDING_PLAYBACK_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${RECORDING_PLAYBACK_READ_TIMEOUT_MS:60000}
   security:
     # First-boot Platform Admin provisioning. Disabled by default: an existing
     # account is NEVER modified. When enabled, ADMIN_BOOTSTRAP_PASSWORD must be

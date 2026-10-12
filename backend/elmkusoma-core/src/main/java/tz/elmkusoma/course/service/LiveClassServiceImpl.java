@@ -87,6 +87,11 @@ public class LiveClassServiceImpl implements LiveClassService {
     /** Publishes finished/failed recordings into the existing media library (media_assets). */
     private final tz.elmkusoma.liveclass.service.LiveRecordingMediaPublisher liveRecordingMediaPublisher;
     private final org.springframework.transaction.PlatformTransactionManager transactionManager;
+    /**
+     * Builds the application-owned playback URL that client-facing responses expose in place
+     * of the private object-storage location.
+     */
+    private final tz.elmkusoma.liveclass.service.RecordingPlaybackUrls recordingPlaybackUrls;
 
     /**
      * Runs each expiry in its own transaction so one failing session cannot abort the rest of
@@ -968,7 +973,7 @@ public class LiveClassServiceImpl implements LiveClassService {
                 .classGroupId(liveClass.getClassGroupId())
                 .lessonId(liveClass.getLessonId())
                 .lessonTitle(lessonTitle)
-                .recordingUrl(liveClass.getRecordingUrl())
+                .recordingUrl(recordingUrlForClient(liveClass))
                 .recordingEnabled(Boolean.TRUE.equals(liveClass.getRecordingEnabled()))
                 .sessionType(liveClass.getSessionType() != null ? liveClass.getSessionType().name() : "LECTURE")
                 .broadcastSource(liveClass.getBroadcastSource() != null
@@ -984,6 +989,29 @@ public class LiveClassServiceImpl implements LiveClassService {
                         || "STARTING".equals(liveClass.getStatus()))
                 .createdAt(liveClass.getCreatedAt() != null ? liveClass.getCreatedAt().toString() : null)
                 .build();
+    }
+
+    /**
+     * What a client is told about a finished recording.
+     *
+     * <p>Responses expose an entitlement-checked application playback URL, never the private
+     * object-storage location. Before this existed the API shipped the storage URL to the
+     * browser, so authorisation was only ever checked on the JSON request that produced the
+     * link and a copied link played the file forever after.</p>
+     *
+     * <p>A recording that is not yet a URL - an {@code egress:<id>} marker or an absent value
+     * - is passed through unchanged, so every existing "processing"/"unavailable" consumer
+     * keeps its current behaviour exactly.</p>
+     */
+    private String recordingUrlForClient(LiveClass liveClass) {
+        String stored = liveClass.getRecordingUrl();
+        if (stored == null || stored.isBlank() || stored.startsWith("egress:")) {
+            return stored;
+        }
+        // Null only if app.frontend-url is unset, which FrontendUrlValidator rejects at
+        // startup. Returning null rather than the storage location keeps the fail-closed
+        // property: better a missing link than a leaked object URL.
+        return recordingPlaybackUrls.forLiveClass(liveClass.getId());
     }
 
     /**

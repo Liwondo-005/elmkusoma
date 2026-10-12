@@ -279,21 +279,37 @@ SELECT count(*) FROM media_assets   WHERE source_type='LIVE_CLASS' AND source_id
 turns on and **has never been captured** (no real recording has ever run). Note whether
 `file_results[].location` is `s3://…`, a bare key, or a full `https://…` URL.
 
-**Step 6 — playback.**
-- ✅ an **entitled** user (participant / owning teacher) can open the replay
-- ⛔ a user **without** access gets 403/404 from the *listing* endpoint and never learns the URL
+It matters because the application never hands that value to a browser. It is stored, then
+re-validated on every playback request by an allow-list (configured endpoint host + port +
+scheme, configured bucket, no `..`, no credentials, no fragment). Playback therefore has
+exactly two possible outcomes:
 
-Expected outcomes for the byte fetch itself (both are acceptable; neither is yet observed):
-
-| `location` shape | Private bucket result |
+| `location` shape | Playback result |
 |---|---|
-| plain `https://<endpoint>/<bucket>/…` | browser gets **403** → playback fails, nothing leaks |
-| signed URL | plays until expiry |
+| `s3://<configured bucket>/…`, a bare key, or `https://<configured endpoint>/<configured bucket>/…` | ✅ entitled user streams it; nobody else can |
+| anything else (different host/bucket/port, or an unparseable value) | ⛔ **503** — fails closed, nothing fetched, nothing leaked |
+
+If you see 503, the value from Step 5 is what to report — that is the one remaining unknown
+the code cannot resolve by guessing.
+
+**Step 6 — playback, both directions.**
+- ✅ an **entitled** user (session participant, or the owning teacher) opens the replay in the
+  app and it plays, including after dragging the seek bar (that exercises `Range`/206)
+- ⛔ a user **without** access gets **403 from the playback endpoint itself**, not merely from
+  the listing endpoint — this is the difference the second pass introduced
+- ⛔ an **unauthenticated** request to the playback URL gets **403 with an empty body**
+- ⛔ **copy the playback URL out of the browser, log out, and paste it back** — it must fail.
+  The URL is only a pointer at an endpoint that re-checks the caller every time
+
+The playback URL looks like
+`<FRONTEND_URL>/v1/replays/<replayId>/playback` or
+`<FRONTEND_URL>/v1/live-session/classes/<classId>/recording/playback`.
+
+**Step 7 — confirm the bucket is still private**, and that pasting the object's *storage*
+URL straight into a browser also fails. Neither the storage URL nor the bucket name nor the
+object key ever appears in an API response — if one does, that is a defect worth reporting.
 
 **Do not make the bucket public to get a green result.** See §12 for the open item.
-
-**Step 7 — confirm the bucket is still private** and that no unauthenticated request can
-fetch the object.
 
 ---
 
@@ -323,17 +339,26 @@ Restart, then confirm the service came up and the `.env` loader line shows the e
    recording has ever completed. Bucket reachability, key permissions, path-style addressing
    and the actual `location` scheme are all **UNVERIFIED**. Unit tests passing does not
    establish any of them.
-2. **Per-request entitlement on the byte fetch is not demonstrated.** Replay/recording URLs
-   are consumed by the frontend directly (`<a href>`, `<video src>`, `window.open`);
-   `MediaProxyService` serves *media-library* resources, not live-class recordings. Listing
-   endpoints are `@PreAuthorize`-gated, so an unauthorized user never learns the URL — but
-   that is URL-secrecy, not a per-request entitlement check. Decide the playback model after
-   §10 Step 5 shows what `location` actually is.
-3. **`docker-compose.yml` contains committed credentials** (a shared `JWT_SECRET`, the
+2. **Playback of a real B2 recording is therefore also UNVERIFIED.** The authorisation side
+   *is* demonstrated: the byte endpoint re-checks role, institution, class ownership and
+   session participation on every request (including every Range request), returns 403 to
+   anyone who fails it, never returns the storage host/bucket/key, and refuses to fetch a
+   stored location outside the configured endpoint. That is covered by 60 automated tests
+   against a real local HTTP server. What no test can establish is that LiveKit's real
+   `location` is a form the allow-list accepts. If it is not, playback answers **503** —
+   fails closed, but fails. §10 Step 5 captures the value that decides it.
+3. **The media library returns `media_assets.file_url` verbatim**, and the recording
+   publication writes the recording's location into that column. Entitlement is enforced on
+   that endpoint, and a private bucket makes the URL a dead link rather than a leak — but a
+   *signed* `location` would become a bearer capability distributed in JSON. Left alone: media
+   assets also carry arbitrary teacher-supplied URLs, so changing the column's meaning would
+   break legitimate uses. Recommended follow-up: an authorized byte endpoint for
+   `source_type = LIVE_CLASS` assets.
+4. **`docker-compose.yml` contains committed credentials** (a shared `JWT_SECRET`, the
    database password, MinIO root credentials, RabbitMQ `guest`) for the local stack. They are
    well-known development values, not production secrets, but they are in a tracked file.
    Replace them from a secret store before any shared or production deployment.
-4. **The `prod` profile is not activated anywhere in the repository.** Its overrides (Redis/
+5. **The `prod` profile is not activated anywhere in the repository.** Its overrides (Redis/
    RabbitMQ hosts, Flyway seed deactivation) were previously inert due to a YAML indentation
    defect that has now been corrected — so the first person to enable `prod` should review
    those values deliberately rather than inheriting dev defaults.
