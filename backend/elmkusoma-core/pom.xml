@@ -129,6 +129,18 @@
         </dependency>
 
         <!--
+          QR encoding for certificate verification links.
+
+          The certificate carries its own QR code so a printed or exported document can be scanned
+          without a second round trip and without depending on where it happens to be rendered.
+        -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+
+        <!--
           HTML sanitiser for news article bodies.
 
           This is the first sanitiser dependency in this build. News content previously refused HTML

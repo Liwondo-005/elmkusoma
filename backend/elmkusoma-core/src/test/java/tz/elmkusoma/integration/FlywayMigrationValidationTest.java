@@ -452,6 +452,29 @@ class FlywayMigrationValidationTest {
     }
 
     /**
+     * qr_code_url held a QR image as of V163, and it was created as varchar(255) in V81 - a width
+     * no real QR fits, which is why nothing had ever written to it. Widening to text is the only
+     * direction this column may move: shrinking it would truncate a stored image at read time into
+     * a data URI that no parser will accept, and the certificate would silently lose its code.
+     */
+    @Test
+    void certificateQrCodeUrl_OnlyEverWidens() throws IOException {
+        String migration = readMigration(
+                "V163__certificate_qr_code_url_holds_a_data_uri.sql");
+
+        assertTrue(migration.contains("qr_code_url"),
+                "V163 must retype certificates.qr_code_url");
+        assertTrue(migration.matches("(?s).*ALTER COLUMN qr_code_url TYPE text;.*"),
+                "V163 must widen qr_code_url to text so a stored QR is not truncated");
+        assertFalse(migration.matches("(?s).*qr_code_url TYPE character varying.*"),
+                "V163 must not re-widen to a length-bounded type: a data URI of any fixed length "
+                        + "is one longer value away from being cut in half");
+        // Dropping and re-adding the column would discard whatever is in it.
+        assertFalse(migration.matches("(?s).*DROP COLUMN qr_code_url.*"),
+                "V163 must alter the column in place, not drop and recreate it");
+    }
+
+    /**
      * Reads a migration by file name from the located migration directory.
      */
     private String readMigration(String fileName) throws IOException {

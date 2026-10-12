@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import tz.elmkusoma.common.BaseEntity;
+import tz.elmkusoma.certificate.qr.CertificateQrCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -79,7 +80,16 @@ public class Certificate extends BaseEntity {
     @Column(name = "verification_url")
     private String verificationUrl;
 
-    @Column(name = "qr_code_url")
+    /**
+     * The QR the certificate carries, as a self-contained SVG data URI.
+     *
+     * <p>{@code text} rather than the JPA default of varchar(255): a stored code is a few
+     * kilobytes, and Hibernate's default would create a column far too small to hold one. The
+     * database column was widened to text by V163 for the same reason. (Production runs
+     * ddl-auto=none, but the test profile uses create-drop, so the declared type has to be right
+     * here too or every issuance in a test would fail on a length overflow.)</p>
+     */
+    @Column(name = "qr_code_url", columnDefinition = "text")
     private String qrCodeUrl;
 
     @Column(name = "instructor_name")
@@ -106,11 +116,21 @@ public class Certificate extends BaseEntity {
      * certificate_number is NOT NULL + UNIQUE in the database but has no default,
      * so every INSERT must provide it. Generate one automatically when the caller
      * did not set it explicitly.
+     *
+     * <p>The QR is stamped here rather than at each issuance site. There are four - the manual
+     * service, live-class expiry, event attendance and NFE - and any one of them forgetting to
+     * call back would produce certificates that scan and certificates that do not, indistinguishable
+     * until somebody tries. A lifecycle callback cannot be skipped.</p>
      */
     @PrePersist
     void onCreate() {
         if (certificateNumber == null || certificateNumber.isBlank()) {
             certificateNumber = "CERT-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
+        }
+        // Only when there is something to encode, and only when a code is not already set, so a
+        // caller that generated one deliberately keeps it.
+        if (qrCodeUrl == null && verificationUrl != null && !verificationUrl.isBlank()) {
+            qrCodeUrl = CertificateQrCode.svgDataUri(verificationUrl);
         }
     }
 
